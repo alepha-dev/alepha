@@ -88,6 +88,16 @@ export class ChatMessageService {
     if (!body.trim() && attachments.length === 0) {
       throw new BadRequestError("A message needs words or a file");
     }
+    // A personal room is a conversation with its agent: with the agent gone
+    // (AI turned off) it stays readable and takes no new prompt.
+    if (
+      room.agent &&
+      !this.alepha.inject(ChatResponderRegistry).get(room.agent)
+    ) {
+      throw new ConflictError(
+        "The agent of this room is off on this Lore: the room stays readable and takes no new message",
+      );
+    }
     await this.assertOwnUploads(attachments, userId);
 
     const limited = await this.sendLimit.consume(userId);
@@ -133,10 +143,12 @@ export class ChatMessageService {
       .notify(room, message, userId, parsed.userIds);
     // `@lore` asks the agent, as the member who wrote it (#Q3930). Only a
     // member's message starts a run: an agent's never reaches `send`.
-    if (user && parsed.agents.length > 0) {
+    // In a personal room every message is a prompt, mention or not.
+    const agent = parsed.agents[0] ?? room.agent;
+    if (user && agent) {
       await this.alepha
         .inject(ChatAgentRunner)
-        .start(room, message, user, parsed.agents[0]!);
+        .start(room, message, user, agent);
     }
     return { message: resource!, mentioned: parsed.userIds };
   }

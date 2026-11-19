@@ -34,8 +34,23 @@ export const chatRooms = $entity({
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * A member's own room with an agent (#Q3942): private, theirs alone,
+     * nobody invited in. Deleted with the account.
+     */
+    personalOf: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "cascade",
+    }),
+    /**
+     * The agent every message of a personal room prompts, without a
+     * mention: `lore`.
+     */
+    agent: z.text({ maxLength: 40 }).optional(),
   }),
-  indexes: [{ columns: ["projectId", "name"], unique: true }],
+  indexes: [
+    { columns: ["projectId", "name"], unique: true },
+    { columns: ["projectId", "personalOf"] },
+  ],
 });
 
 export type ChatRoom = Infer<typeof chatRooms.schema>;

@@ -9,7 +9,6 @@ import { useCallback } from "react";
  * under the `assistant.tool.` dynamic prefix `check:i18n` is told about.
  */
 const LABELLED = new Set([
-  "project_list",
   "project_info",
   "quest_list",
   "quest_get",

@@ -35,8 +35,9 @@ export class LoreAiToolAccess {
     context?: AiPageContext;
   }): Promise<string[]> {
     const projectId = this.context.projectIdOf(ctx.context);
+    // Outside a project there is no assistant (#Q3942): nothing offered.
     if (projectId === undefined || !ctx.user) {
-      return this.toolset.offProject.map((entry) => this.toolset.nameOf(entry));
+      return [];
     }
     return (await this.inProject(projectId, ctx.user)).map((entry) =>
       this.toolset.nameOf(entry),

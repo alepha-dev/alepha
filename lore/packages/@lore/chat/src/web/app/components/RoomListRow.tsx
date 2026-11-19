@@ -1,7 +1,7 @@
 import { Badge, cn, TimeAgo } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Hash, Lock } from "lucide-react";
+import { Bot, Hash, Lock } from "lucide-react";
 
 import type { ChatRoomResource } from "../../../schemas/index.ts";
 import type { ChatRoomUnread } from "../services/roomOrder.ts";
@@ -23,7 +23,7 @@ const RoomListRow = (props: RoomListRowProps) => {
   const { room } = props;
   const unread = props.unread?.unread ?? 0;
   const mentions = props.unread?.mentions ?? 0;
-  const Icon = room.private ? Lock : Hash;
+  const Icon = room.personal ? Bot : room.private ? Lock : Hash;
   const last = room.lastMessage;
 
   return (
@@ -48,7 +48,7 @@ const RoomListRow = (props: RoomListRowProps) => {
               room.archivedAt && "text-muted-foreground",
             )}
           >
-            {room.name}
+            {room.personal ? tr("chat.rooms.personal") : room.name}
           </span>
           {last && (
             <TimeAgo

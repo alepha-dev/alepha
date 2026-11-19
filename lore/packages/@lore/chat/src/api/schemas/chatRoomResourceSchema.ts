@@ -17,6 +17,12 @@ export const chatRoomResourceSchema = z.object({
   joined: z.boolean(),
   notifyLevel: z.enum(["mentions", "muted"]).optional(),
   /**
+   * The reader's own room with an agent: every message there prompts
+   * `agent`, and nobody else is in it (#Q3942).
+   */
+  personal: z.boolean().optional(),
+  agent: z.text().optional(),
+  /**
    * The newest message, for the room list's preview: its first line, cut
    * at {@link CHAT_PREVIEW_LENGTH} characters. Absent in a room nobody has
    * written in.

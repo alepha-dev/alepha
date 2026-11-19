@@ -102,19 +102,17 @@ describe("the assistant's read tools", () => {
     await alepha.stop();
   });
 
-  it("offers every tool in declaration order, off-project, reads, then writes, to the vendor", async ({
+  it("offers every tool in declaration order, reads then writes, to the vendor", async ({
     expect,
   }) => {
     const { alepha } = await boot();
     const toolset = alepha.inject(LoreAiToolset);
     const assistant = alepha.inject(LoreAiAssistant).assistant;
     expect(assistant.definitions.map((tool) => tool.name)).toEqual([
-      "project_list",
       ...READ_SET,
       ...WRITE_SET,
     ]);
     expect(toolset.tools.map((tool) => tool.name)).toEqual([
-      "project_list",
       ...READ_SET,
       ...WRITE_SET,
     ]);
@@ -127,7 +125,6 @@ describe("the assistant's read tools", () => {
     const { alepha } = await boot();
     const toolset = alepha.inject(LoreAiToolset);
     expect(toolset.inProject).toBe(toolset.inProject);
-    expect(toolset.offProject).toBe(toolset.offProject);
     expect(toolset.writes).toBe(toolset.writes);
     await alepha.stop();
   });
@@ -137,7 +134,7 @@ describe("the assistant's read tools", () => {
   }) => {
     const { alepha } = await boot();
     const toolset = alepha.inject(LoreAiToolset);
-    for (const entry of [...toolset.offProject, ...toolset.inProject]) {
+    for (const entry of toolset.inProject) {
       const tool = entry.tool as ToolPrimitive<any>;
       if (typeof tool.execute === "function") {
         expect(
