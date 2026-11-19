@@ -606,8 +606,12 @@ const QuestView = (props: QuestViewProps) => {
               popup's floating close and its "updated ..." stamp would run
               beneath the X. From `lg` the rail is the top-right corner
               instead and reserves the space itself. */}
+          {/* `relative z-20`: `-mb-7` slides the sticky header 4px over
+              this row, and the header is opaque at `z-10`, so it cut the
+              bottom edge off the status badge, the tallest thing here. The
+              row paints above the header's empty top padding instead. */}
           <div
-            className={`-mx-10 -mt-4 -mb-7 flex flex-wrap items-center gap-2 px-10 pt-4 ${
+            className={`relative z-20 -mx-10 -mt-4 -mb-7 flex flex-wrap items-center gap-2 px-10 pt-4 ${
               context === "dialog" ? "pr-14 lg:pr-10" : ""
             }`}
           >

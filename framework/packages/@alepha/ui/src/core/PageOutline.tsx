@@ -21,6 +21,41 @@ export const outlineEntry = (label?: string) => ({
   "data-outline": label ?? "",
 });
 
+/**
+ * Brings `target` to the top of the box that actually scrolls it, and moves
+ * nothing else.
+ *
+ * ⚠️ Not `scrollIntoView`: that scrolls EVERY ancestor it can, `overflow:
+ * hidden` ones included. An app shell is full of those (a column clipped so
+ * its child scrolls instead), and once one of them had been pushed up by a few
+ * pixels the page stayed cut under its own header, since nothing a reader
+ * does scrolls a hidden box back.
+ */
+const scrollToEntry = (target: HTMLElement, behavior?: ScrollBehavior) => {
+  let scroller = target.parentElement;
+  while (scroller) {
+    const overflow = getComputedStyle(scroller).overflowY;
+    if (
+      (overflow === "auto" || overflow === "scroll") &&
+      scroller.scrollHeight > scroller.clientHeight
+    ) {
+      break;
+    }
+    scroller = scroller.parentElement;
+  }
+  const margin =
+    Number.parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+  const top = target.getBoundingClientRect().top - margin;
+  if (scroller) {
+    scroller.scrollTo?.({
+      top: scroller.scrollTop + top - scroller.getBoundingClientRect().top,
+      behavior,
+    });
+  } else {
+    window.scrollTo?.({ top: window.scrollY + top, behavior });
+  }
+};
+
 interface OutlineItem {
   id: string;
   label: string;
@@ -105,7 +140,7 @@ export const PageOutline = (props: PageOutlineProps) => {
       }
       pinnedRef.current = pendingHash;
       setActiveId(pendingHash);
-      target.scrollIntoView?.();
+      scrollToEntry(target);
     };
 
     const release = () => {
@@ -208,7 +243,7 @@ export const PageOutline = (props: PageOutlineProps) => {
     history.replaceState(history.state, "", `#${id}`);
     setActiveId(id);
     pinnedRef.current = id;
-    target.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    scrollToEntry(target, "smooth");
 
     let last = Number.NaN;
     let still = 0;

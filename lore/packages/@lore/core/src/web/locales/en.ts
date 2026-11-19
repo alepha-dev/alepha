@@ -221,7 +221,7 @@ export default {
     "Your AI agents work in Lore over MCP and the CLI, with your permissions.",
   "home.feature.notifications.title": "Notifications",
   "home.feature.notifications.description":
-    "Tell the right people when something changes: a release, a failed deploy, a host gone offline, in the app, by email, on Discord or through a webhook.",
+    "Hear of releases, failed deploys and offline hosts, by email, Discord or webhook.",
   "home.feature.selfHost.title": "Self-hosting",
   "home.feature.selfHost.description":
     "Open source, and runs anywhere from one Docker image.",
@@ -947,7 +947,8 @@ export default {
   "quest.rail.size": "Size",
   "quest.rail.epic": "Epic",
   "quest.rail.live": "Live",
-  "quest.live.since": "$1 · since $2",
+  "quest.live.summary": "Live on $1 copies",
+  "quest.live.since": "since $1",
   "quest.live.unverified": "unverified",
   "quest.live.unverified.hint":
     "This build was pushed from a working tree with uncommitted changes, so the copy may run code no commit names.",

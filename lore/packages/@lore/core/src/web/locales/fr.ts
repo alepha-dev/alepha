@@ -229,7 +229,7 @@ export default {
     "Vos agents IA travaillent dans Lore via MCP et la CLI, avec vos permissions.",
   "home.feature.notifications.title": "Notifications",
   "home.feature.notifications.description":
-    "Prévenez les bonnes personnes quand quelque chose change : une version, un déploiement échoué, un hôte hors ligne, dans l'application, par e-mail, sur Discord ou par webhook.",
+    "Versions, déploiements échoués, hôtes hors ligne : par e-mail, Discord ou webhook.",
   "home.feature.selfHost.title": "Auto-hébergement",
   "home.feature.selfHost.description":
     "Open source, et tourne partout à partir d’une seule image Docker.",
@@ -942,7 +942,8 @@ export default {
   "quest.rail.size": "Taille",
   "quest.rail.epic": "Epic",
   "quest.rail.live": "En ligne",
-  "quest.live.since": "$1 · depuis $2",
+  "quest.live.summary": "En ligne sur $1 copies",
+  "quest.live.since": "depuis $1",
   "quest.live.unverified": "non vérifié",
   "quest.live.unverified.hint":
     "Ce build a été envoyé depuis un arbre de travail avec des modifications non commitées : la copie peut exécuter du code qu'aucun commit ne nomme.",
