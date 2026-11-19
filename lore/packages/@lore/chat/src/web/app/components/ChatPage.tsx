@@ -333,9 +333,38 @@ const ChatPage = () => {
     [messagesApi, projectId, conversation.apply, refreshLists],
   );
 
-  // Who `@` offers: the members of a private room, everyone who reads an
-  // open one; never the writer. Agents join with the agent quest.
-  const candidates: ChatMentionCandidate[] = room?.private
+  const { data: agentPage } = useQuery(
+    {
+      key: ["chat-agents", projectId],
+      enabled: projectId > 0,
+      handler: () => messagesApi.listChatAgents({ params: { projectId } }),
+    },
+    [messagesApi, projectId],
+  );
+  const agents = agentPage?.items ?? [];
+  const agentLabels = Object.fromEntries(
+    agents.map((agent) => [agent.name, agent.label]),
+  );
+
+  const decide = useAction<
+    [message: ChatMessageResource, decision: "approve" | "deny"],
+    void
+  >(
+    {
+      handler: async (_context, message, decision) => {
+        await messagesApi.decideChatAgentCall({
+          params: { projectId, roomId: message.roomId, messageId: message.id },
+          body: { decision },
+        });
+      },
+    },
+    [messagesApi, projectId],
+  );
+  const [deciding, setDeciding] = useState<string | undefined>(undefined);
+
+  // Who `@` offers: the agents first, then the members of a private room or
+  // everyone who reads an open one; never the writer.
+  const people: ChatMentionCandidate[] = room?.private
     ? (memberPage?.items ?? [])
         .filter((member) => member.userId !== me && member.name)
         .map((member) => ({
@@ -348,6 +377,14 @@ const ChatPage = () => {
           handle: mentionHandle(user),
           label: displayName(user),
         }));
+  const candidates: ChatMentionCandidate[] = [
+    ...agents.map((agent) => ({
+      handle: agent.name,
+      label: agent.label,
+      agent: true,
+    })),
+    ...people,
+  ];
 
   const [now] = useState(() => dateTime.nowMillis());
 
@@ -399,6 +436,14 @@ const ChatPage = () => {
         return result.ok ? result.value : undefined;
       }}
       onReact={(message, emoji) => void react.run(message, emoji)}
+      agentLabels={agentLabels}
+      deciding={deciding}
+      onDecide={(message, decision) => {
+        setDeciding(message.id);
+        void decide
+          .run(message, decision)
+          .finally(() => setDeciding(undefined));
+      }}
       onBack={isMobile ? () => open() : undefined}
       typing={typing.map((it) => it.userId)}
       onTyping={onTyping}

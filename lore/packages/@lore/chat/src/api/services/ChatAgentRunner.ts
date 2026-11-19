@@ -207,6 +207,7 @@ export class ChatAgentRunner {
   ): Promise<void> {
     const mentionerId = answer.agentRun!.mentionerId;
     let text = answer.body;
+    const tools = [...(answer.agentRun?.tools ?? [])];
     let flushed = this.dateTime.nowMillis();
     const finish = async (
       run: NonNullable<ChatMessage["agentRun"]>,
@@ -214,7 +215,21 @@ export class ChatAgentRunner {
     ) => {
       const stored = await this.messages.updateById(answer.id, {
         body,
-        agentRun: run,
+        agentRun: { ...run, ...(tools.length ? { tools } : {}) },
+      });
+      await this.publish(room, stored, "message.updated");
+    };
+    // Stored as it grows, not only sent: a page reloaded mid-answer reads
+    // the text so far, then the frames bring the rest.
+    const progress = async () => {
+      flushed = this.dateTime.nowMillis();
+      const stored = await this.messages.updateById(answer.id, {
+        body: text,
+        agentRun: {
+          status: "running",
+          mentionerId,
+          ...(tools.length ? { tools } : {}),
+        },
       });
       await this.publish(room, stored, "message.updated");
     };
@@ -223,15 +238,22 @@ export class ChatAgentRunner {
       for await (const event of events) {
         if (event.type === "conversation") {
           await this.remember(room.id, mentionerId, event.conversationId);
+        } else if (event.type === "tool") {
+          const last = tools.at(-1);
+          if (
+            event.state !== "running" &&
+            last?.name === event.name &&
+            last.state === "running"
+          ) {
+            last.state = event.state;
+          } else {
+            tools.push({ name: event.name, state: event.state });
+          }
+          await progress();
         } else if (event.type === "text") {
           text += event.text;
           if (this.dateTime.nowMillis() - flushed > ChatAgentRunner.FLUSH_MS) {
-            flushed = this.dateTime.nowMillis();
-            await this.publish(
-              room,
-              { ...answer, body: text },
-              "message.updated",
-            );
+            await progress();
           }
         } else if (event.type === "confirm") {
           await finish(

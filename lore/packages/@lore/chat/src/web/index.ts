@@ -5,6 +5,7 @@ import { AlephaWebSocket } from "alepha/websocket";
 import { ChatChannels } from "../schemas/ChatChannels.ts";
 import { ChatRouter } from "./app/ChatRouter.ts";
 import { ChatProjectLoader } from "./app/loaders/ChatProjectLoader.ts";
+import { ChatAgentUiRegistry } from "./app/services/ChatAgentUiRegistry.ts";
 import { ChatFeedHub } from "./app/services/ChatFeedHub.ts";
 import { ChatUnread } from "./app/services/ChatUnread.ts";
 import { ChatShell } from "./app/shell/ChatShell.ts";
@@ -34,12 +35,14 @@ export const LoreChatWeb = $module({
     alepha.with(ChatChannels);
     alepha.with(ChatFeedHub);
     alepha.with(ChatUnread);
+    alepha.with(ChatAgentUiRegistry);
     alepha.inject(ChatProjectLoader);
     alepha.inject(ChatShell);
   },
 });
 
 export { ChatRouter } from "./app/ChatRouter.ts";
+export { ChatAgentUiRegistry } from "./app/services/ChatAgentUiRegistry.ts";
 export { ChatShell } from "./app/shell/ChatShell.ts";
 
 /**

@@ -168,6 +168,14 @@ export class LoreChatResponder {
     for await (const event of events) {
       if (event.type === "text") {
         yield { type: "text", text: event.text ?? "" };
+      } else if (event.type === "tool_call") {
+        yield { type: "tool", name: event.name ?? "", state: "running" };
+      } else if (event.type === "tool_result") {
+        yield {
+          type: "tool",
+          name: event.name ?? "",
+          state: event.isError ? "failed" : "done",
+        };
       } else if (event.type === "confirm") {
         yield {
           type: "confirm",

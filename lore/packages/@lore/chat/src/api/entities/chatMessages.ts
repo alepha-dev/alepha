@@ -66,6 +66,17 @@ export const chatMessages = $entity({
         callId: z.text().optional(),
         tool: z.text().optional(),
         input: z.record(z.text(), z.any()).optional(),
+        /**
+         * The tools the run used, in order: the answer's trace line.
+         */
+        tools: z
+          .array(
+            z.object({
+              name: z.text(),
+              state: z.enum(["running", "done", "failed"]),
+            }),
+          )
+          .optional(),
       })
       .optional(),
   }),

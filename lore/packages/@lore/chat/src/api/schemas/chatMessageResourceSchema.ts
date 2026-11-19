@@ -39,6 +39,14 @@ export const chatMessageResourceSchema = z.object({
       mentionerId: z.uuid(),
       tool: z.text().optional(),
       input: z.record(z.text(), z.any()).optional(),
+      tools: z
+        .array(
+          z.object({
+            name: z.text(),
+            state: z.enum(["running", "done", "failed"]),
+          }),
+        )
+        .optional(),
     })
     .optional(),
   attachments: z.array(

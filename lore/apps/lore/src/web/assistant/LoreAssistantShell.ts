@@ -1,8 +1,11 @@
+import { ChatAgentUiRegistry } from "@lore/chat/web";
 import { ShellExtensionRegistry } from "@lore/core/web";
 import { $inject } from "alepha";
 
+import { assistantConfirmCards } from "./assistantConfirmCards.ts";
 import AssistantHeaderButton from "./AssistantHeaderButton.tsx";
 import AssistantPanel from "./AssistantPanel.tsx";
+import { useAssistantToolLabel } from "./useAssistantToolLabel.ts";
 
 /**
  * Puts the assistant in Lore's chrome (#Q3211): its toggle in the header
@@ -11,6 +14,7 @@ import AssistantPanel from "./AssistantPanel.tsx";
  */
 export class LoreAssistantShell {
   protected readonly shell = $inject(ShellExtensionRegistry);
+  protected readonly chatAgents = $inject(ChatAgentUiRegistry);
 
   constructor() {
     this.shell.registerHeaderAction({
@@ -18,5 +22,11 @@ export class LoreAssistantShell {
       component: AssistantHeaderButton,
     });
     this.shell.registerOverlay({ key: "assistant", component: AssistantPanel });
+    // `@lore` in a chat room shows the dock's own tool labels and write
+    // cards (#Q3956): drawn once, in the app, and lent to chat.
+    this.chatAgents.register({
+      cards: assistantConfirmCards,
+      useToolLabel: useAssistantToolLabel,
+    });
   }
 }
