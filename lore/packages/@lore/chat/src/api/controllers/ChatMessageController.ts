@@ -5,6 +5,7 @@ import { $action, okSchema } from "alepha/server";
 import { chatMessageBodySchema } from "../schemas/chatMessageBodySchema.ts";
 import { chatMessageResourceSchema } from "../schemas/chatMessageResourceSchema.ts";
 import { chatReactionSchema } from "../schemas/chatReactionSchema.ts";
+import { ChatAgentRunner } from "../services/ChatAgentRunner.ts";
 import { ChatBuckets } from "../services/ChatBuckets.ts";
 import { ChatMessageService } from "../services/ChatMessageService.ts";
 
@@ -67,6 +68,7 @@ export class ChatMessageController {
           user!.id,
           body.body ?? "",
           body.attachments ?? [],
+          user,
         )
       ).message,
   });
@@ -100,6 +102,31 @@ export class ChatMessageController {
         size: file.size,
         url: `/api/files/${file.id}`,
       };
+    },
+  });
+
+  decideChatAgentCall = $action({
+    method: "POST",
+    path: "/projects/:projectId/chat/rooms/:roomId/messages/:messageId/decision",
+    use: [this.ownsProject("chat:write")],
+    description:
+      "Approve or deny the write an agent's answer is waiting on. Only the member who mentioned the agent decides.",
+    schema: {
+      params: this.roomParams.extend({ messageId: z.uuid() }),
+      body: z.object({ decision: z.enum(["approve", "deny"]) }),
+      response: okSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.alepha
+        .inject(ChatAgentRunner)
+        .decide(
+          params.projectId,
+          params.roomId,
+          params.messageId,
+          user!,
+          body.decision,
+        );
+      return { ok: true };
     },
   });
 

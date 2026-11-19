@@ -54,6 +54,20 @@ export const chatMessages = $entity({
      * bucket. No column default: one on D1 is a table rebuild.
      */
     attachments: z.array(z.uuid()).optional(),
+    /**
+     * An agent's answer while and after it runs (#Q3930): whose run it is,
+     * and the write it waits on when it paused. The run itself is logged in
+     * `ai_*`; this is what the room shows.
+     */
+    agentRun: z
+      .object({
+        status: z.enum(["running", "paused", "done", "failed"]),
+        mentionerId: z.uuid(),
+        callId: z.text().optional(),
+        tool: z.text().optional(),
+        input: z.record(z.text(), z.any()).optional(),
+      })
+      .optional(),
   }),
   indexes: [{ columns: ["roomId", "id"] }, { columns: ["authorId"] }],
 });
