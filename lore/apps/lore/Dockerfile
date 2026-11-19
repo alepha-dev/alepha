@@ -6,6 +6,11 @@
 FROM node:26-alpine
 WORKDIR /app
 
+# Build's git repositories (#E162): LocalGitBackend creates bare repositories
+# with `git init --bare` and serves clone and push by spawning
+# `git upload-pack` / `git receive-pack --stateless-rpc`.
+RUN apk add --no-cache git
+
 LABEL "dev.alepha.runtime"="node"
 LABEL "org.opencontainers.image.source"="https://github.com/alepha-dev/alepha"
 LABEL "org.opencontainers.image.title"="Lore"

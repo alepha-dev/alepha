@@ -10,6 +10,7 @@ import {
 import { $inject } from "alepha";
 import type { SQLLike } from "alepha/orm";
 
+import { codeRepositories } from "../entities/codeRepositories.ts";
 import { qualityRuns } from "../entities/qualityRuns.ts";
 
 /**
@@ -17,6 +18,11 @@ import { qualityRuns } from "../entities/qualityRuns.ts";
  * `ProjectMergeService` (#E162): the quality runs move into the target, and
  * a day of coverage on a branch the target already measured keeps the
  * target's row.
+ *
+ * Repositories move too, by row only: `backendRef` names the backend's
+ * repository by the ids it was created with, so nothing in the backend
+ * moves. Two repositories under one slug are refused, a decision for a
+ * person: one of them is renamed or deleted first.
  */
 export class BuildProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
@@ -28,6 +34,12 @@ export class BuildProjectMerge {
       entity: qualityRuns,
       keys: ["branch", "day"],
       onCollision: "keepTarget",
+    },
+    {
+      kind: "repository",
+      entity: codeRepositories,
+      keys: ["slug"],
+      onCollision: "refuse",
     },
   ];
 
