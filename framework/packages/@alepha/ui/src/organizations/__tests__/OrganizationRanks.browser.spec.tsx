@@ -13,6 +13,7 @@ const organizationId = "00000000-0000-4000-8000-000000000041";
 
 class Links extends LinkProvider {
   public saved: any[] = [];
+  public reset: any[] = [];
 
   override client(): any {
     return new Proxy(
@@ -38,6 +39,8 @@ class Links extends LinkProvider {
                     builtin: true,
                     editable: true,
                     renamable: true,
+                    // Edited away from its default: one permission differs.
+                    defaultPermissions: ["document:read"],
                   },
                   {
                     key: "editor",
@@ -65,8 +68,11 @@ class Links extends LinkProvider {
                 ],
               };
             }
-            if (name === "getOrganizationMembers") return [];
+            if (name === "getOrganizationMembers") {
+              return [{ userId: "u1", rank: null }];
+            }
             if (name === "saveOrganizationRank") this.saved.push(input);
+            if (name === "resetOrganizationRank") this.reset.push(input);
             return { ok: true };
           };
           action.can = () => true;
@@ -269,5 +275,50 @@ describe("OrganizationRanks", () => {
       name: "Reviewer",
       permissions: ["document:read"],
     });
+  });
+
+  it("marks a rank that differs from its default, and dots the differing cell", async () => {
+    const { view } = await mount();
+
+    // Only Member has a default, and it lacks document:read from it.
+    const marks = view.getAllByTestId("rank-differs");
+    expect(marks).toHaveLength(1);
+    expect(marks[0].getAttribute("aria-label")).toBe(
+      "1 permission differs from the default",
+    );
+    const memberRead = view.getAllByLabelText("document:read")[2];
+    expect(
+      memberRead
+        .closest("td")!
+        .querySelector("[data-slot='permission-differs']"),
+    ).not.toBeNull();
+    expect(
+      view.container.querySelectorAll("[data-slot='permission-differs']"),
+    ).toHaveLength(1);
+
+    // Ticking it back to the default clears the dot at once.
+    fireEvent.click(memberRead);
+    expect(
+      view.container.querySelectorAll("[data-slot='permission-differs']"),
+    ).toHaveLength(0);
+  });
+
+  it("resets a rank to its default after a confirmation listing the change", async () => {
+    const { links, view } = await mount();
+
+    fireEvent.click(view.getByRole("button", { name: "Member actions" }));
+    fireEvent.click(await view.findByText("Reset to default"));
+    expect(
+      await view.findByText(
+        "Adds 1: document:read. Removes none. 1 member holds this rank, and their access changes right away.",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "Reset" }));
+
+    await waitFor(() =>
+      expect(links.reset).toContainEqual({
+        params: { organizationId, key: "member" },
+      }),
+    );
   });
 });

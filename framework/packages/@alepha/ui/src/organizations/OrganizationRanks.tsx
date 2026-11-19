@@ -217,8 +217,76 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     [api, dialog, props.organizationId, toaster, tr],
   );
 
+  const holdersOf = (key: string) =>
+    (membersQuery.data ?? []).filter(
+      (member) => (member.rank ?? "member") === key,
+    ).length;
+  const reset = useAction<[OrganizationRankResource], void>(
+    {
+      handler: async (_ctx, rank) => {
+        const defaults = rank.defaultPermissions ?? [];
+        const adds = defaults.filter((it) => !rank.permissions.includes(it));
+        const removes = rank.permissions.filter((it) => !defaults.includes(it));
+        const holders = holdersOf(rank.key);
+        const confirmed = await dialog.confirm({
+          title: tr("organizations.ranks.resetTitle", {
+            default: "Reset $1 to its default?",
+            args: [rank.name],
+          }),
+          description: [
+            adds.length
+              ? tr("organizations.ranks.resetAdds", {
+                  default: "Adds $1: $2.",
+                  args: [String(adds.length), adds.join(", ")],
+                })
+              : tr("organizations.ranks.resetAddsNone", {
+                  default: "Adds none.",
+                }),
+            removes.length
+              ? tr("organizations.ranks.resetRemoves", {
+                  default: "Removes $1: $2.",
+                  args: [String(removes.length), removes.join(", ")],
+                })
+              : tr("organizations.ranks.resetRemovesNone", {
+                  default: "Removes none.",
+                }),
+            holders === 1
+              ? tr("organizations.ranks.resetHolder", {
+                  default:
+                    "1 member holds this rank, and their access changes right away.",
+                })
+              : tr("organizations.ranks.resetHolders", {
+                  default:
+                    "$1 members hold this rank, and their access changes right away.",
+                  args: [String(holders)],
+                }),
+          ].join(" "),
+          confirmLabel: tr("organizations.ranks.resetConfirm", {
+            default: "Reset",
+          }),
+        });
+        if (!confirmed) return;
+        await api.resetOrganizationRank({
+          params: { organizationId: props.organizationId, key: rank.key },
+        });
+        toaster.success(
+          tr("organizations.ranks.resetDone", {
+            default: "$1 follows its default",
+            args: [rank.name],
+          }),
+        );
+      },
+      invalidates,
+    },
+    [api, dialog, membersQuery.data, props.organizationId, toaster, tr],
+  );
+
   const saving =
-    save.loading || create.loading || rename.loading || remove.loading;
+    save.loading ||
+    create.loading ||
+    rename.loading ||
+    remove.loading ||
+    reset.loading;
   const label = props.label ?? ((_key, fallback) => fallback);
   const groups: PermissionMatrixGroup[] = (
     catalogueQuery.data?.groups ?? []
@@ -243,10 +311,6 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
         ]
       : [];
   });
-  const holdersOf = (key: string) =>
-    (membersQuery.data ?? []).filter(
-      (member) => (member.rank ?? "member") === key,
-    ).length;
   // Most permissions first (#Q3701), so the presets read Owner, Admin,
   // Member and a custom rank falls into place by how much it grants. Counted
   // on the SAVED grants over the permissions the matrix shows, `*` holding
@@ -260,9 +324,23 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
       ? shown.length
       : shown.filter((name) => rank.permissions.includes(name)).length;
   const ordered = rankOrder(ranks, grants);
+  const dirty =
+    seededFrom !== undefined &&
+    JSON.stringify(draft) !== JSON.stringify(organizationRankDraft(ranks));
+  // Counted on the SAVED grants, like the order: the mark and the reset say
+  // what is stored, and an unsaved click is the Save button's business. The
+  // dots in the cells follow the draft, so a reader sees what a click undid.
+  const differencesOf = (rank: OrganizationRankResource): number => {
+    const defaults = rank.defaultPermissions;
+    if (!defaults || !rank.editable) return 0;
+    return shown.filter(
+      (name) => rank.permissions.includes(name) !== defaults.includes(name),
+    ).length;
+  };
   const columns: PermissionMatrixColumn[] = ordered.map((rank) => ({
     key: rank.key,
     readOnly: !rank.editable,
+    defaults: rank.editable ? rank.defaultPermissions : undefined,
     closed: props.closedPermission
       ? (permission: string) => props.closedPermission!(rank, permission)
       : undefined,
@@ -273,6 +351,8 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     label: (
       <OrganizationRankColumnHeader
         name={rank.name}
+        differences={differencesOf(rank)}
+        onReset={!saving && !dirty ? () => void reset.run(rank) : undefined}
         onRename={
           rank.renamable && !saving ? () => void rename.run(rank) : undefined
         }
@@ -284,10 +364,6 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
       />
     ),
   }));
-  const dirty =
-    seededFrom !== undefined &&
-    JSON.stringify(draft) !== JSON.stringify(organizationRankDraft(ranks));
-
   // No title, description or propagation note above the editor (#Q3666):
   // the tab already names the page, and Create rank sits in the editor's own
   // header cell, the Permission column's, beside the rank names it adds to.

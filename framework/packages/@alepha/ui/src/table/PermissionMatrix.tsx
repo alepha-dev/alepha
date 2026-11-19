@@ -299,4 +299,11 @@ export interface PermissionMatrixColumn {
    * editable, so the column can always be narrowed back inside its bounds.
    */
   closed?: (permission: string) => boolean;
+
+  /**
+   * What this column holds by default. A cell whose state differs from it
+   * carries a small dot, so a reader sees which crossings somebody changed.
+   * Omitted for a column that has no default.
+   */
+  defaults?: readonly string[];
 }
