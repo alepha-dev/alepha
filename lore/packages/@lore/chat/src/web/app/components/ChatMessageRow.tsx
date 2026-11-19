@@ -1,4 +1,5 @@
 import {
+  Badge,
   Button,
   cn,
   DropdownMenu,
@@ -15,7 +16,14 @@ import {
 } from "@alepha/ui";
 import { type I18n, LoreViewer, type ProjectUser } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Ellipsis, FileText, Pencil, SmilePlus, Trash2 } from "lucide-react";
+import {
+  Bot,
+  Ellipsis,
+  FileText,
+  Pencil,
+  SmilePlus,
+  Trash2,
+} from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import type {
@@ -23,6 +31,7 @@ import type {
   ChatReactionEmoji,
 } from "../../../schemas/index.ts";
 import { chatMarkdown } from "../services/chatMarkdown.ts";
+import ChatAgentAnswer from "./ChatAgentAnswer.tsx";
 
 export interface ChatMessageRowProps {
   message: ChatMessageResource;
@@ -58,6 +67,14 @@ export interface ChatMessageRowProps {
    * Toggles the reader's emoji, absent when they may not react.
    */
   onReact?: (emoji: ChatReactionEmoji) => void;
+  /**
+   * An agent's answer: who asked it, and the decision on a paused write.
+   */
+  agent?: {
+    mentioner: string;
+    deciding: boolean;
+    onDecide: (decision: "approve" | "deny") => void;
+  };
 }
 
 /**
@@ -136,14 +153,24 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
       )}
     >
       <div className="w-8 shrink-0">
-        {!props.continued && (
-          <UserAvatar public user={props.user} alt="" className="size-8" />
-        )}
+        {!props.continued &&
+          (message.agent ? (
+            <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-full">
+              <Bot className="size-4" aria-hidden="true" />
+            </span>
+          ) : (
+            <UserAvatar public user={props.user} alt="" className="size-8" />
+          ))}
       </div>
       <div className="min-w-0 flex-1">
         {!props.continued && (
           <div className="flex items-baseline gap-2">
             <span className="text-sm font-semibold">{props.author}</span>
+            {message.agent && (
+              <Badge variant="tint" tone="violet">
+                {tr("chat.agent.tag")}
+              </Badge>
+            )}
             <TimeAgo
               value={message.createdAt}
               className="text-muted-foreground text-xs"
@@ -225,6 +252,15 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
               </ul>
             )}
           </div>
+        )}
+        {message.agent && props.agent && (
+          <ChatAgentAnswer
+            message={message}
+            me={props.me}
+            mentioner={props.agent.mentioner}
+            deciding={props.agent.deciding}
+            onDecide={props.agent.onDecide}
+          />
         )}
         {!message.deletedAt && message.reactions.length > 0 && (
           <div

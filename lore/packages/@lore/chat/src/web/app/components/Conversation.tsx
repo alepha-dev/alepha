@@ -52,6 +52,21 @@ export interface ConversationProps {
   onEdit: (message: ChatMessageResource, body: string) => Promise<boolean>;
   onDelete: (message: ChatMessageResource) => Promise<void>;
   onReact: (message: ChatMessageResource, emoji: ChatReactionEmoji) => void;
+  /**
+   * The mentioner approves or denies the write an agent's answer waits on.
+   */
+  onDecide: (
+    message: ChatMessageResource,
+    decision: "approve" | "deny",
+  ) => void;
+  /**
+   * The answer whose decision is being sent, if any.
+   */
+  deciding?: string;
+  /**
+   * The agents' names as the room shows them, `lore` as Lore.
+   */
+  agentLabels: Record<string, string>;
   onUpload: (file: File) => Promise<ChatPendingFile | undefined>;
   /**
    * Who is typing in the room now, other than the reader.
@@ -136,7 +151,7 @@ const Conversation = (props: ConversationProps) => {
   }, [props.hasMore, props.onLoadOlder]);
 
   const authorOf = (message: ChatMessageResource): string =>
-    message.agent ??
+    (message.agent && (props.agentLabels[message.agent] ?? message.agent)) ||
     (message.authorId
       ? displayName(
           userById.get(message.authorId),
@@ -170,6 +185,18 @@ const Conversation = (props: ConversationProps) => {
         onEdit={(body) => props.onEdit(message, body)}
         onDelete={() => props.onDelete(message)}
         me={props.me}
+        agent={
+          message.agentRun
+            ? {
+                mentioner: displayName(
+                  userById.get(message.agentRun.mentionerId),
+                  tr("chat.message.removedMember"),
+                ),
+                deciding: props.deciding === message.id,
+                onDecide: (decision) => props.onDecide(message, decision),
+              }
+            : undefined
+        }
         nameOf={(userId) =>
           displayName(userById.get(userId), tr("chat.message.removedMember"))
         }

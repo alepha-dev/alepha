@@ -69,6 +69,7 @@ export interface ChatAgentDecision {
 export type ChatAgentEvent =
   | { type: "conversation"; conversationId: string }
   | { type: "text"; text: string }
+  | { type: "tool"; name: string; state: "running" | "done" | "failed" }
   | { type: "confirm"; callId: string; name: string; input: unknown }
   | { type: "error"; message: string }
   | { type: "end" };

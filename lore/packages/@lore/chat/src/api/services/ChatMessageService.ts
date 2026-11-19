@@ -485,6 +485,9 @@ export class ChatMessageService {
               ...(message.agentRun.input
                 ? { input: message.agentRun.input }
                 : {}),
+              ...(message.agentRun.tools
+                ? { tools: message.agentRun.tools }
+                : {}),
             },
           }
         : {}),
