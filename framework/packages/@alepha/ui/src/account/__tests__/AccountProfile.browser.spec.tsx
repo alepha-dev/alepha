@@ -7,8 +7,9 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi, uiAtom } from "alepha/react/ui";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { DialogProvider } from "../../core/useDialog.tsx";
 import AccountProfile from "../AccountProfile.tsx";
 
 const profile = {
@@ -26,6 +27,11 @@ const profile = {
 let realm: RealmConfig | undefined;
 
 /**
+ * Every `updateMyProfile` body sent, in order.
+ */
+const updates: unknown[] = [];
+
+/**
  * Every action exists: the section fetches the profile and the realm, and
  * every other call answers nothing.
  */
@@ -35,9 +41,14 @@ class Links extends LinkProvider {
       {},
       {
         get: (_target, name: string) => {
-          const action: any = async () => {
+          const action: any = async (request?: unknown) => {
             if (name === "getMyProfile") return profile;
             if (name === "getRealmConfig") return realm;
+            if (name === "updateMyProfile") {
+              const body = (request as { body: Record<string, unknown> }).body;
+              updates.push(body);
+              return { ...profile, ...body };
+            }
             return undefined;
           };
           action.can = () => true;
@@ -77,9 +88,12 @@ describe("AccountProfile", () => {
     realm = (username ? { settings: { username } } : undefined) as
       | RealmConfig
       | undefined;
+    updates.length = 0;
     render(
       <AlephaContext.Provider value={alepha}>
-        <AccountProfile />
+        <DialogProvider>
+          <AccountProfile />
+        </DialogProvider>
       </AlephaContext.Provider>,
     );
     await screen.findByText("First name");
@@ -92,6 +106,60 @@ describe("AccountProfile", () => {
       expect(screen.queryByText("Username")).not.toBeNull();
     },
   );
+
+  /**
+   * A username change has consequences a name change does not (#Q3938):
+   * the save asks first, saying what changes, and Cancel sends nothing.
+   */
+  describe("changing the username", () => {
+    const type = (label: string, value: string) =>
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    const save = () =>
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    it("asks first, sends nothing on cancel, and saves on confirm", async () => {
+      await mount("optional");
+      type("Username", "janet");
+      save();
+
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Change your username to janet?");
+      expect(confirm.textContent).toContain(
+        "Anything written with @jane, such as mentions and links, keeps saying @jane and stops reaching you.",
+      );
+      expect(confirm.textContent).toContain("someone else can take it");
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Keep jane" }));
+      });
+      expect(updates).toEqual([]);
+
+      save();
+      await screen.findByRole("alertdialog");
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Change username" }),
+        );
+      });
+      await vi.waitFor(() =>
+        expect(updates).toEqual([
+          { username: "janet", firstName: "Jane", lastName: "Doe" },
+        ]),
+      );
+    });
+
+    it("saves a name change without asking", async () => {
+      await mount("optional");
+      type("First name", "Janine");
+      save();
+
+      await vi.waitFor(() =>
+        expect(updates).toEqual([
+          { username: "jane", firstName: "Janine", lastName: "Doe" },
+        ]),
+      );
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+    });
+  });
 
   it("hides the username in a none realm", async () => {
     await mount("none");

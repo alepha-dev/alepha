@@ -653,6 +653,15 @@ export class FormModel<T extends ZObject> {
         values = this.decodeValues(options.schema, values);
       }
 
+      // A `false` from `beforeSubmit` cancels before anything is sent: no
+      // handler, no success, so the form stays dirty with what was typed.
+      if (
+        options.beforeSubmit &&
+        !(await options.beforeSubmit(values as any))
+      ) {
+        return;
+      }
+
       await options.handler(values as any);
       this.submitRefused = false;
 
@@ -1250,6 +1259,15 @@ export type FormCtrlOptions<T extends ZObject> = {
    * This function will receive the parsed and validated form values.
    */
   handler: (values: Infer<T>) => unknown;
+
+  /**
+   * Called with the decoded values once they are valid, before `handler`.
+   * Resolve `false` to cancel the submit: the handler does not run, nothing
+   * is reported as a success or an error, and the form keeps its values and
+   * stays dirty. The place for a confirmation that only some changes need,
+   * such as asking before a username changes.
+   */
+  beforeSubmit?: (values: Infer<T>) => boolean | Promise<boolean>;
 
   /**
    * Optional initial values for the form fields.
