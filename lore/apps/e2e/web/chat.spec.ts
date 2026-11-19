@@ -248,6 +248,12 @@ test.describe("Chat", () => {
         ),
       ).toBeVisible();
       await expect(secretRow(member.page)).toHaveCount(0);
+      // Nor by its URL.
+      await member.page.goto(`/${slug}/chat/secret`);
+      await expect(
+        member.page.getByText("This room does not exist, or it is private."),
+      ).toBeVisible();
+      await member.page.goto(`/${slug}/chat`);
 
       // The members panel invites them, and their list shows it at once.
       await page.getByTestId("chat-room-members-toggle").click();
@@ -260,11 +266,38 @@ test.describe("Chat", () => {
       ).toHaveCount(2);
       await expect(secretRow(member.page)).toBeVisible({ timeout: 15_000 });
 
-      // Removed, it is gone from their list as quickly.
+      // Reading it, they receive what is said there.
+      await secretRow(member.page).click();
+      await page.getByTestId("chat-composer").fill("members only");
+      await page.getByTestId("chat-composer").press("Enter");
+      await expect(
+        member.page
+          .getByTestId("chat-message")
+          .filter({ hasText: "members only" }),
+      ).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // Removed while reading it: it is gone at once, and so is what follows.
       await panel.getByRole("button", { name: "Remove" }).click();
       await expect(secretRow(member.page)).toHaveCount(0, { timeout: 15_000 });
+      await expect(
+        member.page.getByText("This room does not exist, or it is private."),
+      ).toBeVisible({ timeout: 15_000 });
+      await page.getByTestId("chat-composer").fill("after you left");
+      await page.getByTestId("chat-composer").press("Enter");
+      await expect(
+        page.getByTestId("chat-message").filter({ hasText: "after you left" }),
+      ).toBeVisible();
+      await member.page.waitForTimeout(1_000);
+      await expect(
+        member.page
+          .getByTestId("chat-message")
+          .filter({ hasText: "after you left" }),
+      ).toHaveCount(0);
 
       // The room name opens the jump list, which lists only what one can see.
+      await member.page.goto(`/${slug}/chat/general`);
       await member.page.getByTestId("chat-room-jump").click();
       const jump = member.page.getByTestId("chat-room-jump-list");
       await expect(jump.getByRole("button", { name: "general" })).toBeVisible();
@@ -272,6 +305,65 @@ test.describe("Chat", () => {
     } finally {
       await member.ctx.close();
     }
+  });
+
+  test("a mention reaches the member's bell, linking to the room", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(180_000);
+    await registerAndVerify(
+      page,
+      `chat-mention-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const { slug } = await createProjectViaWizard(page, "Chat mention", {
+      capabilities: ["chat"],
+    });
+    const member = await newUserContext(browser, baseURL!, "chat-named");
+    try {
+      await inviteAndAccept(page, member, slug);
+      // Away from Chat: the bell is how they hear of it.
+      await member.page.goto(`/${slug}`);
+
+      await page.goto(`/${slug}/chat/general`);
+      const composer = page.getByTestId("chat-composer");
+      // Picked from the @ popup, as a person would.
+      await composer.click();
+      await composer.pressSequentially("@chat-named");
+      await expect(page.getByRole("listbox")).toBeVisible();
+      await composer.press("Enter");
+      await composer.pressSequentially("please review");
+      await composer.press("Enter");
+
+      await expect(async () => {
+        const hrefs = await member.page.evaluate(async () => {
+          const r = await fetch("/api/inbox", { credentials: "include" });
+          const page = (await r.json()) as { items?: { href?: string }[] };
+          return (page.items ?? []).map((it) => it.href);
+        });
+        expect(hrefs).toContain(`/${slug}/chat/general`);
+      }).toPass({ timeout: 60_000 });
+    } finally {
+      await member.ctx.close();
+    }
+  });
+
+  test("with AI off, the header has no assistant button and chat still works", async ({
+    page,
+  }) => {
+    await registerAndVerify(
+      page,
+      `chat-no-ai-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const { slug } = await createProjectViaWizard(page, "Chat no AI", {
+      capabilities: ["chat"],
+    });
+    await page.goto(`/${slug}/chat/general`);
+    await expect(page.getByTestId("chat-conversation")).toBeVisible();
+    await expect(page.getByTestId("assistant-button")).toHaveCount(0);
   });
 });
 
