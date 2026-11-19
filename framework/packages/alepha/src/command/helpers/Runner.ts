@@ -189,10 +189,10 @@ export class Runner {
     opts: { root?: string } = {},
   ): Promise<string> {
     // Stream child output straight to the terminal only when DEBUG (or more
-    // verbose) is enabled — i.e. under `--verbose`, an agent session
-    // (CLAUDECODE), or `LOG_LEVEL=debug`. Otherwise capture it so a quiet run
-    // (e.g. `alepha verify`) is not buried under sub-process output; captured
-    // output is surfaced on failure by {@link executeTask}.
+    // verbose) is enabled, i.e. under `--verbose` or `LOG_LEVEL=debug`; an
+    // agent session (CLAUDECODE) no longer implies it. Otherwise capture it
+    // so a quiet run (e.g. `alepha verify`) is not buried under sub-process
+    // output; captured output is surfaced on failure by {@link executeTask}.
     const stream = this.log.isLevelEnabled("DEBUG");
     return this.shell.run(cmd, { root: opts.root, capture: !stream });
   }
