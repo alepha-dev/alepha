@@ -1,7 +1,10 @@
 import type { Infer } from "alepha";
 
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
-import type { WebSocketAuthorize } from "./WebSocketInterfaces.ts";
+import type {
+  WebSocketAuthorize,
+  WebSocketCanJoin,
+} from "./WebSocketInterfaces.ts";
 
 /**
  * A pluggable timer, so the {@link RoomEngine} tick loop is driven the same way
@@ -221,6 +224,12 @@ export interface RoomPrimitiveOptions<
    * together with `secure` at registration. See {@link WebSocketAuthorize}.
    */
   authorize?: WebSocketAuthorize;
+
+  /**
+   * Decide, once `secure` resolved the user, whether they may join the room
+   * the URL asks for. See {@link WebSocketCanJoin}.
+   */
+  canJoin?: WebSocketCanJoin;
 
   /**
    * Cap simultaneous connections per authenticated user.

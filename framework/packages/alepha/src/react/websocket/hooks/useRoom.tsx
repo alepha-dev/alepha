@@ -51,6 +51,12 @@ export interface UseRoomOptions<
   maxReconnectAttempts?: number;
 
   /**
+   * Double the wait between attempts, from `reconnectInterval` up to this
+   * many milliseconds. Unset, every attempt waits `reconnectInterval`.
+   */
+  maxReconnectInterval?: number;
+
+  /**
    * Called when connection is established
    */
   onConnect?: () => void;
@@ -153,6 +159,7 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
     autoReconnect,
     reconnectInterval,
     maxReconnectAttempts,
+    maxReconnectInterval,
     onConnect,
     onDisconnect,
     onError,
@@ -175,6 +182,7 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
         autoReconnect,
         reconnectInterval,
         maxReconnectAttempts,
+        maxReconnectInterval,
         onConnect: () => {
           setIsConnected(true);
           setIsConnecting(false);

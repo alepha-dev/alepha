@@ -676,7 +676,8 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
   /**
    * The minimal shape of a Node upgrade request that admission reads: the
-   * absolute URL and the two headers a credential can arrive in.
+   * absolute URL, the two headers a credential can arrive in, and the
+   * `origin` and `host` the session cookie is checked against.
    */
   protected handshakeOf(request: IncomingMessage) {
     // `::ffff:203.0.113.10` is an IPv4 client on a dual-stack socket.
@@ -686,6 +687,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       headers: {
         authorization: request.headers.authorization,
         cookie: request.headers.cookie,
+        // What `convertSessionCookie` checks before it reads the cookie: a
+        // browser handshake always carries `Origin`, and without it here
+        // every cookie upgrade was refused as cross-site.
+        origin: request.headers.origin,
+        host: request.headers.host,
       },
       ...(ip ? { ip } : {}),
     };
@@ -875,32 +881,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     this.alepha.events.emit(name, payload, { catch: true }).catch((error) => {
       this.log.error(`Error emitting ${name}`, error);
     });
-  }
-
-  protected extractRoomIds(url: URL): string[] {
-    const roomIds: string[] = [];
-
-    // Check for roomId parameter (can be multiple)
-    const roomIdParams = url.searchParams.getAll("roomId");
-    roomIds.push(...roomIdParams);
-
-    // Check for roomIds parameter (comma-separated)
-    const roomIdsParam = url.searchParams.get("roomIds");
-    if (roomIdsParam) {
-      roomIds.push(
-        ...roomIdsParam
-          .split(",")
-          .map((id) => id.trim())
-          .filter((id) => id.length > 0),
-      );
-    }
-
-    // Default room if none specified
-    if (roomIds.length === 0) {
-      roomIds.push("default");
-    }
-
-    return roomIds;
   }
 
   /**

@@ -1002,7 +1002,8 @@ const pageEdgeFresh = async (cache, key, at) => {
         // the endpoint's own \`authorize\` hook when it has one (a machine
         // credential, which names its room and never touches the security
         // realm), the endpoint's \`use\` middlewares, or the session resolver
-        // plus \`secure\` (a \`$room\`) otherwise. A hook that
+        // plus \`secure\` (a \`$room\`) otherwise, then the endpoint's
+        // \`canJoin\` on the rooms the URL names. A hook that
         // throws is an outage, not a revocation, so it answers 503 rather
         // than the 401 a machine client reads as "stop retrying".
         let admission;
@@ -1012,6 +1013,10 @@ const pageEdgeFresh = async (cache, key, at) => {
             headers: {
               authorization: request.headers.get("authorization") || undefined,
               cookie: request.headers.get("cookie") || undefined,
+              // Checked before the session cookie is read: without them a
+              // browser's cookie upgrade was refused as cross-site.
+              origin: request.headers.get("origin") || undefined,
+              host: request.headers.get("host") || undefined,
             },
             ip: request.headers.get("cf-connecting-ip") || undefined,
             signal: request.signal,
