@@ -1,0 +1,352 @@
+import {
+  ProjectCapabilityHooks,
+  ProjectRoster,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $repository } from "alepha/orm";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "alepha/server";
+
+import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
+import { type ChatRoom, chatRooms } from "../entities/chatRooms.ts";
+import type { ChatRoomResource } from "../schemas/chatRoomResourceSchema.ts";
+
+/**
+ * The room model of Chat (#E161, #Q3925), and its one privacy rule: a private
+ * room does not exist for anyone outside it. Every read that names a room
+ * goes through {@link visibleRoom}, which answers a 404 for a room that does
+ * not exist, one in another project, and a private one the caller is not in,
+ * so the three cannot be told apart.
+ *
+ * Who may do what, beyond the action's `chat:read` / `chat:write` gate:
+ *
+ * - rename, archive, unarchive: `chat:manage`, or the room's creator;
+ * - invite and remove, on a private room: its members with `chat:write`
+ *   invite, `chat:manage` or the creator removes;
+ * - join, on an open room: `chat:write` (a Viewer reads open rooms and joins
+ *   nothing); leave: any member.
+ *
+ * No transaction, no CASCADE relied on: each write is one row, and a lost
+ * race leaves a state the next call reads correctly.
+ */
+export class ChatRoomService {
+  /**
+   * The room every project with chat gets, created by the capability hook.
+   */
+  public static readonly GENERAL = "general";
+
+  protected readonly rooms = $repository(chatRooms);
+  protected readonly members = $repository(chatRoomMembers);
+  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly roster = $inject(ProjectRoster);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  constructor() {
+    // `general`, once, when chat is turned on: in the wizard or in Settings.
+    // Turning chat off and on again finds it and creates nothing.
+    $inject(ProjectCapabilityHooks).register({
+      key: "chat",
+      name: "chat.general",
+      enabled: async ({ projectId, userId }) => {
+        await this.ensureGeneral(projectId, userId);
+      },
+    });
+  }
+
+  public async ensureGeneral(
+    projectId: number,
+    userId?: string,
+  ): Promise<ChatRoom> {
+    const existing = await this.rooms.findOne({
+      where: {
+        projectId: { eq: projectId },
+        name: { eq: ChatRoomService.GENERAL },
+      },
+    });
+    if (existing) {
+      return existing;
+    }
+    return this.rooms.create({
+      projectId,
+      name: ChatRoomService.GENERAL,
+      private: false,
+      ...(userId ? { createdBy: userId } : {}),
+    });
+  }
+
+  /**
+   * Every room the user can see in the project: the open ones, and the
+   * private ones they are a member of. Archived rooms included, flagged.
+   */
+  public async visibleRooms(
+    projectId: number,
+    userId: string,
+  ): Promise<ChatRoomResource[]> {
+    const rooms = await this.rooms.findMany({
+      where: { projectId: { eq: projectId } },
+      orderBy: [{ column: "name", direction: "asc" }],
+    });
+    if (rooms.length === 0) {
+      return [];
+    }
+    const memberships = await this.members.findMany({
+      where: { roomId: { inArray: rooms.map((room) => room.id) } },
+    });
+    return rooms.flatMap((room) => {
+      const roomMembers = memberships.filter((it) => it.roomId === room.id);
+      const mine = roomMembers.find((it) => it.userId === userId);
+      if (room.private && !mine) {
+        return [];
+      }
+      return [this.toResource(room, roomMembers.length, mine)];
+    });
+  }
+
+  /**
+   * One room, if the user can see it, or a 404: never a 403, which would
+   * confirm that a private room exists.
+   */
+  public async visibleRoom(
+    projectId: number,
+    roomId: string,
+    userId: string,
+  ): Promise<ChatRoom> {
+    const room = await this.rooms.findOne({ where: { id: { eq: roomId } } });
+    if (!room || room.projectId !== projectId) {
+      throw new NotFoundError("Room not found");
+    }
+    if (room.private && !(await this.membershipOf(room.id, userId))) {
+      throw new NotFoundError("Room not found");
+    }
+    return room;
+  }
+
+  public async resource(
+    room: ChatRoom,
+    userId: string,
+  ): Promise<ChatRoomResource> {
+    const roomMembers = await this.members.findMany({
+      where: { roomId: { eq: room.id } },
+    });
+    return this.toResource(
+      room,
+      roomMembers.length,
+      roomMembers.find((it) => it.userId === userId),
+    );
+  }
+
+  public async create(
+    projectId: number,
+    userId: string,
+    input: { name: string; private: boolean },
+  ): Promise<ChatRoom> {
+    await this.assertNameFree(projectId, input.name);
+    const room = await this.rooms.create({
+      projectId,
+      name: input.name,
+      private: input.private,
+      createdBy: userId,
+    });
+    // The creator is the first member, of an open room as of a private one.
+    await this.members.create({ roomId: room.id, userId });
+    return room;
+  }
+
+  public async rename(
+    projectId: number,
+    roomId: string,
+    userId: string,
+    name: string,
+  ): Promise<ChatRoom> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    await this.assertManages(room, userId);
+    if (room.name === name) {
+      return room;
+    }
+    await this.assertNameFree(projectId, name);
+    return this.rooms.updateById(room.id, { name });
+  }
+
+  public async setArchived(
+    projectId: number,
+    roomId: string,
+    userId: string,
+    archived: boolean,
+  ): Promise<ChatRoom> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    await this.assertManages(room, userId);
+    return this.rooms.updateById(room.id, {
+      archivedAt: archived ? this.dateTime.nowISOString() : null,
+    } as never);
+  }
+
+  public async join(
+    projectId: number,
+    roomId: string,
+    userId: string,
+  ): Promise<ChatRoom> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    if (room.private) {
+      // Only reachable by a member, who is already in.
+      return room;
+    }
+    if (!(await this.membershipOf(room.id, userId))) {
+      await this.members.create({ roomId: room.id, userId });
+    }
+    return room;
+  }
+
+  public async leave(
+    projectId: number,
+    roomId: string,
+    userId: string,
+  ): Promise<void> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    await this.members.deleteMany({
+      roomId: { eq: room.id },
+      userId: { eq: userId },
+    });
+  }
+
+  public async invite(
+    projectId: number,
+    roomId: string,
+    userId: string,
+    inviteeId: string,
+  ): Promise<void> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    if (!room.private) {
+      throw new BadRequestError(
+        "An open room needs no invite: every project member can join it",
+      );
+    }
+    // Somebody who cannot read chat in this project cannot be put in a room:
+    // the same 404 as an unknown user, so the call reveals nobody.
+    if (!(await this.security.holds(projectId, inviteeId, "chat:read"))) {
+      throw new NotFoundError("Member not found");
+    }
+    if (!(await this.membershipOf(room.id, inviteeId))) {
+      await this.members.create({ roomId: room.id, userId: inviteeId });
+    }
+  }
+
+  public async remove(
+    projectId: number,
+    roomId: string,
+    userId: string,
+    memberId: string,
+  ): Promise<void> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    if (!room.private) {
+      throw new BadRequestError(
+        "Nobody is removed from an open room: a member leaves it",
+      );
+    }
+    await this.assertManages(room, userId);
+    await this.members.deleteMany({
+      roomId: { eq: room.id },
+      userId: { eq: memberId },
+    });
+  }
+
+  public async membersOf(
+    projectId: number,
+    roomId: string,
+    userId: string,
+  ): Promise<
+    Array<{ userId: string; joinedAt: string; name?: string; label?: string }>
+  > {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    const [rows, roster] = await Promise.all([
+      this.members.findMany({
+        where: { roomId: { eq: room.id } },
+        orderBy: [{ column: "joinedAt", direction: "asc" }],
+      }),
+      this.roster.of(projectId),
+    ]);
+    return rows.map((row) => {
+      const entry = roster.find((it) => it.userId === row.userId);
+      return {
+        userId: row.userId,
+        joinedAt: row.joinedAt,
+        ...(entry ? { name: entry.name, label: entry.label } : {}),
+      };
+    });
+  }
+
+  /**
+   * A member who leaves the project leaves every room of it.
+   */
+  public async leaveProject(projectId: number, userId: string): Promise<void> {
+    const rooms = await this.rooms.findMany({
+      where: { projectId: { eq: projectId } },
+      columns: ["id"],
+    });
+    if (rooms.length === 0) {
+      return;
+    }
+    await this.members.deleteMany({
+      roomId: { inArray: rooms.map((room) => room.id) },
+      userId: { eq: userId },
+    });
+  }
+
+  public async membershipOf(roomId: string, userId: string) {
+    return this.members.findOne({
+      where: { roomId: { eq: roomId }, userId: { eq: userId } },
+    });
+  }
+
+  /**
+   * `chat:manage`, or the room's creator. A 403 is safe here: the caller
+   * already sees the room, so it confirms nothing.
+   */
+  protected async assertManages(room: ChatRoom, userId: string): Promise<void> {
+    if (room.createdBy === userId) {
+      return;
+    }
+    if (await this.security.holds(room.projectId, userId, "chat:manage")) {
+      return;
+    }
+    throw new ForbiddenError(
+      "Only the room's creator, or a rank with chat:manage, can do this",
+    );
+  }
+
+  protected async assertNameFree(
+    projectId: number,
+    name: string,
+  ): Promise<void> {
+    const taken = await this.rooms.findOne({
+      where: { projectId: { eq: projectId }, name: { eq: name } },
+    });
+    if (taken) {
+      throw new ConflictError(`A room named '${name}' already exists`);
+    }
+  }
+
+  protected toResource(
+    room: ChatRoom,
+    memberCount: number,
+    mine?: { notifyLevel: "mentions" | "muted" },
+  ): ChatRoomResource {
+    return {
+      id: room.id,
+      projectId: room.projectId,
+      name: room.name,
+      private: room.private,
+      ...(room.archivedAt ? { archivedAt: room.archivedAt } : {}),
+      ...(room.createdBy ? { createdBy: room.createdBy } : {}),
+      createdAt: room.createdAt,
+      memberCount,
+      joined: !!mine,
+      ...(mine ? { notifyLevel: mine.notifyLevel } : {}),
+    };
+  }
+}

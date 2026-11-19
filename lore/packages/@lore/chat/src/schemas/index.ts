@@ -7,3 +7,9 @@
  * @module
  */
 export { chatCapabilityOptionsSchema } from "../api/schemas/chatCapabilityOptionsSchema.ts";
+export { chatRoomMemberResourceSchema } from "../api/schemas/chatRoomMemberResourceSchema.ts";
+export { chatRoomNameSchema } from "../api/schemas/chatRoomNameSchema.ts";
+export {
+  type ChatRoomResource,
+  chatRoomResourceSchema,
+} from "../api/schemas/chatRoomResourceSchema.ts";
