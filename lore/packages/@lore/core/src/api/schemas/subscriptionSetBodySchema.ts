@@ -15,6 +15,11 @@ export const subscriptionSetBodySchema = z.object({
   memberId: z.uuid().optional(),
   channelId: z.string().min(1).max(64).optional(),
   channels: z.array(subscriptionChannelSchema).max(2).optional(),
+  /**
+   * Skip the events the member's own action caused (#Q3916). A member's
+   * row only; setting again without it turns it off.
+   */
+  notMine: z.boolean().optional(),
 });
 
 export type SubscriptionSetBody = Infer<typeof subscriptionSetBodySchema>;

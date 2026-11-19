@@ -88,8 +88,8 @@ export class ProjectEvents {
     return {
       id,
       statements: [
-        sql`INSERT INTO project_events (id, project_id, name, subject_kind, subject_id, fields, occurred_at)
-          VALUES (${id}, ${input.projectId}, ${input.name}, ${definition.subject}, ${input.subjectId === undefined ? null : String(input.subjectId)}, ${encoded}, ${now})`,
+        sql`INSERT INTO project_events (id, project_id, name, subject_kind, subject_id, fields, actor_id, occurred_at)
+          VALUES (${id}, ${input.projectId}, ${input.name}, ${definition.subject}, ${input.subjectId === undefined ? null : String(input.subjectId)}, ${encoded}, ${input.actorId ?? null}, ${now})`,
         ...(job?.statements ?? []),
       ],
       committed: async () => {
@@ -171,6 +171,10 @@ export interface ProjectEventInput {
   subjectId?: string | number;
   fields: Record<string, unknown>;
   numbers?: Record<string, SQLLike>;
+  /**
+   * The account whose action caused it, when one did (#Q3916).
+   */
+  actorId?: string;
 }
 
 /**

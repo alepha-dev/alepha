@@ -188,4 +188,27 @@ describe("lore event and lore subscription", () => {
       ["deleteSubscription", { params: { projectId: 7, id: SUB } }],
     ]);
   });
+
+  it("passes --not-mine, so a member skips what they caused (#Q3916)", async ({
+    expect,
+  }) => {
+    const { run, sent, subscriptions } = create();
+    await run(
+      subscriptions.set,
+      "--event feedback.created --channels email --not-mine",
+    );
+    expect(sent).toEqual([
+      [
+        "setSubscription",
+        {
+          params: { projectId: 7 },
+          body: {
+            event: "feedback.created",
+            channels: ["email"],
+            notMine: true,
+          },
+        },
+      ],
+    ]);
+  });
 });

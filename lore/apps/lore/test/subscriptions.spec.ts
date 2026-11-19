@@ -75,6 +75,7 @@ describe("Subscriptions", () => {
       filter?: string;
       memberId?: string;
       channels: ("inapp" | "email")[];
+      notMine?: boolean;
     },
   ) =>
     controller().setSubscription.fetch(
@@ -411,5 +412,31 @@ describe("Subscriptions", () => {
     expect(await inboxOf(member.id)).toHaveLength(1);
     for (const id of [viewer.id, gone.id, disabled.id])
       expect(await inboxOf(id)).toHaveLength(0);
+  });
+
+  it("skips, with notMine, the report a member filed themselves, and tells them of everyone else's (#Q3916)", async ({
+    expect,
+  }) => {
+    for (const user of [owner, member])
+      await subscribe(user, {
+        event: "feedback.created",
+        channels: ["inapp"],
+        notMine: true,
+      });
+    await submit();
+    const [event] = await rows.events.findMany({
+      where: { projectId: project.id },
+    });
+    expect(event.actorId).toBe(owner.id);
+    await drain();
+    expect(await inboxOf(owner.id)).toHaveLength(0);
+    expect(await inboxOf(member.id)).toHaveLength(1);
+    const row = (
+      await controller().listSubscriptions.fetch(
+        { params: { projectId: project.id } },
+        { user: owner },
+      )
+    ).data.items.find((it) => it.memberId === owner.id);
+    expect(row?.notMine).toBe(true);
   });
 });

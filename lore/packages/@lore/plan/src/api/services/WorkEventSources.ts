@@ -38,6 +38,7 @@ export class WorkEventSources {
         projectId: data.projectId,
         name: "feedback.created",
         subjectId: data.shortId,
+        ...(data.reporterUserId ? { actorId: data.reporterUserId } : {}),
         generatedIdField: "feedback_id",
         fields: {
           project: project.title,
