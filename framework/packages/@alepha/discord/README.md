@@ -4,7 +4,7 @@ A Discord notification channel for `alepha/api/notifications`. It posts an ops
 message into a Discord room through an incoming webhook, and that is all it
 does.
 
-> Hand-written rather than generated. `yarn copy` generates a README from the
+> Hand-written rather than generated. `yarn gen` generates a README from the
 > module's `@module` block for **published** packages only, and this one is
 > still `private`. It becomes generated the day it is published.
 

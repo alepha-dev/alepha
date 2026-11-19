@@ -16,7 +16,7 @@
     "v": "yarn alepha verify",
     "verify": "yarn alepha verify",
     "clean": "yarn alepha clean",
-    "copy": "yarn workspaces foreach -Wpt run copy && yarn workspace docs copy && yarn lint",
+    "gen": "yarn workspace docs gen",
     "lint": "yarn alepha lint",
     "typecheck": "tsc --noEmit && yarn workspaces foreach -Wpt --exclude alepha-monorepo -j 4 run typecheck",
     "test": "yarn vitest run",

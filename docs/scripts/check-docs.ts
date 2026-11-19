@@ -128,7 +128,7 @@ export class CheckDocsCommand {
           const paths = problems.map((it) => `'${it.path}'`).join(" ");
           this.log.error(
             `${problems.length} generated file(s) differ from what is staged. ` +
-              "`yarn copy` writes them from the JSDoc, and `yarn v` runs it " +
+              "`yarn gen` writes them from the JSDoc, and `yarn v` runs it " +
               "first: review what it wrote, then stage it with " +
               `git add -- ${paths}`,
           );
@@ -220,7 +220,7 @@ export class CheckDocsCommand {
   /**
    * The generated paths whose working copy differs from the index.
    *
-   * CI runs `yarn copy` before this command, so it scans pages generated from
+   * CI runs `yarn gen` before this command, so it scans pages generated from
    * the commit's own JSDoc. A checkout scans whatever it generated last, and
    * the two part ways as soon as a source changes without a regeneration.
    * #Q2357 was exactly that: an export made the generator emit a page for the
@@ -235,7 +235,7 @@ export class CheckDocsCommand {
    * left its pages behind, and stale pages cannot reach main to turn every
    * later checkout red on files it never touched.
    *
-   * ⚠️ Only meaningful after `yarn copy`, which is why `yarn v` runs it
+   * ⚠️ Only meaningful after `yarn gen`, which is why `yarn v` runs it
    * first, in the order CI's `checks` job always has. Run on its own, this
    * compares a tree nothing regenerated, and can only catch a hand edit.
    */

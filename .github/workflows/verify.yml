@@ -165,8 +165,8 @@ jobs:
       - name: Clean
         run: yarn clean
 
-      - name: Prepare
-        run: yarn copy
+      - name: Generate Docs
+        run: yarn gen
 
       - name: Lint Project
         run: yarn lint
@@ -250,17 +250,6 @@ jobs:
 
       - name: Clean
         run: yarn clean
-
-      # `yarn copy` minus its `yarn lint`, which is `framework-checks`' job.
-      # oxfmt stays: the generators write unformatted pages and the committed
-      # copies are the formatted ones.
-      #
-      # ⚠️ **`--exclude alepha-monorepo` is load-bearing**: the root has a
-      # `copy` script of its own, `foreach run copy && yarn lint`, so without
-      # the exclude every generator runs twice, concurrently, and the lint
-      # after all.
-      - name: Prepare
-        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # No `--coverage`: that flag is Nightly's, and it also turns on the JSON
       # test reporter. Nothing in this job reads either report.
@@ -350,10 +339,6 @@ jobs:
       - name: Clean
         run: yarn clean
 
-      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
-      - name: Prepare
-        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
-
       # The three apps the step below runs that do not build themselves.
       - name: Build Project
         run: yarn workspaces foreach -Wpt --include '{ui,shop,ssr}' run build
@@ -409,10 +394,6 @@ jobs:
       - name: Clean
         run: yarn clean
 
-      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
-      - name: Prepare
-        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
-
       - name: Build Showcase
         run: yarn workspaces foreach -Wpt --include ui run build
 
@@ -458,10 +439,6 @@ jobs:
 
       - name: Clean
         run: yarn clean
-
-      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
-      - name: Prepare
-        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # The tarball carries `dist/`, so the build has to have happened. The
       # packages only (#Q3884): the specs pack `alepha`, `@alepha/*` and
@@ -841,8 +818,8 @@ jobs:
       # the tree of all three products. `gen:tree` reads the changelog from
       # the published Lore releases (#Q3638); a fork's pull request has no
       # secret, and builds the page from the sample instead.
-      - name: Prepare
-        run: yarn copy
+      - name: Generate Docs
+        run: yarn gen
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 

@@ -160,11 +160,12 @@ export class AlephaCommands {
       // command needs.
       await run("yarn");
 
-      // `copy`, not `lint`, and before anything reads the tree: the order
-      // CI's `checks` job has always used. `copy` runs every workspace's
-      // generators, then `yarn lint`, so the lint is the same one as before.
+      // `gen`, then `lint`, before anything reads the tree: the order CI's
+      // `checks` job has always used. `gen` runs the docs generators
+      // (`gen:docs`, `gen:tree`) and nothing else; it was `copy` until #Q3913,
+      // which also fanned out to every workspace's own `copy` and linted.
       //
-      // It went first as a bare `lint` until #Q2358, on the grounds that this
+      // The regeneration went first as a bare `lint` until #Q2358, on the grounds that this
       // lane had nothing generated to format. It did: the reference pages are
       // tracked, and `check:docs` below scans them. Without a regeneration it
       // scanned whatever the checkout generated last, while CI scanned pages
@@ -177,7 +178,8 @@ export class AlephaCommands {
       // diff it leaves is the one to stage. It also materialises the
       // untracked outputs a fresh worktree lacks (`../docs/.gen`), which
       // `lint` and the suite both read.
-      await run(`yarn copy`);
+      await run(`yarn gen`);
+      await run(`yarn lint`);
       await run([
         `yarn typecheck`,
         `yarn check:deps`,

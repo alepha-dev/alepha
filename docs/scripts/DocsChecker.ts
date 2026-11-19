@@ -265,7 +265,7 @@ export const BANNED_DOC_SYMBOLS: Array<{
   {
     pattern: "\u2014",
     reason:
-      "em dash - use ' - ' in prose or ':' after a bullet term (in docs/2-reference and 3-packages, fix the source JSDoc - `yarn copy` regenerates those files)",
+      "em dash - use ' - ' in prose or ':' after a bullet term (in docs/2-reference and 3-packages, fix the source JSDoc - `yarn gen` regenerates those files)",
   },
 ];
 

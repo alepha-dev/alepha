@@ -5,8 +5,7 @@
   "scripts": {
     "build": "alepha build && alepha gen:llms",
     "check:docs": "alepha check:docs",
-    "copy": "alepha gen:docs && alepha gen:tree",
-    "copy&dev": "alepha dev",
+    "gen": "alepha gen:docs && alepha gen:tree",
     "dev": "alepha dev",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",

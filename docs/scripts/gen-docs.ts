@@ -88,7 +88,7 @@ export class DocsCommand {
   /**
    * The rule reference page, `2-reference/4-conventions.md`: every rule the
    * registry holds, with its default, what it refuses and the fix it prints.
-   * A rule added to the registry appears here on the next `yarn copy`, and
+   * A rule added to the registry appears here on the next `yarn gen`, and
    * `check:docs` refuses the commit until the page is staged.
    */
   generateConventionsMarkdown(): string {
