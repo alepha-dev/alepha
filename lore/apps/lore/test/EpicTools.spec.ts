@@ -1,7 +1,7 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
-import { EpicController } from "@lore/plan/api";
-import { EpicTools, QuestTools } from "@lore/plan/mcp";
+import { AreaService, EpicController } from "@lore/plan/api";
+import { AreaTools, EpicTools, QuestTools } from "@lore/plan/mcp";
 import { FolioTools } from "@lore/remember/mcp";
 import { Alepha, AlephaError } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
@@ -1143,5 +1143,52 @@ describe("Lore MCP - quest_list paging", () => {
     expect(second.quests.map((q: any) => q.shortId)).toEqual(
       all.quests.slice(2, 4).map((q: any) => q.shortId),
     );
+  });
+
+  /**
+   * `area_delete` (#Q3958): by name and project, refused on an area that
+   * still holds quests, with the count.
+   */
+  describe("area_delete", () => {
+    it("deletes an empty area by its exact name", async ({ expect }) => {
+      const { alepha, project, call } = await setup();
+      const areas = alepha.inject(AreaService);
+      await areas.ensureArea(project.id, "lore/code");
+
+      await expect(
+        call(alepha.inject(AreaTools).area_delete, {
+          project: project.id,
+          name: "Lore/Code",
+        }),
+      ).rejects.toThrow('Area "Lore/Code" not found in this project.');
+
+      const result = await call(alepha.inject(AreaTools).area_delete, {
+        project: project.id,
+        name: "lore/code",
+      });
+
+      expect(result).toEqual({ ok: true });
+      expect(
+        (await areas.listWithStats(project.id)).map((it) => it.name),
+      ).not.toContain("lore/code");
+    });
+
+    it("refuses an area that holds quests, naming how many", async ({
+      expect,
+    }) => {
+      const { alepha, project, call } = await setup();
+      await alepha.inject(AreaService).ensureArea(project.id, "lore/code");
+      await createTestQuest(alepha, project, { area: "lore/code" });
+      await createTestQuest(alepha, project, { area: "lore/code" });
+
+      await expect(
+        call(alepha.inject(AreaTools).area_delete, {
+          project: project.id,
+          name: "lore/code",
+        }),
+      ).rejects.toThrow(
+        'Area "lore/code" still holds 2 quests. Merge it into another area instead.',
+      );
+    });
   });
 });

@@ -235,9 +235,11 @@ export class AreaController {
         projectId: { eq: area.projectId },
         area: { eq: area.name },
       });
+      // The count is in the refusal (#Q3958): an agent deleting by name
+      // over MCP or the CLI sees how much would have to move first.
       if (questCount > 0) {
         throw new BadRequestError(
-          "This area still holds quests. Merge it into another area instead.",
+          `Area "${area.name}" still holds ${questCount} ${questCount === 1 ? "quest" : "quests"}. Merge it into another area instead.`,
         );
       }
 
