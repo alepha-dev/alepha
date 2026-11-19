@@ -31,6 +31,13 @@ The pillar is **Build**: the package `@lore/build`, its modules `LoreBuildApi` a
 - **Limits** are core's `ProjectLimits`: `maxRepositoriesPerProject` (20) and `maxRepositorySizeMb` (1024, checked where the backend can measure).
 - The specs run `LocalGitBackend` in a temporary `DATA_DIR` with the real `git`. `test/artifacts-contract.ts` is the contract test against a real namespace, run by hand with an Artifacts token, never by Verify.
 
+## git smart HTTP (#Q3932)
+
+- **Six `$route`s with static tails** in `GitHttpController`: `/:repo/{info/refs,git-upload-pack,git-receive-pack}` (`/<project>.git`, the repository named like its project) and the same under `/:project/:repo/`. Each answers 404 unless the last param ends in `.git`; no body schema, so the body parser leaves the pack stream alone. `apps/lore/test/git-routes.spec.ts` pins them beside the pages.
+- **Auth** (`GitAccessService`): the Basic password, whatever the username, is resolved as a bearer by the realm's resolvers (an API key or an OAuth access token). No credential: 401 with `WWW-Authenticate` before any lookup. Not a member: 404. No `code:read` (upload-pack) or `code:write` (receive-pack) in the token's scope or the rank: 403. Build off: 404 on a read, 400 on a write.
+- **Receive-pack is read before the backend** (`GitReceivePack`): the ref commands, capabilities and push options ahead of the pack, buffered and replayed. Deleting the default branch, or pushing to a repository over `maxRepositorySizeMb` (disk only), is refused with a `report-status` git prints. Non-fast-forward refusal is #Q3953, not here.
+- **Backends serve** (`GitBackend.serve`): Artifacts proxies to `info.remote` with the cached repo token, streaming both bodies; Node spawns `git upload-pack|receive-pack --stateless-rpc`, writes the `# service=` line unless the client speaks v2, passes a validated `Git-Protocol` as `GIT_PROTOCOL`, and kills the child when the request aborts. A gzipped request body is inflated by the route first.
+
 ## Quality (moved from Ship, #E162)
 
 - **A push is never gated**: `QualityController.pushQualityRun` answers whatever the switches say (`capability-gate.spec.ts`). What `build` gates is the Reports tab (`BuildShell`), the tiles (`BuildDashboardMetrics`, `QualityNumericCatalog`), the event `coverage.dropped` (`BuildProjectEvents`) and the `quality` permission group.

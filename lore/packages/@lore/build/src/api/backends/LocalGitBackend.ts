@@ -1,9 +1,12 @@
 import { $inject, Alepha, AlephaError } from "alepha";
+import { $logger } from "alepha/logger";
 
 import {
   GitBackend,
   type GitBackendToken,
   type GitRepositoryInfo,
+  type GitRpcRequest,
+  type GitRpcResponse,
 } from "./GitBackend.ts";
 
 /**
@@ -25,6 +28,7 @@ import {
 export class LocalGitBackend extends GitBackend {
   public readonly kind = "local";
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
 
   /**
    * Where every repository lives: `${DATA_DIR}/git`, or under
@@ -111,6 +115,105 @@ export class LocalGitBackend extends GitBackend {
    */
   public async token(): Promise<GitBackendToken | undefined> {
     return undefined;
+  }
+
+  /**
+   * Spawn `git upload-pack|receive-pack --stateless-rpc` on the repository,
+   * as `git http-backend` would: the request body into its stdin, its
+   * stdout as the response, the child killed when the client goes away.
+   *
+   * The advertisement starts with the `# service=` pkt-line a smart HTTP
+   * client expects, unless the client asked for protocol v2, whose
+   * capability advertisement has none.
+   */
+  public async serve(ref: string, rpc: GitRpcRequest): Promise<GitRpcResponse> {
+    const path = this.pathOf(ref);
+    const { spawn } = await import("node:child_process");
+    const { Readable } = await import("node:stream");
+    const env: Record<string, string> = {};
+    for (const key of ["PATH", "HOME", "LANG", "TMPDIR"]) {
+      const value = globalThis.process?.env?.[key];
+      if (value) env[key] = value;
+    }
+    if (rpc.gitProtocol) env.GIT_PROTOCOL = rpc.gitProtocol;
+    const child = spawn(
+      "git",
+      [
+        rpc.service.slice("git-".length),
+        "--stateless-rpc",
+        ...(rpc.advertise ? ["--advertise-refs"] : []),
+        path,
+      ],
+      { env, stdio: ["pipe", "pipe", "pipe"] },
+    );
+    const kill = () => child.kill("SIGTERM");
+    rpc.signal?.addEventListener("abort", kill, { once: true });
+    child.on("close", () => rpc.signal?.removeEventListener("abort", kill));
+    child.on("error", () => kill());
+    let stderr = "";
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.on("close", (code) => {
+      if (code && !rpc.signal?.aborted) {
+        this.log.warn(`git ${rpc.service} exited ${code}`, {
+          ref,
+          stderr: stderr.slice(0, 2000),
+        });
+      }
+    });
+    if (rpc.body && !rpc.advertise) {
+      Readable.fromWeb(rpc.body as never)
+        .on("error", kill)
+        .pipe(child.stdin);
+    } else {
+      child.stdin.end();
+    }
+    const out = Readable.toWeb(
+      child.stdout,
+    ) as unknown as ReadableStream<Uint8Array>;
+    const body =
+      rpc.advertise && !/version=2/.test(rpc.gitProtocol ?? "")
+        ? this.prefixed(this.serviceLine(rpc.service), out)
+        : out;
+    return {
+      status: 200,
+      contentType: rpc.advertise
+        ? `application/x-${rpc.service}-advertisement`
+        : `application/x-${rpc.service}-result`,
+      body,
+    };
+  }
+
+  /**
+   * `# service=<service>` as a pkt-line, then a flush.
+   */
+  protected serviceLine(service: string): Uint8Array {
+    const line = `# service=${service}\n`;
+    const length = (line.length + 4).toString(16).padStart(4, "0");
+    return new TextEncoder().encode(`${length}${line}0000`);
+  }
+
+  /**
+   * A stream that emits `head`, then everything `rest` emits.
+   */
+  protected prefixed(
+    head: Uint8Array,
+    rest: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array> {
+    const reader = rest.getReader();
+    let sent = false;
+    return new ReadableStream<Uint8Array>({
+      pull: async (controller) => {
+        if (!sent) {
+          sent = true;
+          controller.enqueue(head);
+          return;
+        }
+        const { done, value } = await reader.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      },
+      cancel: (reason) => reader.cancel(reason),
+    });
   }
 
   /**

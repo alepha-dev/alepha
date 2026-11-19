@@ -137,6 +137,48 @@ describe("ArtifactsGitBackend", () => {
     );
   });
 
+  it("proxies to the remote with the cached token, streaming the body", async ({
+    expect,
+  }) => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    class ProxyingBackend extends ArtifactsGitBackend {
+      protected override async fetchUpstream(url: string, init: RequestInit) {
+        calls.push({ url, init });
+        return new Response("0000", {
+          status: 200,
+          headers: { "content-type": "application/x-git-receive-pack-result" },
+        });
+      }
+    }
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    const binding = new RecordingBinding();
+    alepha.set("cloudflare.env" as never, { ARTIFACTS: binding } as never);
+    const backend = alepha.inject(ProxyingBackend);
+    await backend.create("7-r", { defaultBranch: "main" });
+    const body = new Blob(["0000"]).stream();
+
+    const response = await backend.serve("7-r", {
+      service: "git-receive-pack",
+      advertise: false,
+      body,
+      gitProtocol: "version=2",
+    });
+    await backend.serve("7-r", { service: "git-upload-pack", advertise: true });
+
+    expect(response.status).toBe(200);
+    expect(calls[0]!.url).toMatch(/\/7-r\.git\/git-receive-pack$/);
+    expect(calls[0]!.init.body).toBe(body);
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(atob(headers.authorization!.slice("Basic ".length))).toMatch(
+      /^x:art_write_/,
+    );
+    expect(headers["git-protocol"]).toBe("version=2");
+    expect(calls[1]!.url).toMatch(
+      /\/7-r\.git\/info\/refs\?service=git-upload-pack$/,
+    );
+    expect(calls[1]!.init.method).toBe("GET");
+  });
+
   it("names the missing binding rather than failing on undefined", async ({
     expect,
   }) => {
