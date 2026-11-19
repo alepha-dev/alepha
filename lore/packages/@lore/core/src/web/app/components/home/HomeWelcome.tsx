@@ -16,15 +16,18 @@ export interface HomeWelcomeProps {
 /**
  * What a visitor with no project sees on Home: the signed-out stranger and
  * the brand-new account. It is the only page that says what Lore is, so it
- * says it as three pillars, Plan, Remember and Ship, and never in the
- * internal vocabulary (no "quest" here).
+ * says it as four pillars, Plan, Remember, Build and Ship (#E162), and never
+ * in the internal vocabulary (no "quest" here).
  *
  * It is ruled like the board (`HomeBoard`): two rails down the full height
  * at the gutters, a line under the header and one above the footer. The
- * pillars are a band ruled rail to rail; under them, a thinner band of three
- * small features that are not modules (agents, notifications, self-hosting),
- * each linking to its guide, as each pillar does; and the column lines run on down to the footer. On a phone the pillars stack and the button moves to a bar
- * pinned to the bottom of the screen.
+ * pillars are a band ruled rail to rail; under them, a thinner band of small
+ * features that are not modules, one under each pillar: Agents under Plan,
+ * Notifications under Remember, Chat under Build once Lore Chat ships (an
+ * empty cell until then), Self-hosting under Ship. Each links to its guide,
+ * as each pillar does, and the column lines run on down to the footer. On a
+ * phone the pillars stack, the empty cell is dropped, and the button moves to
+ * a bar pinned to the bottom of the screen.
  */
 const HomeWelcome = (props: HomeWelcomeProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -62,10 +65,10 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
         <div className="relative shrink-0">
           {/*
           The band: a rule above and below it from rail to rail, and the
-          three cells between column rules.
+          four cells between column rules.
         */}
           <div className="shrink-0 border-y">
-            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-4 md:divide-x md:divide-y-0">
               <HomeWelcomePillar
                 pillar="plan"
                 title={tr("home.pillar.plan.title")}
@@ -79,6 +82,12 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
                 href={`${HomeWelcome.docs}/docs/remember-folios`}
               />
               <HomeWelcomePillar
+                pillar="build"
+                title={tr("home.pillar.build.title")}
+                description={tr("home.pillar.build.description")}
+                href={`${HomeWelcome.docs}/docs/build-repositories`}
+              />
+              <HomeWelcomePillar
                 pillar="ship"
                 title={tr("home.pillar.ship.title")}
                 description={tr("home.pillar.ship.description")}
@@ -87,7 +96,7 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
             </div>
           </div>
           <div className="shrink-0 border-b">
-            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-4 md:divide-x md:divide-y-0">
               <HomeWelcomeFeature
                 icon={Bot}
                 title={tr("home.feature.agents.title")}
@@ -100,6 +109,8 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
                 description={tr("home.feature.notifications.description")}
                 href={`${HomeWelcome.docs}/docs/project-notifications`}
               />
+              {/* Under Build: Lore Chat's card, once it ships. */}
+              <div aria-hidden className="max-md:hidden" />
               <HomeWelcomeFeature
                 icon={Server}
                 title={tr("home.feature.selfHost.title")}
@@ -116,9 +127,10 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
         */}
         <div
           aria-hidden
-          className="divide-border mx-auto grid min-h-44 w-full max-w-5xl flex-1 md:min-h-16 md:grid-cols-3 md:divide-x md:border-x"
+          className="divide-border mx-auto grid min-h-44 w-full max-w-5xl flex-1 md:min-h-16 md:grid-cols-4 md:divide-x md:border-x"
         >
           <div />
+          <div className="max-md:hidden" />
           <div className="max-md:hidden" />
           <div className="max-md:hidden" />
         </div>

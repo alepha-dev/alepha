@@ -402,13 +402,14 @@ See [Telemetry](/lore/docs/ship-telemetry).
 `lore quality push` sends the coverage and test totals of the last run to the
 project's **Quality** report. It reads `coverage/coverage-summary.json` and
 `coverage/test-results.json`, the two files `alepha test --coverage` writes.
-`--branch` files the run under another branch than the checked-out one.
+`--branch` files the run under another branch than the checked-out one. See
+[Quality](/lore/docs/build-quality).
 
 ## Code
 
 A project with **Build** on holds git repositories on Lore. Clone and push
 with plain git over HTTPS: the `lore` CLI answers git's credential requests,
-so nobody copies a token by hand.
+so nobody copies a token by hand. See [Repositories](/lore/docs/build-repositories).
 
 | Command                               | What it does                                                                                                                                                                    |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
