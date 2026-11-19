@@ -14,6 +14,7 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
 import { FileImage } from "../core/FileImage.tsx";
+import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { AutoForm } from "../form/AutoForm.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
@@ -44,6 +45,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
   const api = useClient<MyProfileController>();
   const avatarApi = useClient<MyAvatarController>();
   const toaster = useToast();
+  const dialog = useDialog();
   const { l, tr } = useI18n();
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -130,6 +132,53 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
       lastName: props.profile?.lastName ?? "",
     },
     schema: updateMyProfileBodySchema,
+    /**
+     * A new username is asked about first (#Q3938); a first or last name
+     * saves at once. What the dialog says is what the code does:
+     *
+     * - the username is a sign-in identifier (`SessionService` matches it
+     *   case-insensitively), so the old one stops signing in;
+     * - an `@handle` written in an app is text, resolved against the
+     *   handle of the day, so what was written with the old one no longer
+     *   reaches the person;
+     * - the old one is held by nothing but the unique index, so anyone can
+     *   take it once it is free.
+     *
+     * Cancel leaves the form dirty with the new value, and nothing is sent.
+     */
+    beforeSubmit: async (values) => {
+      const next = values.username;
+      const previous = profile?.username;
+      if (!hasUsername || !next || next === previous) return true;
+      return await dialog.confirm({
+        title: tr("account.profile.usernameConfirmTitle", {
+          default: "Change your username to $1?",
+          args: [next],
+        }),
+        description: previous
+          ? tr("account.profile.usernameConfirmDescription", {
+              default:
+                "You sign in with $1 from now on, and people reach you as @$1. Anything written with @$2, such as mentions and links, keeps saying @$2 and stops reaching you. $2 becomes free, and someone else can take it.",
+              args: [next, previous],
+            })
+          : tr("account.profile.usernameConfirmFirstDescription", {
+              default:
+                "You can sign in with $1, and people reach you as @$1. Anyone typing @$1 reaches you from now on.",
+              args: [next],
+            }),
+        confirmLabel: tr("account.profile.usernameConfirm", {
+          default: "Change username",
+        }),
+        ...(previous
+          ? {
+              cancelLabel: tr("account.profile.usernameCancel", {
+                default: "Keep $1",
+                args: [previous],
+              }),
+            }
+          : {}),
+      });
+    },
     onSuccess: (updated) => {
       setProfile(updated);
       toaster.show(

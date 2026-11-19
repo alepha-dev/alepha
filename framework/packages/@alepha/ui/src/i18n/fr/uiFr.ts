@@ -1444,6 +1444,14 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "account.profile.updated": "Profil mis à jour",
   "account.profile.username": "Nom d'utilisateur",
   "account.profile.usernameDescription": "Unique sur ce site.",
+  "account.profile.usernameConfirmTitle":
+    "Changer votre nom d'utilisateur en $1 ?",
+  "account.profile.usernameConfirmDescription":
+    "Vous vous connectez désormais avec $1, et on vous joint avec @$1. Ce qui a été écrit avec @$2, comme les mentions et les liens, garde @$2 et ne vous joint plus. $2 devient libre, et quelqu'un d'autre peut le prendre.",
+  "account.profile.usernameConfirmFirstDescription":
+    "Vous pouvez vous connecter avec $1, et on vous joint avec @$1. Quiconque écrit @$1 vous joint désormais.",
+  "account.profile.usernameConfirm": "Changer le nom d'utilisateur",
+  "account.profile.usernameCancel": "Garder $1",
   "account.security.addedAt": "Ajoutée $1",
   "account.security.dangerDescription": "C'est irréversible.",
   "account.security.delete": "Supprimer ce compte",
