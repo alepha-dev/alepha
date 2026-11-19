@@ -91,6 +91,34 @@ describe("GuardedBatch", () => {
     expect(await batch.holds(guard)).toBe(false);
   });
 
+  it("lets one of two concurrent batches claim the same row", async ({
+    expect,
+  }) => {
+    // A claim: the guard reads the value the caller saw, the batch moves it.
+    // On Postgres each batch is a READ COMMITTED transaction, which alone
+    // would let both guards read the old value before either committed.
+    await provider.execute(
+      "INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)",
+    );
+    const claim = () =>
+      batch.guarded(
+        sql`EXISTS (SELECT 1 FROM guarded_batch_test WHERE id = 'a' AND value = 1)`,
+        [
+          sql`UPDATE guarded_batch_test SET value = value + 1 WHERE id = 'a'`,
+          sql`SELECT value FROM guarded_batch_test WHERE id = 'a'`,
+        ],
+      );
+    const settled = await Promise.allSettled([claim(), claim(), claim()]);
+    const won = settled.filter((it) => it.status === "fulfilled");
+    expect(won).toHaveLength(1);
+    expect(
+      await provider.execute("SELECT value FROM guarded_batch_test"),
+    ).toEqual([{ value: 2 }]);
+    // The guard's insert answers first, then each statement in order.
+    expect(won[0].value[2]).toEqual([{ value: 2 }]);
+    expect(await count("batch_guards")).toEqual({ n: 0 });
+  });
+
   it("writes through no automation table", async ({ expect }) => {
     await provider.execute("DELETE FROM automation_receipts");
     await batch.guarded(sql`TRUE`, [
