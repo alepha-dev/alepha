@@ -654,7 +654,7 @@ describe("QuestController hold", () => {
         mine: 1,
         urgent: 1,
         // Pending, taken or not: the taken quest and the asking one.
-        backlog: 2,
+        open: 2,
         done: 1,
         asks: 1,
         stale: 1,

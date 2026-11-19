@@ -100,9 +100,14 @@ class FakeLinkProvider extends LinkProvider {
         },
       } as Record<string, unknown>,
       {
+        // Every action answers `can()`, as the real client's do: the
+        // detail's comment editor asks it of each element kind's upload.
         get: (target, prop: string) =>
-          target[prop] ??
-          (async () => Object.assign([], { content: [], items: [] })),
+          Object.assign(
+            target[prop] ??
+              (async () => Object.assign([], { content: [], items: [] })),
+            { can: () => true },
+          ),
       },
     );
   }

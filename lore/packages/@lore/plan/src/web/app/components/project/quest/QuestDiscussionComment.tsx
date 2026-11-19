@@ -1,4 +1,3 @@
-import { TimeAgo, Badge } from "@alepha/ui";
 import {
   currentProjectAtom,
   displayName,
@@ -9,8 +8,9 @@ import {
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Bot, MessageSquare } from "lucide-react";
 
+import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
+import DiscussionComment from "../discussion/DiscussionComment.tsx";
 import { expandCommentReferences } from "./commentReferences.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";
 
@@ -20,12 +20,8 @@ export interface QuestDiscussionCommentProps {
 }
 
 /**
- * One comment in the Discussion, in the feed's two-column shape: the
- * author's avatar in the gutter, then the same header line a system event
- * uses with the word "commented", then the body underneath.
- *
- * Two things separate a comment from an event without reading either: the
- * gutter holds a face rather than a glyph, and only a comment has a body.
+ * One comment in the quest's Discussion: the shared `DiscussionComment` row,
+ * with the body rendered as Markdown.
  */
 const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
   const { entry } = props;
@@ -42,65 +38,29 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
     ? displayName(user, entry.by)
     : tr("quest.discussion.author.unknown");
 
-  // Written by a machine over MCP. `authorId` is still an account, and over
-  // MCP that account is the project owner's, so without this marker half of
-  // a thread reads as the owner talking to themselves.
-  const byAgent = !!entry.comment.source;
-
   return (
-    <li className="flex gap-3 py-3">
-      {/* The same bordered circle every event uses, carrying a chat glyph.
-          A comment is an entry in the feed like any other, so the gutter
-          keeps one shape: an avatar there made comments the only rows with
-          a face, at a size that broke the column's rhythm. Who wrote it is
-          already the first thing on the line beside it. */}
-      <span className="border-border text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full border">
-        {byAgent ? (
-          <Bot className="size-3.5" />
-        ) : (
-          <MessageSquare className="size-3.5" />
-        )}
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        {/* `min-h-7` matches the circle so the header line is centred on it
-            rather than sitting on its text baseline. */}
-        <div className="flex min-h-7 items-center gap-2 text-sm">
-          <span className="min-w-0 truncate">
-            <span className="font-medium">{author}</span>{" "}
-            <span className="text-muted-foreground">
-              {tr("quest.discussion.commented")}
-            </span>
-          </span>
-          {/* Next to the name, not in place of it: the account really did
-              post this, and saying otherwise would hide who to ask about
-              it. The badge answers the different question of whether a
-              person chose those words. */}
-          {byAgent && (
-            <Badge
-              variant="secondary"
-              className="text-muted-foreground shrink-0"
-              title={
-                entry.comment.source?.client ??
-                tr("quest.discussion.agent.hint")
-              }
-            >
-              {tr("quest.discussion.agent")}
-            </Badge>
-          )}
-          <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-            {entry.comment.editedAt && (
-              <span className="mr-1 italic">
-                {tr("quest.discussion.edited")}
-              </span>
-            )}
-            <TimeAgo value={entry.at} />
-          </span>
-        </div>
-        <div className="border-border bg-muted/40 rounded-md border px-4 py-3">
-          {/* Through the shared viewer, so `[[#F12]]` and `[[#Q12]]`
-            resolve exactly as they do in a description — with the two
-            conversation-only shapes (`#Q1204`, `@member`) expanded into it
-            first. The stored body is never rewritten. */}
+    <DiscussionComment
+      author={author}
+      // Written by a machine over MCP. `authorId` is still an account, and
+      // over MCP that account is the project owner's, so without this marker
+      // half of a thread reads as the owner talking to themselves.
+      agent={
+        entry.comment.source
+          ? { title: entry.comment.source.client ?? undefined }
+          : undefined
+      }
+      at={entry.at}
+      edited={!!entry.comment.editedAt}
+      footer={
+        <DiscussionAttachments items={entry.comment.attachmentUrls ?? []} />
+      }
+    >
+      {entry.comment.body.trim() && (
+        <>
+          {/* Through the shared viewer, so `[[#F12]]` and `[[#Q12]]` resolve
+          exactly as they do in a description, with the two
+          conversation-only shapes (`#Q1204`, `@member`) expanded into it
+          first. The stored body is never rewritten. */}
           <LoreViewer
             // The box's padding alone sets its edges (#Q3660): the first and
             // last prose blocks carry their own `my-3`, which doubled it on top
@@ -123,9 +83,9 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
               })),
             })}
           />
-        </div>
-      </div>
-    </li>
+        </>
+      )}
+    </DiscussionComment>
   );
 };
 

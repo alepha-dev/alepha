@@ -49,9 +49,9 @@ class Links extends LinkProvider {
 }
 
 /**
- * The username row follows the realm's `settings.username`: shown where a
- * person chooses one, hidden where the realm has none (`"none"`) or derives
- * it from the address (`"email"`), the same rule as the registration form.
+ * The username row follows the realm's `settings.username`: hidden only
+ * where the realm has none (`"none"`). In an `"email"` realm the handle
+ * derived from the address is a default the person may rename.
  */
 describe("AccountProfile", () => {
   let alepha: Alepha | undefined;
@@ -85,7 +85,7 @@ describe("AccountProfile", () => {
     await screen.findByText("First name");
   };
 
-  it.each(["optional", "required"])(
+  it.each(["optional", "required", "email"])(
     "shows the username in a %s realm",
     async (mode) => {
       await mount(mode);
@@ -93,13 +93,10 @@ describe("AccountProfile", () => {
     },
   );
 
-  it.each(["none", "email"])(
-    "hides the username in a %s realm",
-    async (mode) => {
-      await mount(mode);
-      expect(screen.queryByText("Username")).toBeNull();
-    },
-  );
+  it("hides the username in a none realm", async () => {
+    await mount("none");
+    expect(screen.queryByText("Username")).toBeNull();
+  });
 
   it("shows the username when no realm is described", async () => {
     await mount();

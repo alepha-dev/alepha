@@ -1,4 +1,4 @@
-import { ProjectController } from "@lore/core/api";
+import { FileAccessRegistry, ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -160,6 +160,97 @@ describe("QuestCommentController", () => {
 
     expect(updated.data.body).toBe("Considered");
     expect(updated.data.editedAt).toBeTruthy();
+  });
+
+  /**
+   * A comment carries its own files, as a feedback comment does: they are
+   * the comment's, not the quest's, and a teammate may read them.
+   */
+  describe("attachments", () => {
+    const png = (name = "shot.png") =>
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], name, {
+        type: "image/png",
+      });
+
+    it("posts files with a comment, lists them resolved, and lets a member read them", async ({
+      expect,
+    }) => {
+      const owner = await createUser(ctx);
+      const member = await createUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
+      const quest = await createQuest(ctx, owner, projectId);
+
+      const uploaded = await ctx.quests.uploadAttachment.fetch(
+        { body: { file: png() } },
+        { user: owner },
+      );
+      // An image alone is an answer: the body may be empty.
+      await ctx.comments.createQuestComment.fetch(
+        {
+          params: { id: quest.id },
+          body: { body: "", attachments: [uploaded.data.fileId] },
+        },
+        { user: owner },
+      );
+
+      const listed = await ctx.comments.listQuestComments.fetch(
+        { params: { id: quest.id }, query: {} },
+        { user: member },
+      );
+      expect(listed.data[0].attachments).toEqual([uploaded.data.fileId]);
+      expect(listed.data[0].attachmentUrls?.[0]).toMatchObject({
+        id: uploaded.data.fileId,
+        name: "shot.png",
+        mimeType: "image/png",
+        url: `/api/files/${uploaded.data.fileId}`,
+      });
+
+      // The quest does not list the file, the comment does: the read rule
+      // must still find the project behind it, or only the uploader sees it.
+      const rule = ctx.alepha.inject(FileAccessRegistry).rule("attachments");
+      expect(await rule?.(uploaded.data.fileId)).toEqual({
+        projectId,
+        permission: "quest:read",
+      });
+
+      const fresh = await ctx.quests.getQuestById.fetch(
+        { params: { id: quest.id } },
+        { user: owner },
+      );
+      expect(fresh.data.attachments ?? []).not.toContain(uploaded.data.fileId);
+    });
+
+    it("refuses an empty comment, and a file somebody else uploaded", async ({
+      expect,
+    }) => {
+      const owner = await createUser(ctx);
+      const member = await createUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      await createTestMemberByProjectId(ctx.alepha, projectId, member.id);
+      const quest = await createQuest(ctx, owner, projectId);
+
+      await expect(
+        ctx.comments.createQuestComment.fetch(
+          { params: { id: quest.id }, body: { body: "  " } },
+          { user: owner },
+        ),
+      ).rejects.toThrow(/body or an attachment/);
+
+      const theirs = await ctx.quests.uploadAttachment.fetch(
+        { body: { file: png() } },
+        { user: member },
+      );
+      await expect(
+        ctx.comments.createQuestComment.fetch(
+          {
+            params: { id: quest.id },
+            body: { body: "Look", attachments: [theirs.data.fileId] },
+          },
+          { user: owner },
+        ),
+      ).rejects.toThrow(/attachments are invalid/);
+    });
   });
 
   it("refuses a non-member on every endpoint", async ({ expect }) => {

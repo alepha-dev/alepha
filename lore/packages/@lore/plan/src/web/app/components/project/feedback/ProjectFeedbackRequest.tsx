@@ -360,9 +360,9 @@ const ProjectFeedbackRequest = () => {
           title: firstLine.slice(0, 120),
           description: message,
           attachments: attachmentIds,
-          // Fall back to a generic tag so nothing lands untagged in the
-          // triage inbox when the form is opened without query params.
-          tags: tags.length > 0 ? tags : ["feedback"],
+          // No fallback tag: a generic `feedback` on every untagged item
+          // said nothing in the inbox.
+          tags,
           source,
         },
       });

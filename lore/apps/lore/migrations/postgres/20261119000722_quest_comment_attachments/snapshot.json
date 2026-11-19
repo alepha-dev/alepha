@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "8ae3c511-f594-493b-a624-793d20669660",
+  "prevIds": ["cee83c8a-ffe0-4523-a3ec-807611233d1e"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quest_comments", "attachments"],
+      "writes": [
+        "s|col|public.quest_comments.attachments",
+        "n|col|public.quest_comments.attachments",
+        "e|col|public.quest_comments.attachments"
+      ],
+      "reads": ["n|tbl|public.quest_comments", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quest_comments",
+        "name": "attachments",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

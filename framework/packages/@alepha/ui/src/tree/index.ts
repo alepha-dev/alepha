@@ -4,8 +4,8 @@
  * `treeModel`'s functions are the pure half: build, flatten, cycle-safe parents
  * and drop resolution. `TreeView` draws the rows with their indent guides and
  * ARIA tree roles; drag and drop, inline rename and a context-menu slot are
- * opt-ins. `useTreeState` holds the gesture state and `TreeViewResizer` is the
- * pane handle.
+ * opt-ins. `useTreeState` holds the gesture state; the pane handle is
+ * `PaneResizer`, in the core entry.
  *
  * @module alepha.ui.tree
  */
@@ -28,13 +28,6 @@ export {
   type TreeViewProps,
 } from "./TreeView.tsx";
 export { type TreeSelectOptions } from "./TreeViewRow.tsx";
-export {
-  TREE_VIEW_DEFAULT_WIDTH,
-  TREE_VIEW_MAX_WIDTH,
-  TREE_VIEW_MIN_WIDTH,
-  TreeViewResizer,
-  type TreeViewResizerProps,
-} from "./TreeViewResizer.tsx";
 export {
   type TreeState,
   type TreeStateCommands,

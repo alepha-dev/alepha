@@ -1,5 +1,6 @@
+import { PaneResizer } from "@alepha/ui";
 import { useStore } from "alepha/react";
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
@@ -10,8 +11,8 @@ import QuestLogSkeleton from "./QuestLogSkeleton.tsx";
  * `ProjectShellRegistry` by `WorkShell` (#E75, #Q2624), so `ProjectView`
  * names no quest component.
  *
- * Resizable by its right edge: drag to set the width, double-click to go
- * back to the default. The width is kept in `questLogCollapsedAtom` beside
+ * Resizable by its right edge through the shared `PaneResizer`: drag to set
+ * the width, double-click to go back to the default. The width is kept in `questLogCollapsedAtom` beside
  * the collapsed flag, so both survive a reload. A handle on the pane rather
  * than a `ResizablePanelGroup`: the shell renders this pane and the page as
  * siblings, and a panel group would have to own both.
@@ -27,9 +28,6 @@ const ProjectQuestLogAside = () => {
   // The width while dragging, so a drag repaints without writing the cookie
   // on every pointer move. Written to the atom once, on release.
   const [dragWidth, setDragWidth] = useState<number | undefined>();
-  const drag = useRef<{ startX: number; startWidth: number } | undefined>(
-    undefined,
-  );
 
   if (state.collapsed) {
     return (
@@ -55,59 +53,18 @@ const ProjectQuestLogAside = () => {
       <Suspense fallback={<QuestLogSkeleton />}>
         <QuestLog onCollapse={() => setState({ ...state, collapsed: true })} />
       </Suspense>
-      {/* The resize handle: a hairline on the pane's edge with a wider
-          invisible grab area, which turns into an accent line on hover and
-          while dragging. */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-valuenow={width}
-        aria-valuemin={MIN_WIDTH}
-        aria-valuemax={MAX_WIDTH}
-        data-testid="quest-log-resize"
-        data-dragging={dragWidth !== undefined || undefined}
-        // Focusable, and the arrow keys resize, so the handle is not
-        // pointer-only.
-        tabIndex={0}
-        onKeyDown={(event) => {
-          const step =
-            event.key === "ArrowLeft"
-              ? -16
-              : event.key === "ArrowRight"
-                ? 16
-                : 0;
-          if (step !== 0) {
-            event.preventDefault();
-            setState({ ...state, width: clamp(width + step) });
-          }
-        }}
-        className="group/resize focus-visible:ring-ring/50 absolute inset-y-0 right-0 z-10 w-2 cursor-col-resize touch-none select-none focus-visible:ring-2 focus-visible:outline-none"
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          drag.current = { startX: event.clientX, startWidth: width };
-          setDragWidth(width);
-        }}
-        onPointerMove={(event) => {
-          if (!drag.current) {
-            return;
-          }
-          setDragWidth(
-            clamp(
-              drag.current.startWidth + event.clientX - drag.current.startX,
-            ),
-          );
-        }}
-        onPointerUp={() => {
-          if (drag.current && dragWidth !== undefined) {
-            setState({ ...state, width: dragWidth });
-          }
-          drag.current = undefined;
+      {/* The shared handle, which the folio tree uses too. */}
+      <PaneResizer
+        width={state.width ?? DEFAULT_WIDTH}
+        minWidth={MIN_WIDTH}
+        maxWidth={MAX_WIDTH}
+        defaultWidth={DEFAULT_WIDTH}
+        onResize={setDragWidth}
+        onWidth={(next) => {
           setDragWidth(undefined);
+          setState({ ...state, width: next });
         }}
-        onDoubleClick={() => setState({ collapsed: false })}
-      >
-        <span className="bg-border group-hover/resize:bg-primary/60 group-data-[dragging]/resize:bg-primary absolute inset-y-0 right-0 w-px transition-colors group-hover/resize:w-0.5 group-data-[dragging]/resize:w-0.5" />
-      </div>
+      />
     </div>
   );
 };
@@ -125,8 +82,5 @@ const QuestLog = lazy(() => import("./QuestLog.tsx"));
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 560;
 const DEFAULT_WIDTH = 300;
-
-const clamp = (value: number) =>
-  Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, value)));
 
 export default ProjectQuestLogAside;

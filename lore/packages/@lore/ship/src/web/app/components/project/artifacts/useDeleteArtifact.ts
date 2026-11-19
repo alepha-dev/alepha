@@ -1,6 +1,7 @@
-import { useDialog, useToast } from "@alepha/ui";
+import { useDialog, useUndoable } from "@alepha/ui";
+import type { BulkActionContext } from "@alepha/ui/table";
 import { type I18n, settleBulk, useBulkReport } from "@lore/core/web";
-import { useAction, useClient, useQueryClient, useStore } from "alepha/react";
+import { useClient, useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { ArtifactController } from "../../../../../api/controllers/ArtifactController.ts";
@@ -32,6 +33,11 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * ⚠️ **No guard is added anywhere.** Neither case is refused, by the quest's
  * decision: the dialog is where the loss is named, not where it is prevented.
  *
+ * ## Undo, like a quest or an epic
+ *
+ * Once confirmed, the row plays its exit and an Undo toast goes up; the
+ * delete is held until the toast closes, so Undo never sends it.
+ *
  * ⚠️ **It invalidates the page's listing, once per run.** The table is in
  * static-data mode, so its own `ctx.refresh()` re-fetches nothing: the rows
  * belong to the page's `useQuery`, keyed `["project-artifacts", projectId]`.
@@ -40,7 +46,7 @@ export const useDeleteArtifact = (): DeleteArtifact => {
   const artifactApi = useClient<ArtifactController>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const toaster = useToast();
+  const undoable = useUndoable();
   const reportBulk = useBulkReport();
   const queries = useQueryClient();
   const [instances] = useStore(currentInstancesAtom);
@@ -64,99 +70,145 @@ export const useDeleteArtifact = (): DeleteArtifact => {
   const sentences = (parts: Array<string | undefined>): string =>
     parts.filter((sentence): sentence is string => Boolean(sentence)).join(" ");
 
-  // One `useAction` per verb (#E59 rule 1). A refused delete rejects inside
-  // the handler, so `remove` resolves `undefined` and the root
-  // `ActionErrorToaster` shows the server's message.
-  const removeAction = useAction<[artifact: DeletableArtifact], boolean>(
-    {
-      handler: async (_ctx, artifact) => {
-        const label = name(artifact);
-        const running = runningOn(artifact);
-        const ok = await dialog.confirm({
-          title: tr("artifacts.delete.title", { args: [label] }),
-          description: sentences([
-            tr("artifacts.delete.body"),
-            running.length > 0
-              ? tr("artifacts.delete.running", { args: [running.join(", ")] })
-              : undefined,
-            artifact.tag === "latest"
-              ? tr("artifacts.delete.latest")
-              : undefined,
-          ]),
-          confirmLabel: tr("artifacts.delete.action"),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!ok) return false;
-
-        await artifactApi.deleteArtifact({
-          params: { projectId: artifact.projectId, artifactId: artifact.id },
-        });
-        toaster.success(tr("artifacts.delete.done", { args: [label] }));
-        // By hand rather than through `invalidates`: the key carries the
-        // project, which only the artifact in hand names.
-        queries.invalidate(["project-artifacts", artifact.projectId]);
-        return true;
+  /**
+   * The table's exit, plus the listing's own cache.
+   *
+   * ⚠️ The table is in static-data mode, where a settled overlay lets go at
+   * once: the row would come back until the refetch answered. So the settle
+   * first drops the variants from the cached listing, then lets go.
+   */
+  const hide = <T extends DeletableArtifact>(
+    ctx: DeleteContext<T>,
+    selected: T[],
+  ) => {
+    const handle = ctx.optimistic.remove(selected);
+    return {
+      rollback: handle.rollback,
+      settle: () => {
+        const ids = new Set(selected.map((artifact) => artifact.id));
+        queries.setData<ArtifactListing | undefined>(
+          ["project-artifacts", selected[0].projectId],
+          (previous) =>
+            previous && {
+              ...previous,
+              groups: previous.groups
+                .map((group) => ({
+                  ...group,
+                  variants: group.variants.filter(
+                    (variant) => !ids.has(variant.id),
+                  ),
+                }))
+                .filter((group) => group.variants.length > 0),
+            },
+        );
+        handle.settle();
       },
-    },
-    [artifactApi, dialog, toaster, tr, queries, instances],
-  );
+    };
+  };
 
-  const removeManyAction = useAction<[selected: DeletableArtifact[]], boolean>(
-    {
-      handler: async (_ctx, selected) => {
-        if (selected.length === 0) return false;
-        const n = String(selected.length);
-        const ok = await dialog.confirm({
-          title: tr("artifacts.bulk.delete.title", { args: [n] }),
-          description: sentences([
-            tr("artifacts.bulk.delete.body"),
-            selected.some((artifact) => runningOn(artifact).length > 0)
-              ? tr("artifacts.bulk.delete.running")
-              : undefined,
-            selected.some((artifact) => artifact.tag === "latest")
-              ? tr("artifacts.bulk.delete.latest")
-              : undefined,
-          ]),
-          confirmLabel: tr("artifacts.bulk.delete.confirm", { args: [n] }),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!ok) return false;
+  // Not `useAction`: `useUndoable` must run from the click itself, so the
+  // row leaves in the click's frame. The delete is HELD until the toast
+  // closes, as an epic's is: a hard delete has no inverse, so Undo simply
+  // never sends it.
+  const remove = async <T extends DeletableArtifact>(
+    artifact: T,
+    ctx: DeleteContext<T>,
+  ): Promise<boolean> => {
+    const label = name(artifact);
+    const running = runningOn(artifact);
+    const ok = await dialog.confirm({
+      title: tr("artifacts.delete.title", { args: [label] }),
+      description: sentences([
+        tr("artifacts.delete.body"),
+        running.length > 0
+          ? tr("artifacts.delete.running", { args: [running.join(", ")] })
+          : undefined,
+        artifact.tag === "latest" ? tr("artifacts.delete.latest") : undefined,
+      ]),
+      confirmLabel: tr("artifacts.delete.action"),
+      cancelLabel: tr("common.cancel"),
+      destructive: true,
+    });
+    if (!ok) return false;
 
-        // Every call settles, and the report says how many landed: one
-        // refusal must not hide the deletes that went through, nor stop the
-        // ones after it.
-        const projectId = selected[0].projectId;
+    void undoable.run({
+      message: tr("artifacts.delete.done", { args: [label] }),
+      undoLabel: tr("board.undo.undo"),
+      intent: "primary",
+      apply: () => hide(ctx, [artifact]),
+      commit: () =>
+        artifactApi.deleteArtifact({
+          params: { projectId: artifact.projectId, artifactId: artifact.id },
+        }),
+      onCommitted: () =>
+        queries.invalidate(["project-artifacts", artifact.projectId]),
+    });
+    return true;
+  };
+
+  const removeMany = async <T extends DeletableArtifact>(
+    selected: T[],
+    ctx: DeleteContext<T>,
+  ): Promise<boolean> => {
+    if (selected.length === 0) return false;
+    const n = String(selected.length);
+    const ok = await dialog.confirm({
+      title: tr("artifacts.bulk.delete.title", { args: [n] }),
+      description: sentences([
+        tr("artifacts.bulk.delete.body"),
+        selected.some((artifact) => runningOn(artifact).length > 0)
+          ? tr("artifacts.bulk.delete.running")
+          : undefined,
+        selected.some((artifact) => artifact.tag === "latest")
+          ? tr("artifacts.bulk.delete.latest")
+          : undefined,
+      ]),
+      confirmLabel: tr("artifacts.bulk.delete.confirm", { args: [n] }),
+      cancelLabel: tr("common.cancel"),
+      destructive: true,
+    });
+    if (!ok) return false;
+
+    const projectId = selected[0].projectId;
+    void undoable.run({
+      message: tr("board.bulk.deleted", { args: [n] }),
+      undoLabel: tr("board.undo.undo"),
+      intent: "primary",
+      apply: () => hide(ctx, selected),
+      // Every call settles: one refusal must not hide the deletes that went
+      // through, nor stop the ones after it. Only a refusal is reported, and
+      // the refetch puts the refused rows back.
+      commit: async () => {
         const outcome = await settleBulk(
           selected.map((artifact) => artifact.id),
           (artifactId) =>
             artifactApi.deleteArtifact({ params: { projectId, artifactId } }),
         );
-        reportBulk(
-          outcome,
-          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
-        );
-        queries.invalidate(["project-artifacts", projectId]);
-        return true;
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-    },
-    [artifactApi, dialog, reportBulk, tr, queries, instances],
-  );
+      onCommitted: () => queries.invalidate(["project-artifacts", projectId]),
+    });
+    return true;
+  };
 
   return {
     can: artifactApi.deleteArtifact.can(),
-    busy: removeAction.loading || removeManyAction.loading,
-    remove: async (...args: Parameters<typeof removeAction.run>) => {
-      const result = await removeAction.run(...args);
-      return result.ok ? result.value : undefined;
-    },
-    removeMany: async (...args: Parameters<typeof removeManyAction.run>) => {
-      const result = await removeManyAction.run(...args);
-      return result.ok ? result.value : undefined;
-    },
+    remove,
+    removeMany,
   };
 };
+
+/**
+ * The listing as the page caches it, as far as the settle reads it.
+ */
+interface ArtifactListing {
+  groups: Array<{ variants: Array<{ id: string }> }>;
+}
+
+/**
+ * What the hook needs of the table's action context: its optimistic rows.
+ */
+export type DeleteContext<T> = Pick<BulkActionContext<T>, "optimistic">;
 
 /**
  * What the hook reads off a row: the two ids the endpoint takes, and the four
@@ -182,20 +234,21 @@ export interface DeleteArtifact {
    */
   can: boolean;
   /**
-   * True while a delete runs. A second one made meanwhile is dropped, so the
-   * caller disables its entries for that time.
+   * Confirms, then takes the row off the table with an Undo toast; the
+   * delete is sent when the toast closes. Resolves `true` once confirmed,
+   * `false` when the reader backed out. A refusal rolls the row back and is
+   * toasted by the root `ActionErrorToaster`.
    */
-  busy: boolean;
+  remove: <T extends DeletableArtifact>(
+    artifact: T,
+    ctx: DeleteContext<T>,
+  ) => Promise<boolean>;
   /**
-   * Confirms, deletes, toasts, and invalidates the listing. Resolves `true`
-   * once the artifact is gone, `false` when the reader backed out, and
-   * `undefined` when the server refused, which has already been toasted.
+   * The same over a selection. Resolves `true` once confirmed, so the
+   * caller clears the selection; `false` when the reader backed out.
    */
-  remove: (artifact: DeletableArtifact) => Promise<boolean | undefined>;
-  /**
-   * The same over a selection. Resolves `true` once the run happened, even
-   * when some of it was refused (the report says how many landed), so the
-   * caller clears the selection; `false` only when the reader backed out.
-   */
-  removeMany: (selected: DeletableArtifact[]) => Promise<boolean | undefined>;
+  removeMany: <T extends DeletableArtifact>(
+    selected: T[],
+    ctx: DeleteContext<T>,
+  ) => Promise<boolean>;
 }

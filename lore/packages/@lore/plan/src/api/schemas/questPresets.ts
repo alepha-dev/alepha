@@ -12,7 +12,7 @@ import { type Infer, z } from "alepha";
 export const QUEST_PRESET_KEYS = [
   "mine",
   "urgent",
-  "backlog",
+  "open",
   "done",
   "asks",
   "stale",
@@ -68,8 +68,10 @@ export const questPresetQuery = (
       return { assignee: "me", status: OPEN };
     case "urgent":
       return { priority: "high", status: OPEN };
-    case "backlog":
+    case "open":
       // Everything still pending, taken or not: the whole of what is left.
+      // Named Open, not Backlog: a backlog is the work nobody has started,
+      // and this holds the work in progress too.
       return { status: OPEN };
     case "done":
       return { status: "completed", completed: String(QUEST_DONE_DAYS) };
@@ -92,7 +94,7 @@ export const questPresetsSchema = z.object({
   counts: z.object({
     mine: z.integer(),
     urgent: z.integer(),
-    backlog: z.integer(),
+    open: z.integer(),
     done: z.integer(),
     asks: z.integer(),
     stale: z.integer(),

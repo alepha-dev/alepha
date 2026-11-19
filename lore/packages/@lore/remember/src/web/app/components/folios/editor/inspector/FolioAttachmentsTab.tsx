@@ -1,16 +1,22 @@
-import {
-  Button,
-  useDialog,
-  useToast,
-  cn,
-  textLinkUnderlineClassName,
-} from "@alepha/ui";
+import { Button, useDialog, useToast, cn } from "@alepha/ui";
 import { resizeImage } from "@alepha/ui/form";
-import { type I18n, formatAttachmentBytes } from "@lore/core/web";
+import {
+  type I18n,
+  attachmentPreview,
+  formatAttachmentBytes,
+} from "@lore/core/web";
 import { AlephaError } from "alepha";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Copy, Loader2, Paperclip, Pencil, Trash2, Upload } from "lucide-react";
+import {
+  Copy,
+  FileText,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { type DragEvent, type ReactElement, useRef, useState } from "react";
 
 import type { FolioAttachmentController } from "../../../../../../api/controllers/FolioAttachmentController.ts";
@@ -51,6 +57,12 @@ export interface FolioAttachmentsTabProps {
  * attachment became something that belongs to ONE folio rather than sitting
  * in a folder, the tree lost both the data and the UI, and this pane
  * inherited them.
+ *
+ * Empty, the tab is one drop zone that is also the picker. With files, a
+ * summary line and an Add button sit over a two-column grid of cards: an
+ * image is its own preview, any other file shows its extension, and the
+ * three actions (rename, copy reference, delete) surface on hover or focus.
+ * A drag anywhere over the tab outlines it as the target.
  */
 const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -223,133 +235,203 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
     );
   }
 
+  const browse = () => picker.current?.click();
+  const actionClass =
+    "text-muted-foreground hover:text-foreground hover:bg-hover flex size-6 items-center justify-center rounded disabled:opacity-40";
+
   return (
     <div
-      className={
-        dropping
-          ? "ring-primary/40 bg-primary/5 flex flex-col ring-1 ring-inset"
-          : "flex flex-col"
-      }
+      className="relative flex flex-col gap-3 p-3"
       onDragOver={(event) => {
         if (!canUpload) return;
         event.preventDefault();
         setDropping(true);
       }}
-      onDragLeave={() => setDropping(false)}
+      onDragLeave={(event) => {
+        // Only when the pointer leaves the tab, not when it crosses a child.
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+          setDropping(false);
+        }
+      }}
       onDrop={onDrop}
     >
-      <div className="flex items-center gap-2 px-3 py-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outlined"
-          disabled={!canUpload || busy}
-          onClick={() => picker.current?.click()}
-          className="h-7 text-xs"
-        >
-          {busy ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Upload className="size-3.5" />
-          )}
-          {tr("folios.editor.inspector.attachments-add")}
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(event) => {
-            upload([...(event.target.files ?? [])]);
-            // Reset so picking the same file twice in a row still fires.
-            event.target.value = "";
-          }}
-        />
-      </div>
+      <input
+        ref={picker}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(event) => {
+          upload([...(event.target.files ?? [])]);
+          // Reset so picking the same file twice in a row still fires.
+          event.target.value = "";
+        }}
+      />
 
       {attachments.length === 0 ? (
-        <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
-          {tr("folios.editor.inspector.attachments-empty")}
-        </p>
-      ) : (
-        <ul className="flex flex-col">
-          {attachments.map((attachment) => (
-            <li
-              key={attachment.id}
-              className="hover:bg-hover group flex items-center gap-2 px-3 py-1.5"
-            >
-              {attachment.mimeType.startsWith("image/") ? (
-                <img
-                  src={`/api/files/${attachment.id}`}
-                  alt=""
-                  className="border-border size-8 flex-none rounded border object-cover"
-                />
+        canUpload ? (
+          // The empty state IS the target: one place to drop, or to click.
+          <button
+            type="button"
+            onClick={browse}
+            disabled={busy}
+            className={cn(
+              "border-border hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center transition-colors",
+              dropping && "border-primary bg-primary/5",
+            )}
+          >
+            <span className="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-full">
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <span className="bg-muted text-muted-foreground flex size-8 flex-none items-center justify-center rounded">
-                  <Paperclip className="size-3.5" />
-                </span>
+                <Upload className="size-4" />
               )}
-              <span className="min-w-0 flex-1">
-                <a
-                  href={`/api/files/${attachment.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    textLinkUnderlineClassName,
-                    "hover:text-foreground block truncate text-xs",
-                  )}
-                  title={attachment.name}
+            </span>
+            <span className="text-sm font-medium">
+              {tr("folios.editor.inspector.attachments-drop")}
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {tr("folios.editor.inspector.attachments-browse")}
+            </span>
+          </button>
+        ) : (
+          <p className="text-muted-foreground py-4 text-center text-xs italic">
+            {tr("folios.editor.inspector.attachments-empty")}
+          </p>
+        )
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+              {tr("folios.editor.inspector.attachments-total", {
+                args: [
+                  String(attachments.length),
+                  formatAttachmentBytes(total),
+                ],
+              })}
+            </span>
+            {canUpload && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outlined"
+                disabled={busy}
+                onClick={browse}
+                className="h-7 text-xs"
+              >
+                {busy ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Plus className="size-3.5" />
+                )}
+                {tr("folios.editor.inspector.attachments-add")}
+              </Button>
+            )}
+          </div>
+
+          <ul className="grid grid-cols-2 gap-2">
+            {attachments.map((attachment) => {
+              const href = `/api/files/${attachment.id}`;
+              const isImage =
+                attachmentPreview(attachment.name, attachment.mimeType).kind ===
+                "image";
+              const dot = attachment.name.lastIndexOf(".");
+              const extension =
+                dot > 0 ? attachment.name.slice(dot + 1).toUpperCase() : "";
+              return (
+                <li
+                  key={attachment.id}
+                  className="border-border bg-background group relative flex min-w-0 flex-col overflow-hidden rounded-lg border"
                 >
-                  {attachment.name}
-                </a>
-                <span className="text-muted-foreground block text-[11px]">
-                  {formatAttachmentBytes(attachment.size)}
-                </span>
-              </span>
-              <button
-                type="button"
-                disabled={props.disabled || !canWrite || busy}
-                onClick={() =>
-                  void renameAction.run(attachment.id, attachment.name)
-                }
-                aria-label={tr("folios.editor.tree.rename")}
-                title={tr("folios.editor.tree.rename")}
-                className="text-muted-foreground hover:text-foreground flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => copyReference(attachment.name)}
-                aria-label={tr("folios.editor.inspector.attachments-copy-ref")}
-                title={tr("folios.editor.inspector.attachments-copy-ref")}
-                className="text-muted-foreground hover:text-foreground flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <Copy className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={props.disabled || !canWrite || busy}
-                onClick={() =>
-                  void removeAction.run(attachment.id, attachment.name)
-                }
-                aria-label={tr("folio.action.delete")}
-                title={tr("folio.action.delete")}
-                className="text-muted-foreground hover:text-danger-text flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={attachment.name}
+                    className="bg-muted/40 flex aspect-[4/3] items-center justify-center overflow-hidden"
+                  >
+                    {isImage ? (
+                      <img
+                        src={href}
+                        alt=""
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground flex flex-col items-center gap-1">
+                        <FileText className="size-6" />
+                        {extension && (
+                          <span className="font-mono text-[10px] tracking-wide">
+                            {extension}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </a>
+                  <div className="border-border border-t px-2 py-1.5">
+                    <p
+                      className="truncate text-xs font-medium"
+                      title={attachment.name}
+                    >
+                      {attachment.name}
+                    </p>
+                    <p className="text-muted-foreground text-[11px]">
+                      {formatAttachmentBytes(attachment.size)}
+                    </p>
+                  </div>
+                  {/* On hover or keyboard focus, over the preview's corner. */}
+                  <div className="bg-background/95 border-border absolute top-1.5 right-1.5 flex gap-0.5 rounded-md border p-0.5 opacity-0 shadow-sm transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => copyReference(attachment.name)}
+                      aria-label={tr(
+                        "folios.editor.inspector.attachments-copy-ref",
+                      )}
+                      title={tr("folios.editor.inspector.attachments-copy-ref")}
+                      className={actionClass}
+                    >
+                      <Copy className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={props.disabled || !canWrite || busy}
+                      onClick={() =>
+                        void renameAction.run(attachment.id, attachment.name)
+                      }
+                      aria-label={tr("folios.editor.tree.rename")}
+                      title={tr("folios.editor.tree.rename")}
+                      className={actionClass}
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={props.disabled || !canWrite || busy}
+                      onClick={() =>
+                        void removeAction.run(attachment.id, attachment.name)
+                      }
+                      aria-label={tr("folio.action.delete")}
+                      title={tr("folio.action.delete")}
+                      className={cn(actionClass, "hover:text-danger-text")}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
-      {attachments.length > 0 && (
-        <p className="text-muted-foreground border-border border-t px-3 py-2 text-[11px]">
-          {tr("folios.editor.inspector.attachments-total", {
-            args: [String(attachments.length), formatAttachmentBytes(total)],
-          })}
-        </p>
+      {/* A drag over a tab that already has files: the whole tab is the
+          target, outlined, with the instruction over it. */}
+      {dropping && attachments.length > 0 && (
+        <div className="bg-background/85 border-primary pointer-events-none absolute inset-2 flex items-center justify-center rounded-lg border-2 border-dashed">
+          <span className="text-primary flex items-center gap-2 text-sm font-medium">
+            <Upload className="size-4" />
+            {tr("folios.editor.inspector.attachments-drop")}
+          </span>
+        </div>
       )}
     </div>
   );

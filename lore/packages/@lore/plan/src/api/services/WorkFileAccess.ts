@@ -3,6 +3,8 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
+import { feedbackComments } from "../entities/feedbackComments.ts";
+import { questComments } from "../entities/questComments.ts";
 import { quests } from "../entities/quests.ts";
 import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
 
@@ -10,6 +12,10 @@ import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
  * Who may read Work's attachments, registered on core's `FileAccessRegistry`
  * (#E75, #Q2623): any project member may view a quest attachment, and the
  * project's triagers may read the attachments reporters send with feedback.
+ *
+ * A file belongs to the item or to one of its comments: a comment carries
+ * its own attachments, so each rule looks in the comment table when no item
+ * lists the file.
  */
 export class WorkFileAccess {
   /**
@@ -21,6 +27,8 @@ export class WorkFileAccess {
   protected readonly registry = $inject(FileAccessRegistry);
   protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);
+  protected readonly questComments = $repository(questComments);
+  protected readonly feedbackComments = $repository(feedbackComments);
 
   constructor() {
     this.registry.register(
@@ -29,8 +37,20 @@ export class WorkFileAccess {
         const [row] = await this.feedback.findMany(this.listing(fileId), {
           force: true,
         });
-        return row
-          ? { projectId: row.projectId, permission: "feedback:triage" }
+        if (row) {
+          return { projectId: row.projectId, permission: "feedback:triage" };
+        }
+        const [comment] = await this.feedbackComments.findMany({
+          where: { attachments: { like: `%"${fileId}"%` } },
+          columns: ["feedbackId"],
+          limit: 1,
+        });
+        if (!comment) return undefined;
+        const item = await this.feedback.findById(comment.feedbackId, {
+          force: true,
+        });
+        return item
+          ? { projectId: item.projectId, permission: "feedback:triage" }
           : undefined;
       },
     );
@@ -40,8 +60,18 @@ export class WorkFileAccess {
         const [row] = await this.quests.findMany(this.listing(fileId), {
           force: true,
         });
-        return row
-          ? { projectId: row.projectId, permission: "quest:read" }
+        if (row) return { projectId: row.projectId, permission: "quest:read" };
+        const [comment] = await this.questComments.findMany({
+          where: { attachments: { like: `%"${fileId}"%` } },
+          columns: ["questId"],
+          limit: 1,
+        });
+        if (!comment) return undefined;
+        const quest = await this.quests.findById(comment.questId, {
+          force: true,
+        });
+        return quest
+          ? { projectId: quest.projectId, permission: "quest:read" }
           : undefined;
       },
     );

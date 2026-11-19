@@ -1,4 +1,4 @@
-import { ProjectController } from "@lore/core/api";
+import { FileAccessRegistry, ProjectController } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -86,6 +86,7 @@ const setup = async () => {
     );
 
   return {
+    fileAccess: alepha.inject(FileAccessRegistry),
     feedbackTools,
     feedbackApi,
     commentApi,
@@ -237,6 +238,7 @@ describe("Lore feedback comment attachments", () => {
       asUser,
       report,
       project,
+      fileAccess,
       OWNER,
       REPORTER,
     } = await setup();
@@ -269,6 +271,11 @@ describe("Lore feedback comment attachments", () => {
         mimeType: "image/png",
         url: `/api/files/${comment.attachments[0]}`,
       });
+      // The item does not list a comment's file: the read rule must find
+      // the project through the comment, or only the uploader sees it.
+      expect(
+        await fileAccess.rule("petition-attachments")?.(comment.attachments[0]),
+      ).toEqual({ projectId: project.id, permission: "feedback:triage" });
     }
   });
 

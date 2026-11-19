@@ -597,7 +597,8 @@ const QuestView = (props: QuestViewProps) => {
               what it is about. Deliberately outside the sticky header below,
               so the one line worth pinning while the body scrolls stays one
               line. `-mx-5 -mt-4` moves here because this is the flush top
-              edge now, and `-mb-6` cancels the container's `gap-6`: the
+              edge now, and `-mb-7` cancels the container's `gap-6` and the
+              header's extra top padding: the
               chips label the title directly below them and a 24px trench
               between the two read as two unrelated rows. */}
           {/* `pr-14` in the dialog, dropped at `lg`: below `lg` the rail
@@ -606,7 +607,7 @@ const QuestView = (props: QuestViewProps) => {
               beneath the X. From `lg` the rail is the top-right corner
               instead and reserves the space itself. */}
           <div
-            className={`-mx-10 -mt-4 -mb-6 flex flex-wrap items-center gap-2 px-10 pt-4 ${
+            className={`-mx-10 -mt-4 -mb-7 flex flex-wrap items-center gap-2 px-10 pt-4 ${
               context === "dialog" ? "pr-14 lg:pr-10" : ""
             }`}
           >
@@ -654,7 +655,11 @@ const QuestView = (props: QuestViewProps) => {
             data-testid="quest-header"
             // `items-start`: the title wraps now, and the actions line up with
             // its first line rather than floating in the middle of three.
-            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-start gap-3 border-b px-10 pt-1.5 pb-3"
+            // `py-2.5`, the same above and below: pinned, the row stands
+            // alone under the top edge, and `pt-1.5 pb-3` left it sitting
+            // high. The chips row's `-mb-7` takes the extra 4px back, so the
+            // unscrolled spacing under the chips is unchanged.
+            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-start gap-3 border-b px-10 py-2.5"
           >
             {/* Card mount only. On the page the breadcrumb already walks up
                 and the arrow was redundant beside it, but in the kanban

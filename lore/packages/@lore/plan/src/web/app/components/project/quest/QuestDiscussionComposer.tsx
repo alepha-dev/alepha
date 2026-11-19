@@ -1,14 +1,19 @@
-import { Button, UserAvatar } from "@alepha/ui";
-import { currentProjectAtom, type I18n, LoreEditor } from "@lore/core/web";
-import { useAction, useClient, useStore } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
+import { Button } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
+import { DateTimeProvider } from "alepha/datetime";
+import { useAction, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, Paperclip } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import type { QuestCommentController } from "../../../../../api/controllers/QuestCommentController.ts";
+import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestCommentResource } from "../../../../../api/schemas/questCommentResourceSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import DiscussionAttachments, {
+  type DiscussionAttachment,
+} from "../discussion/DiscussionAttachments.tsx";
+import DiscussionComposer from "../discussion/DiscussionComposer.tsx";
 
 export interface QuestDiscussionComposerProps {
   quest: QuestResource;
@@ -38,6 +43,13 @@ export interface QuestDiscussionComposerProps {
  * selection toolbar, `[[#` completion over folios, quests, epics and
  * releases, and image paste straight into the quest's own attachments.
  *
+ * The layout is the shared `DiscussionComposer`, which a feedback item's
+ * thread uses too.
+ *
+ * **Files belong to the comment.** Attach files, or a pasted image, adds a
+ * tile above the box and goes out with the comment as its `attachments`: it
+ * is neither inlined into the body nor added to the quest's own files.
+ *
  * Everything follows from `element` - `useElementImageUpload` already has a
  * quest arm and `useElementLinks` already supplies the suggestions - so this
  * component holds no editor configuration of its own.
@@ -62,16 +74,72 @@ export interface QuestDiscussionComposerProps {
 const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
   const { tr } = useI18n<I18n, "en">();
   const commentApi = useClient<QuestCommentController>();
-  const auth = useAuth();
   const [project] = useStore(currentProjectAtom);
+  const questApi = useClient<QuestController>();
+  const dateTime = useInject(DateTimeProvider);
   const [body, setBody] = useState("");
-  const drafting = body.trim() !== "";
+  const [pending, setPending] = useState<DiscussionAttachment[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Files waiting to go count as a draft too: a refresh must not drop them.
+  const drafting = body.trim() !== "" || pending.length > 0 || uploading > 0;
   const onDraftChange = props.onDraftChange;
   useEffect(() => {
     onDraftChange?.(drafting);
   }, [drafting, onDraftChange]);
   // A draft left on a page being left must not hold the next one's refresh.
   useEffect(() => () => onDraftChange?.(false), [onDraftChange]);
+
+  // One file at a time ahead of the post, as a feedback comment does: the
+  // comment then carries ids, and a refused file is the server's sentence,
+  // toasted, without losing the ones before it.
+  const uploadAction = useAction<[files: File[]], void>(
+    {
+      handler: async (_ctx, files) => {
+        setUploading((n) => n + files.length);
+        try {
+          for (const file of files) {
+            try {
+              const uploaded = await questApi.uploadAttachment({
+                body: { file },
+              });
+              setPending((prev) => [
+                ...prev,
+                {
+                  id: uploaded.fileId,
+                  url: uploaded.url,
+                  name: file.name,
+                  mimeType: file.type,
+                  size: file.size,
+                },
+              ]);
+            } finally {
+              setUploading((n) => n - 1);
+            }
+          }
+        } catch (error) {
+          // The files after a refused one never started: drop their tiles.
+          setUploading(0);
+          throw error;
+        }
+      },
+    },
+    [questApi],
+  );
+
+  // A pasted image arrives as "image.png" every time, so it is named by
+  // hand, as in a feedback thread.
+  const onPasteFiles = (files: File[]) => {
+    const named = files.map((file, index) => {
+      const ext = file.name.includes(".")
+        ? file.name.slice(file.name.lastIndexOf("."))
+        : ".png";
+      return new File([file], `pasted-${dateTime.nowMillis()}-${index}${ext}`, {
+        type: file.type,
+      });
+    });
+    void uploadAction.run(named);
+  };
 
   // A `useAction` (#E59, #Q2328): a refused post is the server's sentence,
   // toasted by the root `ActionErrorToaster`, where it used to be an
@@ -81,69 +149,91 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
     {
       handler: async () => {
         const trimmed = body.trim();
-        if (!trimmed) return;
+        if (!trimmed && pending.length === 0) return;
         const created = await commentApi.createQuestComment({
           params: { id: props.quest.id },
-          body: { body: trimmed },
+          body: {
+            body: trimmed,
+            ...(pending.length > 0
+              ? { attachments: pending.map((file) => file.id) }
+              : {}),
+          },
         });
         setBody("");
+        setPending([]);
         props.onPosted(created);
       },
     },
-    [commentApi, body, props.quest.id, props.onPosted],
+    [commentApi, body, pending, props.quest.id, props.onPosted],
   );
-  const posting = postAction.loading;
+  const posting = postAction.loading || uploadAction.loading;
+  const canAttach = questApi.uploadAttachment.can();
 
   if (!project || !commentApi.createQuestComment.can()) return null;
 
   return (
-    // Same gutter as the rows above, so the composer reads as the next entry
-    // in the feed rather than a form bolted under it.
-    <div className="flex gap-3 px-1 pt-3">
-      <UserAvatar
-        public
-        fileId={(auth.user as { picture?: string } | undefined)?.picture}
-        className="mt-1 size-7 shrink-0"
-        alt=""
-      />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <LoreEditor
-          element={{
-            kind: "quest",
-            projectId: props.quest.projectId,
-            projectSlug: project.slug,
-            id: props.quest.id,
-          }}
-          // `field`, so the fixed format toolbar is on and the height is a
-          // box on a form rather than a document.
-          variant="field"
-          value={body}
-          onChange={setBody}
-          // ⚠️ A real freeze, not a `disabled` the editor would ignore: it
-          // reaches CodeMirror's own `readOnly` through the wrapper. The
-          // button below disables at the same moment, so the two agree.
-          readOnly={posting}
-          // ⚠️ The one surface that gets `@`, and the scoping IS the feature:
-          // `expandCommentReferences` and `MentionNotifier` only run over
-          // comments, so a picker on a description or a folio body would
-          // offer a handle that links nowhere and pings nobody.
-          mentionSuggestions={props.members}
-          minHeight={120}
-          placeholder={tr("quest.discussion.composer.placeholder")}
+    <DiscussionComposer
+      element={{
+        kind: "quest",
+        projectId: props.quest.projectId,
+        projectSlug: project.slug,
+        id: props.quest.id,
+      }}
+      value={body}
+      onChange={setBody}
+      onSubmit={() => void postAction.run()}
+      busy={posting}
+      canSubmit={body.trim().length > 0 || pending.length > 0}
+      members={props.members}
+      // Pasted images become the comment's attachments, never inline.
+      imageUpload={false}
+      onPasteFiles={canAttach ? onPasteFiles : undefined}
+      attachments={
+        <DiscussionAttachments
+          items={pending}
+          uploading={uploading}
+          disabled={posting}
+          onRemove={(id) =>
+            setPending((prev) => prev.filter((file) => file.id !== id))
+          }
         />
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            size="sm"
-            disabled={posting || !body.trim()}
-            onClick={() => void postAction.run()}
-          >
-            <Send className="size-4" />
-            {tr("quest.discussion.composer.submit")}
-          </Button>
-        </div>
-      </div>
-    </div>
+      }
+      actions={
+        canAttach && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              data-testid="quest-comment-file"
+              disabled={posting}
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                if (files.length > 0) void uploadAction.run(files);
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outlined"
+              disabled={posting}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadAction.loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Paperclip className="size-4" />
+              )}
+              {tr("discussion.attach")}
+            </Button>
+          </>
+        )
+      }
+      placeholder={tr("quest.discussion.composer.placeholder")}
+      submitLabel={tr("quest.discussion.composer.submit")}
+    />
   );
 };
 

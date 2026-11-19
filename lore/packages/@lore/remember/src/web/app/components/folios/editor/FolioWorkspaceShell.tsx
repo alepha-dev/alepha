@@ -1,4 +1,4 @@
-import { TreeViewResizer } from "@alepha/ui/tree";
+import { PaneResizer } from "@alepha/ui";
 import { currentProjectAtom, preloadMarkdownEditor } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useRouter, useRouterState } from "alepha/react/router";
@@ -108,15 +108,16 @@ const FolioWorkspaceShell = (props: FolioWorkspaceShellProps): ReactElement => {
     [chromeSlot, panes, inspectorTab, treeActions],
   );
 
-  // Three states, not two: hidden, a column (`contents`: the wrapper
-  // disappears and `FolioTree`'s own root becomes the flex child), or an
+  // Three states, not two: hidden, a column (a `relative` wrapper, so the
+  // shared `PaneResizer` sits on its edge and draws its border), or an
   // overlay drawer floating over the document on a viewport too narrow for a
   // third column. The tree stays MOUNTED through all three.
   const treeClassName = !panes.treeOpen
     ? "hidden"
     : panes.treeDrawer
       ? "bg-background absolute top-0 bottom-0 left-0 z-20 flex shadow-lg"
-      : "contents";
+      : // `relative`, for the resize handle positioned on its edge.
+        "relative flex min-h-0 flex-none";
 
   return (
     <FolioWorkspaceShellContext value={shell}>
@@ -156,8 +157,9 @@ const FolioWorkspaceShell = (props: FolioWorkspaceShellProps): ReactElement => {
               />
               {/* Inside the wrapper so the handle travels with the pane and
                   disappears along with it. */}
-              <TreeViewResizer
+              <PaneResizer
                 width={panes.treeWidth}
+                onResize={panes.setTreeWidth}
                 onWidth={panes.setTreeWidth}
                 minWidth={TREE_MIN_WIDTH}
                 maxWidth={TREE_MAX_WIDTH}

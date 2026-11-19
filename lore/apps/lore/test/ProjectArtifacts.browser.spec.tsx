@@ -1,4 +1,4 @@
-import { DialogProvider } from "@alepha/ui";
+import { DialogProvider, Toaster } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom, I18n } from "@lore/core/web";
 import { currentReleasesAtom, WorkShell } from "@lore/plan/web";
@@ -163,6 +163,8 @@ describe("ProjectArtifacts", () => {
         <AlephaContext.Provider value={alepha}>
           {/* The delete confirm is `useDialog`, which requires one. */}
           <DialogProvider>
+            {/* The delete is held behind an Undo toast. */}
+            <Toaster visibleToasts={20} />
             <ProjectArtifacts />
           </DialogProvider>
         </AlephaContext.Provider>,
@@ -651,15 +653,42 @@ describe("ProjectArtifacts", () => {
       links.args.filter((call) => call.name === "deleteArtifact");
 
     /**
+     * The Undo toast saying `text`. Scoped to that toast because sonner's
+     * store is module-level: an earlier test's toast can still be up.
+     */
+    const toastSaying = (text: string) =>
+      waitFor(() => {
+        const found = [
+          ...document.querySelectorAll("[data-sonner-toast]"),
+        ].find((toast) => toast.textContent?.includes(text));
+        if (!found) throw new Error(`no toast saying "${text}"`);
+        return found as HTMLElement;
+      });
+
+    /**
+     * The delete is held until its Undo toast closes: closing it by hand is
+     * what sends it.
+     */
+    const closeToast = async (text: string) => {
+      const toast = await toastSaying(text);
+      fireEvent.click(within(toast).getByRole("button", { name: /close/i }));
+    };
+
+    const rowGone = (tag: string) =>
+      waitFor(() => expect(screen.queryByText(tag)).toBeNull());
+
+    /**
      * Whether the one row's checkbox is ticked.
-     *
-     * ⚠️ Asserted instead of the "1 selected" pill going away. The pill also
-     * hides while a delete is busy, so waiting for it to vanish passes in the
-     * middle of the run whether or not the selection was ever cleared.
      */
     const rowTicked = () =>
       screen.getAllByRole("checkbox")[1].getAttribute("aria-checked") ===
       "true";
+
+    /**
+     * Whether a selection is still held. Read off the bulk bar's pill: the
+     * deleted row, and its checkbox with it, is off the table by then.
+     */
+    const selectionHeld = () => screen.queryByText("1 selected") !== null;
 
     it("offers row checkboxes and a Delete in the row menu with the permission", async () => {
       await show(listing([group()]));
@@ -733,6 +762,11 @@ describe("ProjectArtifacts", () => {
       const confirm = await askToDelete("1.0.0");
       fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
 
+      // The row leaves at once, and nothing is sent while Undo is offered.
+      await rowGone("1.0.0");
+      expect(deletes(links)).toEqual([]);
+      await closeToast("docs 1.0.0 (workerd, archive) deleted.");
+
       await waitFor(() => expect(deletes(links)).toHaveLength(1));
       expect(deletes(links)[0].args[0]).toEqual({
         params: {
@@ -747,6 +781,22 @@ describe("ProjectArtifacts", () => {
           links.calls.filter((name) => name === "listArtifacts"),
         ).toHaveLength(2),
       );
+    });
+
+    it("puts the row back on Undo and never sends the delete", async () => {
+      const { links } = await show(listing([group()]));
+      await screen.findByText("1.0.0");
+
+      const confirm = await askToDelete("1.0.0");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+      await rowGone("1.0.0");
+
+      const toast = await toastSaying("docs 1.0.0 (workerd, archive) deleted.");
+      fireEvent.click(within(toast).getByRole("button", { name: "Undo" }));
+
+      await screen.findByText("1.0.0");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(deletes(links)).toEqual([]);
     });
 
     it("names the copy running the tag, and says nothing when none does", async () => {
@@ -807,8 +857,11 @@ describe("ProjectArtifacts", () => {
         within(confirm).getByRole("button", { name: "Delete 1 artifacts" }),
       );
 
+      await rowGone("1.0.0");
+      expect(deletes(links)).toEqual([]);
+      await closeToast("1 deleted.");
       await waitFor(() => expect(deletes(links)).toHaveLength(1));
-      await waitFor(() => expect(rowTicked()).toBe(false));
+      expect(selectionHeld()).toBe(false);
     });
 
     it("clears the selection when a ticked row is deleted from its menu", async () => {
@@ -821,8 +874,12 @@ describe("ProjectArtifacts", () => {
       const confirm = await askToDelete("1.0.0");
       fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
 
+      // The selection clears with the click, before the held delete is sent.
+      await rowGone("1.0.0");
+      expect(selectionHeld()).toBe(false);
+      expect(deletes(links)).toEqual([]);
+      await closeToast("docs 1.0.0 (workerd, archive) deleted.");
       await waitFor(() => expect(deletes(links)).toHaveLength(1));
-      await waitFor(() => expect(rowTicked()).toBe(false));
     });
   });
 });

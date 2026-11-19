@@ -216,6 +216,7 @@ describe("primitive data-slots", () => {
       "pagination-item",
       "pagination-link",
     ],
+    "core/PaneResizer.tsx": ["pane-resizer"],
     "core/Popover.tsx": [
       "popover",
       "popover-content",

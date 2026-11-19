@@ -266,19 +266,19 @@ const ProjectArtifacts = () => {
   // here, so a rank that may not delete gets `[]` and the table exactly as it
   // was before: no column, and no selection with nothing to do.
   //
-  // Page-wide busy: the bulk bar has no disabled state, so it hides while a
-  // delete runs. The hook invalidates the listing, which is what refreshes
-  // the rows; `ctx.refresh()` would fetch nothing in static-data mode.
+  // The hook takes the rows off through `ctx.optimistic` and invalidates the
+  // listing once the held delete lands; `ctx.refresh()` would fetch nothing
+  // in static-data mode.
   const bulkActions: BulkAction<ArtifactRow>[] = deleteArtifact.can
     ? [
         {
           icon: Trash2,
           label: tr("board.bulk.delete"),
           destructive: true,
-          visible: () => !deleteArtifact.busy,
           onClick: async (selected, ctx) => {
-            if (!(await deleteArtifact.removeMany(selected))) return;
-            ctx.clearSelection();
+            if (await deleteArtifact.removeMany(selected, ctx)) {
+              ctx.clearSelection();
+            }
           },
         },
       ]
@@ -408,14 +408,13 @@ const ProjectArtifacts = () => {
                       icon: Trash2,
                       label: tr("artifacts.delete.action"),
                       destructive: true,
-                      disabled: () => deleteArtifact.busy,
                       onClick: (
                         item: ArtifactRow,
-                        { clearSelection }: RowActionContext,
+                        ctx: RowActionContext<ArtifactRow>,
                       ) =>
                         void deleteArtifact
-                          .remove(item)
-                          .then((done) => done && clearSelection()),
+                          .remove(item, ctx)
+                          .then((done) => done && ctx.clearSelection()),
                     },
                   ]
                 : []),

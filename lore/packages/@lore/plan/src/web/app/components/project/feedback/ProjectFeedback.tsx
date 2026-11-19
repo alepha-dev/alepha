@@ -280,12 +280,14 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
         {/* Left list */}
         <aside
           className={cn(
-            "flex w-full flex-col border-r md:w-[380px] md:shrink-0",
+            "bg-muted/40 flex w-full flex-col border-r md:w-[380px] md:shrink-0",
             active && "hidden md:flex",
           )}
         >
-          <div className="border-border flex items-center gap-2 border-b p-2">
+          {/* `h-14`, the detail header's own height, so the two bands line up. */}
+          <div className="border-border chrome flex h-14 shrink-0 items-center gap-2 border-b px-2">
             <Segmented
+              className="bg-background"
               value={status}
               // The address goes with it: the open item belongs to the
               // filter being left, so keeping the query would drag the
@@ -377,7 +379,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
           // by #Q2021 has to escape it rather than fit inside it, which is
           // the whole of what feedback #P2139 asked for.
           data-testid="feedback-detail"
-          className={cn("min-w-0 flex-1", !active && "hidden md:block")}
+          className={cn(
+            "bg-background min-w-0 flex-1",
+            !active && "hidden md:block",
+          )}
         >
           {active ? (
             <ProjectFeedbackDetail
@@ -410,9 +415,10 @@ export default ProjectFeedback;
 const FILTERS = ["pending", "accepted", "rejected"] as const;
 
 /*
- * The same three glyphs `ProjectFeedbackCard.statusIcon` puts on each row and
- * `ProjectFeedbackEmptyState` puts in its tile, so the segment, the rows it
- * filters to and the pane beside them are one vocabulary rather than three.
+ * The same three glyphs `ProjectFeedbackCard.statusIcon` puts on each row,
+ * `ProjectFeedbackEmptyState` puts in its tile and the detail's status chip
+ * carries, so the segment, the rows it filters to and the pane beside them
+ * are one vocabulary.
  */
 const FILTER_ICONS: Record<StatusFilter, LucideIcon> = {
   pending: Circle,
