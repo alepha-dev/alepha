@@ -72,6 +72,10 @@ export class SubscriptionService {
       throw new BadRequestError(`'${body.event}' takes no filter`);
     if (body.memberId && body.channelId)
       throw new BadRequestError("Name a member or a channel, not both");
+    if (body.notMine && body.channelId)
+      throw new BadRequestError(
+        "notMine: a channel has no actions of its own to skip",
+      );
     const held = await this.recipients.of(projectId, user);
     if (body.channelId) {
       if (!held.includes("subscription:manage"))
@@ -111,6 +115,7 @@ export class SubscriptionService {
       return this.resource(
         await this.rows.updateById(existing.id, {
           channels,
+          notMine: body.notMine === true,
           mutedAt: null as never,
         }),
       );
@@ -124,6 +129,7 @@ export class SubscriptionService {
           memberId,
           channelId: body.channelId,
           channels,
+          notMine: body.notMine === true,
           createdBy: user.id,
         }),
       );
@@ -186,6 +192,7 @@ export class SubscriptionService {
       ...(row.memberId ? { memberId: row.memberId } : {}),
       ...(row.channelId ? { channelId: row.channelId } : {}),
       channels: row.channels,
+      ...(row.notMine ? { notMine: true } : {}),
       ...(row.createdBy ? { createdBy: row.createdBy } : {}),
       ...(row.mutedAt ? { mutedAt: row.mutedAt } : {}),
       createdAt: row.createdAt,

@@ -139,6 +139,7 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
       name: event.name,
       subjectId: event.subjectId,
       fields: event.fields,
+      ...(event.actorId ? { actorId: event.actorId } : {}),
       numbers: { ...event.numbers, ...numbers },
     });
     let rows: Record<string, unknown>[] | undefined;
@@ -172,6 +173,10 @@ export interface SourceEvent {
    */
   subjectId?: string | number;
   fields: Record<string, unknown>;
+  /**
+   * The account whose action caused the event (`ProjectEventInput.actorId`).
+   */
+  actorId?: string;
   resourceId?: string | number;
   generatedIdField?: string;
   numbers?: Record<string, SQLLike>;

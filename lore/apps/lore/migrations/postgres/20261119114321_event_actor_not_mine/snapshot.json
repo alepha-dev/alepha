@@ -1,0 +1,68 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "de6d3be1-5b02-4bb2-b587-bcebf6682a25",
+  "prevIds": ["1fcceff6-6613-4d4e-b9ca-0ba0f3df2bde"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "event_subscriptions",
+        "not_mine"
+      ],
+      "writes": [
+        "s|col|public.event_subscriptions.not_mine",
+        "n|col|public.event_subscriptions.not_mine",
+        "e|col|public.event_subscriptions.not_mine"
+      ],
+      "reads": ["n|tbl|public.event_subscriptions", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_events", "actor_id"],
+      "writes": [
+        "s|col|public.project_events.actor_id",
+        "n|col|public.project_events.actor_id",
+        "e|col|public.project_events.actor_id"
+      ],
+      "reads": ["n|tbl|public.project_events", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "not_mine",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_events",
+        "name": "actor_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

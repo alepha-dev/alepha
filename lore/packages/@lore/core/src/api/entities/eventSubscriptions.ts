@@ -48,6 +48,11 @@ export const eventSubscriptions = $entity({
       { onDelete: "cascade" },
     ),
     channels: z.array(subscriptionChannelSchema).max(2),
+    /**
+     * A member's row skips the events their own action caused (#Q3916): a
+     * report they filed themselves. Meaningless on a channel's row.
+     */
+    notMine: db.default(z.boolean(), false),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),

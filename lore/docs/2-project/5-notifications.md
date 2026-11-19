@@ -115,6 +115,10 @@ status.
 - **Notify**: **Me**, another member, or one of the project's channels.
 - For a member, **In the app** and **By email**, one or both.
 
+From the command line or an agent, a member's subscription can also skip the
+events that member caused, such as a report they filed themselves:
+`--not-mine` on `lore subscription set`, `not_mine` on `subscription_set`.
+
 Each row's menu has **Pause** (then **Resume**) and **Stop**, and both act on
 a selection of rows too. A paused subscription keeps its place and sends
 nothing until it is resumed.

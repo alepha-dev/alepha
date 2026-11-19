@@ -46,4 +46,10 @@ export const subscriptionSetParamsSchema = projectParamsSchema.extend({
     .max(2)
     .describe("For set with a member: in the app, by email, or both (inapp).")
     .optional(),
+  not_mine: z
+    .boolean()
+    .describe(
+      "For set with a member: skip the events that member caused, such as a report they filed. Not on a channel.",
+    )
+    .optional(),
 });

@@ -32,6 +32,12 @@ export const projectEvents = $entity({
     subjectKind: z.string().min(1).max(32),
     subjectId: z.string().max(255).optional(),
     fields: projectEventFieldsSchema,
+    /**
+     * The account whose action caused the event, when one did (#Q3916): a
+     * feedback's reporter. Read by a subscription's `notMine`. No foreign
+     * key: an event outlives the account, and nothing joins on it.
+     */
+    actorId: z.uuid().optional(),
     occurredAt: z.datetime(),
   }),
   indexes: [

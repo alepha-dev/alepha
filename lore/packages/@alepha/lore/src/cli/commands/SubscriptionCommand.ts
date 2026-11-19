@@ -84,6 +84,7 @@ export class SubscriptionCommand {
                 : `member ${row.memberId}`,
               ...(row.filter ? [`filter ${row.filter}`] : []),
               ...(row.channels.length ? [row.channels.join(", ")] : []),
+              ...(row.notMine ? ["not mine"] : []),
               ...(row.mutedAt ? ["muted"] : []),
             ],
           })),
@@ -127,6 +128,12 @@ export class SubscriptionCommand {
       channels: z
         .text({ description: "inapp, email, or inapp,email (default inapp)." })
         .optional(),
+      "not-mine": z
+        .boolean()
+        .describe(
+          "Skip the events the member caused, such as a report they filed.",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -167,6 +174,7 @@ export class SubscriptionCommand {
             ...(flags.filter ? { filter: flags.filter } : {}),
             ...(flags.member ? { memberId: flags.member } : {}),
             ...(flags.channel ? { channelId: flags.channel } : { channels }),
+            ...(flags["not-mine"] ? { notMine: true } : {}),
           },
         });
         if (flags.output === "json") this.render.json(print, row);

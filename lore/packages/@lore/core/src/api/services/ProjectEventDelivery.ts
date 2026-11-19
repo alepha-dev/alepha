@@ -147,6 +147,8 @@ export class ProjectEventDelivery {
         continue;
       }
       if (!row.memberId) continue;
+      // What the member did themselves, skipped on request (#Q3916).
+      if (row.notMine && event.actorId === row.memberId) continue;
       const refusal = await this.recipients.refusal(
         event.projectId,
         row.memberId,
