@@ -133,8 +133,9 @@ it comes back.
 
 **Unshelve** brings back exactly the quests the shelve set aside, as to do and
 unassigned. A quest that was shelved on its own before stays shelved. The epic
-returns to in progress if work on it had started, and to ready otherwise, a
-shelved draft included.
+returns to in progress if work on it had started, and to draft otherwise, a
+shelved ready epic included: a plan back from the shelf is reviewed again, and
+its quests are workable once you mark it ready.
 
 Shelving one quest at a time is still how a single piece of work is declined.
 Shelving them all that way completes an in-progress epic, which says the work

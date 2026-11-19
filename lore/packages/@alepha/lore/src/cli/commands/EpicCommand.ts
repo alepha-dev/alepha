@@ -465,7 +465,8 @@ export class EpicCommand {
 
   public readonly unshelve = $command({
     name: "unshelve",
-    description: "Bring a shelved epic back, with the quests its shelve took",
+    description:
+      "Bring a shelved epic back, with the quests its shelve took: in progress if it had started, else a draft to mark ready again",
     args: EpicCommand.REF_ARG,
     flags: z.object({ ...EpicCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
     handler: async ({ args, flags, print }) => {
