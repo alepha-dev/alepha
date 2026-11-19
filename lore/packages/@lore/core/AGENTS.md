@@ -114,7 +114,7 @@ and Team reads core's activity dataset.
 **Three rules that are decisions, not accidents.**
 
 - **Disabling HIDES, it never deletes.** Every quest, folio and feedback item survives its capability being turned off, and comes back untouched when it returns. Reads of existing data stay allowed; only writes refuse.
-- **A CAPABILITY guards its routes; an OPTION does not.** `/quests`, `/folios` and `/apps` 404 without theirs, and `/feedback` without Plan's `feedback` option: the one option that guards its route, because it was a capability (Support) until #E143. `/kanban`, `/epics` and `/releases` have no guard at all - a saved link keeps resolving and the sidebar is what stops offering them. `test/route-capability-guards.spec.ts` pins both halves. The Automations routes require `automation:read` alone: automations are Core since #Q3629, owned by no capability, and each event, selector and preset is gated by its own `needs`. The owner-only diagnostics panel that kept rules readable with the option off is gone with it (#Q3595): the automations page lists every rule, its health and its author.
+- **A CAPABILITY guards its routes; an OPTION does not.** `/quests`, `/folios` and `/apps` 404 without theirs, and `/feedback` without Plan's `feedback` option: the one option that guards its route, because it was a capability (Support) until #E143. `/kanban`, `/epics` and `/releases` have no guard at all - a saved link keeps resolving and the sidebar is what stops offering them. `test/route-capability-guards.spec.ts` pins both halves. **Settings ▸ Notifications** is Core, owned by no capability: each event is gated by its own `needs` and shows as Unavailable without it.
 - **Routes answer 404, the API answers 400.** A page under a disabled capability does not exist; a write into one is a request the project understands and declines, and the refusal names the capability and where to turn it on.
 
 **Settings has no floor.** Every capability may be turned off, the last one
@@ -610,401 +610,114 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 Organization membership, rank definitions, and invitations are owned by `alepha/api/organizations`; Lore's own `members`, `rank_definitions` and `invitations` tables were dropped with #E74.
 
-## Automations are graphs, read as outlines (#E155, #E156)
+## Project events and subscriptions (#E159)
 
-An automation's `rule` column holds a graph (`automationGraphSchema`, version
-2): `nodes` of a `kind` (`source`, `read`, `condition`, `action`; `transform`
-is reserved for a later epic and refused today) with a `type`, a `config`, and
-on a source its own `enabled`; `edges` from a node's `port` (`out`, or `true` /
-`false` from a condition) to another node. A node has **no position** (#Q3852):
-the node schema is strict and refuses one, and the
-`20261118003813_automation_positions_out` migration stripped the stored rows.
-The v1 four-slot rule, its runs and receipts were deleted by the #Q3805
-migration.
+Lore tells people and systems that something happened; it runs nothing for
+them. The automation engine (graphs, schedules, conditions, actions, shared
+variables) was deleted by #E159 (spec #F1526): a schedule or a multi-step
+reaction is a scheduled agent session over MCP, or a webhook channel. Do not
+grow events into rules again: no condition, no editable message, no action on
+Lore data.
 
-- **`AutomationGraph`** (`api/schemas`, browser-safe) is the one validator,
-  run by the server on every write and by the editor on every change: kinds
-  and types from the catalog, wiring rules (nothing into a source, a read
-  only after a schedule, a schedule alone and followed by exactly one read, no
-  condition after an action, no cycle), every node reached, the names a node
-  may use (the intersection of its reaching sources' fields, plus the
-  outputs of actions on every path to it), and the caps: 8 sources, 40 nodes,
-  5 actions reachable from one source, 8 channels per notification.
-- **Every stored graph is an outline** (#Q3845): `checkShape`'s four rules
-  make it a list of blocks. One way in (a second incoming wire only when every
-  one comes from sources with the same targets: one block's events); a source
-  or a schedule's read leads to one condition or to actions, never both; a
-  condition leads to actions only; an action has at most one next action.
-  `shape(graph)` runs them alone, and `AutomationDependencies` reads a stored
-  graph they refuse as **broken** (built with the canvas, not converted).
-  `structure(graph)` is what the projection needs, with no catalogue and no
-  node configuration checked, so an editor's half-filled draft still reads.
-- **`AutomationOutline`** (`api/schemas`, browser-safe) is the projection,
-  never a second stored form: `read(graph)` gives the blocks (`events`, `read`,
-  `condition`, `sequences` for Then and `otherwise`, in the order
-  `AutomationGraph.order` runs them) or why it is not an outline, never a
-  throw. ⚠️ The Then side is `sequences`, not `then`: lint's `no-thenable`
-  refuses a `then` key. Its pure edits (add or remove an event, a condition,
-  an action, a step, a block; `setConfig`, `setType`, `setEnabled`, `merge`)
-  each return a graph that is an outline again; removing a condition keeps
-  Then and drops Otherwise. New ids (`z-<type>`, `zz-<type>`...) sort after
-  every existing id as strings, so a new sequence runs and shows last. It also
-  holds `fold` (a run's outcomes per node), `unfilled` (the required fields a
-  draft leaves empty, held against `compile` by
-  `automation-outline-required.spec.ts`) and `nodeOf` (the node a refusal
-  names, in its three forms).
-- **A run starts at one source and walks its subgraph** (#Q3804). The run's
-  snapshot freezes that subgraph, the conditions' ports and one step per
-  action and channel; a step's id is its node (receipts carry `node_id`). A
-  failed step stops only what follows it on its path; an unknown outcome or a
-  loss of authority stops the run; a vanished target refuses only its step.
-- **Outputs** (#Q3814): a descriptor's `outputs` name what an action gives
-  the actions after it (`created_quest_id`, `appended_folio_id`); a consumer
-  of an output its producer did not give is skipped and says so.
-- **Each source has its own switch and health** (#Q3806): `node.enabled`, and
-  `automations.source_health` beside `health`, outside the revision.
-  `AutomationDependencies` breaks a source whose own needs, or every path
-  from it, are gone; the automation is broken only when every enabled source
-  is, and its resource is redacted only when every source is unavailable to
-  the reader.
-- **Runs name their source** (`automation_runs.source_node`) and derive what
-  each node did from the frozen plan (`AutomationGraph.outcomes`), never
-  stored twice (#Q3807). Run test takes the source to start at.
-- **Presets build graphs** with `AutomationGraphBuilder` (`line`, `compact`);
-  a bell is one automation whose sources are its presets' merged nodes, ids
-  `<presetKey>.<id>`, one block per preset (#Q3808). `draftAutomationFromPreset`
-  builds a preset without storing it, for the editor (#Q3812). A preset's
-  catalog `sketch` is the line its block folds into (`source`, `read`,
-  `condition`, `action`, `more`), types only (#Q3851).
+### A change and its event: `GuardedBatch` (#Q3899)
 
-## Automation notification delivery (#E43, #Q2030)
+D1 has no transaction, so a change and what must be written with it go in one
+native batch: `GuardedBatch.guarded(condition, statements)` opens with a row in
+`batch_guards` whose id is NULL when `condition` is false. The table's CHECK
+refuses it and the whole batch aborts, so a lost version or claim predicate is
+a rollback, not a zero-row update followed by an unguarded insert.
+`LoreDatabase.batch` (1 to 100 statements, on the primary) runs it, and turns a
+driver error into a bare `Atomic batch failed`, since a driver message may
+carry bound values. A failed batch cannot say whether its guard was false or the
+driver failed: `GuardedBatch.holds(condition)` asks the database, and only a
+false guard is a refusal a caller may skip.
 
-`AutomationNotifications` renders through the shared typed renderer and enqueues
-one `system.notifications.send` outbox execution per recipient and channel.
-The execution, trusted job-origin marker and automation effect receipt commit
-in one native batch. `AutomationBatchRepository.insertStatement` reuses the
-normal job entity codecs and the registered job supplies schema and retry
-policy. Dispatch happens after commit; a lost acknowledgement leaves a pending
-row for the normal job sweep. Never send directly from an automation adapter.
+`SourceRepository` (`sourceCreate`, `sourceUpdate`, `sourceSave`) is the way a
+source row changes with its event: the mutation and `ProjectEvents.emit`'s
+statements in one guarded batch, then `recorded.committed()`. A false guard
+comes back as a `ConflictError` ("Source transition was already recorded"),
+which the callers (epic completion among them) catch.
 
-Inbox and email use separate, explicitly named templates for each category.
-Only transports with a registered automation adapter, compatible templates and
-an affirmative configuration check are offered. Optional sink templates keep
-their destination in trusted server configuration, never in rule prose or an
-outbox payload. Addressable channels resolve a current project member ID to a
-current contact. Inbox-only accounts without email use `lore-user:<uuid>`,
-resolved by `LoreInboxRecipientProvider` and the normal preference provider.
+### Events: `ProjectEvents` and `ProjectEventCatalog` (#Q3889)
 
-Every enqueue carries `LoreInboxNotifications.lang` explicitly (`en`). Accounts
-have no recipient language field. Custom subject and plain-text prose remain
-verbatim. HTML is escaped once by `AutomationTemplateRenderer`; the email
-template adds only a fixed whitespace-preserving wrapper, whose bytes are
-reserved in the renderer's 16 KiB budget. The `automations` preference category
-is offered by the real template registry and account settings. Release output
-retains `releases`; the wire category `reminders` maps to the existing `tasks`
-preference category. Release rosters exclude publishers; the adapter also accepts an explicit publisher exclusion for a single delivery.
+- `project_events` holds one row per event: name, subject kind and id, the
+  fields its message reads, and when it happened. Kept 30 days, pruned by
+  `ProjectEventJobs`.
+- `ProjectEvents.emit` is async and returns `{ id, statements, committed }`. It
+  adds a `project-events.deliver` job row only when an unmuted subscription
+  exists for that event, so an event nobody follows costs one insert. Delivery
+  is dispatched after the commit; the job sweep recovers a lost dispatch.
+- `ProjectEventCatalog` holds the definitions. Plan registers its own
+  (`WorkProjectEvents`), Ship its own (`ShipProjectEvents`); a source injects
+  its package's registration class, so a spec booting one package still knows
+  its events. Each definition is also a framework `$webhook`, registered by hand
+  through `WebhookService.register`.
 
-The normal sender applies current suppression and preference gates at send time.
-`AutomationNotificationSender` additionally rechecks the author, rule revision,
-source permission, member and contact before deferred disclosure. A recipient
-who is no longer eligible is skipped without pausing unrelated roster delivery.
-Transport retries and delivery receipts remain the framework's responsibility.
-A committed enqueue is `queued`, never proof of delivery. Email `sent` means
-transport acceptance; provider-confirmed `delivered`, skipped and failed remain
-distinct. An inbox row is delivery. Dry-run preparation writes no outbox row,
-receipt, baseline, notification, audit or health transition.
+**Adding an event** takes, in its package's registration class:
 
-## Automation domain effects (#E43, #Q2031)
+1. a catalog entry: `name` (`resource.verb`, matched by the job and webhook
+   name rules), `label`, `resource`, `subject`, `fields`;
+2. `needs`: the capability, and the option when there is one, so the event is
+   **Unavailable** where it cannot fire;
+3. `permission`: the read permission a recipient must hold, checked at
+   delivery by `ProjectRecipients`;
+4. `filter` when it narrows to one subject (`{ field: "host_id", resource:
+   "host" }`), with its options for the form;
+5. `message(fields, lang)`: the fixed title and text, in English and French;
+6. the `emit` beside the write, through `SourceRepository` or a guarded batch,
+   never after it;
+7. the EN and FR labels `notifications.event.<name>`.
 
-`AutomationDomainActions` registers exactly four feature-owned adapters. They invoke
-the normal server actions directly inside `AutomationMutationContext`, retaining
-normal validation, ownership checks, defaults and lifecycle hooks. The context
-reuses driver codecs and repository hooks at the root mutation seam. It commits
-that root, its native folio revision changes, its audit and its action receipt in
-one guarded batch. Resource versions, release state, revision head and current
-author authority are checked again at that boundary.
+### Subscriptions and channels (#Q3890, #Q3891, #Q3900)
 
-Native automation audits are an explicit exception to the ordinary best-effort
-audit tail: every effective operation records one audit with author, automation,
-run and operation identity atomically. The normal controller tail recognizes it
-and only emits the best-effort activity point. A crash in a later lifecycle hook
-cannot erase a committed effect; retry reconciles its receipt without repeating
-the controller. Earlier effects are retained when a later step refuses.
+- `event_subscriptions`, unique on `(projectId, key)`: `key` is
+  `event|filter|member:<id>` or `event|filter|channel:<id>`. A row names a
+  member with channels (`inapp`, `email`) or one project channel, and can be
+  muted.
+- Permissions: `subscription:read` sees every row, `subscription:manage`
+  subscribes another member and manages channels. Without them a member sees
+  and changes only their own rows. `ProjectPermissions` special-cases
+  `subscription:` only.
+- `ProjectRecipients.refusal` is checked at delivery, not at subscription: a
+  former member, a disabled account, or a missing read permission receives
+  nothing, silently.
+- `ProjectEventDelivery` runs one memoised step per subscription and channel.
+  In-app goes to contact `lore-user:<id>`; email through the member's
+  preferences (category `notifications`); Discord through the
+  `lore:project-event:discord` template; a webhook through
+  `WebhookOutbox.enqueueIds`, with the envelope id equal to the event id, so a
+  receiver dedups retries on `webhook-id`.
+- `notification_channels` (renamed from the automation channels) holds the
+  project's Discord and webhook channels; `ProjectChannelService` and
+  `ProjectChannelController` (`/projects/:projectId/channels`, secret rotation)
+  own them. A webhook channel is backed by a framework `webhook_endpoints` row
+  scoped `project:<id>`. A URL never travels through MCP or the CLI.
 
-`preview` performs the same target validation without invoking a controller or
-allocating an identifier. Large folio bodies stay in domain storage and revision
-history, never in automation snapshots. Trusted downstream job markers retain
-run and operation identity as well as automation identity.
+### The hourly job (#Q3893, #Q3894)
 
-## Automation enable intent and health (#E43, #Q2034)
+`HourlyJobs` runs `project-events.hourly` on `0 * * * *` and calls every check
+registered with `HourlyChecks`: Plan's quest reminders (`QuestReminders`, one
+indexed query on `reminderNextAt`, claimed in a guarded batch, `quest.reminder_due`
+recorded with it) and Ship's open-errors threshold (`ProjectThresholds`). A
+check must be cheap when nothing is due. Thresholds are edge-triggered: an
+armed flag fires once, and rearms when the value comes back or the threshold
+changes.
 
-`AutomationHealth` keeps the enable switch separate from dependency health.
-Disabled rules display disabled. Capability, option, vocabulary and channel
-loss mark otherwise valid rules broken; restoration revalidates without
-changing enable intent. Author, permission, credential, shared-variable review
-and unknown-effect pauses retain their review flag until a valid explicit
-re-enable. `inspect` is read-only, including refusals.
+### Surfaces
 
-Capability changes immediately revalidate project rules in pages. The fixed
-five-minute dispatcher also reconciles at most 50 rules per tick, ordering by a durable
-last-checked value so process restarts cannot strand later rules. Runtime checks use
-fresh primary reads before every effect. Native transition batches bind the
-state change and its single run-evidence record under the rule version fence;
-unchanged states produce no record. Membership removal and foreign shared
-variable edits use this same transition path.
+- Web: **Settings ▸ Notifications** (`ProjectSettingsNotificationsPage`, the
+  **Channels** tab `ProjectSettingsNotificationChannelsPage`) and
+  `SubscriptionBell`, the bell on a monitor, a host, Apps, Releases and the
+  Feedback inbox: a shortcut to the same rows.
+- MCP: `event_catalog`, `event_list`, `subscription_list`, `subscription_set`
+  (`NotificationTools`); CLI `lore event`, `lore subscription`. They call the
+  services the page's actions call.
 
-## Shared automation evaluation (#E43, #Q2033)
+### Retired, until #Q3902
 
-`AutomationEvaluator` owns read-only source selection, typed binding, guards,
-rendering and target preflight for both test reports and live activation. It
-reconstructs the immutable author's current authority. A preview caller must
-also hold current source-read access; shared resource values are redacted when
-that caller cannot inspect them. Refusals never call health reconciliation.
-Prospective event subjects are stable same-project IDs projected by their owning
-feature. Historical tests use retained event/run snapshots and refuse retired
-payloads. They never substitute current data for an unavailable historical input.
-
-The typed report names its evaluation time, source provenance, counts, no_data,
-resolved native values and exact bounded operations. Notification operations
-include the actual rendered body and remain planned enqueues, not delivery
-confirmations. Report-size omissions are explicit. The 64 KiB snapshot gate
-applies before any live effect. Collections retain their item fields separately
-from collection summary fields, with truthful exact or lower-bound totals.
-
-`AutomationWorkerJobs` resumes a durable occurrence through the normal queue
-and reschedules after at most five ordered steps. `AutomationWorker` freezes
-plans before effects, walks the run's subgraph in topological order, observes
-crossings once, reconciles committed receipts before retry, stops the steps
-after a failure on its own path, and stops the run on an unknown outcome or a
-loss of authority. Runs split
-at 100 recipient-channel attempts while retaining the same selected contexts,
-configuration revision and operation identities. Ordinary selectors never fetch
-a hidden fifty-first row. Queued edits, disables and soft deletions refuse the
-old occurrence. Native chunks repair interrupted run switches.
-
-The fixed dispatcher rotates recovery/event/schedule priority by UTC tick,
-preserving its global 50-claim budget across cold starts. Event filtering loads
-at most 50 shared app bindings in one page read; current-author validation and
-expensive target reads belong to the bounded worker.
-
-## Automation authoring boundary (#E43, #Q2527)
-
-`AutomationService` and `AutomationVariableService` own policy for the HTTP actions
-and MCP tools. Client writes carry an expected configuration revision; variable
-writes also carry the immutable variable UUID and version. Clients never supply
-an author or credential. An automation is created disabled, a draft, unless
-the create asks for `enabled: true` (the web gallery's **Create and enable**,
-#Q3573). A manager can stop or delete another author's automation, and switch
-one of its sources off, but cannot rewrite or enable it. A write whose every
-enabled source lacks what it needs is a 400 naming the source (#Q3811).
-
-Authoring and effects reconstruct current account, membership, rank and capability
-permissions. API keys retain their immutable key identity; OAuth rules retain the
-revocable signed session identity and original concrete scope ceiling. OAuth
-validation reads only public grant columns and current realm settings without
-seeding a parameter or reading refresh tokens. Cached request scopes never replace
-these live checks.
-
-A rule stores each approved shared variable UUID and version. Native conditional
-configuration batches fence approval, audit and revision changes against current
-rows. Variable edits additionally fence the complete consumer set and advance
-same-author approvals only after full validation. Other authors' consumers pause
-for explicit approval. The independent activation timestamp rejects delayed
-source events from before the latest enable or configuration change.
-
-Configuration mutations and their sanitized audit commit in the same native
-batch. The audit follows the existing finite project audit policy; executable
-bodies, variable values and credentials never enter its metadata. Detailed run
-payloads retain their separate 30-day policy. Soft deletion preserves that history
-while revision checks cancel queued and following effects.
-
-## Automation MCP authoring (#E43, #Q2035)
-
-`AutomationTools` resolves project titles, slugs and IDs through `ProjectTools`
-and calls the shared application services with the authenticated current caller.
-Strict input schemas reject author or credential injection. CRUD responses use
-the same complete, redacted public DTOs as HTTP. A graph is written as `nodes`
-and `edges`, which must read as an outline, or compactly as `sources` and
-`actions` (every source wired to every action), through
-`AutomationGraphParams`; a node with a position is refused. Configuration
-updates, explicit enable
-changes and `automation_source_set` are separate revisioned calls; managers
-retain only foreign-automation stop and delete controls. Creation is a draft
-unless `enabled: true` is passed. The `lore automation` commands mirror them
-(`--graph`, or `--source` and `--action`).
-
-Variable tools expose immutable IDs, versions, bounded pages and a dedicated
-`automation_variable_dependents` read. Set reports affected consumers; delete is
-unused-only. Catalogue discovery and zero-write preview are available to compose
-and inspect typed release append-and-notify rules before enabling them.
-
-## Automation run reads (#E43, #Q2036)
-
-`AutomationService.run` first authorizes the retained source and variable values.
-Only then does it join bounded live notification outcomes. The persisted action
-snapshot keeps its enqueue result; `notifications` on the public run DTO reports
-current queued, sent, delivered, skipped, failed or unknown transport evidence.
-Inbox `sent` becomes delivered; email `sent` remains transport acceptance.
-Redacted runs expose neither receipt identities nor delivery lookups.
-
-`AutomationNotificationOutbox.statuses` reads at most 100 executions and their
-receipts in two primary queries, preserving pending-retry state separately from
-the last attempt. `automation_runs` delegates to shared offset pagination,
-including retained history for soft-deleted rules. MCP catalogue and preview
-preserve the HTTP service's current permission gates and complete schemas.
-
-## Automations UI (#E43, reworked by #Q2684)
-
-Every page under `/automations` but the list renders through `AutomationPage`
-(a bordered header with title, badge and actions, then a scrolling body), is in
-`ROUTES_FULL_WIDTH`, and its crumb reads "Automations" linking back to the list
-(`SECTION_HREF_ROUTES`). The words for triggers, schedules and states come from
-`useAutomationLabels`, so the list, the gallery and the detail page agree.
-
-- **List** (`AutomationOverviewPage`): the house `DataTable` (Releases, Apps).
-  Primary **New automation**, icon actions for Shared variables and Built-in
-  notifications, row click opens the automation, Enable / Disable / Delete in the row
-  menu. Bounded server pages through a project-keyed `QueryCache.dedupe`; the
-  total stays unknown. Both writes refresh on success AND failure, so the row
-  never shows an unconfirmed state (a revision conflict included).
-- **Presets** (`AutomationGalleryPage`): the presets this project, rank and
-  configured channels allow, as cards, each with the one line its block folds
-  into (`AutomationOutlineFolded`, the component a folded block uses, from the
-  catalog's configuration-free `sketch`). A card opens its inputs in place;
-  **Create and enable** saves the automation enabled in one write (#Q3573),
-  **Save as draft** saves it disabled, and **Open in editor** opens it unsaved
-  in the editor.
-- **Preset inputs** (`AutomationPresetForm`): a field belongs to the rule unless
-  **Share with other automations** is chosen, which reveals the
-  only-this-rule / shared / new-shared choice. Explicit binding carries the
-  variable UUID, key and version; a created variable stays selected by identity
-  if rule creation then fails, so a retry cannot replace its key. Conditional
-  validation lives in the managed handler (the vendored `FormModel` builds on
-  Zod `partial()`, which rejects object refinements).
-- ⚠️ **A `FormValidationError` path starts with a slash** (`"/recipient"`).
-  Without it the error reaches no field and the form fails silently, which is
-  how every setup refusal shipped with #E43.
-- **Pickers** (`useAutomationOptions`): `ControlSelect` loaders over
-  `getAutomationSetupOptions`, which takes `search` (label contains, wildcards
-  escaped by the ORM's `contains`) and `ids` (comma-separated, resolved to
-  labels). `loaderThreshold` is 49 against the endpoint's 50 cap, so a full page
-  switches the picker to server search. `useAutomationOptionLabels` names saved
-  members and folios in read-only summaries. Never page a picker with
-  Previous / Next buttons.
-- **The outline** (`web/.../automations/outline/`, #E156): one component
-  family in three modes, from `@alepha/ui` blocks, one component per file. A
-  block is a `Card` of sections (`AutomationOutlineSection`): When (primary),
-  Only if (warning), Then, read Do without a condition (tone `do`, success),
-  Otherwise (neutral), each with a coloured rail and a solid label, on a tinted
-  ground (`AutomationOutlineTones`). A row (`AutomationOutlineRow`) shows icon,
-  label and a one-line summary with placeholders as chips, and opens in place.
-  Several blocks start folded into one line each (`AutomationOutlineFolded`).
-  No node id, port or wire is shown anywhere. `useAutomationOutlineNames`
-  (members, folios, channels) is called by the page and passed down.
-- **Automation page** (`AutomationDetailPage`): header Edit / Delete /
-  Enable or Disable; the read-only outline (`AutomationOutlineView`), where a
-  row opens to its whole configuration and an event's switch calls
-  `setAutomationSourceEnabled` at once; a graph that is not an outline shows
-  `AutomationOutlineNotice` with Delete instead; `AutomationTestPanel` is the
-  zero-write dry run from a chosen source; `AutomationRunList` below.
-- **Editor** (`AutomationOutlineEditor`, #Q3848): one draft per page
-  (`useAutomationDraft`, with undo and redo), the graph, saved against the
-  revision opened; only a 409 offers Discard draft and reload. Every change is
-  an `AutomationOutline` edit. A row opens into its form in place
-  (`AutomationOutlineEventForm`, `AutomationOutlineConditionForm` over
-  `AutomationOutlineConditionFields`, `AutomationOutlineActionForm` over
-  `AutomationActionEditor`); placeholder chips (`AutomationOutlinePlaceholders`)
-  write into the last focused field through `useAutomationOutlineInsert`. An
-  event's switch is part of the draft; the automation's own switch stays on its
-  page. `AutomationPage`'s `wide` gives the editor its aside
-  (`AutomationOutlineAside`, #Q3849): In plain words, Before you save (the
-  graph's check and `AutomationOutline.unfilled`, each line opening its row; a
-  missing field is a warning, a refusal at Save an error), How it runs. Save
-  waits for an empty list. Run test reads "Save to test" while the draft is
-  dirty. Leaving a dirty draft asks first (`useAutomationLeaveGuard`: the
-  router has no blocker, so in-app link clicks are caught on their way down).
-  A phone edits.
-- **New automation** (`/automations/new`, #Q3812): the editor on an unsaved
-  draft, empty on "Choose what starts it" with presets as quick starts (Start
-  from scratch), or a preset's graph (Open in editor, handed over through
-  `automationDraftAtom`); the first save creates it disabled. "Add another
-  event with its own actions" adds a block, empty or from a preset.
-- **Run page** (`AutomationRunPage`): the outline of the run's frozen
-  subgraph, one block, with one outcome badge per row
-  (`AutomationOutline.fold`); a side no item took is dimmed, both stay lit
-  when a run over several items took both. `AutomationRunEvidence` below.
-- **Deleted with #E156**: the React Flow canvas (`canvas/`, `@xyflow/react`),
-  node positions and `AutomationGraph.layout`, the palette, the wire refusals,
-  the wire list and the preset SVG sketch.
-- **Variables and runs**: shared variables keep UUID/version stamps after a
-  write, list their users and delete only when unused; exact-key links filter
-  the list. Run pages separate frozen per-action enqueue intent from live
-  transport receipts and explain the 30-day detail and 90-day replay windows.
-
-The Trigger column reads the resource's `sources` (the first two, then
-"+N", and how many are switched off); the list reads no graph.
-
-Catalogue sources, action kinds and guard operators are named through
-`automation.source.*`, `automation.action.*` and `automation.operator.*`, all
-in `alepha.config.ts`'s `dynamicPrefixes`; an unknown key falls back to itself.
-
-Preset creation compares the submitted variable stamps with its freshly prepared
-approvals before the native configuration fence commits, so a recreated key or a
-concurrent edit refuses creation, and no preset path silently overwrites a
-shared key. Feature builders receive explicit binding tokens separately from
-validated native values; numeric programs use the same token in their guard and
-threshold text. Code presets construct ordinary disabled rows with a preset
-origin; editing the code never rewrites existing configuration.
-
-`AutomationReferences.registerOptions` lets each feature own its picker pages
-and their read permission; `AutomationSetupOptions` reconstructs the caller's
-current ceiling first. Members, folios, distinct app names and prospective event
-records expose labels and IDs, never document bodies or raw deployment logs.
-
-## Automation retention, faults and deletion (#Q2685)
-
-- **Every project records its events.** Automations are Core since #Q3629, so
-  the `automation_events` insert carries no capability condition: a project
-  without Plan can still hold deploy and uptime rules.
-- **Every prune loops** page by page until a short page, capped per run (20
-  pages; `expireReady` 2). A run page is 50 ids: D1 refuses more than 100 bound
-  values per statement, and the run prune binds a few beyond its ids.
-- **A version in an update patch is not a fence.** `Repository.updateOne`
-  keeps only `id` in the WHERE and bumps `version` itself, so lease and run
-  writes go through `swapReceipt` / `RunEvidence.swap` (`{ id, version }` in the
-  where, a miss is a conflict).
-- **Only a refusal pauses a rule.** `AutomationAuthority.checkPrimary` pauses on
-  `AutomationDependencyError`, a missing row or a non-database 4xx; a transient
-  driver fault is rethrown with no health transition.
-- **A failed reserve skips one rule.** `GuardedBatch.holds` re-asks the
-  guard after a failed batch: a guard that no longer holds is a
-  `ConflictError`, which the schedule sweep and event dispatch skip per rule.
-- **A busy rule reschedules.** When another occurrence of the same rule is
-  claimed, the worker extends its own ready lease and the job comes back after
-  at most 30 seconds, instead of evaluating and waiting for lease expiry.
-- **Deleting an author** refuses only while they own live rules. Their
-  soft-deleted rules, with their receipts and runs, are then hard-deleted in
-  one batch.
-- **Hard-deleting a project** runs `AutomationProjectDeletion` first: runs and
-  receipts reference their rule with RESTRICT while the project
-  cascade reaches `automations` first, so the children are deleted before.
-
-## Roster audience and reminder cursors (#E43, #Q2044)
-
-The explicit release audience freezes the current roster except the publisher.
-It is legal only for release.published and the releases category, requires member
-read access and resolves each actual recipient under current source authority.
-`AutomationRosterWorker` attempts at most five recipients per step; immutable
-roster/chunk receipts resume the full roster in runs of at most 100 deliveries.
-Run evidence aggregates native outbox IDs, while public outcome reads remain
-bounded and distinguish enqueue from live delivery. Ordinary row selection still
-stops at 50. Only a quest reminders rule (selector `quests.remindersDue`, the Quest
-reminders preset since #Q3626, at most one per project) follows due-selector
-cursors,
-with the original evaluation time and a durable page witness; each due-state
-identity couples one email enqueue to one interval/history update.
-
-The editor's action form exposes one-member versus release-roster addressing on a
-notification every reaching source of which is `release.published`, and Test
-remains read-only. The adoption engine that once replaced built-in
-notifications with these rules is gone (#Q3628): nothing is sent without a rule.
+The five automation tables (`automations`, `automation_runs`,
+`automation_receipts`, `automation_variables`, `automation_events`) keep their
+entities, unused, registered by `RetiredTables` with their storage shape, so no
+schema migration is generated before #Q3902 drops them. Nothing may read or
+write them. The stored activity channel value `"automation"` stays: past audit
+rows carry it.

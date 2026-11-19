@@ -194,5 +194,5 @@ an account-owned one, and delete it there.
   who can manage it, deleting it.
 - [Deploying an app](/lore/docs/ship-deploying): pick the host and ship a
   build.
-- [Automations](/lore/docs/plan-automations): who is told about a failing
-  token.
+- [Notifications](/lore/docs/project-notifications): who is told about a
+  failing token.

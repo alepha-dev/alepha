@@ -351,59 +351,24 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 **MCP tools (4)** - `EpicTools` (`epic_review_create` / `_answer` and the `review` block on `epic_get` since #E121, `epic_pull_request_add` since #Q3707), `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, `quest_pull_request_add` (#Q3707: a quest in an epic with none of its own gets the epic's as `epicPullRequests` on `quest_get`, from the same `getEpicRefs` read), and the discussion inlined on `quest_get`).
 
-## Stock automation presets (#E43, #Q2041)
+## Plan's events and reminders (#E159)
 
-`WorkAutomationPresets` registers feedback alerts, midnight tagged-quest digests
-and actual epic-completion alerts through core's `AutomationPresetRegistry`.
-Registrations expose typed setup slots, source context fields, defaults and
-current permission/capability requirements in the shared catalogue. Setup uses
-literal recipient UUIDs and does not create shared variables. Inbox is the
-default; email must be selected explicitly.
+Plan's project events are declared in `WorkProjectEvents` (feedback, releases,
+epics, quests) and emitted beside their write through `SourceRepository` or a
+guarded batch (`WorkEventSources`, `QuestEventSources`); see "Project events
+and subscriptions" in `@lore/core`'s AGENTS for the rule for adding one.
 
-Preset creation builds the normal versioned AST and delegates to
-`AutomationService`, including disabled creation, immutable author, current
-references and approval fences. The shared metadata-generated form uses the same
-slots. Runtime continues through the existing source, selector, evaluator and
-notification paths. The digest executes once for its retained collection, sends
-nothing when empty and preserves the selector's 50-row lower-bound/truncation
-metadata. It remains separate from the Quest reminders preset.
+**Quest reminders are a Plan feature, not a notification rule** (#Q3893). A
+quest's assignee sets an interval (`setQuestReminder`, `reminderNextAt` = now +
+interval). `QuestReminders`, a check of core's hourly job, reads every due quest
+across projects with one indexed query (`quests_reminders_due_idx`, at most 100
+per tick), skips projects with Plan or its `reminder` option off and quests of a
+draft epic, and claims each reminder in a guarded batch whose condition is the
+due date it read: `reminderNextAt` advances from the tick, `reminder_sent` is
+written to the history, and `quest.reminder_due` is recorded, all at once. The
+assignee is then told in the inbox and by email (`QuestReminderNotifications`),
+as their preferences allow. The option only shows the control; it creates
+nothing.
 
-The release-to-folio stock program (#Q2043) declares both its release source and
-append-folio effect needs. It appends the frozen published changelog/counts, then
-queues inbox or email output in the `releases` preference category. Setup defaults
-to literal same-project folio/member IDs; an author can explicitly replace those
-slots with named typed variables through normal rule editing. Publication identity
-and native effect receipts make retry append once; a publication is final. Human edits remain protected by the normal folio CAS and
-revision history. A notification failure retains the append and a partial run.
-Discord provisioning and a mandatory Discord variant remain deferred.
-
-Preset setup can explicitly bind native recipient, channel, tag and folio slots.
-Bindings remain tokens in the ordinary stored AST; literal setup stays isolated.
-Plan registers bounded quest, release, epic and feedback picker pages through
-core's automation reference registry, each with its own source-read permission.
-These lists contain same-project IDs and labels and do not project event bodies.
-
-## Reminders and release mail are automations (#Q3626, #Q3625)
-
-Quest reminders are an ordinary automation since #Q3626: the **Quest reminders**
-preset (`WorkAutomationPresets`, key `quest-reminders`), hourly, the
-`quests.remindersDue` selector, recipient `{{assignee_id}}`. Core's worker and
-claims recognise it by that selector (per-quest delivery key, due-page
-continuation past 50 rows) and settle each quest's `reminderNextAt` and its
-`reminder_sent` history. A project holds at most one such rule
-(`AutomationService.assertSingleReminderRule`). The legacy sender
-(`QuestJobs.sendDueReminders`, `QuestNotifications.questReminder`) and the
-`quest-reminders` adoption policy are gone: a project without the rule sends no
-reminder, which the quest's reminder control says (`getQuestReminderRule`),
-offering a **Turn on reminders** button that creates the rule from the preset
-to whoever may write automations (#Q3705). The Reminders option only shows that
-control; it creates nothing by itself.
-The live option remains plan.reminder; frozen projects.features.questReminder
-remains decodable.
-
-Release mail is an automation since #Q3625: the **Release published** preset
-(`release-published`, `WorkAutomationPresets`), which the Releases page's bell
-subscribes its viewer to. `ReleaseNotifier`, `inboxReleasePublished` and the
-`release-notifications` adoption policy are gone, and with them the last
-adoption policy (`WorkAutomationAdoptions` is deleted); #Q3628 removed the
-adoption engine from core.
+Release mail is the `release.published` event: the Releases page's bell
+subscribes its viewer, and **Settings ▸ Notifications** notifies anyone else.

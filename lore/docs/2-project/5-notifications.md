@@ -1,8 +1,11 @@
 # Notifications
 
-Lore tells you about things addressed to you in two places: an inbox inside the
-app, behind the bell, and email. This page covers how to read and clear the
-inbox, what reaches you, and which messages you can turn off.
+Lore tells you about things in two ways. Some messages are addressed to you
+by name: a mention, an answer to your report, an invitation. Others follow
+what happens in a project: a release published, a deploy failed, a host gone
+offline. You choose those yourself, or a manager chooses them for you, on
+**Settings ▸ Notifications**. This page covers both, the channels they travel
+on, and the messages you can turn off.
 
 ## The bell and the inbox
 
@@ -29,34 +32,238 @@ link ending in `?account=inbox` opens it from anywhere in Lore.
 Messages are yours alone: nobody else can read them, and there is no permission
 to grant.
 
-## What reaches you
+## Messages addressed to you
 
-| Message                                   | Sent to                                                    | Inbox | Email |
-| ----------------------------------------- | ---------------------------------------------------------- | ----- | ----- |
-| A mention                                 | A member named with `@name` in a quest or feedback comment | Yes   | Yes   |
-| A report accepted or rejected             | The person who [filed it](/lore/docs/plan-feedback)        | Yes   | Yes   |
-| A report answered                         | The person who filed it                                    | Yes   | Yes   |
-| An automation's message                   | Its recipient, on the channels the notification names      | Yes   | Yes   |
-| An automation paused for review or broken | The automation's author                                    | Yes   | No    |
-| A project invitation                      | The person invited                                         | Yes   | Yes   |
+| Message                       | Sent to                                                    | Inbox | Email |
+| ----------------------------- | ---------------------------------------------------------- | ----- | ----- |
+| A mention                     | A member named with `@name` in a quest or feedback comment | Yes   | Yes   |
+| A report accepted or rejected | The person who [filed it](/lore/docs/plan-feedback)        | Yes   | Yes   |
+| A report answered             | The person who filed it                                    | Yes   | Yes   |
+| A project invitation          | The person invited                                         | Yes   | Yes   |
 
 A few rules explain what you will and will not receive:
 
 - **Your own actions send you nothing.** A report you triage yourself does not
-  notify you. An automation has no such rule, so it can tell you about
-  something you did.
+  notify you.
 - **One event, one message.** A comment that both answers a report and names
   its author sends a single message.
 - **An invitation reaches the bell only when its address already has an
   account.** The bell links to your **Invitations** page. The email alone
   carries the one-time link. Accepting the invitation marks its message read.
-- **Everything project-wide is an automation.** Release announcements, quest
-  reminders, uptime alerts, failed deployments and host alerts reach you only
-  through an automation that names you, which the bell on the page concerned
-  creates for you: one automation per bell, a source for each event it covers. See [Automations](/lore/docs/plan-automations).
 - **An agent's comment is a comment too.** `@name` in a comment an agent
   writes reaches that member, the owner of the API key the agent works as
   included. That is how an agent asks you for a decision.
+
+## Project events
+
+Everything else a project tells you about is a **project event**: something
+that happened, recorded once, with what it is about. You are told about an
+event only if you, or a manager, chose to be. Events you are not subscribed
+to are still recorded, and an agent can read the recent ones (see
+[From an agent](#from-an-agent)).
+
+| Resource | Events                                                                                 | Needs                    |
+| -------- | -------------------------------------------------------------------------------------- | ------------------------ |
+| Quests   | Quest created, Quest accepted or assigned, Quest put on hold, Quest completed          | Plan                     |
+| Quests   | Quest reminder due                                                                     | Plan, with **Reminders** |
+| Epics    | Epic completed                                                                         | Plan, with **Epics**     |
+| Releases | Release published                                                                      | Plan, with **Releases**  |
+| Feedback | New feedback                                                                           | Plan, with **Feedback**  |
+| Apps     | Deploy failed, Deploy succeeded                                                        | Ship, with **Deploy**    |
+| Monitors | Monitor down, Monitor recovered                                                        | Ship, with **Uptime**    |
+| Hosts    | Host token stopped working, Host past its time to live, Host offline, Host back online | Ship                     |
+| Quality  | Coverage under its threshold                                                           | Ship                     |
+| Errors   | Open errors over their threshold                                                       | Ship                     |
+
+An event whose capability or option is off in the project shows as
+**Unavailable**, with the switch that turns it on. Deploy, monitor and host
+events can be narrowed to one app, one monitor or one host: **Only for this
+app** (or monitor, or host) in the form, or **Any**.
+
+The message is fixed: Lore writes it from the event, in the recipient's
+language, with a link to what it is about. It cannot be edited.
+
+### The bell on a page
+
+The quickest way to subscribe is the bell on the page concerned: a monitor, a
+host, the Apps list, the Releases list, the Feedback inbox. One click
+subscribes you, in the app, to every event the bell covers, and the bell then
+reads **You are notified**. Clicked again, it opens a dialog that chooses how
+(in the app, by email, or both) and, for a bell over several events, which
+ones; it then reads **You are notified of part of it** when you kept only some.
+The same dialog stops it, with **Stop notifying me**.
+
+![A monitor's bell, clicked again: how, and of what](/screenshots/lore/notifications-bell-light.png)
+
+A bell is a shortcut to the same subscriptions **Settings ▸ Notifications**
+lists: what you set with one shows on the other.
+
+## Settings ▸ Notifications
+
+The page lists who is notified of what in the project, one row per event and
+recipient, with how. **Notify someone** opens the form:
+
+- **When**: the event, and its filter where it has one.
+- **Notify**: **Me**, another member, or one of the project's channels.
+- For a member, **In the app** and **By email**, one or both.
+
+Each row has **Pause** (then **Resume**) and **Stop**. A paused subscription
+keeps its place and sends nothing until it is resumed.
+
+![Settings > Notifications, listing who is notified of what](/screenshots/lore/notifications-light.png)
+
+### Who can notify whom
+
+| Permission                                             | What it allows                                                    |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| See who is notified of what                            | Read the whole list, not only your own subscriptions.             |
+| Notify other members and manage the project's channels | Subscribe any member, add and edit channels, subscribe a channel. |
+
+Without either, a member sees only their own subscriptions and changes only
+those. Either way, a member is told about an event only while they still
+belong to the project and hold the permission to read what it is about: a
+member who cannot see the project's hosts receives no host event, even if a
+manager subscribed them. Nothing is refused at the time; the message is
+simply not sent.
+
+![Notifying another member: the form with a member picked under Notify](/screenshots/lore/notifications-member-light.png)
+
+## Channels
+
+The **Channels** tab, next to **Who is notified**, lists where messages can go.
+
+| Kind    | Where it goes                                     |
+| ------- | ------------------------------------------------- |
+| In-app  | The recipient's inbox. Built in.                  |
+| Email   | The recipient's address. Built in.                |
+| Discord | A Discord channel, through a Discord webhook URL. |
+| Webhook | A URL of yours, which Lore calls with the event.  |
+
+In-app and email belong to each member and need no setup. Discord and webhook
+channels belong to the project: whoever may manage the project's channels adds
+them with **Add a channel**, and subscribing one sends every matching event
+there, whoever reads it. Lore checks a Discord URL with a test message, then
+never shows it again; **Rename or replace URL** changes it. Deleting a channel
+deletes the subscriptions that use it.
+
+![The Channels tab, with a webhook channel](/screenshots/lore/notifications-channels-light.png)
+
+### Webhooks
+
+A webhook channel calls its URL with one `POST` per event, signed with the
+[Standard Webhooks](https://www.standardwebhooks.com) scheme, and retries a
+call that fails. Private and loopback addresses are refused.
+
+The body is JSON:
+
+```json
+{
+  "id": "01937c4e-7b1a-7c2e-9f4d-2b6f1d8a9e01",
+  "type": "deploy.failed",
+  "timestamp": "2026-11-18T10:00:00.000Z",
+  "data": {
+    "project": { "id": 7, "title": "Acme" },
+    "subject": {
+      "kind": "deployment",
+      "id": "01937c4e-5d2f-7b10-8c3a-6e4f0a1b2c3d"
+    },
+    "fields": {
+      "project": "Acme",
+      "title": "web",
+      "app": "web",
+      "env": "production",
+      "tag": "v1.4.0",
+      "reason": "Health check failed",
+      "url": "/acme/apps/web/production/deploy"
+    },
+    "url": "https://lore.example.app/acme/apps/web/production/deploy"
+  }
+}
+```
+
+- `id` is the event's own id. It does not change across retries, so a receiver
+  that has seen it can ignore the call.
+- `type` is the event's name, as the table above lists them in Lore: for
+  example `release.published`, `monitor.down`, `host.offline`.
+- `data.fields` holds what the event says about its subject; which fields an
+  event carries is listed by `lore event catalog`.
+
+Three headers come with every call: `webhook-id` (the body's `id`),
+`webhook-timestamp` (seconds since the epoch) and `webhook-signature`.
+
+When the channel is created, Lore shows its **signing secret** once: a value
+starting with `whsec_`. To check a call, take the base64 part after
+`whsec_`, decode it, and compute an HMAC-SHA256 with it over
+`<webhook-id>.<webhook-timestamp>.<raw body>`. Its base64 must equal one of the
+space-separated `v1,<signature>` entries of `webhook-signature`. Refuse a
+timestamp more than a few minutes old, so a recorded call cannot be replayed.
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verify(secret, headers, rawBody) {
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const signed = `${headers["webhook-id"]}.${headers["webhook-timestamp"]}.${rawBody}`;
+  const expected = createHmac("sha256", key).update(signed).digest();
+  const age = Math.abs(
+    Date.now() / 1000 - Number(headers["webhook-timestamp"]),
+  );
+  if (age > 300) return false;
+  return headers["webhook-signature"].split(" ").some((entry) => {
+    const given = Buffer.from(entry.replace(/^v1,/, ""), "base64");
+    return given.length === expected.length && timingSafeEqual(given, expected);
+  });
+}
+```
+
+Any Standard Webhooks library does the same check. **New secret** gives the
+channel a new signing secret; the previous one keeps signing for 24 hours, so
+the receiver can switch without missing a call.
+
+## Quest reminders
+
+With **Reminders** on (**Settings ▸ Plan ▸ Features**), whoever holds a quest
+can ask for a daily, weekly or monthly nudge on it, from the quest's
+**Reminder** panel. Lore checks every hour, at the top of the hour, and sends
+each reminder due once, to the quest's assignee, in the app and by email
+(as their own preferences allow). A quest of an epic still in draft is not
+reminded.
+Turning **Reminders** off stops them without clearing them: they resume when
+it comes back on.
+
+A reminder is also a project event, **Quest reminder due**, so a channel can
+be told about it too.
+
+## Thresholds
+
+Two events fire when a number crosses a line you set:
+
+- **Coverage under its threshold**: set on **Settings ▸ Apps**. It is checked
+  when a push on `main` reports its coverage.
+- **Open errors over their threshold**: set on **Settings ▸ Errors**. It is
+  checked every hour.
+
+Each fires once when the line is crossed, and again only after the value has
+come back to the right side of it. An empty threshold means no alert. Who is
+told is set like any other event, on **Settings ▸ Notifications**.
+
+## What Lore does not do
+
+Lore tells people and systems that something happened. It does not run
+anything for you:
+
+- no schedule ("every Monday at nine"), apart from quest reminders;
+- no condition ("only if the release has more than ten quests");
+- no action on quests, folios or anything else in Lore;
+- no message of your own: the text is the event's.
+
+For any of those, react to the event where you have the tools to:
+
+- **A scheduled agent session** connected over MCP reads the project, decides,
+  and writes back: a weekly digest, a triage pass, a folio kept up to date.
+  See [Connecting an agent](/lore/docs/agents-connecting).
+- **A webhook channel** hands each event to your own code, which can do
+  anything with it.
 
 ## Turning messages off
 
@@ -71,14 +278,16 @@ you in every project.
   Sign-in codes and password resets are not listed, and stay on whatever you
   mute here.
 
-| Kind                | What it covers                                                                  |
-| ------------------- | ------------------------------------------------------------------------------- |
-| Automations         | Messages from the project's automations.                                        |
-| Your reports        | A project accepts, rejects or answers a report you submitted.                   |
-| Project invitations | A project invites you, in the bell only: the email stays under Quest reminders. |
-| Mentions            | Somebody writes your name in a quest or feedback comment.                       |
-| Releases            | Release announcements an automation sends you.                                  |
-| Quest reminders     | Reminders about a quest you accepted, and project invitations.                  |
+| Kind                  | What it covers                                                                  |
+| --------------------- | ------------------------------------------------------------------------------- |
+| Project notifications | Project events you, or a manager, chose to be notified of.                      |
+| Your reports          | A project accepts, rejects or answers a report you submitted.                   |
+| Project invitations   | A project invites you, in the bell only: the email stays under Quest reminders. |
+| Mentions              | Somebody writes your name in a quest or feedback comment.                       |
+| Quest reminders       | Reminders about a quest you accepted, and project invitations.                  |
+
+To stop one project's notifications rather than a kind, pause or stop the
+subscription on that project's **Settings ▸ Notifications**.
 
 Only you, signed in, can change these: an API key or a connected app cannot.
 
@@ -87,13 +296,18 @@ Only you, signed in, can change these: an API key or a connected app cannot.
 There is no tool for the inbox. An agent reaches a person through a comment
 that names them: `quest_comment_add`, `feedback_comment_add`, or the `reason`
 of `quest_hold`. Use it when you need that person, not to address the room.
-See [MCP tools](/lore/docs/reference-mcp-tools).
+
+For project events, `event_catalog` lists them with their fields,
+`event_list` reads the recent ones, and `subscription_list` and
+`subscription_set` say and change who is notified of what. The CLI has the
+same: `lore event` and `lore subscription`. A channel's URL never travels
+through a tool: adding a Discord or webhook channel is done on the page. See
+[MCP tools](/lore/docs/reference-mcp-tools) and [CLI](/lore/docs/reference-cli).
 
 ## Next
 
 - [Members](/lore/docs/project-members): invitations and who is in a project.
-- [Automations](/lore/docs/plan-automations): automations that send messages of
-  their own.
 - [Feedback](/lore/docs/plan-feedback): the reports and answers behind
   several of these messages.
-- [Healthchecks](/lore/docs/ship-healthchecks): who an outage alert goes to.
+- [Healthchecks](/lore/docs/ship-healthchecks): monitors, and their bell.
+- [Hosts](/lore/docs/ship-hosts): hosts, and their bell.
