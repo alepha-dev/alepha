@@ -303,6 +303,12 @@ describe("OrganizationRanks", () => {
     ).toHaveLength(0);
   });
 
+  it("says 1 member in the singular", async () => {
+    const { view } = await mount();
+
+    expect(view.getByText(/^1 member ·/)).toBeTruthy();
+  });
+
   it("resets a rank to its default after a confirmation listing the change", async () => {
     const { links, view } = await mount();
 
