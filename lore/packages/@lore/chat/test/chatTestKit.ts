@@ -7,12 +7,19 @@ import { createTestMemberByProjectId } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 
-import { ChatLive, LoreChatApi } from "../src/api/index.ts";
+import {
+  ChatLive,
+  chatMentions,
+  chatMessages,
+  chatRoomMembers,
+  chatRooms,
+  LoreChatApi,
+} from "../src/api/index.ts";
 import type { ChatServerFrame } from "../src/api/schemas/chatServerFrameSchema.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -45,6 +52,17 @@ export class RecordingChatLive extends ChatLive {
   ): Promise<void> {
     this.frames.push({ roomIds: [...new Set(userIds)], message: frame });
   }
+}
+
+/**
+ * Every chat row, read straight from the tables, so a spec sees what a page
+ * would not: an orphan.
+ */
+export class ChatRows {
+  public readonly rooms = $repository(chatRooms);
+  public readonly members = $repository(chatRoomMembers);
+  public readonly messages = $repository(chatMessages);
+  public readonly mentions = $repository(chatMentions);
 }
 
 /**
@@ -81,6 +99,7 @@ export class ChatTestKit {
       order: 1,
       permission: "folio:read",
     });
+    alepha.inject(ChatRows);
     await alepha.start();
     const kit = new ChatTestKit(alepha);
     await kit.cast();
