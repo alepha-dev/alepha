@@ -518,7 +518,8 @@ export class CapabilityRegistry {
       options: [],
       mcpTools: [],
       searchKinds: [],
-      activityKinds: [],
+      // A push to a repository (#Q3945).
+      activityKinds: ["code"],
       dashboardCards: [
         "qualityTrend",
         "quality.coverage.lines",

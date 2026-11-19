@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import {
+  CommitReferenceRegistry,
+  type CommitReferenceInput,
+  ProjectCapabilityController,
+  ProjectController,
+} from "@lore/core/api";
 import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
@@ -16,7 +21,11 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { CodeRepositoryController, LoreBuildApi } from "../src/api/index.ts";
+import {
+  CodeRepositoryController,
+  GitReceivePack,
+  LoreBuildApi,
+} from "../src/api/index.ts";
 import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**
@@ -298,6 +307,103 @@ describe("git smart HTTP", () => {
       join(ctx.work, "imported"),
     );
     expect(stdout).toMatch(/first/);
+  });
+
+  describe("after a push (#Q3945)", () => {
+    const recorded: CommitReferenceInput[] = [];
+    const listen = () => {
+      recorded.length = 0;
+      ctx.alepha.inject(CommitReferenceRegistry).register(async (input) => {
+        recorded.push(input);
+        return { quests: [], commits: input.commits.length };
+      });
+    };
+    const pushes = async (projectId: number, user: { id: string }) => {
+      const page = await ctx.alepha
+        .inject(ProjectController)
+        .getProjectActivity.fetch(
+          { params: { id: projectId }, query: { size: 50 } },
+          { user: user as never },
+        );
+      return page.data.content.filter((row) => row.type === "code");
+    };
+    const commit = async (dir: string, message: string) => {
+      await writeFile(join(dir, `${crypto.randomUUID()}.txt`), message);
+      await git(["add", "."], dir);
+      await git(["commit", "--quiet", "-m", message], dir);
+    };
+
+    it("hands the pushed commits to the recorder, by the pusher, and writes a code:push row", async ({
+      expect,
+    }) => {
+      listen();
+      const { owner, projectId, slug, cloneUrl } = await aProject();
+      const source = await aCheckout();
+      const remote = withKey(cloneUrl, owner.key);
+      await git(["push", "--quiet", remote, "main"], source);
+      expect(recorded.at(-1)?.commits ?? []).toEqual([]);
+
+      await commit(source, "feat: one #Q12");
+      await commit(source, "fix: two #Q12 #Q13\n\nbody");
+      await git(["push", "--quiet", remote, "main"], source);
+
+      const last = recorded.at(-1)!;
+      expect(last.projectId).toBe(projectId);
+      expect(last.userId).toBe(owner.id);
+      expect(last.repo).toBe(`${slug}/api`);
+      expect(last.commits.map((it) => it.message)).toEqual([
+        "fix: two #Q12 #Q13\n\nbody",
+        "feat: one #Q12",
+      ]);
+      const rows = await pushes(projectId, owner);
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows[0]).toMatchObject({ action: "push", resourceId: "api" });
+    });
+
+    it("records no commit for an import, nor for a branch's creation", async ({
+      expect,
+    }) => {
+      listen();
+      const { owner, cloneUrl } = await aProject();
+      const source = await aCheckout();
+      const remote = withKey(cloneUrl, owner.key);
+      await git(["push", "--quiet", remote, "main"], source);
+      await commit(source, "feat: imported #Q7");
+      await git(
+        ["push", "--quiet", "--push-option=lore-import", remote, "main"],
+        source,
+      );
+      await git(["push", "--quiet", remote, "main:feature"], source);
+
+      expect(recorded.flatMap((it) => it.commits)).toEqual([]);
+    });
+
+    it("reads only the refs the report says ok, inside side-band or not", ({
+      expect,
+    }) => {
+      const pack = new GitReceivePack();
+      const report = new Uint8Array([
+        ...pack.pkt("unpack ok\n"),
+        ...pack.pkt("ok refs/heads/main\n"),
+        ...pack.pkt("ng refs/heads/other non-fast-forward\n"),
+        ...pack.flush(),
+      ]);
+      const banded = new Uint8Array([
+        ...pack.pkt(
+          new Uint8Array([2, ...new TextEncoder().encode("progress\n")]),
+        ),
+        ...pack.pkt(new Uint8Array([1, ...report])),
+        ...pack.flush(),
+      ]);
+
+      expect([...pack.acceptedRefs(report, ["report-status"])]).toEqual([
+        "refs/heads/main",
+      ]);
+      expect([
+        ...pack.acceptedRefs(banded, ["report-status", "side-band-64k"]),
+      ]).toEqual(["refs/heads/main"]);
+      expect(pack.acceptedRefs(new Uint8Array(0), []).size).toBe(0);
+    });
   });
 
   it("refuses to delete the default branch, saying why", async ({ expect }) => {

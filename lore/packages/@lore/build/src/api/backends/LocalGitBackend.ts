@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import {
   GitBackend,
   type GitBackendToken,
+  type GitCommit,
   type GitRepositoryInfo,
   type GitRpcRequest,
   type GitRpcResponse,
@@ -115,6 +116,40 @@ export class LocalGitBackend extends GitBackend {
    */
   public async token(): Promise<GitBackendToken | undefined> {
     return undefined;
+  }
+
+  public async commits(
+    ref: string,
+    range: { from: string; to: string; limit: number },
+  ): Promise<GitCommit[]> {
+    if (
+      !/^[0-9a-f]{40}$/.test(range.from) ||
+      !/^[0-9a-f]{40}$/.test(range.to)
+    ) {
+      return [];
+    }
+    const out = await this.git([
+      "--git-dir",
+      this.pathOf(ref),
+      "log",
+      // One more than asked: a push over the limit answers nothing, as on
+      // Artifacts, rather than part of itself.
+      `--max-count=${range.limit + 1}`,
+      "--format=%H%x1f%B%x1e",
+      `${range.from}..${range.to}`,
+    ]);
+    const commits = out
+      .split("\x1e")
+      .map((entry) => entry.replace(/^\n/, ""))
+      .filter((entry) => entry.includes("\x1f"))
+      .map((entry) => {
+        const at = entry.indexOf("\x1f");
+        return {
+          sha: entry.slice(0, at),
+          message: entry.slice(at + 1).replace(/\n+$/, ""),
+        };
+      });
+    return commits.length > range.limit ? [] : commits;
   }
 
   /**

@@ -214,6 +214,59 @@ export class GitReceivePack {
   }
 
   /**
+   * The refs a receive-pack response reports as updated (`ok <ref>`), out of
+   * its `report-status`, inside side-band 1 when the client asked for
+   * side-band (#Q3945). Empty when there is no report to read: nothing is
+   * assumed to have landed.
+   */
+  public acceptedRefs(
+    response: Uint8Array,
+    capabilities: string[],
+  ): Set<string> {
+    const sideBand =
+      capabilities.includes("side-band-64k") ||
+      capabilities.includes("side-band");
+    let report = response;
+    if (sideBand) {
+      const band: Uint8Array[] = [];
+      for (const payload of this.payloads(response)) {
+        if (payload[0] === 1) band.push(payload.slice(1));
+      }
+      report = this.concat(...band);
+    }
+    const decoder = new TextDecoder();
+    const accepted = new Set<string>();
+    for (const payload of this.payloads(report)) {
+      const line = decoder.decode(payload).replace(/\n$/, "");
+      if (line.startsWith("ok ")) accepted.add(line.slice(3).trim());
+    }
+    return accepted;
+  }
+
+  /**
+   * The payloads of a run of pkt-lines, flushes skipped, stopping at the
+   * first malformed length.
+   */
+  protected *payloads(bytes: Uint8Array): Generator<Uint8Array> {
+    const decoder = new TextDecoder();
+    let offset = 0;
+    while (offset + 4 <= bytes.length) {
+      const length = Number.parseInt(
+        decoder.decode(bytes.slice(offset, offset + 4)),
+        16,
+      );
+      if (Number.isNaN(length)) return;
+      if (length < 4) {
+        offset += 4;
+        continue;
+      }
+      if (offset + length > bytes.length) return;
+      yield bytes.slice(offset + 4, offset + length);
+      offset += length;
+    }
+  }
+
+  /**
    * One pkt-line: four hex digits of length, then the payload.
    */
   public pkt(payload: string | Uint8Array): Uint8Array {

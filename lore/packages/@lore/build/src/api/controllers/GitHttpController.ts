@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { $route, type ServerRequest } from "alepha/server";
 
 import { GitBackend, type GitService } from "../backends/GitBackend.ts";
+import { CodePushRecorder } from "../services/CodePushRecorder.ts";
 import { GitAccessService } from "../services/GitAccessService.ts";
 import { GitReceivePack } from "../services/GitReceivePack.ts";
 
@@ -31,6 +32,7 @@ export class GitHttpController {
   protected readonly backend = $inject(GitBackend);
   protected readonly receivePack = $inject(GitReceivePack);
   protected readonly limits = $inject(ProjectLimits);
+  protected readonly pushes = $inject(CodePushRecorder);
 
   /**
    * What `Git-Protocol` may say: `version=2`, and the `key=value` list git
@@ -175,17 +177,21 @@ export class GitHttpController {
     const repository = decision.repository;
     const protocol = String(headers["git-protocol"] ?? "");
     let body = call.advertise ? undefined : this.bodyOf(request);
+    let push: Parameters<CodePushRecorder["watch"]>[1] | undefined;
 
     if (service === "git-receive-pack" && body) {
       const inspected = await this.receivePack.inspect(body);
       body = inspected.body;
-      if (inspected.pushOptions.includes("lore-import")) {
-        // `lore code import` (#Q3935): links no commit to a quest (#Q3945).
-        this.log.debug("Import push", {
-          repository: repository.id,
-          refs: inspected.commands.map((command) => command.ref),
-        });
-      }
+      // Recorded once the backend's answer has streamed (#Q3945); an import
+      // (`lore-import`, #Q3935) links no commit to a quest.
+      push = {
+        repository,
+        repoPath: `${target.projectSlug}/${repository.slug}`,
+        user: decision.user,
+        commands: inspected.commands,
+        capabilities: inspected.capabilities,
+        pushOptions: inspected.pushOptions,
+      };
       const refusal = await this.refusalOf(
         repository.backendRef,
         repository.defaultBranch,
@@ -231,6 +237,9 @@ export class GitHttpController {
       typeof response.body !== "string"
     ) {
       return this.receivePack.advertisePushOptions(response.body) as StreamLike;
+    }
+    if (push && response.status === 200 && typeof response.body !== "string") {
+      return this.pushes.watch(response.body, push) as StreamLike;
     }
     return response.body as string | StreamLike;
   }

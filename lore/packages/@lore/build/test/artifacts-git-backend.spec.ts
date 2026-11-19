@@ -20,6 +20,10 @@ import {
 class RecordingBinding implements ArtifactsBinding {
   public readonly calls: string[] = [];
   public readonly repos = new Set<string>();
+  /**
+   * The first-parent chain `log` walks, newest first.
+   */
+  public history: Array<{ hash: string; message: string }> = [];
 
   async create(name: string) {
     this.calls.push(`create ${name}`);
@@ -46,6 +50,11 @@ class RecordingBinding implements ArtifactsBinding {
           expiresAt: "2099-01-01T00:00:00Z",
         };
       },
+      log: async (options) => {
+        this.calls.push(`log ${options.offset ?? 0}`);
+        const offset = options.offset ?? 0;
+        return this.history.slice(offset, offset + (options.limit ?? 50));
+      },
     };
   }
 
@@ -71,6 +80,41 @@ const setup = () => {
 };
 
 describe("ArtifactsGitBackend", () => {
+  it("lists a push's commits by log, page by page, back to the old id (#Q3945)", async ({
+    expect,
+  }) => {
+    const { backend, binding } = setup();
+    await backend.create("7-a", { defaultBranch: "main" });
+    binding.history = Array.from({ length: 5 }, (_, i) => ({
+      hash: String(i).repeat(40),
+      message: `commit ${i}`,
+    }));
+
+    const listed = await backend.commits("7-a", {
+      from: "3".repeat(40),
+      to: "0".repeat(40),
+      limit: 10,
+    });
+    const tooMany = await backend.commits("7-a", {
+      from: "3".repeat(40),
+      to: "0".repeat(40),
+      limit: 2,
+    });
+    const notOnChain = await backend.commits("7-a", {
+      from: "f".repeat(40),
+      to: "0".repeat(40),
+      limit: 10,
+    });
+
+    expect(listed.map((it) => it.message)).toEqual([
+      "commit 0",
+      "commit 1",
+      "commit 2",
+    ]);
+    expect(tooMany).toEqual([]);
+    expect(notOnChain).toEqual([]);
+  });
+
   it("names a repository by ids, never by slug", ({ expect }) => {
     const { backend } = setup();
     expect(backend.refFor({ projectId: 7, repoId: "a-b" })).toBe("7-a-b");
