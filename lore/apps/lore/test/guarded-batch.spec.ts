@@ -8,8 +8,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
 /**
  * The neutral guarded batch (#Q3899): a change and what must be written with
  * it, together or not at all, with a guard that needs no feature's table.
- * `alepha test --dialect postgres` runs it on Postgres; the D1 suite
- * (`automation-durable-d1.spec.ts`) runs the same refusal on a local D1.
+ * `alepha test --dialect postgres` runs it on Postgres.
  */
 describe("GuardedBatch", () => {
   let alepha: Alepha;
@@ -117,13 +116,5 @@ describe("GuardedBatch", () => {
     // The guard's insert answers first, then each statement in order.
     expect(won[0].value[2]).toEqual([{ value: 2 }]);
     expect(await count("batch_guards")).toEqual({ n: 0 });
-  });
-
-  it("writes through no automation table", async ({ expect }) => {
-    await provider.execute("DELETE FROM automation_receipts");
-    await batch.guarded(sql`TRUE`, [
-      sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
-    ]);
-    expect(await count("automation_receipts")).toEqual({ n: 0 });
   });
 });

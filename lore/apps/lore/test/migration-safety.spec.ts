@@ -129,6 +129,22 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // Public projects are gone (#Q3833): a leaf, referenced by nothing.
   "20261117184516_drop_open_projects": ["project_exclusions"],
   "20261117184530_drop_open_projects": ["project_exclusions"],
+  // The automation engine is deleted (#Q3896, deployed first): the five
+  // tables go children first, and no other table references them (#Q3902).
+  "20261119120831_automation_tables_dropped": [
+    "automation_events",
+    "automation_receipts",
+    "automation_runs",
+    "automation_variables",
+    "automations",
+  ],
+  "20261119120909_automation_tables_dropped": [
+    "automation_events",
+    "automation_receipts",
+    "automation_runs",
+    "automation_variables",
+    "automations",
+  ],
 };
 
 /**

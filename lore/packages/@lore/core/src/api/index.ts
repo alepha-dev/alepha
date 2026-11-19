@@ -97,7 +97,6 @@ import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
-import { RetiredTables } from "./services/RetiredTables.ts";
 import { SubscriptionService } from "./services/SubscriptionService.ts";
 import { UserDockService } from "./services/UserDockService.ts";
 
@@ -217,9 +216,6 @@ export const LoreCoreApi = $module({
     ProjectRecipients,
     SubscriptionService,
     SubscriptionController,
-    // The five tables the automation engine wrote, kept in the schema
-    // until #Q3902 drops them (#Q3896).
-    RetiredTables,
     // The hourly job and its registry of checks (#Q3893).
     HourlyChecks,
     HourlyJobs,

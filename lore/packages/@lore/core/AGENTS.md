@@ -721,11 +721,7 @@ changes.
   (`NotificationTools`); CLI `lore event`, `lore subscription`. They call the
   services the page's actions call.
 
-### Retired, until #Q3902
+### The automation tables are gone
 
-The five automation tables (`automations`, `automation_runs`,
-`automation_receipts`, `automation_variables`, `automation_events`) keep their
-entities, unused, registered by `RetiredTables` with their storage shape, so no
-schema migration is generated before #Q3902 drops them. Nothing may read or
-write them. The stored activity channel value `"automation"` stays: past audit
-rows carry it.
+#Q3902 dropped the five tables the automation engine wrote. The stored
+activity channel value `"automation"` stays: past audit rows carry it.

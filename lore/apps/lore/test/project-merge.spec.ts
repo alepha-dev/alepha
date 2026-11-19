@@ -49,13 +49,6 @@ const NOT_MOVED: Record<string, string> = {
   // One row per project (#Q3894): the merged project keeps the target's
   // alert thresholds, as it keeps the target's settings.
   project_thresholds: "the target's own thresholds stand",
-  // The automation engine's five tables (#Q3896): nothing reads or writes
-  // them, and #Q3902 drops them.
-  automations: "retired, dropped by #Q3902",
-  automation_runs: "retired, dropped by #Q3902",
-  automation_receipts: "retired, dropped by #Q3902",
-  automation_variables: "retired, dropped by #Q3902",
-  automation_events: "retired, dropped by #Q3902",
   // A pushed commit's quest numbers (#E154), in the source's numbering. The
   // merge renumbers the source's quests, so moved they would name the wrong
   // quests in the target; left behind, the moved deployments read as unknown
