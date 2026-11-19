@@ -14,6 +14,7 @@ import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
 import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
 import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
+import { CodePushRecorder } from "./services/CodePushRecorder.ts";
 import { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 import { CoverageThreshold } from "./services/CoverageThreshold.ts";
 import { GitAccessService } from "./services/GitAccessService.ts";
@@ -69,6 +70,8 @@ export const LoreBuildApi = $module({
     // git smart HTTP on `.git` URLs (#Q3932).
     GitReceivePack,
     GitAccessService,
+    // A push's commits on the quests they name, and its activity row (#Q3945).
+    CodePushRecorder,
     GitHttpController,
   ],
   register: (alepha) => {
@@ -106,5 +109,6 @@ export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 export { GitAccessService } from "./services/GitAccessService.ts";
 export { GitReceivePack } from "./services/GitReceivePack.ts";
+export { CodePushRecorder } from "./services/CodePushRecorder.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";

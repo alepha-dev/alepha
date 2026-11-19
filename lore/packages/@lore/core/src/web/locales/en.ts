@@ -4383,6 +4383,7 @@ export default {
   "activity.resource.host": "Host",
   "activity.resource.monitor": "Monitor",
   "activity.resource.project": "Project",
+  "activity.resource.code": "Code",
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",
   "activity.capability.disabled": "turned off $1",

@@ -62,6 +62,7 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
@@ -253,6 +254,8 @@ export const LoreCoreApi = $module({
     // Which deployed copy runs a quest's commits (#E154): Plan registers the
     // recorded commits, Ship the reads.
     LiveQuestRegistry,
+    // Commits a push names a quest in (#Q3945): Plan records, Build calls.
+    CommitReferenceRegistry,
     McpProjectScope,
     ProjectLimits,
     ProjectAnalyticsController,
@@ -454,6 +457,12 @@ export {
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "./services/DeliveryChangeRegistry.ts";
+export {
+  type CommitReferenceInput,
+  type CommitReferenceRecorder,
+  type CommitReferenceResult,
+  CommitReferenceRegistry,
+} from "./services/CommitReferenceRegistry.ts";
 export {
   type LiveQuestInstance,
   type LiveQuestReader,

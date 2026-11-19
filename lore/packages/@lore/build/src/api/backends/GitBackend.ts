@@ -57,6 +57,17 @@ export abstract class GitBackend {
   ): Promise<GitBackendToken | undefined>;
 
   /**
+   * The commits a ref update brought, newest first: from `to` back to, and
+   * without, `from`, at most `limit` of them (#Q3945). Artifacts walks the
+   * first-parent chain only, so a merge's second-parent commits are not
+   * listed there; the bare repository lists every one.
+   */
+  public abstract commits(
+    ref: string,
+    range: { from: string; to: string; limit: number },
+  ): Promise<GitCommit[]>;
+
+  /**
    * Answer one smart HTTP request for a repository: the ref advertisement
    * (`info/refs`) or an RPC (`git-upload-pack`, `git-receive-pack`). The
    * caller has authenticated, authorized and decompressed already.
@@ -91,6 +102,11 @@ export interface GitRpcRequest {
    * Aborted when the client goes away: a spawned `git` is killed with it.
    */
   signal?: AbortSignal;
+}
+
+export interface GitCommit {
+  sha: string;
+  message: string;
 }
 
 export interface GitRpcResponse {

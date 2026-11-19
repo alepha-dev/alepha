@@ -4,6 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import {
   GitBackend,
   type GitBackendToken,
+  type GitCommit,
   type GitRepositoryInfo,
   type GitRpcRequest,
   type GitRpcResponse,
@@ -131,6 +132,33 @@ export class ArtifactsGitBackend extends GitBackend {
   }
 
   /**
+   * The binding's `log`, a page at a time from `to`, until `from`: newest
+   * first along the first-parent chain, which is all `log` walks.
+   *
+   * When `from` is not met within `limit` (it sat on a second parent, or
+   * the push was that large), nothing is answered: a list that is not the
+   * push's own would record commits on quests it never named.
+   */
+  public async commits(
+    ref: string,
+    range: { from: string; to: string; limit: number },
+  ): Promise<GitCommit[]> {
+    const repo = await this.repo(ref);
+    if (!repo?.log) return [];
+    const found: GitCommit[] = [];
+    const page = Math.min(range.limit, 1000);
+    for (let offset = 0; offset < range.limit; offset += page) {
+      const entries = await repo.log({ ref: range.to, limit: page, offset });
+      for (const entry of entries) {
+        if (entry.hash === range.from) return found;
+        found.push({ sha: entry.hash, message: entry.message });
+      }
+      if (entries.length < page) break;
+    }
+    return [];
+  }
+
+  /**
    * Proxy the request to the repository's Artifacts remote with a cached
    * repo-scoped token, streaming both bodies: the Worker holds no pack in
    * memory and spends 0 to 4 ms of CPU per request (folio #F1527).
@@ -243,5 +271,14 @@ export interface ArtifactsRepoHandle {
     scope: "read" | "write",
     ttl: number,
   ): Promise<{ plaintext: string; expiresAt: string }>;
+  /**
+   * Commits newest first along the first-parent chain from `ref`; an empty
+   * array when the ref does not resolve.
+   */
+  log?(options: {
+    ref?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Array<{ hash: string; message: string }>>;
   [Symbol.dispose]?: () => void;
 }
