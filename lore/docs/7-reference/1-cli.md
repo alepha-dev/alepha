@@ -145,6 +145,7 @@ folios and deployed copies), whether `--confirm` matches or not. There is no
 | `lore quest shelve <ref>`           | Set a quest aside without deleting it; an accepted one is unassigned in the same step.              |                                                                                                                                                                                                         |
 | `lore quest unshelve <ref>`         | Bring a shelved quest back to the backlog.                                                          |                                                                                                                                                                                                         |
 | `lore quest unassign <ref>`         | Send an accepted quest back to todo.                                                                |                                                                                                                                                                                                         |
+| `lore quest reminder set <ref>`     | Set or clear your reminder on a quest you hold.                                                     | `--interval` (`daily`, `weekly`, `monthly` or `off`)                                                                                                                                                    |
 | `lore quest complete <ref>`         | Complete a quest in progress whose objectives are all ticked or waived.                             | `--message`, `--commit <sha>`, `--waive <id>=<reason>` (both repeatable)                                                                                                                                |
 | `lore quest delete <ref>`           | Delete a quest for good. To keep the record, shelve it.                                             | `--yes` (required)                                                                                                                                                                                      |
 | `lore quest tags`                   | The tags the project's quests use.                                                                  |                                                                                                                                                                                                         |
@@ -351,16 +352,28 @@ A measure takes `--metric-kind` (`vital`, `availability`, `latency` or `api`),
 
 ## Notifications
 
-Who is told when something changes in a project. Channels are added in the
-browser, so their URLs never land in a shell history. See
+Who is told when something changes in a project, and your own inbox. A
+channel's URL is its credential: `lore channel` reads it from stdin with
+`--url-stdin`, never from a flag, so it does not land in a shell history, and
+prints a webhook's signing secret once. See
 [Notifications](/lore/docs/project-notifications).
 
-| Command                      | What it does                                                                                | Flags                                                                  |
-| ---------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `lore event catalog`         | The events this project can emit, with what each needs and why an unavailable one is so.    |                                                                        |
-| `lore event list`            | The recent events, newest first, to check that one fired.                                   | `--name`, `--subject`, `--limit` (1 to 100), `--offset`                |
-| `lore subscription list`     | Who is notified of what, on which channel, and the project's channels (never a URL).        |                                                                        |
-| `lore subscription set [id]` | Notify a member (you by default) or a channel of an event, or mute, unmute or remove a row. | `--event`, `--filter`, `--member`, `--channel`, `--channels`, `--verb` |
+| Command                      | What it does                                                                                                              | Flags                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `lore event catalog`         | The events this project can emit, with what each needs and why an unavailable one is so.                                  |                                                                                  |
+| `lore event list`            | The recent events, newest first, to check that one fired.                                                                 | `--name`, `--subject`, `--limit` (1 to 100), `--offset`                          |
+| `lore subscription list`     | Who is notified of what, on which channel, and the project's channels (never a URL).                                      |                                                                                  |
+| `lore subscription set [id]` | Notify a member (you by default) or a channel of an event, or mute, unmute or remove a row.                               | `--event`, `--filter`, `--member`, `--channel`, `--channels`, `--verb`           |
+| `lore channel list`          | The project's channels: In-app, Email, then its Discord and webhook channels.                                             |                                                                                  |
+| `lore channel add`           | Add a Discord or webhook channel, the URL from stdin; a webhook's signing secret is printed once.                         | `--kind` (`discord` or `webhook`), `--name` (required), `--url-stdin` (required) |
+| `lore channel update <id>`   | Rename a channel, or replace its URL from stdin.                                                                          | `--name`, `--url-stdin`                                                          |
+| `lore channel delete <id>`   | Delete a channel and every notification sent to it.                                                                       | `--yes` (required)                                                               |
+| `lore channel rotate <id>`   | Give a webhook channel a new signing secret, printed once; the old one signs for 24 more hours.                           |                                                                                  |
+| `lore threshold get`         | The coverage and open-errors alert thresholds.                                                                            |                                                                                  |
+| `lore threshold set`         | Set or clear a threshold; `none` clears one.                                                                              | `--coverage-min`, `--open-errors-max`                                            |
+| `lore inbox list`            | Your inbox, newest first, across every project unless one is named.                                                       | `--project`, `--unread`, `--limit` (1 to 100), `--cursor`                        |
+| `lore inbox read [id]`       | Mark one message read, or all of them.                                                                                    | `--all`, `--project`                                                             |
+| `lore notifications get`     | Your notification preferences: email on or off, and the kinds you muted. Changing them is done signed in, in the browser. |                                                                                  |
 
 ## Errors and insights
 

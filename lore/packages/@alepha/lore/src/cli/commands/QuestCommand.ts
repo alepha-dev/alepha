@@ -1125,6 +1125,48 @@ export class QuestCommand {
     },
   });
 
+  public readonly reminderSet = $command({
+    name: "set",
+    description:
+      "Set or clear your reminder on a quest you hold: daily, weekly, monthly, or off",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      interval: z
+        .enum(["daily", "weekly", "monthly", "off"])
+        .describe("daily, weekly or monthly; off clears it."),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(
+        args,
+        flags,
+        print,
+        flags.interval === "off" ? "Reminder cleared on" : "Reminder set on",
+        (id) =>
+          this.questApi.setQuestReminder({
+            params: { id },
+            body: {
+              interval: flags.interval === "off" ? null : flags.interval,
+            },
+          }),
+      );
+    },
+  });
+
+  /**
+   * `lore quest reminder set`, by the naming rule: `quest_reminder_set`.
+   * Declared after its child.
+   */
+  public readonly reminder = $command({
+    name: "reminder",
+    description: "Your reminder on a quest you hold: set or clear it",
+    children: [this.reminderSet],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   public readonly delete = $command({
     name: "delete",
     description: "Delete a quest for good; to keep the record, shelve it",
@@ -1266,6 +1308,7 @@ export class QuestCommand {
       this.shelve,
       this.unshelve,
       this.unassign,
+      this.reminder,
       this.complete,
       this.delete,
       this.tags,

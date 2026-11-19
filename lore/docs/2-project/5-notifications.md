@@ -303,16 +303,34 @@ Only you, signed in, can change these: an API key or a connected app cannot.
 
 ## From an agent
 
-There is no tool for the inbox. An agent reaches a person through a comment
-that names them: `quest_comment_add`, `feedback_comment_add`, or the `reason`
-of `quest_hold`. Use it when you need that person, not to address the room.
+An agent reaches a person through a comment that names them:
+`quest_comment_add`, `feedback_comment_add`, or the `reason` of `quest_hold`.
+Use it when you need that person, not to address the room. `inbox_list` and
+`inbox_read` read and clear the inbox of the account the agent works as.
 
 For project events, `event_catalog` lists them with their fields,
 `event_list` reads the recent ones, and `subscription_list` and
-`subscription_set` say and change who is notified of what. The CLI has the
-same: `lore event` and `lore subscription`. A channel's URL never travels
-through a tool: adding a Discord or webhook channel is done on the page. See
-[MCP tools](/lore/docs/reference-mcp-tools) and [CLI](/lore/docs/reference-cli).
+`subscription_set` say and change who is notified of what. `channel_update`
+renames a channel and `channel_delete` removes one, `threshold_get` and
+`threshold_set` read and change the thresholds, and `quest_reminder_set` sets
+your reminder on a quest. See [MCP tools](/lore/docs/reference-mcp-tools).
+
+## From the command line
+
+Everything on this page has a command: `lore event`, `lore subscription`,
+`lore channel`, `lore threshold`, `lore quest reminder set`, `lore inbox` and
+`lore notifications get`. A channel's URL is read from stdin, never typed on
+the command line:
+
+```bash
+echo "$WEBHOOK_URL" | lore channel add --kind webhook --name ci-alerts --url-stdin
+```
+
+A webhook's signing secret is printed once, by `lore channel add` and `lore
+channel rotate`. A channel's URL and secret never go through an agent's tool,
+so a credential stays out of a model's context. Your preferences are read with
+`lore notifications get`, and changed signed in, in the browser. See
+[CLI](/lore/docs/reference-cli).
 
 ## Next
 

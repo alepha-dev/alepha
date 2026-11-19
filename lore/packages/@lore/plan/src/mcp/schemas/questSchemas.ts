@@ -597,6 +597,26 @@ export const questUnassignResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
+// quest_reminder_set
+// -----------------------------------------------------------------------------
+
+export const questReminderSetParamsSchema = entityRefSchema.extend({
+  interval: z
+    .enum(["daily", "weekly", "monthly", "off"])
+    .describe(
+      "How often the assignee is reminded; `off` clears the reminder. The first one is due one interval from now.",
+    ),
+});
+
+export const questReminderSetResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  interval: z.enum(["daily", "weekly", "monthly", "off"]),
+  nextAt: z.string().optional(),
+});
+
+// -----------------------------------------------------------------------------
 // quest_complete
 // -----------------------------------------------------------------------------
 

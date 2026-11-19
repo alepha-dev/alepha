@@ -2,8 +2,11 @@ import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import { ProjectChannelService, projectEvents } from "@lore/core/api";
 import { NotificationTools } from "@lore/core/mcp";
 import { createPresetRanks } from "@lore/core/testing";
+import { QuestTools } from "@lore/plan/mcp";
+import { ThresholdTools } from "@lore/ship/mcp";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
+import { notificationInboxEntity } from "alepha/api/notifications";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -15,6 +18,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestMember,
   createTestProject,
+  createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
@@ -24,6 +28,7 @@ class QuietQueue extends JobQueueProvider {
 }
 class Rows extends TestEntityRepositories {
   events = $repository(projectEvents);
+  inbox = $repository(notificationInboxEntity);
 }
 
 const WEBHOOK = "https://discord.com/api/webhooks/1234567890/abcDEF-ghi_JKL";
@@ -67,7 +72,7 @@ describe("Notification tools", () => {
     await alepha.start();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "plan", options: { feedback: true } },
+        { key: "plan", options: { feedback: true, reminder: true } },
         { key: "ship", options: { deploy: true } },
       ],
     });
@@ -95,11 +100,9 @@ describe("Notification tools", () => {
       needs: { capability: "ship" },
       filter: { field: "app" },
     });
-    const reminder = page.items.find(
-      (it: any) => it.name === "quest.reminder_due",
-    );
-    expect(reminder).toMatchObject({ available: false });
-    expect(reminder.reason).toMatch(/reminder/);
+    const epic = page.items.find((it: any) => it.name === "epic.completed");
+    expect(epic).toMatchObject({ available: false });
+    expect(epic.reason).toMatch(/epics/);
     expect(tools.event_catalog.options.description).toMatch(/webhook/);
   });
 
@@ -186,5 +189,116 @@ describe("Notification tools", () => {
       id: own.subscription.id,
     });
     expect((await call(member, tools.subscription_list, {})).items).toEqual([]);
+  });
+
+  it("channel_update renames a channel and channel_delete removes it with its subscriptions, both with subscription:manage only", async ({
+    expect,
+  }) => {
+    const added = await alepha
+      .inject(ProjectChannelService)
+      .add(project.id, owner, { name: "alerts", url: WEBHOOK });
+    await call(owner, tools.subscription_set, {
+      event: "deploy.failed",
+      channel_id: added.id,
+    });
+    await expect(
+      call(member, tools.channel_update, { id: added.id, name: "ops" }),
+    ).rejects.toThrow(/subscription:manage/);
+    const renamed = await call(owner, tools.channel_update, {
+      id: added.id,
+      name: "ops",
+    });
+    expect(renamed).toMatchObject({ id: added.id, name: "ops" });
+    expect(JSON.stringify(renamed)).not.toContain("webhooks");
+    await call(owner, tools.channel_delete, { id: added.id });
+    const page = await call(owner, tools.subscription_list, {});
+    expect(page.channels.map((it: any) => it.id)).not.toContain(added.id);
+    expect(page.items).toEqual([]);
+  });
+
+  it("inbox_list reads the caller's own inbox, narrowed to a project, and inbox_read marks it", async ({
+    expect,
+  }) => {
+    for (const [userId, title, scope] of [
+      [owner.id, "Here", `project:${project.id}`],
+      [owner.id, "Elsewhere", "project:999999"],
+      [member.id, "Not yours", `project:${project.id}`],
+    ] as const)
+      await rows.inbox.create({
+        userId,
+        title,
+        href: "/",
+        scope,
+        template: "lore:test",
+      } as any);
+    const anywhere = (user: UserAccountToken, tool: any, params: object) =>
+      as(user, () => tool.execute(params)) as Promise<any>;
+    const all = await anywhere(owner, tools.inbox_list, {});
+    expect(all.items.map((it: any) => it.title).sort()).toEqual([
+      "Elsewhere",
+      "Here",
+    ]);
+    expect(all.unreadCount).toBe(2);
+    const narrowed = await call(owner, tools.inbox_list, {});
+    expect(narrowed.items.map((it: any) => it.title)).toEqual(["Here"]);
+    const mine = narrowed.items[0];
+    await expect(
+      anywhere(member, tools.inbox_read, { id: mine.id }),
+    ).rejects.toThrow(/not found/i);
+    await anywhere(owner, tools.inbox_read, { id: mine.id });
+    const marked = await anywhere(owner, tools.inbox_read, { all: true });
+    expect(marked.count).toBe(1);
+    expect(
+      (await anywhere(owner, tools.inbox_list, { unread: true })).items,
+    ).toEqual([]);
+  });
+
+  it("threshold_get and threshold_set read and set both thresholds, each behind its permission", async ({
+    expect,
+  }) => {
+    const thresholds = alepha.inject(ThresholdTools);
+    expect(await call(owner, thresholds.threshold_get, {})).toEqual({
+      coverageMin: null,
+      openErrorsMax: null,
+    });
+    expect(
+      await call(owner, thresholds.threshold_set, {
+        coverage_min: 80,
+        open_errors_max: 5,
+      }),
+    ).toEqual({ coverageMin: 80, openErrorsMax: 5 });
+    expect(
+      await call(owner, thresholds.threshold_set, { open_errors_max: null }),
+    ).toEqual({ coverageMin: 80, openErrorsMax: null });
+    await expect(
+      call(member, thresholds.threshold_set, { coverage_min: 10 }),
+    ).rejects.toThrow(/app:manage/);
+  });
+
+  it("quest_reminder_set sets and clears the assignee's reminder, and refuses anyone else", async ({
+    expect,
+  }) => {
+    const quest = await createTestQuest(alepha, project, {
+      acceptedAt: alepha.inject(DateTimeProvider).nowISOString(),
+      acceptedBy: owner.id,
+    });
+    const quests = alepha.inject(QuestTools);
+    const set = await call(owner, quests.quest_reminder_set, {
+      id: quest.id,
+      interval: "weekly",
+    });
+    expect(set).toMatchObject({ id: quest.id, interval: "weekly" });
+    expect(set.nextAt).toBeDefined();
+    await expect(
+      call(member, quests.quest_reminder_set, {
+        id: quest.id,
+        interval: "daily",
+      }),
+    ).rejects.toThrow();
+    const cleared = await call(owner, quests.quest_reminder_set, {
+      id: quest.id,
+      interval: "off",
+    });
+    expect(cleared.nextAt).toBeUndefined();
   });
 });

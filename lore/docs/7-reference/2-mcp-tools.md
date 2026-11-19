@@ -85,6 +85,7 @@ See [Quests](/lore/docs/plan-quests).
 | `quest_delete`           | Delete a quest. Refused inside an epic that has started.                            |
 | `quest_accept`           | Take a quest and start it.                                                          |
 | `quest_unassign`         | Send an accepted quest back to the backlog.                                         |
+| `quest_reminder_set`     | Set or clear your reminder on a quest you hold.                                     |
 | `quest_objective_set`    | Tick or untick one objective.                                                       |
 | `quest_complete`         | Close a quest, with a summary, the commits, and a reason for each waived objective. |
 | `quest_commit_add`       | Record a commit on a quest, completed ones included.                                |
@@ -202,8 +203,9 @@ and [Traceability](/lore/docs/plan-traceability).
 
 ## Notifications
 
-Who is told when something changes in a project. Channels are added in the
-browser, so a webhook or Discord URL never travels through a tool. Lore runs
+Who is told when something changes in a project, and your own inbox. A
+channel is added, and its URL or signing secret changed, with `lore channel`
+only, so a webhook or Discord URL never travels through a tool. Lore runs
 no schedules and no multi-step reactions: for those, use a scheduled agent
 session over MCP, or subscribe a webhook channel and react in whatever it
 calls. See [Notifications](/lore/docs/project-notifications).
@@ -214,6 +216,12 @@ calls. See [Notifications](/lore/docs/project-notifications).
 | `event_list`        | The recent events, newest first, by name or subject, for "did it fire?". Only those you may read.               |
 | `subscription_list` | Who is notified of what, on which channel, and the project's channels by id, kind and name.                     |
 | `subscription_set`  | Notify a member (you by default) or a channel of an event; `verb` `mute`, `unmute` or `remove` acts on one row. |
+| `channel_update`    | Rename a channel.                                                                                               |
+| `channel_delete`    | Delete a channel and the subscriptions that send to it.                                                         |
+| `threshold_get`     | The coverage and open-errors alert thresholds.                                                                  |
+| `threshold_set`     | Set or clear either threshold.                                                                                  |
+| `inbox_list`        | Your inbox, newest first, across every project unless one is named.                                             |
+| `inbox_read`        | Mark one message read by `id`, or all of them with `all`.                                                       |
 
 ## Apps and telemetry
 
