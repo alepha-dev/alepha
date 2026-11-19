@@ -5,12 +5,11 @@ import { describe, it } from "vitest";
 /**
  * A web-stream body on a socket that has no `setNoDelay`.
  *
- * Deno runs an Alepha `node` build through its `node:http` shim, whose
- * `res.socket` lacks `setNoDelay`. The streaming branch of
- * `handleNodeRequest` called it unconditionally, so every SSR page (a
- * `ReadableStream` body) answered 500 under Deno while static assets served
- * fine. Here the method is shadowed on the one socket, which is what Deno
- * hands the provider.
+ * A `node:http` shim may hand out a `res.socket` without `setNoDelay`
+ * (Deno's did). The streaming branch of `handleNodeRequest` once called it
+ * unconditionally, so every SSR page (a `ReadableStream` body) answered 500
+ * on such a shim while static assets served fine. Here the method is
+ * shadowed on the one socket, which is what such a shim hands the provider.
  */
 describe("ServerProvider on a socket without setNoDelay", () => {
   it("should stream a ReadableStream body", async ({ expect }) => {

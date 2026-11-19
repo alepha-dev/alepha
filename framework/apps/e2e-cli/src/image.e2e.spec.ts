@@ -11,7 +11,7 @@
  * app is kept in step with the scaffold.
  *
  * ⚠️ **It fails without Docker, it never skips.** A skipped case is how a
- * green run lies, the rule this job already applies to Deno.
+ * green run lies.
  *
  * ⚠️ **One platform, the runner's.** No emulation: a multi-platform build is
  * proved by hand, once.

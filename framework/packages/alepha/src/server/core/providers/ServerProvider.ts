@@ -375,8 +375,9 @@ export class ServerProvider {
     if (response.body instanceof ReadableStream) {
       res.writeHead(response.status, response.headers);
       // Flush headers immediately and disable Nagle's algorithm for streaming.
-      // Optional call: Deno's node:http shim hands out a socket without
-      // `setNoDelay`, and calling it anyway turned every SSR page into a 500.
+      // Optional call: a node:http shim may hand out a socket without
+      // `setNoDelay` (Deno's did), and calling it anyway turned every SSR
+      // page into a 500.
       res.flushHeaders();
       res.socket?.setNoDelay?.(true);
 
