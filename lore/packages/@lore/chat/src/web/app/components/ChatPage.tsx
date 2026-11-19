@@ -31,13 +31,21 @@ import type {
   ChatRoomResource,
   ChatServerFrame,
 } from "../../../schemas/index.ts";
-import { useChatFeed } from "../hooks/useChatFeed.ts";
 import { useRoomMessages } from "../hooks/useRoomMessages.ts";
+import { ChatFeedHub } from "../services/ChatFeedHub.ts";
+import { ChatUnread } from "../services/ChatUnread.ts";
 import type { ChatMentionCandidate, ChatPendingFile } from "./ChatComposer.tsx";
 import Conversation from "./Conversation.tsx";
 import NewRoomDialog from "./NewRoomDialog.tsx";
 import RoomList from "./RoomList.tsx";
 import RoomMembersPanel from "./RoomMembersPanel.tsx";
+
+/**
+ * How long "is typing" stays without a new frame, and how often a typing
+ * member's page sends one.
+ */
+const TYPING_FOR_MS = 6000;
+const TYPING_EVERY_MS = 3000;
 
 /**
  * The Chat page (#E161, #Q3929), layout C of the mockup: the room inbox on
@@ -60,6 +68,9 @@ const ChatPage = () => {
   const roomsApi = useClient<ChatRoomController>();
   const messagesApi = useClient<ChatMessageController>();
   const queries = useQueryClient();
+  const hub = useInject(ChatFeedHub);
+  const unreadBadge = useInject(ChatUnread);
+  const dateTime = useInject(DateTimeProvider);
 
   useFoldedSidebar();
 
@@ -127,20 +138,71 @@ const ChatPage = () => {
   }, [queries, projectId]);
   useEffect(() => () => clearTimeout(refresh.current), []);
 
-  useChatFeed({
-    onFrame: (frame: ChatServerFrame) => {
-      conversation.apply(frame);
-      if (frame.projectId !== projectId) return;
-      refreshLists();
-      if (frame.type === "room.changed") {
-        queries.invalidate(["chat-room-members", frame.roomId]);
-      }
-    },
-    onResync: () => {
-      refreshLists();
-      conversation.resync();
-    },
-  });
+  // Who is typing in the open room, each until a few seconds pass or
+  // their message arrives. Never stored.
+  const [typing, setTyping] = useState<
+    Array<{ userId: string; until: number }>
+  >([]);
+  useEffect(() => {
+    if (typing.length === 0) return;
+    const next = Math.min(...typing.map((it) => it.until));
+    const timer = setTimeout(
+      () => {
+        const now = dateTime.nowMillis();
+        setTyping((held) => held.filter((it) => it.until > now));
+      },
+      Math.max(next - dateTime.nowMillis(), 0) + 50,
+    );
+    return () => clearTimeout(timer);
+  }, [typing]);
+
+  // The page's frames come from the one feed at the layout's root.
+  const onFrame = useRef<(frame: ChatServerFrame) => void>(() => {});
+  onFrame.current = (frame) => {
+    if (frame.projectId !== projectId) return;
+    if (frame.type === "typing") {
+      if (frame.roomId !== room?.id || frame.userId === me) return;
+      const until = dateTime.nowMillis() + TYPING_FOR_MS;
+      setTyping((held) => [
+        ...held.filter((it) => it.userId !== frame.userId),
+        { userId: frame.userId, until },
+      ]);
+      return;
+    }
+    conversation.apply(frame);
+    if (frame.type === "message.created") {
+      const author = frame.message.authorId;
+      setTyping((held) => held.filter((it) => it.userId !== author));
+    }
+    refreshLists();
+    if (frame.type === "room.changed") {
+      queries.invalidate(["chat-room-members", frame.roomId]);
+    }
+  };
+  const onResync = useRef<() => void>(() => {});
+  onResync.current = () => {
+    refreshLists();
+    conversation.resync();
+  };
+  useEffect(() => {
+    const off = [
+      hub.onFrame((frame) => onFrame.current(frame)),
+      hub.onResync(() => onResync.current()),
+    ];
+    return () => {
+      for (const unsubscribe of off) unsubscribe();
+    };
+  }, [hub]);
+
+  // "Is typing", sent at most every few seconds while the member types.
+  const lastTyping = useRef(0);
+  const onTyping = () => {
+    if (!room) return;
+    const now = dateTime.nowMillis();
+    if (now - lastTyping.current < TYPING_EVERY_MS) return;
+    lastTyping.current = now;
+    hub.send({ type: "typing", projectId, roomId: room.id });
+  };
 
   // Opening a room, and every message that arrives while it is open and
   // the tab is seen, marks it read.
@@ -152,6 +214,7 @@ const ChatPage = () => {
           body: { messageId },
         });
         queries.invalidate(unreadKey);
+        unreadBadge.refresh(projectId);
       },
       // A read state that did not move is retried by the next message: it
       // is not worth a toast.
@@ -286,7 +349,6 @@ const ChatPage = () => {
           label: displayName(user),
         }));
 
-  const dateTime = useInject(DateTimeProvider);
   const [now] = useState(() => dateTime.nowMillis());
 
   const [creating, setCreating] = useState(false);
@@ -338,6 +400,8 @@ const ChatPage = () => {
       }}
       onReact={(message, emoji) => void react.run(message, emoji)}
       onBack={isMobile ? () => open() : undefined}
+      typing={typing.map((it) => it.userId)}
+      onTyping={onTyping}
     />
   ) : (
     <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -406,7 +470,15 @@ const useFoldedSidebar = () => {
   useEffect(() => {
     before.current = collapsed;
     setCollapsed(true);
-    return () => setCollapsed(before.current);
+    // The fold is remembered in a cookie, so it is undone on the way out:
+    // on unmount for a navigation inside the app, on `pagehide` for a
+    // reload or a link that leaves the page, which unmounts nothing.
+    const restore = () => setCollapsed(before.current);
+    window.addEventListener("pagehide", restore);
+    return () => {
+      window.removeEventListener("pagehide", restore);
+      restore();
+    };
   }, []);
 };
 

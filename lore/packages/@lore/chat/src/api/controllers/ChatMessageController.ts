@@ -224,6 +224,11 @@ export class ChatMessageController {
             roomId: z.uuid(),
             unread: z.integer(),
             mentions: z.integer(),
+            /**
+             * A muted room still counts in its own row, never in the
+             * sidebar's total.
+             */
+            notifyLevel: z.enum(["mentions", "muted"]),
           }),
         ),
       }),

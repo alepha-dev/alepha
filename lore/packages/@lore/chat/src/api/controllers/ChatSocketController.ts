@@ -1,8 +1,9 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $secure } from "alepha/security";
 import { $websocket } from "alepha/websocket";
 
 import { ChatChannels } from "../../schemas/ChatChannels.ts";
+import { ChatTyping } from "../services/ChatTyping.ts";
 
 /**
  * The chat socket (#E161, decided by the spike #Q3923, folio #F1528).
@@ -33,14 +34,19 @@ export class ChatSocketController {
   public static readonly PATH = ChatChannels.PATH;
 
   protected readonly channels = $inject(ChatChannels);
+  protected readonly alepha = $inject(Alepha);
 
   socket = $websocket({
     channel: this.channels.feed,
     use: [$secure()],
     canJoin: ({ userId, roomId }) => !!userId && roomId === userId,
     maxConnectionsPerUser: 20,
-    handler: async () => {
-      // Client frames carry nothing yet: "is typing" comes with #Q3940.
+    // "Is typing", relayed to the room's other readers (#Q3940). Resolved
+    // at call time: the relay reads the database, and this class acts at
+    // boot.
+    handler: async ({ userId, message }) => {
+      if (!userId) return;
+      await this.alepha.inject(ChatTyping).relay(userId, message);
     },
   });
 }

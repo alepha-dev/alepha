@@ -53,6 +53,11 @@ export interface ConversationProps {
   onDelete: (message: ChatMessageResource) => Promise<void>;
   onReact: (message: ChatMessageResource, emoji: ChatReactionEmoji) => void;
   onUpload: (file: File) => Promise<ChatPendingFile | undefined>;
+  /**
+   * Who is typing in the room now, other than the reader.
+   */
+  typing: string[];
+  onTyping: () => void;
   onLoadOlder: () => void;
   /**
    * Resolves `true` when the message was sent, and the composer empties.
@@ -249,6 +254,21 @@ const Conversation = (props: ConversationProps) => {
           <ul>{rows}</ul>
         </div>
       </div>
+      <p
+        className="text-muted-foreground h-5 px-4 text-xs"
+        aria-live="polite"
+        data-testid="chat-typing"
+      >
+        {props.typing.length === 1
+          ? tr("chat.room.typing.one", {
+              args: [displayName(userById.get(props.typing[0]!))],
+            })
+          : props.typing.length > 1
+            ? tr("chat.room.typing.many", {
+                args: [String(props.typing.length)],
+              })
+            : ""}
+      </p>
       {room.archivedAt ? (
         <p className="text-muted-foreground border-t p-3 text-center text-sm">
           {tr("chat.room.archivedNotice")}
@@ -259,6 +279,7 @@ const Conversation = (props: ConversationProps) => {
           candidates={props.candidates}
           onSend={props.onSend}
           onUpload={props.onUpload}
+          onTyping={props.onTyping}
         />
       ) : (
         <p className="text-muted-foreground border-t p-3 text-center text-sm">

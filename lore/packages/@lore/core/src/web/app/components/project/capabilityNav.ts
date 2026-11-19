@@ -53,7 +53,11 @@ export interface CapabilityNavEntry {
    * Route names that light this entry up, beyond its own.
    */
   activeOn?: (routeName: string) => boolean;
-  badge?: (context: ProjectShellContext) => number | undefined;
+  /**
+   * A count, or a short text when a count needs a mark: Chat's `@3` says
+   * that some of the three unread mention the reader.
+   */
+  badge?: (context: ProjectShellContext) => number | string | undefined;
   /**
    * A last say beyond the capability and the option, for an entry that hides
    * itself on DATA. Only Errors has one.

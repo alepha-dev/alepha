@@ -240,7 +240,7 @@ describe("chat messages", () => {
 
     await send(kit.member, room.id, `@${kit.owner.username} again`);
     expect(await counts()).toEqual([
-      { roomId: room.id, unread: 1, mentions: 1 },
+      { roomId: room.id, unread: 1, mentions: 1, notifyLevel: "mentions" },
     ]);
 
     const latest = await messages.listChatMessages.fetch(

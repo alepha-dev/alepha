@@ -15,6 +15,7 @@ import { ChatMentionParser } from "./services/ChatMentionParser.ts";
 import { ChatMessageService } from "./services/ChatMessageService.ts";
 import { ChatRoomMerge } from "./services/ChatRoomMerge.ts";
 import { ChatRoomService } from "./services/ChatRoomService.ts";
+import { ChatTyping } from "./services/ChatTyping.ts";
 
 /**
  * The server half of `@lore/chat` (#E161): project rooms, where members talk
@@ -46,6 +47,7 @@ export const LoreChatApi = $module({
     ChatLive,
     ChatMentionParser,
     ChatMessageService,
+    ChatTyping,
     ChatMessageController,
   ],
 });
@@ -63,4 +65,5 @@ export { ChatAudience } from "./services/ChatAudience.ts";
 export { ChatLifecycle } from "./services/ChatLifecycle.ts";
 export { ChatLive } from "./services/ChatLive.ts";
 export { ChatMessageService } from "./services/ChatMessageService.ts";
+export { ChatTyping } from "./services/ChatTyping.ts";
 export { ChatRoomService } from "./services/ChatRoomService.ts";

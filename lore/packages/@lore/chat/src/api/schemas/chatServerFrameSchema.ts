@@ -29,6 +29,12 @@ export const chatServerFrameSchema = z.union([
     messageId: z.uuid(),
   }),
   z.object({
+    type: z.literal("typing"),
+    projectId: z.integer(),
+    roomId: z.uuid(),
+    userId: z.uuid(),
+  }),
+  z.object({
     type: z.literal("room.changed"),
     projectId: z.integer(),
     roomId: z.uuid(),

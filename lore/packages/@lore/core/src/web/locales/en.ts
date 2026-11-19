@@ -730,6 +730,8 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message #$1",
   "chat.composer.send": "Send",
+  "chat.room.typing.one": "$1 is typing…",
+  "chat.room.typing.many": "$1 people are typing…",
   "chat.message.files": "Files",
   "chat.message.react": "Add a reaction",
   "chat.composer.files": "Files to send",
