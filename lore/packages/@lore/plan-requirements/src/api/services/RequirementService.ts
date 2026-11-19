@@ -1,4 +1,4 @@
-import { ResourceLinkService } from "@lore/core/api";
+import { BoundParameters, ResourceLinkService } from "@lore/core/api";
 import { EpicController } from "@lore/plan/api";
 import { compareReleaseTags, epics, releases } from "@lore/plan/schemas";
 import { $inject, Alepha } from "alepha";
@@ -40,6 +40,7 @@ export class RequirementService {
   protected readonly runService = $inject(RunService);
   protected readonly metricDays = $repository(requirementMetricDays);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly bound = $inject(BoundParameters);
 
   /**
    * Every requirement of `rows` as a resource, in a fixed number of reads.
@@ -49,54 +50,55 @@ export class RequirementService {
   ): Promise<RequirementResource[]> {
     if (rows.length === 0) return [];
     const ids = rows.map((it) => it.id);
-    const criteria = await this.criteria.findMany({
-      where: { requirementId: { inArray: ids } },
-      orderBy: [{ column: "key", direction: "asc" }],
-    });
+    // Every id list below goes in batches under D1's bind limit (#Q3959).
+    const criteria = await this.bound.collect(ids, (batch) =>
+      this.criteria.findMany({
+        where: { requirementId: { inArray: batch } },
+        orderBy: [{ column: "key", direction: "asc" }],
+      }),
+    );
     const useCaseIds = [...new Set(criteria.map((it) => it.useCaseId))];
     const [cases, actors, covers] = await Promise.all([
-      useCaseIds.length
-        ? this.useCases.findMany({
-            where: { id: { inArray: useCaseIds } },
-            columns: ["id", "number", "title"],
-          })
-        : [],
-      useCaseIds.length
-        ? this.actors.findMany({
-            where: { useCaseId: { inArray: useCaseIds } },
-          })
-        : [],
+      this.bound.collect(useCaseIds, (batch) =>
+        this.useCases.findMany({
+          where: { id: { inArray: batch } },
+          columns: ["id", "number", "title"],
+        }),
+      ),
+      this.bound.collect(useCaseIds, (batch) =>
+        this.actors.findMany({ where: { useCaseId: { inArray: batch } } }),
+      ),
       this.links.relationsTo("covers", "usecase", useCaseIds.map(String)),
     ]);
     const metricIds = rows.filter((it) => it.metric).map((it) => it.id);
     const [latest, development, days] = await Promise.all([
       this.runService.latestOf(useCaseIds),
       this.runService.developmentOf(useCaseIds),
-      metricIds.length
-        ? this.metricDays.findMany({
-            where: {
-              requirementId: { inArray: metricIds },
-              day: { gte: this.dayOf(-13) },
-            },
-            orderBy: [{ column: "day", direction: "asc" }],
-          })
-        : [],
+      this.bound.collect(metricIds, (batch) =>
+        this.metricDays.findMany({
+          where: {
+            requirementId: { inArray: batch },
+            day: { gte: this.dayOf(-13) },
+          },
+          orderBy: [{ column: "day", direction: "asc" }],
+        }),
+      ),
     ]);
     const epicIds = [...new Set(covers.map((it) => Number(it.fromId)))];
     const personaIds = [...new Set(actors.map((it) => it.personaId))];
     const [epicRows, people] = await Promise.all([
-      epicIds.length
-        ? this.epics.findMany({
-            where: { id: { inArray: epicIds } },
-            columns: ["id", "number", "title", "releaseId"],
-          })
-        : [],
-      personaIds.length
-        ? this.personas.findMany({
-            where: { id: { inArray: personaIds } },
-            columns: ["id", "number", "name"],
-          })
-        : [],
+      this.bound.collect(epicIds, (batch) =>
+        this.epics.findMany({
+          where: { id: { inArray: batch } },
+          columns: ["id", "number", "title", "releaseId"],
+        }),
+      ),
+      this.bound.collect(personaIds, (batch) =>
+        this.personas.findMany({
+          where: { id: { inArray: batch } },
+          columns: ["id", "number", "name"],
+        }),
+      ),
     ]);
     const releaseIds = [
       ...new Set([
@@ -106,12 +108,12 @@ export class RequirementService {
         ),
       ]),
     ];
-    const releaseRows = releaseIds.length
-      ? await this.releases.findMany({
-          where: { id: { inArray: releaseIds } },
-          columns: ["id", "number", "tag", "title"],
-        })
-      : [];
+    const releaseRows = await this.bound.collect(releaseIds, (batch) =>
+      this.releases.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "number", "tag", "title"],
+      }),
+    );
     const release = new Map(releaseRows.map((it) => [it.id, it]));
     const useCase = new Map(cases.map((it) => [it.id, it]));
     const epic = new Map(epicRows.map((it) => [it.id, it]));
@@ -295,9 +297,11 @@ export class RequirementService {
    */
   public async reconcile(requirementIds: number[]): Promise<void> {
     if (requirementIds.length === 0) return;
-    const rows = await this.requirements.findMany({
-      where: { id: { inArray: [...new Set(requirementIds)] } },
-    });
+    const rows = await this.bound.collect(
+      [...new Set(requirementIds)],
+      (batch) =>
+        this.requirements.findMany({ where: { id: { inArray: batch } } }),
+    );
     const resources = await this.toResources(
       rows.filter((it) => it.targetReleaseId),
     );
@@ -329,26 +333,26 @@ export class RequirementService {
       "usecase",
     );
     const useCaseIds = [...new Set(covers.map((it) => Number(it.toId)))];
-    const criteria = useCaseIds.length
-      ? await this.criteria.findMany({
-          where: {
-            useCaseId: { inArray: useCaseIds },
-            requirementId: { isNotNull: true },
-          },
-          columns: ["useCaseId", "requirementId"],
-        })
-      : [];
+    const criteria = await this.bound.collect(useCaseIds, (batch) =>
+      this.criteria.findMany({
+        where: {
+          useCaseId: { inArray: batch },
+          requirementId: { isNotNull: true },
+        },
+        columns: ["useCaseId", "requirementId"],
+      }),
+    );
     const requirementIds = [
       ...new Set(
         criteria.flatMap((it) => (it.requirementId ? [it.requirementId] : [])),
       ),
     ];
-    const reqs = requirementIds.length
-      ? await this.requirements.findMany({
-          where: { id: { inArray: requirementIds } },
-          columns: ["id", "number"],
-        })
-      : [];
+    const reqs = await this.bound.collect(requirementIds, (batch) =>
+      this.requirements.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "number"],
+      }),
+    );
     const numberOf = new Map(reqs.map((it) => [it.id, it.number]));
     const result = new Map<number, number[]>();
     for (const cover of covers) {
@@ -374,13 +378,15 @@ export class RequirementService {
     useCaseIds: number[],
   ): Promise<number[]> {
     if (useCaseIds.length === 0) return [];
-    const rows = await this.criteria.findMany({
-      where: {
-        useCaseId: { inArray: useCaseIds },
-        requirementId: { isNotNull: true },
-      },
-      columns: ["requirementId"],
-    });
+    const rows = await this.bound.collect(useCaseIds, (batch) =>
+      this.criteria.findMany({
+        where: {
+          useCaseId: { inArray: batch },
+          requirementId: { isNotNull: true },
+        },
+        columns: ["requirementId"],
+      }),
+    );
     return [
       ...new Set(
         rows.flatMap((it) => (it.requirementId ? [it.requirementId] : [])),

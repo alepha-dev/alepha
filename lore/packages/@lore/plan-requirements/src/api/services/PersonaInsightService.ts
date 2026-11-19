@@ -1,4 +1,8 @@
-import { ProjectSecurityService, ResourceLinkService } from "@lore/core/api";
+import {
+  BoundParameters,
+  ProjectSecurityService,
+  ResourceLinkService,
+} from "@lore/core/api";
 import { epics, quests, releases } from "@lore/plan/schemas";
 import { appInstances } from "@lore/ship/schemas";
 import { $inject } from "alepha";
@@ -45,6 +49,7 @@ export class PersonaInsightService {
   protected readonly useCaseService = $inject(UseCaseService);
   protected readonly buckets = $inject(RequirementsBuckets);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly bound = $inject(BoundParameters);
 
   protected isRecording(mimeType: string): boolean {
     return mimeType.startsWith("video/");
@@ -59,11 +64,11 @@ export class PersonaInsightService {
       columns: ["useCaseId"],
     });
     const ids = [...new Set(rows.map((it) => it.useCaseId))];
-    if (ids.length === 0) return [];
-    return await this.useCases.findMany({
-      where: { id: { inArray: ids } },
-      orderBy: [{ column: "number", direction: "asc" }],
-    });
+    // Batched under D1's bind limit (#Q3959), then sorted whole.
+    const found = await this.bound.collect(ids, (batch) =>
+      this.useCases.findMany({ where: { id: { inArray: batch } } }),
+    );
+    return found.sort((a, b) => a.number - b.number);
   }
 
   protected async orderedReleases(projectId: number) {
@@ -99,43 +104,45 @@ export class PersonaInsightService {
     const [covers, mentions, lastRun, ordered] = await Promise.all([
       this.links.relationsTo("covers", "usecase", caseIds.map(String)),
       this.links.mentionsTo("persona", [String(persona.id)], "quest"),
-      caseIds.length
-        ? this.runs.findMany({
-            where: { useCaseId: { inArray: caseIds } },
+      this.bound
+        .collect(caseIds, (batch) =>
+          this.runs.findMany({
+            where: { useCaseId: { inArray: batch } },
             orderBy: [{ column: "ranAt", direction: "desc" }],
             columns: ["ranAt"],
             limit: 1,
-          })
-        : Promise.resolve([]),
+          }),
+        )
+        .then((rows) => this.byRanAtDesc(rows).slice(0, 1)),
       this.orderedReleases(persona.projectId),
     ]);
     const epicIds = [...new Set(covers.map((it) => Number(it.fromId)))];
     const mentionIds = [...new Set(mentions.map((it) => Number(it.fromId)))];
     const [viaEpic, viaMention, epicRows] = await Promise.all([
-      epicIds.length
-        ? this.quests.findMany({
-            where: {
-              projectId: { eq: persona.projectId },
-              epicId: { inArray: epicIds },
-              completedAt: { isNotNull: true },
-            },
-          })
-        : Promise.resolve([]),
-      mentionIds.length
-        ? this.quests.findMany({
-            where: {
-              projectId: { eq: persona.projectId },
-              id: { inArray: mentionIds },
-              completedAt: { isNotNull: true },
-            },
-          })
-        : Promise.resolve([]),
-      epicIds.length
-        ? this.epics.findMany({
-            where: { id: { inArray: epicIds } },
-            columns: ["id", "number", "releaseId"],
-          })
-        : Promise.resolve([]),
+      this.bound.collect(epicIds, (batch) =>
+        this.quests.findMany({
+          where: {
+            projectId: { eq: persona.projectId },
+            epicId: { inArray: batch },
+            completedAt: { isNotNull: true },
+          },
+        }),
+      ),
+      this.bound.collect(mentionIds, (batch) =>
+        this.quests.findMany({
+          where: {
+            projectId: { eq: persona.projectId },
+            id: { inArray: batch },
+            completedAt: { isNotNull: true },
+          },
+        }),
+      ),
+      this.bound.collect(epicIds, (batch) =>
+        this.epics.findMany({
+          where: { id: { inArray: batch } },
+          columns: ["id", "number", "releaseId"],
+        }),
+      ),
     ]);
     const epicOf = new Map(epicRows.map((it) => [it.id, it]));
     const releaseOf = new Map(ordered.map((it) => [it.id, it]));
@@ -238,10 +245,16 @@ export class PersonaInsightService {
     const cases = await this.useCasesOf(persona);
     if (cases.length === 0) return [];
     const [runs, ordered, resources] = await Promise.all([
-      this.runs.findMany({
-        where: { useCaseId: { inArray: cases.map((it) => it.id) } },
-        orderBy: [{ column: "ranAt", direction: "desc" }],
-      }),
+      this.bound
+        .collect(
+          cases.map((it) => it.id),
+          (batch) =>
+            this.runs.findMany({
+              where: { useCaseId: { inArray: batch } },
+              orderBy: [{ column: "ranAt", direction: "desc" }],
+            }),
+        )
+        .then((rows) => this.byRanAtDesc(rows)),
       this.orderedReleases(persona.projectId),
       this.useCaseService.toResources(cases),
     ]);
@@ -350,5 +363,13 @@ export class PersonaInsightService {
       }
     }
     return removed;
+  }
+
+  /**
+   * Newest first: rows read in batches come back newest first per batch
+   * only (#Q3959).
+   */
+  protected byRanAtDesc<T extends { ranAt: string }>(rows: T[]): T[] {
+    return rows.sort((a, b) => b.ranAt.localeCompare(a.ranAt));
   }
 }

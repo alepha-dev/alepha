@@ -1,4 +1,8 @@
-import { ProjectSecurityService, ResourceLinkService } from "@lore/core/api";
+import {
+  BoundParameters,
+  ProjectSecurityService,
+  ResourceLinkService,
+} from "@lore/core/api";
 import { quests } from "@lore/plan/schemas";
 import { RunErrorService } from "@lore/ship/api";
 import { $inject } from "alepha";
@@ -37,6 +41,7 @@ export class RunService {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly errors = $inject(RunErrorService);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly bound = $inject(BoundParameters);
 
   /**
    * The latest run of each use case, with its results.
@@ -49,19 +54,23 @@ export class RunService {
       { run: UseCaseRun; results: UseCaseRunResult[] }
     >();
     if (useCaseIds.length === 0) return latest;
-    const runs = await this.runs.findMany({
-      where: { useCaseId: { inArray: useCaseIds } },
-      orderBy: [{ column: "ranAt", direction: "desc" }],
-    });
+    // Batched under D1's bind limit (#Q3959); a use case's runs share a
+    // batch, so "first seen" is still its latest.
+    const runs = await this.bound.collect(useCaseIds, (batch) =>
+      this.runs.findMany({
+        where: { useCaseId: { inArray: batch } },
+        orderBy: [{ column: "ranAt", direction: "desc" }],
+      }),
+    );
     for (const run of runs) {
       if (!latest.has(run.useCaseId))
         latest.set(run.useCaseId, { run, results: [] });
     }
     const runIds = [...latest.values()].map((it) => it.run.id);
     if (runIds.length) {
-      const rows = await this.results.findMany({
-        where: { runId: { inArray: runIds } },
-      });
+      const rows = await this.bound.collect(runIds, (batch) =>
+        this.results.findMany({ where: { runId: { inArray: batch } } }),
+      );
       for (const entry of latest.values()) {
         entry.results = rows.filter((it) => it.runId === entry.run.id);
       }
@@ -89,12 +98,12 @@ export class RunService {
       useCaseIds.map(String),
     );
     const epicIds = [...new Set(covers.map((it) => Number(it.fromId)))];
-    const rows = epicIds.length
-      ? await this.quests.findMany({
-          where: { epicId: { inArray: epicIds }, shelvedAt: { isNull: true } },
-          columns: ["epicId", "completedAt"],
-        })
-      : [];
+    const rows = await this.bound.collect(epicIds, (batch) =>
+      this.quests.findMany({
+        where: { epicId: { inArray: batch }, shelvedAt: { isNull: true } },
+        columns: ["epicId", "completedAt"],
+      }),
+    );
     for (const id of useCaseIds) {
       const mine = new Set(
         covers

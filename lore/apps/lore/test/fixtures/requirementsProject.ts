@@ -7,11 +7,12 @@ import { OrganizationRankController } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
-import { AlephaOrm } from "alepha/orm";
+import { AlephaOrm, DatabaseProvider } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 
 import { bootLore } from "./bootLore.ts";
+import { D1CeilingProvider } from "./D1CeilingProvider.ts";
 import { MEMORY_READS } from "./memoryReads.ts";
 
 /**
@@ -28,11 +29,18 @@ export const requirementsProject = async (
      * Classes to construct before `start()`: a spec's repository probe.
      */
     probes?: Array<new () => object>;
+    /**
+     * Refuse a statement binding over 100 values, as D1 does (#Q3959).
+     */
+    d1?: boolean;
   } = {},
 ) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
   });
+  if (options.d1) {
+    alepha.with({ provide: DatabaseProvider, use: D1CeilingProvider });
+  }
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);

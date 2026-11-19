@@ -1,5 +1,6 @@
 import {
   BestEffort,
+  BoundParameters,
   ResourceLinkService,
   ResourceRegistry,
 } from "@lore/core/api";
@@ -42,6 +43,7 @@ export class UseCaseService {
   protected readonly links = $inject(ResourceLinkService);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly bestEffort = $inject(BestEffort);
+  protected readonly bound = $inject(BoundParameters);
   protected readonly epicProgress = $inject(EpicProgressService);
   protected readonly runService = $inject(RunService);
 
@@ -237,45 +239,55 @@ export class UseCaseService {
       this.runService.latestOf(ids),
       this.runService.developmentOf(ids),
     ]);
+    // In batches under D1's bind limit (#Q3959): a use case's rows all
+    // fall in its own batch, so each keeps its `position` order.
     const [actors, steps, alternatives, criteria, covered] = await Promise.all([
-      this.actors.findMany({ where: { useCaseId: { inArray: ids } } }),
-      this.steps.findMany({
-        where: { useCaseId: { inArray: ids } },
-        orderBy: [{ column: "position", direction: "asc" }],
-      }),
-      this.alternatives.findMany({
-        where: { useCaseId: { inArray: ids } },
-        orderBy: [{ column: "position", direction: "asc" }],
-      }),
-      this.criteria.findMany({
-        where: { useCaseId: { inArray: ids } },
-        orderBy: [{ column: "position", direction: "asc" }],
-      }),
+      this.bound.collect(ids, (batch) =>
+        this.actors.findMany({ where: { useCaseId: { inArray: batch } } }),
+      ),
+      this.bound.collect(ids, (batch) =>
+        this.steps.findMany({
+          where: { useCaseId: { inArray: batch } },
+          orderBy: [{ column: "position", direction: "asc" }],
+        }),
+      ),
+      this.bound.collect(ids, (batch) =>
+        this.alternatives.findMany({
+          where: { useCaseId: { inArray: batch } },
+          orderBy: [{ column: "position", direction: "asc" }],
+        }),
+      ),
+      this.bound.collect(ids, (batch) =>
+        this.criteria.findMany({
+          where: { useCaseId: { inArray: batch } },
+          orderBy: [{ column: "position", direction: "asc" }],
+        }),
+      ),
       this.coveringEpics(rows[0].projectId, ids),
     ]);
-    const people = actors.length
-      ? await this.personas.findMany(
+    const people = await this.bound.collect(
+      [...new Set(actors.map((it) => it.personaId))],
+      (batch) =>
+        this.personas.findMany(
           {
-            where: {
-              id: { inArray: [...new Set(actors.map((it) => it.personaId))] },
-            },
+            where: { id: { inArray: batch } },
             columns: ["id", "number", "name"],
           },
           { force: true },
-        )
-      : [];
+        ),
+    );
     const person = new Map(people.map((it) => [it.id, it]));
     const requirementIds = [
       ...new Set(
         criteria.flatMap((it) => (it.requirementId ? [it.requirementId] : [])),
       ),
     ];
-    const verified = requirementIds.length
-      ? await this.requirements.findMany({
-          where: { id: { inArray: requirementIds } },
-          columns: ["id", "number"],
-        })
-      : [];
+    const verified = await this.bound.collect(requirementIds, (batch) =>
+      this.requirements.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "number"],
+      }),
+    );
     const numberOf = new Map(verified.map((it) => [it.id, it.number]));
     return rows.map((row) => {
       const { deletedAt: _deleted, ...rest } = row;
