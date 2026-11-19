@@ -44,9 +44,11 @@ export const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
  * `success`. An epic and the quests inside it therefore read as the same
  * colour when they are at the same stage, which is the whole point of naming
  * meanings instead of hexes. `draft` sits below all of them as `neutral`:
- * nothing in it can be worked yet. `shelved` (#E78) is `neutral` too, as a
- * shelved quest is (`questChips.ts`): it is the absence of a state, and
- * never the `success` of a completed one.
+ * nothing in it can be worked yet. `shelved` (#E78) is `violet` (#Q3948): it
+ * was `neutral` like a shelved quest (`questChips.ts`), and beside a draft
+ * the two chips differed only by their glyph. Violet is a hue no other epic
+ * status uses, so a plan set aside reads apart from one being specified at a
+ * glance, and it is never the `success` of a completed one.
  *
  * This replaced a `variant` map (`outline` / `default` / `secondary`),
  * where the in-flight status was a solid primary chip: the loudest thing in
@@ -57,7 +59,7 @@ export const STATUS_TONE: Record<EpicStatus, BadgeTone> = {
   ready: "info",
   in_progress: "warning",
   completed: "success",
-  shelved: "neutral",
+  shelved: "violet",
 };
 
 /**
