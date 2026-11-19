@@ -158,6 +158,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   // Chat (#E161): an inbox beside a conversation, laid out from the width
   // it is given.
   "projectChat",
+  "projectChatRoom",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);
@@ -285,6 +286,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectArtifacts: "project.menu.artifacts",
   projectArtifact: "project.menu.artifacts",
   projectChat: "project.menu.chat",
+  projectChatRoom: "project.menu.chat",
   projectFolios: "project.menu.folios",
   projectFoliosNew: "project.menu.folios",
   projectFoliosFolio: "project.menu.folios",

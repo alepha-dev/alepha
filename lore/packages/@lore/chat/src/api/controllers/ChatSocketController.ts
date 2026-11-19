@@ -1,9 +1,8 @@
-import { z } from "alepha";
+import { $inject } from "alepha";
 import { $secure } from "alepha/security";
-import { $channel, $websocket } from "alepha/websocket";
+import { $websocket } from "alepha/websocket";
 
-import { chatClientFrameSchema } from "../schemas/chatClientFrameSchema.ts";
-import { chatServerFrameSchema } from "../schemas/chatServerFrameSchema.ts";
+import { ChatChannels } from "../../schemas/ChatChannels.ts";
 
 /**
  * The chat socket (#E161, decided by the spike #Q3923, folio #F1528).
@@ -31,20 +30,12 @@ import { chatServerFrameSchema } from "../schemas/chatServerFrameSchema.ts";
  * the module's `services` and kept free of request handlers.
  */
 export class ChatSocketController {
-  public static readonly PATH = "/ws/chat";
+  public static readonly PATH = ChatChannels.PATH;
 
-  channel = $channel({
-    path: ChatSocketController.PATH,
-    description: "A member's live chat feed, across every project they are in",
-    schema: {
-      roomId: z.uuid(),
-      in: chatServerFrameSchema,
-      out: chatClientFrameSchema,
-    },
-  });
+  protected readonly channels = $inject(ChatChannels);
 
   socket = $websocket({
-    channel: this.channel,
+    channel: this.channels.feed,
     use: [$secure()],
     canJoin: ({ userId, roomId }) => !!userId && roomId === userId,
     maxConnectionsPerUser: 20,

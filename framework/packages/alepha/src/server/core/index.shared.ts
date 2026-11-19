@@ -23,3 +23,7 @@ export * from "./schemas/versionSchema.ts";
 export * from "./schemas/okSchema.ts";
 export * from "./services/HttpClient.ts";
 export * from "./services/MemoryHttpClient.ts";
+// Shared, not server-only: `alepha/websocket` reaches it from the browser
+// through `$websocket`, and it reads nothing but its arguments and the
+// CORS option.
+export * from "./services/RequestOriginPolicy.ts";

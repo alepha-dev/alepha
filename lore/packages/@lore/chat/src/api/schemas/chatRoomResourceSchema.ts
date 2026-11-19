@@ -16,6 +16,23 @@ export const chatRoomResourceSchema = z.object({
   memberCount: z.integer(),
   joined: z.boolean(),
   notifyLevel: z.enum(["mentions", "muted"]).optional(),
+  /**
+   * The newest message, for the room list's preview: its first line, cut
+   * at {@link CHAT_PREVIEW_LENGTH} characters. Absent in a room nobody has
+   * written in.
+   */
+  lastMessage: z
+    .object({
+      id: z.uuid(),
+      createdAt: z.datetime(),
+      authorId: z.uuid().optional(),
+      agent: z.text().optional(),
+      preview: z.text(),
+      deleted: z.boolean().optional(),
+    })
+    .optional(),
 });
+
+export const CHAT_PREVIEW_LENGTH = 140;
 
 export type ChatRoomResource = Infer<typeof chatRoomResourceSchema>;
