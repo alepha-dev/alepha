@@ -235,6 +235,11 @@ describe("AreaController", () => {
     await expect(
       ctx.controller.deleteArea({ params: { id: area!.id } }, { user }),
     ).rejects.toThrow(BadRequestError);
+    await expect(
+      ctx.controller.deleteArea({ params: { id: area!.id } }, { user }),
+    ).rejects.toThrow(
+      'Area "alepha/orm" still holds 1 quest. Merge it into another area instead.',
+    );
   });
 
   it("refuses to delete an area for a non-owner", async ({ expect }) => {

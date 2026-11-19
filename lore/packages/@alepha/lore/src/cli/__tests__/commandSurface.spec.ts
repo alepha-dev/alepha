@@ -63,6 +63,7 @@ describe("the Lore CLI command surface", () => {
 
     expect(names).toEqual([
       "apps",
+      "area",
       "artifacts",
       "attachments",
       "channel",
@@ -136,6 +137,7 @@ describe("the Lore CLI command surface", () => {
       ),
     ).toEqual({
       apps: ["build", "deploy", "redeploy", "destroy", "instance"],
+      area: ["delete"],
       artifacts: ["push", "push-image", "list", "get"],
       attachments: ["push"],
       error: ["list", "resolve", "forward"],

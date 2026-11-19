@@ -283,6 +283,7 @@ export class CapabilityRegistry {
         "quest_unassign",
         "quest_objective_set",
         "quest_tags",
+        "area_delete",
         "quest_comment_add",
         "quest_commit_add",
         "quest_pull_request_add",

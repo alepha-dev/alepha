@@ -6,6 +6,7 @@ import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { AlephaLoreDeploy } from "./AlephaLoreDeploy.ts";
 import { AppInstanceCommand } from "./commands/AppInstanceCommand.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
+import { AreaCommand } from "./commands/AreaCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
@@ -120,6 +121,7 @@ export const AlephaLoreCli = $module({
     ProjectCommand,
     QuestCommand,
     EpicCommand,
+    AreaCommand,
     PersonaCommand,
     UseCaseCommand,
     RequirementCommand,

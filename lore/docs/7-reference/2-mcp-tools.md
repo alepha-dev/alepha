@@ -96,6 +96,7 @@ See [Quests](/lore/docs/plan-quests).
 | `quest_unshelve`         | Bring a shelved quest back as to do.                                                |
 | `quest_comment_add`      | Comment on a quest, marked as written by an agent.                                  |
 | `quest_tags`             | Every tag in use in the project.                                                    |
+| `area_delete`            | Delete an empty area by its exact name; one holding quests is refused.              |
 | `quest_attachment_get`   | One attachment's content: images inline, text decoded.                              |
 | `quest_attachment_add`   | How to attach a file: answers the CLI command.                                      |
 

@@ -3,6 +3,7 @@ import { $module } from "alepha";
 
 import { EpicRefService } from "./services/EpicRefService.ts";
 import { WorkProjectContext } from "./services/WorkProjectContext.ts";
+import { AreaTools } from "./tools/AreaTools.ts";
 import { EpicTools } from "./tools/EpicTools.ts";
 import { FeedbackTools } from "./tools/FeedbackTools.ts";
 import { QuestTools } from "./tools/QuestTools.ts";
@@ -24,6 +25,7 @@ export const LorePlanMcp = $module({
     ReleaseTools,
     EpicTools,
     FeedbackTools,
+    AreaTools,
     EpicRefService,
     // The orientation sections each module registers on the core
     // `ProjectContextRegistry` (#E75, #Q2623); listed because nothing
@@ -36,6 +38,7 @@ export const LorePlanMcp = $module({
 // packages and the specs (`apps/lore/test`, `apps/e2e`, Work's own `test/`).
 // Everything else stays internal, reached by relative import.
 
+export { AreaTools } from "./tools/AreaTools.ts";
 export { EpicTools } from "./tools/EpicTools.ts";
 export { FeedbackTools } from "./tools/FeedbackTools.ts";
 export { QuestTools } from "./tools/QuestTools.ts";
