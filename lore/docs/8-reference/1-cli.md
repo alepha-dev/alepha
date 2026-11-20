@@ -11,7 +11,11 @@ for each flag.
 ```bash
 npm i -g @alepha/lore
 lore --help
+lore --version
 ```
+
+`lore --version` (or `-v`) prints the version alone, so
+`VERSION=$(lore --version)` holds just the number.
 
 A project that already depends on `@alepha/lore` can run `yarn lore ...`
 without the global install.
