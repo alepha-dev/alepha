@@ -192,6 +192,37 @@ describe("DataTable groups and filtering tiles", () => {
   });
 
   describe("a summary tile with a filter", () => {
+    it("clears a filter from a tile whose value is undefined, drawn pressed while it is clear", async () => {
+      await mount(
+        <DataTable<Row, typeof filterFields>
+          data={ROWS}
+          pagination={false}
+          columns={columns}
+          filters={{ fields: filterFields }}
+          summary={{
+            cards: [
+              { label: "All", value: "4", filter: { state: undefined } },
+              { label: "Failed", value: "1", filter: { state: ["failed"] } },
+            ],
+          }}
+        />,
+      );
+      await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+
+      const all = screen.getByRole("button", { name: "All" });
+      expect(all.getAttribute("aria-pressed")).toBe("true");
+
+      fireEvent.click(screen.getByRole("button", { name: "Failed" }));
+      await waitFor(() => expect(titles()).toEqual(["Beta"]));
+      expect(all.getAttribute("aria-pressed")).toBe("false");
+
+      fireEvent.click(all);
+      await waitFor(() =>
+        expect(titles()).toEqual(["Alpha", "Beta", "Gamma", "Delta"]),
+      );
+      expect(all.getAttribute("aria-pressed")).toBe("true");
+    });
+
     it("filters the rows on a click, shows it pressed, and clears on a second", async () => {
       await mount(
         <DataTable<Row, typeof filterFields>

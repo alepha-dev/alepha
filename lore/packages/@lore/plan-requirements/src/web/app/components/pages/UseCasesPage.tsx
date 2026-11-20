@@ -163,6 +163,8 @@ const UseCasesPage = () => {
           : "requirements.usecase.counter.all",
       ),
       value: String(all.length),
+      // The way back to every use case from the result counters (#Q3974).
+      filter: { state: undefined },
     },
     ...RUN_STATES.map((state) => {
       const count = all.filter((row) => row.state === state).length;

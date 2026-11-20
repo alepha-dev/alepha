@@ -874,6 +874,11 @@ export interface DataTableStatCard {
    *
    * Keys are the table's filter field names; `{ state: ["failed"] }` on a
    * "Failed" tile.
+   *
+   * A key set to `undefined` stands for that filter cleared: `{ state:
+   * undefined }` on an "All" tile is pressed while no state is picked, and a
+   * click clears the state filter, the way back to the whole list from the
+   * other tiles of the row.
    */
   filter?: Record<string, unknown>;
 }

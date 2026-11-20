@@ -651,8 +651,10 @@ export const DataTable = <
       return;
     }
     for (const key of keys) inputs[key]?.set?.(card.filter[key]);
+    // A key the tile clears (`undefined`) adds no chip to the bar.
+    const setting = keys.filter((key) => card.filter?.[key] !== undefined);
     filterVisibility.setShown(
-      [...new Set([...filterVisibility.shown, ...keys])].filter(
+      [...new Set([...filterVisibility.shown, ...setting])].filter(
         (key) => filterDefinition.modes[key] !== "locked",
       ),
       true,
@@ -914,7 +916,9 @@ export const DataTable = <
 
 /**
  * Whether every filter value a summary tile stands for holds now. Compared
- * as JSON, so an array value matches the same members in the same order.
+ * as JSON, so an array value matches the same members in the same order; an
+ * `undefined` value (the tile clears that filter) holds while the field is
+ * empty: unset, `""` or an emptied multi-select.
  */
 const isCardActive = (
   card: DataTableStatCard,
@@ -922,10 +926,17 @@ const isCardActive = (
 ): boolean => {
   if (!card.filter) return false;
   const entries = Object.entries(card.filter);
+  const empty = (value: unknown) =>
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0);
   return (
     entries.length > 0 &&
-    entries.every(
-      ([key, value]) => JSON.stringify(values[key]) === JSON.stringify(value),
+    entries.every(([key, value]) =>
+      value === undefined
+        ? empty(values[key])
+        : JSON.stringify(values[key]) === JSON.stringify(value),
     )
   );
 };
