@@ -217,6 +217,21 @@ describe("Personas screens", () => {
           screen.getByTestId(`persona-filter-count-${kind}`).textContent,
       ),
     ).toEqual(["2", "1", "1", "0"]);
+    // The selected tab's count takes its foreground; the others stay muted
+    // (#Q3968).
+    const countClass = (kind: string) =>
+      screen.getByTestId(`persona-filter-count-${kind}`).className;
+    expect(countClass("all")).toContain("text-primary-foreground");
+    expect(countClass("human")).toContain("text-muted-foreground");
+    fireEvent.click(screen.getByRole("radio", { name: /Human/ }));
+    await waitFor(() =>
+      expect(countClass("human")).toContain("text-primary-foreground"),
+    );
+    expect(countClass("all")).toContain("text-muted-foreground");
+    fireEvent.click(screen.getByRole("radio", { name: /All/ }));
+    await waitFor(() =>
+      expect(screen.getAllByTestId("persona-card")).toHaveLength(2),
+    );
     expect(screen.getByText("#A1")).toBeTruthy();
     // The first line of the goals, as the card's quote.
     expect(screen.getByText("Ship orders the same day")).toBeTruthy();

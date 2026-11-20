@@ -90,8 +90,15 @@ const PersonasPage = () => {
     return n === undefined ? null : (
       <>
         {" "}
+        {/* The selected tab's foreground, as the segmented control's own
+            count takes it: muted grey on the primary fill read poorly
+            (#Q3968). */}
         <span
-          className="text-muted-foreground tabular-nums"
+          className={
+            value === kind
+              ? "text-primary-foreground tabular-nums"
+              : "text-muted-foreground tabular-nums"
+          }
           data-testid={`persona-filter-count-${value}`}
         >
           {n}
