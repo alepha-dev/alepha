@@ -265,7 +265,11 @@ const UseCasePage = (props: UseCasePageProps) => {
             ) : tab === "coverage" ? (
               <UseCaseCoverage projectId={project.id} useCase={useCase} />
             ) : (
-              <UseCaseRuns projectId={project.id} number={useCase.number} />
+              <UseCaseRuns
+                projectId={project.id}
+                number={useCase.number}
+                criteria={useCase.criteria}
+              />
             )}
           </RequirementsHover>
         )}

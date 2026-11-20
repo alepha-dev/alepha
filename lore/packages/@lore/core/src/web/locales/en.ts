@@ -3339,6 +3339,11 @@ export default {
   "requirements.run.none": "Never run. Verify it to record a first run.",
   "requirements.run.result.failed": "Failed",
   "requirements.run.result.not_run": "Not run",
+  "requirements.run.verdict.passed": "All criteria passed",
+  "requirements.run.verdict.failed": "$1 failed: $2",
+  "requirements.run.verdict.notRun": "$1 not run",
+  "requirements.run.score": "$1 of $2 criteria passed",
+  "requirements.run.observation": "Observation",
   "requirements.run.result.passed": "Passed",
   "requirements.run.stale": "Stale",
   "requirements.run.staleBanner":

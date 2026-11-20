@@ -3349,6 +3349,11 @@ export default {
     "Jamais joué. Vérifiez-le pour enregistrer un premier passage.",
   "requirements.run.result.failed": "Échoué",
   "requirements.run.result.not_run": "Non joué",
+  "requirements.run.verdict.passed": "Tous les critères sont passés",
+  "requirements.run.verdict.failed": "$1 en échec : $2",
+  "requirements.run.verdict.notRun": "$1 non joué(s)",
+  "requirements.run.score": "$1 critères sur $2 passés",
+  "requirements.run.observation": "Observation",
   "requirements.run.result.passed": "Réussi",
   "requirements.run.stale": "Périmé",
   "requirements.run.staleBanner":
