@@ -56,10 +56,26 @@ const RoomList = (props: RoomListProps) => {
   return (
     <nav
       aria-label={tr("chat.rooms.label")}
-      className="flex h-full min-h-0 flex-col"
+      className="flex h-full min-h-0 flex-col px-2 pt-2.5"
       data-testid="chat-room-list"
     >
-      <div className="flex gap-1 border-b p-2" role="tablist">
+      <div className="flex items-center gap-1.5 px-1 pt-1 pb-2">
+        <h2 className="flex-1 text-sm font-semibold">
+          {tr("chat.rooms.label")}
+        </h2>
+        {props.onCreate && (
+          <Button
+            variant="minimal"
+            size="icon-sm"
+            aria-label={tr("chat.room.new.title")}
+            data-testid="chat-new-room"
+            onClick={props.onCreate}
+          >
+            <Plus className="size-4" />
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1 pb-2" role="tablist">
         {FILTERS.map((key) => (
           <button
             key={key}
@@ -68,29 +84,17 @@ const RoomList = (props: RoomListProps) => {
             aria-selected={filter === key}
             onClick={() => setFilter(key)}
             className={cn(
-              "rounded-md px-2 py-1 text-xs font-medium",
+              "rounded-full border px-2.5 py-0.5 text-xs",
               filter === key
-                ? "bg-accent text-accent-foreground"
+                ? "bg-foreground text-background border-foreground"
                 : "text-muted-foreground hover:bg-accent/50",
             )}
           >
             {tr(FILTER_LABELS[key])}
           </button>
         ))}
-        {props.onCreate && (
-          <Button
-            variant="minimal"
-            size="icon-xs"
-            className="ml-auto"
-            aria-label={tr("chat.room.new.title")}
-            data-testid="chat-new-room"
-            onClick={props.onCreate}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-        )}
       </div>
-      <ul className="min-h-0 flex-1 overflow-y-auto p-1">
+      <ul className="-mx-2 flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2 pb-2.5">
         {active.map((room) => (
           <RoomListRow
             key={room.id}
@@ -101,7 +105,7 @@ const RoomList = (props: RoomListProps) => {
           />
         ))}
         {active.length === 0 && quiet.length === 0 && (
-          <li className="text-muted-foreground p-3 text-sm">
+          <li className="text-muted-foreground px-2 py-2.5 text-sm">
             {tr(NONE_LABELS[filter])}
           </li>
         )}
@@ -111,7 +115,7 @@ const RoomList = (props: RoomListProps) => {
               type="button"
               aria-expanded={showQuiet}
               onClick={() => setShowQuiet((value) => !value)}
-              className="text-muted-foreground hover:text-foreground w-full px-3 py-2 text-left text-xs"
+              className="text-muted-foreground hover:bg-accent/50 w-full rounded-md px-2 py-1.5 text-left text-xs"
             >
               {showQuiet
                 ? tr("chat.rooms.quiet.hide")

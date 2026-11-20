@@ -9,7 +9,8 @@ import {
 /**
  * A message body as the conversation renders it (#E161, #Q3929): the bare
  * `#Q12` a person types becomes core's `[[#Q12]]`, which `LoreViewer`
- * resolves to a link, and an `@handle` of a member becomes a mention link.
+ * resolves to a link, and an `@handle` of a member or an agent becomes a
+ * mention link, its URL carrying `?mention=` so the room can draw it as a pill.
  *
  * A line break is kept as typed: a chat message is not a document, and
  * Shift+Enter means a new line, not a space.
@@ -54,7 +55,9 @@ const expandMentions = (
     (match, prefix: string, capture: string) => {
       const resolved = resolveMentionCapture(capture, options.members);
       if (!resolved) return match;
-      return `${prefix}[@${resolved.handle}](/${options.projectSlug}/settings/members)${resolved.trailing}`;
+      // `?mention=` marks the link as a mention, which the conversation
+      // draws as a pill.
+      return `${prefix}[@${resolved.handle}](/${options.projectSlug}/settings/members?mention=${resolved.handle})${resolved.trailing}`;
     },
   );
 };

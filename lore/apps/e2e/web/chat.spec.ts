@@ -105,14 +105,13 @@ test.describe("Chat", () => {
         timeout: 15_000,
       });
 
-      // Edit, from the message's menu, by keyboard: live for the member.
+      // Edit, from the message's hover bar, by keyboard: live for the member.
       const mine = page
         .getByTestId("chat-message")
         .filter({ hasText: "please look" });
       await mine.hover();
-      await mine.getByRole("button", { name: "Message actions" }).focus();
+      await mine.getByRole("button", { name: "Edit" }).focus();
       await page.keyboard.press("Enter");
-      await page.getByRole("menuitem", { name: "Edit" }).click();
       const editor = page.getByRole("textbox", { name: "Edit message" });
       await expect(editor).toBeFocused();
       await editor.fill("please look again");
@@ -128,9 +127,11 @@ test.describe("Chat", () => {
         .getByTestId("chat-message")
         .filter({ hasText: "please look again" });
       await edited.hover();
-      await edited.getByRole("button", { name: "Message actions" }).click();
-      await page.getByRole("menuitem", { name: "Delete" }).click();
-      await page.getByRole("button", { name: "Delete" }).last().click();
+      await edited.getByRole("button", { name: "Delete" }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Delete" })
+        .click();
       await expect(
         member.page.getByText("This message was deleted."),
       ).toBeVisible({ timeout: 15_000 });

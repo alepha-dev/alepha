@@ -80,6 +80,10 @@ const ChatPage = () => {
     {
       key: roomsKey,
       enabled: projectId > 0,
+      // Every sent or arriving message refreshes this list. Without the old
+      // list held while it reloads, the open room vanished for a frame and
+      // the whole conversation remounted: the flicker on each send.
+      keepPreviousData: true,
       handler: () => roomsApi.listChatRooms({ params: { projectId } }),
     },
     [roomsApi, projectId],
@@ -88,6 +92,7 @@ const ChatPage = () => {
     {
       key: unreadKey,
       enabled: projectId > 0,
+      keepPreviousData: true,
       handler: () => messagesApi.getChatUnreadCounts({ params: { projectId } }),
     },
     [messagesApi, projectId],
@@ -116,6 +121,7 @@ const ChatPage = () => {
     {
       key: ["chat-room-members", room?.id],
       enabled: !!room,
+      keepPreviousData: true,
       handler: () =>
         roomsApi.listChatRoomMembers({
           params: { projectId, roomId: room!.id },
@@ -493,8 +499,8 @@ const ChatPage = () => {
     <div
       className={
         panel
-          ? "grid h-full min-h-0 grid-cols-[18rem_1fr_18rem]"
-          : "grid h-full min-h-0 grid-cols-[18rem_1fr]"
+          ? "grid h-full min-h-0 grid-cols-[18.5rem_1fr_18rem]"
+          : "grid h-full min-h-0 grid-cols-[18.5rem_1fr]"
       }
     >
       <div className="min-h-0 border-r">{list}</div>

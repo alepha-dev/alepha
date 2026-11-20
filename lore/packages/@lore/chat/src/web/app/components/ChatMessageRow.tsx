@@ -2,10 +2,6 @@ import {
   Badge,
   Button,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -16,14 +12,7 @@ import {
 } from "@alepha/ui";
 import { type I18n, LoreViewer, type ProjectUser } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Bot,
-  Ellipsis,
-  FileText,
-  Pencil,
-  SmilePlus,
-  Trash2,
-} from "lucide-react";
+import { Bot, FileText, Pencil, SmilePlus, Trash2 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import type {
@@ -147,24 +136,30 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
       data-testid="chat-message"
       data-mentions-me={props.mentionsMe ? "true" : undefined}
       className={cn(
-        "group relative flex gap-3 px-4",
-        props.continued ? "pt-0.5" : "pt-3",
-        props.mentionsMe && "bg-amber-500/10",
+        "group hover:bg-foreground/7 focus-within:bg-foreground/7 has-[[data-popup-open]]:bg-foreground/7 relative flex gap-2.5 px-3.5 py-0.5",
+        !props.continued && "mt-2",
+        props.mentionsMe &&
+          "bg-amber-500/10 shadow-[inset_2px_0_0_var(--color-amber-500)]",
       )}
     >
-      <div className="w-8 shrink-0">
+      <div className="w-[30px] shrink-0">
         {!props.continued &&
           (message.agent ? (
-            <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-full">
+            <span className="bg-primary/10 text-primary flex size-[30px] items-center justify-center rounded-[9px]">
               <Bot className="size-4" aria-hidden="true" />
             </span>
           ) : (
-            <UserAvatar public user={props.user} alt="" className="size-8" />
+            <UserAvatar
+              public
+              user={props.user}
+              alt=""
+              className="size-[30px]"
+            />
           ))}
       </div>
       <div className="min-w-0 flex-1">
         {!props.continued && (
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-semibold">{props.author}</span>
             {message.agent && (
               <Badge variant="tint" tone="violet">
@@ -173,9 +168,19 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
             )}
             <TimeAgo
               value={message.createdAt}
-              className="text-muted-foreground text-xs"
+              className="text-muted-foreground text-[11px]"
             />
           </div>
+        )}
+        {message.agent && props.agent && (
+          <ChatAgentAnswer
+            message={message}
+            me={props.me}
+            mentioner={props.agent.mentioner}
+            deciding={props.agent.deciding}
+            onDecide={props.agent.onDecide}
+            part="trace"
+          />
         )}
         {message.deletedAt ? (
           <p className="text-muted-foreground text-sm italic">
@@ -207,6 +212,13 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
         ) : (
           <div className="text-sm">
             <LoreViewer
+              // A chat line, not a document: no space above the first
+              // paragraph, tighter paragraphs, the room's line height.
+              className={cn(
+                "leading-[1.45]! [&_p]:my-1.5 [&>:first-child]:mt-0 [&>:last-child]:mb-0",
+                // A mention is a pill, blue on blue, as in Slack.
+                "[&_a[href*='?mention=']]:rounded [&_a[href*='?mention=']]:bg-blue-500/15 [&_a[href*='?mention=']]:px-0.5 [&_a[href*='?mention=']]:font-medium [&_a[href*='?mention=']]:text-blue-700 [&_a[href*='?mention=']]:no-underline [&_a[href*='?mention=']]:hover:bg-blue-500/25 dark:[&_a[href*='?mention=']]:text-blue-300",
+              )}
               element={{
                 kind: "chat",
                 projectId: props.projectId,
@@ -260,6 +272,7 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
             mentioner={props.agent.mentioner}
             deciding={props.agent.deciding}
             onDecide={props.agent.onDecide}
+            part="after"
           />
         )}
         {!message.deletedAt && message.reactions.length > 0 && (
@@ -292,19 +305,21 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
         )}
       </div>
       {actions && (
-        <div className="absolute top-1 right-3 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-popup-open]]:opacity-100">
+        // Discord's hover bar: one floating block over the row's top edge,
+        // every action one click away.
+        <div className="bg-background absolute -top-4 right-4 z-10 flex items-center rounded-lg border p-0.5 opacity-0 shadow-sm group-hover:opacity-100 focus-within:opacity-100 has-[[data-popup-open]]:opacity-100">
           {props.onReact && (
             <Popover>
               <PopoverTrigger
                 render={
                   <Button
-                    variant="outlined"
-                    size="icon-xs"
+                    variant="minimal"
+                    size="icon-sm"
                     aria-label={tr("chat.message.react")}
                   />
                 }
               >
-                <SmilePlus className="size-3.5" />
+                <SmilePlus className="size-4" />
               </PopoverTrigger>
               <PopoverContent align="end" className="flex w-auto gap-1 p-1">
                 {EMOJI.map((emoji) => (
@@ -321,34 +336,26 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
               </PopoverContent>
             </Popover>
           )}
-          {(props.canEdit || props.canDelete) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="outlined"
-                    size="icon-xs"
-                    aria-label={tr("chat.message.actions")}
-                  />
-                }
-              >
-                <Ellipsis className="size-3.5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {props.canEdit && (
-                  <DropdownMenuItem onClick={() => setDraft(message.body)}>
-                    <Pencil className="size-4" />
-                    {tr("chat.message.edit")}
-                  </DropdownMenuItem>
-                )}
-                {props.canDelete && (
-                  <DropdownMenuItem onClick={() => void remove()}>
-                    <Trash2 className="size-4" />
-                    {tr("chat.message.delete")}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {props.canEdit && (
+            <Button
+              variant="minimal"
+              size="icon-sm"
+              aria-label={tr("chat.message.edit")}
+              onClick={() => setDraft(message.body)}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
+          {props.canDelete && (
+            <Button
+              variant="minimal"
+              size="icon-sm"
+              intent="danger"
+              aria-label={tr("chat.message.delete")}
+              onClick={() => void remove()}
+            >
+              <Trash2 className="size-4" />
+            </Button>
           )}
         </div>
       )}

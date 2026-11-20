@@ -8,6 +8,7 @@ import { ChatProjectLoader } from "./app/loaders/ChatProjectLoader.ts";
 import { ChatAgentUiRegistry } from "./app/services/ChatAgentUiRegistry.ts";
 import { ChatFeedHub } from "./app/services/ChatFeedHub.ts";
 import { ChatUnread } from "./app/services/ChatUnread.ts";
+import { ToolTrace } from "./app/services/toolTrace.ts";
 import { ChatShell } from "./app/shell/ChatShell.ts";
 
 /**
@@ -36,6 +37,7 @@ export const LoreChatWeb = $module({
     alepha.with(ChatFeedHub);
     alepha.with(ChatUnread);
     alepha.with(ChatAgentUiRegistry);
+    alepha.with(ToolTrace);
     alepha.inject(ChatProjectLoader);
     alepha.inject(ChatShell);
   },

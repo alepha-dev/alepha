@@ -1,5 +1,5 @@
 import { I18n } from "@lore/core/web";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -9,6 +9,7 @@ import { afterEach, describe, it } from "vitest";
 
 import type { ChatMessageResource } from "../../../schemas/index.ts";
 import { ChatAgentUiRegistry } from "../services/ChatAgentUiRegistry.ts";
+import { ToolTrace } from "../services/toolTrace.ts";
 import ChatAgentAnswer from "./ChatAgentAnswer.tsx";
 
 const MENTIONER = crypto.randomUUID();
@@ -54,6 +55,7 @@ describe("ChatAgentAnswer", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n);
     alepha.inject(I18n);
+    alepha.inject(ToolTrace);
     alepha.inject(ChatAgentUiRegistry).register({
       useToolLabel: () => (name, state) =>
         name === "quest_list" && state === "done" ? "Listed quests" : undefined,
@@ -68,17 +70,32 @@ describe("ChatAgentAnswer", () => {
           mentioner="Ada"
           deciding={false}
           onDecide={() => {}}
+          part="trace"
+        />
+        <ChatAgentAnswer
+          message={paused}
+          me={me}
+          mentioner="Ada"
+          deciding={false}
+          onDecide={() => {}}
+          part="after"
         />
       </AlephaContext.Provider>,
     );
   };
 
-  it("traces the tools, with the registered labels", async ({ expect }) => {
+  it("names the running tool, and opens on every step", async ({ expect }) => {
     await mount(MENTIONER);
 
-    const trace = screen.getByTestId("chat-agent-trace").textContent;
-    expect(trace).toContain("Listed quests");
-    expect(trace).toContain("quest_create");
+    const trace = screen.getByTestId("chat-agent-trace");
+    expect(trace.textContent).toContain("quest_create");
+    expect(screen.queryByTestId("chat-agent-trace-steps")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+
+    const steps = screen.getByTestId("chat-agent-trace-steps").textContent;
+    expect(steps).toContain("Listed quests");
+    expect(steps).toContain("quest_create");
   });
 
   it("lets the mentioner press the card", async ({ expect }) => {
