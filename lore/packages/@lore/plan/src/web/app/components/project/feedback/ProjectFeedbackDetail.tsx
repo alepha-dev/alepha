@@ -7,15 +7,11 @@ import {
   SheetTitle,
   useDialog,
   useToast,
-  cn,
-  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import {
   currentProjectAtom,
   type I18n,
   capabilityOption,
-  AttachmentLightbox,
-  attachmentPreview,
   formatReference,
   useRank,
   AgentPromptsMenu,
@@ -40,6 +36,7 @@ import { Fragment, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
+import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
@@ -126,12 +123,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const dialog = useDialog();
 
   const [questCreateOpen, setQuestCreateOpen] = useState(false);
-  /**
-   * The attachment the lightbox is open on, `null` while it is shut. The id
-   * IS the file id here: `attachmentUrls` builds `url` as `/api/files/<id>`.
-   */
-  const [lightboxId, setLightboxId] = useState<string | null>(null);
-
   // One `useAction` per triage verb (#E59, #Q2328). A refusal is the server's
   // sentence, toasted by the root `ActionErrorToaster`; the translated
   // fallbacks it used to sit behind never fired, and left the catalogs.
@@ -323,58 +314,11 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               </span>
             }
           >
-            <ul className="flex flex-col gap-1">
-              {feedback.attachmentUrls.map((a) => {
-                // The shared classifier, not an inline mime test: it answers
-                // on the extension when the browser's `type` is blank or
-                // wrong, which it often is.
-                const isImage =
-                  attachmentPreview(a.name, a.mimeType).kind === "image";
-
-                return (
-                  <li key={a.id}>
-                    {/* Still a real anchor, and that is load-bearing rather
-                        than left over: ⌘-click, middle-click and Open in new
-                        tab all keep working, and so does the whole row with
-                        no JavaScript at all. Only the PLAIN click is taken,
-                        and only for an image. */}
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={
-                        isImage
-                          ? (event) => {
-                              if (
-                                event.metaKey ||
-                                event.ctrlKey ||
-                                event.shiftKey ||
-                                event.altKey
-                              ) {
-                                return;
-                              }
-                              event.preventDefault();
-                              setLightboxId(a.id);
-                            }
-                          : undefined
-                      }
-                      className={cn(
-                        textLinkUnderlineClassName,
-                        "hover:text-foreground inline-flex items-center gap-2 text-sm",
-                      )}
-                    >
-                      <Paperclip className="size-3.5" />
-                      {/* Reporter-supplied, and escaped text. A preview must
-                          not become a second place where it is interpreted. */}
-                      <span className="truncate">{a.name}</span>
-                      <span className="text-muted-foreground text-xs">
-                        ({Math.round(a.size / 1024)} KB)
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
+            {/* The discussion's tiles (#Q4008): an image is its own
+                thumbnail and zooms in the lightbox, any other file is a
+                tile with its name and size that opens in a tab. The quest
+                view's comments draw files the same way. */}
+            <DiscussionAttachments items={feedback.attachmentUrls} />
           </CollapsibleBlock>
         )}
 
@@ -599,29 +543,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           />
         </SheetContent>
       </Sheet>
-
-      {/* ⚠️ Mounted at the component root, outside the narrow detail column
-          it is opened from: the dialog portals to the body, so it fills the
-          viewport rather than the ~380px the rows live in. Sizing the
-          thumbnail up instead was the alternative and it cannot work - that
-          column is the constraint the report named.
-
-          Images only. A `.txt` or a `.pdf` row is left as the plain link it
-          has always been, so the list is passed unfiltered and the carousel
-          pages the screenshots. */}
-      <AttachmentLightbox
-        items={(feedback.attachmentUrls ?? [])
-          .filter((a) => attachmentPreview(a.name, a.mimeType).kind === "image")
-          .map((a) => ({
-            fileId: a.id,
-            name: a.name,
-            mimeType: a.mimeType,
-          }))}
-        openId={lightboxId}
-        onOpenChange={(open) => {
-          if (!open) setLightboxId(null);
-        }}
-      />
     </div>
   );
 };
