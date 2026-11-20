@@ -26,7 +26,11 @@ const RUN = {
   note: "The receipt took a minute to arrive.",
   results: [
     { criterionKey: "C1", result: "passed" },
-    { criterionKey: "C2", result: "failed", note: "No receipt" },
+    {
+      criterionKey: "C2",
+      result: "failed",
+      note: "No mail after `POST /orders` returned **201**",
+    },
   ],
   evidence: [
     {
@@ -86,7 +90,21 @@ describe("UseCaseRuns", () => {
     await alepha.inject(I18nProvider).setLang("en");
     render(
       <AlephaContext.Provider value={alepha}>
-        <UseCaseRuns projectId={1} number={1} />
+        <UseCaseRuns
+          projectId={1}
+          number={1}
+          criteria={
+            [
+              { key: "C1", text: "An order exists" },
+              {
+                key: "C2",
+                givenText: "a paid order",
+                whenText: "the mail leaves",
+                thenText: "a receipt arrives",
+              },
+            ] as never
+          }
+        />
       </AlephaContext.Provider>,
     );
     await screen.findByTestId("use-case-runs");
@@ -105,6 +123,32 @@ describe("UseCaseRuns", () => {
     expect(c1.contains(loose) || c2.contains(loose)).toBe(false);
     expect(screen.getByText("order.png").getAttribute("href")).toBe(
       "/api/files/11111111-1111-4111-8111-111111111111",
+    );
+  });
+
+  it("reads as a header with the score and verdict, one row per criterion with its title and Markdown evidence, then the observation (#Q3975)", async ({
+    expect,
+  }) => {
+    await mount();
+    expect(screen.getByTestId("run-score").getAttribute("aria-label")).toBe(
+      "1 of 2 criteria passed",
+    );
+    expect(screen.getByTestId("run-verdict").textContent).toBe("1 failed: C2");
+    const card = screen.getByTestId("use-case-run");
+    expect(card.textContent).toContain("v3");
+    expect(card.textContent).toContain("claude-code");
+    expect(card.textContent).toContain("local");
+    const c1 = document.querySelector('[data-criterion="C1"]')!;
+    const c2 = document.querySelector('[data-criterion="C2"]')!;
+    expect(c1.textContent).toContain("An order exists");
+    expect(c2.textContent).toContain(
+      "a paid order · the mail leaves · a receipt arrives",
+    );
+    // The evidence is Markdown: a code span and bold stand out.
+    expect(c2.querySelector("code")?.textContent).toBe("POST /orders");
+    expect(c2.querySelector("strong")?.textContent).toBe("201");
+    expect(screen.getByTestId("run-observation").textContent).toContain(
+      "The receipt took a minute to arrive.",
     );
   });
 });
