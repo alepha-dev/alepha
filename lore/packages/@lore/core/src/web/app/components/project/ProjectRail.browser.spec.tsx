@@ -9,7 +9,7 @@ import {
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
-import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaContext, AlephaReact, QueryCache } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
@@ -23,6 +23,7 @@ import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { I18n } from "../../services/I18n.ts";
 import ProjectRail from "./ProjectRail.tsx";
+import { DOCK_UNREAD_KEY } from "./useDockUnread.ts";
 
 /**
  * The dock actions the reorder specs answer, and what they were sent.
@@ -46,10 +47,28 @@ const dockApi = {
   },
 };
 
+/**
+ * The inbox's per-scope counts the dock reads (#Q3981), and every call made.
+ */
+const inboxApi = {
+  unread: {} as Record<string, number>,
+  calls: [] as string[][],
+  countInboxScopes: async (input: { body: { scopes: string[] } }) => {
+    inboxApi.calls.push(input.body.scopes);
+    return {
+      counts: input.body.scopes.map((scope) => ({
+        scope,
+        unread: inboxApi.unread[scope] ?? 0,
+      })),
+    };
+  },
+};
+
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
+      countInboxScopes: inboxApi.countInboxScopes,
       reorderDock: dockApi.reorderDock,
       pinProject: dockApi.pinProject,
       unpinProject: dockApi.unpinProject,
@@ -101,6 +120,8 @@ describe("ProjectRail", () => {
   afterEach(async () => {
     dockApi.saved = [];
     dockApi.fail = false;
+    inboxApi.unread = {};
+    inboxApi.calls = [];
     cleanup();
     await alepha?.stop();
     alepha = undefined;
@@ -206,6 +227,63 @@ describe("ProjectRail", () => {
       .find((it) => it.getAttribute("aria-current") === "page");
     expect(current?.getAttribute("aria-label")).toBe("Club");
     expect(screen.queryByTestId("project-rail-temporary")).toBeNull();
+  });
+
+  it("badges each docked project with its unread count, capped at 9+, from one request (#Q3981)", async ({
+    expect,
+  }) => {
+    inboxApi.unread = { "project:1": 3, "project:3": 12, "project:4": 1 };
+    await mount(
+      [
+        row(1, "Lore", "2026-01-03"),
+        row(2, "Club", "2026-01-02"),
+        row(3, "Acme", "2026-01-01"),
+        row(4, "Bay", "2026-01-01"),
+      ],
+      4,
+      [1, 2, 3],
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("project-rail-badge")).toHaveLength(3),
+    );
+    const badgeOf = (title: string) =>
+      screen
+        .getAllByTestId("project-rail-slot")
+        .find((slot) => slot.querySelector(`[aria-label^="${title}"]`))
+        ?.querySelector('[data-testid="project-rail-badge"]')?.textContent;
+    expect(badgeOf("Lore")).toBe("3");
+    expect(badgeOf("Club")).toBeUndefined();
+    expect(badgeOf("Acme")).toBe("9+");
+    // The temporary slot counts too.
+    expect(
+      screen
+        .getByTestId("project-rail-temporary")
+        .closest('[data-testid="project-rail-slot"]')
+        ?.querySelector('[data-testid="project-rail-badge"]')?.textContent,
+    ).toBe("1");
+    // Said to a screen reader after the title.
+    expect(titles()).toEqual(["Lore, 3 unread", "Club", "Acme, 12 unread"]);
+    // One request for every icon of the dock.
+    expect(inboxApi.calls).toEqual([
+      ["project:1", "project:2", "project:3", "project:4"],
+    ]);
+  });
+
+  it("reads the counts again when its key is invalidated, as a read or a chat message does, and a read badge goes (#Q3981)", async ({
+    expect,
+  }) => {
+    inboxApi.unread = { "project:1": 2 };
+    const app = await mount([row(1, "Lore", "2026-01-03")], 1, [1]);
+    await waitFor(() =>
+      expect(screen.getByTestId("project-rail-badge").textContent).toBe("2"),
+    );
+
+    inboxApi.unread = {};
+    app.inject(QueryCache).invalidate([DOCK_UNREAD_KEY]);
+    await waitFor(() =>
+      expect(screen.queryByTestId("project-rail-badge")).toBeNull(),
+    );
   });
 
   it("draws up to twenty pins, and initials without an icon", async ({

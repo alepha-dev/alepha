@@ -121,6 +121,7 @@ export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilte
 export { default as ProjectPageSkeleton } from "./app/components/project/ProjectPageSkeleton.tsx";
 export { default as ProjectAiContextPublisher } from "./app/components/project/ProjectAiContextPublisher.tsx";
 export { useProjectAiContext } from "./app/components/project/useProjectAiContext.ts";
+export { DOCK_UNREAD_KEY } from "./app/components/project/useDockUnread.ts";
 export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,

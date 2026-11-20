@@ -10,6 +10,7 @@ import {
   useClient,
   useInfiniteQuery,
   useInject,
+  useQueryClient,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -19,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { DOCK_UNREAD_KEY } from "../project/useDockUnread.ts";
 import { useUserProjects } from "./useUserProjects.ts";
 
 interface InboxRow {
@@ -83,6 +85,7 @@ const AccountInbox = () => {
   const router = useRouter<any>();
   const api = useClient<NotificationInboxController>();
   const dateTime = useInject(DateTimeProvider);
+  const queries = useQueryClient();
 
   // The Project filter's options: the projects this account belongs to.
   useUserProjects();
@@ -190,6 +193,8 @@ const AccountInbox = () => {
         }));
         await api.markInboxRead({ params: { id: row.id } });
       },
+      // The dock's badges count unread messages too (#Q3981).
+      invalidates: [[DOCK_UNREAD_KEY]],
       onError: () => {},
     },
     [api, dateTime],
@@ -213,6 +218,7 @@ const AccountInbox = () => {
         }));
         try {
           await api.markAllInboxRead({ query: scope ? { scope } : {} });
+          queries.invalidate([DOCK_UNREAD_KEY]);
         } finally {
           // Same rule as the first page: zero is the whole inbox's answer
           // only when the whole inbox is what was marked.
@@ -222,7 +228,7 @@ const AccountInbox = () => {
         }
       },
     },
-    [api, dateTime, scope],
+    [api, dateTime, scope, queries],
   );
 
   const unreadOnScreen = rows.filter((it) => !it.readAt).length;

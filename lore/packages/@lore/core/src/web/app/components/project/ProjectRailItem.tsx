@@ -54,6 +54,15 @@ export interface ProjectRailItemProps {
    * The right-click menu's content (`ProjectRailMenu`, #Q3439).
    */
   menu?: ReactNode;
+  /**
+   * The viewer's unread count in this project (#Q3981): a badge on the
+   * icon, capped at 9+, and nothing at zero.
+   */
+  unread?: number;
+  /**
+   * What a screen reader hears for the badge, said after the title.
+   */
+  unreadLabel?: string;
 }
 
 /**
@@ -132,7 +141,11 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
                   href={router.path("project", {
                     params: { projectSlug: project.slug },
                   })}
-                  aria-label={project.title}
+                  aria-label={
+                    props.unread && props.unreadLabel
+                      ? `${project.title}, ${props.unreadLabel}`
+                      : project.title
+                  }
                   aria-current={active ? "page" : undefined}
                   aria-describedby={sortable ? props.describedBy : undefined}
                   aria-pressed={props.picked ? true : undefined}
@@ -175,6 +188,15 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
                   isDragging && "opacity-70 shadow-lg",
                 )}
               />
+              {props.unread ? (
+                <span
+                  aria-hidden
+                  data-testid="project-rail-badge"
+                  className="bg-danger text-danger-foreground ring-sidebar absolute -end-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-semibold tabular-nums ring-2"
+                >
+                  {props.unread > 9 ? "9+" : props.unread}
+                </span>
+              ) : null}
             </TooltipTrigger>
             <TooltipContent side="right" className="text-sm font-semibold">
               {project.title}

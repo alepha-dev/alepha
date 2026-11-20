@@ -921,6 +921,8 @@ export default {
     "The selection includes latest: deploys that name no tag fail until CI pushes it again.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Settings",
+  "project.rail.unread": "$1 unread",
+  "project.rail.unread.one": "1 unread",
   "project.rail.label": "Projects",
 
   "quest.create.submit": "Create quest",
