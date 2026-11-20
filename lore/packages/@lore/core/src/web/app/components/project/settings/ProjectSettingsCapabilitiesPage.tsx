@@ -13,7 +13,8 @@ import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection
  *
  * Ship is the exception (#Q3702): its own Features page holds no switch
  * any more, so every Ship option is listed here, Monitor apps included,
- * rather than the same rows twice.
+ * rather than the same rows twice. Build has no settings page of its own,
+ * so its two options, Repositories and Quality, are listed here too (#Q4005).
  *
  * ⚠️ The masters live HERE and nowhere else (#Q2565). A capability that is
  * off leaves the sidebar, its settings section included, so the page that
@@ -29,7 +30,7 @@ const ProjectSettingsCapabilitiesPage = () => {
           key={key}
           capability={key}
           options={
-            key === "ship"
+            key === "ship" || key === "build"
               ? [...shell.navOptions(key), ...shell.settingsOptions(key)]
               : shell.navOptions(key)
           }

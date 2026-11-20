@@ -112,7 +112,12 @@ describe("CodeBackupJobs", () => {
       {
         body: {
           title: `Backup ${crypto.randomUUID().slice(0, 8)}`,
-          capabilities: [{ key: "build" as const }],
+          capabilities: [
+            {
+              key: "build" as const,
+              options: { repositories: true, quality: true },
+            },
+          ],
         },
       },
       { user: owner },

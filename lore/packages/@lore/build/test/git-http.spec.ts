@@ -101,7 +101,9 @@ describe("git smart HTTP", () => {
     return { ...user, key: key.data.token };
   };
 
-  const aProject = async (options: { build?: boolean; repo?: string } = {}) => {
+  const aProject = async (
+    options: { build?: boolean; repositories?: boolean; repo?: string } = {},
+  ) => {
     const owner = await aUser();
     const project = await ctx.alepha
       .inject(ProjectController)
@@ -109,7 +111,12 @@ describe("git smart HTTP", () => {
         {
           body: {
             title: `Git ${crypto.randomUUID().slice(0, 8)}`,
-            capabilities: [{ key: "build" as const }],
+            capabilities: [
+              {
+                key: "build" as const,
+                options: { repositories: true, quality: true },
+              },
+            ],
           },
         },
         { user: owner },
@@ -122,6 +129,18 @@ describe("git smart HTTP", () => {
         { params: { projectId }, body: { slug: options.repo ?? "api" } },
         { user: owner },
       );
+    if (options.repositories === false) {
+      await ctx.alepha.inject(ProjectCapabilityController).setCapability.fetch(
+        {
+          params: { projectId, key: "build" },
+          body: {
+            enabled: true,
+            options: { repositories: false, quality: true },
+          },
+        },
+        { user: owner },
+      );
+    }
     if (options.build === false) {
       await ctx.alepha
         .inject(ProjectCapabilityController)
@@ -613,5 +632,23 @@ describe("git smart HTTP", () => {
       );
       expect(clone.status).toBe(401);
     });
+  });
+
+  it("answers 404 on a read and 400 on a write with Repositories off (#Q4005)", async ({
+    expect,
+  }) => {
+    const { owner, slug } = await aProject({ repositories: false });
+    const auth = { authorization: `Basic ${btoa(`x:${owner.key}`)}` };
+    const read = await fetch(
+      `${ctx.baseUrl}/${slug}/api.git/info/refs?service=git-upload-pack`,
+      { headers: auth },
+    );
+    const write = await fetch(
+      `${ctx.baseUrl}/${slug}/api.git/info/refs?service=git-receive-pack`,
+      { headers: auth },
+    );
+    expect(read.status).toBe(404);
+    expect(write.status).toBe(400);
+    expect(await write.text()).toContain("build.repositories");
   });
 });

@@ -201,7 +201,12 @@ describe("a Lore repository from plain git and the lore CLI", () => {
     token = tokens.access_token;
     registry = tokens.api;
     const project = await call<{ id: number; slug: string }>("createProject", {
-      body: { title: "Hello code", capabilities: [{ key: "build" }] },
+      body: {
+        title: "Hello code",
+        capabilities: [
+          { key: "build", options: { repositories: true, quality: true } },
+        ],
+      },
     });
     slug = project.slug;
     key = (

@@ -66,7 +66,7 @@ export class DashboardPresetCatalog {
       labelKey: "dashboard.preset.codeQuality",
       descriptionKey: "dashboard.preset.codeQuality.description",
       needsKey: "dashboard.preset.needs.build",
-      needs: { capability: "build" },
+      needs: { capability: "build", option: "quality" },
       cards: [
         { metric: "qualityTrend", size: 2 },
         { metric: "quality.coverage.lines" },

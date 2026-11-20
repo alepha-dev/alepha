@@ -91,7 +91,10 @@ describe("code repositories", () => {
     return { id: response.data.id, roles: response.data.roles };
   };
 
-  const aProject = async (build = true) => {
+  const aProject = async (
+    build = true,
+    options = { repositories: true, quality: true },
+  ) => {
     const owner = await aUser();
     const project = await ctx.alepha
       .inject(ProjectController)
@@ -99,7 +102,7 @@ describe("code repositories", () => {
         {
           body: {
             title: `Code ${crypto.randomUUID().slice(0, 8)}`,
-            capabilities: build ? [{ key: "build" as const }] : [],
+            capabilities: build ? [{ key: "build" as const, options }] : [],
           },
         },
         { user: owner },
@@ -168,6 +171,21 @@ describe("code repositories", () => {
 
     await expect(create(projectId, owner, "api")).rejects.toMatchObject({
       status: 400,
+    });
+    expect(await ctx.backend.list()).toEqual([]);
+  });
+
+  it("refuses a create with Build on but Repositories off, naming the option (#Q4005)", async ({
+    expect,
+  }) => {
+    const { owner, projectId } = await aProject(true, {
+      repositories: false,
+      quality: true,
+    });
+
+    await expect(create(projectId, owner, "api")).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining("build.repositories"),
     });
     expect(await ctx.backend.list()).toEqual([]);
   });

@@ -529,11 +529,37 @@ export class CapabilityRegistry {
       labelKey: "project.capability.build.label",
       descriptionKey: "project.capability.build.description",
       preselectedCapability: false,
-      options: [],
-      mcpTools: [],
+      // Each half switched on its own (#Q4005): a project may host its code
+      // without pushing coverage, or push coverage from a forge elsewhere.
+      // Both are offered and preselected in the wizard, and every project
+      // that had Build before the split was migrated to both on.
+      options: [
+        {
+          key: "repositories",
+          labelKey: "project.capability.build.option.repositories.label",
+          descriptionKey:
+            "project.capability.build.option.repositories.description",
+          wizard: true,
+          preselected: true,
+        },
+        {
+          key: "quality",
+          labelKey: "project.capability.build.option.quality.label",
+          descriptionKey: "project.capability.build.option.quality.description",
+          wizard: true,
+          preselected: true,
+        },
+      ],
+      mcpTools: ["code_repo_list", "code_repo_create", "code_repo_delete"],
+      mcpToolOptions: {
+        code_repo_list: "repositories",
+        code_repo_create: "repositories",
+        code_repo_delete: "repositories",
+      },
       searchKinds: [],
       // A push to a repository (#Q3945).
       activityKinds: ["code"],
+      activityKindOptions: { code: "repositories" },
       dashboardCards: [
         "qualityTrend",
         "quality.coverage.lines",

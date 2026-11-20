@@ -1255,7 +1255,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Repositories",
     section: "Repositories",
     url: "https://alepha.dev/lore/docs/build-repositories",
-    text: "A project can hold its git repositories on Lore. You clone and push them with\nplain git over HTTPS, and the `lore` command answers git when it asks who you\nare, so nobody copies a token by hand. A new project can live on Lore with no\nother git host; an existing repository can move in, or be copied in from\nGitHub and kept up to date.\n\nRepositories need the **Build** capability, switched in\n**Settings ▸ General ▸ Capabilities**. See\n[Capabilities](/lore/docs/project-capabilities). There is no page for code in\nthe browser yet: a repository is reached with git and the `lore` command.",
+    text: "A project can hold its git repositories on Lore. You clone and push them with\nplain git over HTTPS, and the `lore` command answers git when it asks who you\nare, so nobody copies a token by hand. A new project can live on Lore with no\nother git host; an existing repository can move in, or be copied in from\nGitHub and kept up to date.\n\nRepositories need the **Build** capability with its **Repositories** option\non, both switched in **Settings ▸ General ▸ Capabilities**. See\n[Capabilities](/lore/docs/project-capabilities). There is no page for code in\nthe browser yet: a repository is reached with git and the `lore` command.",
   },
   {
     guide: "Repositories",
@@ -1297,7 +1297,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Quality",
     section: "Quality",
     url: "https://alepha.dev/lore/docs/build-quality",
-    text: "Quality is what your tests say about the code: coverage and test counts,\npushed by CI after each run, kept per branch, and drawn over time. It needs\nthe **Build** capability, switched in **Settings ▸ General ▸ Capabilities**.\nSee [Capabilities](/lore/docs/project-capabilities).",
+    text: "Quality is what your tests say about the code: coverage and test counts,\npushed by CI after each run, kept per branch, and drawn over time. It needs\nthe **Build** capability with its **Quality** option on, both switched in\n**Settings ▸ General ▸ Capabilities**.\nSee [Capabilities](/lore/docs/project-capabilities).",
   },
   {
     guide: "Quality",

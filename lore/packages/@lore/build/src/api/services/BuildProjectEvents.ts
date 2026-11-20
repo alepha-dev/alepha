@@ -21,7 +21,7 @@ export class BuildProjectEvents {
         branch: "text",
         commit: "text",
       },
-      needs: { capability: "build" },
+      needs: { capability: "build", option: "quality" },
       permission: "quality:read",
       message: (it) => ({
         title: `Line coverage dropped to ${this.percent(it.value)}`,

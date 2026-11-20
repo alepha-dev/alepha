@@ -36,7 +36,8 @@ const registry = (() => {
  * key absent from every project that predated the module, and the case that
  * mattered was which way ABSENT read. It was Ship baseline, and is Build's
  * since #E162: it shows the push command until CI sends a run (#Q3070), and a
- * project without Build shows no Quality tab at all.
+ * project without Build shows no Quality tab at all. Since #Q4005 it is the
+ * `quality` option of Build, and the tab hangs off it.
  */
 describe("reportsTabs", () => {
   it("declares the filters of each tab, and honours none on an unknown tab", () => {
@@ -100,6 +101,18 @@ describe("reportsTabs", () => {
       "reportsQuality",
       "reportsTeam",
     ]);
+  });
+
+  it("hides the Quality tab while Build's quality option is off (#Q4005)", () => {
+    const tabs = registry
+      .tabs(
+        projectFixture({
+          capabilities: ["build"],
+          options: { build: { repositories: true, quality: false } },
+        }),
+      )
+      .map((tab) => tab.route);
+    expect(tabs).not.toContain("reportsQuality");
   });
 
   it("hides Delivery and Quality when Ship and Build are off", () => {

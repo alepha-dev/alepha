@@ -92,13 +92,20 @@ export class GitAccessService {
       };
     }
     const capabilities = await this.projectSecurity.capabilitiesOf(project.id);
-    if (!this.projectSecurity.hasCapability(capabilities, "build")) {
+    // Repositories is an option of Build since #Q4005: git hosting needs it.
+    if (
+      !this.projectSecurity.capabilityOption(
+        capabilities,
+        "build",
+        "repositories",
+      )
+    ) {
       return write
         ? {
             allowed: false,
             status: 400,
             message:
-              "Cannot push: this project does not have Build (build). Turn it on in Settings.",
+              "Cannot push: this project does not have Build with repositories on (build.repositories). Turn it on in Settings.",
           }
         : notFound;
     }

@@ -1,0 +1,111 @@
+import { fireEvent, render, waitFor } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaDateTime } from "alepha/datetime";
+import { AlephaLogger } from "alepha/logger";
+import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaReactI18n } from "alepha/react/i18n";
+import { LinkProvider } from "alepha/server/links";
+import { describe, it } from "vitest";
+
+import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
+import { projectFixture } from "../../../../../testing/projectFixture.ts";
+import { virtualClientFake } from "../../../../../testing/virtualClientFake.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { ProjectBlockerRegistry } from "../../../registries/ProjectBlockerRegistry.ts";
+import { ProjectShellRegistry } from "../../../registries/ProjectShellRegistry.ts";
+import { I18n } from "../../../services/I18n.ts";
+import ProjectSettingsCapabilitiesPage from "./ProjectSettingsCapabilitiesPage.tsx";
+
+interface SetCapabilityCall {
+  params: { projectId: number; key: string };
+  body: { enabled: boolean; options?: Record<string, boolean> };
+}
+
+/**
+ * Stands in for the HTTP-backed client the switches write through
+ * (`AGENTS.md`: never `vi.mock`).
+ */
+class FakeLinkProvider extends LinkProvider {
+  calls: SetCapabilityCall[] = [];
+
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
+    const setCapability: any = async (config: SetCapabilityCall) => {
+      this.calls.push(config);
+      return projectFixture({ capabilities: ["plan", "remember"] });
+    };
+    return virtualClientFake({ setCapability });
+  }
+}
+
+/**
+ * Settings > General > Capabilities, the switches only a capability with no
+ * settings page of its own lists here.
+ */
+describe("the Capabilities settings page", () => {
+  const mount = async (
+    capabilities: CapabilityKey[],
+    options?: Partial<Record<CapabilityKey, Record<string, boolean>>>,
+  ) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      // The catalogue itself, so the switches are found by their labels.
+      .with(I18n)
+      // What the page and its sections inject, empty: no module registers.
+      .with(ProjectShellRegistry)
+      .with(ProjectBlockerRegistry);
+    await alepha.start();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ capabilities, options }),
+    );
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <ProjectSettingsCapabilitiesPage />
+      </AlephaContext.Provider>,
+    );
+    return { fake: alepha.inject(FakeLinkProvider), view };
+  };
+
+  it("lists Build's Repositories and Quality switches, each on its own (#Q4005)", async ({
+    expect,
+  }) => {
+    const { view } = await mount(["build"], {
+      build: { repositories: true, quality: false },
+    });
+
+    const repositories = await view.findByRole("switch", {
+      name: "Repositories",
+    });
+    expect(repositories.getAttribute("aria-checked")).toBe("true");
+    expect(
+      view
+        .getByRole("switch", { name: "Quality" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
+  it("turns Build on with both options, as the wizard preselects them", async ({
+    expect,
+  }) => {
+    const { fake, view } = await mount(["plan"]);
+
+    fireEvent.click(await view.findByRole("switch", { name: "Build" }));
+
+    await waitFor(() =>
+      expect(fake.calls).toEqual([
+        {
+          params: { projectId: 1, key: "build" },
+          body: {
+            enabled: true,
+            options: { repositories: true, quality: true },
+          },
+        },
+      ]),
+    );
+  });
+});

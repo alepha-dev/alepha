@@ -16,6 +16,8 @@ export class BuildShell {
       labelKey: "project.reports.nav.quality",
       order: 9.85,
       needs: "build",
+      // Quality is an option of Build since #Q4005.
+      option: "quality",
       filters: ["period", "branch"],
     });
   }

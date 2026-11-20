@@ -2,7 +2,8 @@
 
 Quality is what your tests say about the code: coverage and test counts,
 pushed by CI after each run, kept per branch, and drawn over time. It needs
-the **Build** capability, switched in **Settings ▸ General ▸ Capabilities**.
+the **Build** capability with its **Quality** option on, both switched in
+**Settings ▸ General ▸ Capabilities**.
 See [Capabilities](/lore/docs/project-capabilities).
 
 ## Pushing a run

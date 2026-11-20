@@ -38,7 +38,7 @@ export class CodeRepositoryController {
     $ownsProject({
       param: "projectId",
       requires: "code:admin",
-      capability: { key: "build", action },
+      capability: { key: "build", option: "repositories", action },
     });
 
   listCodeRepositories = $action({
