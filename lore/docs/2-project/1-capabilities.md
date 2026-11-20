@@ -48,8 +48,12 @@ A list of quests and a board are always there when Plan is on. See
 
 **Remember** has no option: everything it adds comes with the capability.
 
-**Build** has no option either: it adds [repositories](/lore/docs/build-repositories)
-and the [Quality](/lore/docs/build-quality) report.
+**Build**
+
+| Option           | What it adds                                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| **Repositories** | Git repositories, cloned and pushed over HTTPS. See [Repositories](/lore/docs/build-repositories). |
+| **Quality**      | Coverage and test counts pushed by CI, in Reports. See [Quality](/lore/docs/build-quality).        |
 
 **Ship**
 

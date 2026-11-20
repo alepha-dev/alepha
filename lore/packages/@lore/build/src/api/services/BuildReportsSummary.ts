@@ -16,6 +16,7 @@ export class BuildReportsSummary {
   constructor() {
     this.summary.register({
       capability: "build",
+      option: "quality",
       read: (projectId, query) => this.read(projectId, query),
     });
   }

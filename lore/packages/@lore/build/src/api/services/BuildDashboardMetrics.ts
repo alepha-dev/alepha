@@ -25,7 +25,7 @@ export class BuildDashboardMetrics {
       icon: "shield-check",
       presentation: "trend",
       filters: qualityTrendFiltersSchema,
-      needs: { capability: "build" },
+      needs: { capability: "build", option: "quality" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

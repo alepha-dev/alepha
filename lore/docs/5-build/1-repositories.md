@@ -6,8 +6,8 @@ are, so nobody copies a token by hand. A new project can live on Lore with no
 other git host; an existing repository can move in, or be copied in from
 GitHub and kept up to date.
 
-Repositories need the **Build** capability, switched in
-**Settings ▸ General ▸ Capabilities**. See
+Repositories need the **Build** capability with its **Repositories** option
+on, both switched in **Settings ▸ General ▸ Capabilities**. See
 [Capabilities](/lore/docs/project-capabilities). There is no page for code in
 the browser yet: a repository is reached with git and the `lore` command.
 

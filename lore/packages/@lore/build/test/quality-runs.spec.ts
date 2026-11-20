@@ -135,7 +135,14 @@ describe("quality runs", () => {
       {
         body: {
           title: `Quality ${crypto.randomUUID().slice(0, 8)}`,
-          capabilities: build ? [{ key: "build" as const }] : [],
+          capabilities: build
+            ? [
+                {
+                  key: "build" as const,
+                  options: { repositories: true, quality: true },
+                },
+              ]
+            : [],
         },
       },
       { user: owner },

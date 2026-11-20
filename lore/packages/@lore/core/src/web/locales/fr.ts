@@ -1219,6 +1219,12 @@ export default {
   "project.capability.build.label": "Construire",
   "project.capability.build.description":
     "Des dépôts git, et la qualité de leur code.",
+  "project.capability.build.option.repositories.label": "Dépôts",
+  "project.capability.build.option.repositories.description":
+    "Hébergement git : cloner et pousser en HTTPS, depuis la CLI lore ou tout client git.",
+  "project.capability.build.option.quality.label": "Qualité",
+  "project.capability.build.option.quality.description":
+    "Couverture et totaux de tests envoyés par la CI, dans les Rapports.",
   "project.capability.ship.label": "Livrer",
   "project.capability.ship.description":
     "Des applications et leurs déploiements, analytique, erreurs, Web Vitals.",

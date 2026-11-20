@@ -69,7 +69,7 @@ export class QualityNumericCatalog {
         presentation: "scalar",
         filters: qualityNumericFiltersSchema,
         requires: "quality:read",
-        needs: { capability: "build" },
+        needs: { capability: "build", option: "quality" },
         link: (_scope, target) =>
           target.projectSlug
             ? {

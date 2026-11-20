@@ -1233,6 +1233,12 @@ export default {
   "project.capability.build.label": "Build",
   "project.capability.build.description":
     "Git repositories, and the quality of their code.",
+  "project.capability.build.option.repositories.label": "Repositories",
+  "project.capability.build.option.repositories.description":
+    "Git hosting: clone and push over HTTPS, from the lore CLI or any git client.",
+  "project.capability.build.option.quality.label": "Quality",
+  "project.capability.build.option.quality.description":
+    "Coverage and test totals pushed by CI, in Reports.",
   "project.capability.ship.label": "Ship",
   "project.capability.ship.description":
     "Apps and their deploys, analytics, errors, vitals.",

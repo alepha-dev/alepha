@@ -154,7 +154,7 @@ export const createTestProject = async (
       },
     },
     { key: "remember", options: {} },
-    { key: "build", options: {} },
+    { key: "build", options: { repositories: true, quality: true } },
     { key: "ship", options: { track: true, deploy: false } },
   ];
 
