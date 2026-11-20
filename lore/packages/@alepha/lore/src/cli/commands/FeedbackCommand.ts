@@ -386,6 +386,77 @@ export class FeedbackCommand {
     },
   });
 
+  public readonly targets = $command({
+    name: "targets",
+    description:
+      "The projects you may file a feedback into: yours, with Support on",
+    flags: z.object({ ...LoreOutput.FLAGS }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const targets = await this.feedbackApi.listFeedbackTargets({});
+        if (flags.output === "json") {
+          this.render.json(print, { targets });
+          return;
+        }
+        this.render.list(
+          print,
+          targets.map((it) => ({
+            handle: it.slug,
+            title: it.title,
+            fields: [String(it.id)],
+          })),
+          undefined,
+          "No project of yours accepts feedback.",
+        );
+      });
+    },
+  });
+
+  public readonly submit = $command({
+    name: "submit",
+    description:
+      "File a feedback item into a project you belong to that accepts feedback (lore feedback targets lists them)",
+    flags: z.object({
+      ...FeedbackCommand.PROJECT_FLAG,
+      title: z.text({ description: "The feedback's title, one line." }),
+      description: z.text({
+        description: "What was seen or is asked for, in Markdown.",
+      }),
+      tags: z
+        .text({ description: "Comma-separated tags: bug,feat." })
+        .optional(),
+      as: z
+        .text({
+          description:
+            "Your name as a client (claude-code): the item is tagged agent:<as>. Without it, nothing marks it as an agent's.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const tags = (flags.tags ?? "")
+          .split(",")
+          .map((it) => it.trim())
+          .filter(Boolean);
+        if (flags.as) tags.push(`agent:${flags.as.toLowerCase()}`);
+        const created = await this.feedbackApi.submitFeedback({
+          params: { projectId },
+          body: { title: flags.title, description: flags.description, tags },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          { projectId, ...created },
+          `Filed P${created.shortId}`,
+        );
+      });
+    },
+  });
+
   /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
    * `findLast`, so a second class declaring `feedback` would shadow this one
@@ -394,9 +465,11 @@ export class FeedbackCommand {
   public readonly feedback = $command({
     name: "feedback",
     description:
-      "A project's feedback: list, read, comment on, accept and reject it",
+      "A project's feedback: list, read, comment on, accept and reject it, or file one",
     children: [
       this.list,
+      this.targets,
+      this.submit,
       this.get,
       this.attachment,
       this.comment,

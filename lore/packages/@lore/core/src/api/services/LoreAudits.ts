@@ -238,7 +238,9 @@ export class LoreAudits {
   readonly feedback = $audit({
     type: "feedback",
     description: "Feedback lifecycle and triage",
-    actions: ["create", "accept", "reject", "comment"],
+    // `submit-elsewhere` is a feedback filed from this project's room into
+    // another project (#Q3971), on the room project's record.
+    actions: ["create", "accept", "reject", "comment", "submit-elsewhere"],
   });
 
   /**

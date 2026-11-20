@@ -32,6 +32,14 @@ export class McpProjectScope {
     },
   });
 
+  /**
+   * The project this run is pinned to, or undefined when it is not pinned.
+   */
+  pinnedProject(): number | undefined {
+    return this.alepha.context.get<McpProjectHolder>(McpProjectScope.KEY)
+      ?.pinned;
+  }
+
   resolved(projectId: number): void {
     const holder = this.alepha.context.get<McpProjectHolder>(
       McpProjectScope.KEY,

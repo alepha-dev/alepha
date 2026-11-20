@@ -38,6 +38,9 @@ There it reads the room's recent messages rather than the page you are on.
   still lack?", "Summarise folio #F12."
 - **Write** the things you do most: file a quest, comment on one, update or
   complete it, and write a folio.
+- **File a feedback**, here or into another project you belong to that accepts
+  feedback, from any page or room: "report this to Acme". The card names the
+  project it goes to, since its members will read what is filed.
 - **Answer how-to questions** from these guides, with a link to the page it
   read.
 

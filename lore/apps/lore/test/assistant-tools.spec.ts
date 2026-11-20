@@ -19,6 +19,7 @@ const WRITE_SET = [
   "quest_update",
   "quest_complete",
   "folio_create",
+  "feedback_submit",
 ];
 
 const READ_SET = [
@@ -33,6 +34,7 @@ const READ_SET = [
   "release_get",
   "feedback_list",
   "feedback_get",
+  "feedback_targets",
   "search",
   "searchDocs",
 ];
@@ -203,6 +205,43 @@ describe("the assistant's read tools", () => {
     expect(offered).not.toContain("feedback_list");
     expect(offered).not.toContain("feedback_get");
     expect(offered).toContain("quest_list");
+    await alepha.stop();
+  });
+
+  it("offers feedback_submit and feedback_targets whatever the room's rank or its Feedback option: their gate is sign-in, not the room (#Q3971)", async ({
+    expect,
+  }) => {
+    const { alepha, project, owner, signIn, entities } = await boot();
+    const toolset = alepha.inject(LoreAiToolset);
+    const submit = toolset.writes.find(
+      (entry) => toolset.nameOf(entry) === "feedback_submit",
+    )!;
+    // No `$ownsProject` on the gate: nothing in it reads a project param.
+    expect(
+      submit.gate!.middlewares.some((mw) => mw?.meta?.param !== undefined),
+    ).toBe(false);
+    expect(submit.permissions).toEqual([]);
+
+    await createReaderRank(alepha, project.id, owner.id);
+    const account = await entities.users.create({ roles: ["user"] });
+    await createTestMember(alepha, project, account.id, { rank: "reader" });
+    const reader = await signIn(account.id);
+    const offeredReader = await alepha.inject(LoreAiToolAccess).offered({
+      user: reader.user,
+      context: { data: { projectId: project.id } },
+    });
+    expect(offeredReader).toContain("feedback_submit");
+    expect(offeredReader).toContain("feedback_targets");
+
+    const workOnly = await createTestProject(alepha, {
+      capabilities: [{ key: "plan" }, { key: "remember" }],
+    });
+    const workOwner = await signIn(workOnly.createdBy);
+    const offeredWorkOnly = await alepha.inject(LoreAiToolAccess).offered({
+      user: workOwner.user,
+      context: { data: { projectId: workOnly.id } },
+    });
+    expect(offeredWorkOnly).toContain("feedback_submit");
     await alepha.stop();
   });
 

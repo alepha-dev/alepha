@@ -169,14 +169,16 @@ See [Folios](/lore/docs/remember-folios) and
 
 See [Feedback](/lore/docs/plan-feedback).
 
-| Tool                      | What it does                                         |
-| ------------------------- | ---------------------------------------------------- |
-| `feedback_list`           | The inbox, pending by default.                       |
-| `feedback_get`            | One report with its context, attachments and thread. |
-| `feedback_attachment_get` | One attachment's content.                            |
-| `feedback_comment_add`    | Comment on the thread the reporter shares.           |
-| `feedback_accept`         | Accept a pending report.                             |
-| `feedback_reject`         | Reject a report.                                     |
+| Tool                      | What it does                                          |
+| ------------------------- | ----------------------------------------------------- |
+| `feedback_list`           | The inbox, pending by default.                        |
+| `feedback_get`            | One report with its context, attachments and thread.  |
+| `feedback_attachment_get` | One attachment's content.                             |
+| `feedback_comment_add`    | Comment on the thread the reporter shares.            |
+| `feedback_accept`         | Accept a pending report.                              |
+| `feedback_reject`         | Reject a report.                                      |
+| `feedback_targets`        | The projects you may file a feedback into.            |
+| `feedback_submit`         | File a feedback, in this project or another of yours. |
 
 ## Personas, use cases and requirements
 

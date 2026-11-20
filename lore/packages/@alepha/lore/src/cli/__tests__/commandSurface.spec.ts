@@ -167,7 +167,16 @@ describe("the Lore CLI command surface", () => {
         "review",
         "pull-request",
       ],
-      feedback: ["list", "get", "attachment", "comment", "accept", "reject"],
+      feedback: [
+        "list",
+        "targets",
+        "submit",
+        "get",
+        "attachment",
+        "comment",
+        "accept",
+        "reject",
+      ],
       folio: [
         "list",
         "search",

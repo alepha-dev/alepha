@@ -294,3 +294,49 @@ export const feedbackCommentAddParamsSchema = projectParamsSchema.extend({
 });
 
 export const feedbackCommentAddResultSchema = feedbackCommentRefSchema;
+
+/**
+ * `feedback_targets` (#Q3971): no parameter, the caller's own projects.
+ */
+export const feedbackTargetsParamsSchema = z.object({});
+
+export const feedbackTargetsResultSchema = z.object({
+  targets: z
+    .array(z.object({ id: z.integer(), slug: z.string(), title: z.string() }))
+    .describe(
+      "The projects you belong to that accept feedback: the only ones feedback_submit files into.",
+    ),
+});
+
+/**
+ * `feedback_submit` (#Q3971): a feedback item filed into a project the
+ * caller belongs to and that has Support on, possibly another than the one
+ * the conversation is in.
+ */
+export const feedbackSubmitParamsSchema = projectParamsSchema.extend({
+  title: z.string().min(3).max(200).describe("The feedback's title, one line."),
+  description: z
+    .string()
+    .min(1)
+    .max(10_000)
+    .describe("What was seen or is asked for, in Markdown."),
+  tags: z
+    .array(z.string().max(40))
+    .max(10)
+    .optional()
+    .describe("Tags, reusing the target's own (bug, feat)."),
+  as: z
+    .string()
+    .min(1)
+    .max(40)
+    .optional()
+    .describe(
+      "Your own name as a client, e.g. `claude-code`: the feedback is tagged agent:<as>, so its triager sees an agent filed it.",
+    ),
+});
+
+export const feedbackSubmitResultSchema = z.object({
+  projectId: z.integer(),
+  id: z.integer(),
+  shortId: z.integer().describe("P<shortId> in the target project."),
+});
