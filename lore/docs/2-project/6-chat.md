@@ -77,9 +77,9 @@ answer:
 - A **write** (filing a quest, a comment, a folio) waits for a card. Everyone
   sees the card; only you, who asked, can approve or decline it.
 
-Your own room with Lore is **Lore**, at the top of the list, opened by the
-sparkle button in the header. Nobody else is in it, and every message there is
-a question to Lore, without `@lore`.
+To ask Lore something on your own, about the page you are on, open the
+[Assistant](/lore/docs/agents-assistant) from the sparkle button in the header
+instead.
 
 ## Notifications
 

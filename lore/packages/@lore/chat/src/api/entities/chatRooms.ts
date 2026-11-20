@@ -35,15 +35,15 @@ export const chatRooms = $entity({
       onDelete: "set null",
     }),
     /**
-     * A member's own room with an agent (#Q3942): private, theirs alone,
-     * nobody invited in. Deleted with the account.
+     * ⚠️ Unused since #Q3972. It marked a member's own room with an agent
+     * (#Q3942), which Ask AI's dock replaced; the rooms it marked were
+     * purged. Kept until its drop ships alone.
      */
     personalOf: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "cascade",
     }),
     /**
-     * The agent every message of a personal room prompts, without a
-     * mention: `lore`.
+     * ⚠️ Unused since #Q3972, with `personalOf`.
      */
     agent: z.text({ maxLength: 40 }).optional(),
   }),

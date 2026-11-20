@@ -1,5 +1,6 @@
 import {
   AgentPromptRegistry,
+  AssistantSuggestionRegistry,
   canInProject,
   capabilityOption,
   ElementReferenceRegistry,
@@ -41,6 +42,7 @@ export class RequirementsShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
   protected readonly prompts = $inject(AgentPromptRegistry);
+  protected readonly suggestions = $inject(AssistantSuggestionRegistry);
 
   /**
    * The id an href of this project carries, or `undefined`.
@@ -55,6 +57,28 @@ export class RequirementsShell {
   }
 
   constructor() {
+    // The assistant's prompts on Requirements' pages (#Q3972): a use case's
+    // page is the one the dock reads, through its page context.
+    this.suggestions.register({
+      routes: (name) => name === "projectUseCase",
+      keys: [
+        "assistant.suggest.usecase.review",
+        "assistant.suggest.usecase.steps",
+        "assistant.suggest.usecase.quests",
+      ],
+    });
+    this.suggestions.register({
+      routes: (name) =>
+        name === "projectUseCases" ||
+        name === "projectRequirements" ||
+        name === "projectPersonas" ||
+        name === "projectPersona",
+      keys: [
+        "assistant.suggest.requirements.failing",
+        "assistant.suggest.requirements.uncovered",
+        "assistant.suggest.requirements.stale",
+      ],
+    });
     // A band of its own, between Errors and Folios (#Q3830), holding one
     // entry per list page: Personas, Use cases, then Requirements. Each is lit on its list and on the pages a row
     // of it opens. Each counts its list; hovered, the count gives way to a

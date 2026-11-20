@@ -13,6 +13,7 @@ import {
   canInProject,
   capabilityOption,
   currentProjectAtom,
+  AssistantSuggestionRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import { AppWindow, Bug, Layers, Package, Rocket } from "lucide-react";
@@ -43,8 +44,19 @@ export class DeployShell {
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly blockers = $inject(ProjectBlockerRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
+  protected readonly suggestions = $inject(AssistantSuggestionRegistry);
 
   constructor() {
+    // The assistant's prompts on the Apps list and on an app's every tab,
+    // whose layout is `projectApp` (#Q3585).
+    this.suggestions.register({
+      routes: (name) => name === "projectApps" || name === "projectApp",
+      keys: [
+        "assistant.suggest.apps.deploys",
+        "assistant.suggest.apps.errors",
+        "assistant.suggest.apps.silent",
+      ],
+    });
     this.shell.registerNav("ship", [
       {
         // ONE entry, pointing at the list. It was a disclosure group with one

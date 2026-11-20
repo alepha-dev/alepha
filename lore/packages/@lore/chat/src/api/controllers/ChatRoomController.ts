@@ -1,11 +1,10 @@
 import { $ownsProject } from "@lore/core/api";
-import { $inject, Alepha, z } from "alepha";
-import { $action, NotFoundError, okSchema } from "alepha/server";
+import { $inject, z } from "alepha";
+import { $action, okSchema } from "alepha/server";
 
 import { chatRoomMemberResourceSchema } from "../schemas/chatRoomMemberResourceSchema.ts";
 import { chatRoomNameSchema } from "../schemas/chatRoomNameSchema.ts";
 import { chatRoomResourceSchema } from "../schemas/chatRoomResourceSchema.ts";
-import { ChatResponderRegistry } from "../services/ChatResponderRegistry.ts";
 import { ChatRoomService } from "../services/ChatRoomService.ts";
 
 /**
@@ -16,7 +15,6 @@ import { ChatRoomService } from "../services/ChatRoomService.ts";
  */
 export class ChatRoomController {
   protected readonly service = $inject(ChatRoomService);
-  protected readonly alepha = $inject(Alepha);
 
   protected ownsProject = (requires: string) =>
     $ownsProject({ requires, param: "projectId", capability: "chat" });
@@ -56,30 +54,6 @@ export class ChatRoomController {
         ),
         user!.id,
       ),
-  });
-
-  openChatPersonalRoom = $action({
-    method: "POST",
-    path: "/projects/:projectId/chat/personal",
-    use: [this.ownsProject("chat:write")],
-    description:
-      "Your own room with the Lore agent in this project, created on first open: every message there is a prompt. A 404 when AI is off.",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: chatRoomResourceSchema,
-    },
-    handler: async ({ params, user }) => {
-      const agent = this.alepha.inject(ChatResponderRegistry).personal()?.name;
-      if (!agent) {
-        throw new NotFoundError("No agent answers on this Lore");
-      }
-      const room = await this.service.personalRoom(
-        params.projectId,
-        user!.id,
-        agent,
-      );
-      return this.service.resource(room, user!.id);
-    },
   });
 
   createChatRoom = $action({
