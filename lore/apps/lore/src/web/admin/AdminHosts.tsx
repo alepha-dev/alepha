@@ -12,10 +12,13 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import {
+  BarChart3,
   CircleDot,
+  Cloud,
   FolderInput,
   KeyRound,
   Pencil,
+  Rocket,
   Server,
   Trash2,
 } from "lucide-react";
@@ -181,15 +184,19 @@ export const AdminHosts = () => {
           // The tag pill of the quests pages (#Q3941): every tag chip is
           // `<Badge variant="tint">` in its tone (`tagTone` in @lore/plan),
           // and a type has no colour of its own, so `neutral`, as an
-          // uncoloured tag is. The State badges beside it are statuses, not
-          // tags, and keep their own look.
+          // uncoloured tag is. Every pill on this page is that tag, with a
+          // leading icon (#Q4010).
           type: {
             label: "Type",
-            cell: (host) => (
-              <Badge variant="tint" tone="neutral" data-testid="host-type">
-                {host.type}
-              </Badge>
-            ),
+            cell: (host) => {
+              const Icon = host.type === "cloudflare" ? Cloud : Server;
+              return (
+                <Badge variant="tint" tone="neutral" data-testid="host-type">
+                  <Icon className="size-3" aria-hidden="true" />
+                  {host.type}
+                </Badge>
+              );
+            },
           },
           project: {
             label: "Project",
@@ -220,33 +227,55 @@ export const AdminHosts = () => {
           },
           online: {
             label: "State",
-            cell: (host) => (
-              <span className="flex items-center gap-1">
-                {/* A cloudflare account never connects, so `online` says
-                    nothing about one. Whether its credential still works
-                    does (#1630). */}
-                {host.type === "cloudflare" ? (
-                  <Badge
-                    variant={
-                      host.credentialStatus === "valid"
-                        ? "default"
-                        : "destructive"
-                    }
-                  >
-                    {host.credentialStatus === "valid"
-                      ? "credential valid"
-                      : "credential invalid"}
-                  </Badge>
-                ) : (
-                  <Badge variant={host.online ? "default" : "outline"}>
-                    {host.online ? "online" : "offline"}
-                  </Badge>
-                )}
-                <Badge variant="secondary">
-                  {host.deployAllowed ? "deploys" : "stats only"}
+            cell: (host) => {
+              // Online or offline, nothing else (#Q4010). A cloudflare account
+              // never connects, so `online` says nothing about one: whether
+              // its credential still works does (#1630), and a valid one
+              // reads online.
+              const online =
+                host.type === "cloudflare"
+                  ? host.credentialStatus === "valid"
+                  : host.online;
+              return (
+                <Badge
+                  variant="tint"
+                  tone={online ? "success" : "neutral"}
+                  data-testid="host-state"
+                >
+                  <CircleDot className="size-3" aria-hidden="true" />
+                  {online ? "online" : "offline"}
                 </Badge>
-              </span>
-            ),
+              );
+            },
+          },
+          capabilities: {
+            label: "Capabilities",
+            cell: (host) => {
+              // What the host does, as a list so a capability to come (the
+              // agent) is one more entry. Stats come from Bay's connector:
+              // a cloudflare account reports none, so it carries no pill.
+              const capabilities = [
+                ...(host.type === "bay"
+                  ? [{ label: "stats", icon: BarChart3 }]
+                  : []),
+                ...(host.deployAllowed
+                  ? [{ label: "deploy", icon: Rocket }]
+                  : []),
+              ];
+              return (
+                <span
+                  className="flex flex-wrap items-center gap-1"
+                  data-testid="host-capabilities"
+                >
+                  {capabilities.map((capability) => (
+                    <Badge key={capability.label} variant="tint" tone="neutral">
+                      <capability.icon className="size-3" aria-hidden="true" />
+                      {capability.label}
+                    </Badge>
+                  ))}
+                </span>
+              );
+            },
           },
           loans: {
             label: "Lent to",
