@@ -332,7 +332,8 @@ test.describe("Feedback", () => {
       const column = await detail.boundingBox();
       expect(column).not.toBeNull();
 
-      await detail.getByText("screenshot.png").click();
+      // A thumbnail since #Q4008, named by its alt text.
+      await detail.getByAltText("screenshot.png").click();
 
       const shown = page.locator('[role="dialog"] img[src*="/api/files/"]');
       await expect(shown).toBeVisible({ timeout: 10_000 });

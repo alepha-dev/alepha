@@ -184,7 +184,9 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
 /**
  * A triage inbox whose attachments are almost always screenshots showed none
  * of them: every attachment rendered as a paperclip, a filename and a size,
- * so finding out what was reported meant opening a tab (feedback #2091).
+ * so finding out what was reported meant opening a tab (feedback #2091), and
+ * after it a click (feedback #2405). Since #Q4008 they are the discussion's
+ * tiles: an image is its own thumbnail, any other file a tile with its name.
  */
 describe("ProjectFeedbackDetail - attachment previews", () => {
   beforeAll(() => {
@@ -217,32 +219,34 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
     );
   };
 
-  /**
-   * ⚠️ The hover preview is GONE, replaced rather than joined (feedback
-   * #P2139). Its own spec said these attachments "are almost always
-   * screenshots", and a 320px popup that appears while the pointer is on its
-   * way to a click is the wrong affordance for the one thing the owner does
-   * with them: check it is the right screenshot. The trade is real and was
-   * taken deliberately - a hover cost nothing, and a click costs one.
-   */
-  it("opens an image in the lightbox on a plain click, and leaves other kinds alone", async ({
+  it("shows an image attachment as a preview, without a click", async ({
     expect,
   }) => {
     const view = await show(withAttachments);
 
-    fireEvent.click(await view.findByText("screenshot.png"));
-    const dialog = await view.findByRole("dialog");
-    expect(dialog.textContent).toContain("screenshot.png");
-    expect(
-      dialog.querySelector(
-        'img[src="/api/files/00000000-0000-4000-8000-00000000000a"]',
-      ),
-    ).not.toBeNull();
+    const thumbnail = await view.findByAltText("screenshot.png");
+    expect(thumbnail.tagName).toBe("IMG");
+    expect(thumbnail.getAttribute("src")).toContain(
+      "00000000-0000-4000-8000-00000000000a",
+    );
+    // The log is a tile with its name, never an image.
+    expect(view.queryByAltText("server.log")).toBeNull();
+    expect(view.getByText("server.log")).toBeTruthy();
   });
 
-  it("leaves a non-image attachment as a plain link", async ({ expect }) => {
+  it("opens an image in the lightbox on a plain click", async ({ expect }) => {
+    const view = await show(withAttachments);
+
+    fireEvent.click(await view.findByAltText("screenshot.png"));
+    const dialog = await view.findByRole("dialog");
+    expect(dialog.textContent).toContain("screenshot.png");
+  });
+
+  it("leaves a non-image attachment as a downloadable tile", async ({
+    expect,
+  }) => {
     // ⚠️ A FRESH render, not a second click in the case above: the lightbox
-    // is already open there, so a dialog count would read 1 whichever row
+    // is already open there, so a dialog count would read 1 whichever tile
     // had opened it and the assertion would pass on a broken classifier.
     const view = await show(withAttachments);
 
@@ -251,30 +255,19 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
     expect(view.baseElement.querySelectorAll('[role="dialog"]').length).toBe(0);
   });
 
-  it("keeps every row a real link to the full file", async ({ expect }) => {
+  it("keeps every tile a real link to the full file", async ({ expect }) => {
     const view = await show(withAttachments);
 
     // ⚠️ Only the PLAIN click is taken. The anchor stays real so ⌘-click,
-    // middle-click and Open in new tab keep working, and so does the row
-    // with no JavaScript at all.
+    // middle-click and Open in new tab keep working.
     for (const [name, id] of [
       ["screenshot.png", "00000000-0000-4000-8000-00000000000a"],
       ["server.log", "00000000-0000-4000-8000-00000000000b"],
     ] as const) {
-      const anchor = (await view.findByText(name)).closest("a");
+      const anchor = view.container.querySelector(`a[title="${name}"]`);
       expect(anchor?.getAttribute("href")).toBe(`/api/files/${id}`);
       expect(anchor?.getAttribute("target")).toBe("_blank");
     }
-  });
-
-  it("fetches no image until the lightbox opens", async ({ expect }) => {
-    const view = await show(withAttachments);
-
-    await view.findByText("screenshot.png");
-    // The dialog is portalled and mounts on open, so an inbox row with five
-    // screenshots still costs no requests to draw - the one property worth
-    // keeping from the hover card it replaced.
-    expect(view.baseElement.querySelectorAll("img").length).toBe(0);
   });
 });
 
