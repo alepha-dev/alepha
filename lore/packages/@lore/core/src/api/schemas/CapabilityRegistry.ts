@@ -599,6 +599,16 @@ export class CapabilityRegistry {
           wizard: true,
           preselected: true,
         },
+        // Monitor apps second (#Q4006): the order of dependence, Track,
+        // Monitor, Deploy apps, Deploy stacks, which Settings, the wizard and
+        // the CLI listing all read from here.
+        {
+          key: "uptime",
+          labelKey: "project.capability.ship.option.uptime.label",
+          descriptionKey: "project.capability.ship.option.uptime.description",
+          wizard: true,
+          preselected: false,
+        },
         {
           key: "deploy",
           labelKey: "project.capability.ship.option.deploy.label",
@@ -609,13 +619,6 @@ export class CapabilityRegistry {
           // account; that is a thing to opt into on purpose, not a default a
           // wizard ticks on the way past. `soon: true` was here until epic #1
           // shipped, and the option's own doc promised its removal.
-          preselected: false,
-        },
-        {
-          key: "uptime",
-          labelKey: "project.capability.ship.option.uptime.label",
-          descriptionKey: "project.capability.ship.option.uptime.description",
-          wizard: true,
           preselected: false,
         },
         {

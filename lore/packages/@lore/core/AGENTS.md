@@ -87,7 +87,7 @@ picked in the creation wizard and switched in Settings ▸ General ▸ Capabilit
 | `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback`                  |
 | `remember`                    | folios, their directories and attachments - no option since #Q3704                                                                                                     |
 | `build`                       | git repositories (`code:*`) and Quality - options `repositories` / `quality` (#Q4005)                                                                                  |
-| `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `deploy` / `uptime` / `stacks`                                                                 |
+| `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `uptime` / `deploy` / `stacks` (#Q4006)                                                        |
 | `chat`, `activity`, `reports` | the General group (#Q4007): Chat's rooms; the Activity page and Reports, each a switch on by default that hides its page (404) and sidebar entry and owns nothing else |
 
 A pillar is not a thing: an app is still an app and a deploy is still a deploy.

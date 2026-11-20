@@ -120,6 +120,27 @@ describe("the Capabilities settings page", () => {
     ).toBe("false");
   });
 
+  it("lists Ship's options in the order of dependence (#Q4006)", async ({
+    expect,
+  }) => {
+    const { view } = await mount(["ship"]);
+
+    await view.findByRole("switch", { name: "Track apps" });
+    const names = view
+      .getAllByRole("switch")
+      .map((it) => it.getAttribute("aria-label"));
+    const ship = names.slice(
+      names.indexOf("Ship") + 1,
+      names.indexOf("Ship") + 5,
+    );
+    expect(ship).toEqual([
+      "Track apps",
+      "Monitor apps",
+      "Deploy apps",
+      "Deploy stacks",
+    ]);
+  });
+
   it("turns Build on with both options, as the wizard preselects them", async ({
     expect,
   }) => {

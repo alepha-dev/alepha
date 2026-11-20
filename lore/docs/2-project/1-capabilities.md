@@ -64,12 +64,12 @@ A list of quests and a board are always there when Plan is on. See
 
 **Ship**
 
-| Option           | What it adds                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Track apps**   | Analytics, vitals and errors reported by your apps. See [Telemetry](/lore/docs/ship-telemetry).               |
-| **Deploy apps**  | Pushing a build to a machine you own. See [Deploying an app](/lore/docs/ship-deploying).                      |
-| **Monitor apps** | Checks on websites, ports, certificates and scheduled jobs. See [Healthchecks](/lore/docs/ship-healthchecks). |
-| **Stacks**       | Apps and services deployed together from one Compose file. See [Stacks](/lore/docs/ship-stacks).              |
+| Option            | What it adds                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Track apps**    | Analytics, vitals and errors reported by your apps. See [Telemetry](/lore/docs/ship-telemetry).               |
+| **Monitor apps**  | Checks on websites, ports, certificates and scheduled jobs. See [Healthchecks](/lore/docs/ship-healthchecks). |
+| **Deploy apps**   | Pushing a build to a machine you own. See [Deploying an app](/lore/docs/ship-deploying).                      |
+| **Deploy stacks** | Apps and services deployed together from one Compose file. See [Stacks](/lore/docs/ship-stacks).              |
 
 ## Turning one on or off
 

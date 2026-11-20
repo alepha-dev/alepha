@@ -4680,7 +4680,7 @@ export default {
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":
     "Check your addresses on a schedule and keep their history. No sigil needed.",
-  "project.capability.ship.option.stacks.label": "Stacks",
+  "project.capability.ship.option.stacks.label": "Deploy stacks",
   "project.capability.ship.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",
   "uptime.checksOver.24h": "Checks over the last 24 hours",
