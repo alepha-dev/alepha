@@ -170,6 +170,27 @@ describe("DataTable groups and filtering tiles", () => {
     });
   });
 
+  describe("onPage", () => {
+    it("reports the page on screen and the page count, on mount and on every move", async () => {
+      const seen: Array<{ page: number; totalPages: number }> = [];
+      await mount(
+        <DataTable<Row>
+          data={ROWS}
+          defaultSize={2}
+          columns={columns}
+          onPage={(state) => seen.push(state)}
+        />,
+      );
+      await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+      expect(seen.at(-1)).toEqual({ page: 0, totalPages: 2 });
+
+      fireEvent.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() =>
+        expect(seen.at(-1)).toEqual({ page: 1, totalPages: 2 }),
+      );
+    });
+  });
+
   describe("isRowActive", () => {
     it("marks the row the page has open, and only that one", async () => {
       await mount(

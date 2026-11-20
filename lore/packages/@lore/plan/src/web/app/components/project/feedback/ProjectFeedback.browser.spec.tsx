@@ -130,7 +130,27 @@ class FakeLinkProvider extends LinkProvider {
  *   list was unbounded - after paging it would sit at 10 over an inbox
  *   of 106.
  */
-describe("ProjectFeedback - Show more", () => {
+/**
+ * The observers the list's end is watched by, so a case can bring it into
+ * view: jsdom lays nothing out, so nothing ever intersects on its own.
+ */
+const watching: Array<{
+  callback: (entries: Array<{ isIntersecting: boolean }>) => void;
+  live: boolean;
+}> = [];
+
+const scrollToEnd = async (_rendered: unknown) => {
+  await waitFor(() => {
+    if (!watching.some((it) => it.live)) throw new Error("end not watched");
+  });
+  await act(async () => {
+    for (const it of watching.filter((entry) => entry.live)) {
+      it.callback([{ isIntersecting: true }]);
+    }
+  });
+};
+
+describe("ProjectFeedback - loading more at the end of the list", () => {
   beforeAll(() => {
     // The status segment measures itself with a ResizeObserver jsdom has not
     // got.
@@ -138,6 +158,20 @@ describe("ProjectFeedback - Show more", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
+    };
+    (globalThis as any).IntersectionObserver = class {
+      entry: (typeof watching)[number];
+      constructor(callback: (typeof watching)[number]["callback"]) {
+        this.entry = { callback, live: false };
+        watching.push(this.entry);
+      }
+      observe() {
+        this.entry.live = true;
+      }
+      unobserve() {}
+      disconnect() {
+        this.entry.live = false;
+      }
     };
   });
 
@@ -230,7 +264,7 @@ describe("ProjectFeedback - Show more", () => {
       expect(rendered.container.textContent).toContain("body 20"),
     );
 
-    (await rendered.findByTestId("feedback-show-more")).click();
+    await scrollToEnd(rendered);
     await waitFor(() =>
       expect(titles(root)).toHaveLength(FEEDBACK_PAGE_SIZE * 2),
     );
@@ -247,12 +281,14 @@ describe("ProjectFeedback - Show more", () => {
     expect(new Set(titles(root)).size).toBe(titles(root).length);
     expect(rendered.container.textContent).toContain("body 20");
 
-    // Last page: the remainder arrives and the button goes away.
-    (await rendered.findByTestId("feedback-show-more")).click();
+    // Last page: the remainder arrives and the end stops being watched.
+    await scrollToEnd(rendered);
     await waitFor(() => expect(titles(root)).toHaveLength(TOTAL));
     await waitFor(() =>
-      expect(rendered.queryByTestId("feedback-show-more")).toBeNull(),
+      expect(rendered.queryByTestId("feedback-more-sentinel")).toBeNull(),
     );
+    // No button anywhere (#Q3969).
+    expect(rendered.queryByTestId("feedback-show-more")).toBeNull();
     expect(rendered.container.textContent).toContain("body 20");
   });
 
@@ -382,7 +418,7 @@ describe("ProjectFeedback - Show more", () => {
     const rendered = view(alepha);
     const root = rendered.container as HTMLElement;
 
-    (await rendered.findByTestId("feedback-show-more")).click();
+    await scrollToEnd(rendered);
     await waitFor(() =>
       expect(titles(root)).toHaveLength(FEEDBACK_PAGE_SIZE * 2),
     );
