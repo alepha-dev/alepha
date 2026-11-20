@@ -20,7 +20,7 @@ import {
   Inbox,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
@@ -182,6 +182,25 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   }, [list.pages]);
   const hasMore = list.hasMore;
   const loadingMore = list.loadingMore;
+
+  // The end of the list, watched: in view with more on the server, the next
+  // page loads (#Q3969). Asked once per page loaded, so a failed read is not
+  // retried in a loop.
+  const moreRef = useRef<HTMLDivElement | null>(null);
+  const askedAt = useRef(-1);
+  const loadedCount = items.length;
+  useEffect(() => {
+    const node = moreRef.current;
+    if (!node || !hasMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((it) => it.isIntersecting)) return;
+      if (list.loadingMore || askedAt.current === loadedCount) return;
+      askedAt.current = loadedCount;
+      void list.loadMore();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, list, loadedCount]);
 
   /**
    * Show another status. A closed pane opens again on the new list's first
@@ -355,18 +374,16 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                     }}
                   />
                 ))}
+                {/* No button (#Q3969): the list scrolls, and its end coming
+                    into view loads the next page. */}
                 {hasMore && (
-                  <button
-                    type="button"
-                    data-testid="feedback-show-more"
-                    disabled={loadingMore}
-                    onClick={() => void list.loadMore()}
-                    className="text-muted-foreground hover:bg-hover hover:text-foreground border-border border-t px-3 py-3 text-sm font-medium transition-colors disabled:opacity-60"
+                  <div
+                    ref={moreRef}
+                    data-testid="feedback-more-sentinel"
+                    className="text-muted-foreground px-3 py-3 text-center text-sm"
                   >
-                    {loadingMore
-                      ? tr("feedback.list.loadingMore")
-                      : tr("feedback.list.showMore")}
-                  </button>
+                    {loadingMore ? tr("feedback.list.loadingMore") : null}
+                  </div>
                 )}
               </div>
             )}

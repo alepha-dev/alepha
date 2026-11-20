@@ -3068,7 +3068,6 @@ export default {
   "account.hosts.toast.rotated": "Secret changé",
   "account.hosts.toast.deleted": "Hôte supprimé",
 
-  "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
   "feedback.empty.pending": "Aucun retour en attente.",
   "feedback.empty.status": "Aucun retour $1.",
@@ -3143,7 +3142,6 @@ export default {
   "inbox.table.project": "Projet",
   "inbox.table.when": "Quand",
   "inbox.unread": "Non lu",
-  "inbox.loadMore": "Charger plus",
   "inbox.scope.all": "Tous les projets",
   "inbox.filter.project": "Projet",
   "inbox.markAllRead": "Tout marquer comme lu",

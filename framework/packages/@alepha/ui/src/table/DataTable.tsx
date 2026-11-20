@@ -242,6 +242,15 @@ export const DataTable = <
     alepha,
   });
 
+  // `onPage`: the page on screen and how many there are, whenever either
+  // moves. Through a ref so an inline callback does not re-fire it.
+  const onPageRef = useRef(props.onPage);
+  onPageRef.current = props.onPage;
+  const totalPages = meta?.totalPages ?? 0;
+  useEffect(() => {
+    onPageRef.current?.({ page, totalPages });
+  }, [page, totalPages]);
+
   const {
     refresh,
     reload,
