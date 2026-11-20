@@ -35,45 +35,47 @@ const RoomListRow = (props: RoomListRowProps) => {
         aria-current={props.selected ? "page" : undefined}
         onClick={() => props.onOpen(room)}
         className={cn(
-          "flex w-full flex-col gap-0.5 rounded-md px-3 py-2 text-left",
+          "flex w-full items-start gap-2 rounded-md p-2 text-left",
           props.selected ? "bg-accent" : "hover:bg-accent/50",
         )}
       >
-        <span className="flex items-center gap-1.5">
-          <Icon className="text-muted-foreground size-3.5 shrink-0" />
+        <span className="flex size-5 shrink-0 items-center justify-center">
+          <Icon className="text-muted-foreground size-3.5" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
           <span
             className={cn(
-              "min-w-0 flex-1 truncate text-sm",
+              "truncate text-sm",
               unread > 0 && "font-semibold",
               room.archivedAt && "text-muted-foreground",
             )}
           >
             {room.personal ? tr("chat.rooms.personal") : room.name}
           </span>
-          {last && (
-            <TimeAgo
-              value={last.createdAt}
-              className="text-muted-foreground shrink-0 text-xs"
-            />
-          )}
-          {unread > 0 && (
-            <Badge
-              {...(mentions > 0 ? { variant: "tint", tone: "red" } : {})}
-              aria-label={tr("chat.rooms.unread", { args: [String(unread)] })}
-            >
-              {mentions > 0 ? `@${mentions}` : unread}
-            </Badge>
-          )}
+          <span className="text-muted-foreground truncate text-xs">
+            {last
+              ? last.deleted
+                ? tr("chat.message.deleted")
+                : last.preview
+              : room.archivedAt
+                ? tr("chat.rooms.archived")
+                : tr("chat.rooms.empty")}
+          </span>
         </span>
-        <span className="text-muted-foreground truncate pl-5 text-xs">
-          {last
-            ? last.deleted
-              ? tr("chat.message.deleted")
-              : last.preview
-            : room.archivedAt
-              ? tr("chat.rooms.archived")
-              : tr("chat.rooms.empty")}
-        </span>
+        {last && (
+          <TimeAgo
+            value={last.createdAt}
+            className="text-muted-foreground shrink-0 text-[11px] leading-5"
+          />
+        )}
+        {unread > 0 && (
+          <Badge
+            {...(mentions > 0 ? { variant: "tint", tone: "red" } : {})}
+            aria-label={tr("chat.rooms.unread", { args: [String(unread)] })}
+          >
+            {mentions > 0 ? `@${mentions}` : unread}
+          </Badge>
+        )}
       </button>
     </li>
   );

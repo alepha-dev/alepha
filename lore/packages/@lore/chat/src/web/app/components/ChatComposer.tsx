@@ -1,7 +1,7 @@
 import { Button, cn, Textarea } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowUp, Bot, Paperclip, X } from "lucide-react";
+import { ArrowUp, Bot, CirclePlus, X } from "lucide-react";
 import {
   type KeyboardEvent,
   useId,
@@ -186,7 +186,7 @@ const ChatComposer = (props: ChatComposerProps) => {
 
   return (
     <form
-      className="relative flex flex-wrap items-end gap-2 border-t p-3"
+      className="relative flex flex-col px-3.5"
       onSubmit={(event) => {
         event.preventDefault();
         void send();
@@ -194,7 +194,7 @@ const ChatComposer = (props: ChatComposerProps) => {
     >
       {(pending.length > 0 || uploading > 0) && (
         <ul
-          className="flex w-full flex-wrap gap-1.5"
+          className="mb-1.5 flex w-full flex-wrap gap-1.5"
           aria-label={tr("chat.composer.files")}
           data-testid="chat-pending-files"
         >
@@ -236,22 +236,13 @@ const ChatComposer = (props: ChatComposerProps) => {
           void attach(files);
         }}
       />
-      <Button
-        type="button"
-        variant="minimal"
-        size="icon"
-        aria-label={tr("chat.composer.attach")}
-        onClick={() => picker.current?.click()}
-      >
-        <Paperclip className="size-4" />
-      </Button>
       {open && (
         <div
           id={listId}
           role="listbox"
           aria-label={tr("chat.composer.mentions")}
           data-testid="chat-mention-popup"
-          className="bg-popover text-popover-foreground absolute bottom-full left-3 mb-1 w-72 overflow-hidden rounded-md border p-1 shadow-md"
+          className="bg-popover text-popover-foreground absolute bottom-full left-3.5 mb-1 w-72 overflow-hidden rounded-md border p-1 shadow-md"
         >
           {options.map((candidate, index) => (
             <div
@@ -283,60 +274,76 @@ const ChatComposer = (props: ChatComposerProps) => {
           ))}
         </div>
       )}
-      <Textarea
-        ref={input}
-        data-testid="chat-composer"
-        role="combobox"
-        aria-label={tr("chat.composer.label")}
-        aria-autocomplete="list"
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        aria-activedescendant={open ? optionId(active) : undefined}
-        placeholder={tr("chat.composer.placeholder", {
-          args: [props.room.name],
-        })}
-        value={value}
-        rows={1}
-        onChange={(event) => {
-          setValue(event.target.value);
-          track(event.target.value, event.target.selectionStart);
-          if (event.target.value.trim()) props.onTyping?.();
-        }}
-        onSelect={(event) =>
-          track(event.currentTarget.value, event.currentTarget.selectionStart)
-        }
-        onBlur={() => setMention(undefined)}
-        // Dropped on the text, as pasted: the files join the next message.
-        onDragOver={(event) => {
-          if (event.dataTransfer.types.includes("Files"))
+      {/* Discord's message bar: one filled block, the attach button on the
+          left, Enter sends. The send button is kept for touch screens only,
+          where there is no Enter to rely on. */}
+      <div className="bg-muted border-foreground/20 hover:border-foreground/35 focus-within:border-foreground/35 flex items-start gap-1 rounded-lg border pr-2 pl-1 transition-colors">
+        <Button
+          type="button"
+          variant="minimal"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-foreground my-2 rounded-full"
+          aria-label={tr("chat.composer.attach")}
+          onClick={() => picker.current?.click()}
+        >
+          <CirclePlus className="size-5" />
+        </Button>
+        <Textarea
+          ref={input}
+          data-testid="chat-composer"
+          role="combobox"
+          aria-label={tr("chat.composer.label")}
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-activedescendant={open ? optionId(active) : undefined}
+          placeholder={tr("chat.composer.placeholder", {
+            args: [props.room.name],
+          })}
+          value={value}
+          rows={1}
+          onChange={(event) => {
+            setValue(event.target.value);
+            track(event.target.value, event.target.selectionStart);
+            if (event.target.value.trim()) props.onTyping?.();
+          }}
+          onSelect={(event) =>
+            track(event.currentTarget.value, event.currentTarget.selectionStart)
+          }
+          onBlur={() => setMention(undefined)}
+          // Dropped on the text, as pasted: the files join the next message.
+          onDragOver={(event) => {
+            if (event.dataTransfer.types.includes("Files"))
+              event.preventDefault();
+          }}
+          onDrop={(event) => {
+            if (event.dataTransfer.files.length === 0) return;
             event.preventDefault();
-        }}
-        onDrop={(event) => {
-          if (event.dataTransfer.files.length === 0) return;
-          event.preventDefault();
-          void attach([...event.dataTransfer.files]);
-        }}
-        onPaste={(event) => {
-          const files = [...event.clipboardData.files];
-          if (files.length === 0) return;
-          event.preventDefault();
-          void attach(files);
-        }}
-        onKeyDown={onKeyDown}
-        className="max-h-48 min-h-9 flex-1 resize-none"
-      />
-      <Button
-        type="submit"
-        size="icon"
-        aria-label={tr("chat.composer.send")}
-        disabled={
-          busy ||
-          uploading > 0 ||
-          (value.trim().length === 0 && pending.length === 0)
-        }
-      >
-        <ArrowUp className="size-4" />
-      </Button>
+            void attach([...event.dataTransfer.files]);
+          }}
+          onPaste={(event) => {
+            const files = [...event.clipboardData.files];
+            if (files.length === 0) return;
+            event.preventDefault();
+            void attach(files);
+          }}
+          onKeyDown={onKeyDown}
+          className="max-h-48 min-h-11 flex-1 resize-none rounded-none border-0 bg-transparent px-1 py-[11px] leading-[22px] shadow-none focus-visible:ring-0 dark:bg-transparent"
+        />
+        <Button
+          type="submit"
+          size="icon-sm"
+          className="my-2 md:hidden"
+          aria-label={tr("chat.composer.send")}
+          disabled={
+            busy ||
+            uploading > 0 ||
+            (value.trim().length === 0 && pending.length === 0)
+          }
+        >
+          <ArrowUp className="size-4" />
+        </Button>
+      </div>
     </form>
   );
 };

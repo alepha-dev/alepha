@@ -100,6 +100,7 @@ const Conversation = (props: ConversationProps) => {
   const { room } = props;
   const scroller = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   const previousHeight = useRef(0);
   const previousFirst = useRef<string | undefined>(undefined);
@@ -108,9 +109,15 @@ const Conversation = (props: ConversationProps) => {
     () => new Map(props.users.map((user) => [user.id, user])),
     [props.users],
   );
+  // Agents too: `@lore` reads as a mention like a member's handle.
   const handles = useMemo(
-    () => props.users.map((user) => ({ name: mentionHandle(user) })),
-    [props.users],
+    () => [
+      ...props.users.map((user) => ({ name: mentionHandle(user) })),
+      ...props.candidates
+        .filter((candidate) => candidate.agent)
+        .map((candidate) => ({ name: candidate.handle })),
+    ],
+    [props.users, props.candidates],
   );
 
   // Stay at the bottom while the reader is there; keep the reader's place
@@ -132,6 +139,20 @@ const Conversation = (props: ConversationProps) => {
     pinned.current = true;
     previousFirst.current = undefined;
   }, [room.id]);
+
+  // Still at the bottom when the list's box or its content changes size: the
+  // bar growing with a long draft, an image arriving after its message.
+  useEffect(() => {
+    const element = scroller.current;
+    const content = log.current;
+    if (!element || !content || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (pinned.current) element.scrollTop = element.scrollHeight;
+    });
+    observer.observe(element);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
 
   // Older pages load when the top of the list comes into view.
   useEffect(() => {
@@ -215,7 +236,7 @@ const Conversation = (props: ConversationProps) => {
       className="flex h-full min-h-0 flex-col"
       data-testid="chat-conversation"
     >
-      <header className="flex items-center gap-2 border-b px-4 py-2">
+      <header className="flex h-[46px] shrink-0 items-center gap-2 border-b pr-2.5 pl-3">
         {props.onBack && (
           <Button
             variant="minimal"
@@ -248,7 +269,7 @@ const Conversation = (props: ConversationProps) => {
                 public
                 user={userById.get(id)}
                 alt=""
-                className="ring-background size-6 ring-2"
+                className="ring-background size-5 ring-2"
               />
             ))}
           </span>
@@ -257,7 +278,7 @@ const Conversation = (props: ConversationProps) => {
       </header>
       <div
         ref={scroller}
-        className="min-h-0 flex-1 overflow-y-auto pb-3"
+        className="min-h-0 flex-1 overflow-y-auto pt-3 pb-6"
         onScroll={(event) => {
           const element = event.currentTarget;
           pinned.current =
@@ -279,27 +300,12 @@ const Conversation = (props: ConversationProps) => {
           </p>
         )}
         {/* A log: a screen reader announces each new message politely. */}
-        <div role="log" aria-label={tr("chat.room.messages")}>
+        <div ref={log} role="log" aria-label={tr("chat.room.messages")}>
           <ul>{rows}</ul>
         </div>
       </div>
-      <p
-        className="text-muted-foreground h-5 px-4 text-xs"
-        aria-live="polite"
-        data-testid="chat-typing"
-      >
-        {props.typing.length === 1
-          ? tr("chat.room.typing.one", {
-              args: [displayName(userById.get(props.typing[0]!))],
-            })
-          : props.typing.length > 1
-            ? tr("chat.room.typing.many", {
-                args: [String(props.typing.length)],
-              })
-            : ""}
-      </p>
       {room.archivedAt ? (
-        <p className="text-muted-foreground border-t p-3 text-center text-sm">
+        <p className="text-muted-foreground bg-muted border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
           {tr("chat.room.archivedNotice")}
         </p>
       ) : props.canWrite ? (
@@ -311,10 +317,30 @@ const Conversation = (props: ConversationProps) => {
           onTyping={props.onTyping}
         />
       ) : (
-        <p className="text-muted-foreground border-t p-3 text-center text-sm">
+        <p className="text-muted-foreground bg-muted border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
           {tr("chat.room.readOnly")}
         </p>
       )}
+      {/* Under the bar, as on Discord: who is typing, else how to talk. */}
+      <div className="text-muted-foreground flex h-6 items-center px-[18px] text-[11px]">
+        <span aria-live="polite" data-testid="chat-typing">
+          {props.typing.length === 1
+            ? tr("chat.room.typing.one", {
+                args: [displayName(userById.get(props.typing[0]!))],
+              })
+            : props.typing.length > 1
+              ? tr("chat.room.typing.many", {
+                  args: [String(props.typing.length)],
+                })
+              : ""}
+        </span>
+        {props.typing.length === 0 &&
+          !room.archivedAt &&
+          props.canWrite &&
+          (room.personal
+            ? tr("chat.composer.hintPersonal")
+            : tr("chat.composer.hint"))}
+      </div>
     </section>
   );
 };

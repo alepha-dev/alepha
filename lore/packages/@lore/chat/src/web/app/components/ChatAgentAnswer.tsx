@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 
 import type { ChatMessageResource } from "../../../schemas/index.ts";
 import { ChatAgentUiRegistry } from "../services/ChatAgentUiRegistry.ts";
+import ChatAgentTrace from "./ChatAgentTrace.tsx";
 
 export interface ChatAgentAnswerProps {
   message: ChatMessageResource;
@@ -16,11 +17,17 @@ export interface ChatAgentAnswerProps {
   mentioner: string;
   deciding: boolean;
   onDecide: (decision: "approve" | "deny") => void;
+  /**
+   * Which half to draw: the tool trace, shown above the text, or what
+   * follows the text (the thinking line and the card of a paused write).
+   */
+  part: "trace" | "after";
 }
 
 /**
  * The parts of an agent's answer around its text (#E161, #Q3956): the
- * trace of the tools it used, and the card of a write it waits on.
+ * trace of the tools it used, above the text, and the card of a write it
+ * waits on, below it.
  *
  * Everyone sees the card; only the member who asked can press it. The
  * server refuses anyone else too: the buttons are a courtesy, not the rule.
@@ -40,27 +47,12 @@ const ChatAgentAnswer = (props: ChatAgentAnswerProps) => {
     ? (registry.card(run.tool) ?? AiChatConfirmCard)
     : undefined;
 
+  if (props.part === "trace") {
+    return <ChatAgentTrace tools={tools} label={label} />;
+  }
+
   return (
     <>
-      {tools.length > 0 && (
-        <p
-          className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs"
-          data-testid="chat-agent-trace"
-        >
-          {tools.map((tool, index) => (
-            <span
-              key={`${tool.name}-${index}`}
-              className="flex items-center gap-1"
-            >
-              {index > 0 && <span aria-hidden="true">·</span>}
-              {tool.state === "running" && (
-                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-              )}
-              {label(tool.name, tool.state)}
-            </span>
-          ))}
-        </p>
-      )}
       {run.status === "running" && !props.message.body && (
         <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
