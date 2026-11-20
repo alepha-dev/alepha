@@ -3465,6 +3465,7 @@ export default {
   "requirements.usecase.col.useCase": "Cas d’usage",
   "requirements.usecase.coverage": "Couverture du développement",
   "requirements.usecase.coverage.done": "Tout développé",
+  "requirements.usecase.coverage.epicProgress": "$1 / $2 terminées",
   "requirements.usecase.coverage.help":
     "Un critère en échec n’ouvre une erreur qu’une fois terminées toutes les quêtes qui couvrent le cas d’usage. Avant cela, l’échec est attendu et affiché en développement.",
   "requirements.usecase.criteria": "Critères d’acceptation",
