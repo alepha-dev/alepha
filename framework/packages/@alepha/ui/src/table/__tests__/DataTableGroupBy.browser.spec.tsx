@@ -142,6 +142,34 @@ describe("DataTable groups and filtering tiles", () => {
     });
   });
 
+  describe("groupBy over pages (static rows)", () => {
+    it("pages the whole set group by group, and counts each group over every page", async () => {
+      await mount(
+        <DataTable<Row>
+          data={ROWS}
+          defaultSize={2}
+          columns={columns}
+          groupBy={{ key: (row) => row.state }}
+        />,
+      );
+      await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+
+      // Page 1: both passed rows, not a passed and a failed one.
+      expect(titles()).toEqual(["Alpha", "Gamma"]);
+      expect(document.querySelector('[data-group="passed"]')?.textContent).toBe(
+        "passed2",
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => expect(titles()).toEqual(["Beta", "Delta"]));
+      expect(
+        [...document.querySelectorAll('[data-slot="data-table-group"]')].map(
+          (row) => row.textContent,
+        ),
+      ).toEqual(["failed1", "never_run1"]);
+    });
+  });
+
   describe("isRowActive", () => {
     it("marks the row the page has open, and only that one", async () => {
       await mount(

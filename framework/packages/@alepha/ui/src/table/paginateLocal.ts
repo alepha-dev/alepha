@@ -30,7 +30,26 @@ export interface PaginateLocalOptions<T> {
    * with filter values that are actually set.
    */
   filter?: (item: T, filters: Record<string, any>) => boolean;
+  /**
+   * The table's `groupBy`, when it groups. The sorted rows are then ordered
+   * group by group (by `order`, or where each group's first row falls)
+   * before the page is cut, so a page holds whole runs of a group in the
+   * order the groups read, and `groupCounts` counts each group over every
+   * page.
+   */
+  group?: {
+    key: (item: T) => string;
+    order?: (a: string, b: string) => number;
+  };
 }
+
+/**
+ * A page of local rows, with each group's row count over every page when
+ * the rows are grouped.
+ */
+export type LocalPage<T> = Page<T> & {
+  groupCounts?: Record<string, number>;
+};
 
 /**
  * Does one filter value match the same-named property of a row?
@@ -113,7 +132,7 @@ const compareValues = (a: unknown, b: unknown): number => {
 export const paginateLocal = <T>(
   items: T[],
   options: PaginateLocalOptions<T>,
-): Page<T> => {
+): LocalPage<T> => {
   const { page, size } = options;
 
   let working = items;
@@ -167,6 +186,34 @@ export const paginateLocal = <T>(
     });
   }
 
+  // Grouped, the rows come group by group, each in the sorted order:
+  // otherwise a page would hold a scatter of every group, and the next page
+  // the same groups again.
+  let groupCounts: Record<string, number> | undefined;
+  if (options.group) {
+    const { key, order } = options.group;
+    const keys = working.map((item) => key(item));
+    groupCounts = {};
+    const firstSeen: string[] = [];
+    for (const it of keys) {
+      if (groupCounts[it] === undefined) {
+        groupCounts[it] = 0;
+        firstSeen.push(it);
+      }
+      groupCounts[it] += 1;
+    }
+    const ranked = order ? [...firstSeen].sort(order) : firstSeen;
+    const rank = new Map(ranked.map((it, index) => [it, index]));
+    working = working
+      .map((item, index) => ({ item, index }))
+      .sort(
+        (a, b) =>
+          rank.get(keys[a.index])! - rank.get(keys[b.index])! ||
+          a.index - b.index,
+      )
+      .map((it) => it.item);
+  }
+
   const offset = page * size;
   const content = working.slice(offset, offset + size);
   const totalPages = Math.ceil(working.length / size);
@@ -186,5 +233,6 @@ export const paginateLocal = <T>(
       // there is to show, and the pager must not offer a "next" from it.
       isLast: page >= totalPages - 1,
     },
+    ...(groupCounts ? { groupCounts } : {}),
   };
 };

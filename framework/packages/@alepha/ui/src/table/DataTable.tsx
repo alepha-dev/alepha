@@ -222,6 +222,7 @@ export const DataTable = <
     data: serverData,
     meta,
     rowFilters,
+    groupCounts,
     loading,
     loadedRequestId,
     lastRequestId,
@@ -870,6 +871,7 @@ export const DataTable = <
             emptyState={props.emptyState}
             noMatchState={props.noMatchState}
             groupBy={props.groupBy}
+            groupCounts={groupCounts}
           />
         </Table>
       </div>
