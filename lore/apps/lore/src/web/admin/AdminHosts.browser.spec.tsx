@@ -168,6 +168,63 @@ describe("AdminHosts", () => {
     expect(types[0].className).toContain("bg-muted");
   });
 
+  it("says online or offline only, and lists capabilities as pills (#Q4010)", async ({
+    expect,
+  }) => {
+    const links = await boot();
+    links.rows = [
+      LOOSE,
+      {
+        ...LOOSE,
+        id: "00000000-0000-4000-8000-0000000000e3",
+        slug: "watch",
+        online: true,
+        deployAllowed: false,
+      },
+      {
+        ...LOOSE,
+        id: "00000000-0000-4000-8000-0000000000e2",
+        slug: "cf",
+        type: "cloudflare",
+        credentialStatus: "valid",
+      } as AdminHostResource,
+      {
+        ...LOOSE,
+        id: "00000000-0000-4000-8000-0000000000e4",
+        slug: "cf-bad",
+        type: "cloudflare",
+        credentialStatus: "invalid",
+      } as AdminHostResource,
+    ];
+    render(
+      <AlephaContext.Provider value={alepha!}>
+        <DialogProvider>
+          <AdminHosts />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("cf-bad")).toBeTruthy());
+    const states = screen.getAllByTestId("host-state");
+    expect(states.map((it) => it.textContent)).toEqual([
+      "offline",
+      "online",
+      "online",
+      "offline",
+    ]);
+    // Each pill is the tint tag with a leading icon.
+    for (const pill of [...states, ...screen.getAllByTestId("host-type")]) {
+      expect(pill.querySelector("svg")).not.toBeNull();
+    }
+    expect(
+      screen.getAllByTestId("host-capabilities").map((it) => it.textContent),
+    ).toEqual(["statsdeploy", "stats", "deploy", "deploy"]);
+    // No old badge words left.
+    expect(
+      screen.queryByText(/credential (in)?valid|stats only|deploys/),
+    ).toBeNull();
+  });
+
   /**
    * The admin's rename, as moderation (#Q3664): the dialog opens on the
    * host's names, sends both, and keeps a refusal in place.
