@@ -2103,7 +2103,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "The lore CLI",
     section: "Install",
     url: "https://alepha.dev/lore/docs/reference-cli#install",
-    text: "```bash\nnpm i -g @alepha/lore\nlore --help\n```\n\nA project that already depends on `@alepha/lore` can run `yarn lore ...`\nwithout the global install.",
+    text: "```bash\nnpm i -g @alepha/lore\nlore --help\nlore --version\n```\n\n`lore --version` (or `-v`) prints the version alone, so\n`VERSION=$(lore --version)` holds just the number.\n\nA project that already depends on `@alepha/lore` can run `yarn lore ...`\nwithout the global install.",
   },
   {
     guide: "The lore CLI",
