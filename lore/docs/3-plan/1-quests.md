@@ -275,7 +275,8 @@ An agent connected over MCP works quests under the same rules as a person. It
 starts with `project_context` (the areas, the epics, its active quests and the
 folio index in one call), accepts a quest with `quest_accept` before its first
 commit, ticks objectives with `quest_objective_set` as they are met, and closes
-with `quest_complete`, passing a `message` and its `commits`. It records the
+with `quest_complete`, passing a `message` and its `commits`, in the run that
+pushes its commit rather than after the merge. It records the
 pull request it opened with `quest_pull_request_add`, or with
 `epic_pull_request_add` when the quest is part of an epic. `quest_get` carries
 `live`, the copies running the quest's commits, as the rail shows them.

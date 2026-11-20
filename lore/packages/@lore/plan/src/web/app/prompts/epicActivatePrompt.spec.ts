@@ -79,8 +79,9 @@ describe("epicActivatePromptDefault", () => {
     );
   });
 
-  it("closes once the pull request has merged, with an outcome folio", () => {
-    expect(prompt).toContain("Only once it has merged");
+  it("closes with an outcome folio, without waiting for the merge", () => {
+    expect(prompt).toContain("If you are still there once it has merged");
+    expect(prompt).not.toContain("Only once it has merged");
     expect(prompt).toContain("folio_create");
     expect(prompt).toContain("`epic_number` 41");
   });
@@ -137,19 +138,17 @@ describe("epicActivatePromptDefault", () => {
 
   /**
    * A quest completes once its commit is pushed, so a quest depending on it
-   * can be accepted; the last one waits for the merge, since completing it
-   * completes the epic. The shas are recorded after the rebase merge.
+   * can be accepted, and the last one too, which completes the epic: the
+   * merge lands once the agent is gone (#Q3982). main's shas are recorded
+   * after the rebase merge, by whoever is still there.
    */
-  it("completes each quest on its push and the last one on the merge", () => {
+  it("completes every quest on its push, the last one included", () => {
     expect(prompt.indexOf("Push the branch")).toBeLessThan(
       prompt.indexOf("`quest_complete` it with a short note"),
     );
-    expect(prompt).toContain(
-      "Keep the epic's last quest accepted until the pull request has merged",
-    );
-    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
-      prompt.indexOf("then `quest_complete` the last quest"),
-    );
+    expect(prompt).toContain("The epic's last quest completes the same way");
+    expect(prompt).not.toContain("Keep the epic's last quest accepted");
+    expect(prompt).toContain("Never stop with a quest you accepted still open");
     expect(prompt).toContain("a rebase gives every commit a new sha");
   });
 

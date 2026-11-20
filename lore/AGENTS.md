@@ -82,7 +82,7 @@ Decisions, plans and bug reports live in the Lore project **Alepha** (`https://l
 
 - Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio whenever a session produces a non-obvious decision.
-- **Every commit belongs to a quest**, a small edit excepted: find or file it (`quest_create` with an existing `area`), accept it before the first commit, name it as `#Q<n>` in every commit, record each sha with `quest_commit_add`, complete it when the work lands.
+- **Every commit belongs to a quest**, a small edit excepted: find or file it (`quest_create` with an existing `area`), accept it before the first commit, name it as `#Q<n>` in every commit, complete it in the turn its commit is pushed, never "after the merge" (`framework/AGENTS.md`, "The workflow", step 5), and record the sha `main` received with `quest_commit_add` if you are still there after the merge.
 
 ### MCP and the CLI
 
