@@ -14,8 +14,12 @@ import { type Infer, z } from "alepha";
  * - `ship` is its software: instances, artifacts, and with the
  *   `track` option sigils, analytics, vitals and errors.
  * - `chat` is its conversation (#E161): rooms where members talk to each
- *   other and to the agent. Last, so it renders after the pillars in the
- *   wizard and in Settings; its sidebar row is placed by its own `order`.
+ *   other and to the agent. Its sidebar row is placed by its own `order`.
+ * - `activity` and `reports` (#Q4007) are the Activity page and Reports,
+ *   Core until then: a switch each, on for every project by default, that
+ *   hides the page and its sidebar entry and owns nothing else. With Chat
+ *   they form the General group, drawn above the pillars in the wizard and in
+ *   Settings (`CapabilityDescriptor.group`).
  *
  * Feedback (the public request form, the triage inbox, feedback comments) was
  * a fourth capability, `support`, until #E143 folded it into Plan as the
@@ -52,6 +56,8 @@ export const CAPABILITY_KEYS = [
   "build",
   "ship",
   "chat",
+  "activity",
+  "reports",
 ] as const;
 
 export const capabilityKeySchema = z
@@ -59,3 +65,9 @@ export const capabilityKeySchema = z
   .meta({ mode: "text" });
 
 export type CapabilityKey = Infer<typeof capabilityKeySchema>;
+
+/**
+ * The General group of the wizard and of Settings > General > Capabilities
+ * (#Q4007), in the order they are drawn: above the pillars.
+ */
+export const GENERAL_CAPABILITY_KEYS = ["activity", "chat", "reports"] as const;

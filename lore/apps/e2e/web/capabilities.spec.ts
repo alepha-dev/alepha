@@ -102,7 +102,8 @@ test.describe("Project capabilities", () => {
     );
     const slug = new URL(page.url()).pathname.split("/").find(Boolean)!;
 
-    // The dashboard, Activity and Reports are Core; Folios is Knowledge's.
+    // The dashboard is Core, Activity and Reports are switches on by default
+    // (#Q4007); Folios is Knowledge's.
     // Nothing else.
     // ⚠️ No `/inbox`: the page is Core too, but its rail entry was removed in
     // favour of the header bell (feedback #P2127).
@@ -357,7 +358,8 @@ test.describe("Project capabilities", () => {
     await page.goto(`/${slug}/`);
     await page.waitForLoadState("networkidle");
 
-    // The dashboard, Activity and Reports, and that is the whole rail. A legal
+    // The dashboard, Activity and Reports (their switches were left on,
+    // #Q4007), and that is the whole rail. A legal
     // state by the epic's decision 8, and the test that the modularity is
     // real.
     //

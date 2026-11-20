@@ -131,7 +131,13 @@ test.describe("Project wizard", () => {
     // end by the capability e2e specs.
     const created = await capabilitiesOf(page, projectSlug!);
 
-    expect(created.map((it) => it.key).sort()).toEqual(["plan", "remember"]);
+    // Activity and Reports are on by default (#Q4007).
+    expect(created.map((it) => it.key).sort()).toEqual([
+      "activity",
+      "plan",
+      "remember",
+      "reports",
+    ]);
     const work = created.find((it) => it.key === "plan");
     // The toggle above.
     expect(work?.options.epics).toBe(true);
@@ -182,7 +188,12 @@ test.describe("Project wizard", () => {
 
     // Knowledge alone. If the button hazard had fired, the submit would have
     // gone off a step early with the initial draft, and Work would be here.
-    expect(created.map((it) => it.key)).toEqual(["remember"]);
+    // Activity and Reports are on by default (#Q4007).
+    expect(created.map((it) => it.key).sort()).toEqual([
+      "activity",
+      "remember",
+      "reports",
+    ]);
   });
 
   test("refuses to advance with nothing picked", async ({ page }) => {
@@ -201,7 +212,8 @@ test.describe("Project wizard", () => {
     await page.getByRole("button", { name: /^remember\b/i }).click();
 
     // At least one is required HERE and nowhere else: a wizard is asking a
-    // question and "none" is not an answer to it. Settings has no floor -
+    // question and "none" is not an answer to it. Activity and Reports, on
+    // by default, do not count (#Q4007): they show what the others hold. Settings has no floor -
     // turning everything off there is a legal state, and the test that the
     // modularity is real.
     await expect(

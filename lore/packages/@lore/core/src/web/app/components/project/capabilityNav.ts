@@ -1,6 +1,8 @@
 import type { Atom, Infer, TAtomObject } from "alepha";
 import { Activity, BarChart3, Gauge } from "lucide-react";
 
+import type { CapabilityKey } from "../../../../api/schemas/capabilityKeySchema.ts";
+
 /**
  * What a registered badge, predicate or breadcrumb reads besides its own
  * declaration (#E75, #Q2624).
@@ -82,6 +84,11 @@ export interface CapabilityNavEntry {
    * never fail.
    */
   permission?: string;
+  /**
+   * For a {@link CORE_NAV} entry: the switch that hides it (#Q4007). Absent
+   * means always shown, which only the dashboard is now.
+   */
+  capability?: CapabilityKey;
 }
 
 /**
@@ -145,6 +152,8 @@ export const CORE_NAV: CapabilityNavEntry[] = [
   },
   {
     route: "projectActivity",
+    // Its own switch since #Q4007, on by default.
+    capability: "activity",
     labelKey: "project.menu.activity",
     icon: Activity,
     group: "activity",
@@ -169,6 +178,8 @@ export const CORE_NAV: CapabilityNavEntry[] = [
    */
   {
     route: "projectReports",
+    // Its own switch since #Q4007, on by default.
+    capability: "reports",
     permission: "stats:read",
     labelKey: "project.menu.reports",
     icon: BarChart3,

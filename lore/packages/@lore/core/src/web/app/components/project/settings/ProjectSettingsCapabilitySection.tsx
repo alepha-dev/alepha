@@ -27,6 +27,11 @@ export interface ProjectSettingsCapabilitySectionProps {
    * (#Q2565).
    */
   master?: boolean;
+  /**
+   * Renders the rows alone, without the section around them, for a group
+   * that holds several capabilities in one card: General (#Q4007).
+   */
+  bare?: boolean;
 }
 
 /**
@@ -68,8 +73,8 @@ const ProjectSettingsCapabilitySection = (
 
   if (!showMaster && options.length === 0) return null;
 
-  return (
-    <SettingsSection>
+  const rows = (
+    <>
       {/* ⚠️ No propagation-delay banner (feedback #P2125). It capped all four
           capability pages with the same sentence, above the heading, which
           made it read as chrome rather than as help - and the delay it warned
@@ -127,8 +132,10 @@ const ProjectSettingsCapabilitySection = (
           requires={option.requires}
         />
       ))}
-    </SettingsSection>
+    </>
   );
+
+  return props.bare ? rows : <SettingsSection>{rows}</SettingsSection>;
 };
 
 export default ProjectSettingsCapabilitySection;

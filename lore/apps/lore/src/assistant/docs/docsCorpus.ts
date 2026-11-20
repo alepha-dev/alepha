@@ -147,13 +147,19 @@ export const docsCorpus: DocsSection[] = [
     guide: "Capabilities",
     section: "Capabilities",
     url: "https://alepha.dev/lore/docs/project-capabilities",
-    text: "A project is a container: a name, an address, its members, and the parts of\nLore it uses. Those parts are its **capabilities**, and there are five, one\nfor each thing Lore does: **Plan**, **Remember**, **Build**, **Ship** and\n**Chat**. A team that only wants a wiki turns on Remember alone; a team that\nplans, documents, codes, operates and talks about a product turns on all five.",
+    text: "A project is a container: a name, an address, its members, and the parts of\nLore it uses. Those parts are its **capabilities**: the four pillars, **Plan**,\n**Remember**, **Build** and **Ship**, and three general ones, **Activity**,\n**Chat** and **Reports**. A team that only wants a wiki turns on Remember\nalone; a team that plans, documents, codes, operates and talks about a product\nturns on everything.",
   },
   {
     guide: "Capabilities",
-    section: "The five capabilities",
-    url: "https://alepha.dev/lore/docs/project-capabilities#the-five-capabilities",
-    text: "| Capability   | Sidebar entries                   | What it is for                                                 |\n| ------------ | --------------------------------- | -------------------------------------------------------------- |\n| **Plan**     | Quests, Epics, Releases, Feedback | The work: what is planned, in progress, shipped and asked for. |\n| **Remember** | Folios                            | The memory: linked notes, files and their history.             |\n| **Build**    | Reports ▸ Quality                 | The code: git repositories, and what the tests report.         |\n| **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |\n| **Chat**     | Chat                              | The talk: project rooms, mentions, and Lore's assistant.       |\n\nA capability is the pillar; the things inside it keep their own names. A quest\nis still a quest and a deploy is still a deploy: Ship is where deploys live.\n\nSome things belong to every project, whatever its capabilities: the\n[dashboard](/lore/docs/project-dashboard), the activity feed,\n[reports](/lore/docs/project-reports), [members and\nranks](/lore/docs/project-members)...",
+    section: "The general capabilities",
+    url: "https://alepha.dev/lore/docs/project-capabilities#the-general-capabilities",
+    text: "| Capability   | Sidebar entry | What it is for                                                 |\n| ------------ | ------------- | -------------------------------------------------------------- |\n| **Activity** | Activity      | Every change made in the project, newest first. On by default. |\n| **Chat**     | Chat          | The talk: project rooms, mentions, and Lore's assistant.       |\n| **Reports**  | Reports       | Figures over a period, one tab per pillar. On by default.      |",
+  },
+  {
+    guide: "Capabilities",
+    section: "The four pillars",
+    url: "https://alepha.dev/lore/docs/project-capabilities#the-four-pillars",
+    text: "| Capability   | Sidebar entries                   | What it is for                                                 |\n| ------------ | --------------------------------- | -------------------------------------------------------------- |\n| **Plan**     | Quests, Epics, Releases, Feedback | The work: what is planned, in progress, shipped and asked for. |\n| **Remember** | Folios                            | The memory: linked notes, files and their history.             |\n| **Build**    | Reports ▸ Quality                 | The code: git repositories, and what the tests report.         |\n| **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |\n\nA capability is the pillar; the things inside it keep their own names. A quest\nis still a quest and a deploy is still a deploy: Ship is where deploys live.\n\nSome things belong to every project, whatever its capabilities: the\n[dashboard](/lore/docs/project-dashboard), [members and\nranks](/lore/docs/project-members) and\n[notifications](/lore/docs/project-notifications). A project with every\ncapability off is still a project with members and a dashboard.",
   },
   {
     guide: "Capabilities",
@@ -165,7 +171,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Capabilities",
     section: "Turning one on or off",
     url: "https://alepha.dev/lore/docs/project-capabilities#turning-one-on-or-off",
-    text: 'Open **Settings ▸ General ▸ Capabilities**. Each capability is a switch, with\nthe options that add a sidebar entry beneath it. The others, such as **Track\napps** and **Monitor apps**, are on the capability\'s own settings page:\n**Settings ▸ Apps** for Ship.\n\nTurning a capability off:\n\n- removes its entries from the sidebar and its results from search;\n- refuses new writes to it, from the browser, the command line and agents\n  alike, with a message that names the capability;\n- **deletes nothing**. Turn it back on and every quest, folio or app is where\n  you left it.\n\nThe owner and the **Admin** rank can switch capabilities. Another rank can be\ngiven that right in the **Ranks** tab ("Turn capabilities on and off").',
+    text: 'Open **Settings ▸ General ▸ Capabilities**. The page opens with **General**:\nActivity, Chat and Reports. Each pillar follows, a switch with the options\nthat add a sidebar entry beneath it; Build and Ship list all their options\nthere. Plan\'s other options are on **Settings ▸ Quests**.\n\nTurning a capability off:\n\n- removes its entries from the sidebar and its results from search;\n- refuses new writes to it, from the browser, the command line and agents\n  alike, with a message that names the capability;\n- **deletes nothing**. Turn it back on and every quest, folio or app is where\n  you left it.\n\nThe owner and the **Admin** rank can switch capabilities. Another rank can be\ngiven that right in the **Ranks** tab ("Turn capabilities on and off").',
   },
   {
     guide: "Capabilities",

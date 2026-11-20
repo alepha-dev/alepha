@@ -71,6 +71,37 @@ describe("the Capabilities settings page", () => {
     return { fake: alepha.inject(FakeLinkProvider), view };
   };
 
+  it("opens with General: Activity, Chat and Reports, above the pillars (#Q4007)", async ({
+    expect,
+  }) => {
+    const { view } = await mount(["plan", "activity", "reports"]);
+
+    await view.findByRole("switch", { name: "Activity" });
+    const names = view
+      .getAllByRole("switch")
+      .map((it) => it.getAttribute("aria-label"));
+    expect(names.slice(0, 4)).toEqual(["Activity", "Chat", "Reports", "Plan"]);
+    expect(
+      view.getByRole("switch", { name: "Chat" }).getAttribute("aria-checked"),
+    ).toBe("false");
+    expect(
+      view
+        .getByRole("switch", { name: "Reports" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(view.container.textContent).toContain("General");
+  });
+
+  it("turns Activity off with its own switch", async ({ expect }) => {
+    const { fake, view } = await mount(["plan", "activity", "reports"]);
+
+    fireEvent.click(await view.findByRole("switch", { name: "Activity" }));
+
+    await waitFor(() => expect(fake.calls).toHaveLength(1));
+    expect(fake.calls[0]?.params).toEqual({ projectId: 1, key: "activity" });
+    expect(fake.calls[0]?.body.enabled).toBe(false);
+  });
+
   it("lists Build's Repositories and Quality switches, each on its own (#Q4005)", async ({
     expect,
   }) => {

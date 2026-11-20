@@ -192,7 +192,10 @@ export class ProjectShellRegistry {
     context: ProjectShellContext,
   ): CapabilityNavEntry[] {
     return [
-      ...CORE_NAV,
+      ...CORE_NAV.filter(
+        (entry) =>
+          !entry.capability || hasCapability(project, entry.capability),
+      ),
       ...CAPABILITY_KEYS.flatMap((key) =>
         hasCapability(project, key)
           ? this.navOf(key).filter(

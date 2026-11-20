@@ -134,6 +134,33 @@ describe("route guards on a capability", () => {
     }
   });
 
+  it("404s Activity and Reports with their switch off, and lets them through on (#Q4007)", async ({
+    expect,
+  }) => {
+    const alepha = await bootRouter();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ capabilities: ["plan"] }),
+    );
+    await expect(
+      loaderOf(alepha, "projectActivity")?.({} as never),
+    ).rejects.toThrow(/not enabled/i);
+    await expect(
+      loaderOf(alepha, "projectReports")?.({ query: {} } as never),
+    ).rejects.toThrow(/not enabled/i);
+
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ capabilities: ["plan", "activity", "reports"] }),
+    );
+    await expect(
+      loaderOf(alepha, "projectActivity")?.({} as never),
+    ).resolves.toEqual({});
+    await expect(
+      loaderOf(alepha, "projectReports")?.({ query: {} } as never),
+    ).resolves.toEqual({ query: {} });
+  });
+
   it("lets /quests through once Work is on", async ({ expect }) => {
     const alepha = await bootRouter();
     alepha.store.set(
