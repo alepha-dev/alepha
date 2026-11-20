@@ -55,15 +55,6 @@ const PersonaCard = (props: PersonaCardProps) => {
     ? alephaRoleLabel(persona.alephaRole)
     : undefined;
 
-  const total = coverage?.useCases ?? 0;
-  const tone = !coverage?.lastRanAt
-    ? "text-muted-foreground"
-    : coverage.failed > 0
-      ? "text-orange-600 dark:text-orange-400"
-      : coverage.passed === total
-        ? "text-green-600 dark:text-green-500"
-        : "text-muted-foreground";
-
   return (
     <Card
       data-testid="persona-card"
@@ -147,32 +138,44 @@ const PersonaCard = (props: PersonaCardProps) => {
         </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-2 text-xs">
-            <span className="text-muted-foreground">
+            {/* "Last run" with its age, always; the one figure on the right
+                is the share of the run criteria that passed (#Q3976). */}
+            <span
+              className="text-muted-foreground"
+              data-testid="persona-last-run"
+            >
               {tr("requirements.persona.card.lastRun")}
+              {" · "}
+              {coverage?.lastRanAt ? (
+                // `fromNow()` reads the clock: rendered on the client
+                // only, or the server's answer and the browser's differ.
+                <ClientOnly>
+                  {dateTime.of(coverage.lastRanAt).fromNow()}
+                </ClientOnly>
+              ) : (
+                tr("requirements.persona.card.neverRun")
+              )}
             </span>
-            {coverage ? (
-              <span className={`font-medium ${tone}`}>
-                {coverage.lastRanAt ? (
-                  <>
-                    {tr("requirements.persona.card.passed", {
-                      args: [String(coverage.passed), String(total)],
-                    })}
-                    {" · "}
-                    {coverage.failed > 0 ? (
-                      tr("requirements.persona.card.failed", {
-                        args: [String(coverage.failed)],
-                      })
-                    ) : (
-                      // `fromNow()` reads the clock: rendered on the client
-                      // only, or the server's answer and the browser's differ.
-                      <ClientOnly>
-                        {dateTime.of(coverage.lastRanAt).fromNow()}
-                      </ClientOnly>
-                    )}
-                  </>
-                ) : (
-                  tr("requirements.persona.card.neverRun")
-                )}
+            {coverage && coverage.passed + coverage.failed > 0 ? (
+              <span
+                className={
+                  coverage.failed > 0
+                    ? "text-danger-text font-semibold"
+                    : "font-semibold"
+                }
+                data-testid="persona-passing"
+              >
+                {tr("requirements.persona.card.passing", {
+                  args: [
+                    String(
+                      Math.round(
+                        (coverage.passed /
+                          (coverage.passed + coverage.failed)) *
+                          100,
+                      ),
+                    ),
+                  ],
+                })}
               </span>
             ) : null}
           </div>

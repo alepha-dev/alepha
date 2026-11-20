@@ -18,6 +18,7 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import PersonasPage from "../pages/PersonasPage.tsx";
+import PersonaCard from "./PersonaCard.tsx";
 import PersonaPage from "./PersonaPage.tsx";
 
 const aPersona = (over: Partial<PersonaResource>): PersonaResource =>
@@ -320,6 +321,49 @@ describe("Personas screens", () => {
     expect(rows[0].textContent).toBe("#U7 Check out");
     expect(rows[0].getAttribute("href")).toBe("/acme/requirements/use-cases/7");
     expect(tab.textContent).toContain("Primary");
+  });
+
+  it("draws the last run with its age, one passing share (red on a failure), a red failed segment and a legend (#Q3976)", async ({
+    expect,
+  }) => {
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaCard
+            persona={PEOPLE[0]}
+            href="/acme/requirements/personas/1"
+            coverage={{
+              useCases: 87,
+              epics: 3,
+              requirements: 12,
+              passed: 7,
+              failed: 28,
+              stale: 0,
+              lastRanAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
+            }}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("persona-last-run").textContent).toContain(
+        "2 hours ago",
+      ),
+    );
+    expect(screen.getByTestId("persona-last-run").textContent).toContain(
+      "Last run",
+    );
+    // 7 of the 35 run passed.
+    const passing = screen.getByTestId("persona-passing");
+    expect(passing.textContent).toBe("20% passing");
+    expect(passing.className).toContain("text-danger-text");
+    expect(
+      document.querySelector('[data-segment="failed"]')?.className,
+    ).toContain("bg-danger");
+    expect(screen.getByTestId("persona-run-legend").textContent).toBe(
+      "7 passed28 failed52 not run",
+    );
   });
 
   it("gives a viewer the page without its Edit and Delete", async ({
