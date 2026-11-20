@@ -279,9 +279,17 @@ export class FormModel<T extends ZObject> {
    * whole form) names no field.
    */
   public hasField(path: string): boolean {
+    return this.fieldSchema(path) !== undefined;
+  }
+
+  /**
+   * The schema of the field a JSON pointer names, or `undefined` when it
+   * names none (see {@link hasField}).
+   */
+  protected fieldSchema(path: string): ZType | undefined {
     const segments = path.split("/").slice(1);
     if (!path.startsWith("/") || segments.length === 0) {
-      return false;
+      return undefined;
     }
     let schema: ZType | undefined = this.options.schema;
     for (const segment of segments) {
@@ -291,13 +299,76 @@ export class FormModel<T extends ZObject> {
       } else if (z.schema.isArray(inner) && /^\d+$/.test(segment)) {
         schema = z.schema.element(inner);
       } else {
-        return false;
+        return undefined;
       }
       if (!schema) {
-        return false;
+        return undefined;
       }
     }
-    return true;
+    return schema;
+  }
+
+  /**
+   * The message a field shows when it is left empty and its schema refuses
+   * that. Components that translate (`@alepha/ui`'s `Control`) recognise it
+   * and show their own translation instead.
+   */
+  public static readonly REQUIRED_MESSAGE = "This field is required";
+
+  /**
+   * Phrase the schema's issues for the person filling the form. An issue on
+   * a field left empty means "fill this in", whatever the schema said
+   * (`'identifier' is required`, which names the schema key, or "Too small:
+   * expected string to have >=1 characters"): it becomes the field's
+   * `requiredMessage` from `.meta()`, or {@link FormModel.REQUIRED_MESSAGE}.
+   *
+   * Only schema issues go through here. A message set by `setErrors` or
+   * thrown by the handler is the caller's own wording and is shown as is.
+   */
+  protected describeIssues(
+    issues: ReadonlyArray<{ path: string; message: string }>,
+  ): Array<{ path: string; message: string }> {
+    const values = this.restructureValues(this.values);
+    return issues.map((issue) => {
+      const schema = this.fieldSchema(issue.path);
+      if (!schema || !this.isEmptyValue(this.valueAt(values, issue.path))) {
+        return issue;
+      }
+      const custom = z.schema.meta(schema)?.requiredMessage;
+      return {
+        path: issue.path,
+        message:
+          typeof custom === "string" && custom
+            ? custom
+            : FormModel.REQUIRED_MESSAGE,
+      };
+    });
+  }
+
+  /**
+   * The value a JSON pointer names inside `values`, or `undefined`.
+   */
+  protected valueAt(values: Record<string, any>, path: string): unknown {
+    let current: unknown = values;
+    for (const segment of path.split("/").slice(1)) {
+      if (current == null || typeof current !== "object") {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[segment];
+    }
+    return current;
+  }
+
+  /**
+   * Nothing typed: `undefined`, `null` or a blank string. An empty array is
+   * not: its schema's own message ("at least one item") says more.
+   */
+  protected isEmptyValue(value: unknown): boolean {
+    return (
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" && value.trim() === "")
+    );
   }
 
   /**
@@ -411,10 +482,10 @@ export class FormModel<T extends ZObject> {
       return [];
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        return (
+        return this.describeIssues(
           error.data.issues ?? [
             { path: error.data.path, message: error.data.message },
-          ]
+          ],
         );
       }
       return [];
@@ -765,10 +836,16 @@ export class FormModel<T extends ZObject> {
         throw error;
       }
       if (error instanceof SchemaValidationError) {
+        const issues = this.describeIssues(
+          error.data.issues ?? [
+            { path: error.data.path, message: error.data.message },
+          ],
+        );
+        const first = issues[0];
         throw new FormValidationError({
-          message: error.data.message,
-          path: error.data.path,
-          issues: error.data.issues,
+          message: first?.message ?? error.data.message,
+          path: first?.path ?? error.data.path,
+          issues,
         });
       }
       throw error;

@@ -42,6 +42,7 @@ import { FormField, formFieldAriaProps } from "./FormField.tsx";
 import { useFormFieldAutoSave } from "./FormFieldAutoSaveProvider.tsx";
 import { useFormFieldLayout } from "./FormFieldLayoutProvider.tsx";
 import { type IconComponent, iconFor } from "./iconHint.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlProps {
   /**
@@ -383,6 +384,7 @@ export interface ControlProps {
  */
 export const Control = (props: ControlProps) => {
   const form = useFormState(props.input, ["error", "dirty"]);
+  const errorText = useFieldErrorText();
   const autoSaveEnabled = useFormFieldAutoSave();
   const rowLayout = useFormFieldLayout() === "row";
   const [value, setValue] = useFieldValue(props.input);
@@ -402,6 +404,7 @@ export const Control = (props: ControlProps) => {
     description: props.description,
     error: form.error,
   });
+  parsed.error = errorText(parsed.error);
   const meta = props.error ? { ...parsed, error: props.error } : parsed;
 
   // ── Resolve $control (object | function | false) ─────────────────

@@ -5,7 +5,12 @@ import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { FormValidationError, useForm, useFormState } from "../index.ts";
+import {
+  FormModel,
+  FormValidationError,
+  useForm,
+  useFormState,
+} from "../index.ts";
 
 /**
  * The forms guide documents throwing `FormValidationError` from a handler to
@@ -110,7 +115,9 @@ describe("FormValidationError", () => {
     fireEvent.submit(ui.getByTestId("form"));
 
     await waitFor(() => {
-      expect(ui.getByTestId("email-error").textContent).toContain("email");
+      expect(ui.getByTestId("email-error").textContent).toBe(
+        FormModel.REQUIRED_MESSAGE,
+      );
     });
     expect(seen).toHaveLength(1);
     expect(seen[0].type).toBe("form");

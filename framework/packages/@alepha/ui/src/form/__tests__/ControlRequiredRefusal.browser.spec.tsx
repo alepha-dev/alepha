@@ -3,10 +3,11 @@ import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { FormValidationError, useForm } from "alepha/react/form";
-import { AlephaReactI18n } from "alepha/react/i18n";
+import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
+import { uiFr } from "../../i18n/fr/uiFr.ts";
 import { Control } from "../Control.tsx";
 
 /**
@@ -61,11 +62,33 @@ describe("Control and the schema's refusal of an empty required field", () => {
       .split(" ")
       .map((id) => document.getElementById(id)?.textContent ?? "")
       .join(" ");
-    expect(message).toContain("title");
+    // An instruction, never the schema key (`'title' is required`).
+    expect(message).toContain("This field is required");
+    expect(message).not.toContain("'title'");
     expect(ui.getByLabelText(/Notes/).getAttribute("aria-invalid")).not.toBe(
       "true",
     );
     expect(refusals[0]).toBeInstanceOf(FormValidationError);
+
+    await alepha.stop();
+  });
+
+  it("speaks the page's language", async ({ expect }) => {
+    class Catalogues {
+      en = $dictionary({ lazy: async () => ({ default: {} }) });
+      fr = $dictionary({ lazy: async () => ({ default: uiFr }) });
+    }
+    const alepha = Alepha.create().with(AlephaLogger).with(AlephaReactI18n);
+    alepha.inject(Catalogues);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("fr");
+    const ui = mount(alepha, <Probe />);
+
+    fireEvent.submit(ui.getByTestId("form"));
+
+    await waitFor(() => {
+      expect(ui.getByText("Ce champ est obligatoire")).toBeTruthy();
+    });
 
     await alepha.stop();
   });
