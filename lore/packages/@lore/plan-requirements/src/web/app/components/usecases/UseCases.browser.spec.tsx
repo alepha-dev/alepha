@@ -219,4 +219,32 @@ describe("Use cases screens", () => {
       await screen.findByRole("menuitem", { name: /Request changes/ }),
     ).toBeTruthy();
   });
+
+  it("shows each actor's persona role as the persona card's badge, and nothing for an actor without one (#Q3967)", async ({
+    expect,
+  }) => {
+    mount(
+      await boot(["usecase:read"]),
+      <UseCasePage
+        useCase={aUseCase({
+          actors: [
+            {
+              personaId: 10,
+              number: 4,
+              name: "Karim",
+              role: "primary",
+              alephaRole: "control_room",
+            },
+            { personaId: 11, number: 5, name: "Léa", role: "beneficiary" },
+          ],
+        })}
+      />,
+    );
+    await screen.findByTestId("scenario-steps");
+    const badges = screen.getAllByTestId("persona-alepha-role");
+    expect(badges).toHaveLength(1);
+    expect(badges[0].textContent).toBe("Control room");
+    expect(badges[0].closest("li")?.textContent).toContain("Karim");
+    expect(document.body.textContent).not.toContain("control_room");
+  });
 });

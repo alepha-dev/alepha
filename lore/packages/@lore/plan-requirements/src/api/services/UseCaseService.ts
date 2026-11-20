@@ -271,7 +271,7 @@ export class UseCaseService {
         this.personas.findMany(
           {
             where: { id: { inArray: batch } },
-            columns: ["id", "number", "name"],
+            columns: ["id", "number", "name", "alephaRole"],
           },
           { force: true },
         ),
@@ -327,6 +327,7 @@ export class UseCaseService {
                     role: it.role,
                     number: p.number,
                     name: p.name,
+                    ...(p.alephaRole ? { alephaRole: p.alephaRole } : {}),
                   },
                 ]
               : [];
