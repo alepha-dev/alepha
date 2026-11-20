@@ -76,7 +76,11 @@ export type {
 } from "./DataTableFilterOperator.tsx";
 export type { DataTableCellPadding } from "./dataTableCellPadding.ts";
 export type { DataTableSquareRight } from "./dataTableSquareRight.ts";
-export { paginateLocal, type PaginateLocalOptions } from "./paginateLocal.ts";
+export {
+  type LocalPage,
+  paginateLocal,
+  type PaginateLocalOptions,
+} from "./paginateLocal.ts";
 export {
   PermissionMatrix,
   type PermissionMatrixColumn,

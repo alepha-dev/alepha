@@ -45,10 +45,14 @@ import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
  * The Use cases page (#E153): every use case of the project in one table,
- * on one page (the whole list is already loaded for the counts the sidebar
- * and the persona cards read), with counters that filter, search, persona,
- * status and run filters, and groups that fold: by covering epic (the
- * default), persona, status, or none.
+ * with counters that filter, search, persona, status and run filters, and
+ * groups that fold: by covering epic (the default), persona, status, or none.
+ *
+ * The whole list is loaded (the counters, the sidebar and the persona cards
+ * count it), and the table pages it, 50 rows at a time (#Q3978): drawing all
+ * 276 rows of a large project is what made the page lag. The table groups the
+ * whole filtered set before it pages, so a page holds the next rows group by
+ * group and each group header counts the group over every page.
  *
  * A use case covered by two epics, or played by two personas, shows in each
  * of their groups: the table is handed one row per group and use case, and
@@ -224,7 +228,7 @@ const UseCasesPage = () => {
         className="min-h-0 flex-1"
         persistenceKey={`lore.use-cases.${project.id}`}
         data={rows}
-        pagination={false}
+        defaultSize={50}
         rowKey={(row) => `${row.group}:${row.id}`}
         filters={{ fields }}
         filter={(row, values) => matches(row, values)}
