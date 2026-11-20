@@ -24,6 +24,10 @@ interface CoverageQuest {
  * Development coverage (#E153): the quests of the epics covering the use
  * case, and whether each is done. A failed criterion opens an error only
  * once every one of them is.
+ *
+ * Grouped by epic (#Q3980): one heading per covering epic with its title and
+ * its quests done over total, its quests under it, so which epic is finished
+ * reads at a glance.
  */
 const UseCaseCoverage = (props: UseCaseCoverageProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -62,32 +66,51 @@ const UseCaseCoverage = (props: UseCaseCoverageProps) => {
             {tr("requirements.usecase.coverage.none")}
           </p>
         ) : (
-          <ul
-            className="flex flex-col gap-1 text-sm"
-            data-testid="coverage-quests"
-          >
-            {rows.map((quest) => (
-              <li key={quest.shortId} className="flex justify-between gap-2">
-                <span>
-                  <ReferenceLink kind="quest" number={quest.shortId}>
-                    {quest.title}
-                  </ReferenceLink>{" "}
-                  <span className="text-xs">
-                    <ReferenceLink kind="epic" number={quest.epicNumber} />
-                  </span>
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {tr(
-                    quest.completedAt
-                      ? "requirements.usecase.quest.done"
-                      : quest.acceptedAt
-                        ? "requirements.usecase.quest.inProgress"
-                        : "requirements.usecase.quest.open",
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-4" data-testid="coverage-quests">
+            {props.useCase.coveredBy.map((epic) => {
+              const quests = rows.filter((it) => it.epicNumber === epic.number);
+              const completed = quests.filter((it) => it.completedAt).length;
+              return (
+                <section
+                  key={epic.id}
+                  className="flex flex-col gap-1"
+                  data-testid="coverage-epic"
+                >
+                  <h3 className="flex items-center justify-between gap-2 text-sm font-medium">
+                    <ReferenceLink kind="epic" number={epic.number}>
+                      {epic.title}
+                    </ReferenceLink>
+                    <span className="text-muted-foreground text-xs font-normal tabular-nums">
+                      {tr("requirements.usecase.coverage.epicProgress", {
+                        args: [String(completed), String(quests.length)],
+                      })}
+                    </span>
+                  </h3>
+                  <ul className="flex flex-col gap-1 ps-3 text-sm">
+                    {quests.map((quest) => (
+                      <li
+                        key={quest.shortId}
+                        className="flex justify-between gap-2"
+                      >
+                        <ReferenceLink kind="quest" number={quest.shortId}>
+                          {quest.title}
+                        </ReferenceLink>
+                        <span className="text-muted-foreground text-xs">
+                          {tr(
+                            quest.completedAt
+                              ? "requirements.usecase.quest.done"
+                              : quest.acceptedAt
+                                ? "requirements.usecase.quest.inProgress"
+                                : "requirements.usecase.quest.open",
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>

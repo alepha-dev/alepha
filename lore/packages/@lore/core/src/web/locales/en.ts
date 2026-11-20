@@ -3454,6 +3454,7 @@ export default {
   "requirements.usecase.col.useCase": "Use case",
   "requirements.usecase.coverage": "Development coverage",
   "requirements.usecase.coverage.done": "All developed",
+  "requirements.usecase.coverage.epicProgress": "$1 / $2 done",
   "requirements.usecase.coverage.help":
     "A failed criterion opens an error only once every quest covering the use case is completed. Before that, a failure is expected and shown as in development.",
   "requirements.usecase.criteria": "Acceptance criteria",
