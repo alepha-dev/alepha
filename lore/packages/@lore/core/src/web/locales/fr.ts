@@ -4708,6 +4708,11 @@ export default {
   "project.capability.ship.option.stacks.label": "Stacks",
   "project.capability.ship.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
+  "uptime.checksOver.24h": "Vérifications des dernières 24 heures",
+  "uptime.checksOver.7d": "Vérifications des 7 derniers jours",
+  "uptime.checksOver.30d": "Vérifications des 30 derniers jours",
+  "uptime.checksBar": "Vérifications sur la période",
+  "uptime.bucketTitle": "$1 à $2 : $3 vérifications, $4 en échec",
   "uptime.recentChecks": "Contrôles récents",
   "uptime.notMeasured": "Non mesuré",
   "uptime.beatTitle": "$1 : $2 ms, $3",

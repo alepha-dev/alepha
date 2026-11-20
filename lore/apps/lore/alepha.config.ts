@@ -302,6 +302,7 @@ export default defineConfig({
         "reports.team.day.",
         "reports.team.column.",
         "reports.team.sort.",
+        "uptime.checksOver.",
         "uptime.kind.",
         "uptime.status.",
         "uptime.window.",

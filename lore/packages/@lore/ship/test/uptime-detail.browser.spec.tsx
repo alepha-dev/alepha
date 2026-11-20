@@ -62,6 +62,27 @@ describe("Monitor detail body", () => {
       const detail = {
         monitor: { ...monitor, certExpiresAt: "2027-01-15T10:00:00Z" },
         beats: monitor.beats,
+        window: "7d" as const,
+        bar: [
+          {
+            from: "2026-10-15T00:00:00Z",
+            to: "2026-10-15T04:00:00Z",
+            checks: 4,
+            failures: 0,
+          },
+          {
+            from: "2026-10-15T04:00:00Z",
+            to: "2026-10-15T08:00:00Z",
+            checks: 4,
+            failures: 1,
+          },
+          {
+            from: "2026-10-15T08:00:00Z",
+            to: "2026-10-15T12:00:00Z",
+            checks: 0,
+            failures: 0,
+          },
+        ],
         uptime: (["24h", "7d", "30d"] as const).map((window) => ({
           window,
           uptimePct: 75,
@@ -90,6 +111,17 @@ describe("Monitor detail body", () => {
         </AlephaContext.Provider>,
       );
       expect(body.getAllByText("75%")).toHaveLength(3);
+      // The bar covers the selected window, not the last checks (#Q4009).
+      expect(body.getByText("Checks over the last 7 days")).toBeTruthy();
+      const slices = [
+        ...body.getByTestId("monitor-period-bar").querySelectorAll("span"),
+      ];
+      expect(slices.map((it) => it.dataset.state)).toEqual([
+        "up",
+        "down",
+        "none",
+      ]);
+      expect(slices[1]?.getAttribute("title")).toContain("4 checks, 1 failed");
       expect(body.getByRole("img", { name: "Mean latency" })).toBeTruthy();
       expect(body.getByText("Deadline exceeded")).toBeTruthy();
       expect(body.getByText("180 seconds: timeout")).toBeTruthy();

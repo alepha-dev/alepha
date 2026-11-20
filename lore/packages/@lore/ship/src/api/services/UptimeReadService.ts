@@ -6,6 +6,7 @@ import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
+import type { MonitorCheckBucket } from "../schemas/monitorCheckBucketSchema.ts";
 import type { MonitorDetailResource } from "../schemas/monitorDetailResourceSchema.ts";
 import { monitorHeartbeatStoredSchema } from "../schemas/monitorHeartbeatStoredSchema.ts";
 import type { MonitorListResource } from "../schemas/monitorListResourceSchema.ts";
@@ -22,6 +23,47 @@ export class UptimeReadService {
 
   public hours(window: MonitorWindow): number {
     return window === "24h" ? 24 : window === "7d" ? 168 : 720;
+  }
+
+  /**
+   * How many hours one slice of the check bar covers (#Q4009): 24 slices of
+   * an hour, 42 of four hours, 60 of twelve. Whole hours, because the
+   * history the bar is read from is hourly.
+   */
+  public sliceHours(window: MonitorWindow): number {
+    return window === "24h" ? 1 : window === "7d" ? 4 : 12;
+  }
+
+  /**
+   * The check bar of a window, from hourly rows of `count` and `up`: the
+   * window ends with the current hour, and a slice with no row ran no check.
+   */
+  public bar(
+    rows: Array<Record<string, unknown>>,
+    window: MonitorWindow,
+    now: number,
+  ): MonitorCheckBucket[] {
+    const hour = 3_600_000;
+    const slice = this.sliceHours(window) * hour;
+    const size = this.hours(window) / this.sliceHours(window);
+    const first =
+      Math.floor(now / hour) * hour - (this.hours(window) - 1) * hour;
+    const buckets = Array.from({ length: size }, (_, index) => ({
+      from: new Date(first + index * slice).toISOString(),
+      to: new Date(first + (index + 1) * slice).toISOString(),
+      checks: 0,
+      failures: 0,
+    }));
+    for (const row of rows) {
+      const at = Date.parse(`${String(row.hour)}:00:00Z`);
+      const index = Math.floor((at - first) / slice);
+      const bucket = buckets[index];
+      if (!bucket || Number.isNaN(at)) continue;
+      const count = Number(row.count);
+      bucket.checks += count;
+      bucket.failures += Math.max(0, count - Number(row.up));
+    }
+    return buckets;
   }
 
   public async detail(
@@ -95,6 +137,8 @@ export class UptimeReadService {
     return {
       monitor: monitorResourceSchema.parse(monitor),
       beats: beats.toReversed(),
+      window,
+      bar: this.bar(history.rows, window, now),
       uptime,
       points,
       estimated: history.estimated || chart.estimated,
