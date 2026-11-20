@@ -164,7 +164,7 @@ describe("use case runs", () => {
           as,
         )
       ).data.status;
-    return { uc, record, complete, read, status, useCases, as };
+    return { uc, record, complete, read, status, useCases, runs, as };
   };
 
   it("records every criterion, a missing one as not run, and reads the latest run", async ({
@@ -273,5 +273,116 @@ describe("use case runs", () => {
     });
     expect(recorded.refused).toBe(false);
     expect(recorded.text).toContain("runId");
+  });
+
+  describe("evidence (#Q3977)", () => {
+    const upload = async (t: Awaited<ReturnType<typeof setup>>) =>
+      (
+        await t.runs.uploadRunEvidence.fetch(
+          {
+            body: {
+              file: new File(["png bytes"], "receipt.png", {
+                type: "image/png",
+              }),
+            },
+          },
+          t.as,
+        )
+      ).data.fileId;
+
+    it("places a file on a criterion of the run, and reads it back with the run", async ({
+      expect,
+    }) => {
+      const t = await setup();
+      const { run } = await t.record("passed", "failed");
+      const fileId = await upload(t);
+      await t.runs.addRunEvidence.fetch(
+        {
+          params: { id: run.id },
+          body: {
+            fileId,
+            name: "receipt.png",
+            mimeType: "image/png",
+            size: 9,
+            criterionKey: "C2",
+          },
+        },
+        t.as,
+      );
+      const [read] = (
+        await t.runs.getUseCaseRuns.fetch(
+          { params: { projectId: ctx.projectId, number: t.uc.number } },
+          t.as,
+        )
+      ).data;
+      expect(read.evidence).toEqual([
+        {
+          fileId,
+          name: "receipt.png",
+          mimeType: "image/png",
+          size: 9,
+          criterionKey: "C2",
+        },
+      ]);
+    });
+
+    it("refuses a criterion the run did not record, and the same file twice", async ({
+      expect,
+    }) => {
+      const t = await setup();
+      const { run } = await t.record("passed");
+      const fileId = await upload(t);
+      const add = (criterionKey?: string) =>
+        t.runs.addRunEvidence.fetch(
+          {
+            params: { id: run.id },
+            body: {
+              fileId,
+              name: "receipt.png",
+              mimeType: "image/png",
+              size: 9,
+              ...(criterionKey ? { criterionKey } : {}),
+            },
+          },
+          t.as,
+        );
+      await expect(add("C9")).rejects.toThrow(/no criterion C9/);
+      await add();
+      await expect(add()).rejects.toThrow(/already evidence/);
+    });
+
+    it("answers the push command over MCP, and refuses a run or a criterion that does not exist", async ({
+      expect,
+    }) => {
+      const t = await setup();
+      const { run } = await t.record("passed", "failed");
+      const token = await ctx.tokenOf(ctx.owner);
+
+      const answer = await ctx.mcp(token, "usecase_run_attachment_add", {
+        run: run.id,
+        file: "./c2 receipt.png",
+        criterion: "c2",
+      });
+      expect(answer.refused).toBe(false);
+      expect(answer.json).toMatchObject({
+        command: `lore attachments push './c2 receipt.png' --project ${ctx.projectId} --run ${run.id} --criterion C2`,
+        projectId: ctx.projectId,
+        shortId: run.id,
+      });
+
+      const unknown = await ctx.mcp(token, "usecase_run_attachment_add", {
+        run: run.id,
+        file: "./x.png",
+        criterion: "C9",
+      });
+      expect(unknown.refused).toBe(true);
+      expect(unknown.text).toContain("no criterion C9");
+
+      const missing = await ctx.mcp(token, "usecase_run_attachment_add", {
+        run: run.id + 1000,
+        file: "./x.png",
+      });
+      expect(missing.refused).toBe(true);
+    });
   });
 });

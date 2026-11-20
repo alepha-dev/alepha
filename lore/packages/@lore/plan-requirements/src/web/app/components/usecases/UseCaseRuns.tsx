@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { RunController } from "../../../../api/controllers/RunController.ts";
 import type { UseCaseRunResource } from "../../../../api/schemas/useCaseRunResourceSchema.ts";
+import RunEvidenceLinks from "./RunEvidenceLinks.tsx";
 
 const BY_KEYS = {
   agent: "requirements.run.by.agent",
@@ -25,7 +26,8 @@ export interface UseCaseRunsProps {
 
 /**
  * A use case's runs, newest first (#E153): who, where, when, the scenario
- * version, each criterion's result and the evidence kept.
+ * version, each criterion's result and the evidence kept, each file under
+ * the criterion it shows (#Q3977).
  */
 const UseCaseRuns = (props: UseCaseRunsProps) => {
   const i18n = useI18n<I18n, "en">();
@@ -68,9 +70,9 @@ const UseCaseRuns = (props: UseCaseRunsProps) => {
               </span>
               <span>· v{run.scenarioVersion}</span>
             </div>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            <ul className="flex flex-col gap-1">
               {run.results.map((it) => (
-                <li key={it.criterionKey}>
+                <li key={it.criterionKey} data-criterion={it.criterionKey}>
                   <span className="font-semibold">{it.criterionKey}</span>{" "}
                   <span
                     className={
@@ -89,32 +91,26 @@ const UseCaseRuns = (props: UseCaseRunsProps) => {
                       · {it.note}
                     </span>
                   ) : null}
+                  <RunEvidenceLinks
+                    files={run.evidence.filter(
+                      (file) => file.criterionKey === it.criterionKey,
+                    )}
+                  />
                 </li>
               ))}
             </ul>
             {run.note ? (
               <p className="text-muted-foreground text-xs">{run.note}</p>
             ) : null}
-            {run.evidence.length ? (
-              <ul className="flex flex-wrap gap-2 text-xs">
-                {run.evidence.map((file) =>
-                  file.removedAt ? (
-                    <li key={file.fileId} className="text-muted-foreground">
-                      {file.name} · {tr("requirements.run.evidence.removed")}
-                    </li>
-                  ) : (
-                    <li key={file.fileId}>
-                      <a
-                        className="underline"
-                        href={`/api/files/${file.fileId}`}
-                      >
-                        {file.name}
-                      </a>
-                    </li>
+            {/* Files on no criterion the run recorded, kept after them. */}
+            <RunEvidenceLinks
+              files={run.evidence.filter(
+                (file) =>
+                  !run.results.some(
+                    (it) => it.criterionKey === file.criterionKey,
                   ),
-                )}
-              </ul>
-            ) : null}
+              )}
+            />
           </CardContent>
         </Card>
       ))}

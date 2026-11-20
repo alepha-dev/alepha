@@ -1,4 +1,4 @@
-import { ProjectTools } from "@lore/core/mcp";
+import { AttachmentPushCommand, ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError } from "alepha/server";
@@ -23,6 +23,8 @@ import {
   useCaseUpdateParamsSchema,
   useCasePromptParamsSchema,
   useCasePromptResultSchema,
+  useCaseRunAttachmentAddParamsSchema,
+  useCaseRunAttachmentAddResultSchema,
   useCaseRunRecordParamsSchema,
   useCaseRunRecordResultSchema,
   useCaseValidateParamsSchema,
@@ -40,6 +42,7 @@ export class UseCaseTools {
   protected readonly runs = $inject(RunController);
   protected readonly prompts = $inject(RequirementsPromptController);
   protected readonly projectTools = $inject(ProjectTools);
+  protected readonly attachmentPush = $inject(AttachmentPushCommand);
 
   protected async projectId(project?: number, name?: string): Promise<number> {
     return await this.projectTools.resolveProjectId(project, name);
@@ -259,7 +262,7 @@ export class UseCaseTools {
 
   usecase_run_record = $tool({
     description:
-      "Record a run of a use case you played: one result per acceptance criterion (passed, failed, not_run), where (app and env, or local) and a note. A failed criterion opens an error only once every quest covering the use case is completed and the project tracks errors; a later pass resolves it. Fix nothing while testing. Attach screenshots or a recording with `lore attachments push --run <runId>`.",
+      "Record a run of a use case you played: one result per acceptance criterion (passed, failed, not_run), where (app and env, or local) and a note. A failed criterion opens an error only once every quest covering the use case is completed and the project tracks errors; a later pass resolves it. Fix nothing while testing. Attach screenshots or a recording with `usecase_run_attachment_add`.",
     title: "Record use case run",
     schema: {
       params: useCaseRunRecordParamsSchema,
@@ -276,6 +279,52 @@ export class UseCaseTools {
         runId: recorded.run.id,
         errorsOpened: recorded.errorsOpened,
         errorRule: recorded.errorRule,
+      };
+    },
+  });
+
+  /**
+   * How to attach a file to a run (#Q3977). Like `quest_attachment_add`, it
+   * moves no bytes: it confirms the run exists (and the criterion, when one
+   * is named) and hands back the `lore attachments push --run` line, because
+   * base64 through a JSON-RPC frame is the cost `AttachmentPushCommand`
+   * explains.
+   */
+  usecase_run_attachment_add = $tool({
+    description:
+      "How to attach evidence to a use case run: a screenshot or a recording of what you played, placed on the criterion it shows (C2) so the Runs tab lists it there. ⚠️ This tool moves NO bytes. It confirms the run exists and returns a `lore attachments push --run` command line to run in a shell (50 MB a file).",
+    title: "How to attach a file to a use case run",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: useCaseRunAttachmentAddParamsSchema,
+      result: useCaseRunAttachmentAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const run = await this.runs.getUseCaseRun({
+        params: { id: params.run },
+      });
+      const criterion = params.criterion?.toUpperCase();
+      if (
+        criterion &&
+        !run.results.some((it) => it.criterionKey === criterion)
+      ) {
+        throw new BadRequestError(
+          `Run ${run.id} has no criterion ${criterion}: it recorded ${run.results.map((it) => it.criterionKey).join(", ")}`,
+        );
+      }
+      return {
+        command: this.attachmentPush.compose({
+          file: params.file,
+          projectId: run.projectId,
+          target: "run",
+          shortId: run.id,
+          name: params.name,
+          criterion,
+          step: params.step,
+        }),
+        authentication: this.attachmentPush.authentication,
+        projectId: run.projectId,
+        shortId: run.id,
       };
     },
   });

@@ -955,7 +955,7 @@ export const docsCorpus: DocsSection[] = [
     section: "From an agent",
     url: "https://alepha.dev/lore/docs/plan-verify#from-an-agent",
     capability: "plan",
-    text: "`usecase_prompt` returns the same prompt as the dialog, and\n`usecase_run_record` records a run. An agent following a Test prompt plays\nthe criteria, records one run, and fixes nothing. The full list is in\n[MCP tools](/lore/docs/reference-mcp-tools).",
+    text: "`usecase_prompt` returns the same prompt as the dialog, and\n`usecase_run_record` records a run. An agent following a Test prompt plays\nthe criteria, records one run, and fixes nothing. `usecase_run_attachment_add`\nanswers the command that attaches a screenshot to the run, on the criterion it\nshows. The full list is in\n[MCP tools](/lore/docs/reference-mcp-tools).",
   },
   {
     guide: "Verify and runs",
@@ -2163,7 +2163,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "The lore CLI",
     section: "Attachments",
     url: "https://alepha.dev/lore/docs/reference-cli#attachments",
-    text: '```bash\nlore attachments push ./chart.png --quest 1208\nlore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"\n```\n\n`lore attachments push <file>` puts one file per call onto a quest or a folio.\n\n| Flag                  | What it does                                                                 |\n| --------------------- | ---------------------------------------------------------------------------- |\n| `--quest` / `--folio` | The target, by its bare number. One or the other.                            |\n| `--name`              | The name to store the file under. Defaults to the file\'s name on disk.       |\n| `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |\n\nA folio adds a suffix to a name it already holds, and the command prints the\nname it stored. To read a file back, use `lore quest attachment get` or\n`lore folio attachment list`. See\n[Attachments](/lore/docs/remember-attachments).',
+    text: '```bash\nlore attachments push ./chart.png --quest 1208\nlore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"\nlore attachments push ./receipt.png --run 41 --criterion C2\n```\n\n`lore attachments push <file>` puts one file per call onto a quest, a folio or\na use case run.\n\n| Flag                  | What it does                                                                 |\n| --------------------- | ---------------------------------------------------------------------------- |\n| `--quest` / `--folio` | The target, by its bare number. One of these or `--run`.                     |\n| `--run`               | A use case run, by the id `lore usecase run record` prints.                  |\n| `--criterion`         | With `--run`: the criterion the file shows, such as `C2`.                    |\n| `--step`              | With `--run`: the scenario step the file shows.                              |\n| `--name`              | The name to store the file under. Defaults to the file\'s name on disk.       |\n| `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |\n\nA folio adds a suffix to a name it already holds, and the command print...',
   },
   {
     guide: "The lore CLI",

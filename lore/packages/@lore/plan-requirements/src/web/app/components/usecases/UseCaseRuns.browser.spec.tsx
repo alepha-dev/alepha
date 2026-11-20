@@ -1,0 +1,110 @@
+import { virtualClientFake } from "@lore/core/testing";
+import { I18n } from "@lore/core/web";
+import { render, screen } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaDateTime } from "alepha/datetime";
+import { AlephaLogger } from "alepha/logger";
+import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { LinkProvider } from "alepha/server/links";
+import { setupJsdomMocks } from "alepha/testing/react";
+import { afterEach, beforeAll, describe, it } from "vitest";
+
+import type { UseCaseRunResource } from "../../../../api/schemas/useCaseRunResourceSchema.ts";
+import UseCaseRuns from "./UseCaseRuns.tsx";
+
+const RUN = {
+  id: 41,
+  projectId: 1,
+  useCaseId: 1,
+  createdAt: "2026-11-20T10:00:00.000Z",
+  ranAt: "2026-11-20T10:00:00.000Z",
+  by: "agent",
+  client: "claude-code",
+  env: "local",
+  scenarioVersion: 3,
+  note: "The receipt took a minute to arrive.",
+  results: [
+    { criterionKey: "C1", result: "passed" },
+    { criterionKey: "C2", result: "failed", note: "No receipt" },
+  ],
+  evidence: [
+    {
+      fileId: "11111111-1111-4111-8111-111111111111",
+      name: "order.png",
+      mimeType: "image/png",
+      size: 10,
+      criterionKey: "C1",
+    },
+    {
+      fileId: "22222222-2222-4222-8222-222222222222",
+      name: "inbox.png",
+      mimeType: "image/png",
+      size: 10,
+      criterionKey: "C2",
+    },
+    {
+      fileId: "33333333-3333-4333-8333-333333333333",
+      name: "session.webm",
+      mimeType: "video/webm",
+      size: 10,
+    },
+  ],
+} as unknown as UseCaseRunResource;
+
+class FakeLinkProvider extends LinkProvider {
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
+    return virtualClientFake({ getUseCaseRuns: async () => [RUN] });
+  }
+}
+
+/**
+ * The Runs tab of a use case (#E153).
+ */
+describe("UseCaseRuns", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  const mount = async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <UseCaseRuns projectId={1} number={1} />
+      </AlephaContext.Provider>,
+    );
+    await screen.findByTestId("use-case-runs");
+  };
+
+  it("lists each file under the criterion it shows, and the others after (#Q3977)", async ({
+    expect,
+  }) => {
+    await mount();
+    const c1 = document.querySelector('[data-criterion="C1"]')!;
+    const c2 = document.querySelector('[data-criterion="C2"]')!;
+    expect(c1.textContent).toContain("order.png");
+    expect(c1.textContent).not.toContain("inbox.png");
+    expect(c2.textContent).toContain("inbox.png");
+    const loose = screen.getByText("session.webm");
+    expect(c1.contains(loose) || c2.contains(loose)).toBe(false);
+    expect(screen.getByText("order.png").getAttribute("href")).toBe(
+      "/api/files/11111111-1111-4111-8111-111111111111",
+    );
+  });
+});
