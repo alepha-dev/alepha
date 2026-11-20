@@ -19,6 +19,10 @@ import PersonaRunBar from "./PersonaRunBar.tsx";
 
 export interface PersonaAsideProps {
   persona: PersonaResource;
+  /**
+   * Opens the page's Use cases tab: the coverage line becomes its link.
+   */
+  onOpenUseCases?: () => void;
 }
 
 /**
@@ -103,9 +107,29 @@ const PersonaAside = (props: PersonaAsideProps) => {
               <div className="flex flex-col gap-1.5 pt-1">
                 <PersonaRunBar coverage={coverage} />
                 <span className="text-muted-foreground text-xs">
-                  {tr("requirements.persona.aside.passed", {
-                    args: [String(coverage.passed), String(coverage.useCases)],
-                  })}
+                  {/* Opens the Use cases tab, which lists them (#Q3966). */}
+                  {props.onOpenUseCases ? (
+                    <button
+                      type="button"
+                      className="hover:text-foreground underline-offset-2 hover:underline"
+                      data-testid="persona-coverage-link"
+                      onClick={props.onOpenUseCases}
+                    >
+                      {tr("requirements.persona.aside.passed", {
+                        args: [
+                          String(coverage.passed),
+                          String(coverage.useCases),
+                        ],
+                      })}
+                    </button>
+                  ) : (
+                    tr("requirements.persona.aside.passed", {
+                      args: [
+                        String(coverage.passed),
+                        String(coverage.useCases),
+                      ],
+                    })
+                  )}
                   {coverage.failed > 0
                     ? ` · ${tr("requirements.persona.card.failed", {
                         args: [String(coverage.failed)],
