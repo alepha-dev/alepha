@@ -170,9 +170,17 @@ jobs:
   # one runner; this catches what that subset misses, once a day with nothing
   # waiting on it. The Postgres setup is Verify's `lore-test-postgres`, whose
   # comments say why the server is started by hand with those flags.
+  #
+  # Six shards, like Verify's `lore-test` (#Q3998): on one runner this job
+  # took 23 to 28 min and was the last of Nightly to finish. Each shard
+  # starts its own server, so no shard shares a database with another.
   lore-postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     env:
       POSTGRES_TEST_URL: postgres://postgres:postgres@127.0.0.1:15432/postgres
     defaults:
@@ -197,7 +205,7 @@ jobs:
       # default 10 s, a different one each night. A hang detector here, not
       # a budget; a spec's own explicit timeout still wins.
       - name: Test Project on Postgres
-        run: yarn alepha test --dialect postgres
+        run: yarn alepha test --dialect postgres --shard ${{ matrix.shard }}/6
         env:
           VITEST_ARGS: --hookTimeout=60000 --testTimeout=60000
 
