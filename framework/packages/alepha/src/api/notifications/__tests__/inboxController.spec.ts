@@ -190,6 +190,38 @@ for (const engine of ENGINES) {
       await ctx.alepha.stop();
     });
 
+    it("counts the unread of several scopes in one call, the caller's only", async ({
+      expect,
+    }) => {
+      const ctx = await boot(engine);
+      await seed(ctx, { title: "a", scope: "project:65" });
+      await seed(ctx, { title: "b", scope: "project:65" });
+      await seed(ctx, { title: "c", scope: "project:1" });
+      const read = await seed(ctx, { title: "d", scope: "project:1" });
+      await ctx.markRead(read.id);
+      await seed(ctx, {
+        title: "e",
+        scope: "project:65",
+        userId: SOMEBODY_ELSE,
+      });
+
+      const answer = await ctx.controller.countInboxScopes(
+        {
+          body: {
+            scopes: ["project:65", "project:1", "project:999", "project:65"],
+          },
+        },
+        { user: ctx.me },
+      );
+      expect(answer.counts).toEqual([
+        { scope: "project:65", unread: 2 },
+        { scope: "project:1", unread: 1 },
+        { scope: "project:999", unread: 0 },
+      ]);
+
+      await ctx.alepha.stop();
+    });
+
     it("marks one read, and marks all read within a scope", async ({
       expect,
     }) => {

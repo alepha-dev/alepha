@@ -84,6 +84,41 @@ export class NotificationInboxController {
   });
 
   /**
+   * The caller's unread count in each of several scopes, in one call: a list
+   * of projects drawing a badge per project asks once rather than once a
+   * project. A POST for its body, the scopes being opaque strings a query
+   * string would have to encode; it reads and writes nothing else.
+   */
+  public readonly countInboxScopes = $action({
+    method: "POST",
+    path: `${this.url}/counts`,
+    group: this.group,
+    use: [$secure()],
+    description: "How many messages the caller has not read, in each scope",
+    schema: {
+      body: z.object({
+        scopes: z
+          .array(z.text({ maxLength: 64 }))
+          .min(1)
+          .max(50),
+      }),
+      response: z.object({
+        counts: z.array(z.object({ scope: z.text(), unread: z.number() })),
+      }),
+    },
+    handler: async ({ body, user }) => {
+      const scopes = [...new Set(body.scopes)];
+      const counts = await Promise.all(
+        scopes.map(async (scope) => ({
+          scope,
+          unread: await this.countUnread(user.id, scope),
+        })),
+      );
+      return { counts };
+    },
+  });
+
+  /**
    * Mark every message read, optionally within one scope only.
    *
    * ⚠️ Declared BEFORE {@link markInboxRead}: `POST /inbox/read` and

@@ -813,6 +813,8 @@ export default {
     "La sélection contient latest : les déploiements qui ne nomment aucun tag échouent tant que la CI ne l'a pas publié à nouveau.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Paramètres",
+  "project.rail.unread": "$1 non lus",
+  "project.rail.unread.one": "1 non lu",
   "project.rail.label": "Projets",
 
   "quest.create.submit": "Créer la quête",
