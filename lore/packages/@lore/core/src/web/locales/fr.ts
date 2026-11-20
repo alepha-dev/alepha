@@ -3333,7 +3333,7 @@ export default {
   "requirements.verify.mission.demo": "Démo",
   "requirements.verify.mission.explore": "Explorer",
   "requirements.verify.mission.import": "Importer",
-  "requirements.verify.mission.spec": "Écrire le test",
+  "requirements.verify.mission.spec": "Écrire le test e2e",
   "requirements.verify.mission.test": "Tester",
   "requirements.verify.staleOnly": "Seulement ses cas périmés",
   "requirements.verify.title.allStale": "Vérifier tous les cas périmés",
