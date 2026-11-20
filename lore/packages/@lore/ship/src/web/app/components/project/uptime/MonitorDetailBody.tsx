@@ -3,8 +3,8 @@ import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 
 import type { MonitorDetailResource } from "../../../../../api/schemas/monitorDetailResourceSchema.ts";
-import MonitorBeatBar from "./MonitorBeatBar.tsx";
 import MonitorLatencyChart from "./MonitorLatencyChart.tsx";
+import MonitorPeriodBar from "./MonitorPeriodBar.tsx";
 export interface MonitorDetailBodyProps {
   data: MonitorDetailResource;
   /**
@@ -68,10 +68,11 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
         )}
       </header>
       <div className="bg-card rounded-lg border p-4">
+        {/* The whole selected window, not the last 50 checks (#Q4009). */}
         <h2 className="mb-3 text-sm font-medium">
-          {tr("uptime.recentChecks")}
+          {tr(`uptime.checksOver.${data.window}`)}
         </h2>
-        <MonitorBeatBar beats={data.beats} />
+        <MonitorPeriodBar buckets={data.bar} />
       </div>
       {data.estimated && (
         <p className="text-muted-foreground text-sm">

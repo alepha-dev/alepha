@@ -4683,6 +4683,11 @@ export default {
   "project.capability.ship.option.stacks.label": "Stacks",
   "project.capability.ship.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",
+  "uptime.checksOver.24h": "Checks over the last 24 hours",
+  "uptime.checksOver.7d": "Checks over the last 7 days",
+  "uptime.checksOver.30d": "Checks over the last 30 days",
+  "uptime.checksBar": "Checks over the period",
+  "uptime.bucketTitle": "$1 to $2: $3 checks, $4 failed",
   "uptime.recentChecks": "Recent checks",
   "uptime.notMeasured": "Not measured",
   "uptime.beatTitle": "$1: $2 ms, $3",
