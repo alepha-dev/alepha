@@ -3,11 +3,12 @@ import {
   $ownsProject,
   BoundParameters,
   LoreAudits,
+  ProjectController,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { type Project, projects, type User } from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
-import { $inject, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -95,6 +96,7 @@ export class FeedbackController {
     project: true,
   } as const;
   protected readonly ranks = $inject(RankService);
+  protected readonly alepha = $inject(Alepha);
 
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
@@ -147,7 +149,7 @@ export class FeedbackController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: feedbackBodySchema,
-      response: z.object({ id: z.integer() }),
+      response: z.object({ id: z.integer(), shortId: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
       await this.assertFeedbackOpen(params.projectId);
@@ -197,7 +199,51 @@ export class FeedbackController {
         metadata: { id: created.id },
       });
 
-      return { id: created.id };
+      return { id: created.id, shortId: created.shortId };
+    },
+  });
+
+  /**
+   * The projects the caller may file a feedback into from another project's
+   * room or page (#Q3971): the ones they belong to, unarchived, with Support
+   * (`plan.feedback`) on. What `feedback_targets` lists and `feedback_submit`
+   * checks, so the model is given these and nothing wider than them.
+   */
+  listFeedbackTargets = $action({
+    use: [$secure()],
+    method: "GET",
+    path: "/feedback/targets",
+    description:
+      "The projects the caller belongs to that accept feedback, by id, slug and title.",
+    schema: {
+      response: z.array(
+        z.object({ id: z.integer(), slug: z.text(), title: z.text() }),
+      ),
+    },
+    handler: async ({ user }) => {
+      // Resolved where it is called: a field would create it at boot.
+      const mine = await this.alepha
+        .inject(ProjectController)
+        .listProjectsOf(user.id);
+      const open = await Promise.all(
+        mine
+          .filter((it) => !it.archivedAt)
+          .map(async (it) => ({
+            project: it,
+            open: this.security.capabilityOption(
+              await this.security.capabilitiesOf(it.id),
+              "plan",
+              "feedback",
+            ),
+          })),
+      );
+      return open
+        .filter((it) => it.open)
+        .map(({ project }) => ({
+          id: project.id,
+          slug: project.slug,
+          title: project.title,
+        }));
     },
   });
 

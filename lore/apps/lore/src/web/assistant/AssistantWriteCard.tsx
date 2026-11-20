@@ -8,7 +8,11 @@ import {
 } from "@alepha/ui";
 import type { AiChatConfirmCardProps } from "@alepha/ui/ai";
 import { MarkdownView } from "@alepha/ui/markdown";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  type I18n,
+  userProjectsAtom,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
@@ -27,7 +31,8 @@ export type AssistantWriteTool =
   | "quest_comment_add"
   | "quest_update"
   | "quest_complete"
-  | "folio_create";
+  | "folio_create"
+  | "feedback_submit";
 
 /**
  * Asks the member before the assistant writes (#Q3210). The card IS the
@@ -42,12 +47,16 @@ export type AssistantWriteTool =
 const AssistantWriteCard = (props: AssistantWriteCardProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
+  const [overview] = useStore(userProjectsAtom);
   const input = props.pending.input;
   const projectId = input.project;
+  // Another project is named by its title too, from the member's own list:
+  // a feedback filed elsewhere (#Q3971) must say plainly where it goes.
   const projectLabel =
     project && projectId !== undefined && projectId === project.id
       ? project.title
-      : String(input.project_name ?? projectId ?? "");
+      : (overview?.projects.find((it) => it.id === projectId)?.title ??
+        String(input.project_name ?? projectId ?? ""));
   const elsewhere =
     projectId !== undefined &&
     project !== undefined &&
