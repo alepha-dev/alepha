@@ -28,6 +28,7 @@ import {
   FileText,
   GitCommitHorizontal,
   History,
+  ListChecks,
   Pencil,
   Trash2,
   Video,
@@ -36,12 +37,14 @@ import { useState } from "react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import type { PersonaInsightController } from "../../../../api/controllers/PersonaInsightController.ts";
+import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type {
   PersonaAppCopy,
   PersonaChanges as Changes,
   PersonaShowcase as Showcase,
 } from "../../../../api/schemas/personaInsightSchemas.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
+import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import { currentPersonaAtom } from "../../atoms/currentPersonaAtom.ts";
 import DetailMoreMenu from "../shared/DetailMoreMenu.tsx";
 import RequirementsHover from "../shared/RequirementsHover.tsx";
@@ -51,17 +54,18 @@ import PersonaAside from "./PersonaAside.tsx";
 import PersonaChanges from "./PersonaChanges.tsx";
 import PersonaSheet from "./PersonaSheet.tsx";
 import PersonaShowcase from "./PersonaShowcase.tsx";
+import PersonaUseCases from "./PersonaUseCases.tsx";
 
 export interface PersonaPageProps {
   persona: PersonaResource;
 }
 
-type TabKey = "overview" | "changes" | "showcase" | "activity";
+type TabKey = "overview" | "usecases" | "changes" | "showcase" | "activity";
 
 /**
  * A persona's page (#E153): a full page outside the Requirements layout
  * (decision 77), its identity card on the left and its tabs: Overview (with
- * the Changes card), Changes (scope changes since its last run, What's new
+ * the Changes card), Use cases (the ones it acts in, #Q3966), Changes (scope changes since its last run, What's new
  * per release), Showcase (hidden while there is no recording) and
  * Activity. Open as opens its app copy in a new tab: Lore signs no one in.
  */
@@ -107,6 +111,18 @@ const PersonaPage = (props: PersonaPageProps) => {
       persona.environmentEnv,
     ],
   );
+  // The project's use cases, under the key the lists and the aside read, so
+  // the Use cases tab costs no request when either loaded them first.
+  const useCaseApi = useClient<UseCaseController>();
+  const useCases = useQuery<UseCaseResource[]>(
+    {
+      key: ["use-cases", projectId],
+      enabled: projectId > 0,
+      handler: async () =>
+        await useCaseApi.getUseCases({ params: { projectId }, query: {} }),
+    },
+    [useCaseApi, projectId],
+  );
   const showcase = useQuery<Showcase>(
     {
       key: ["persona-showcase", projectId, props.persona.number],
@@ -143,6 +159,9 @@ const PersonaPage = (props: PersonaPageProps) => {
   const canWrite = canInProject(project, "persona:write");
 
   const changed = changes.data?.changes.length ?? 0;
+  const mine = (useCases.data ?? []).filter((useCase) =>
+    useCase.actors.some((actor) => actor.personaId === persona.id),
+  );
   const hasShowcase = (showcase.data ?? []).some((it) => it.items.length);
   const copy = appCopy.data;
   const tabs: DetailTab[] = [
@@ -150,6 +169,13 @@ const PersonaPage = (props: PersonaPageProps) => {
       value: "overview",
       icon: FileText,
       label: tr("requirements.persona.tab.overview"),
+    },
+    {
+      value: "usecases",
+      icon: ListChecks,
+      label: tr("requirements.persona.tab.useCases", {
+        args: [String(mine.length)],
+      }),
     },
     {
       value: "changes",
@@ -192,7 +218,12 @@ const PersonaPage = (props: PersonaPageProps) => {
 
   return (
     <DetailLayout
-      aside={<PersonaAside persona={persona} />}
+      aside={
+        <PersonaAside
+          persona={persona}
+          onOpenUseCases={() => setTab("usecases")}
+        />
+      }
       tabs={tabs}
       tab={tab}
       onTabChange={(value) => setTab(value as TabKey)}
@@ -250,7 +281,9 @@ const PersonaPage = (props: PersonaPageProps) => {
         </>
       }
     >
-      {tab === "activity" ? (
+      {tab === "usecases" ? (
+        <PersonaUseCases personaId={persona.id} useCases={mine} />
+      ) : tab === "activity" ? (
         <LazyProjectActivityPage
           resource={{ type: "persona", id: String(persona.number) }}
           persistenceKey={`lor.activity.${project.id}.persona.${persona.number}`}

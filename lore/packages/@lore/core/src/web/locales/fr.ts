@@ -3616,6 +3616,10 @@ export default {
   "requirements.persona.showcase.current": "Version en cours",
   "requirements.persona.showcase.chapters": "Étapes",
   "requirements.persona.tab.activity": "Activité",
+  "requirements.persona.tab.useCases": "Cas d’usage ($1)",
+  "requirements.persona.useCases.empty":
+    "Ce persona n’intervient encore dans aucun cas d’usage",
+  "requirements.persona.useCases.role": "Rôle",
   "requirements.persona.tab.overview": "Aperçu",
   "requirements.persona.toast.created": "Persona créé",
   "requirements.more": "Autres actions",

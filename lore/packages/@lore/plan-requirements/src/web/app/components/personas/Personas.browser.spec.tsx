@@ -112,6 +112,8 @@ class FakeLinkProvider extends LinkProvider {
           id: 7,
           number: 7,
           title: "Check out",
+          status: "ready",
+          priority: "high",
           state: "never_run",
           stale: false,
           actors: [{ personaId: 1, role: "primary", number: 1, name: "Léa" }],
@@ -165,6 +167,9 @@ describe("Personas screens", () => {
   });
 
   afterEach(async () => {
+    // The page keeps its tab in `?tab=`: a case that opened one must not
+    // start the next on it.
+    window.history.replaceState(null, "", "/");
     await alepha?.stop();
     alepha = undefined;
     copyState = "ready";
@@ -274,6 +279,32 @@ describe("Personas screens", () => {
     // An empty section is omitted, not drawn blank.
     expect(screen.queryByText("Frustrations")).toBeNull();
     expect(screen.getByRole("button", { name: /Edit persona/ })).toBeTruthy();
+  });
+
+  it("lists the persona's use cases in a Use cases tab, opened from the aside's coverage line (#Q3966)", async ({
+    expect,
+  }) => {
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaPage persona={PEOPLE[0]} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    await screen.findByTestId("persona-overview");
+    // The tab label counts the use cases the persona acts in.
+    expect(
+      await screen.findByRole("radio", { name: /Use cases \(1\)/ }),
+    ).toBeTruthy();
+
+    fireEvent.click(await screen.findByTestId("persona-coverage-link"));
+    const tab = await screen.findByTestId("persona-use-cases");
+    const rows = screen.getAllByTestId("persona-use-case-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toBe("#U7 Check out");
+    expect(rows[0].getAttribute("href")).toBe("/acme/requirements/use-cases/7");
+    expect(tab.textContent).toContain("Primary");
   });
 
   it("gives a viewer the page without its Edit and Delete", async ({
