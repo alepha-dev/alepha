@@ -3324,7 +3324,7 @@ export default {
   "requirements.verify.mission.demo": "Demo",
   "requirements.verify.mission.explore": "Explore",
   "requirements.verify.mission.import": "Import",
-  "requirements.verify.mission.spec": "Write the spec",
+  "requirements.verify.mission.spec": "Write the e2e test",
   "requirements.verify.mission.test": "Test",
   "requirements.verify.staleOnly": "Only its stale use cases",
   "requirements.verify.title.allStale": "Verify every stale use case",

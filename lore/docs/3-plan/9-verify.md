@@ -16,7 +16,7 @@ It opens a dialog:
 ![The Verify dialog](/screenshots/lore/requirements-verify-light.png)
 
 - **Mission**: **Test** (play the criteria and record one run, fixing
-  nothing), **Write the spec** (an end-to-end spec tagged `@U7`), **Demo** (a
+  nothing), **Write the e2e test** (an end-to-end spec tagged `@U7`), **Demo** (a
   demo script and its data) or, on a persona, **Explore** (exploratory testing
   in their shoes).
 - **App** and **Environment**: the app copy to play on, or `local`.
