@@ -20,8 +20,13 @@ import {
  * hydrated every use case through one `inArray` over all their ids, which D1
  * refuses past 100 values. Every read here runs on a SQLite that refuses the
  * same, over more use cases than one statement may name.
+ *
+ * The ceiling is D1's, so the spec runs on SQLite only: on `--dialect
+ * postgres` the fixture's SQLite provider refuses the Postgres DATABASE_URL.
  */
-describe("requirements past D1's bind limit", () => {
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+describe.skipIf(onPostgres)("requirements past D1's bind limit", () => {
   const COUNT = 120;
   let ctx: RequirementsProject;
   let useCases: UseCaseController;
