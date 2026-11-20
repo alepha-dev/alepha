@@ -30,9 +30,10 @@ const SUBJECTS: Record<string, string> = {
 };
 
 const ALIASES: Record<string, string> = {
-  // These two move no bytes: they hand back this command line.
+  // These three move no bytes: they hand back this command line.
   quest_attachment_add: "attachments push",
   folio_attachment_add: "attachments push",
+  usecase_run_attachment_add: "attachments push",
   deploy_start: "deploy",
   epic_set_status: "epic set status",
   // One hyphenated word on the command line, where the underscore would read

@@ -86,7 +86,9 @@ See [The lore CLI](/lore/docs/reference-cli).
 
 `usecase_prompt` returns the same prompt as the dialog, and
 `usecase_run_record` records a run. An agent following a Test prompt plays
-the criteria, records one run, and fixes nothing. The full list is in
+the criteria, records one run, and fixes nothing. `usecase_run_attachment_add`
+answers the command that attaches a screenshot to the run, on the criterion it
+shows. The full list is in
 [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next

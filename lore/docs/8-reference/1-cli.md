@@ -281,13 +281,18 @@ attachments and its directories.
 ```bash
 lore attachments push ./chart.png --quest 1208
 lore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"
+lore attachments push ./receipt.png --run 41 --criterion C2
 ```
 
-`lore attachments push <file>` puts one file per call onto a quest or a folio.
+`lore attachments push <file>` puts one file per call onto a quest, a folio or
+a use case run.
 
 | Flag                  | What it does                                                                 |
 | --------------------- | ---------------------------------------------------------------------------- |
-| `--quest` / `--folio` | The target, by its bare number. One or the other.                            |
+| `--quest` / `--folio` | The target, by its bare number. One of these or `--run`.                     |
+| `--run`               | A use case run, by the id `lore usecase run record` prints.                  |
+| `--criterion`         | With `--run`: the criterion the file shows, such as `C2`.                    |
+| `--step`              | With `--run`: the scenario step the file shows.                              |
 | `--name`              | The name to store the file under. Defaults to the file's name on disk.       |
 | `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |
 
