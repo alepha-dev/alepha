@@ -18,6 +18,7 @@ import { Input } from "../core/Input.tsx";
 import { ControlDatePopover } from "./ControlDatePopover.tsx";
 import { ControlMonthPopover } from "./ControlMonthPopover.tsx";
 import { FormField } from "./FormField.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlDateProps {
   /**
@@ -97,6 +98,7 @@ export interface ControlDateProps {
 
 export const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const [value, setValue] = useFieldValue(props.input);
   const dateTime = useInject(DateTimeProvider);
 
@@ -107,6 +109,7 @@ export const ControlDate = (props: ControlDateProps) => {
     description: props.description,
     error: form.error,
   });
+  meta.error = errorText(meta.error);
 
   const isDateTime = props.datetime || meta.format === "date-time";
   const isTime = props.time || meta.format === "time";

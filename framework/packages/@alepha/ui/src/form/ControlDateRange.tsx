@@ -27,6 +27,7 @@ import {
   TRIGGER_WRAPPER_CLASSES,
 } from "./fieldTrigger.tsx";
 import { FormField } from "./FormField.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlDateRangeProps {
   /**
@@ -102,6 +103,7 @@ export interface ControlDateRangeProps {
 export const ControlDateRange = (props: ControlDateRangeProps) => {
   const { tr, l } = useI18n();
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const [value, setValue] = useFieldValue(props.input);
   const [open, setOpen] = useState(false);
   /**
@@ -140,6 +142,7 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
     description: props.description,
     error: form.error,
   });
+  meta.error = errorText(meta.error);
 
   const shown = draft ?? stored;
   // Each end in the page's language, like `ControlDatePopover`: the

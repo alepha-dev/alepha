@@ -119,6 +119,28 @@ export const AuthLogin = (props: AuthLoginProps) => {
     });
   }, [loginMethods, tr]);
 
+  // What the identifier field says when it is submitted empty: an
+  // instruction in the person's terms, never the schema key.
+  const identifierRequired = useMemo(() => {
+    if (loginMethods.length <= 1) {
+      const m = loginMethods[0];
+      if (m === "email")
+        return tr("auth.login.emailRequired", {
+          default: "Enter your email address",
+        });
+      if (m === "phone")
+        return tr("auth.login.phoneRequired", {
+          default: "Enter your phone number",
+        });
+      return tr("auth.login.usernameRequired", {
+        default: "Enter your username",
+      });
+    }
+    return tr("auth.login.identifierRequired", {
+      default: "Enter your username, email or phone",
+    });
+  }, [loginMethods, tr]);
+
   // Mail icon when the identifier is purely an email; otherwise default user icon.
   const identifierIcon =
     loginMethods.length === 1 && loginMethods[0] === "email" ? Mail : User;
@@ -192,8 +214,18 @@ export const AuthLogin = (props: AuthLoginProps) => {
 
   const form = useForm({
     schema: z.object({
-      identifier: z.string().min(1),
-      password: z.string().min(settings.passwordPolicy?.minLength || 6),
+      identifier: z
+        .string()
+        .min(1)
+        .meta({ requiredMessage: identifierRequired }),
+      password: z
+        .string()
+        .min(settings.passwordPolicy?.minLength || 6)
+        .meta({
+          requiredMessage: tr("auth.login.passwordRequired", {
+            default: "Enter your password",
+          }),
+        }),
     }),
     // Handled here: every error this form throws is rendered by the page itself,
     // under its field or in the alert above the form. Without an `onError`,

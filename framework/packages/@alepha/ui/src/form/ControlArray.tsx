@@ -33,6 +33,7 @@ import {
 import { Control, type ControlProps } from "./Control.tsx";
 import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
 import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 interface ArrayItem {
   key: number;
@@ -349,6 +350,7 @@ const buildFieldInput = (
 
 export const ControlArray = (props: ControlArrayProps) => {
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const { tr } = useI18n();
   const { items, setItems, nextKey } = useArrayItems(props.input);
   const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
@@ -362,6 +364,7 @@ export const ControlArray = (props: ControlArrayProps) => {
     description: props.description,
     error: form.error,
   });
+  meta.error = errorText(meta.error);
 
   const schema = props.input.schema;
   // `isArray`, not `"items" in schema`: that spelling tested for a prototype

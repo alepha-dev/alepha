@@ -27,6 +27,7 @@ import { optValue } from "./controlSelectOptions.ts";
 import type { ControlTriggerSize } from "./fieldTrigger.tsx";
 import { FormField } from "./FormField.tsx";
 import type { IconComponent } from "./iconHint.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlSelectProps {
   /**
@@ -235,6 +236,7 @@ export interface ControlSelectProps {
 export const ControlSelect = (props: ControlSelectProps) => {
   const { tr } = useI18n();
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const [value, setValue] = useFieldValue(props.input);
 
   const meta = parseField(props.input, {
@@ -242,6 +244,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
     description: props.description,
     error: form.error,
   });
+  meta.error = errorText(meta.error);
 
   const isArray = meta.isArray;
   const isNumeric = meta.type === "number" || meta.type === "integer";
