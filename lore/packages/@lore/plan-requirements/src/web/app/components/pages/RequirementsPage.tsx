@@ -262,6 +262,8 @@ const RequirementsPage = () => {
           : "requirements.requirement.counter.all",
       ),
       value: String(all.length),
+      // The way back to every requirement from the status counters (#Q3974).
+      filter: { status: undefined },
     },
     ...STATUSES.map((status) => {
       const count = all.filter((row) => row.status === status).length;

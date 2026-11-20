@@ -101,6 +101,9 @@ describe("Use cases page at 276 use cases (#Q3978)", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
+    // The table keeps its filters per project: a counter clicked in one
+    // case must not start the next one filtered.
+    localStorage.clear();
   });
 
   const mount = async () => {
@@ -175,5 +178,29 @@ describe("Use cases page at 276 use cases (#Q3978)", () => {
       ).toBe(true),
     );
     expect(rowCount()).toBe(50);
+  });
+
+  it("goes back to every use case from the use cases counter (#Q3974)", async ({
+    expect,
+  }) => {
+    await mount();
+    const total = screen.getByRole("button", { name: /^use cases$/i });
+    expect(total.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /Passed/ }));
+    await waitFor(() =>
+      expect(total.getAttribute("aria-pressed")).toBe("false"),
+    );
+    fireEvent.click(total);
+    await waitFor(() =>
+      expect(total.getAttribute("aria-pressed")).toBe("true"),
+    );
+    // Every use case again, paged: the pager counts 276.
+    expect(document.body.textContent).toContain("276");
+    expect(rowCount()).toBe(50);
+    expect(
+      [...document.querySelectorAll("tbody tr[data-row-key]")].some((row) =>
+        row.textContent?.includes("Never run"),
+      ),
+    ).toBe(true);
   });
 });
