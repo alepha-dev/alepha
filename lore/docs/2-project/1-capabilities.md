@@ -1,12 +1,21 @@
 # Capabilities
 
 A project is a container: a name, an address, its members, and the parts of
-Lore it uses. Those parts are its **capabilities**, and there are five, one
-for each thing Lore does: **Plan**, **Remember**, **Build**, **Ship** and
-**Chat**. A team that only wants a wiki turns on Remember alone; a team that
-plans, documents, codes, operates and talks about a product turns on all five.
+Lore it uses. Those parts are its **capabilities**: the four pillars, **Plan**,
+**Remember**, **Build** and **Ship**, and three general ones, **Activity**,
+**Chat** and **Reports**. A team that only wants a wiki turns on Remember
+alone; a team that plans, documents, codes, operates and talks about a product
+turns on everything.
 
-## The five capabilities
+## The general capabilities
+
+| Capability   | Sidebar entry | What it is for                                                 |
+| ------------ | ------------- | -------------------------------------------------------------- |
+| **Activity** | Activity      | Every change made in the project, newest first. On by default. |
+| **Chat**     | Chat          | The talk: project rooms, mentions, and Lore's assistant.       |
+| **Reports**  | Reports       | Figures over a period, one tab per pillar. On by default.      |
+
+## The four pillars
 
 | Capability   | Sidebar entries                   | What it is for                                                 |
 | ------------ | --------------------------------- | -------------------------------------------------------------- |
@@ -14,17 +23,15 @@ plans, documents, codes, operates and talks about a product turns on all five.
 | **Remember** | Folios                            | The memory: linked notes, files and their history.             |
 | **Build**    | Reports ▸ Quality                 | The code: git repositories, and what the tests report.         |
 | **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |
-| **Chat**     | Chat                              | The talk: project rooms, mentions, and Lore's assistant.       |
 
 A capability is the pillar; the things inside it keep their own names. A quest
 is still a quest and a deploy is still a deploy: Ship is where deploys live.
 
 Some things belong to every project, whatever its capabilities: the
-[dashboard](/lore/docs/project-dashboard), the activity feed,
-[reports](/lore/docs/project-reports), [members and
+[dashboard](/lore/docs/project-dashboard), [members and
 ranks](/lore/docs/project-members) and
 [notifications](/lore/docs/project-notifications). A project with every
-capability off is still a project with members and a history.
+capability off is still a project with members and a dashboard.
 
 ## Options
 
@@ -66,10 +73,10 @@ A list of quests and a board are always there when Plan is on. See
 
 ## Turning one on or off
 
-Open **Settings ▸ General ▸ Capabilities**. Each capability is a switch, with
-the options that add a sidebar entry beneath it. The others, such as **Track
-apps** and **Monitor apps**, are on the capability's own settings page:
-**Settings ▸ Apps** for Ship.
+Open **Settings ▸ General ▸ Capabilities**. The page opens with **General**:
+Activity, Chat and Reports. Each pillar follows, a switch with the options
+that add a sidebar entry beneath it; Build and Ship list all their options
+there. Plan's other options are on **Settings ▸ Quests**.
 
 ![The Capabilities tab of a project's settings](/screenshots/lore/capabilities-light.png)
 

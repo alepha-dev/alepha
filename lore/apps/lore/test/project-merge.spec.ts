@@ -211,9 +211,11 @@ describe("ProjectMergeService across every module", () => {
       where: { projectId: { eq: target.id } },
     });
     expect(capabilities.map((row) => row.key).sort()).toEqual([
+      "activity",
       "build",
       "plan",
       "remember",
+      "reports",
       "ship",
     ]);
     expect(capabilities.find((row) => row.key === "plan")!.options).toEqual({

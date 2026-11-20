@@ -1239,6 +1239,15 @@ export default {
   "project.capability.build.option.quality.label": "Quality",
   "project.capability.build.option.quality.description":
     "Coverage and test totals pushed by CI, in Reports.",
+  "project.capability.activity.label": "Activity",
+  "project.capability.activity.description":
+    "Every change made in the project, newest first.",
+  "project.capability.reports.label": "Reports",
+  "project.capability.reports.description":
+    "Flow, delivery and team figures over a period.",
+  "project.settings.capabilities.general": "General",
+  "project.create.group.general": "General",
+  "project.create.group.pillars": "Pillars",
   "project.capability.ship.label": "Ship",
   "project.capability.ship.description":
     "Apps and their deploys, analytics, errors, vitals.",

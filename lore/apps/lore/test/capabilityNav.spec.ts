@@ -89,7 +89,9 @@ describe("the sidebar, derived from capabilities", () => {
   it("gives a Remember-only project one entry beside the core three", ({
     expect,
   }) => {
-    const routes = offered(projectFixture({ capabilities: ["remember"] }));
+    const routes = offered(
+      projectFixture({ capabilities: ["remember", "activity", "reports"] }),
+    );
 
     // The shape that was impossible before this epic: quests had no flag at
     // all, so every project had them whether or not it wanted them.
@@ -101,7 +103,7 @@ describe("the sidebar, derived from capabilities", () => {
     ]);
   });
 
-  it("leaves the three core entries standing with every capability off", ({
+  it("leaves the dashboard standing with every capability off", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: [] }));
@@ -109,16 +111,32 @@ describe("the sidebar, derived from capabilities", () => {
     // ⚠️ The dashboard is FIRST and Core: it is the page a bare project URL
     // lands on (#Q2104), so a capability set that could hide it would lock
     // somebody out of their own project. On a project with nothing turned on
-    // it renders its empty state, which is a true thing to read.
-    //
-    // Activity says something whatever else is turned off, and Reports is
-    // Core because its TABS declare capabilities - a Build-only project
-    // reaches Quality through it (#E162).
-    expect(routes).toEqual([
-      "projectDashboard",
-      "projectActivity",
-      "projectReports",
-    ]);
+    // it renders its empty state, which is a true thing to read. Activity
+    // and Reports have their own switch since #Q4007.
+    expect(routes).toEqual(["projectDashboard"]);
+  });
+
+  it("hides Activity and Reports each with its own switch (#Q4007)", ({
+    expect,
+  }) => {
+    const all = offered(projectFixture());
+    expect(all).toContain("projectActivity");
+    expect(all).toContain("projectReports");
+
+    const keys = CAPABILITY_KEYS.filter(
+      (key) => key !== "activity" && key !== "reports",
+    );
+    const withoutActivity = offered(
+      projectFixture({ capabilities: [...keys, "reports"] }),
+    );
+    expect(withoutActivity).not.toContain("projectActivity");
+    expect(withoutActivity).toContain("projectReports");
+
+    const withoutReports = offered(
+      projectFixture({ capabilities: [...keys, "activity"] }),
+    );
+    expect(withoutReports).toContain("projectActivity");
+    expect(withoutReports).not.toContain("projectReports");
   });
 
   it("lights the Dashboard entry on every dashboard of the project", ({

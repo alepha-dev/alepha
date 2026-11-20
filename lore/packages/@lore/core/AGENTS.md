@@ -82,12 +82,13 @@ a container that composes four **capabilities**, Lore's pillars since #E143
 (Build joined with #E162),
 picked in the creation wizard and switched in Settings ▸ General ▸ Capabilities:
 
-| capability | what it brings                                                                                                                                        |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plan`     | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback` |
-| `remember` | folios, their directories and attachments - no option since #Q3704                                                                                    |
-| `build`    | git repositories (`code:*`) and Quality - options `repositories` / `quality` (#Q4005)                                                                 |
-| `ship`     | deployed copies, sigils, errors, artifacts, deploys - options `track` / `deploy` / `uptime` / `stacks`                                                |
+| capability                    | what it brings                                                                                                                                                         |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback`                  |
+| `remember`                    | folios, their directories and attachments - no option since #Q3704                                                                                                     |
+| `build`                       | git repositories (`code:*`) and Quality - options `repositories` / `quality` (#Q4005)                                                                                  |
+| `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `deploy` / `uptime` / `stacks`                                                                 |
+| `chat`, `activity`, `reports` | the General group (#Q4007): Chat's rooms; the Activity page and Reports, each a switch on by default that hides its page (404) and sidebar entry and owns nothing else |
 
 A pillar is not a thing: an app is still an app and a deploy is still a deploy.
 The keys were `work`, `knowledge`, `apps` and `support` until #E143, which

@@ -14,9 +14,11 @@ import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
+  Activity,
   AppWindow,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   BookOpen,
   Check,
   GitBranch,
@@ -30,7 +32,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
-import type { CapabilityKey } from "../../../../api/schemas/capabilityKeySchema.ts";
+import {
+  type CapabilityKey,
+  GENERAL_CAPABILITY_KEYS,
+} from "../../../../api/schemas/capabilityKeySchema.ts";
 import type {
   CapabilityDescriptor,
   CapabilityOptionDescriptor,
@@ -61,6 +66,8 @@ const CAPABILITY_ICONS: Record<
   build: GitBranch,
   ship: AppWindow,
   chat: MessagesSquare,
+  activity: Activity,
+  reports: BarChart3,
 };
 
 /**
@@ -256,6 +263,12 @@ const ProjectCreate = () => {
       ? nameCheck.data
       : undefined;
   const canAdvanceFromName = nameResult?.available === true;
+  // "At least one" counts the pillars and Chat (#Q4007): Activity and Reports
+  // are on by default and show what the others hold, so a project of those
+  // two alone has nothing to show, and "none" is still not an answer.
+  const hasSubject = draft.enabled.some(
+    (key) => key !== "activity" && key !== "reports",
+  );
 
   /*
    * One error for the field, whichever rule refused it: the title's own
@@ -408,6 +421,8 @@ const ProjectCreate = () => {
                     title={tr("project.create.step.capabilities")}
                     helper={tr("project.create.step.capabilities.helper")}
                     capabilities={registry.all()}
+                    generalLabel={tr("project.create.group.general")}
+                    pillarsLabel={tr("project.create.group.pillars")}
                     enabled={draft.enabled}
                     onToggle={toggleCapability}
                     tr={tr}
@@ -476,7 +491,7 @@ const ProjectCreate = () => {
                       onClick={goNext}
                       disabled={
                         (activeStep === 1 && !canAdvanceFromName) ||
-                        (activeStep === 2 && draft.enabled.length === 0)
+                        (activeStep === 2 && !hasSubject)
                       }
                       className="h-11 px-6"
                     >
@@ -489,9 +504,7 @@ const ProjectCreate = () => {
                       type="submit"
                       size="lg"
                       disabled={
-                        submitting ||
-                        !canAdvanceFromName ||
-                        draft.enabled.length === 0
+                        submitting || !canAdvanceFromName || !hasSubject
                       }
                       className="h-11 px-6"
                     >
@@ -581,6 +594,8 @@ interface StepCapabilitiesProps {
   capabilities: CapabilityDescriptor[];
   enabled: CapabilityKey[];
   onToggle: (key: CapabilityKey) => void;
+  generalLabel: string;
+  pillarsLabel: string;
   tr: (key: never) => string;
 }
 
@@ -589,28 +604,49 @@ interface StepCapabilitiesProps {
  *
  * It offered Folios, Kanban and Releases: one product, one *view* of quests,
  * and one *grouping* of quests, with nothing on screen saying what Lore is
- * for. These four are the surfaces, and the reader picks the ones they came
- * for.
+ * for. These are the surfaces, and the reader picks the ones they came
+ * for: General first (Activity, Chat, Reports), then the pillars, the same
+ * layout as Settings > General > Capabilities (#Q4007).
  */
 const StepCapabilities = (props: StepCapabilitiesProps) => {
+  const general = GENERAL_CAPABILITY_KEYS.map((key) =>
+    props.capabilities.find((it) => it.key === key),
+  ).filter((it) => it !== undefined);
+  const groups = [
+    { key: "general", label: props.generalLabel, items: general },
+    {
+      key: "pillars",
+      label: props.pillarsLabel,
+      items: props.capabilities.filter((it) => it.group === "pillar"),
+    },
+  ];
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">{props.title}</h1>
         <p className="text-muted-foreground text-sm">{props.helper}</p>
       </div>
-      <div className="flex flex-col gap-2">
-        {props.capabilities.map((capability) => (
-          <ModuleToggle
-            key={capability.key}
-            icon={CAPABILITY_ICONS[capability.key]}
-            label={props.tr(capability.labelKey as never)}
-            helper={props.tr(capability.descriptionKey as never)}
-            checked={props.enabled.includes(capability.key)}
-            onChange={() => props.onToggle(capability.key)}
-          />
-        ))}
-      </div>
+      {groups.map((group) => (
+        <div
+          key={group.key}
+          className="flex flex-col gap-2"
+          data-testid={`capability-group-${group.key}`}
+        >
+          <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            {group.label}
+          </span>
+          {group.items.map((capability) => (
+            <ModuleToggle
+              key={capability.key}
+              icon={CAPABILITY_ICONS[capability.key]}
+              label={props.tr(capability.labelKey as never)}
+              helper={props.tr(capability.descriptionKey as never)}
+              checked={props.enabled.includes(capability.key)}
+              onChange={() => props.onToggle(capability.key)}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 };

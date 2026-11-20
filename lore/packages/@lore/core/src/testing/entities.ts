@@ -156,6 +156,9 @@ export const createTestProject = async (
     { key: "remember", options: {} },
     { key: "build", options: { repositories: true, quality: true } },
     { key: "ship", options: { track: true, deploy: false } },
+    // On for every project by default (#Q4007).
+    { key: "activity", options: {} },
+    { key: "reports", options: {} },
   ];
 
   for (const capability of capabilities ?? ALL_ON) {

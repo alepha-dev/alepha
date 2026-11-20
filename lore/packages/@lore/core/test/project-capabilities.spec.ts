@@ -129,8 +129,10 @@ describe("Project capabilities", () => {
     // means "what the wizard would have made", not "a project with no
     // surfaces and nothing on the way in to say so".
     expect(created.data.capabilities.map((it) => it.key).sort()).toEqual([
+      "activity",
       "plan",
       "remember",
+      "reports",
     ]);
     // A stored `automations` option (#Q3594) never comes back (#Q3896).
     expect(

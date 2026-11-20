@@ -24,6 +24,7 @@ import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
 import { storeHomeOverview } from "./services/homeOverviewWrite.ts";
+import { hasCapability } from "./services/projectCapabilities.ts";
 import { canInProject } from "./services/projectRank.ts";
 import { ReportsUrlQuery } from "./services/ReportsUrlQuery.ts";
 
@@ -367,9 +368,9 @@ export class CoreRouter {
    * longer a reason for it to own the root, because the board is true of
    * every project too and answers a question rather than listing events.
    *
-   * No loader. `ProjectActivityPage` fetches its own window and re-fetches
-   * on demand, because the window is a control on the page rather than a
-   * property of the URL.
+   * Its loader only checks the `activity` switch (#Q4007): `ProjectActivityPage`
+   * fetches its own window and re-fetches on demand, because the window is a
+   * control on the page rather than a property of the URL.
    */
   projectActivity = $pageProject({
     path: "/activity",
@@ -377,6 +378,8 @@ export class CoreRouter {
       title: `${previous?.title ?? ""} › Activity`,
     }),
     lazy: () => import("./components/project/activity/ProjectActivityPage.tsx"),
+    // A page under a switch that is off does not exist (#Q4007).
+    loader: async () => this.requireCapability("activity", "Activity"),
   });
 
   projectReports = $pageProject({
@@ -388,8 +391,29 @@ export class CoreRouter {
       title: `${previous?.title ?? ""} › Reports`,
     }),
     lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
-    loader: async ({ query }) => ({ query }),
+    loader: async ({ query }) => {
+      this.requireCapability("reports", "Reports");
+      return { query };
+    },
   });
+
+  /**
+   * 404 unless the current project has this capability on (#Q4007): the
+   * rule every capability's pages follow, Chat's included.
+   */
+  protected requireCapability(
+    key: "activity" | "reports",
+    name: string,
+  ): Record<string, never> {
+    const project = this.alepha.store.get(currentProjectAtom);
+    if (!project) {
+      throw new NotFoundError("Project not found");
+    }
+    if (!hasCapability(project, key)) {
+      throw new NotFoundError(`${name} is not enabled for this project`);
+    }
+    return {};
+  }
 
   /**
    * The first tab (#Q2999): every enabled capability's period, against the

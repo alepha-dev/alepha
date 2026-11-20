@@ -4,6 +4,7 @@ import { CapabilityRegistry } from "@lore/core/schemas";
 import { planCapabilityOptionsSchema } from "@lore/plan/schemas";
 import { rememberCapabilityOptionsSchema } from "@lore/remember/schemas";
 import { shipCapabilityOptionsSchema } from "@lore/ship/schemas";
+import { z } from "alepha";
 import { describe, it } from "vitest";
 
 /**
@@ -21,6 +22,9 @@ describe("capability options schemas", () => {
     build: buildCapabilityOptionsSchema,
     ship: shipCapabilityOptionsSchema,
     chat: chatCapabilityOptionsSchema,
+    // Core's own switches (#Q4007), with no option and no module.
+    activity: z.object({}),
+    reports: z.object({}),
   };
 
   it("has a module schema for every capability", ({ expect }) => {

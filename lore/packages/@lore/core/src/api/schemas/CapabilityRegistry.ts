@@ -87,6 +87,12 @@ export interface CapabilityDescriptor {
    * and the wizard sent `feedback: false`.
    */
   preselectedCapability: boolean;
+  /**
+   * Where the wizard and Settings draw it: `general` above the pillars
+   * (Activity, Chat, Reports, #Q4007), `pillar` for Plan, Remember, Build
+   * and Ship.
+   */
+  group: "general" | "pillar";
   options: CapabilityOptionDescriptor[];
   /**
    * The MCP tools this capability owns. A call into one of them, on a project
@@ -168,9 +174,11 @@ export interface CapabilityDescriptor {
  * Notifications are Core as well (#Q3892): their pages, permissions, MCP tools
  * and activity kind belong to no capability, and each event, selector and
  * preset declares the capability it needs.
- * Reports is Core too, and its tabs declare a capability the way dashboard
- * cards do, because Quality is Build's and Members is derived from a core
- * table: a Build-only project needs Reports to reach its own Quality tab.
+ * Reports' tabs declare a capability the way dashboard cards do, because
+ * Quality is Build's and Members is derived from a core table. Since #Q4007
+ * the Activity PAGE and Reports each have a switch of their own (`activity`,
+ * `reports`), on by default, that hides the page and owns nothing else: the
+ * feed's data and the reports' API stay Core.
  *
  * Shaped after `DashboardMetricCatalog`, and for the same reason: a registry a
  * surface reads is one place to add a capability, where a hand-written `if`
@@ -183,6 +191,7 @@ export class CapabilityRegistry {
       name: "Plan",
       labelKey: "project.capability.plan.label",
       descriptionKey: "project.capability.plan.description",
+      group: "pillar",
       preselectedCapability: true,
       options: [
         {
@@ -477,6 +486,7 @@ export class CapabilityRegistry {
       name: "Remember",
       labelKey: "project.capability.remember.label",
       descriptionKey: "project.capability.remember.description",
+      group: "pillar",
       preselectedCapability: true,
       // None since #Q3704: the summary is edited from the Folio menu.
       options: [],
@@ -528,6 +538,7 @@ export class CapabilityRegistry {
       name: "Build",
       labelKey: "project.capability.build.label",
       descriptionKey: "project.capability.build.description",
+      group: "pillar",
       preselectedCapability: false,
       // Each half switched on its own (#Q4005): a project may host its code
       // without pushing coverage, or push coverage from a forge elsewhere.
@@ -578,6 +589,7 @@ export class CapabilityRegistry {
       name: "Ship",
       labelKey: "project.capability.ship.label",
       descriptionKey: "project.capability.ship.description",
+      group: "pillar",
       preselectedCapability: false,
       options: [
         {
@@ -668,6 +680,7 @@ export class CapabilityRegistry {
       name: "Chat",
       labelKey: "project.capability.chat.label",
       descriptionKey: "project.capability.chat.description",
+      group: "general",
       preselectedCapability: false,
       options: [],
       mcpTools: ["chat_room_list", "chat_message_list", "chat_message_send"],
@@ -677,6 +690,43 @@ export class CapabilityRegistry {
       activityKinds: [],
       dashboardCards: [],
       permissionGroups: ["chat"],
+    },
+    {
+      // The Activity page and its sidebar entry (#Q4007), Core until then.
+      // On by default, and every project that existed was given it by a
+      // migration. Off hides the page (404) and the entry, nothing else: the
+      // feed's data, `project_activity` over MCP and the CLI stay Core, an
+      // agent's change feed must not depend on a page being shown.
+      key: "activity",
+      name: "Activity",
+      labelKey: "project.capability.activity.label",
+      descriptionKey: "project.capability.activity.description",
+      preselectedCapability: true,
+      group: "general",
+      options: [],
+      mcpTools: [],
+      searchKinds: [],
+      activityKinds: [],
+      dashboardCards: [],
+      permissionGroups: [],
+    },
+    {
+      // Reports and its sidebar entry (#Q4007), Core until then, the same
+      // way as Activity: on by default, migrated on, and off hides the page
+      // and the entry. Each tab still declares the capability its data
+      // needs; `project_report` stays Core.
+      key: "reports",
+      name: "Reports",
+      labelKey: "project.capability.reports.label",
+      descriptionKey: "project.capability.reports.description",
+      preselectedCapability: true,
+      group: "general",
+      options: [],
+      mcpTools: [],
+      searchKinds: [],
+      activityKinds: [],
+      dashboardCards: [],
+      permissionGroups: [],
     },
   ];
 

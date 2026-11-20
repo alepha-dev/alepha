@@ -1225,6 +1225,15 @@ export default {
   "project.capability.build.option.quality.label": "Qualité",
   "project.capability.build.option.quality.description":
     "Couverture et totaux de tests envoyés par la CI, dans les Rapports.",
+  "project.capability.activity.label": "Activité",
+  "project.capability.activity.description":
+    "Chaque modification faite dans le projet, la plus récente en premier.",
+  "project.capability.reports.label": "Rapports",
+  "project.capability.reports.description":
+    "Chiffres de flux, de livraison et d'équipe sur une période.",
+  "project.settings.capabilities.general": "Général",
+  "project.create.group.general": "Général",
+  "project.create.group.pillars": "Piliers",
   "project.capability.ship.label": "Livrer",
   "project.capability.ship.description":
     "Des applications et leurs déploiements, analytique, erreurs, Web Vitals.",
