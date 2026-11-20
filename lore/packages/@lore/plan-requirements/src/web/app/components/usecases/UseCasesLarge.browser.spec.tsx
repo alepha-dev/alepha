@@ -17,6 +17,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import { useCaseGroupingAtom } from "../../atoms/useCaseGroupingAtom.ts";
 import UseCasesPage from "../pages/UseCasesPage.tsx";
 
 /**
@@ -124,6 +125,8 @@ describe("Use cases page at 276 use cases (#Q3978)", () => {
       slug: "acme",
       permissions: ["usecase:read"],
     } as never);
+    // These cases read the epic groups; the page opens on personas.
+    alepha.store.set(useCaseGroupingAtom, { byProject: { "1": "epic" } });
     render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
