@@ -11,6 +11,8 @@ import { workspaceProjects } from "../../../scripts/vitest.projects.ts";
  */
 export const projects = workspaceProjects(import.meta.url, {
   name: "@alepha/commerce",
+  // Every spec builds its schema on Postgres inside the test (#Q4001).
+  testTimeout: 30_000,
 });
 
 export default defineConfig({ test: { projects } });
