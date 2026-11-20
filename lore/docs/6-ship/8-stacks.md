@@ -11,7 +11,7 @@ are in [Stacks](/bay/docs/guides-stacks) in the Bay documentation.
 
 ## Turning it on
 
-Stacks are the **Stacks** option of the Ship capability, off by default, in
+Stacks are the **Deploy stacks** option of the Ship capability, off by default, in
 **Settings ▸ General ▸ Capabilities** (see
 [Capabilities](/lore/docs/project-capabilities)). It adds **Stacks** to the
 sidebar.

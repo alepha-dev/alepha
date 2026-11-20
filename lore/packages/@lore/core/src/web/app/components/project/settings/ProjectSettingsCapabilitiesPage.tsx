@@ -53,9 +53,11 @@ const ProjectSettingsCapabilitiesPage = () => {
         <ProjectSettingsCapabilitySection
           key={key}
           capability={key}
+          // Ship and Build list every option, in the registry's order
+          // (#Q4006): omitted means all of them, as declared.
           options={
             key === "ship" || key === "build"
-              ? [...shell.navOptions(key), ...shell.settingsOptions(key)]
+              ? undefined
               : shell.navOptions(key)
           }
         />

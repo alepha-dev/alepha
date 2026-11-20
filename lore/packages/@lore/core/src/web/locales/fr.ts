@@ -4705,7 +4705,7 @@ export default {
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":
     "Vérifiez vos adresses à intervalles réguliers et gardez leur historique. Aucun sigil requis.",
-  "project.capability.ship.option.stacks.label": "Stacks",
+  "project.capability.ship.option.stacks.label": "Déployer les stacks",
   "project.capability.ship.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
   "uptime.checksOver.24h": "Vérifications des dernières 24 heures",
