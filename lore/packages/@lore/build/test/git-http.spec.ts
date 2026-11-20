@@ -423,6 +423,43 @@ describe("git smart HTTP", () => {
     await git(["push", "--quiet", remote, ":other"], source);
   });
 
+  it("refuses a non-fast-forward push of the default branch, and lets a feature branch be force-pushed (#Q3953)", async ({
+    expect,
+  }) => {
+    const { owner, cloneUrl } = await aProject();
+    const source = await aCheckout();
+    const remote = withKey(cloneUrl, owner.key);
+    await git(["push", "--quiet", remote, "main"], source);
+    const { stdout: pushed } = await git(["rev-parse", "HEAD"], source);
+
+    // History rewritten: the amended commit is not a descendant of main's.
+    await git(["commit", "--quiet", "--amend", "-m", "rewritten"], source);
+    const refused = await git(
+      ["push", "--force", remote, "main"],
+      source,
+    ).catch((error) => error as { stderr: string });
+    expect(String((refused as { stderr: string }).stderr)).toMatch(
+      /default branch main refuses a non-fast-forward push/,
+    );
+    await git(["clone", "--quiet", remote, "after"]);
+    const { stdout: kept } = await git(
+      ["rev-parse", "HEAD"],
+      join(ctx.work, "after"),
+    );
+    expect(kept.trim()).toBe(pushed.trim());
+
+    // Any other branch takes a force-push, and main a fast-forward.
+    await git(["push", "--quiet", remote, "HEAD:feature"], source);
+    await git(["commit", "--quiet", "--amend", "-m", "again"], source);
+    await git(["push", "--quiet", "--force", remote, "HEAD:feature"], source);
+    await git(["fetch", "--quiet", remote, "main"], source);
+    await git(["reset", "--quiet", "--hard", "FETCH_HEAD"], source);
+    await writeFile(join(source, "next.md"), "next\n");
+    await git(["add", "next.md"], source);
+    await git(["commit", "--quiet", "-m", "next"], source);
+    await git(["push", "--quiet", remote, "main"], source);
+  });
+
   it("lets a Viewer clone and refuses its push with 403", async ({
     expect,
   }) => {
