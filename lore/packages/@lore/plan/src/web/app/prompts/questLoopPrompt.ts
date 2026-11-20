@@ -11,7 +11,9 @@
  * waiting on one CI run and one merge per quest. Each quest is accepted
  * before its commit and completed once that commit is pushed, so a quest
  * that depends on it can be accepted; the sha main received is recorded
- * after the merge. The agent never merges to main itself.
+ * after the merge, by whoever is still there: nothing waits for it, since
+ * the merge lands once the run has ended (#Q3982). The agent never merges
+ * to main itself.
  *
  * ⚠️ **Surface-scoped**, like `feedbackLoop`: its subject is an
  * {@link AgentPromptProjectSubject}, so `{{reference}}`, `{{number}}`,
@@ -66,10 +68,9 @@ When a quest cannot be done as written, say so in a comment on it (\`quest_comme
 ## When none is left
 
 1. Read the list one last time. If it is empty, mark the pull request ready for review. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
-2. Only once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference).
-3. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
+2. If you are still there once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-If the pull request has not merged when you stop, say so in your reply with its link: its quests are completed, but not on main yet.
+Never stop with a quest you accepted still open, unless you left it with a comment on why it cannot be done as written. If the pull request has not merged when you stop, say so in your reply with its link: its quests are completed, but not on main yet.
 
 ## Then report in your reply
 

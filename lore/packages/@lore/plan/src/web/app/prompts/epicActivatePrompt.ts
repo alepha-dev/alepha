@@ -29,10 +29,14 @@
  * ⚠️ **A quest completes once its commit is pushed, not on the merge.**
  * `quest_accept` refuses a quest whose dependency is not completed, so a
  * quest that waited for the epic's merge would block every quest after it.
- * The LAST quest is the exception: completing it completes the epic, so it
- * waits for the merge, and the epic completes only once it has landed. A
- * rebase gives every commit a new sha, so the shas are recorded after the
- * merge, from main's log.
+ * The LAST quest completes the same way (#Q3982): it waited for the merge
+ * until then, since completing it completes the epic, and the merge lands
+ * after the agent's run has ended, with nothing to bring it back, so the
+ * epic stayed in progress until a person noticed. A completed epic says its
+ * work is done, not that it shipped: Lore reads where a quest is live from
+ * the references in a deployment's history. A rebase gives every commit a
+ * new sha, so main's shas are recorded by whoever is still there after the
+ * merge.
  *
  * What an agent cannot guess is filled in: which calls read the plan, what
  * the frozen quest set forbids once the epic has started, and what to do
@@ -83,7 +87,7 @@ The epic: {{url}}
 3. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red before moving on. A skipped check is a failure, not a pass.
 4. Commit it as one commit, its message naming the quest and {{reference}}. One quest is one commit: a later fix to this quest goes into its commit (a fixup, squashed into it before you push), never into another quest's.
 5. Push the branch. After the first quest, open a pull request into main for the whole epic, as a draft: its title names {{reference}}, and its description links the epic and lists its quests. Record it once on the epic with \`epic_pull_request_add\` (project_name "{{project}}", number {{number}}, its URL, number and title): every quest of the epic shows the epic's pull request, so it is never posted on each quest.
-6. \`quest_complete\` it with a short note: what shipped, and anything the next quest needs to know. A quest that depends on it can then be accepted. Keep the epic's last quest accepted until the pull request has merged: completing it completes the epic, and the epic has not landed yet.
+6. \`quest_complete\` it with a short note: what shipped, and anything the next quest needs to know. A quest that depends on it can then be accepted. The epic's last quest completes the same way, and completing it completes the epic: that says its work is done, not that it has shipped. Do not record the branch's shas: the rebase merge replaces them.
 
 If the project verifies on CI, every push runs it on the pull request, and that run is the source of truth: a green local check is not. Do not wait for it before starting the next quest, but read each run as it lands, and fix a red one in the commit of the quest it belongs to before going on.
 
@@ -92,11 +96,10 @@ If main moves and the pull request conflicts, rebase the branch onto the latest 
 ## After the last quest
 
 1. Mark the pull request ready for review. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
-2. Only once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference), then \`quest_complete\` the last quest.
-3. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
-4. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left. Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
+2. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left. Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
+3. If you are still there once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-There is no status to set: the epic completed on its own when its last open quest was completed or shelved. If the pull request has not merged when you stop, leave the last quest accepted and say so in your reply, with the pull request's link.
+There is no status to set: the epic completed on its own when its last open quest was completed or shelved. Never stop with a quest you accepted still open, unless you stop on an owner's question above. If the pull request has not merged when you stop, say so in your reply with its link: the epic is completed, and not on main yet.
 
 When a quest cannot be done as written, say so in a comment on it and move on to one that can. Do not guess at a decision that is the owner's to make.
 

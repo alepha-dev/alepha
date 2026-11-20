@@ -18,8 +18,14 @@
  * creates one, linked to the feedback item, and ends by telling the
  * reporter what shipped. It lands the change the way
  * {@link questWorkPromptDefault} does (#Q3633, #Q3706): one commit in a pull
- * request of its own, rebase-merged, that the agent never merges itself, and
- * the reporter is told only once it has merged.
+ * request of its own, rebase-merged, that the agent never merges itself.
+ *
+ * ⚠️ **The quest completes, and the reporter hears of it, in the run that
+ * opens the pull request (#Q3982).** Both waited for the merge until then,
+ * which lands after the agent's run has ended: the quest stayed accepted and
+ * the reporter heard nothing. The reporter is told what changed and that it
+ * is on its way, never that it shipped: Lore shows where the quest is live
+ * once a deployment carries it.
  *
  * ⚠️ **Step 1's "and stop" carries the reply clause**, for the reason
  * {@link questWorkPromptDefault} does: one blocking point, so a clause
@@ -53,6 +59,8 @@ The report: {{url}}
 6. Push the branch and open a pull request into main. Its title names the quest and {{reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: fix and push again until it is green.
 8. Never merge it yourself, and never push to main: the pull request is how the change lands. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge. Otherwise it waits for review.
-9. Only once it has merged: record the commit main received with \`quest_commit_add\` (a rebase merge gives it a new sha; find it in main's log by the quest's reference), \`quest_complete\` with a short note, then tell the reporter in the feedback's discussion what shipped, in one or two sentences. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
+9. Complete the quest now, in this run: do not wait for the CI run or the merge. \`quest_complete\` with a short note: what changed, what was left out, and the pull request. Do not record the branch's sha: the rebase merge replaces it. A fix after that, for a red run or a review, still goes into the quest's one commit.
+10. Then tell the reporter in the feedback's discussion what changed, in one or two sentences: say it is on its way, never that it has shipped, since it lands when the pull request merges.
+11. If you are still there once it has merged, record the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-If the pull request has not merged when you stop, leave the quest accepted, tell nobody it shipped yet, and say so in your reply with the pull request's link.`;
+Never stop with the quest still accepted, unless you stop on a question (step 1). If the pull request has not merged when you stop, say so in your reply with its link: the quest is completed, and not on main yet.`;

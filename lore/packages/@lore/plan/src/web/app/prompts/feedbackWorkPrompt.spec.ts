@@ -100,10 +100,11 @@ describe("feedbackWorkPromptDefault", () => {
   });
 
   /**
-   * The agent never merges itself (#Q3633), and the reporter hears that it
-   * shipped only once the pull request has merged.
+   * The agent never merges itself (#Q3633). It completes the quest and tells
+   * the reporter in the run that opens the pull request, never after the
+   * merge, which lands once it is gone (#Q3982), and never claims it shipped.
    */
-  it("makes CI the gate, never merges, and tells the reporter only after the merge", () => {
+  it("makes CI the gate, never merges, and closes the loop before the merge", () => {
     expect(prompt).toContain(
       "the run on the pull request is the source of truth",
     );
@@ -113,9 +114,13 @@ describe("feedbackWorkPromptDefault", () => {
     expect(prompt).toContain("Commit it as one commit");
     expect(prompt).toContain("as a rebase merge");
     expect(prompt).not.toContain("merge the branch into main");
-    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
+    expect(prompt).toContain("do not wait for the CI run or the merge");
+    expect(prompt.indexOf("`quest_complete`")).toBeLessThan(
       prompt.indexOf("tell the reporter"),
     );
+    expect(prompt).toContain("never that it has shipped");
+    expect(prompt).toContain("Never stop with the quest still accepted");
+    expect(prompt).not.toContain("Only once it has merged");
     expect(prompt).toContain("Delete the branch locally");
     expect(prompt).toContain("remove the worktree");
   });

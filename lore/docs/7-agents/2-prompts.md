@@ -122,14 +122,18 @@ reverted alone. The flow:
    its branch: it rebases instead. If the project's `AGENTS.md` (or
    `CLAUDE.md`) lets an agent turn on auto-merge, it does, as a rebase merge.
    Otherwise the pull request waits for your review.
-6. A quest worked on its own completes once its pull request has merged. In an
-   epic or a run, a quest completes once its commit is pushed, so the quests
-   that depend on it can start; an epic's last quest waits for the merge, so
-   the epic completes only once it has landed. After the merge the agent
-   records on every quest the commit main received.
+6. Every quest completes once its commit is pushed, in the same run, without
+   waiting for CI or the merge: the merge often lands after the agent has
+   stopped, and nothing would bring it back to close the quest. In an epic or
+   a run, the quests that depend on it can then start, and the epic's last
+   quest completes the epic. A completed quest says the work is done, not
+   that it has shipped: the quest shows where it is live once a deployment
+   carries its commit. If the agent is still there after the merge, it records
+   on every quest the commit main received.
 
-A pull request still waiting for review when the agent stops leaves its last
-quest accepted, and the agent says so in its reply.
+An agent never stops with a quest it accepted still open, unless it stopped
+on a question for you. A pull request still waiting for review when it stops
+is named in its reply, with its link.
 
 ## Writing your own
 

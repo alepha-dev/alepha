@@ -74,22 +74,26 @@ describe("questWorkPromptDefault", () => {
 
   /**
    * The order is the point, not the steps. A local check is the inner loop,
-   * the CI run on the pull request is the source of truth, and the quest is
-   * done once the pull request merges - not once it is opened.
+   * the CI run on the pull request is the source of truth, and the quest
+   * completes in the run that opens the pull request, never after the merge,
+   * which lands once the agent is gone (#Q3982).
    */
-  it("makes the CI run the gate, and completing the quest wait for the merge", () => {
+  it("makes the CI run the gate, and completes the quest without waiting for the merge", () => {
     expect(prompt).toContain(
       "the run on the pull request is the source of truth",
     );
     expect(prompt).toContain("the run on the pull request");
     expect(prompt).toContain("a green local check is not");
     expect(prompt.indexOf("open a pull request into main")).toBeLessThan(
-      prompt.indexOf("Only once it has merged"),
-    );
-    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
       prompt.indexOf("`quest_complete`"),
     );
-    expect(prompt).toContain("leave the quest accepted");
+    expect(prompt).toContain("do not wait for the CI run or the merge");
+    expect(prompt.indexOf("`quest_complete`")).toBeLessThan(
+      prompt.indexOf("once it has merged"),
+    );
+    expect(prompt).toContain("Never stop with the quest still accepted");
+    expect(prompt).not.toContain("Only once it has merged");
+    expect(prompt).not.toContain("leave the quest accepted");
   });
 
   /**

@@ -57,8 +57,10 @@ describe("questLoopPromptDefault", () => {
     expect(at("Commit it as one commit")).toBeLessThan(at("Push the branch"));
     expect(at("Push the branch")).toBeLessThan(at("`quest_complete` it"));
     expect(at("When none is left")).toBeLessThan(at("as a rebase merge"));
-    expect(at("as a rebase merge")).toBeLessThan(at("Only once it has merged"));
-    expect(at("Only once it has merged")).toBeLessThan(
+    expect(at("as a rebase merge")).toBeLessThan(
+      at("If you are still there once it has merged"),
+    );
+    expect(at("If you are still there once it has merged")).toBeLessThan(
       at("`quest_commit_add`"),
     );
     // The agent never merges to main itself, nor main into its branch.
