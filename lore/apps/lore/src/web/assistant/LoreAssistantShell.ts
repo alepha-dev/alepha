@@ -4,6 +4,7 @@ import { $inject } from "alepha";
 
 import { assistantConfirmCards } from "./assistantConfirmCards.ts";
 import AssistantHeaderButton from "./AssistantHeaderButton.tsx";
+import AssistantPanel from "./AssistantPanel.tsx";
 import { useAssistantToolLabel } from "./useAssistantToolLabel.ts";
 
 /**
@@ -20,6 +21,7 @@ export class LoreAssistantShell {
       key: "assistant",
       component: AssistantHeaderButton,
     });
+    this.shell.registerOverlay({ key: "assistant", component: AssistantPanel });
     // `@lore` in a chat room shows the dock's own tool labels and write
     // cards (#Q3956): drawn once, in the app, and lent to chat.
     this.chatAgents.register({

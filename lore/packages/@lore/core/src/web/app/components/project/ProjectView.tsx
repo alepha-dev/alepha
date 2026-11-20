@@ -22,6 +22,7 @@ import {
   type ProjectShellContext,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
+import ProjectAiContextPublisher from "./ProjectAiContextPublisher.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
 import ProjectPageSkeleton from "./ProjectPageSkeleton.tsx";
 import ProjectRail from "./ProjectRail.tsx";
@@ -206,6 +207,7 @@ const ProjectView = () => {
           component because this view returns early above and hooks may not
           sit below a return. */}
       <ProjectViewNavPublisher nav={nav} />
+      <ProjectAiContextPublisher />
       {/* A row: the project rail (#Q3366), then the shell. The shell is
           `fill`, so its sidebar is anchored to this wrapper rather than to
           the viewport and sits beside the rail instead of under it. */}

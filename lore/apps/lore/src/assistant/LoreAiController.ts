@@ -15,16 +15,13 @@ import { LoreAiSwitch } from "./LoreAiSwitch.ts";
  * first, with a 401, whatever the switch says.
  */
 export class LoreAiController extends AiController {
-  protected override guard(endpoint: AiEndpoint): SecureMiddleware {
+  protected override guard(_endpoint: AiEndpoint): SecureMiddleware {
     // Injected here, not read from a field: the base class calls this while
     // its own fields are built, before this class's exist.
     const assistantSwitch = $inject(LoreAiSwitch);
-    // The conversation list and detail served only the dock, replaced by the
-    // member's room in chat (#Q3942): a conversation is read in its room.
-    const dockOnly = endpoint === "list" || endpoint === "detail";
     return $secure({
       guard: () => {
-        if (!assistantSwitch.enabled || dockOnly) {
+        if (!assistantSwitch.enabled) {
           throw new NotFoundError("Not found");
         }
         return true;

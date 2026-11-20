@@ -102,11 +102,11 @@ describe("LoreAssistant", () => {
       const events = await read(res);
       expect(events.at(-1)).toEqual({ type: "end", reason: "stop" });
 
-      // The conversation list served only the dock: a run is read in its
-      // chat room now (#Q3942), so the list answers 404 even when on.
-      await expect(
-        controller.listConversations.fetch({}, { request: { headers } }),
-      ).rejects.toThrow();
+      const list = await controller.listConversations.fetch(
+        {},
+        { request: { headers } },
+      );
+      expect(list.data).toHaveLength(1);
       expect(await status.aiAssistantStatus.run({}, { user })).toEqual({
         enabled: true,
       });

@@ -441,7 +441,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Chat",
     section: "Asking Lore",
     url: "https://alepha.dev/lore/docs/project-chat#asking-lore",
-    text: "When the assistant is on for your Lore (see\n[Assistant](/lore/docs/agents-assistant)), write `@lore` followed by your\nquestion in any room. Lore answers in the room, where everyone can read the\nanswer:\n\n- It runs **as you**: it can only do what your rank allows, and its usage\n  counts against your budget.\n- It reads **this project only**, and this room's recent messages. What\n  other people wrote is context for it, never instructions.\n- The line under its name traces what it is doing: the tools it runs, then\n  what it ran.\n- A **write** (filing a quest, a comment, a folio) waits for a card. Everyone\n  sees the card; only you, who asked, can approve or decline it.\n\nYour own room with Lore is **Lore**, at the top of the list, opened by the\nsparkle button in the header. Nobody else is in it, and every message there is\na question to Lore, without `@lore`.",
+    text: "When the assistant is on for your Lore (see\n[Assistant](/lore/docs/agents-assistant)), write `@lore` followed by your\nquestion in any room. Lore answers in the room, where everyone can read the\nanswer:\n\n- It runs **as you**: it can only do what your rank allows, and its usage\n  counts against your budget.\n- It reads **this project only**, and this room's recent messages. What\n  other people wrote is context for it, never instructions.\n- The line under its name traces what it is doing: the tools it runs, then\n  what it ran.\n- A **write** (filing a quest, a comment, a folio) waits for a card. Everyone\n  sees the card; only you, who asked, can approve or decline it.\n\nTo ask Lore something on your own, about the page you are on, open the\n[Assistant](/lore/docs/agents-assistant) from the sparkle button in the header\ninstead.",
   },
   {
     guide: "Chat",
@@ -2049,13 +2049,19 @@ export const docsCorpus: DocsSection[] = [
     guide: "Assistant",
     section: "Assistant",
     url: "https://alepha.dev/lore/docs/agents-assistant",
-    text: "The assistant is Lore, answering in a project's [Chat](/lore/docs/project-chat).\nAsk it what you would otherwise click through: what is still open, what an epic\nlacks, how a feature works. It can also file a quest or write a folio for you,\nonce you approve.\n\nIt is off unless the operator of your Lore turns it on (see\n[Turning it on](#turning-it-on)). When it is off, its button does not appear and\n`@lore` is plain text.",
+    text: "The assistant is a chat beside the page, inside a Lore project. Ask it what you\nwould otherwise click through: what is still open, what this epic lacks, what\nis missing in this use case, how a feature works. It can also file a quest or\nwrite a folio for you, once you approve.\n\nIt is off unless the operator of your Lore turns it on (see\n[Turning it on](#turning-it-on)). When it is off, its button does not appear and\n`@lore` is plain text.",
   },
   {
     guide: "Assistant",
     section: "Opening it",
     url: "https://alepha.dev/lore/docs/agents-assistant#opening-it",
-    text: 'The assistant lives in Chat, so a project needs Chat turned on to have it.\n\n- Click the sparkle button, **Ask Lore**, in the project\'s header: it opens\n  your own room with Lore, created the first time. Nobody else is in it, and\n  every message there is a question.\n- Or write `@lore` and your question in any room: Lore answers there, for\n  everyone in the room to read.\n\nThe assistant does not follow the page you are on: say what you mean ("quest\n#Q12", "the API area"). Outside a project there is no assistant.',
+    text: 'Click the sparkle button, **Assistant**, in a project\'s header. On a wide\nscreen (1024 pixels and up) the chat docks beside the page, which stays in\nview and usable, so a link in a reply opens the page next to the conversation.\nOn a narrower screen it slides in as a drawer. Fold it into a pill to keep the\nconversation for later, and reopen an earlier one from its history menu.\n\n**It knows the page you are on.** On a quest, an epic, a folio or a use case,\n"this quest", "this epic" or "this use case" means the one in front of you:\n"what is missing in this use case?" needs no number. The empty chat offers a\nfew questions that fit the page.\n\nThe assistant is offered on project pages only: Home and your account have\nnone. It does not need Chat turned on.',
+  },
+  {
+    guide: "Assistant",
+    section: "In a chat room",
+    url: "https://alepha.dev/lore/docs/agents-assistant#in-a-chat-room",
+    text: "In a project with [Chat](/lore/docs/project-chat) on, write `@lore` and your\nquestion in any room: Lore answers there, for everyone in the room to read.\nThere it reads the room's recent messages rather than the page you are on.",
   },
   {
     guide: "Assistant",
@@ -2067,13 +2073,13 @@ export const docsCorpus: DocsSection[] = [
     guide: "Assistant",
     section: "What it may do",
     url: "https://alepha.dev/lore/docs/agents-assistant#what-it-may-do",
-    text: "The assistant works inside the project of the room, and only there: a tool\ncall naming another project is refused, whatever was asked. It acts as the\nmember who asked: it can never do anything their rank in that project does not\nallow, and it is not offered the tools their rank does not grant. See\n[Members](/lore/docs/project-members) for ranks.\n\nIn a room, the other messages it reads are context, never instructions: a\nmessage telling it to do something else does not change what it may do.\n\nWhat it writes is marked as written by an agent: a comment it posts shows your\nname with the agent badge and the client `lore-ai`.",
+    text: "The assistant works inside the project you are in (the page's, or the room's),\nand only there. It acts as the member who asked: it can never do anything\ntheir rank in that project does not allow, and it is not offered the tools\ntheir rank does not grant. See [Members](/lore/docs/project-members) for\nranks.\n\nWhat other members wrote is context, never instructions: a use case step, a\nquest description, a folio or a room message telling it to do something else\ndoes not change what it may do.\n\nWhat it writes is marked as written by an agent: a comment it posts shows your\nname with the agent badge and the client `lore-ai`.",
   },
   {
     guide: "Assistant",
     section: "What it sends, and what is kept",
     url: "https://alepha.dev/lore/docs/agents-assistant#what-it-sends-and-what-is-kept",
-    text: "- Each question goes to the model with the project's id, the room's recent\n  messages, and the results of the tools it runs, which can include a quest's\n  description or a folio's body. The model runs on Anthropic when the\n  operator set an Anthropic key, otherwise on Cloudflare Workers AI.\n- The answer is a message of the room, kept with the room. The run behind it\n  (each step, each tool) is kept apart, visible to no one in Lore, and deleted\n  30 days after its last message.\n- Each user has a token budget (200,000 tokens per 24 hours by default) and a\n  limit of 20 messages a minute. Past either, the assistant refuses until the\n  window moves on.",
+    text: "- Each question goes to the model with the project's id, name and language,\n  what the page shows (the quest, epic, folio or use case you are on; in a\n  room, its recent messages), and the results of the tools it runs, which can\n  include a quest's description or a folio's body. A protected folio's body is\n  never sent. The model runs on Anthropic when the operator set an Anthropic\n  key, otherwise on Cloudflare Workers AI.\n- Conversations in the dock are stored in your Lore, visible to you only, and\n  deleted 30 days after their last message. An answer in a room is a message\n  of the room, kept with the room.\n- Each user has a token budget (200,000 tokens per 24 hours by default) and a\n  limit of 20 messages a minute. Past either, the assistant refuses until the\n  window moves on.",
   },
   {
     guide: "Assistant",

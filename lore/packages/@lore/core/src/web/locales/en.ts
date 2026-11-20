@@ -730,10 +730,6 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message #$1",
   "chat.composer.send": "Send",
-  "chat.rooms.personal": "Lore",
-  "chat.room.personalEmpty":
-    "Just you and Lore. Every message here is a prompt.",
-  "assistant.room.open": "Ask Lore",
   "chat.agent.tag": "agent",
   "chat.agent.thinking": "Thinking…",
   "chat.agent.waitingFor": "Waiting for $1 to decide.",
@@ -4888,8 +4884,51 @@ export default {
   "backup.events": "Events",
   "backup.noEvents": "No backup events yet.",
   // The in-app assistant (#E120): its header toggle, dock and tool steps.
+  "assistant.open": "Assistant",
+  "assistant.title": "Lore assistant",
+  "assistant.help": "What the assistant can do",
+  "assistant.suggest.open": "What is still open in this project?",
+  "assistant.suggest.epic": "What does the current epic still lack?",
+  "assistant.suggest.file": "File a quest for ...",
+  "assistant.suggest.reports.week": "What changed in this project this week?",
+  "assistant.suggest.reports.slow": "Which areas are slowing down, and why?",
+  "assistant.suggest.reports.summary":
+    "Summarize these reports for a status update",
+  "assistant.suggest.quest.left": "What is left to do on this quest?",
+  "assistant.suggest.quest.discussion": "Summarize this quest’s discussion",
+  "assistant.suggest.quest.dependencies":
+    "What does this quest depend on, and is it ready?",
+  "assistant.suggest.epic.lack": "What does this epic still lack?",
+  "assistant.suggest.epic.blocked":
+    "Which quests in this epic are blocked or on hold?",
+  "assistant.suggest.epic.next": "Which quest of this epic should come next?",
+  "assistant.suggest.feedback.pending":
+    "What feedback is still waiting for triage?",
+  "assistant.suggest.feedback.group": "Group the pending feedback by topic",
+  "assistant.suggest.feedback.file": "File a quest for the most reported issue",
+  "assistant.suggest.apps.deploys": "Which deploys failed recently, and why?",
+  "assistant.suggest.apps.errors": "Which apps report the most errors?",
+  "assistant.suggest.apps.silent": "Which apps have stopped reporting?",
+  "assistant.suggest.usecase.review":
+    "Review this use case: what is missing or unclear?",
+  "assistant.suggest.usecase.steps": "Write the missing steps of this use case",
+  "assistant.suggest.usecase.quests":
+    "File quests for what this use case still needs",
+  "assistant.suggest.requirements.failing":
+    "Which use cases fail, and since when?",
+  "assistant.suggest.requirements.uncovered":
+    "Which use cases does no epic cover?",
+  "assistant.suggest.requirements.stale":
+    "Which runs are stale and need playing again?",
+  "assistant.suggest.folio.summary": "Summarize this folio",
+  "assistant.suggest.folio.decisions":
+    "Which decisions does this folio record?",
+  "assistant.suggest.folio.quests":
+    "File quests for the work this folio describes",
   "assistant.tool.failed": "$1 failed",
   "assistant.tool.denied": "$1 cancelled",
+  "assistant.tool.project_list.running": "Listing your projects",
+  "assistant.tool.project_list.done": "Listed your projects",
   "assistant.tool.project_info.running": "Reading the project",
   "assistant.tool.project_info.done": "Read the project",
   "assistant.tool.quest_list.running": "Listing quests",

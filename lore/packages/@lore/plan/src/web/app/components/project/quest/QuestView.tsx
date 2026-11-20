@@ -54,6 +54,7 @@ import QuestViewFeedbackBadge from "./QuestViewFeedbackBadge.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewQuestline from "./QuestViewQuestline.tsx";
 import QuestViewRail from "./QuestViewRail.tsx";
+import { useQuestAiContext } from "./useQuestAiContext.ts";
 
 export interface QuestViewProps {
   quest: QuestResource;
@@ -107,6 +108,7 @@ const QuestView = (props: QuestViewProps) => {
     setSeededQuest(props.quest);
     setQuest(props.quest);
   }
+  useQuestAiContext(quest);
 
   // The Discussion's composer is a `LoreEditor` now (#Q2014), so the
   // CodeMirror chunk is needed on this page where the read-only description

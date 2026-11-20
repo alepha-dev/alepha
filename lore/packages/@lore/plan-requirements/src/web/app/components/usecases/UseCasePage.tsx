@@ -29,6 +29,7 @@ import DetailMoreMenu from "../shared/DetailMoreMenu.tsx";
 import RequirementsHover from "../shared/RequirementsHover.tsx";
 import WarningNotice from "../shared/WarningNotice.tsx";
 import VerifyMenu from "../verify/VerifyMenu.tsx";
+import UseCaseAiContextPublisher from "./UseCaseAiContextPublisher.tsx";
 import UseCaseAside from "./UseCaseAside.tsx";
 import UseCaseCoverage from "./UseCaseCoverage.tsx";
 import UseCaseCriteria from "./UseCaseCriteria.tsx";
@@ -160,123 +161,126 @@ const UseCasePage = (props: UseCasePageProps) => {
   ];
 
   return (
-    <DetailLayout
-      aside={<UseCaseAside useCase={useCase} />}
-      tabs={tabs}
-      tab={tab}
-      onTabChange={(value) => setTab(value as TabKey)}
-      actions={
-        <>
-          <VerifyMenu subject={{ kind: "usecase", number: useCase.number }} />
-          {/* One validation button, the reader's own: a validator
+    <>
+      <UseCaseAiContextPublisher useCase={useCase} />
+      <DetailLayout
+        aside={<UseCaseAside useCase={useCase} />}
+        tabs={tabs}
+        tab={tab}
+        onTabChange={(value) => setTab(value as TabKey)}
+        actions={
+          <>
+            <VerifyMenu subject={{ kind: "usecase", number: useCase.number }} />
+            {/* One validation button, the reader's own: a validator
               validates, a writer asks for it. The other verbs are in the
               overflow menu, so the bar never crowds the tabs out. */}
-          {canValidate && open ? (
-            <Button
-              variant="outlined"
-              size="lg"
+            {canValidate && open ? (
+              <Button
+                variant="outlined"
+                size="lg"
+                disabled={busy}
+                onClick={() => void answer.run("validated")}
+              >
+                <CircleCheck className="size-4" />
+                {tr("requirements.usecase.validation.validate")}
+              </Button>
+            ) : canRequest ? (
+              <Button
+                variant="outlined"
+                size="lg"
+                disabled={busy}
+                onClick={() => void request.run()}
+              >
+                <Send className="size-4" />
+                {tr("requirements.usecase.validation.request")}
+              </Button>
+            ) : null}
+            {canWrite ? (
+              <Button
+                variant="outlined"
+                size="lg"
+                disabled={busy}
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="size-4" />
+                {tr("requirements.usecase.edit")}
+              </Button>
+            ) : null}
+            <DetailMoreMenu
               disabled={busy}
-              onClick={() => void answer.run("validated")}
-            >
-              <CircleCheck className="size-4" />
-              {tr("requirements.usecase.validation.validate")}
-            </Button>
-          ) : canRequest ? (
-            <Button
-              variant="outlined"
-              size="lg"
-              disabled={busy}
-              onClick={() => void request.run()}
-            >
-              <Send className="size-4" />
-              {tr("requirements.usecase.validation.request")}
-            </Button>
-          ) : null}
-          {canWrite ? (
-            <Button
-              variant="outlined"
-              size="lg"
-              disabled={busy}
-              onClick={() => setEditing(true)}
-            >
-              <Pencil className="size-4" />
-              {tr("requirements.usecase.edit")}
-            </Button>
-          ) : null}
-          <DetailMoreMenu
-            disabled={busy}
-            items={[
-              ...(canValidate && open
-                ? [
-                    {
-                      key: "changes",
-                      icon: MessageSquareWarning,
-                      label: tr("requirements.usecase.validation.changes"),
-                      onSelect: () => void answer.run("changes_requested"),
-                    },
-                  ]
-                : []),
-              ...(canValidate && open && canRequest
-                ? [
-                    {
-                      key: "request",
-                      icon: Send,
-                      label: tr("requirements.usecase.validation.request"),
-                      onSelect: () => void request.run(),
-                    },
-                  ]
-                : []),
-              ...(canWrite
-                ? [
-                    {
-                      key: "delete",
-                      icon: Trash2,
-                      label: tr("requirements.persona.delete"),
-                      destructive: true,
-                      onSelect: () => void remove.run(),
-                    },
-                  ]
-                : []),
-            ]}
+              items={[
+                ...(canValidate && open
+                  ? [
+                      {
+                        key: "changes",
+                        icon: MessageSquareWarning,
+                        label: tr("requirements.usecase.validation.changes"),
+                        onSelect: () => void answer.run("changes_requested"),
+                      },
+                    ]
+                  : []),
+                ...(canValidate && open && canRequest
+                  ? [
+                      {
+                        key: "request",
+                        icon: Send,
+                        label: tr("requirements.usecase.validation.request"),
+                        onSelect: () => void request.run(),
+                      },
+                    ]
+                  : []),
+                ...(canWrite
+                  ? [
+                      {
+                        key: "delete",
+                        icon: Trash2,
+                        label: tr("requirements.persona.delete"),
+                        destructive: true,
+                        onSelect: () => void remove.run(),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </>
+        }
+      >
+        {tab === "activity" ? (
+          <LazyProjectActivityPage
+            resource={{ type: "usecase", id: String(useCase.number) }}
+            persistenceKey={`lor.activity.${project.id}.usecase.${useCase.number}`}
           />
-        </>
-      }
-    >
-      {tab === "activity" ? (
-        <LazyProjectActivityPage
-          resource={{ type: "usecase", id: String(useCase.number) }}
-          persistenceKey={`lor.activity.${project.id}.usecase.${useCase.number}`}
+        ) : (
+          <RequirementsHover className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+            {useCase.stale && useCase.lastRun ? (
+              <WarningNotice data-testid="stale-banner">
+                {tr("requirements.run.staleBanner")}
+              </WarningNotice>
+            ) : null}
+            {tab === "scenario" ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                <UseCaseScenario useCase={useCase} />
+                <UseCaseCriteria useCase={useCase} />
+              </div>
+            ) : tab === "coverage" ? (
+              <UseCaseCoverage projectId={project.id} useCase={useCase} />
+            ) : (
+              <UseCaseRuns projectId={project.id} number={useCase.number} />
+            )}
+          </RequirementsHover>
+        )}
+        <UseCaseSheet
+          projectId={project.id}
+          useCase={useCase}
+          open={editing}
+          onOpenChange={setEditing}
+          onSubmit={(saved) => {
+            setEditing(false);
+            apply(saved);
+          }}
         />
-      ) : (
-        <RequirementsHover className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-          {useCase.stale && useCase.lastRun ? (
-            <WarningNotice data-testid="stale-banner">
-              {tr("requirements.run.staleBanner")}
-            </WarningNotice>
-          ) : null}
-          {tab === "scenario" ? (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <UseCaseScenario useCase={useCase} />
-              <UseCaseCriteria useCase={useCase} />
-            </div>
-          ) : tab === "coverage" ? (
-            <UseCaseCoverage projectId={project.id} useCase={useCase} />
-          ) : (
-            <UseCaseRuns projectId={project.id} number={useCase.number} />
-          )}
-        </RequirementsHover>
-      )}
-      <UseCaseSheet
-        projectId={project.id}
-        useCase={useCase}
-        open={editing}
-        onOpenChange={setEditing}
-        onSubmit={(saved) => {
-          setEditing(false);
-          apply(saved);
-        }}
-      />
-    </DetailLayout>
+      </DetailLayout>
+    </>
   );
 };
 

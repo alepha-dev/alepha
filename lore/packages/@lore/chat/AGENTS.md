@@ -27,9 +27,9 @@ Both 404 when the project has chat off or the rank lacks `chat:read`. A room is 
 
 ## The agent
 
-`@lore` and the personal room (#Q3930, #Q3942) are declared here and answered by the app:
+`@lore` (#Q3930) is declared here and answered by the app (the personal room of #Q3942 was removed by #Q3972: asking Lore alone is the app's dock, not a room):
 
-- **`ChatResponderRegistry`** (server): a responder has a `name` (the mention handle), a `label`, `respond` and `resume`, and at most one is `personal` (the agent of a member's own room). A message naming a registered agent, or any message in a personal room, starts `ChatAgentRunner.start`.
+- **`ChatResponderRegistry`** (server): a responder has a `name` (the mention handle), a `label`, `respond` and `resume`. A message naming a registered agent starts `ChatAgentRunner.start`.
 - **`ChatAgentRunner`** runs in the background of the request that sent the mention (`BackgroundTaskProvider`), with its own 5-minute signal, inside `McpProjectScope.pinned(room.projectId)`. It writes the answer into an agent message (`agentRun`: status, mentioner, tool trace, the paused write), stored as it grows so a reload mid-answer shows the text so far. On Workers it has the `waitUntil` window (about 30 s); a run cut short is stored as failed.
 - **`ChatAgentUiRegistry`** (web): the tool labeller and the write cards an answer is drawn with; the app lends the assistant's own.
 - **One run per room and member**, failures stored as an answer, an agent's message never starts a run (it never goes through `send`).
@@ -37,4 +37,4 @@ Both 404 when the project has chat off or the rank lacks `chat:read`. A room is 
 ## Notifications and lifecycle
 
 - **Mentions** notify through core's `inboxMention` template (`ChatMentionNotifier`), after a 5-second grace in which a member reading the room marks it read and is skipped; never through `ProjectEvents`.
-- **`ChatLifecycle`**: project deletion removes files, reactions, mentions, members, messages and rooms, re-runnable; account deletion removes the member's personal rooms, memberships, mentions and reactions and keeps their messages without an author. `ChatRoomMerge` moves rooms on a merge (`general (2)` on a collision).
+- **`ChatLifecycle`**: project deletion removes files, reactions, mentions, members, messages and rooms, re-runnable; account deletion removes the member's memberships, mentions and reactions and keeps their messages without an author. `ChatRoomMerge` moves rooms on a merge (`general (2)` on a collision).

@@ -273,9 +273,7 @@ const Conversation = (props: ConversationProps) => {
         )}
         {props.messages.length === 0 && !props.loading && (
           <p className="text-muted-foreground p-6 text-center text-sm">
-            {room.personal
-              ? tr("chat.room.personalEmpty")
-              : tr("chat.room.empty")}
+            {tr("chat.room.empty")}
           </p>
         )}
         {/* A log: a screen reader announces each new message politely. */}
