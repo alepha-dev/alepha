@@ -196,6 +196,12 @@ export class WorkShell {
           labelKey: "project.settings.tab.tagColors",
         },
         {
+          // Listed while the roadmap is on (#Q4060), the switch on Features.
+          route: "projectSettingsRoadmap",
+          labelKey: "project.settings.tab.roadmap",
+          visible: (project) => (project?.roadmapVisibility ?? "off") !== "off",
+        },
+        {
           route: "projectSettingsPrompts",
           labelKey: "project.settings.tab.prompts",
           // Requirements' six kinds are edited here too, with `agentPrompts`

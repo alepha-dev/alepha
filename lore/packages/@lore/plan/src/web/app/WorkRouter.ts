@@ -509,6 +509,20 @@ export class WorkRouter {
   });
 
   /**
+   * Plan > Roadmap (#Q4060): who may read the roadmap, and its link. Listed
+   * while the roadmap is on (the switch on Features).
+   */
+  projectSettingsRoadmap = $pageProjectSettings({
+    name: "projectSettingsRoadmap",
+    path: "/work/roadmap",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Roadmap`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsRoadmapSection.tsx"),
+  });
+
+  /**
    * Quests > Board: the kanban columns. Its tab is listed while the `board`
    * option is on; the route is not guarded, like every settings route.
    */

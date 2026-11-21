@@ -50,6 +50,12 @@ export interface SettingsTab {
    * Decided per tab, so the next full-page table cannot widen the others.
    */
   fullWidth?: boolean;
+  /**
+   * A last say on the project's own state, for a tab no option or permission
+   * decides: Plan's Roadmap is listed while `roadmapVisibility` is not off
+   * (#Q4060).
+   */
+  visible?: (project: ProjectResource | undefined) => boolean;
 }
 
 export interface SettingsSectionDef {
@@ -178,6 +184,7 @@ export const visibleSettingsTabs = (
           : !tab.option ||
             capabilityOption(project, section.capability, tab.option))) &&
       (!tab.requires || canInProject(project, tab.requires)) &&
-      (!tab.capability || hasCapability(project, tab.capability)),
+      (!tab.capability || hasCapability(project, tab.capability)) &&
+      (!tab.visible || tab.visible(project as ProjectResource | undefined)),
   );
 };
