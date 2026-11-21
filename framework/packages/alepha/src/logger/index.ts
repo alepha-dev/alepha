@@ -1,5 +1,6 @@
 import { $module, type Infer, z } from "alepha";
 
+import type { LogBufferConfig } from "./atoms/logBufferConfig.ts";
 import { $logger } from "./primitives/$logger.ts";
 import { CliFormatterProvider } from "./providers/CliFormatterProvider.ts";
 import { ConsoleColorProvider } from "./providers/ConsoleColorProvider.ts";
@@ -10,7 +11,6 @@ import { LogFormatterProvider } from "./providers/LogFormatterProvider.ts";
 import { MemoryDestinationProvider } from "./providers/MemoryDestinationProvider.ts";
 import { PrettyFormatterProvider } from "./providers/PrettyFormatterProvider.ts";
 import { RawFormatterProvider } from "./providers/RawFormatterProvider.ts";
-import type { LogBufferConfig } from "./schemas/logBufferConfig.ts";
 import type { LogEntry } from "./schemas/logEntrySchema.ts";
 import { Logger } from "./services/Logger.ts";
 
@@ -27,7 +27,7 @@ export * from "./providers/LogFormatterProvider.ts";
 export * from "./providers/MemoryDestinationProvider.ts";
 export * from "./providers/PrettyFormatterProvider.ts";
 export * from "./providers/RawFormatterProvider.ts";
-export * from "./schemas/logBufferConfig.ts";
+export * from "./atoms/logBufferConfig.ts";
 export * from "./schemas/logEntrySchema.ts";
 export * from "./services/LogBuffer.ts";
 export * from "./services/Logger.ts";
@@ -239,14 +239,13 @@ declare module "alepha" {
     "alepha.logger.level"?: string;
 
     /**
-     * Runtime override for the log format (`json` | `pretty` | `raw`).
+     * Runtime override for the log format (`json` | `pretty` | `raw` |
+     * `cli`), read on every line.
      *
-     * Unset → the formatter chosen at register time from `LOG_FORMAT`
-     * (honoring any custom `LogFormatterProvider` substitution) is used.
-     * When set, it overrides both the active formatter and the CLI's
-     * dynamic/"stylish" task UI (which is enabled only for `raw`). Set it
-     * to flip output at runtime — e.g. the CLI `--verbose` flag forces
-     * `pretty`.
+     * Unset, or any other value: the formatter chosen at register time from
+     * `LOG_FORMAT` (honoring any custom `LogFormatterProvider` substitution)
+     * is used. Set it to flip output at runtime, as the CLI `--verbose` flag
+     * does to force `pretty`.
      */
     "alepha.logger.format"?: string;
 

@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -35,7 +35,7 @@ describe("a log listener that throws", () => {
     let calls = 0;
     alepha.events.on("log:entry", () => {
       calls += 1;
-      throw new Error("subscriber is broken");
+      throw new AlephaError("subscriber is broken");
     });
 
     // Silence the console.error the report now goes to, so a deliberately
@@ -62,7 +62,7 @@ describe("a log listener that throws", () => {
     const { alepha, app, output } = boot();
 
     alepha.events.on("log:entry", () => {
-      throw new Error("subscriber is broken");
+      throw new AlephaError("subscriber is broken");
     });
 
     const consoleError = console.error;
@@ -83,7 +83,7 @@ describe("a log listener that throws", () => {
     const { alepha, output } = boot();
 
     alepha.events.on("start", () => {
-      throw new Error("start subscriber is broken");
+      throw new AlephaError("start subscriber is broken");
     });
 
     await alepha.events.emit("start", undefined as never, { catch: true });

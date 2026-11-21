@@ -9,6 +9,14 @@ import {
   MemoryDestinationProvider,
 } from "../index.ts";
 
+/**
+ * Exposes the protected clock format, to build the expected line from the
+ * entry's own timestamp.
+ */
+class TestCliFormatterProvider extends CliFormatterProvider {
+  public testFormatClockTime = this.formatClockTime.bind(this);
+}
+
 describe("CliFormatterProvider", () => {
   class App {
     log = $logger();
@@ -23,7 +31,7 @@ describe("CliFormatterProvider", () => {
     })
       .with({
         provide: LogFormatterProvider,
-        use: CliFormatterProvider,
+        use: TestCliFormatterProvider,
       })
       .with({
         provide: LogDestinationProvider,
@@ -39,10 +47,10 @@ describe("CliFormatterProvider", () => {
     app.log.info("Starting 'alepha lint' ...");
 
     const output = alepha.inject(MemoryDestinationProvider);
-    const fmt = alepha.inject(CliFormatterProvider);
+    const fmt = alepha.inject(TestCliFormatterProvider);
 
     expect(output.logs[0].formatted).toBe(
-      `${(fmt as any).formatClockTime(output.logs[0].timestamp)} I Starting 'alepha lint' ...`,
+      `${fmt.testFormatClockTime(output.logs[0].timestamp)} I Starting 'alepha lint' ...`,
     );
   });
 
@@ -53,10 +61,10 @@ describe("CliFormatterProvider", () => {
     app.log.info("Finished", { json: { key: "value" }, count: 2 });
 
     const output = alepha.inject(MemoryDestinationProvider);
-    const fmt = alepha.inject(CliFormatterProvider);
+    const fmt = alepha.inject(TestCliFormatterProvider);
 
     expect(output.logs[0].formatted).toBe(
-      `${(fmt as any).formatClockTime(output.logs[0].timestamp)} I Finished {"json":{"key":"value"},"count":2}`,
+      `${fmt.testFormatClockTime(output.logs[0].timestamp)} I Finished {"json":{"key":"value"},"count":2}`,
     );
   });
 

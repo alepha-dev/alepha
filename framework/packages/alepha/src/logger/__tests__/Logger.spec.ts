@@ -140,15 +140,6 @@ describe("Logger", () => {
       expect(logger.parseLevel(config, "other")).toBe("INFO");
     });
 
-    it("should fall back to global level when no module match", ({
-      expect,
-    }) => {
-      const logger = createLogger();
-      const config = "specific.module:debug,trace";
-
-      expect(logger.parseLevel(config, "other.module")).toBe("TRACE");
-    });
-
     it("should handle empty parts gracefully", ({ expect }) => {
       const logger = createLogger();
       // Empty parts are now skipped gracefully
@@ -206,7 +197,9 @@ describe("Logger", () => {
       ).toBe("DEBUG"); // startsWith behavior
     });
 
-    it("should prioritize more specific wildcard matches", ({ expect }) => {
+    it("should give a wildcard pattern to the first match, not the most specific", ({
+      expect,
+    }) => {
       const logger = createLogger();
       // First match wins, so order matters
       const config = "alepha.*:debug,alepha.core.*:trace,info";
@@ -278,9 +271,9 @@ describe("Logger", () => {
       expect(logger.level).toBe("TRACE");
     });
 
-    it("should cache parsed level until state changes", ({ expect }) => {
+    const createLevelApp = (level: string) => {
       const alepha = Alepha.create({
-        env: { LOG_LEVEL: "info" },
+        env: { LOG_LEVEL: level },
       })
         .with({
           provide: LogDestinationProvider,
@@ -291,18 +284,247 @@ describe("Logger", () => {
           use: PrettyFormatterProvider,
         });
 
-      const logger = alepha.inject(Logger, {
-        lifetime: "transient",
-        args: ["TestService", "test.module"],
-      });
+      const logger = (module: string) =>
+        alepha.inject(Logger, {
+          lifetime: "transient",
+          args: ["TestService", module],
+        });
 
-      alepha.store.set("alepha.logger.level", "test:debug,info");
-      const level1 = logger.level;
-      const level2 = logger.level;
+      const reports = () =>
+        alepha
+          .inject(MemoryDestinationProvider)
+          .logs.filter((log) => log.message.includes("Invalid"))
+          .map((log) => `${log.level} ${log.message}`);
 
-      expect(level1).toBe("DEBUG");
-      expect(level2).toBe("DEBUG");
-      expect(level1).toBe(level2); // Should be same instance/value
+      const setLevel = (value: string) =>
+        alepha.store.set("alepha.logger.level", value);
+
+      return { alepha, logger, reports, setLevel };
+    };
+
+    it("keeps the level in force when the global level becomes invalid, and never throws", ({
+      expect,
+    }) => {
+      const { alepha, logger, reports, setLevel } = createLevelApp(
+        "test.module:debug,warn",
+      );
+      const named = logger("test.module");
+      const other = logger("other.module");
+      expect(named.level).toBe("DEBUG");
+      expect(other.level).toBe("WARN");
+
+      setLevel("verbose");
+
+      expect(named.level).toBe("DEBUG");
+      expect(named.level).toBe("DEBUG");
+      expect(other.level).toBe("WARN");
+      expect(() => named.debug("still logged")).not.toThrow();
+      expect(
+        alepha
+          .inject(MemoryDestinationProvider)
+          .logs.some((entry) => entry.message === "still logged"),
+      ).toBe(true);
+
+      // A valid level afterwards is applied.
+      setLevel("error");
+      expect(named.level).toBe("ERROR");
+      expect(other.level).toBe("ERROR");
+      expect(reports()).toEqual([
+        'WARN Invalid global log level "verbose": the last valid level, "test.module:debug,warn", applies',
+      ]);
+    });
+
+    it("gives a logger created after an invalid level the level in force, not the default", ({
+      expect,
+    }) => {
+      const { logger, setLevel } = createLevelApp("test.module:trace,error");
+      expect(logger("test.module").level).toBe("TRACE");
+
+      setLevel("verbose");
+
+      expect(logger("test.module").level).toBe("TRACE");
+      expect(logger("other.module").level).toBe("ERROR");
+    });
+
+    it("reports a refused value once for the container, and again once it is refused anew", ({
+      expect,
+    }) => {
+      const { logger, reports, setLevel } = createLevelApp("info");
+      const first = logger("test.module");
+      const second = logger("test.other");
+      expect(first.level).toBe("INFO");
+      expect(second.level).toBe("INFO");
+
+      setLevel("verbose");
+      first.info("one");
+      first.info("two");
+      second.info("three");
+      logger("test.third").info("four");
+      expect(reports()).toHaveLength(1);
+
+      setLevel("info");
+      first.info("five");
+      second.info("six");
+      setLevel("verbose");
+      first.info("seven");
+      second.info("eight");
+      expect(reports()).toHaveLength(2);
+    });
+
+    it("reports each invalid part once, whatever the number of loggers it names", ({
+      expect,
+    }) => {
+      const { logger, reports, setLevel } = createLevelApp("info");
+      const loggers = ["a.one", "a.two", "b.one", "b.two", "c.one"].map(
+        (module) => logger(module),
+      );
+      for (const each of loggers) {
+        expect(each.level).toBe("INFO");
+      }
+
+      setLevel("a:verbose,b:loud,warn");
+
+      for (const each of loggers) {
+        each.warn("line");
+      }
+      expect(reports()).toEqual([
+        "WARN Invalid log level 'verbose' for module pattern 'a': its modules follow the global level",
+        "WARN Invalid log level 'loud' for module pattern 'b': its modules follow the global level",
+      ]);
+    });
+
+    it("gives the modules an invalid part names the global level of the same string", ({
+      expect,
+    }) => {
+      const { logger, setLevel } = createLevelApp("info");
+      const named = logger("test.module");
+      const other = logger("other.module");
+      expect(named.level).toBe("INFO");
+
+      setLevel("test.module:verbose,other:trace,debug");
+
+      expect(named.level).toBe("DEBUG");
+      expect(other.level).toBe("TRACE");
+      expect(() => named.info("one")).not.toThrow();
+    });
+
+    it("does the same for an invalid part of LOG_LEVEL, read for the first time", ({
+      expect,
+    }) => {
+      const warn = createLevelApp("test.module:verbose,warn");
+      expect(warn.logger("test.module").level).toBe("WARN");
+      expect(warn.logger("other.module").level).toBe("WARN");
+      expect(() => warn.logger("test.module").warn("one")).not.toThrow();
+      expect(warn.reports()).toHaveLength(1);
+
+      const silent = createLevelApp("test.module:verbose,silent");
+      expect(silent.logger("test.module").level).toBe("SILENT");
+
+      const none = createLevelApp("test.module:verbose");
+      expect(none.logger("test.module").level).toBe("INFO");
+    });
+
+    it("never throws for a module the invalid global level does not reach", ({
+      expect,
+    }) => {
+      const { logger, reports, setLevel } = createLevelApp("info");
+      const named = logger("test.module");
+      const other = logger("other.module");
+      expect(named.level).toBe("INFO");
+      expect(other.level).toBe("INFO");
+
+      // Valid for `test.module`, which never reads the global part.
+      setLevel("test:debug,verbose");
+
+      expect(named.level).toBe("DEBUG");
+      expect(other.level).toBe("INFO");
+      expect(logger("other.late").level).toBe("INFO");
+      expect(() => other.info("one")).not.toThrow();
+      expect(reports()).toEqual([
+        'WARN Invalid global log level "verbose": the last valid level, "info", applies',
+      ]);
+    });
+
+    it("gives two loggers of one module the same level, whichever met a value first", ({
+      expect,
+    }) => {
+      const { logger, setLevel } = createLevelApp("info");
+      const early = logger("test.module");
+      const late = logger("test.module");
+      expect(early.level).toBe("INFO");
+      expect(late.level).toBe("INFO");
+
+      // Only `late` meets the refused value the first time.
+      setLevel("verbose");
+      expect(late.level).toBe("INFO");
+
+      // Only `early` meets the valid one in between.
+      setLevel("debug");
+      expect(early.level).toBe("DEBUG");
+
+      setLevel("verbose");
+      expect(early.level).toBe("DEBUG");
+      expect(late.level).toBe("DEBUG");
+      expect(logger("test.module").level).toBe("DEBUG");
+    });
+
+    it("falls back to the last valid value, not to one valid for a single module", ({
+      expect,
+    }) => {
+      const { logger, reports, setLevel } = createLevelApp("info");
+      const named = logger("test.module");
+      expect(named.level).toBe("INFO");
+
+      // Valid for `test.module` alone: its global part never parses.
+      setLevel("test:debug,verbose");
+      expect(named.level).toBe("DEBUG");
+
+      setLevel("loud");
+      expect(named.level).toBe("INFO");
+      expect(logger("test.module").level).toBe("INFO");
+      expect(reports().at(-1)).toBe(
+        'WARN Invalid global log level "loud": the last valid level, "info", applies',
+      );
+    });
+
+    it("matches a pattern made of many wildcards without backtracking", ({
+      expect,
+    }) => {
+      const logger = createLevelApp("info").logger("test.module");
+      const stars = "*".repeat(30);
+      // Matching is synchronous, so a test timeout could never interrupt a
+      // regression: the time is measured here. As a regular expression the
+      // first pattern below ran for minutes.
+      const startedAt = performance.now();
+
+      expect(logger.parseLevel(`${stars}x:debug,warn`, "a".repeat(40))).toBe(
+        "WARN",
+      );
+      expect(
+        logger.parseLevel(`${"*a".repeat(30)}*x:debug,warn`, "a".repeat(60)),
+      ).toBe("WARN");
+      expect(
+        logger.parseLevel(`${stars}module:debug,warn`, "test.module"),
+      ).toBe("DEBUG");
+      expect(logger.parseLevel("t*t.m*e:debug,warn", "test.module")).toBe(
+        "DEBUG",
+      );
+      // A pattern is text, never a regular expression.
+      expect(logger.parseLevel("test.(module):debug,warn", "test.module")).toBe(
+        "WARN",
+      );
+      expect(logger.parseLevel("test.:debug,warn", "testXmodule")).toBe("WARN");
+      expect(performance.now() - startedAt).toBeLessThan(1_000);
+    });
+
+    it("still refuses an invalid global level set by LOG_LEVEL on the first read", ({
+      expect,
+    }) => {
+      const { logger } = createLevelApp("verbose");
+
+      expect(() => logger("test.module").level).toThrow(
+        'Invalid global log level "verbose"',
+      );
     });
   });
 
