@@ -15,8 +15,10 @@ import { Copy } from "lucide-react";
  * Who may read `/:projectSlug/roadmap`, and the two things the owner has to
  * know before they decide.
  *
- * It sits on the Releases settings page because the roadmap IS the release
- * plan rendered for someone who does not use Lore daily. It is its own
+ * The Roadmap tab of Plan's settings (#Q4060), listed while the roadmap is
+ * on: turning it on and off is the switch on Features, so the levels here
+ * are Members only and Public. The roadmap IS the release plan rendered for
+ * someone who does not use Lore daily. It is its own
  * column rather than a capability option: a tri-state does not fit a
  * boolean option.
  *
@@ -96,7 +98,6 @@ const ProjectSettingsRoadmapSection = () => {
             void applyAction.run(next as RoadmapVisibility);
           }}
           options={[
-            { value: "off", label: tr("project.settings.roadmap.level.off") },
             {
               value: "members",
               label: tr("project.settings.roadmap.level.members"),

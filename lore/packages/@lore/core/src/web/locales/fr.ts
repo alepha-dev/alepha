@@ -1194,6 +1194,7 @@ export default {
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.tagColors": "Couleurs des étiquettes",
+  "project.settings.tab.roadmap": "Feuille de route",
   "project.settings.tab.prompts": "Invites",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
@@ -1824,7 +1825,8 @@ export default {
   "project.settings.roadmap.visibility.label": "Qui peut la voir",
   "project.settings.roadmap.delay":
     "Un changement peut mettre jusqu’à une minute à atteindre les visiteurs.",
-  "project.settings.roadmap.level.off": "Désactivée",
+  "project.settings.roadmap.switch.description":
+    "Une page en lecture seule de vos versions ouvertes et des épopées qu’elles contiennent. Qui peut la voir se règle dans l’onglet Feuille de route.",
   "project.settings.roadmap.level.members": "Membres seulement",
   "project.settings.roadmap.level.public": "Publique",
   "project.settings.roadmap.url.label": "Lien",

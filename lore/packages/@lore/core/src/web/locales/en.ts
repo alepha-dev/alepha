@@ -1204,6 +1204,7 @@ export default {
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
   "project.settings.tab.tagColors": "Tag colours",
+  "project.settings.tab.roadmap": "Roadmap",
   "project.settings.tab.prompts": "Prompts",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
@@ -1832,7 +1833,8 @@ export default {
   "project.settings.roadmap.visibility.label": "Who can see it",
   "project.settings.roadmap.delay":
     "Changes can take up to a minute to reach visitors.",
-  "project.settings.roadmap.level.off": "Off",
+  "project.settings.roadmap.switch.description":
+    "A read-only page of your open releases and the epics inside them. Who can see it is set on the Roadmap tab.",
   "project.settings.roadmap.level.members": "Members only",
   "project.settings.roadmap.level.public": "Public",
   "project.settings.roadmap.url.label": "Link",

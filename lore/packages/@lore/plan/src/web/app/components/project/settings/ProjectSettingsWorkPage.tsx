@@ -6,10 +6,10 @@ import {
 } from "@lore/core/web";
 import { useInject, useStore } from "alepha/react";
 
-import ProjectSettingsRoadmapSection from "./ProjectSettingsRoadmapSection.tsx";
+import ProjectSettingsRoadmapSwitch from "./ProjectSettingsRoadmapSwitch.tsx";
 
 /**
- * Quests > Features: how quests behave, and who may read the roadmap.
+ * Quests > Features: how quests behave, and whether the roadmap is on.
  *
  * The master switch and the options that add a sidebar entry (board, epics,
  * releases) are in General > Capabilities since #Q2565. The board's columns,
@@ -28,10 +28,9 @@ const ProjectSettingsWorkPage = () => {
         options={shell.settingsOptions("plan")}
       />
 
-      {/* Who may read `/:projectSlug/roadmap`. It draws releases and the
-          epics inside them, so it moved here with them from the Releases
-          page. */}
-      {workEnabled && <ProjectSettingsRoadmapSection />}
+      {/* The roadmap on or off (#Q4060); who may read it is its own tab,
+          listed while it is on. */}
+      {workEnabled && <ProjectSettingsRoadmapSwitch />}
     </div>
   );
 };
