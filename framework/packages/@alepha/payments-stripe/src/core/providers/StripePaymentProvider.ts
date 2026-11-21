@@ -32,7 +32,7 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string(),
   /**
    * Signing secret of the `connect: true` webhook endpoint (events emitted
-   * BY CONNECTED ACCOUNTS — direct charges, Checkout on a connected
+   * BY CONNECTED ACCOUNTS: direct charges, Checkout on a connected
    * account). Distinct from STRIPE_WEBHOOK_SECRET, which signs the
    * platform-account endpoint. Optional: platforms without Connect (or
    * before the endpoint is declared) simply can't parse connect webhooks.
@@ -99,7 +99,7 @@ export class StripePaymentProvider implements PaymentProvider {
   /**
    * Webhook signature verification needs HMAC over the raw body. The default
    * synchronous `constructEvent` relies on Node's synchronous `crypto`, which
-   * is absent on Cloudflare Workers / edge (workerd) — it throws there, so the
+   * is absent on Cloudflare Workers / edge (workerd): it throws there, so the
    * webhook returns 400 and Stripe deliveries fail. A SubtleCrypto provider
    * lets us use the async `constructEventAsync`, which works on both Node and
    * workerd. Created lazily so construction never depends on `crypto.subtle`.
@@ -216,9 +216,9 @@ export class StripePaymentProvider implements PaymentProvider {
         success_url: options.returnUrl,
         cancel_url: options.returnUrl,
         metadata: checkoutMetadata,
-        // Force eager PaymentIntent creation. Without expand, Stripe may return
-        // `payment_intent: null` for sessions that lazy-create the PI (depends
-        // on enabled payment methods / account configuration).
+        // Returns the PaymentIntent object should the session have one. On the
+        // pinned API version it never does at creation: Checkout creates it
+        // once the buyer pays, so `payment_intent` is null here.
         expand: ["payment_intent"],
       },
       {
@@ -233,9 +233,10 @@ export class StripePaymentProvider implements PaymentProvider {
       throw new AlephaError("Stripe checkout session is missing URL");
     }
 
-    // Prefer the PaymentIntent ID (used by webhook matching). Fall back to
-    // the Session ID for sessions where the PI is created lazily — webhooks
-    // for those will match via metadata.intentId instead.
+    // The session id, as the PaymentIntent does not exist yet. A
+    // `checkout.session.*` webhook matches it and upgrades the stored ref to
+    // the PaymentIntent it names; until then, capture, void and refund
+    // resolve the PaymentIntent from the session.
     const providerRef = session.payment_intent
       ? typeof session.payment_intent === "string"
         ? session.payment_intent
@@ -252,7 +253,7 @@ export class StripePaymentProvider implements PaymentProvider {
    * Create a PaymentIntent for the browser to confirm with Payment Element.
    *
    * Unlike {@link createSession} this creates the PaymentIntent directly, with
-   * no Checkout Session — the card field lives on the merchant's page and Stripe
+   * no Checkout Session: the card field lives on the merchant's page and Stripe
    * hosts nothing. `automatic_payment_methods` lets the account's enabled methods
    * decide what the Element offers, which is what makes the Element worth using
    * over a hand-rolled card input.
@@ -302,17 +303,43 @@ export class StripePaymentProvider implements PaymentProvider {
     };
   }
 
+  /**
+   * The PaymentIntent behind a stored ref. A Checkout session stores its
+   * session id (`cs_...`): Checkout creates the PaymentIntent only once the
+   * buyer pays, and a capture found by the poll keeps that id, so it is
+   * resolved on the same account before any PaymentIntent call.
+   */
+  protected async resolvePaymentIntentRef(
+    providerRef: string,
+    requestOptions: { stripeAccount?: string } | undefined,
+  ): Promise<string> {
+    if (!providerRef.startsWith("cs_")) return providerRef;
+    const session = await this.stripe.checkout.sessions.retrieve(
+      providerRef,
+      undefined,
+      requestOptions,
+    );
+    const paymentIntent = session.payment_intent;
+    if (!paymentIntent) {
+      throw new AlephaError(
+        `Stripe checkout session ${providerRef} has no PaymentIntent yet`,
+      );
+    }
+    return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
+  }
+
   public async capturePayment(
     providerRef: string,
     amount: number,
     options: { stripeAccount?: string } = {},
   ): Promise<void> {
+    const requestOptions = options.stripeAccount
+      ? { stripeAccount: options.stripeAccount }
+      : undefined;
     await this.stripe.paymentIntents.capture(
-      providerRef,
+      await this.resolvePaymentIntentRef(providerRef, requestOptions),
       { amount_to_capture: amount },
-      options.stripeAccount
-        ? { stripeAccount: options.stripeAccount }
-        : undefined,
+      requestOptions,
     );
   }
 
@@ -320,7 +347,10 @@ export class StripePaymentProvider implements PaymentProvider {
     providerRef: string,
     options: { stripeAccount?: string; idempotencyKey?: string } = {},
   ): Promise<void> {
-    await this.stripe.paymentIntents.cancel(providerRef, undefined, {
+    const paymentIntent = await this.resolvePaymentIntentRef(providerRef, {
+      stripeAccount: options.stripeAccount,
+    });
+    await this.stripe.paymentIntents.cancel(paymentIntent, undefined, {
       stripeAccount: options.stripeAccount,
       ...(options.idempotencyKey
         ? { idempotencyKey: options.idempotencyKey }
@@ -333,8 +363,11 @@ export class StripePaymentProvider implements PaymentProvider {
     amount: number,
     options: { stripeAccount?: string; idempotencyKey?: string } = {},
   ): Promise<RefundResult> {
+    const paymentIntent = await this.resolvePaymentIntentRef(providerRef, {
+      stripeAccount: options.stripeAccount,
+    });
     const refund = await this.stripe.refunds.create(
-      { payment_intent: providerRef, amount },
+      { payment_intent: paymentIntent, amount },
       {
         stripeAccount: options.stripeAccount,
         ...(options.idempotencyKey
@@ -358,7 +391,7 @@ export class StripePaymentProvider implements PaymentProvider {
 
   /**
    * Platform publishable key (`pk_…`) for initializing ConnectJS in the
-   * browser (embedded Connect components). `undefined` when unset — callers
+   * browser (embedded Connect components). `undefined` when unset; callers
    * should fall back to hosted onboarding.
    */
   public get publishableKey(): string | undefined {
@@ -368,7 +401,7 @@ export class StripePaymentProvider implements PaymentProvider {
   /**
    * Parse a webhook delivered by the `connect: true` endpoint (events
    * emitted by CONNECTED accounts). Same mapping as `parseWebhook`, but
-   * verified with STRIPE_CONNECT_WEBHOOK_SECRET — Stripe signs each
+   * verified with STRIPE_CONNECT_WEBHOOK_SECRET, as Stripe signs each
    * endpoint with its own secret. The returned `account` (acct_…) tells a
    * multi-tenant consumer WHICH connected account emitted the event.
    */
@@ -376,7 +409,7 @@ export class StripePaymentProvider implements PaymentProvider {
     const secret = this.env.STRIPE_CONNECT_WEBHOOK_SECRET;
     if (!secret) {
       throw new AlephaError(
-        "STRIPE_CONNECT_WEBHOOK_SECRET is not configured — declare the connect webhook endpoint first",
+        "STRIPE_CONNECT_WEBHOOK_SECRET is not configured: declare the connect webhook endpoint first",
       );
     }
     return this.verifyAndMapWebhook(request, secret);
@@ -433,7 +466,7 @@ export class StripePaymentProvider implements PaymentProvider {
           : status;
       return {
         // The stored ref is the PI when it existed at creation, the session
-        // id otherwise (lazy PI) — surface both and let the service match.
+        // id otherwise (lazy PI): surface both and let the service match.
         providerRef: session.id,
         providerRefAlt:
           typeof session.payment_intent === "string"
@@ -511,7 +544,7 @@ export class StripePaymentProvider implements PaymentProvider {
 
   /**
    * Create a connected account via the **Accounts v2 API**
-   * (`POST /v2/core/accounts`) — NOT the legacy `type: "express"` account.
+   * (`POST /v2/core/accounts`), NOT the legacy `type: "express"` account.
    *
    * The connected account is the merchant of record and bears everything
    * ("we're just software", 0% application fee): it pays Stripe's processing
@@ -527,7 +560,7 @@ export class StripePaymentProvider implements PaymentProvider {
     /**
      * Legal structure of the connected account. Drives which KYC Stripe
      * collects during onboarding. Defaults to `"company"` for backward
-     * compatibility, but callers SHOULD pass the owner's real structure —
+     * compatibility, but callers SHOULD pass the owner's real structure:
      * e.g. a small French organisation is often a `non_profit` (association loi
      * 1901) or an `individual` (auto-entrepreneur); forcing `"company"`
      * asks for company-registration documents they don't have and dead-ends
@@ -535,7 +568,7 @@ export class StripePaymentProvider implements PaymentProvider {
      */
     entityType?: "company" | "individual" | "non_profit";
     /**
-     * Merchant Category Code — prefilled so Stripe skips the business-category
+     * Merchant Category Code, prefilled so Stripe skips the business-category
      * question. Defaults to `7997` (membership sports/recreation clubs).
      */
     mcc?: string;
@@ -558,14 +591,14 @@ export class StripePaymentProvider implements PaymentProvider {
   }): Promise<{ id: string }> {
     // FR/EU platforms (PSD2, verified empirically 2026-06-11 on the Stripe
     // sandbox): creating a v2 account WITH a merchant configuration requires
-    // the identity-bearing fields to ride a v2 ACCOUNT TOKEN — a direct
+    // the identity-bearing fields to ride a v2 ACCOUNT TOKEN: a direct
     // create fails with `account_token_required` ("Connect platforms based
     // in FR can only update certain identity information on a v2 account
     // with a merchant configuration via account tokens"). The working shape:
     //  - the TOKEN carries contact_email + display_name + entity_type
     //    (caller-supplied; the hosted/embedded onboarding re-confirms it);
     //  - `identity.country` is NOT tokenizable (per the account-tokens doc)
-    //    and goes DIRECTLY on the create — and it is required for the
+    //    and goes DIRECTLY on the create, and it is required for the
     //    entity_type/merchant configuration to apply.
     const token = await this.stripe.v2.core.accountTokens.create({
       contact_email: opts.email,
@@ -574,7 +607,7 @@ export class StripePaymentProvider implements PaymentProvider {
     });
 
     // Merchant config carries non-identity prefill (mcc + public support
-    // info) — these live on `configuration.merchant`, NOT `identity`, so
+    // info): these live on `configuration.merchant`, NOT `identity`, so
     // they go directly on the create (no account token needed).
     const support: { email?: string; url?: string } = {};
     if (opts.supportEmail) support.email = opts.supportEmail;
@@ -631,11 +664,11 @@ export class StripePaymentProvider implements PaymentProvider {
    * Open an **embedded Connect components** Account Session for a connected
    * account (Accounts v2). Returns the `client_secret` the browser passes to
    * ConnectJS to mount in-app `account-onboarding` / `notification-banner` /
-   * `account-management` components — so the owner completes KYC INSIDE the
+   * `account-management` components, so the owner completes KYC INSIDE the
    * app instead of being redirected off to Stripe-hosted onboarding.
    *
    * Enables all three baseline components by default; pass `components` to
-   * narrow. The session is short-lived — mint a fresh one per page load.
+   * narrow. The session is short-lived: mint a fresh one per page load.
    */
   public async createAccountSession(opts: {
     account: string;
@@ -683,7 +716,7 @@ export class StripePaymentProvider implements PaymentProvider {
     const account = await this.stripe.v2.core.accounts.retrieve(accountId, {
       include: ["configuration.merchant", "requirements"],
     });
-    // v2 has no flat charges_enabled/details_submitted/payouts_enabled — derive
+    // v2 has no flat charges_enabled/details_submitted/payouts_enabled; derive
     // from the merchant card_payments capability status.
     const status =
       account.configuration?.merchant?.capabilities?.card_payments?.status;
@@ -1170,8 +1203,8 @@ export class StripePaymentProvider implements PaymentProvider {
 
   /**
    * Verify + construct a Stripe webhook event using the platform-level
-   * webhook secret (STRIPE_WEBHOOK_SECRET). Distinct from the Connect
-   * webhook secret used in StripeConnectWebhookController.
+   * webhook secret (STRIPE_WEBHOOK_SECRET). Connect events are verified by
+   * {@link parseConnectWebhook} instead.
    */
   public async constructPlatformEvent(
     rawBody: string,
@@ -1202,6 +1235,7 @@ export class StripePaymentProvider implements PaymentProvider {
       ? { stripeAccount: options.stripeAccount }
       : undefined;
     try {
+      let paymentIntentRef = providerRef;
       if (providerRef.startsWith("cs_")) {
         const session = await this.stripe.checkout.sessions.retrieve(
           providerRef,
@@ -1211,11 +1245,19 @@ export class StripePaymentProvider implements PaymentProvider {
         if (session.payment_status === "paid") {
           return "captured";
         }
-        return session.status === "expired" ? "failed" : null;
+        // A completed manual-capture session is unpaid: its PaymentIntent
+        // holds the authorization. So is one awaiting a delayed payment.
+        if (session.status !== "complete" || !session.payment_intent) {
+          return session.status === "expired" ? "failed" : null;
+        }
+        paymentIntentRef =
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : session.payment_intent.id;
       }
 
       const intent = await this.stripe.paymentIntents.retrieve(
-        providerRef,
+        paymentIntentRef,
         undefined,
         requestOptions,
       );
