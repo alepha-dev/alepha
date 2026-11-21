@@ -6,6 +6,7 @@ import { ArtifactTools } from "./tools/ArtifactTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
 import { HostTools } from "./tools/HostTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
+import { JobTools } from "./tools/JobTools.ts";
 import { MonitorTools } from "./tools/MonitorTools.ts";
 import { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
@@ -32,6 +33,7 @@ export const LoreShipMcp = $module({
     StackTools,
     // A host's stats, read-only, for the members of its home project (#Q3047).
     HostTools,
+    JobTools,
     // Uptime monitors for agents (#Q3591).
     MonitorTools,
     // The coverage and open-errors thresholds (#Q3914).
@@ -45,6 +47,7 @@ export { ArtifactTools } from "./tools/ArtifactTools.ts";
 export { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
 export { HostTools } from "./tools/HostTools.ts";
+export { JobTools } from "./tools/JobTools.ts";
 export { InsightsTools } from "./tools/InsightsTools.ts";
 export { MonitorTools } from "./tools/MonitorTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";

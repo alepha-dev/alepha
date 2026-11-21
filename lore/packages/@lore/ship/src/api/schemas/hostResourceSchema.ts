@@ -46,6 +46,7 @@ export const hostResourceSchema = hosts.schema
     credentialExpiresAt: true,
     collectSeries: true,
     deployAllowed: true,
+    jobsAllowed: true,
     statsIntervalSeconds: true,
     connectedAt: true,
     disconnectedAt: true,

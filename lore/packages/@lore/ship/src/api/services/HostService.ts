@@ -134,6 +134,7 @@ export class HostService {
       // Bay wire v1 keeps the key `estate` (see `hostWelcomeFrameSchema`).
       estate: { id: host.id, slug: host.slug },
       deployAllowed: host.deployAllowed,
+      jobsAllowed: host.jobsAllowed,
       statsIntervalSeconds: host.statsIntervalSeconds,
       features: [...HOST_FEATURES],
     };

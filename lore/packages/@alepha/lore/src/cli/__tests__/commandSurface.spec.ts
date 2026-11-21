@@ -82,6 +82,7 @@ describe("the Lore CLI command surface", () => {
       "host",
       "inbox",
       "insights",
+      "job",
       "login",
       "logout",
       "monitor",
@@ -193,6 +194,7 @@ describe("the Lore CLI command surface", () => {
         "attachment",
       ],
       insights: ["read"],
+      job: ["list", "get", "cancel", "logs"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
       requirement: [
         "list",

@@ -197,6 +197,28 @@ export class HostCommandService {
         `Host "${host.slug}" does not accept changes to its apps; its home project has to allow deploys first`,
       );
     }
+    // A job runs on its own switch, never on the deploy one (#Q3984): it
+    // names no instance, a `job-run` carries the job, a `job-cancel` the run.
+    if (kind === "job-run" || kind === "job-cancel") {
+      if (kind === "job-run" && !host.jobsAllowed) {
+        throw new ForbiddenError(
+          `Host "${host.slug}" does not run jobs; its home project has to allow them first`,
+        );
+      }
+      if (
+        payload &&
+        (payload.app ||
+          payload.environment ||
+          (kind === "job-run" ? !payload.jobId : !payload.jobCommandId))
+      ) {
+        throw new BadRequestError(
+          kind === "job-run"
+            ? "A job-run names its job and no app or environment"
+            : "A job-cancel names the job-run it stops and no app or environment",
+        );
+      }
+      return;
+    }
     // The payload is one flat object for every kind, as the frame is, so
     // what each kind may carry is said here rather than by a union. An
     // `upgrade` is about the machine: a version, and no instance. Every other
@@ -491,6 +513,11 @@ export class HostCommandService {
       // The whole of what an upgrade is told, and on that kind only.
       ...(command.kind === "upgrade" && command.payload.version
         ? { version: command.payload.version }
+        : {}),
+      // The whole of what a cancel is told; a job-run is told nothing but
+      // its id, and pulls its spec by it (`jobId` stays Lore's).
+      ...(command.kind === "job-cancel" && command.payload.jobCommandId
+        ? { jobCommandId: command.payload.jobCommandId }
         : {}),
     };
   }

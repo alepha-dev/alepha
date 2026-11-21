@@ -26,6 +26,7 @@ import { stackDeployOutcomeSchema } from "../schemas/stackDeployOutcomeSchema.ts
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { DeployBuckets } from "../services/DeployBuckets.ts";
+import { HostJobService } from "../services/HostJobService.ts";
 import { HostTokenService } from "../services/HostTokenService.ts";
 import { StackDeployService } from "../services/StackDeployService.ts";
 
@@ -81,6 +82,11 @@ export class HostPullController {
    */
   public static readonly REGISTRIES_PATH = "/estates/commands/:id/registries";
   public static readonly OUTCOME_PATH = "/estates/commands/:id/outcome";
+  /**
+   * A `job-run`'s spec (#Q3983, #Q3984): the structured job Bay validates
+   * and builds a command line from.
+   */
+  public static readonly JOB_PATH = "/estates/commands/:id/job";
 
   /**
    * Where a command's answer is stored. Its own bucket, because what is in it
@@ -125,6 +131,7 @@ export class HostPullController {
   protected readonly artifacts = $repository(artifacts);
   protected readonly secrets = $inject(AppSecretService);
   protected readonly stackDeploys = $inject(StackDeployService);
+  protected readonly hostJobs = $inject(HostJobService);
 
   /**
    * The bucket, declared on `DeployBuckets` so that this controller holds no boot
@@ -639,6 +646,35 @@ export class HostPullController {
         bytes: bytes.byteLength,
       });
       return { stored: true };
+    },
+  });
+
+  /**
+   * `GET /estates/commands/:id/job`: the spec of the job a `job-run`
+   * carries, with the job key minted for this pull. Never logged, never
+   * cached: it holds the key. Refused like every other pull for a command
+   * that is not this host's, not open, or not a `job-run`.
+   */
+  pullJob = $route({
+    method: "GET",
+    path: HostPullController.JOB_PATH,
+    schema: {
+      params: z.object({ id: z.string().min(1).max(64) }),
+      headers: z.object({ authorization: z.string().optional() }),
+      response: z.record(z.string(), z.any()),
+    },
+    handler: async ({ params, headers, reply, url }) => {
+      const command = await this.resolve(params.id, headers.authorization);
+      const jobId = command.payload.jobId;
+      if (command.kind !== "job-run" || !jobId) {
+        throw this.refused();
+      }
+      const job = await this.hostJobs.getRow(jobId).catch(() => undefined);
+      if (!job || job.hostId !== command.hostId || job.status !== "running") {
+        throw this.refused();
+      }
+      reply.setHeader("cache-control", "no-store");
+      return this.hostJobs.spec(job, url.origin);
     },
   });
 

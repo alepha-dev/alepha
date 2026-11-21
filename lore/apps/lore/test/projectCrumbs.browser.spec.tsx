@@ -121,6 +121,7 @@ describe("the leaf crumb of a detail page", () => {
       online: false,
       overdue: false,
       deployAllowed: false,
+      jobsAllowed: false,
       collectSeries: false,
       statsIntervalSeconds: 1800,
       acceptedRuntimes: ["node"],

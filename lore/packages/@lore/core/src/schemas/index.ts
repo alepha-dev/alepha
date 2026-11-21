@@ -11,6 +11,15 @@
 
 export { CapabilityRegistry } from "../api/schemas/CapabilityRegistry.ts";
 export {
+  HOST_JOB_KINDS,
+  HOST_JOB_STATUSES,
+  HOST_JOB_TERMINAL,
+} from "../api/schemas/hostJobValues.ts";
+export type {
+  HostJobKind,
+  HostJobStatus,
+} from "../api/schemas/hostJobValues.ts";
+export {
   type DashboardCardLink,
   type DashboardCardTarget,
   DashboardMetricCatalog,

@@ -55,6 +55,9 @@ const NOT_MOVED: Record<string, string> = {
   // quests in the target; left behind, the moved deployments read as unknown
   // until the next push records the commit in the target's numbering.
   commit_quest_sets: "the source's quest numbers, which the merge renumbers",
+  // A host job ran for the project that started it (#Q3984), with that
+  // project's key, prompt and subject: its record stays with the source.
+  host_jobs: "the source's runs, as they ran",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

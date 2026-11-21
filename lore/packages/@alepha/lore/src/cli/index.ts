@@ -21,6 +21,7 @@ import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
 import { HostCommand } from "./commands/HostCommand.ts";
 import { InboxCommand } from "./commands/InboxCommand.ts";
+import { JobCommand } from "./commands/JobCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { MonitorCommand } from "./commands/MonitorCommand.ts";
 import { PersonaCommand } from "./commands/PersonaCommand.ts";
@@ -155,6 +156,8 @@ export const AlephaLoreCli = $module({
     SigilCommand,
     MonitorCommand,
     HostCommand,
+    // A project's host jobs (#Q3984).
+    JobCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,

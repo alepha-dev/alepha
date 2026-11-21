@@ -22,6 +22,12 @@ export class DeployBuckets {
   public static readonly RESULT_BUCKET = "estate-command-results";
 
   /**
+   * Where a host job's whole log lands when it ends (#Q3984), as one JSON
+   * document of both streams. Bay caps a job's output at 8 MiB.
+   */
+  public static readonly JOB_LOG_BUCKET = "host-job-logs";
+
+  /**
    * Where the tarballs live.
    *
    * ## ⚠️ The ceiling, and what it is really bounding
@@ -64,6 +70,13 @@ export class DeployBuckets {
     description:
       "What a machine answered a logs or backup command with (list, verify, probe, restore)",
     maxSize: 1,
+    mimeTypes: ["application/json"],
+  });
+
+  public readonly jobLogs = $storage({
+    name: DeployBuckets.JOB_LOG_BUCKET,
+    description: "The whole log of each host job, written when it ends",
+    maxSize: 10,
     mimeTypes: ["application/json"],
   });
 }
