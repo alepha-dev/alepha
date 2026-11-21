@@ -220,6 +220,59 @@ export class MqttClientContract {
       expect((await inbox.untilText("after")).topic).toBe(`${root}/after`);
     });
 
+    it("reconnects on the next call after a drop when reconnectPeriod is 0", async () => {
+      const root = prefix();
+      const { client: publisher } = await fixture.create();
+      const subscriber = await fixture.create({ reconnectPeriod: 0 });
+      const kept = new MqttInbox();
+      await subscriber.client.subscribe(`${root}/+`, kept.callback, {
+        qos: 1,
+      });
+
+      await subscriber.simulateDisconnect();
+      expect(subscriber.client.isConnected).toBe(false);
+
+      // Nothing reconnects by itself: the next publish and subscribe must
+      // reconnect on demand rather than wait for a reconnect that never
+      // comes.
+      await subscriber.client.publish(`${root}/self`, "self", { qos: 1 });
+      expect(subscriber.client.isConnected).toBe(true);
+      const late = new MqttInbox();
+      await subscriber.client.subscribe(`${root}/late`, late.callback, {
+        qos: 1,
+      });
+
+      await publisher.publish(`${root}/late`, "late", { qos: 1 });
+      await late.untilText("late");
+      await kept.untilText("late");
+
+      await subscriber.client.disconnect();
+      expect(subscriber.client.isConnected).toBe(false);
+    });
+
+    it("refuses an invalid topic filter and keeps working", async () => {
+      const root = prefix();
+      const { client } = await fixture.create();
+      const inbox = new MqttInbox();
+
+      for (const filter of [
+        `${root}/#/b`,
+        `${root}/b#`,
+        `${root}/a+/x`,
+        `${root}/+a`,
+        "",
+        `$share/g/${root}/#/b`,
+      ]) {
+        await expect(client.subscribe(filter, inbox.callback)).rejects.toThrow(
+          /Invalid MQTT topic filter/,
+        );
+      }
+
+      await client.subscribe(`${root}/+/#`, inbox.callback, { qos: 1 });
+      await client.publish(`${root}/a/b`, "ok", { qos: 1 });
+      await inbox.untilText("ok");
+    });
+
     it("round-trips binary payloads byte for byte", async () => {
       const root = prefix();
       const { client } = await fixture.create();

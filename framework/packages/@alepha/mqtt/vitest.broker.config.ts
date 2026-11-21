@@ -9,7 +9,7 @@ import { defineConfig } from "vitest/config";
  * `**\/*.broker.spec.{ts,tsx}` is excluded from every workspace project in
  * `scripts/vitest.projects.ts`, as `*.bun.spec` is, so the six `test` shards
  * never collect it; this config is the only one that does, run by the root
- * `yarn test:broker` (in `yarn v`, and the `mqtt-broker` job of
+ * `yarn test:broker` (in `yarn v`, and the `framework-mqtt-broker` job of
  * `verify.yml`). It needs Mosquitto on 11883 (`docker compose up -d`).
  *
  * ⚠️ A separate project rather than an env-gated `describe.skipIf`: a job

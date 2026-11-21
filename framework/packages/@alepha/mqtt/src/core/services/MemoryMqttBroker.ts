@@ -103,7 +103,8 @@ export class MemoryMqttBroker {
 
   /**
    * Add or replace a subscription of a session, then send it the retained
-   * messages its filter matches (none for a shared subscription).
+   * messages its filter matches (none for a shared subscription). Throws on
+   * an invalid filter.
    */
   public async subscribe(
     session: MemoryMqttSession,
@@ -111,6 +112,7 @@ export class MemoryMqttBroker {
     qos: MqttQoS,
     id: number | undefined,
   ): Promise<void> {
+    this.matcher.assertFilter(filter);
     const subscriptions = this.sessions.get(session);
     if (!subscriptions) {
       return;

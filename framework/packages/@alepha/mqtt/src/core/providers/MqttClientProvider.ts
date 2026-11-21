@@ -145,6 +145,7 @@ export abstract class MqttClientProvider {
     callback: MqttMessageCallback,
     options: MqttSubscribeOptions = {},
   ): Promise<() => Promise<void>> {
+    this.matcher.assertFilter(filter);
     const { group } = this.matcher.parse(filter);
     if (group !== undefined && this.protocolVersion !== 5) {
       throw new AlephaError(
@@ -171,12 +172,25 @@ export abstract class MqttClientProvider {
       // first subscriber silently decides the delivery guarantee for every
       // later one.
       const current = subscription;
+      const previous = { qos: current.qos, ready: current.ready };
       current.qos = qos;
       // Sequencing, not a pipeline: the chain's value is never read, only
       // awaited, so there is nothing for this callback to hand on.
       // oxlint-disable-next-line promise/always-return
-      current.ready = current.ready.then(async () => {
+      const upgrade = current.ready.then(async () => {
         await this.sendSubscribe(filter, qos, current.id);
+      });
+      current.ready = upgrade;
+      // A refused upgrade fails its own caller only: the filter goes back to
+      // the subscription the broker last acknowledged, or every later
+      // subscribe() would await the refusal and a reconnect would ask for
+      // the refused QoS again. Skipped when an earlier refusal in the same
+      // chain already restored below this QoS.
+      upgrade.catch(() => {
+        if (current.qos >= qos) {
+          current.qos = previous.qos;
+          current.ready = previous.ready;
+        }
       });
     }
 
