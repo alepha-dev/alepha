@@ -580,16 +580,6 @@ export class DeployRouter {
     },
   });
 
-  projectSettingsApps = $pageProjectSettings({
-    name: "projectSettingsApps",
-    path: "/apps",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Apps`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsAppsPage.tsx"),
-  });
-
   /**
    * Where the project can deploy: the hosts lent to it (epic #20). No
    * loader, and no feature flag: the page lists what it holds itself, and an

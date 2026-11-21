@@ -1,5 +1,6 @@
 import { reportsUrlSchema } from "@lore/core/schemas";
 import {
+  $pageProjectSettings,
   CoreRouter,
   currentProjectAtom,
   ReportsTabRegistry,
@@ -47,5 +48,19 @@ export class BuildRouter {
         ),
       }),
     }),
+  });
+
+  /**
+   * General > Quality (#Q4059): the coverage target and the coverage alert,
+   * out of Ship's settings. Listed by `BuildShell` while `quality` is on.
+   */
+  projectSettingsQuality = $pageProjectSettings({
+    name: "projectSettingsQuality",
+    path: "/quality",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Quality`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsQualityPage.tsx"),
   });
 }

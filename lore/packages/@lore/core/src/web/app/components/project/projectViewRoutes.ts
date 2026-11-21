@@ -76,9 +76,9 @@ const ROUTES_SETTINGS = [
   "projectSettingsBoard",
   "projectSettingsTagColors",
   "projectSettingsRoadmap",
+  "projectSettingsQuality",
   "projectSettingsPrompts",
   "projectSettingsKnowledge",
-  "projectSettingsApps",
   "projectSettingsHosts",
   // Ship's page under Plan's section (#Q3703), missed here until #Q4063:
   // it rendered in the centred column under a "Plan" crumb.

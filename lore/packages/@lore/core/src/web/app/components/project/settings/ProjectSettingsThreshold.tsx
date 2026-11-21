@@ -1,12 +1,14 @@
 import { Button, CardContent } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { SettingsSection } from "@alepha/ui/settings";
-import type { ProjectThresholdController } from "@lore/core/api";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+
+import type { ProjectThresholdController } from "../../../../../api/controllers/ProjectThresholdController.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import type { I18n } from "../../../services/I18n.ts";
 
 export interface ProjectSettingsThresholdProps {
   /**
@@ -19,6 +21,8 @@ export interface ProjectSettingsThresholdProps {
 
 /**
  * One alert threshold of the project (#Q3894), with no schedule to pick:
+ * in core since #Q4059, as Ship's Errors tab and Build's Quality tab both
+ * hold one.
  * whoever is notified of its event on Settings > Notifications is told
  * when the value crosses it, once, and again only after it came back.
  * Empty means no threshold, and no alert.

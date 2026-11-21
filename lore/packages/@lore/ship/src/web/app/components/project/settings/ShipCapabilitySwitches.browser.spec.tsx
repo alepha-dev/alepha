@@ -12,7 +12,6 @@ import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
 import { DeployShell } from "../../../shell/DeployShell.ts";
-import ProjectSettingsAppsPage from "./ProjectSettingsAppsPage.tsx";
 
 interface SetCapabilityCall {
   params: { projectId: number; key: string };
@@ -59,9 +58,9 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 /**
- * The page after #1770 gutted it: a switch and the ignore rules, which moved to
- * Plan > Errors with #Q3703. The switch
- * moved to General > Capabilities with #Q2565, so it mounts beside it.
+ * Ship's switches, on General > Capabilities since #Q2565. Ship's own
+ * Features tab is gone (#Q4059): its last settings, the coverage target and
+ * alert, are General > Quality, Build's.
  *
  * The case that matters is still the KEY, and it survived the move: the label
  * says "Apps" and the persisted key is `apps`. What changed is that the key
@@ -69,15 +68,8 @@ class FakeLinkProvider extends LinkProvider {
  * inside `projects.features` - where `sigils` had to keep its name forever,
  * for the same reason `milestones` does.
  */
-describe("the Apps settings page", () => {
-  const mount = async (
-    ui: ReactNode = (
-      <>
-        <ProjectSettingsCapabilitiesPage />
-        <ProjectSettingsAppsPage />
-      </>
-    ),
-  ) => {
+describe("the Ship capability switches", () => {
+  const mount = async (ui: ReactNode = <ProjectSettingsCapabilitiesPage />) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -137,33 +129,12 @@ describe("the Apps settings page", () => {
     );
   });
 
-  it("offers no way to enrol a credential from here", async ({ expect }) => {
-    // The enrol block and the credential list are gone (#1770): creating a
-    // deployed copy is what `/apps` is for, and a sigil is an unlock on one of
-    // those. A second door onto the same room is what this quest closed.
-    const { view } = await mount();
-
-    fireEvent.click(await view.findByRole("switch", { name: "Ship" }));
-
-    await waitFor(() =>
-      expect(view.container.textContent).toContain("Coverage target"),
-    );
-    // The Ignore rules moved to Plan > Errors (#Q3703).
-    expect(view.container.textContent).not.toContain("Ignore rules");
-    expect(view.container.textContent).not.toMatch(/enrol/i);
-    expect(view.container.textContent).not.toMatch(/sg_/);
-  });
-
   it("lists Monitor apps beside Track apps and Deploy apps in General only (#Q3702)", async ({
     expect,
   }) => {
     // Monitoring only (#Q3597): Track and Deploy off, Monitor on. General
-    // lists all three; Ship's own Features page lists none of them again.
-    const shipPage = await mount(<ProjectSettingsAppsPage />);
-    expect(shipPage.view.queryAllByRole("switch")).toHaveLength(0);
-    shipPage.view.unmount();
-
-    const { alepha, view } = await mount(<ProjectSettingsCapabilitiesPage />);
+    // lists all three.
+    const { alepha, view } = await mount();
     alepha.store.set(
       currentProjectAtom,
       projectFixture({

@@ -401,17 +401,13 @@ test.describe("Apps", () => {
       // capability actually being on, not just the switch looking on.
       await waitForProjectCapability(page, projectId, "ship", true);
 
-      // The Apps section's own page rendering at all is worth asserting:
-      // removing a route without editing the nav table crashed every
-      // settings page once.
-      await page.goto(`/${projectSlug}/settings/apps`);
+      // Ship has no Features tab since #Q4059: the switches are in General
+      // (#Q3702), the coverage target and alert in General > Quality, and the
+      // ignore rules in Plan > Errors (#Q3703). A settings page rendering at
+      // all is still worth asserting: removing a route without editing the
+      // nav table crashed every settings page once.
+      await page.goto(`/${projectSlug}/settings/quality`);
       await page.waitForLoadState("networkidle");
-
-      // ⚠️ The enrol block and the credential list are GONE (#1770). Creating a
-      // deployed copy is what /apps is for, and a list of the same things here
-      // was a second door onto one room. The switches are in General since
-      // #Q3702, so what is left is the coverage target; the ignore rules are
-      // Plan > Errors since #Q3703.
       await expect(page.getByText(/Coverage target/i)).toBeVisible({
         timeout: 15_000,
       });
@@ -697,11 +693,9 @@ test.describe("Apps", () => {
       // write the very next step's assertion depends on.
       await waitForProjectCapability(page, projectId, "plan.feedback", true);
 
-      // Back to the Sigils settings page — "the sink tells the app what it
-      // wants" step below only makes API calls (no navigation of its own),
-      // and the step after that reloads *this* page expecting to still be
-      // looking at the sigil row.
-      await page.goto(`/${projectSlug}/settings/apps`);
+      // Back to a settings page: the step below only makes API calls (no
+      // navigation of its own).
+      await page.goto(`/${projectSlug}/settings/errors`);
       await page.waitForLoadState("networkidle");
     });
 

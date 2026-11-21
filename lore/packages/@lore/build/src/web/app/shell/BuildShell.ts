@@ -1,11 +1,17 @@
-import { ReportsTabRegistry } from "@lore/core/web";
+import {
+  capabilityOption,
+  ProjectShellRegistry,
+  ReportsTabRegistry,
+} from "@lore/core/web";
 import { $inject } from "alepha";
 
 /**
- * Build's part of the project shell (#E162): the Quality tab of Reports.
+ * Build's part of the project shell (#E162): the Quality tab of Reports, and
+ * General's Quality settings tab (#Q4059).
  */
 export class BuildShell {
   protected readonly reports = $inject(ReportsTabRegistry);
+  protected readonly shell = $inject(ProjectShellRegistry);
 
   constructor() {
     // Quality is its own tab (#Q3070), right after Delivery. It shows for
@@ -19,6 +25,15 @@ export class BuildShell {
       // Quality is an option of Build since #Q4005.
       option: "quality",
       filters: ["period", "branch"],
+    });
+
+    // The coverage settings (#Q4059): General's, since Build has no section
+    // of its own, and listed while Quality is on.
+    this.shell.registerSettingsTab("general", {
+      route: "projectSettingsQuality",
+      labelKey: "project.settings.tab.quality",
+      capability: "build",
+      visible: (project) => capabilityOption(project, "build", "quality"),
     });
   }
 }

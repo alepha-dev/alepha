@@ -9,7 +9,7 @@ The app needs no deploy and no sigil, so a project that only wants to ping one
 API creates an app with that address and turns its monitor on.
 
 Healthchecks are the **Monitor apps** option of the **Ship** capability, off by
-default, in **Settings ▸ Apps**. It works on its own: a project can keep
+default, in **Settings ▸ General ▸ Capabilities**. It works on its own: a project can keep
 **Track apps** and **Deploy apps** off and still watch any address, with its
 history and its alerts. See [Capabilities](/lore/docs/project-capabilities).
 

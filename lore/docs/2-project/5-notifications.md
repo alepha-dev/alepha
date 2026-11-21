@@ -252,7 +252,7 @@ be told about it too.
 
 Two events fire when a number crosses a line you set:
 
-- **Coverage under its threshold**: set on **Settings ▸ Apps**. It is checked
+- **Coverage under its threshold**: set on **Settings ▸ General ▸ Quality**. It is checked
   when a push on `main` reports its coverage.
 - **Open errors over their threshold**: set on **Settings ▸ Errors**. It is
   checked every hour.

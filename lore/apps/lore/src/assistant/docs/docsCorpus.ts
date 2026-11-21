@@ -387,7 +387,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Notifications",
     section: "Thresholds",
     url: "https://alepha.dev/lore/docs/project-notifications#thresholds",
-    text: "Two events fire when a number crosses a line you set:\n\n- **Coverage under its threshold**: set on **Settings ▸ Apps**. It is checked\n  when a push on `main` reports its coverage.\n- **Open errors over their threshold**: set on **Settings ▸ Errors**. It is\n  checked every hour.\n\nEach fires once when the line is crossed, and again only after the value has\ncome back to the right side of it. An empty threshold means no alert. Who is\ntold is set like any other event, on **Settings ▸ Notifications**.",
+    text: "Two events fire when a number crosses a line you set:\n\n- **Coverage under its threshold**: set on **Settings ▸ General ▸ Quality**. It is checked\n  when a push on `main` reports its coverage.\n- **Open errors over their threshold**: set on **Settings ▸ Errors**. It is\n  checked every hour.\n\nEach fires once when the line is crossed, and again only after the value has\ncome back to the right side of it. An empty threshold means no alert. Who is\ntold is set like any other event, on **Settings ▸ Notifications**.",
   },
   {
     guide: "Notifications",
@@ -1321,7 +1321,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Quality",
     section: "A coverage target",
     url: "https://alepha.dev/lore/docs/build-quality#a-coverage-target",
-    text: "Set the target on **Settings ▸ Apps**, under **Coverage target (%)**. The\nreport draws it, and Lore tells you once when a push on `main` reports\ncoverage under it, then again only after coverage has come back above it.\nWho is told is set on **Settings ▸ Notifications**. See\n[Notifications](/lore/docs/project-notifications).",
+    text: "Set the target on **Settings ▸ General ▸ Quality**, under **Coverage target (%)**. The\nreport draws it, and Lore tells you once when a push on `main` reports\ncoverage under it, then again only after coverage has come back above it.\nWho is told is set on **Settings ▸ Notifications**. See\n[Notifications](/lore/docs/project-notifications).",
   },
   {
     guide: "Quality",
@@ -1466,7 +1466,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Healthchecks",
     url: "https://alepha.dev/lore/docs/ship-healthchecks",
     capability: "ship",
-    text: "A healthcheck asks from outside whether something is up: a website, a port, a\nTLS certificate, or a scheduled job that should have reported in. It works for\nany address, whatever the stack behind it, and needs no sigil.\n\nA monitor belongs to an app: one copy of it, such as `acme` in `production`.\nThe app needs no deploy and no sigil, so a project that only wants to ping one\nAPI creates an app with that address and turns its monitor on.\n\nHealthchecks are the **Monitor apps** option of the **Ship** capability, off by\ndefault, in **Settings ▸ Apps**. It works on its own: a project can keep\n**Track apps** and **Deploy apps** off and still watch any address, with its\nhistory and its alerts. See [Capabilities](/lore/docs/project-capabilities).",
+    text: "A healthcheck asks from outside whether something is up: a website, a port, a\nTLS certificate, or a scheduled job that should have reported in. It works for\nany address, whatever the stack behind it, and needs no sigil.\n\nA monitor belongs to an app: one copy of it, such as `acme` in `production`.\nThe app needs no deploy and no sigil, so a project that only wants to ping one\nAPI creates an app with that address and turns its monitor on.\n\nHealthchecks are the **Monitor apps** option of the **Ship** capability, off by\ndefault, in **Settings ▸ General ▸ Capabilities**. It works on its own: a project can keep\n**Track apps** and **Deploy apps** off and still watch any address, with its\nhistory and its alerts. See [Capabilities](/lore/docs/project-capabilities).",
   },
   {
     guide: "Healthchecks",
