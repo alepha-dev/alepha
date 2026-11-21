@@ -8,14 +8,19 @@ import { $cors } from "alepha/server/cors";
 
 ## Overview
 
-Middleware that applies CORS headers to the response and handles OPTIONS preflight.
+Middleware that applies CORS headers to the response of the route that declares it.
 
-Reads the request from the ALS context and applies the configured
-CORS headers via `ServerCorsProvider`. Options are merged with
-global CORS defaults.
+Options are merged with the global CORS defaults, and the result replaces
+the global policy for that route, on the request and on its preflight.
 
-For OPTIONS preflight requests, the middleware short-circuits with a 204 response
-and skips the handler entirely.
+The headers go on the response of the action that declares the middleware.
+When that action is called in process, through `run()` from another route,
+they stay off the calling route's response: its own policy governs it.
+
+The preflight of a routed action is answered by an OPTIONS route generated
+for its path. The middleware itself answers 204 and skips the handler only
+when the request it runs on is an OPTIONS request, which is the case of a
+route declared with `method: "OPTIONS"`.
 
 **Route middleware** - requires a request context (`$action`). Throws if used outside one.
 

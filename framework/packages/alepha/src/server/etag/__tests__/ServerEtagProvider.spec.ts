@@ -1,8 +1,58 @@
-import { Alepha } from "alepha";
-import { $action, ServerProvider } from "alepha/server";
-import { afterEach, beforeEach, describe, it, test } from "vitest";
+import { Alepha, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $action, $middleware, $route, ServerProvider } from "alepha/server";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { $etag, AlephaServerEtag, ServerEtagProvider } from "../index.ts";
+
+/**
+ * The shape of an HTTP-date (RFC 9110 section 5.6.7), the only form
+ * `Last-Modified` may take.
+ */
+const HTTP_DATE =
+  /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+const ETAG = /^"[a-f0-9]{32}"$/;
+
+class TestEtagProvider extends ServerEtagProvider {
+  public testCollectStreamForCache = this.collectStreamForCache.bind(this);
+  public testStored = (key: string) => this.cache.get(key);
+  public testCreateCacheKey = this.createCacheKey.bind(this);
+}
+
+/**
+ * A stored route that answers a stream, the shape of an SSR page.
+ */
+class StreamApp {
+  stored = $middleware({ path: "/streamed", use: [$etag(true)] });
+
+  page = $route({
+    method: "GET",
+    path: "/streamed/page",
+    handler: ({ reply }) => {
+      reply.headers["content-type"] = "text/html";
+      const encoder = new TextEncoder();
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode("<html>"));
+          controller.enqueue(encoder.encode("streamed</html>"));
+          controller.close();
+        },
+      });
+    },
+  });
+}
+
+class RestartApp {
+  static calls = 0;
+
+  action = $action({
+    path: "/restartAction",
+    method: "GET",
+    use: [$etag(true)],
+    handler: () => `restart-${RestartApp.calls++}`,
+  });
+}
 
 class TestApp {
   counter = 0;
@@ -64,13 +114,6 @@ class TestApp {
     method: "GET",
     use: [$etag(true)],
     handler: () => `etag-and-cache-${this.counter++}`,
-  });
-
-  dynamicContentAction = $action({
-    path: "/dynamicContentAction",
-    method: "GET",
-    use: [$etag()],
-    handler: () => `dynamic-${Date.now()}`,
   });
 
   cacheWithControlTrue = $action({
@@ -136,82 +179,6 @@ class TestApp {
       }),
     ],
     handler: () => `duration-maxage-${this.counter++}`,
-  });
-
-  cacheWith30Seconds = $action({
-    path: "/cacheWith30Seconds",
-    method: "GET",
-    use: [
-      $etag({
-        store: true,
-        control: {
-          public: true,
-          maxAge: [30, "seconds"],
-        },
-      }),
-    ],
-    handler: () => "test-30s",
-  });
-
-  cacheWith10Minutes = $action({
-    path: "/cacheWith10Minutes",
-    method: "GET",
-    use: [
-      $etag({
-        store: true,
-        control: {
-          public: true,
-          maxAge: [10, "minutes"],
-        },
-      }),
-    ],
-    handler: () => "test-10m",
-  });
-
-  cacheWith2Hours = $action({
-    path: "/cacheWith2Hours",
-    method: "GET",
-    use: [
-      $etag({
-        store: true,
-        control: {
-          public: true,
-          maxAge: [2, "hours"],
-        },
-      }),
-    ],
-    handler: () => "test-2h",
-  });
-
-  cacheWith1Day = $action({
-    path: "/cacheWith1Day",
-    method: "GET",
-    use: [
-      $etag({
-        store: true,
-        control: {
-          public: true,
-          maxAge: [1, "day"],
-        },
-      }),
-    ],
-    handler: () => "test-1d",
-  });
-
-  cacheWithMixedMaxAge = $action({
-    path: "/cacheWithMixedMaxAge",
-    method: "GET",
-    use: [
-      $etag({
-        store: true,
-        control: {
-          public: true,
-          maxAge: 600, // number (seconds)
-          sMaxAge: [20, "minutes"], // DurationLike
-        },
-      }),
-    ],
-    handler: () => "mixed",
   });
 
   cacheWithStaleWhileRevalidate = $action({
@@ -311,6 +278,66 @@ class TestApp {
   });
 
   /**
+   * Stored actions whose body echoes the request, so a store key shared by
+   * two different requests shows up as the wrong body.
+   */
+  search = $action({
+    path: "/search",
+    method: "GET",
+    use: [$etag(true)],
+    schema: { query: z.object({ q: z.text() }) },
+    handler: ({ query }) => `result-for[${query.q}]`,
+  });
+
+  pair = $action({
+    path: "/pair",
+    method: "GET",
+    use: [$etag(true)],
+    schema: { query: z.object({ a: z.text(), b: z.text().optional() }) },
+    handler: ({ query }) => `a=[${query.a}] b=[${query.b}]`,
+  });
+
+  item = $action({
+    path: "/item/:id",
+    method: "GET",
+    use: [$etag(true)],
+    schema: {
+      params: z.object({ id: z.text() }),
+      query: z.object({ x: z.text().optional() }),
+    },
+    handler: ({ params, query }) => `id=[${params.id}] x=[${query.x}]`,
+  });
+
+  counted = $action({
+    path: "/counted/:id",
+    method: "GET",
+    use: [$etag(true)],
+    schema: {
+      params: z.object({ id: z.text() }),
+      query: z.object({ n: z.integer().optional() }),
+    },
+    handler: ({ params, query }) => `${params.id}-${query.n}-${this.counter++}`,
+  });
+
+  /**
+   * One constant body per mode: the validator never changes, so a
+   * conditional request can be answered 304.
+   */
+  stableEtagOnly = $action({
+    path: "/stableEtagOnly",
+    method: "GET",
+    use: [$etag()],
+    handler: () => "stable-bytes",
+  });
+
+  stableStored = $action({
+    path: "/stableStored",
+    method: "GET",
+    use: [$etag(true)],
+    handler: () => "stored-bytes",
+  });
+
+  /**
    * Two independently cached actions plus a plain HTTP action that invokes
    * both through `run()`. This is the `/api/_batch` and SSR `follow()`
    * shape: the inner actions declare `$etag`, the outer route does not.
@@ -350,12 +377,29 @@ class TestApp {
 describe("ServerEtagProvider", () => {
   let alepha: Alepha;
   let app: TestApp;
-  let etagProvider: ServerEtagProvider;
+  let etagProvider: TestEtagProvider;
+
+  /**
+   * A raw request: `action.fetch()` goes through `HttpClient`, which keeps
+   * its own ETag cache and adds `If-None-Match` by itself.
+   */
+  const get = async (path: string, headers: Record<string, string> = {}) => {
+    const hostname = alepha.inject(ServerProvider).hostname;
+    const response = await fetch(`${hostname}/api${path}`, { headers });
+    return {
+      status: response.status,
+      body: await response.text(),
+      etag: response.headers.get("etag"),
+      lastModified: response.headers.get("last-modified"),
+    };
+  };
 
   beforeEach(async () => {
-    alepha = Alepha.create().with(AlephaServerEtag);
+    alepha = Alepha.create()
+      .with({ provide: ServerEtagProvider, use: TestEtagProvider })
+      .with(AlephaServerEtag);
     app = alepha.inject(TestApp);
-    etagProvider = alepha.inject(ServerEtagProvider);
+    etagProvider = alepha.inject(TestEtagProvider);
     await alepha.start();
   });
 
@@ -370,7 +414,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("ETag support", () => {
-    test("should return 200 on first request and 304 on subsequent requests with same ETag", async ({
+    it("should return 200 on first request and 304 on subsequent requests with same ETag", async ({
       expect,
     }) => {
       const firstResponse = await app.cachedAction.fetch();
@@ -382,7 +426,7 @@ describe("ServerEtagProvider", () => {
       expect(secondResponse.data).toBe("cached-0");
     });
 
-    test("should return fresh data after cache invalidation", async ({
+    it("should return fresh data after cache invalidation", async ({
       expect,
     }) => {
       const firstResponse = await app.cachedAction.fetch();
@@ -394,29 +438,10 @@ describe("ServerEtagProvider", () => {
       expect(afterInvalidation.status).toBe(200);
       expect(afterInvalidation.data).toBe("cached-1");
     });
-
-    test("should set etag property on route and handle caching correctly", async ({
-      expect,
-    }) => {
-      // Make first request to trigger caching
-      const response = await app.cachedAction.fetch();
-      expect(response.status).toBe(200);
-      expect(response.data).toBe("cached-0");
-
-      // Subsequent request should return 304 (cached with etag check)
-      const cachedResponse = await app.cachedAction.fetch();
-      expect(cachedResponse.status).toBe(304);
-
-      // Cache invalidation should work
-      await etagProvider.invalidate(app.cachedAction.route);
-      const afterInvalidation = await app.cachedAction.fetch();
-      expect(afterInvalidation.status).toBe(200);
-      expect(afterInvalidation.data).toBe("cached-1");
-    });
   });
 
   describe("Cache behavior", () => {
-    test("should cache responses for actions with $etag(true)", async ({
+    it("should cache responses for actions with $etag(true)", async ({
       expect,
     }) => {
       for (let i = 0; i < 5; i++) {
@@ -427,7 +452,7 @@ describe("ServerEtagProvider", () => {
       }
     });
 
-    test("should not cache responses for actions without $etag", async ({
+    it("should not cache responses for actions without $etag", async ({
       expect,
     }) => {
       for (let i = 0; i < 5; i++) {
@@ -437,7 +462,7 @@ describe("ServerEtagProvider", () => {
       }
     });
 
-    test("should handle async cached actions correctly", async ({ expect }) => {
+    it("should handle async cached actions correctly", async ({ expect }) => {
       const response1 = await app.asyncCachedAction.fetch();
       const response2 = await app.asyncCachedAction.fetch();
 
@@ -448,11 +473,11 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Cache invalidation", () => {
-    test("should invalidate every caller's entry for the route", async ({
+    it("should invalidate every caller's entry for the route", async ({
       expect,
     }) => {
       // Entries are namespaced by caller identity, so invalidating a route
-      // must clear all of them — not only the anonymous one.
+      // must clear all of them, not only the anonymous one.
       const hostname = alepha.inject(ServerProvider).hostname;
       const call = (token: string) =>
         fetch(`${hostname}/api/cachedAction`, {
@@ -467,7 +492,7 @@ describe("ServerEtagProvider", () => {
       expect(await call("alice-token")).not.toBe(alice);
     });
 
-    test("should invalidate cache using ServerEtagProvider.invalidate()", async ({
+    it("should invalidate cache using ServerEtagProvider.invalidate()", async ({
       expect,
     }) => {
       const initialResponse = await app.cachedAction.fetch();
@@ -481,21 +506,7 @@ describe("ServerEtagProvider", () => {
       expect(afterInvalidation.data).not.toBe(initialResponse.data);
     });
 
-    test("should invalidate cache using injected ServerEtagProvider", async ({
-      expect,
-    }) => {
-      const initialResponse = await app.cachedAction.fetch();
-      const cachedResponse = await app.cachedAction.fetch();
-
-      expect(initialResponse.data).toBe(cachedResponse.data);
-
-      await etagProvider.invalidate(app.cachedAction.route);
-
-      const afterInvalidation = await app.cachedAction.fetch();
-      expect(afterInvalidation.data).not.toBe(initialResponse.data);
-    });
-
-    test("should not affect other cached actions when invalidating specific route", async ({
+    it("should not affect other cached actions when invalidating specific route", async ({
       expect,
     }) => {
       const cachedResponse1 = await app.cachedAction.fetch();
@@ -512,7 +523,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Cache configuration", () => {
-    test("should respect custom TTL configuration", async ({ expect }) => {
+    it("should respect custom TTL configuration", async ({ expect }) => {
       const response1 = await app.cachedWithCustomTtl.fetch();
       const response2 = await app.cachedWithCustomTtl.fetch();
 
@@ -520,7 +531,7 @@ describe("ServerEtagProvider", () => {
       expect(response1.data).toBe("ttl-cached-0");
     });
 
-    test("should expire the stored response once store.ttl elapses", async ({
+    it("should expire the stored response once store.ttl elapses", async ({
       expect,
     }) => {
       // The configured TTL was truth-tested but never passed to cache.set,
@@ -529,13 +540,13 @@ describe("ServerEtagProvider", () => {
       const cached = await app.cachedWithShortTtl.fetch();
       expect(cached.data).toBe(first.data);
 
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await alepha.inject(DateTimeProvider).travel([250, "milliseconds"]);
 
       const afterExpiry = await app.cachedWithShortTtl.fetch();
       expect(afterExpiry.data).not.toBe(first.data);
     });
 
-    test("should not serve one caller's stored body to another", async ({
+    it("should not serve one caller's stored body to another", async ({
       expect,
     }) => {
       // The key was route + params + query only, so `$etag(true)` on an
@@ -555,13 +566,13 @@ describe("ServerEtagProvider", () => {
       expect(await call("alice-token")).toBe(alice);
     });
 
-    test("should accept a bare duration as store", async ({ expect }) => {
+    it("should accept a bare duration as store", async ({ expect }) => {
       const first = await app.cachedWithShortDurationStore.fetch();
       expect((await app.cachedWithShortDurationStore.fetch()).data).toBe(
         first.data,
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await alepha.inject(DateTimeProvider).travel([250, "milliseconds"]);
 
       expect((await app.cachedWithShortDurationStore.fetch()).data).not.toBe(
         first.data,
@@ -570,29 +581,26 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Error handling", () => {
-    test("should handle invalidation of non-existent route gracefully", async ({
+    it("should handle invalidation of non-existent route gracefully", async ({
       expect,
     }) => {
-      expect(async () => {
-        await etagProvider.invalidate("non-existent-route" as any);
-      }).not.toThrow();
+      await expect(
+        etagProvider.invalidate({
+          method: "GET",
+          path: "/no-such-route",
+        } as any),
+      ).resolves.toBeUndefined();
+
+      // And it took nothing else with it.
+      const first = await app.cachedAction.fetch();
+      await etagProvider.invalidate({
+        method: "GET",
+        path: "/no-such-route",
+      } as any);
+      expect((await app.cachedAction.fetch()).data).toBe(first.data);
     });
 
-    test("should handle multiple concurrent cache requests correctly", async ({
-      expect,
-    }) => {
-      const promises = Array.from({ length: 10 }, () =>
-        app.cachedAction.fetch(),
-      );
-      const responses = await Promise.all(promises);
-
-      const firstData = responses[0].data;
-      for (const response of responses) {
-        expect(response.data).toBe(firstData);
-      }
-    });
-
-    test("should handle cache invalidation during concurrent requests", async ({
+    it("should handle cache invalidation during concurrent requests", async ({
       expect,
     }) => {
       const initialResponse = await app.cachedAction.fetch();
@@ -616,7 +624,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Provider lifecycle", () => {
-    test("should maintain cache state across multiple requests", async ({
+    it("should maintain cache state across multiple requests", async ({
       expect,
     }) => {
       const responses = [];
@@ -630,53 +638,56 @@ describe("ServerEtagProvider", () => {
       }
     });
 
-    test("should clear cache when application stops and restarts", async ({
+    it("should not carry a stored response over to a new container", async ({
       expect,
     }) => {
-      await app.cachedAction.fetch();
-      await alepha.stop();
+      // The handler's counter is static, so it outlives the container: a
+      // store that survived the restart would answer `restart-0` again.
+      RestartApp.calls = 0;
 
-      alepha = Alepha.create().with(AlephaServerEtag);
-      app = alepha.inject(TestApp);
-      await alepha.start();
+      const before = Alepha.create().with(AlephaServerEtag);
+      const first = before.inject(RestartApp);
+      await before.start();
+      expect((await first.action.fetch()).data).toBe("restart-0");
+      expect((await first.action.fetch()).data).toBe("restart-0");
+      await before.stop();
 
-      const afterRestartResponse = await app.cachedAction.fetch();
-      expect(afterRestartResponse.data).toBe("cached-0");
+      const after = Alepha.create().with(AlephaServerEtag);
+      const second = after.inject(RestartApp);
+      await after.start();
+      expect((await second.action.fetch()).data).toBe("restart-1");
+      await after.stop();
     });
   });
 
   describe("ETag-only support (without cache)", () => {
-    test("should generate and return ETag header for etag-only routes", async ({
+    it("should generate and return ETag header for etag-only routes", async ({
       expect,
     }) => {
       const response = await app.etagOnlyAction.fetch();
 
       expect(response.status).toBe(200);
       expect(response.data).toBe("etag-only-0");
-      expect(response.headers.get("etag")).toBeDefined();
-      expect(response.headers.get("last-modified")).toBeDefined();
+      expect(response.headers.get("etag")).toMatch(ETAG);
     });
 
-    test("should return 304 when client sends matching ETag", async ({
+    it("should answer 304 with no body when the body is unchanged", async ({
       expect,
     }) => {
-      const firstResponse = await app.etagOnlyAction.fetch();
-      const etag = firstResponse.headers.get("etag");
+      const first = await get("/stableEtagOnly");
+      expect(first.status).toBe(200);
+      expect(first.body).toBe("stable-bytes");
+      expect(first.etag).toMatch(ETAG);
 
-      expect(firstResponse.status).toBe(200);
-      expect(firstResponse.data).toBe("etag-only-0");
-      expect(etag).toBeDefined();
-
-      // Send request with If-None-Match header
-      const secondResponse = await app.etagOnlyAction.fetch({
-        headers: { "if-none-match": etag! },
+      const second = await get("/stableEtagOnly", {
+        "if-none-match": first.etag!,
       });
-
-      expect(secondResponse.status).toBe(200);
-      expect(secondResponse.data).toBe("etag-only-1");
+      expect(second.status).toBe(304);
+      expect(second.body).toBe("");
+      expect(second.etag).toBe(first.etag);
     });
 
-    test("should NOT cache responses for etag-only routes", async ({
+    it("should NOT cache responses for etag-only routes", async ({
       expect,
     }) => {
       const response1 = await app.etagOnlyAction.fetch();
@@ -692,7 +703,7 @@ describe("ServerEtagProvider", () => {
       );
     });
 
-    test("should return 200 with new content when ETag doesn't match", async ({
+    it("should return 200 with new content when ETag doesn't match", async ({
       expect,
     }) => {
       const firstResponse = await app.etagOnlyAction.fetch();
@@ -707,49 +718,10 @@ describe("ServerEtagProvider", () => {
       expect(secondResponse.status).toBe(200);
       expect(secondResponse.data).toBe("etag-only-1");
     });
-
-    test("should handle dynamic content with ETags correctly", async ({
-      expect,
-    }) => {
-      const response1 = await app.dynamicContentAction.fetch();
-      const etag1 = response1.headers.get("etag");
-
-      expect(response1.status).toBe(200);
-      expect(etag1).toBeDefined();
-
-      // Wait a bit to ensure timestamp changes
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      const response2 = await app.dynamicContentAction.fetch();
-      const etag2 = response2.headers.get("etag");
-
-      expect(response2.status).toBe(200);
-      expect(etag2).toBeDefined();
-
-      // ETags should be different because content is dynamic
-      expect(etag1).not.toBe(etag2);
-    });
   });
 
   describe("ETag with cache combined", () => {
-    test("should support both caching and ETag validation", async ({
-      expect,
-    }) => {
-      const response1 = await app.etagAndCacheAction.fetch();
-      const etag1 = response1.headers.get("etag");
-
-      expect(response1.status).toBe(200);
-      expect(response1.data).toBe("etag-and-cache-0");
-      expect(etag1).toBeDefined();
-
-      // Second request should return cached content with 304
-      const response2 = await app.etagAndCacheAction.fetch();
-
-      expect(response2.status).toBe(304);
-      expect(response2.data).toBe("etag-and-cache-0");
-    });
-
-    test("should return cached content even without ETag header", async ({
+    it("should return cached content even without ETag header", async ({
       expect,
     }) => {
       const response1 = await app.etagAndCacheAction.fetch();
@@ -767,7 +739,7 @@ describe("ServerEtagProvider", () => {
       expect(response2.data).toBe("etag-and-cache-0");
     });
 
-    test("should invalidate both cache and ETag when cache is cleared", async ({
+    it("should invalidate both cache and ETag when cache is cleared", async ({
       expect,
     }) => {
       const response1 = await app.etagAndCacheAction.fetch();
@@ -785,13 +757,14 @@ describe("ServerEtagProvider", () => {
 
       expect(response2.status).toBe(200);
       expect(response2.data).toBe("etag-and-cache-1");
-      expect(etag2).toBeDefined();
+      expect(etag1).toMatch(ETAG);
+      expect(etag2).toMatch(ETAG);
       expect(etag1).not.toBe(etag2);
     });
   });
 
   describe("ETag header validation", () => {
-    test("should generate consistent ETags for same content", async ({
+    it("should generate consistent ETags for same content", async ({
       expect,
     }) => {
       const response1 = await app.cachedAction.fetch();
@@ -805,7 +778,7 @@ describe("ServerEtagProvider", () => {
       expect(response1.data).toBe(response2.data);
     });
 
-    test("should generate different ETags for different content", async ({
+    it("should generate different ETags for different content", async ({
       expect,
     }) => {
       const response1 = await app.etagOnlyAction.fetch();
@@ -818,21 +791,297 @@ describe("ServerEtagProvider", () => {
       expect(response1.data).not.toBe(response2.data);
       expect(etag1).not.toBe(etag2);
     });
+  });
 
-    test("should set Last-Modified header with ETag", async ({ expect }) => {
-      const response = await app.etagOnlyAction.fetch();
+  describe("Store key", () => {
+    it("keeps a value holding a colon apart from the same value without it", async ({
+      expect,
+    }) => {
+      expect((await get("/search?q=a%3Ab")).body).toBe("result-for[a:b]");
+      expect((await get("/search?q=ab")).body).toBe("result-for[ab]");
+    });
 
-      expect(response.headers.get("etag")).toBeDefined();
-      expect(response.headers.get("last-modified")).toBeDefined();
+    it("keeps one value holding `,b=2` apart from two parameters", async ({
+      expect,
+    }) => {
+      expect((await get("/pair?a=1%2Cb%3D2")).body).toBe(
+        "a=[1,b=2] b=[undefined]",
+      );
+      expect((await get("/pair?a=1&b=2")).body).toBe("a=[1] b=[2]");
+    });
 
-      // Verify it's a valid ISO date string
-      const lastModified = response.headers.get("last-modified");
-      expect(() => new Date(lastModified!)).not.toThrow();
+    it("keeps a path parameter apart from a query parameter", async ({
+      expect,
+    }) => {
+      expect((await get("/item/1%2Cx%3D2")).body).toBe(
+        "id=[1,x=2] x=[undefined]",
+      );
+      expect((await get("/item/1?x=2")).body).toBe("id=[1] x=[2]");
+    });
+
+    for (const separator of [
+      ":",
+      ",",
+      "=",
+      "&",
+      "%",
+      "*",
+      '"',
+      "[",
+      "{",
+      "/",
+    ]) {
+      // A guard for every separator but `:` and `,`, the two the old key
+      // was built with: the others already passed before the key changed.
+      it(`a value holding \`${separator}\` never answers for another request`, async ({
+        expect,
+      }) => {
+        const sep = encodeURIComponent(separator);
+
+        // Planted first: one value that spells out a second parameter.
+        expect((await get(`/pair?a=1${sep}b${sep}2`)).body).toBe(
+          `a=[1${separator}b${separator}2] b=[undefined]`,
+        );
+        expect((await get(`/pair?a=1${sep}b%3D2`)).body).toBe(
+          `a=[1${separator}b=2] b=[undefined]`,
+        );
+        expect((await get(`/pair?a=1&b=2`)).body).toBe("a=[1] b=[2]");
+        expect((await get(`/pair?a=1b2`)).body).toBe("a=[1b2] b=[undefined]");
+        expect((await get(`/pair?a=1b&b=2`)).body).toBe("a=[1b] b=[2]");
+
+        // And each of them is still served from its own entry.
+        expect((await get(`/pair?a=1${sep}b${sep}2`)).body).toBe(
+          `a=[1${separator}b${separator}2] b=[undefined]`,
+        );
+      });
+    }
+
+    it("keeps a bigint apart from the string that spells it", async ({
+      expect,
+    }) => {
+      const route = { method: "GET", path: "/big" } as any;
+      const key = (query: Record<string, unknown>) =>
+        etagProvider.testCreateCacheKey(route, { query } as any);
+
+      expect(await key({ n: 5n })).not.toBe(await key({ n: "5n" }));
+      expect(await key({ n: 5n })).not.toBe(await key({ n: "5" }));
+      expect(await key({ n: 5n })).not.toBe(await key({ n: 5 }));
+      expect(await key({ n: 5n })).not.toBe(await key({ n: "n:5" }));
+      expect(await key({ n: "s:5" })).not.toBe(await key({ n: "5" }));
+      expect(await key({ n: 5n })).toBe(await key({ n: 5n }));
+    });
+
+    it("guard: serves a hit for a typed query, over HTTP and through run()", async ({
+      expect,
+    }) => {
+      const first = await get("/counted/1?n=7");
+      expect(first.body).toMatch(/^1-7-\d+$/);
+      expect((await get("/counted/1?n=7")).body).toBe(first.body);
+      // The key is built from the parsed query: `07` is the integer 7.
+      expect((await get("/counted/1?n=07")).body).toBe(first.body);
+      expect((await get("/counted/1?n=8")).body).not.toBe(first.body);
+
+      const ran = await app.counted.run({
+        params: { id: "2" },
+        query: { n: 7 },
+      });
+      expect(
+        await app.counted.run({ params: { id: "2" }, query: { n: 7 } }),
+      ).toBe(ran);
+      expect(
+        await app.counted.run({ params: { id: "2" }, query: { n: 8 } }),
+      ).not.toBe(ran);
+    });
+
+    it("guard: invalidates every entry of a route, whatever its parameters", async ({
+      expect,
+    }) => {
+      const one = await get("/counted/1?n=7");
+      const two = await get("/counted/a%3Ab");
+      const kept = await get("/cachedAction");
+
+      await etagProvider.invalidate(app.counted.route);
+
+      expect((await get("/counted/1?n=7")).body).not.toBe(one.body);
+      expect((await get("/counted/a%3Ab")).body).not.toBe(two.body);
+      expect((await get("/cachedAction")).body).toBe(kept.body);
+    });
+  });
+
+  describe("If-None-Match (RFC 9110 section 13.1.2)", () => {
+    for (const path of ["/stableEtagOnly", "/stableStored"]) {
+      describe(`on ${path}`, () => {
+        it("matches a weak validator", async ({ expect }) => {
+          const { etag } = await get(path);
+          expect(etag).toMatch(ETAG);
+
+          const response = await get(path, { "if-none-match": `W/${etag}` });
+          expect(response.status).toBe(304);
+          expect(response.body).toBe("");
+        });
+
+        it("matches any member of a list", async ({ expect }) => {
+          const { etag } = await get(path);
+
+          const response = await get(path, {
+            "if-none-match": `"other", W/"a,b" ,${etag}`,
+          });
+          expect(response.status).toBe(304);
+        });
+
+        it("matches `*`", async ({ expect }) => {
+          await get(path);
+
+          const response = await get(path, { "if-none-match": "*" });
+          expect(response.status).toBe(304);
+        });
+
+        it("guard: answers the body when no validator matches", async ({
+          expect,
+        }) => {
+          const { etag, body } = await get(path);
+
+          for (const header of [
+            '"other"',
+            'W/"other"',
+            '"other", "another"',
+            // The opaque tag is compared whole, never as a substring.
+            `"x${etag!.slice(1)}`,
+            etag!.slice(1, -1),
+          ]) {
+            const response = await get(path, { "if-none-match": header });
+            expect(response.status, header).toBe(200);
+            expect(response.body, header).toBe(body);
+          }
+        });
+      });
+    }
+  });
+
+  describe("matchesIfNoneMatch", () => {
+    it("reads the header as a list of entity-tags", ({ expect }) => {
+      const matches = (header: string) =>
+        etagProvider.matchesIfNoneMatch(header, '"abc"');
+
+      for (const header of [
+        '"abc"',
+        'W/"abc"',
+        '"a,b", "abc"',
+        '"x",W/"abc"',
+        ' "x" , "abc" ',
+        "*",
+        " * ",
+      ]) {
+        expect(matches(header), header).toBe(true);
+      }
+
+      for (const header of [
+        '"a,abc"',
+        '"ABC"',
+        // Malformed: such a header matches nothing.
+        'x"abc"',
+        '"" "abc"',
+        'w/"abc"',
+        '"abc',
+        "abc",
+        '"x", *',
+        '*, "abc"',
+        '"abc",',
+        "",
+      ]) {
+        expect(matches(header), header).toBe(false);
+      }
+
+      expect(etagProvider.matchesIfNoneMatch('"abc"', 'W/"abc"')).toBe(true);
+      expect(etagProvider.matchesIfNoneMatch(undefined, '"abc"')).toBe(false);
+    });
+  });
+
+  describe("Last-Modified", () => {
+    it("is an HTTP-date, and stays the stored time on every hit", async ({
+      expect,
+    }) => {
+      const first = await get("/stableStored");
+      expect(first.lastModified).toMatch(HTTP_DATE);
+
+      await alepha.inject(DateTimeProvider).travel([5, "seconds"]);
+
+      const second = await get("/stableStored");
+      expect(second.body).toBe("stored-bytes");
+      expect(second.lastModified).toBe(first.lastModified);
+    });
+
+    it("is not sent by a route that stores nothing", async ({ expect }) => {
+      // There is no stored time to report, and "now" on every response
+      // tells a cache the resource keeps changing.
+      const response = await get("/stableEtagOnly");
+      expect(response.etag).toMatch(ETAG);
+      expect(response.lastModified).toBeNull();
+    });
+
+    it("answers 304 to an If-Modified-Since at or after the stored time", async ({
+      expect,
+    }) => {
+      const first = await get("/stableStored");
+      const stored = new Date(first.lastModified!).getTime();
+
+      for (const [since, status] of [
+        [first.lastModified!, 304],
+        [new Date(stored + 60_000).toUTCString(), 304],
+        [new Date(stored - 60_000).toUTCString(), 200],
+        // Not an HTTP-date: ignored, whatever `Date.parse` makes of it.
+        ["not a date", 200],
+        ["2099", 200],
+        [new Date(stored + 60_000).toISOString(), 200],
+      ] as const) {
+        const response = await get("/stableStored", {
+          "if-modified-since": since,
+        });
+        expect(response.status, since).toBe(status);
+      }
+    });
+
+    it("is the stored time, as an HTTP-date, on a stored stream too", async ({
+      expect,
+    }) => {
+      const streaming = Alepha.create().with(AlephaServerEtag);
+      streaming.inject(StreamApp);
+      await streaming.start();
+      const url = `${streaming.inject(ServerProvider).hostname}/streamed/page`;
+
+      const first = await fetch(url);
+      expect(await first.text()).toBe("<html>streamed</html>");
+
+      // The stream is collected into the store behind the response.
+      let hit = await fetch(url);
+      for (let i = 0; i < 50 && !hit.headers.get("etag"); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        hit = await fetch(url);
+      }
+
+      expect(await hit.text()).toBe("<html>streamed</html>");
+      expect(hit.headers.get("etag")).toMatch(ETAG);
+      expect(hit.headers.get("last-modified")).toMatch(HTTP_DATE);
+
+      await streaming.stop();
+    });
+
+    it("ignores If-Modified-Since when If-None-Match is sent", async ({
+      expect,
+    }) => {
+      const first = await get("/stableStored");
+
+      const response = await get("/stableStored", {
+        "if-none-match": '"other"',
+        "if-modified-since": first.lastModified!,
+      });
+      expect(response.status).toBe(200);
+      expect(response.body).toBe("stored-bytes");
     });
   });
 
   describe("Mixed scenarios", () => {
-    test("should handle routes with different etag configurations independently", async ({
+    it("should handle routes with different etag configurations independently", async ({
       expect,
     }) => {
       // Cached action
@@ -856,7 +1105,7 @@ describe("ServerEtagProvider", () => {
       expect(etag1.data).toContain("etag-only");
     });
 
-    test("should not interfere with each other's ETags", async ({ expect }) => {
+    it("should not interfere with each other's ETags", async ({ expect }) => {
       const response1 = await app.etagOnlyAction.fetch();
       const etag1 = response1.headers.get("etag");
 
@@ -869,7 +1118,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Cache-Control header support", () => {
-    test("should set Cache-Control header when control: true", async ({
+    it("should set Cache-Control header when control: true", async ({
       expect,
     }) => {
       const response = await app.cacheWithControlTrue.fetch();
@@ -878,7 +1127,7 @@ describe("ServerEtagProvider", () => {
       expect(response.headers.get("cache-control")).toBe("public, max-age=300");
     });
 
-    test("should set Cache-Control header with custom string value", async ({
+    it("should set Cache-Control header with custom string value", async ({
       expect,
     }) => {
       const response = await app.cacheWithControlString.fetch();
@@ -889,7 +1138,7 @@ describe("ServerEtagProvider", () => {
       );
     });
 
-    test("should build Cache-Control header from object directives", async ({
+    it("should build Cache-Control header from object directives", async ({
       expect,
     }) => {
       const response = await app.cacheWithControlObject.fetch();
@@ -901,7 +1150,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("must-revalidate");
     });
 
-    test("should support complex Cache-Control with multiple directives", async ({
+    it("should support complex Cache-Control with multiple directives", async ({
       expect,
     }) => {
       const response = await app.cacheWithComplexControl.fetch();
@@ -914,7 +1163,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("immutable");
     });
 
-    test("should not set Cache-Control when $etag(true) without control option", async ({
+    it("should not set Cache-Control when $etag(true) without control option", async ({
       expect,
     }) => {
       const response = await app.cachedAction.fetch();
@@ -923,7 +1172,7 @@ describe("ServerEtagProvider", () => {
       expect(response.headers.get("cache-control")).toBeNull();
     });
 
-    test("should cache responses with Cache-Control headers", async ({
+    it("should cache responses with Cache-Control headers", async ({
       expect,
     }) => {
       const response1 = await app.cacheWithControlObject.fetch();
@@ -933,7 +1182,7 @@ describe("ServerEtagProvider", () => {
       expect(response1.data).toBe("control-object-0");
     });
 
-    test("should support private cache directive", async ({ expect }) => {
+    it("should support private cache directive", async ({ expect }) => {
       const alepha = Alepha.create().with(AlephaServerEtag);
       const privateAction = alepha.inject(
         class TestPrivateCache {
@@ -963,7 +1212,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).not.toContain("public");
     });
 
-    test("should support no-cache and no-store directives", async ({
+    it("should support no-cache and no-store directives", async ({
       expect,
     }) => {
       const alepha = Alepha.create().with(AlephaServerEtag);
@@ -994,7 +1243,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("no-store");
     });
 
-    test("should support proxy-revalidate directive", async ({ expect }) => {
+    it("should support proxy-revalidate directive", async ({ expect }) => {
       const alepha = Alepha.create().with(AlephaServerEtag);
       const proxyAction = alepha.inject(
         class TestProxyRevalidate {
@@ -1025,7 +1274,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("max-age=600");
     });
 
-    test("should support s-maxage for shared cache control", async ({
+    it("should support s-maxage for shared cache control", async ({
       expect,
     }) => {
       const alepha = Alepha.create().with(AlephaServerEtag);
@@ -1058,7 +1307,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("s-maxage=600");
     });
 
-    test("should support DurationLike for maxAge and sMaxAge", async ({
+    it("should support DurationLike for maxAge and sMaxAge", async ({
       expect,
     }) => {
       const response = await app.cacheWithDurationMaxAge.fetch();
@@ -1072,7 +1321,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("s-maxage=3600");
     });
 
-    test("should handle various DurationLike formats for maxAge", ({
+    it("should handle various DurationLike formats for maxAge", ({
       expect,
     }) => {
       // Test directly via buildCacheControlHeader method
@@ -1101,7 +1350,7 @@ describe("ServerEtagProvider", () => {
       ).toContain("max-age=86400");
     });
 
-    test("should mix number and DurationLike for maxAge and sMaxAge", ({
+    it("should mix number and DurationLike for maxAge and sMaxAge", ({
       expect,
     }) => {
       const cacheControl = etagProvider.buildCacheControlHeader({
@@ -1116,7 +1365,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("s-maxage=1200"); // 20 minutes = 1200 seconds
     });
 
-    test("should support stale-while-revalidate directive with number", async ({
+    it("should support stale-while-revalidate directive with number", async ({
       expect,
     }) => {
       const response = await app.cacheWithStaleWhileRevalidate.fetch();
@@ -1128,7 +1377,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("stale-while-revalidate=60");
     });
 
-    test("should support stale-while-revalidate directive with DurationLike", async ({
+    it("should support stale-while-revalidate directive with DurationLike", async ({
       expect,
     }) => {
       const response = await app.cacheWithStaleWhileRevalidateDuration.fetch();
@@ -1140,7 +1389,7 @@ describe("ServerEtagProvider", () => {
       expect(cacheControl).toContain("stale-while-revalidate=60");
     });
 
-    test("should handle stale-while-revalidate via buildCacheControlHeader", ({
+    it("should handle stale-while-revalidate via buildCacheControlHeader", ({
       expect,
     }) => {
       const cacheControl = etagProvider.buildCacheControlHeader({
@@ -1156,9 +1405,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Stream caching support", () => {
-    test("should cache ReadableStream responses via tee", async ({
-      expect,
-    }) => {
+    it("should cache ReadableStream responses via tee", async ({ expect }) => {
       // Create a simple ReadableStream that emits chunks
       const chunks = ["Hello", " ", "World"];
       const stream = new ReadableStream<Uint8Array>({
@@ -1171,12 +1418,10 @@ describe("ServerEtagProvider", () => {
         },
       });
 
-      // Access the protected method via type assertion
-      const provider = etagProvider as any;
       const key = "test-stream-key";
 
       // Collect the stream for cache
-      const hash = await provider.collectStreamForCache(
+      const hash = await etagProvider.testCollectStreamForCache(
         stream,
         key,
         200,
@@ -1184,79 +1429,25 @@ describe("ServerEtagProvider", () => {
         true,
       );
 
-      expect(hash).toBeDefined();
-      expect(hash).toMatch(/^"[a-f0-9]+"$/); // ETag format
+      expect(hash).toMatch(ETAG);
 
       // Verify the cache contains the collected content
-      const cached = await provider.cache.get(key);
-      expect(cached).toBeDefined();
-      expect(cached.body).toBe("Hello World");
-      expect(cached.status).toBe(200);
-      expect(cached.contentType).toBe("text/html");
+      const cached = await etagProvider.testStored(key);
+      expect(cached?.body).toBe("Hello World");
+      expect(cached?.status).toBe(200);
+      expect(cached?.contentType).toBe("text/html");
     });
 
-    test("should tee stream so client and cache both receive data", async ({
-      expect,
-    }) => {
-      const encoder = new TextEncoder();
-      const chunks = ["<html>", "<body>", "Content", "</body>", "</html>"];
-
-      const originalStream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          for (const chunk of chunks) {
-            controller.enqueue(encoder.encode(chunk));
-          }
-          controller.close();
-        },
-      });
-
-      // Tee the stream like ServerEtagProvider does
-      const [clientStream, cacheStream] = originalStream.tee();
-
-      // Read from client stream (simulates client receiving data)
-      const clientReader = clientStream.getReader();
-      const clientChunks: string[] = [];
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await clientReader.read();
-        if (done) break;
-        clientChunks.push(decoder.decode(value, { stream: true }));
-      }
-      clientChunks.push(decoder.decode()); // flush
-
-      // Read from cache stream (simulates cache collection)
-      const cacheReader = cacheStream.getReader();
-      const cacheChunks: string[] = [];
-      const cacheDecoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await cacheReader.read();
-        if (done) break;
-        cacheChunks.push(cacheDecoder.decode(value, { stream: true }));
-      }
-      cacheChunks.push(cacheDecoder.decode()); // flush
-
-      // Both should receive the same data
-      const clientData = clientChunks.join("");
-      const cacheData = cacheChunks.join("");
-
-      expect(clientData).toBe("<html><body>Content</body></html>");
-      expect(cacheData).toBe("<html><body>Content</body></html>");
-      expect(clientData).toBe(cacheData);
-    });
-
-    test("should handle empty stream gracefully", async ({ expect }) => {
+    it("should handle empty stream gracefully", async ({ expect }) => {
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           controller.close();
         },
       });
 
-      const provider = etagProvider as any;
       const key = "empty-stream-key";
 
-      const hash = await provider.collectStreamForCache(
+      const hash = await etagProvider.testCollectStreamForCache(
         stream,
         key,
         200,
@@ -1264,14 +1455,13 @@ describe("ServerEtagProvider", () => {
         true,
       );
 
-      expect(hash).toBeDefined();
+      expect(hash).toBe(await etagProvider.generateETag(""));
 
-      const cached = await provider.cache.get(key);
-      expect(cached).toBeDefined();
-      expect(cached.body).toBe("");
+      const cached = await etagProvider.testStored(key);
+      expect(cached?.body).toBe("");
     });
 
-    test("should handle large stream with multiple chunks", async ({
+    it("should handle large stream with multiple chunks", async ({
       expect,
     }) => {
       const encoder = new TextEncoder();
@@ -1287,10 +1477,9 @@ describe("ServerEtagProvider", () => {
         },
       });
 
-      const provider = etagProvider as any;
       const key = "large-stream-key";
 
-      const hash = await provider.collectStreamForCache(
+      const hash = await etagProvider.testCollectStreamForCache(
         stream,
         key,
         200,
@@ -1301,12 +1490,11 @@ describe("ServerEtagProvider", () => {
       // hash should be undefined when generateEtag is false
       expect(hash).toBeUndefined();
 
-      const cached = await provider.cache.get(key);
-      expect(cached).toBeDefined();
-      expect(cached.body.length).toBe(chunkCount * chunkContent.length);
+      const cached = await etagProvider.testStored(key);
+      expect(cached?.body.length).toBe(chunkCount * chunkContent.length);
     });
 
-    test("should generate correct ETag for streamed content", async ({
+    it("should generate correct ETag for streamed content", async ({
       expect,
     }) => {
       const content = "Test content for ETag";
@@ -1319,10 +1507,8 @@ describe("ServerEtagProvider", () => {
         },
       });
 
-      const provider = etagProvider as any;
-
       // Generate ETag from stream
-      const streamHash = await provider.collectStreamForCache(
+      const streamHash = await etagProvider.testCollectStreamForCache(
         stream,
         "etag-test-key",
         200,
@@ -1339,7 +1525,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Error response caching", () => {
-    test("should NOT cache 500 error responses", async ({ expect }) => {
+    it("should NOT cache 500 error responses", async ({ expect }) => {
       // An error status is thrown by the client; the body is its message.
       const error1 = await app.errorAction.fetch().catch((e) => e);
       expect(error1.status).toBe(500);
@@ -1351,7 +1537,7 @@ describe("ServerEtagProvider", () => {
       expect(error2.message).toBe("error-1");
     });
 
-    test("should NOT cache 404 error responses", async ({ expect }) => {
+    it("should NOT cache 404 error responses", async ({ expect }) => {
       const error1 = await app.notFoundAction.fetch().catch((e) => e);
       expect(error1.status).toBe(404);
       expect(error1.message).toBe("not-found-0");
@@ -1362,7 +1548,7 @@ describe("ServerEtagProvider", () => {
       expect(error2.message).toBe("not-found-1");
     });
 
-    test("should cache successful responses after error responses", async ({
+    it("should cache successful responses after error responses", async ({
       expect,
     }) => {
       // First request returns 500 error
@@ -1381,7 +1567,7 @@ describe("ServerEtagProvider", () => {
       expect(successResponse2.data).toBe("success-1");
     });
 
-    test("should NOT set Cache-Control on an error response", async ({
+    it("should NOT set Cache-Control on an error response", async ({
       expect,
     }) => {
       // Regression: the header was written above the status guard, so a route
@@ -1399,7 +1585,7 @@ describe("ServerEtagProvider", () => {
       expect(missing.headers.get("cache-control")).toBeNull();
     });
 
-    test("should NOT cache 4xx client errors", async ({ expect }) => {
+    it("should NOT cache 4xx client errors", async ({ expect }) => {
       // Test with 400 Bad Request
       const alepha = Alepha.create().with(AlephaServerEtag);
       const badRequestAction = alepha.inject(
@@ -1429,7 +1615,7 @@ describe("ServerEtagProvider", () => {
   });
 
   describe("Nested run() invocations", () => {
-    test("caches each inner action under its own key, not the outer route's", async ({
+    it("caches each inner action under its own key, not the outer route's", async ({
       expect,
     }) => {
       const first = await app.nestedOuter.fetch();
@@ -1456,7 +1642,7 @@ describe("ServerEtagProvider", () => {
       expect(await app.nestedInnerB.run()).toBe("B-0");
     });
 
-    test("leaves the outer response headers untouched", async ({ expect }) => {
+    it("leaves the outer response headers untouched", async ({ expect }) => {
       const response = await app.nestedOuter.fetch();
 
       // `nestedOuter` declares no `$etag`, so nothing an inner action asked

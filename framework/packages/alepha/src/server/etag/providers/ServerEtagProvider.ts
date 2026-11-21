@@ -10,6 +10,26 @@ import type { EtagMiddlewareOptionsResolved } from "../primitives/$etag.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerEtagProvider {
+  /**
+   * The quoted part of an entity-tag (RFC 9110 section 8.8.3): any visible
+   * character but the double quote, so a comma inside one is not a separator.
+   */
+  protected static readonly OPAQUE_TAG = /"[\x21\x23-\x7E\x80-\uFFFF]*"/g;
+
+  /**
+   * A whole `If-None-Match` value that is a list of entity-tags, each with
+   * an optional `W/` (exact case).
+   */
+  protected static readonly ENTITY_TAG_LIST =
+    /^(?:W\/)?"[\x21\x23-\x7E\x80-\uFFFF]*"(?:[ \t]*,[ \t]*(?:W\/)?"[\x21\x23-\x7E\x80-\uFFFF]*")*$/;
+
+  /**
+   * IMF-fixdate (RFC 9110 section 5.6.7), the HTTP-date this provider writes
+   * and the only form it reads.
+   */
+  protected static readonly HTTP_DATE =
+    /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly crypto = $inject(CryptoProvider);
@@ -26,8 +46,44 @@ export class ServerEtagProvider {
 
   public async invalidate(route: ServerRoute) {
     // Wildcard: entries are keyed by route + params + query + caller identity,
-    // so the bare key would only clear the anonymous, parameterless one.
-    await this.cache.invalidate(`${await this.createCacheKey(route)}*`);
+    // so one route holds as many entries as it was asked distinct questions.
+    await this.cache.invalidate(`${this.createRouteKey(route)}*`);
+  }
+
+  /**
+   * Whether an `If-None-Match` header names `etag`, by the weak comparison
+   * RFC 9110 section 13.1.2 asks of a conditional GET: a `W/` prefix on
+   * either side is ignored. A proxy or CDN that compresses a response weakens
+   * its ETag, so an exact string comparison never answers 304 behind one.
+   *
+   * The header is `*` alone, or a comma-separated list of entity-tags. One
+   * that is neither is malformed and matches nothing.
+   */
+  public matchesIfNoneMatch(
+    header: string | string[] | undefined,
+    etag: string,
+  ): boolean {
+    if (!header) {
+      return false;
+    }
+
+    const value = (Array.isArray(header) ? header.join(",") : header).trim();
+    if (value === "*") {
+      return true;
+    }
+
+    if (!ServerEtagProvider.ENTITY_TAG_LIST.test(value)) {
+      return false;
+    }
+
+    const opaque = etag.startsWith("W/") ? etag.slice(2) : etag;
+    for (const [candidate] of value.matchAll(ServerEtagProvider.OPAQUE_TAG)) {
+      if (candidate === opaque) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -43,8 +99,12 @@ export class ServerEtagProvider {
     }
 
     // Build key from route metadata (set by ServerRouterProvider before handler)
-    // or from action request context (for .run() direct calls)
-    const actionRequest = this.alepha.store.get("alepha.action.request");
+    // or from action request context (for .run() direct calls). `"fork"`, as
+    // in the `$etag` middleware: an enclosing action's request is not ours.
+    const actionRequest = this.alepha.store.get(
+      "alepha.action.request",
+      "fork",
+    );
 
     const keySource = {
       method:
@@ -73,11 +133,7 @@ export class ServerEtagProvider {
 
     // For HTTP routes, set reply headers
     if (request.reply) {
-      // Check if client has matching ETag - return 304
-      if (
-        request.headers?.["if-none-match"] === cached.hash ||
-        request.headers?.["if-modified-since"] === cached.lastModified
-      ) {
+      if (this.isNotModified(request, cached.hash, cached.lastModified)) {
         request.reply.status = 304;
         request.reply.setHeader("etag", cached.hash);
         request.reply.setHeader("last-modified", cached.lastModified);
@@ -144,7 +200,7 @@ export class ServerEtagProvider {
         contentType === "text/plain" ? response : JSON.stringify(response);
 
       const generatedEtag = await this.generateETag(body);
-      const lastModified = this.time.toISOString();
+      const lastModified = this.httpDate();
 
       const key = await this.createCacheKey(action.route, request);
 
@@ -193,16 +249,16 @@ export class ServerEtagProvider {
         return;
       }
 
+      // Strings only, as in `onResponse` below: no other body is ever sent
+      // with an ETag, so there is no validator a client could send back.
       if (
         !shouldStore &&
         shouldUseEtag &&
-        request.reply.body != null &&
-        (typeof request.reply.body === "string" ||
-          Buffer.isBuffer(request.reply.body))
+        typeof request.reply.body === "string"
       ) {
         const generatedEtag = await this.generateETag(request.reply.body);
 
-        if (request.headers["if-none-match"] === generatedEtag) {
+        if (this.isNotModified(request, generatedEtag)) {
           request.reply.status = 304;
           request.reply.body = undefined;
           request.reply.setHeader("etag", generatedEtag);
@@ -232,7 +288,7 @@ export class ServerEtagProvider {
       // Initialize headers if not present
       response.headers ??= {};
 
-      // Error responses get NOTHING from this middleware — not even the
+      // Error responses get NOTHING from this middleware, not even the
       // Cache-Control header. The directive describes the route, not the
       // outcome, so a route declaring `public, max-age=1y, immutable` used to
       // hand that to its own 404s: the header was set here, above the guard
@@ -300,7 +356,7 @@ export class ServerEtagProvider {
       }
 
       const generatedEtag = await this.generateETag(response.body);
-      const lastModified = this.time.toISOString();
+      const lastModified = this.httpDate();
 
       // Store response if storing is enabled
       if (shouldStore) {
@@ -326,7 +382,13 @@ export class ServerEtagProvider {
       // Set ETag headers if etag is enabled
       if (shouldUseEtag) {
         response.headers.etag = generatedEtag;
-        response.headers["last-modified"] = lastModified;
+
+        // The time the entry was stored, which every later hit repeats. A
+        // route that stores nothing has no such time: "now" on each response
+        // would tell a cache the resource never stops changing.
+        if (shouldStore) {
+          response.headers["last-modified"] = lastModified;
+        }
       }
     },
   });
@@ -405,7 +467,7 @@ export class ServerEtagProvider {
 
   /**
    * TTL configured on `store`, in whatever form it was written:
-   * `store: true` (no TTL — the cache default applies), a bare duration, or
+   * `store: true` (no TTL: the cache default applies), a bare duration, or
    * `{ ttl }`. It used to be truth-tested and then dropped, so every stored
    * response silently fell back to the global cache default.
    */
@@ -449,19 +511,81 @@ export class ServerEtagProvider {
     return this.time.duration(duration).asSeconds();
   }
 
+  /**
+   * The current time as an HTTP-date (RFC 9110 section 5.6.7), the only form
+   * `Last-Modified` and `If-Modified-Since` take.
+   */
+  protected httpDate(): string {
+    return new Date(this.time.nowMillis()).toUTCString();
+  }
+
+  /**
+   * Whether the conditional headers of `request` say the client already
+   * holds this response. `If-None-Match` wins when it is sent, and
+   * `If-Modified-Since` is then ignored (RFC 9110 section 13.1.3).
+   */
+  protected isNotModified(
+    request: ServerRequest,
+    etag: string,
+    lastModified?: string,
+  ): boolean {
+    const ifNoneMatch = request.headers?.["if-none-match"];
+    if (ifNoneMatch) {
+      return this.matchesIfNoneMatch(ifNoneMatch, etag);
+    }
+
+    const ifModifiedSince = request.headers?.["if-modified-since"];
+    if (!ifModifiedSince || !lastModified) {
+      return false;
+    }
+
+    // A value that is not an HTTP-date is ignored, as the RFC asks:
+    // `Date.parse` alone would read "2099" or an ISO string as a date.
+    const since = String(ifModifiedSince).trim();
+    if (!ServerEtagProvider.HTTP_DATE.test(since)) {
+      return false;
+    }
+
+    // NaN for a well-formed date that does not exist, and NaN compares false.
+    return Date.parse(lastModified) <= Date.parse(since);
+  }
+
+  /**
+   * The part of a store key every entry of one route starts with, which is
+   * what `invalidate()` clears. The `:` separators cannot come out of
+   * `encodeURIComponent`, so the path cannot spill into the next component.
+   */
+  protected createRouteKey(route: ServerRoute): string {
+    return `${route.method}:${encodeURIComponent(route.path ?? "")}:`;
+  }
+
+  /**
+   * The store key of one request: route, then path parameters and query,
+   * then caller identity.
+   *
+   * It must be injective, since two requests sharing a key are served each
+   * other's body, and anonymous callers share entries: anyone could plant
+   * one. Parameters and query are therefore kept as two separate objects,
+   * serialized as JSON (names and values quoted and escaped, so no value can
+   * spell out a second parameter), and percent-encoded so the result holds
+   * no `:` of its own. JSON has no bigint, so a bigint and every string are
+   * written with a tag (`n:` and `s:`), which keeps `5n` apart from `"5n"`.
+   */
   protected async createCacheKey(
     route: ServerRoute,
     config?: ServerRequest,
   ): Promise<string> {
-    const params: string[] = [];
-    for (const [key, value] of Object.entries(config?.params ?? {})) {
-      params.push(`${key}=${value}`);
-    }
-    for (const [key, value] of Object.entries(config?.query ?? {})) {
-      params.push(`${key}=${value}`);
-    }
+    const input = JSON.stringify(
+      [config?.params ?? {}, config?.query ?? {}],
+      (_key, value) =>
+        typeof value === "bigint"
+          ? `n:${value}`
+          : typeof value === "string"
+            ? `s:${value}`
+            : value,
+    );
 
-    return `${route.method}:${(route.path ?? "").replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}${await this.identityScope(config)}`;
+    return `${this.createRouteKey(route)}${encodeURIComponent(input)}${await this.identityScope(config)}`;
   }
 
   /**
@@ -515,7 +639,7 @@ export class ServerEtagProvider {
           .join("") + decoder.decode(); // Flush remaining
 
       const hash = await this.generateETag(body);
-      const lastModified = this.time.toISOString();
+      const lastModified = this.httpDate();
 
       this.log.trace("Storing streamed response", { key });
 

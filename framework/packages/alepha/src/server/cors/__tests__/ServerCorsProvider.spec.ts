@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 import {
   $cors,
@@ -23,6 +23,37 @@ class TestApp {
     path: "/scoped",
     use: [$cors({ origin: "https://scoped.example.com", credentials: true })],
     handler: () => "scoped",
+  });
+
+  /**
+   * An action with its own `$cors`, called through `run()` by a route that
+   * declares none. The inner allow-list governs the inner action's own HTTP
+   * route, never the response of whoever calls it in process.
+   */
+  narrowInner = $action({
+    method: "GET",
+    path: "/narrow-inner",
+    use: [$cors({ origin: "https://inner.example.com" })],
+    handler: () => "inner",
+  });
+
+  callsNarrow = $action({
+    method: "GET",
+    path: "/calls-narrow",
+    handler: async () => `outer:${await this.narrowInner.run()}`,
+  });
+
+  wideInner = $action({
+    method: "GET",
+    path: "/wide-inner",
+    use: [$cors({ origin: "https://other.example.com", credentials: true })],
+    handler: () => "inner",
+  });
+
+  callsWide = $action({
+    method: "GET",
+    path: "/calls-wide",
+    handler: async () => `outer:${await this.wideInner.run()}`,
   });
 }
 
@@ -54,7 +85,9 @@ describe("ServerCorsProvider", () => {
     }
   });
 
-  test("should return correct CORS headers for a simple request from an allowed origin", async () => {
+  it("should return correct CORS headers for a simple request from an allowed origin", async ({
+    expect,
+  }) => {
     await setupServer({
       origin: "https://allowed.example.com",
       credentials: true,
@@ -76,7 +109,7 @@ describe("ServerCorsProvider", () => {
     );
   });
 
-  test("should handle wildcard origin correctly", async () => {
+  it("should handle wildcard origin correctly", async ({ expect }) => {
     await setupServer({
       origin: "*",
     });
@@ -89,13 +122,15 @@ describe("ServerCorsProvider", () => {
     });
 
     expect(response.status).toBe(200);
-    // Note: Wildcard returns the specific origin, not '*' when credentials are not sent by browser
+    // The wildcard is answered by reflecting the request's origin, never `*`.
     expect(response.headers.get("access-control-allow-origin")).toBe(
       "https://any.origin.com",
     );
   });
 
-  test("should handle preflight OPTIONS request correctly", async () => {
+  it("should handle preflight OPTIONS request correctly", async ({
+    expect,
+  }) => {
     await setupServer({
       origin: "https://preflight.example.com",
       methods: ["GET", "POST", "OPTIONS"],
@@ -125,7 +160,7 @@ describe("ServerCorsProvider", () => {
     expect(response.headers.get("access-control-max-age")).toBe("86400");
   });
 
-  test("should answer the preflight of a GET route", async () => {
+  it("should answer the preflight of a GET route", async ({ expect }) => {
     // A cross-origin GET carrying Authorization (in the default allowed
     // headers) IS preflighted by the browser. Without an OPTIONS twin the
     // preflight 404s and the browser blocks the real request.
@@ -146,7 +181,9 @@ describe("ServerCorsProvider", () => {
     );
   });
 
-  test("should set Vary: Origin when reflecting the request origin", async () => {
+  it("should set Vary: Origin when reflecting the request origin", async ({
+    expect,
+  }) => {
     await setupServer({ origin: "https://allowed.example.com" });
 
     const response = await fetch(`${server.hostname}/api/hello`, {
@@ -158,7 +195,9 @@ describe("ServerCorsProvider", () => {
     expect(response.headers.get("vary")).toContain("Origin");
   });
 
-  test("should refuse credentials when origin is the wildcard", async () => {
+  it("should refuse credentials when origin is the wildcard", async ({
+    expect,
+  }) => {
     await setupServer({ origin: "*", credentials: true });
 
     const response = await fetch(`${server.hostname}/api/hello`, {
@@ -171,25 +210,7 @@ describe("ServerCorsProvider", () => {
     expect(response.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
-  test("should NOT return CORS headers for a request from a disallowed origin", async () => {
-    await setupServer({
-      origin: "https://allowed.example.com",
-    });
-
-    const response = await fetch(`${server.hostname}/api/hello`, {
-      headers: {
-        Origin: "https://disallowed.example.com",
-      },
-    });
-
-    // The header should not be set because the origin is not in the allow list.
-    // Some servers might omit it, others might return null. Checking for not-allowed is key.
-    expect(response.headers.get("access-control-allow-origin")).not.toBe(
-      "https://disallowed.example.com",
-    );
-  });
-
-  test("should handle an array of allowed origins", async () => {
+  it("should handle an array of allowed origins", async ({ expect }) => {
     const allowedOrigins = [
       "https://app1.example.com",
       "https://app2.example.com",
@@ -224,7 +245,9 @@ describe("ServerCorsProvider", () => {
     expect(res3.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  test("should not send credentials header with default config", async () => {
+  it("should not send credentials header with default config", async ({
+    expect,
+  }) => {
     await setupServer();
 
     const response = await fetch(`${server.hostname}/api/hello`, {
@@ -237,15 +260,24 @@ describe("ServerCorsProvider", () => {
     expect(response.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
-  test("should not return CORS headers if Origin header is not present", async () => {
+  it("should not return CORS headers if Origin header is not present", async ({
+    expect,
+  }) => {
     await setupServer();
 
-    const response = await fetch(`${server.hostname}/api/hello`); // No Origin header
+    const response = await fetch(`${server.hostname}/api/hello`, {
+      method: "POST",
+    });
 
+    // The route answered and the provider ran on it: only the grant is absent.
+    expect(response.status).toBe(200);
+    expect(response.headers.get("vary")).toContain("Origin");
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  test("should send neither Allow-Origin nor Allow-Credentials to a rejected origin", async () => {
+  it("should send neither Allow-Origin nor Allow-Credentials to a rejected origin", async ({
+    expect,
+  }) => {
     await setupServer({
       origin: "https://allowed.example.com",
       credentials: true,
@@ -262,7 +294,9 @@ describe("ServerCorsProvider", () => {
     expect(response.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
-  test("a per-action $cors allow-list overrides the global one on the request", async () => {
+  it("a per-action $cors allow-list overrides the global one on the request", async ({
+    expect,
+  }) => {
     await setupServer({ origin: "https://global.example.com" });
 
     // Allowed globally, refused by the action's own list.
@@ -285,7 +319,9 @@ describe("ServerCorsProvider", () => {
     );
   });
 
-  test("a per-action $cors allow-list overrides the global one on the preflight", async () => {
+  it("a per-action $cors allow-list overrides the global one on the preflight", async ({
+    expect,
+  }) => {
     await setupServer({ origin: "https://global.example.com" });
 
     // The generated OPTIONS twin carries no middleware of its own, so before
@@ -312,5 +348,52 @@ describe("ServerCorsProvider", () => {
     expect(accepted.headers.get("access-control-allow-origin")).toBe(
       "https://scoped.example.com",
     );
+  });
+
+  describe("an action with $cors called through run()", () => {
+    it("does not remove the grant the outer route is entitled to", async ({
+      expect,
+    }) => {
+      await setupServer({
+        origin: "https://global.example.com",
+        credentials: true,
+      });
+
+      const response = await fetch(`${server.hostname}/api/calls-narrow`, {
+        headers: { Origin: "https://global.example.com" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("outer:inner");
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        "https://global.example.com",
+      );
+      expect(response.headers.get("access-control-allow-credentials")).toBe(
+        "true",
+      );
+    });
+
+    it("does not grant the outer response an origin the outer route refuses", async ({
+      expect,
+    }) => {
+      await setupServer({ origin: "https://global.example.com" });
+
+      const response = await fetch(`${server.hostname}/api/calls-wide`, {
+        headers: { Origin: "https://other.example.com" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("outer:inner");
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+      expect(
+        response.headers.get("access-control-allow-credentials"),
+      ).toBeNull();
+    });
+
+    it("runs outside any HTTP request", async ({ expect }) => {
+      await setupServer();
+
+      expect(await alepha.inject(TestApp).narrowInner.run()).toBe("inner");
+    });
   });
 });
