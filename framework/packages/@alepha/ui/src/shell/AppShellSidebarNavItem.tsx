@@ -71,9 +71,9 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
   const hasActive = isGroup && hasActiveDescendant(item);
   const [localOpen, setLocalOpen] = useState(item.defaultOpen ?? hasActive);
   // Reveal a collapsed group when navigation makes one of its descendants
-  // active — SPA nav, spotlight (⌘K), breadcrumb, or a deep-link that doesn't
-  // remount this item (useState's initializer runs only at mount, so without
-  // this the group stays stuck closed and the active page is hidden — petition
+  // active (SPA nav, the ⌘K spotlight, breadcrumb, or a deep-link that doesn't
+  // remount this item). useState's initializer runs only at mount, so without
+  // this the group stays stuck closed and the active page is hidden (petition
   // #4). Only OPENS; never auto-collapses, so a manual toggle is preserved.
   //
   // Accordion mode does the same job in `AppShell` instead, from the tree, and
@@ -106,7 +106,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
     // so the explanation has space to breathe regardless of sidebar
     // state.
     if (item.disabled) {
-      // Bypass SidebarMenuButton — it self-wraps in a Tooltip when given
+      // Bypass SidebarMenuButton: it self-wraps in a Tooltip when given
       // a `tooltip` prop, which would swallow the HoverCard pointer
       // events. A plain styled <div> keeps cursor-not-allowed and lets
       // the row act as the HoverCard trigger.
@@ -236,7 +236,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
   // Collapsed to icons, the expanded branch below is a dead button: it still
   // flips `open`, but what `open` reveals is a `SidebarMenuSub`, which carries
   // `group-data-[collapsible=icon]:hidden`. The group has no `href` either, so
-  // there is no fallback — every child is simply unreachable. A dropdown is the
+  // there is no fallback: every child is simply unreachable. A dropdown is the
   // standard answer, and it belongs here rather than in any one app because
   // this hits EVERY `NavItem` with children.
   //
@@ -254,7 +254,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
               // same element. The menu names itself with a label instead.
               //
               // `hasActive` joins `item.active` so the trigger still reads as
-              // current when a descendant is — collapsed, it is the only clue
+              // current when a descendant is. Collapsed, it is the only clue
               // which group holds the open page.
               <SidebarMenuButton isActive={item.active || hasActive} />
             }
@@ -271,7 +271,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
             {/*
               The group wrapper is required, not cosmetic: `DropdownMenuLabel`
               is Base UI's `Menu.GroupLabel`, which reads `MenuGroupContext` and
-              THROWS outside a `Menu.Group`. Nothing types this — the label
+              THROWS outside a `Menu.Group`. Nothing types this: the label
               compiles fine, and the whole app-shell crashes at the first click
               on the trigger, because the throw happens when the menu opens
               rather than when it mounts.

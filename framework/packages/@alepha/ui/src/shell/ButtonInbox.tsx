@@ -4,7 +4,7 @@ void React;
 
 import type { NotificationInboxController } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useAction, useClient, useInject, useStore } from "alepha/react";
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -152,19 +152,29 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
         // Opening the message matters more than recording that it was read.
       }
     }
-    navigate(props, row.href);
-  };
-
-  const markAllRead = async () => {
-    try {
-      await api.markAllInboxRead({ query: {} });
-    } finally {
-      setUnread({ count: 0 });
-      setItems((current) =>
-        current.map((it) => ({ ...it, readAt: it.readAt ?? "read" })),
-      );
+    // The full navigation follows only a same-origin path or an http(s) URL.
+    // The href was written at send time, possibly from a sender's variables,
+    // and a `javascript:` one would run on the app's origin.
+    if (props.onOpen || isNavigable(row.href)) {
+      navigate(props, row.href);
     }
   };
+
+  // Through `useAction`, so a refused write leaves the badge and the rows as
+  // they were and reaches `react:action:error` (and a mounted
+  // `ActionErrorToaster`) instead of becoming an unhandled rejection.
+  const markAllRead = useAction(
+    {
+      handler: async () => {
+        await api.markAllInboxRead({ query: {} });
+        setUnread({ count: 0 });
+        setItems((current) =>
+          current.map((it) => ({ ...it, readAt: it.readAt ?? "read" })),
+        );
+      },
+    },
+    [api],
+  );
 
   if (!available) {
     return null;
@@ -229,7 +239,7 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
                   // is on screen, and the reader is still reading it.
                   event.preventDefault();
                   event.stopPropagation();
-                  void markAllRead();
+                  void markAllRead.run();
                 }}
               >
                 {props.labels?.markAllRead ?? "Mark all read"}
@@ -308,3 +318,10 @@ const navigate = (props: ButtonInboxProps, href: string): void => {
     window.location.assign(href);
   }
 };
+
+/**
+ * A same-origin path (`/x`, not the protocol-relative `//host` nor `/\host`,
+ * which a browser reads the same way) or an http(s) URL.
+ */
+const isNavigable = (href: string): boolean =>
+  /^\/(?![/\\])/.test(href) || /^https?:\/\//i.test(href);

@@ -135,7 +135,7 @@ export interface AppShellProps {
   variant?: "sidebar" | "floating" | "inset";
   /**
    * When `variant="inset"`, lift the header out of the floating card so it
-   * sits on the sidebar background — only the main page becomes the card.
+   * sits on the sidebar background: only the main page becomes the card.
    * Has no effect on other variants.
    */
   headerOutside?: boolean;
@@ -224,7 +224,7 @@ export const AppShell = (props: AppShellProps) => {
           the search button and four header icons: about 470px of content in
           373px at phone width. Nothing here used to be marked as the one that
           must survive, so the overflow fell off the RIGHT end and took the
-          theme, colour-mode and account controls with it — off-screen, with no
+          theme, colour-mode and account controls with it: off-screen, with no
           horizontal scroll to reach them and no menu they collapse into.
 
           So everything on the row is `shrink-0` with exactly one exception:
@@ -282,7 +282,7 @@ export const AppShell = (props: AppShellProps) => {
     //   - main is `flex flex-col min-h-0 flex-1` so its children can
     //     claim the leftover height via `flex-1 min-h-0`.
     //   - main itself is `overflow-hidden` (not `overflow-auto`) so the
-    //     table's inner `overflow-auto` is the actual scroll surface —
+    //     table's inner `overflow-auto` is the actual scroll surface:
     //     header stays sticky, body scrolls, no page-level scrollbar.
     //   - For non-fill pages there's no height bound, so this collapses
     //     to "scroll whatever overflows" without further config.
@@ -294,7 +294,7 @@ export const AppShell = (props: AppShellProps) => {
     // styled `position: absolute` with no offsets, so on a page whose fields
     // live inside an inner scroller each of those inputs escaped this `main`,
     // resolved against the positioned `SidebarInset` and pinned the document
-    // open at its own static offset — a page that scrolled 1271px into empty
+    // open at its own static offset: a page that scrolled 1271px into empty
     // background beneath a shell that had not moved. Positioning `main` makes
     // its overflow bound real, whatever a page renders inside it.
     <main
@@ -320,7 +320,7 @@ export const AppShell = (props: AppShellProps) => {
         // `fill` = a parent owns the height (e.g. a full-width banner above
         // the shell). The desktop sidebar is `fixed inset-y-0 h-svh` (pinned
         // to the VIEWPORT), so it would overlap whatever sits above the
-        // shell — re-anchor it to this wrapper instead (absolute within the
+        // shell; re-anchor it to this wrapper instead (absolute within the
         // now-relative provider, height from the wrapper). The arbitrary
         // selectors out-specify the base `.fixed`/`.h-svh` utilities.
         className={

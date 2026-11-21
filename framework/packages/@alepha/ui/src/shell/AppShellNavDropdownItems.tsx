@@ -20,7 +20,7 @@ export interface AppShellNavDropdownItemsProps {
 /**
  * The children of a collapsed nav group, as dropdown entries.
  *
- * Recurses through nested groups via `DropdownMenuSub` —
+ * Recurses through nested groups via `DropdownMenuSub`:
  * `AppShellSidebarNavItem` recurses into itself for depth-2 groups in the
  * expanded tree, and without the matching recursion here a nested group would
  * be dead again one level down, which is the very bug the collapsed branch of
@@ -28,7 +28,7 @@ export interface AppShellNavDropdownItemsProps {
  *
  * Badges are carried inline. `SidebarMenuBadge` is
  * `group-data-[collapsible=icon]:hidden`, so a collapsed sidebar drops every
- * count — and the count is usually why you opened the group.
+ * count, and the count is usually why you opened the group.
  */
 export const AppShellNavDropdownItems = (
   props: AppShellNavDropdownItemsProps,

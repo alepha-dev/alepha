@@ -70,7 +70,7 @@ describe("keepDeepestActive", () => {
   });
 
   it("keeps an index entry lit on a child route it genuinely owns", () => {
-    // Same shape as the first case, except no sibling claims the child — so
+    // Same shape as the first case, except no sibling claims the child, so
     // the index entry is still the deepest match and must survive.
     expect(activeHrefs("/admin/audits", ["/admin", "/admin/users"])).toEqual([
       "/admin",

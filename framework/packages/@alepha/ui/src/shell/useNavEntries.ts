@@ -15,7 +15,7 @@ import {
 
 export interface UseNavEntriesOptions {
   /**
-   * Route name anchoring the shell — only descendant pages contribute entries.
+   * Route name anchoring the shell: only descendant pages contribute entries.
    * See {@link UseNavTreeOptions}.
    */
   root: string;
@@ -28,7 +28,7 @@ export interface UseNavEntriesOptions {
  */
 export interface NavEntry {
   /**
-   * Route name — used for navigation (`router.push(name)`) and as a stable key.
+   * Route name: used for navigation (`router.push(name)`) and as a stable key.
    */
   name: string;
   /**
@@ -49,19 +49,19 @@ export interface NavEntry {
    */
   order: number;
   /**
-   * Smallest `order` in this entry's group — drives group ordering.
+   * Smallest `order` in this entry's group; drives group ordering.
    */
   groupOrder: number;
   keywords?: string[];
   description?: ReactNode;
   badge?: ReactNode;
   /**
-   * `can()` returned `"disabled"` — show muted, block navigation.
+   * `can()` returned `"disabled"`: show muted, block navigation.
    */
   disabled: boolean;
   /**
    * The current route is on or under this entry, and no sibling entry matched
-   * it more specifically. At most one entry in a list is active — see
+   * it more specifically. At most one entry in a list is active: see
    * {@link keepDeepestActive}.
    */
   active: boolean;
@@ -82,9 +82,10 @@ export function useNavEntries(options: UseNavEntriesOptions): NavEntry[] {
   const current = state.url?.pathname ?? "/";
   // `tr` is a stable bound field on the provider, so it can never be what
   // tells the memo below that the labels changed: the active language has to
-  // be a dependency in its own right. (`has` happens to be a fresh closure per
-  // render today, which recomputes everything anyway - that is an accident of
-  // `useAuth`, not something the labels may rely on.)
+  // be a dependency in its own right. `has` is no refresh either: `useAuth`
+  // builds it once per container, and it reads the permissions at call time.
+  // So a permission change alone does not recompute the entries; the next
+  // navigation (`current`), a language switch or a new page list does.
   const lang = i18n.lang;
 
   return useMemo(() => {

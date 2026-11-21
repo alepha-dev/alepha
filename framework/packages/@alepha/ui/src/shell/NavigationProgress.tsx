@@ -46,6 +46,7 @@ export const NavigationProgress = (props: NavigationProgressProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [visible, setVisible] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEvents(
     {
@@ -53,6 +54,10 @@ export const NavigationProgress = (props: NavigationProgressProps) => {
         // A second transition before the first ends used to leave the
         // first interval running for the page's lifetime.
         if (intervalRef.current) clearInterval(intervalRef.current);
+        // A navigation starting within the previous one's fade-out: its hide
+        // timer would take the bar away from this one.
+        if (hideRef.current) clearTimeout(hideRef.current);
+        hideRef.current = null;
         setProgress(0);
         setVisible(true);
         setIsLoading(true);
@@ -69,7 +74,9 @@ export const NavigationProgress = (props: NavigationProgressProps) => {
         }
         setProgress(100);
         setIsLoading(false);
-        setTimeout(() => {
+        if (hideRef.current) clearTimeout(hideRef.current);
+        hideRef.current = setTimeout(() => {
+          hideRef.current = null;
           setVisible(false);
           setProgress(0);
         }, 200);
@@ -81,6 +88,7 @@ export const NavigationProgress = (props: NavigationProgressProps) => {
   useEffect(
     () => () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (hideRef.current) clearTimeout(hideRef.current);
     },
     [],
   );
@@ -108,5 +116,3 @@ export const NavigationProgress = (props: NavigationProgressProps) => {
     </div>
   );
 };
-
-export default NavigationProgress;

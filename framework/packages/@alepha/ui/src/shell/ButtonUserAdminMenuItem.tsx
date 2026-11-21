@@ -19,7 +19,7 @@ export interface ButtonUserAdminMenuItemProps {
   /**
    * Escape hatch for a destination no route name can express. Supplying it
    * turns the item back into a click handler on a `div`, so the entry loses
-   * ⌘-click, middle-click and "open in new tab" — see
+   * ⌘-click, middle-click and "open in new tab": see
    * `ButtonUserAccountMenuItem.tsx`.
    */
   onClick?: () => void;

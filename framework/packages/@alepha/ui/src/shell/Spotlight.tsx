@@ -22,7 +22,7 @@ import { type NavEntry, useNavEntries } from "./useNavEntries.ts";
 
 export interface SpotlightProps {
   /**
-   * Route name anchoring the palette — the same `root` passed to
+   * Route name anchoring the palette: the same `root` passed to
    * {@link NavShell}. The palette lists the navigable pages of that subtree,
    * derived from each page's `nav` metadata (label / icon / group / keywords /
    * description). One source for sidebar, breadcrumbs and palette.

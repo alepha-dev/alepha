@@ -38,7 +38,7 @@ interface ActionErrorEvent {
  * `react:action:error` event that every `useAction` / `useQuery` emits on
  * failure and surfaces it as a single toast.
  *
- * This is the "one toast for all" centraliser — with it mounted, call sites no
+ * This is the "one toast for all" centraliser: with it mounted, call sites no
  * longer need their own `try/catch + toast.error` around every mutation; an
  * unhandled action error becomes a toast automatically.
  *

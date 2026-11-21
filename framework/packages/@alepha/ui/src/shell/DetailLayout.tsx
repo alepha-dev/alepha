@@ -16,13 +16,13 @@ export interface DetailTab {
   label: React.ReactNode;
   /**
    * A trailing count. Passed through to `Segmented`, which colours it from
-   * the segment's own state — see {@link SegmentedOption.count} for why a
+   * the segment's own state: see {@link SegmentedOption.count} for why a
    * count folded into `label` cannot be read on the active tab.
    */
   count?: React.ReactNode;
   /**
    * Rendered at `size-4` before the label. Passed as a component rather than
-   * an element so callers hand over data — every detail page used to repeat
+   * an element so callers hand over data: every detail page used to repeat
    * the same `inline-flex items-center gap-1.5` wrapper by hand.
    */
   icon?: IconType;
@@ -53,7 +53,7 @@ export interface DetailLayoutProps {
    */
   actions?: React.ReactNode;
   /**
-   * Replaces the whole shell with a skeleton. Pass it only for the first load —
+   * Replaces the whole shell with a skeleton. Pass it only for the first load:
    * a refetch that blanks the page an operator is reading is a regression, so
    * a caller should gate this on "loading **and** no data yet".
    */
@@ -72,15 +72,15 @@ export interface DetailLayoutProps {
  *
  * It lived at `components/admin/admin-detail-layout` while admin pages were
  * its only consumers, and moved here when Lore's Epic page became the first
- * one outside admin. Nothing about it was ever admin-specific — it imports a
- * button, a segmented control and a skeleton — so the old name described the
+ * one outside admin. Nothing about it was ever admin-specific (it imports a
+ * button, a segmented control and a skeleton), so the old name described the
  * callers rather than the component. There is deliberately **no re-export
  * left behind at the old path**: an alias nobody is forced to notice is an
  * alias nobody removes.
  *
  * It owns the chrome and nothing else. Data, forms and mutations stay in the
  * page that composes it, and each tab body is its own component that renders
- * what it is given — the split that keeps a detail page from growing into one
+ * what it is given: the split that keeps a detail page from growing into one
  * unreadable file.
  *
  * The aside is hidden below `md`. A phone gets the tabs full width rather than
@@ -101,7 +101,7 @@ export interface DetailLayoutProps {
  * </DetailLayout>
  * ```
  *
- * Dialogs belong beside it, not inside `children` — they portal out anyway,
+ * Dialogs belong beside it, not inside `children`: they portal out anyway,
  * and nesting them in the tab body unmounts them on a tab switch.
  */
 export const DetailLayout = (props: DetailLayoutProps) => {
@@ -202,9 +202,9 @@ export const DetailLayout = (props: DetailLayoutProps) => {
               and stay clickable. A tab strip that scrolls is a known phone
               pattern; a primary action hidden behind a scroll is not.
 
-              The `no-scrollbar` class used elsewhere in this package is not
-              defined anywhere in the repo, so the thin scrollbar shows - which
-              is the affordance saying there is more to the right.
+              No `no-scrollbar` here (the utility `styles.css` defines): the
+              thin scrollbar is left showing, as the affordance saying there
+              is more to the right.
 
               `py-1` is not spacing: `overflow-x: auto` makes the computed
               `overflow-y` `auto` too, and without 4px of slack the segment's

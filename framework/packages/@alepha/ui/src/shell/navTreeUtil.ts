@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
  * Shared helpers for deriving navigation surfaces (sidebar, breadcrumbs,
  * command palette) from the route tree. Each `$page` carries its own `nav`
  * metadata, so there is no separate hand-maintained nav list to keep in sync
- * — see {@link useNavTree} and {@link useNavBreadcrumbs}.
+ * (see {@link useNavTree} and {@link useNavBreadcrumbs}).
  */
 
 /**
@@ -93,7 +93,7 @@ function navLabelFallback(page: PageRoute): ReactNode {
   if (page.nav?.label != null) return page.nav.label;
   if (page.label != null) return page.label;
   const head = page.head;
-  // `head` may be a `(props) => Head` function — only a static object carries a
+  // `head` may be a `(props) => Head` function: only a static object carries a
   // usable title here (the nav builder has no props to call it with).
   if (head && typeof head === "object" && "title" in head && head.title) {
     return head.title;
@@ -119,7 +119,7 @@ export function navGroupLabel(
 
 /**
  * Walk the `parent` chain to decide whether `page` is a (strict) descendant of
- * the route named `root`. The root itself is excluded — it anchors the shell
+ * the route named `root`. The root itself is excluded: it anchors the shell
  * but is not a nav entry.
  */
 export function isDescendantOf(page: PageRoute, root: string): boolean {
@@ -147,11 +147,11 @@ export function hasNavPermission(
 
 /**
  * Whether `current` (the active pathname) is on or under `href`. Mirrors the
- * legacy hand-rolled check — exact match, or a path segment below it — so the
+ * legacy hand-rolled check (exact match, or a path segment below it), so the
  * sidebar highlights `/admin/users` while viewing `/admin/users/:id`.
  *
  * ⚠️ On its own this over-matches, because it can only see one entry at a time.
- * Run the results through {@link keepDeepestActive} — see there for why.
+ * Run the results through {@link keepDeepestActive}: see there for why.
  */
 export function isActivePath(current: string, href: string): boolean {
   return current === href || current.startsWith(`${href}/`);
@@ -162,7 +162,7 @@ export function isActivePath(current: string, href: string): boolean {
  * match and clear the rest.
  *
  * `isActivePath` answers "is the current page on or under this entry", which is
- * the right question for a section that owns a subtree — `/admin/users` must
+ * the right question for a section that owns a subtree: `/admin/users` must
  * stay lit while a user detail page is open. But it is a per-entry predicate,
  * so it cannot tell that a *different* entry matched more specifically.
  *

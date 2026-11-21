@@ -5,7 +5,7 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ButtonInbox } from "../ButtonInbox.tsx";
 
@@ -40,17 +40,23 @@ class Links extends LinkProvider {
   public unread = 3;
   public readCalls: string[] = [];
   public markAllCalls = 0;
+  public markAllError?: Error;
+  public rows: typeof ROWS = ROWS;
 
   override client(): any {
     const actions: Record<string, any> = {
       countInbox: async () => ({ unread: this.unread }),
-      listInbox: async () => ({ items: ROWS, unreadCount: this.unread }),
+      listInbox: async () => ({
+        items: this.rows,
+        unreadCount: this.unread,
+      }),
       markInboxRead: async (input: any) => {
         this.readCalls.push(input.params.id);
         return { ok: true };
       },
       markAllInboxRead: async () => {
         this.markAllCalls++;
+        if (this.markAllError) throw this.markAllError;
         return { ok: true };
       },
     };
@@ -228,6 +234,91 @@ describe("ButtonInbox", () => {
 
     await waitFor(() => expect(links.markAllCalls).toBe(1));
     await waitFor(() => expect(view.queryByTestId("inbox-badge")).toBeNull());
+  });
+
+  /**
+   * The write is the truth: a refused "Mark all read" leaves the badge and
+   * the dots as they were, and the failure reaches `react:action:error`
+   * (which a mounted `ActionErrorToaster` toasts) instead of being lost.
+   */
+  it("keeps the badge and the rows when marking all read fails", async () => {
+    const { view, links, alepha } = await mount({}, (links) => {
+      links.markAllError = new Error("refused");
+    });
+    const errors: Error[] = [];
+    alepha.events.on("react:action:error", (event) => {
+      errors.push(event.error);
+    });
+
+    fireEvent.click(view.container.querySelector("button")!);
+    await waitFor(() => expect(view.getByText("Mark all read")).toBeTruthy());
+    fireEvent.click(view.getByText("Mark all read"));
+
+    await waitFor(() =>
+      expect(errors.map((e) => e.message)).toEqual(["refused"]),
+    );
+    expect(links.markAllCalls).toBe(1);
+    expect(view.getByTestId("inbox-badge").textContent).toBe("3");
+    expect(view.getAllByTestId("inbox-unread-dot")).toHaveLength(1);
+  });
+
+  /**
+   * Without `onOpen` the row is a full navigation to whatever `href` the
+   * message carries, and that string was written at send time. Only a path
+   * or an http(s) URL is followed: a `javascript:` one would run on the
+   * app's origin.
+   */
+  it("follows only a path or an http(s) href without onOpen", async () => {
+    const assign = vi.fn();
+    const location = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        href: location.href,
+        origin: location.origin,
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+        assign,
+      },
+    });
+    try {
+      const hrefs = [
+        "javascript:alert(document.cookie)",
+        "//evil.example/x",
+        "/\\evil.example/x",
+        "data:text/html,hi",
+        "/alepha/quests/402",
+        "https://example.app/x",
+      ];
+      const { view } = await mount({}, (links) => {
+        links.rows = hrefs.map((href, i) => ({
+          id: `h-${i}`,
+          title: `Row ${i}`,
+          href,
+          createdAt: "2026-09-07T02:00:00.000Z",
+          readAt: "2026-09-07T03:00:00.000Z",
+          scopeLabel: "Alepha",
+        }));
+      });
+
+      for (let i = 0; i < hrefs.length; i++) {
+        fireEvent.click(view.container.querySelector("button")!);
+        await waitFor(() => expect(view.getByText(`Row ${i}`)).toBeTruthy());
+        fireEvent.click(view.getByText(`Row ${i}`));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+
+      expect(assign.mock.calls.map((call) => call[0])).toEqual([
+        "/alepha/quests/402",
+        "https://example.app/x",
+      ]);
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: location,
+      });
+    }
   });
 
   it("hides the footer without a destination, and shows it with one", async () => {
