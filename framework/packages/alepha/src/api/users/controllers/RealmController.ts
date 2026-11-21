@@ -5,7 +5,11 @@ import { ServerAuthProvider } from "alepha/server/auth";
 import { $etag } from "alepha/server/etag";
 
 import { RealmProvider } from "../providers/RealmProvider.ts";
-import { realmConfigSchema } from "../schemas/realmConfigSchema.ts";
+import {
+  publicRealmSettingsSchema,
+  type RealmConfig,
+  realmConfigSchema,
+} from "../schemas/realmConfigSchema.ts";
 import { UsernameSlugger } from "../services/UsernameSlugger.ts";
 
 /**
@@ -43,8 +47,14 @@ export class RealmController {
           realmName,
         });
 
-      // Never leak the privileged-account allowlist to anonymous callers.
-      const { adminEmails, adminUsernames, ...publicSettings } = settings;
+      // Only what `publicRealmSettingsSchema` lists goes to an anonymous
+      // caller, picked here too so the answer does not depend on the
+      // serializer dropping the rest.
+      const publicSettings = Object.fromEntries(
+        Object.keys(publicRealmSettingsSchema.shape)
+          .filter((key) => key in settings)
+          .map((key) => [key, settings[key as keyof typeof settings]]),
+      ) as RealmConfig["settings"];
 
       return {
         settings: publicSettings,

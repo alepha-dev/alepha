@@ -1,17 +1,17 @@
 import { $inject } from "alepha";
-import { CryptoProvider } from "alepha/crypto";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { deleteMyAccountBodySchema } from "../schemas/deleteMyAccountBodySchema.ts";
+import { CurrentPasswordService } from "../services/CurrentPasswordService.ts";
 import { UserService } from "../services/UserService.ts";
 
 /**
  * Self-service account deletion.
  *
  * **This is a hard delete.** The account row, its identities and its sessions
- * go, through the same {@link UserService.deleteUser} the admin path uses —
+ * go, through the same {@link UserService.deleteUser} the admin path uses,
  * one deletion semantic rather than two that drift. Soft-delete with a
  * bring-back window is a deliberate future decision, not an oversight; there
  * is no `deletedAt` on `users` to build it on today.
@@ -20,7 +20,7 @@ import { UserService } from "../services/UserService.ts";
  *
  * The framework knows about users, identities and sessions. It does not know
  * that deleting an account orphans a project, or cascades through rows the
- * account holder authored inside *other people's* data — and it cannot,
+ * account holder authored inside *other people's* data, and it cannot,
  * because those foreign keys live in the application's own entities.
  *
  * So {@link UserService.deleteUser} emits {@link Hooks."user:delete:before"}
@@ -46,13 +46,13 @@ import { UserService } from "../services/UserService.ts";
  *
  * An application with foreign keys to `users.id` that has *not* written such
  * a hook is relying on its own cascade rules being correct. That is a real
- * choice, and it should be a considered one — the failure mode is silent
+ * choice, and it should be a considered one, the failure mode is silent
  * third-party data loss, visible nowhere in a diff.
  */
 export class MyAccountController {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly userService = $inject(UserService);
-  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly currentPassword = $inject(CurrentPasswordService);
 
   deleteMyAccount = $action({
     method: "DELETE",
@@ -69,7 +69,7 @@ export class MyAccountController {
 
       /*
         The confirmation phrase. Email, then username, then the literal
-        `DELETE` — both columns are optional on the entity, and an account
+        `DELETE`, both columns are optional on the entity, and an account
         with neither would otherwise be confirmable with an empty string.
       */
       const expected = account.email ?? account.username ?? "DELETE";
@@ -86,15 +86,17 @@ export class MyAccountController {
       });
 
       // A password account must prove knowledge of it. An OAuth-only account
-      // has nothing to prove, so `confirm` alone stands — demanding a
+      // has nothing to prove, so `confirm` alone stands, demanding a
       // password it never had would make deletion impossible.
       if (credentials?.password) {
         if (!body.currentPassword) {
           throw new BadRequestError("Your current password is required");
         }
-        const ok = await this.crypto.verifyPassword(
+        // Counted against the account's login budget, like the login.
+        const ok = await this.currentPassword.verify(
+          user.id,
           body.currentPassword,
-          credentials.password,
+          user.realm,
         );
         if (!ok) {
           throw new BadRequestError("Current password is incorrect");

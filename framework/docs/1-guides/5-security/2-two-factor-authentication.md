@@ -119,15 +119,17 @@ try {
 
 `MyMfaController` exposes the self-service endpoints, all scoped to the caller. Every one but the status read requires a signed-in session: an API key or other machine credential is refused with a `403`.
 
-| Endpoint                                     | Body       | What it does                                                           |
-| -------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
-| `GET /api/users/me/mfa`                      |            | `{ totp: { enabled, pending, recoveryCodesLeft } }`                    |
-| `POST /api/users/me/mfa/totp/enroll`         |            | Returns the secret, the `otpauth://` URI, and a QR code as inline SVG  |
-| `POST /api/users/me/mfa/totp/activate`       | `{ code }` | Confirms a code and returns the recovery codes, once                   |
-| `DELETE /api/users/me/mfa/totp`              | `{ code }` | Turns it off; the code is a current one or a recovery code             |
-| `POST /api/users/me/mfa/totp/recovery-codes` | `{ code }` | Issues a fresh set, retiring the old one; same proof as turning it off |
+| Endpoint                                     | Body               | What it does                                                           |
+| -------------------------------------------- | ------------------ | ---------------------------------------------------------------------- |
+| `GET /api/users/me/mfa`                      |                    | `{ totp: { enabled, pending, recoveryCodesLeft } }`                    |
+| `POST /api/users/me/mfa/totp/enroll`         |                    | Returns the secret, the `otpauth://` URI, and a QR code as inline SVG  |
+| `POST /api/users/me/mfa/totp/activate`       | `{ code, proof? }` | Confirms a code and returns the recovery codes, once                   |
+| `DELETE /api/users/me/mfa/totp`              | `{ code }`         | Turns it off; the code is a current one or a recovery code             |
+| `POST /api/users/me/mfa/totp/recovery-codes` | `{ code }`         | Issues a fresh set, retiring the old one; same proof as turning it off |
 
 Enrollment is refused with a `400` while `mfa.totp` is `"disabled"`, and when TOTP is already active. Starting again on a `pending` enrollment (one never confirmed with a code) replaces it, so a user who scanned the wrong QR can simply restart. A pending enrollment gates nothing at sign-in.
+
+Activating asks for the proof that adding a [passkey](/docs/guides-security-passkeys) asks for, in `proof`: `{ currentPassword }` when the account has a password, else `{ assertion }` from one of its usable passkeys, else nothing. A wrong password counts against the account's login budget. Without it, a borrowed session could activate an authenticator of its own and lock the owner out at their next sign-in.
 
 The QR is rendered on the server, so an application does not need a QR encoder in its own bundle.
 
@@ -159,7 +161,7 @@ A live session is not proof that the person at the keyboard still holds the seco
 
 ## Recovery codes
 
-Activation returns ten single-use codes. Any of them is accepted wherever a TOTP code is (at sign-in, to disable, to regenerate), and each works exactly once. They are stored hashed, so that response is the only time they can ever be displayed, and a user who does not keep them has no way back in without an administrator.
+Activation returns ten single-use codes, each sixteen symbols in four groups (`7k2m-9xqa-0fzt-h3wd`, 80 bits). Any of them is accepted wherever a TOTP code is (at sign-in, to disable, to regenerate), and each works exactly once. They are stored hashed, so that response is the only time they can ever be displayed, and a user who does not keep them has no way back in without an administrator.
 
 An administrator resets a locked-out user from the "Two-factor authentication" card on that user's Security tab in the admin UI. It is deliberately its own card rather than a row among the connected accounts: an authenticator app is not a way to sign in, and removing it does not take a way in away, it takes a check away.
 

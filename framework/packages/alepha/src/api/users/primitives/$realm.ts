@@ -110,7 +110,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
   // need `features.notifications` to send their codes. That used to be
   // reconciled here by overwriting all three with `false`; it is now refused
-  // by `RealmProvider.register` instead — see the note on
+  // by `RealmProvider.register` instead, see the note on
   // `assertNotificationsCoverSettings` for why silence was the wrong answer.
   // The check lives there rather than here so a realm registered straight
   // through the provider, as the tests do, is held to the same rule.
@@ -125,7 +125,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     alepha.with(UserStorage);
     // The endpoints too, not just the storage they use. While they sat on the
     // always-registered `MyProfileController`, its `$inject(UserStorage)`
-    // pulled the storage in anyway and both routes answered on every realm —
+    // pulled the storage in anyway and both routes answered on every realm,
     // so this flag gated nothing observable, and the account UI showed an
     // avatar picker whether or not the realm wanted one.
     alepha.with(MyAvatarController);
@@ -139,8 +139,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // Infrastructure, not features: registered whatever `features` says. The
   // user and session audit types are a security baseline, and `UserJobs`
   // holds the only thing that deletes session rows, so a realm without it
-  // grows its `sessions` table forever. `features.audits` and `features.jobs`
-  // are accepted and ignored, `false` included (see `RealmFeatures`).
+  // grows its `sessions` table forever. `RealmFeatures` has no key for either.
   alepha.with(UserAudits);
   alepha.with(SessionAudits);
   alepha.with(UserJobs);
@@ -168,7 +167,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     const apiKeyService = alepha.inject(ApiKeyService);
     customResolvers.push(
       apiKeyService.createResolver({
-        // Keys must die with their account — and must never grant more than
+        // Keys must die with their account, and must never grant more than
         // the owner currently holds, so a demotion takes effect immediately
         // instead of waiting for every outstanding key to expire.
         resolveOwner: async (userId) => {
@@ -328,7 +327,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     // Tell the MCP Streamable HTTP transport to challenge unauthenticated
     // requests with an RFC 9728 401 (`WWW-Authenticate`), so MCP clients
     // can discover this OAuth server. Decoupled: the transport never
-    // imports the OAuth module — it just reads its own options atom.
+    // imports the OAuth module, it just reads its own options atom.
     // Harmless when no MCP transport is mounted; the atom is simply set.
     const currentMcpOptions =
       alepha.get(mcpStreamableHttpOptions) ??
@@ -506,7 +505,7 @@ export interface RealmFeatures {
    * your application's `imports` alongside it.
    *
    * Required by `settings.verifyEmailRequired`,
-   * `settings.verifyPhoneRequired` and `settings.resetPasswordAllowed` —
+   * `settings.verifyPhoneRequired` and `settings.resetPasswordAllowed`,
    * each completes by sending a code, so a realm that sets one of them with
    * this off is refused at boot rather than run with the setting ignored.
    *

@@ -15,7 +15,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
   await alepha.start();
 
   if (realmSettings) {
-    alepha.inject(RealmProvider).register("default", {
+    alepha.inject(RealmProvider).register("users", {
       settings: realmSettings,
     });
   }
@@ -33,7 +33,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("UsernameSlugger.slug — pure rule", () => {
+describe("UsernameSlugger.slug: pure rule", () => {
   it("strips the domain and the gmail '+suffix' is kept verbatim", async () => {
     const { slugger } = await setup();
     expect(slugger.slug("ni.foures+testkv@gmail.com")).toBe("ni-foures-testkv");
@@ -51,7 +51,7 @@ describe("UsernameSlugger.slug — pure rule", () => {
   });
 
   it("drops every non-[a-z0-9] char (no NFD normalize)", async () => {
-    // `é` is dropped, so `josé` becomes `jos` — and then padded to MIN_LENGTH.
+    // `é` is dropped, so `josé` becomes `jos`, and then padded to MIN_LENGTH.
     const { slugger } = await setup();
     const result = slugger.slug("josé@example.com");
     expect(result.startsWith("jos")).toBe(true);
@@ -89,51 +89,51 @@ describe("UsernameSlugger.slug — pure rule", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("UsernameSlugger.pickAvailable — DB-backed availability + retry", () => {
+describe("UsernameSlugger.pickAvailable: DB-backed availability + retry", () => {
   it("returns the base when nothing collides", async () => {
     const { slugger } = await setup();
-    const picked = await slugger.pickAvailable("default", "alice");
+    const picked = await slugger.pickAvailable("users", "alice");
     expect(picked).toBe("alice");
   });
 
   it("appends a 4-char random suffix when the base is taken", async () => {
     const { slugger, users } = await setup();
-    await users.create({ realm: "default", username: "alice", email: "a@x" });
+    await users.create({ realm: "users", username: "alice", email: "a@x" });
 
-    const picked = await slugger.pickAvailable("default", "alice");
+    const picked = await slugger.pickAvailable("users", "alice");
     expect(picked).toMatch(/^alice-[a-z0-9]{4}$/);
   });
 
   it("treats blocklisted candidates as collisions and falls through to the suffix path", async () => {
     const { slugger } = await setup({ usernameBlocklist: ["admin", "root"] });
 
-    const picked = await slugger.pickAvailable("default", "admin");
+    const picked = await slugger.pickAvailable("users", "admin");
     expect(picked).toMatch(/^admin-[a-z0-9]{4}$/);
   });
 
   it("trims the base before adding the suffix when MAX_LENGTH would be exceeded", async () => {
     const { slugger, users } = await setup();
     const long = "a".repeat(UsernameSlugger.MAX_LENGTH);
-    await users.create({ realm: "default", username: long, email: "a@x" });
+    await users.create({ realm: "users", username: long, email: "a@x" });
 
-    const picked = await slugger.pickAvailable("default", long);
+    const picked = await slugger.pickAvailable("users", long);
     expect(picked.length).toBeLessThanOrEqual(UsernameSlugger.MAX_LENGTH);
     expect(picked).toMatch(/-[a-z0-9]{4}$/);
   });
 
   it("blocklist match is case-insensitive", async () => {
     const { slugger } = await setup({ usernameBlocklist: ["Admin"] });
-    expect(await slugger.isBlocked("default", "admin")).toBe(true);
-    expect(await slugger.isBlocked("default", "ADMIN")).toBe(true);
-    expect(await slugger.isBlocked("default", "user")).toBe(false);
+    expect(await slugger.isBlocked("users", "admin")).toBe(true);
+    expect(await slugger.isBlocked("users", "ADMIN")).toBe(true);
+    expect(await slugger.isBlocked("users", "user")).toBe(false);
   });
 
-  it("default blocklist is empty — no name is implicitly reserved", async () => {
+  it("default blocklist is empty: no name is implicitly reserved", async () => {
     const { alepha, slugger } = await setup();
     const settings = alepha.get(realmAuthSettingsAtom);
     expect(settings.usernameBlocklist).toEqual([]);
 
-    const picked = await slugger.pickAvailable("default", "admin");
+    const picked = await slugger.pickAvailable("users", "admin");
     expect(picked).toBe("admin");
   });
 });

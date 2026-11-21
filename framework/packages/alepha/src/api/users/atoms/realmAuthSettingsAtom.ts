@@ -47,14 +47,14 @@ const secondFactorRequirement = (description: string) =>
   z.enum(["disabled", "optional", "required"]).describe(description);
 
 /**
- * Full realm auth configuration — the server's view.
+ * Full realm auth configuration, the server's view.
  *
  * `serverOnly` because this is the unredacted record: `adminEmails` and
  * `adminUsernames` are the accounts auto-promoted to admin on login, and
  * `loginRateLimit` / `registrationIpMaxAttempts` describe exactly how much
- * brute force the realm tolerates. The browser gets the deliberately narrowed
- * `publicRealmSettingsSchema` over `/realms/config` instead — this atom is
- * never part of the hydration payload, and DevTools redacts its value.
+ * brute force the realm tolerates. The browser gets `publicRealmSettingsSchema`
+ * over `/realms/config` instead, an allow-list that names none of them. This
+ * atom is never part of the hydration payload, and DevTools redacts its value.
  */
 export const realmAuthSettingsAtom = $atom({
   name: "alepha.api.users.realmAuthSettings",
@@ -309,7 +309,7 @@ export const realmAuthSettingsAtom = $atom({
     // scaffolds "optional".
     passkeys: "disabled" as "disabled" | "optional",
     refreshToken: {
-      // expirationIdle: undefined — opt-in
+      // expirationIdle: undefined, opt-in
     },
   },
   serverOnly: true,

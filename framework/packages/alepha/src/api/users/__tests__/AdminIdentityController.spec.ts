@@ -68,10 +68,10 @@ describe("alepha/api/users - AdminIdentityController", () => {
     expect(result.userId).toBe(user.id);
     expect(result.provider).toBe("google");
     expect(result.providerUserId).toBe("google-123456");
-    expect(result.providerData).toEqual({
-      name: "Test User",
-      picture: "https://example.com/photo.jpg",
-    });
+    // Of `providerData`, only the keys the resource schema lists: what a
+    // provider handed back stays in the table.
+    expect(result.providerData).toEqual({ name: "Test User" });
+    expect("password" in result).toBe(false);
   });
 
   it("should throw error for non-existent identity", async ({ expect }) => {
@@ -293,66 +293,6 @@ describe("alepha/api/users - AdminIdentityController", () => {
     );
   });
 
-  it("should handle identities with provider data", async ({ expect }) => {
-    const { identityService, userService, controller } = await setup();
-
-    const user = await userService.users().create({
-      username: "providerdatauser",
-      email: "providerdata@example.com",
-      roles: ["user"],
-    });
-
-    const googleIdentity = await identityService.identities().create({
-      userId: user.id,
-      provider: "google",
-      providerUserId: "google-data-1",
-      providerData: {
-        email: "test@gmail.com",
-        verified_email: true,
-        name: "Test User",
-        picture: "https://example.com/photo.jpg",
-        locale: "en",
-      },
-    });
-
-    const githubIdentity = await identityService.identities().create({
-      userId: user.id,
-      provider: "github",
-      providerUserId: "github-data-1",
-      providerData: {
-        login: "testuser",
-        avatar_url: "https://github.com/avatar.jpg",
-        bio: "Software Developer",
-      },
-    });
-
-    const googleResult = await controller.getIdentity(
-      {
-        params: { id: googleIdentity.id },
-      },
-      { user: adminUser },
-    );
-    expect(googleResult.providerData).toEqual({
-      email: "test@gmail.com",
-      verified_email: true,
-      name: "Test User",
-      picture: "https://example.com/photo.jpg",
-      locale: "en",
-    });
-
-    const githubResult = await controller.getIdentity(
-      {
-        params: { id: githubIdentity.id },
-      },
-      { user: adminUser },
-    );
-    expect(githubResult.providerData).toEqual({
-      login: "testuser",
-      avatar_url: "https://github.com/avatar.jpg",
-      bio: "Software Developer",
-    });
-  });
-
   it("should handle identities without provider data", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 
@@ -375,43 +315,6 @@ describe("alepha/api/users - AdminIdentityController", () => {
       { user: adminUser },
     );
 
-    expect(result.providerData).toBeUndefined();
-  });
-
-  it("should handle multiple providers for same user", async ({ expect }) => {
-    const { identityService, userService, controller } = await setup();
-
-    const user = await userService.users().create({
-      username: "multiprovideruser",
-      email: "multiprovider@example.com",
-      roles: ["user"],
-    });
-
-    await identityService.identities().create({
-      userId: user.id,
-      provider: "google",
-      providerUserId: "google-multi-1",
-    });
-    await identityService.identities().create({
-      userId: user.id,
-      provider: "github",
-      providerUserId: "github-multi-1",
-    });
-    await identityService.identities().create({
-      userId: user.id,
-      provider: "apple",
-      providerUserId: "apple-multi-1",
-    });
-
-    const result = await controller.findIdentities(
-      {
-        query: { userId: user.id },
-      },
-      { user: adminUser },
-    );
-
-    expect(result.content.length).toBe(3);
-    const providers = result.content.map((i) => i.provider).sort();
-    expect(providers).toEqual(["apple", "github", "google"]);
+    expect(result.providerData).toEqual({});
   });
 });

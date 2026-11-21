@@ -265,6 +265,13 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "auth.mfa.passkeyInvalid":
     "Cette clé d'accès n'a pas pu confirmer votre identité.",
   "auth.mfa.usePasskey": "Utiliser une clé d'accès",
+  "auth.mfa.recoveryHint":
+    "Saisissez l'un des codes de secours enregistrés lors de l'activation de la vérification en deux étapes. Chacun ne fonctionne qu'une fois.",
+  "auth.mfa.recoveryLabel": "Code de secours",
+  "auth.mfa.recoveryRequired": "Saisissez l'un de vos codes de secours",
+  "auth.mfa.useCode":
+    "Utiliser un code de votre application d'authentification",
+  "auth.mfa.useRecovery": "Utiliser un code de secours",
   "auth.mfa.title": "Vérification en deux étapes",
   "auth.mfa.totpHint":
     "Saisissez le code affiché par votre application d'authentification.",
@@ -1419,6 +1426,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "account.password.set": "Mot de passe défini",
   "account.password.setDescription":
     "Vous pourrez vous connecter avec votre mot de passe en plus de votre méthode actuelle.",
+  "account.password.setDescriptionPasskey":
+    "Vous pourrez vous connecter avec votre mot de passe en plus de votre méthode actuelle. Votre navigateur vous demande d'abord de confirmer avec une clé d'accès.",
   "account.password.setTitle": "Définir un mot de passe",
   "account.display.description":
     "La façon dont l'interface est dessinée pour vous, sur ce navigateur.",

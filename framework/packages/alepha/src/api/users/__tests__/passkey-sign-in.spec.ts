@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import type { AuthenticationResponseJson } from "alepha/security";
 import { describe, it } from "vitest";
@@ -21,7 +22,7 @@ const enrolled = async (h: PasskeyHarness) => {
   const browser = await h.signIn(user);
   const added = await browser.addPasskey({ currentPassword: user.password });
   if (added.status !== 200) {
-    throw new Error(`enrolment failed: ${JSON.stringify(added.body)}`);
+    throw new AlephaError(`enrolment failed: ${JSON.stringify(added.body)}`);
   }
   return { user, browser };
 };
@@ -283,7 +284,7 @@ describe.each(drivers)(
       ).toBe(true);
     });
 
-    it("refuses both routes on a realm with passkeys off", async ({
+    it("refuses the options route on a realm with passkeys off", async ({
       expect,
     }) => {
       const h = await boot({ passkeys: "disabled" });

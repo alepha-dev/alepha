@@ -1,3 +1,4 @@
+import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
 
 import { publicRealmSettingsSchema } from "../schemas/realmConfigSchema.ts";
@@ -191,7 +192,7 @@ describe.each(drivers)(
           backedUp: false,
           rpId: "other.example.test",
           name: "Old host",
-          createdAt: new Date().toISOString(),
+          createdAt: h.alepha.inject(DateTimeProvider).nowISOString(),
         },
       });
 
@@ -220,11 +221,16 @@ describe.each(drivers)(
           .status,
       ).toBe(404);
 
-      // The password may go: the passkey is a way in.
-      const unlinked = await browser.call(
+      // The password may go, since the passkey is a way in, but only on
+      // proof of the password itself, which the unlink route does not take.
+      const unproven = await browser.call(
         "DELETE",
         `/api/users/me/identities/${identities.body[0].id}`,
       );
+      expect(unproven.status).toBe(400);
+      const unlinked = await browser.call("DELETE", "/api/users/me/password", {
+        currentPassword: "Secret-123",
+      });
       expect(unlinked.status).toBe(200);
 
       // Now the passkey is the last one.

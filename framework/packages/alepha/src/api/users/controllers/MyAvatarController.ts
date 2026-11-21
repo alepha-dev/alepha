@@ -8,13 +8,13 @@ import { UserProfileMapper } from "../services/UserProfileMapper.ts";
 import { UserStorage } from "../storage/UserStorage.ts";
 
 /**
- * The caller's own avatar — upload and remove.
+ * The caller's own avatar, upload and remove.
  *
  * ⚠️ **This is a `variants` entry, not a `services` one.** It is registered
  * only by `$realm({ features: { avatars: true } })`, alongside the
  * {@link UserStorage} it needs. That is the whole reason it is a separate
  * class from {@link MyProfileController}: these two actions used to live
- * there, which is always registered and injected `UserStorage` directly — so
+ * there, which is always registered and injected `UserStorage` directly, so
  * the storage got pulled in transitively and both endpoints stayed live on
  * every realm, including the ones that had deliberately left `avatars` off
  * (the default). The flag gated a service nobody could observe and nothing
@@ -23,7 +23,7 @@ import { UserStorage } from "../storage/UserStorage.ts";
  * Splitting it also makes the UI gate free rather than a second thing to
  * remember: an unregistered action is absent from `/api/_links`, so
  * `updateMyAvatar.can()` is false and the section hides itself. Same mechanism
- * the account router already uses for the API-keys page — a `$permission`
+ * the account router already uses for the API-keys page, a `$permission`
  * could not do this, because it is registered whether or not any controller
  * backs it.
  */
@@ -56,7 +56,7 @@ export class MyAvatarController {
 
       // Only after the row points at the new file. Deleting first would leave
       // the account with a broken avatar if the upload then failed.
-      await this.deletePrevious(current.picture, file.id);
+      await this.deletePrevious(user.realm, current.picture, file.id);
 
       return this.mapper.toMyProfile(updated);
     },
@@ -78,25 +78,38 @@ export class MyAvatarController {
       // "leave the column alone", so the row kept pointing at the blob that
       // `deletePrevious` then removed.
       const updated = await repo.updateById(user.id, { picture: null });
-      await this.deletePrevious(current.picture);
+      await this.deletePrevious(user.realm, current.picture);
 
       return this.mapper.toMyProfile(updated);
     },
   });
 
   /**
-   * Drop the blob an avatar used to point at, once nothing references it.
+   * Drop the file an avatar used to point at, unless another account's
+   * avatar still points at it: `users.picture` is a plain column, and a file
+   * id in it is not proof the file is this account's to delete.
    *
    * Failure is swallowed: the account has already been updated and the
    * person's avatar has already changed, so turning a storage hiccup into a
    * failed request would report a lie. The cost of losing this race is an
    * orphaned blob, not a broken account.
    */
-  protected async deletePrevious(previous?: string, next?: string) {
+  protected async deletePrevious(
+    realm: string | undefined,
+    previous?: string,
+    next?: string,
+  ) {
     if (!previous || previous === next) {
       return;
     }
     try {
+      if (
+        await this.users(realm).findOne({
+          where: { picture: { eq: previous } },
+        })
+      ) {
+        return;
+      }
       await this.userFiles.avatars.delete(previous);
     } catch {
       // Orphaned blob; the profile is correct.

@@ -3,11 +3,13 @@ import { VerificationService } from "alepha/api/verifications";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { DbVersionMismatchError } from "alepha/orm";
 import { $rateLimit } from "alepha/rate-limit";
 import { SecurityProvider } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
+import type { IdentityEntity } from "../entities/identities.ts";
 import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -50,8 +52,10 @@ export interface TotpIdentityData {
 
   /**
    * Hashed single-use recovery codes. Plain SHA-256 without a salt is right
-   * here and wrong for passwords: these are 80 bits of server-generated
-   * randomness, so there is no dictionary to attack.
+   * here and wrong for passwords: a code is 80 bits of server-generated
+   * randomness, so there is no dictionary to attack. Codes issued before
+   * #Q4035 carry about 52 bits (ten lower-cased base64url symbols) and stay
+   * valid until used or regenerated.
    */
   recoveryCodes: string[];
 
@@ -122,6 +126,13 @@ export class MfaService {
    * before noticing.
    */
   protected static readonly RECOVERY_CODE_COUNT = 10;
+
+  /**
+   * The 32 symbols a recovery code is drawn from: Crockford's base 32 in
+   * lower case, which leaves out `i`, `l`, `o` and `u`. A code is compared
+   * lower-cased, so the alphabet holds no letter twice.
+   */
+  protected readonly recoveryCodeAlphabet = "0123456789abcdefghjkmnpqrstvwxyz";
 
   /**
    * Refuse anything that would create a TOTP enrollment on a realm that has
@@ -595,13 +606,10 @@ export class MfaService {
         return false;
       }
 
-      await this.identities(realm).updateById(identity.id, {
-        providerData: { ...data, lastUsedStep: step },
-      });
-      return true;
+      return this.spend(identity, { ...data, lastUsedStep: step }, realm);
     }
 
-    return this.consumeRecoveryCode(identity.id, data, code, realm);
+    return this.consumeRecoveryCode(identity, data, code, realm);
   }
 
   /**
@@ -610,7 +618,7 @@ export class MfaService {
    * Codes are removed as they are used, so each works exactly once.
    */
   protected async consumeRecoveryCode(
-    identityId: string,
+    identity: IdentityEntity,
     data: TotpIdentityData,
     code: string,
     realm?: string,
@@ -626,9 +634,14 @@ export class MfaService {
       return false;
     }
 
-    await this.identities(realm).updateById(identityId, {
-      providerData: { ...data, recoveryCodes: remaining },
-    });
+    const spent = await this.spend(
+      identity,
+      { ...data, recoveryCodes: remaining },
+      realm,
+    );
+    if (!spent) {
+      return false;
+    }
 
     this.log.info("A recovery code was used to pass two-factor", {
       remaining: remaining.length,
@@ -637,10 +650,48 @@ export class MfaService {
     return true;
   }
 
+  /**
+   * Write the enrolment a code was just checked against, under the version
+   * the row was read with. Of several uses of one code racing each other,
+   * the first write wins and every other finds the version moved: it
+   * answers `false`, so a code, TOTP or recovery, passes exactly once.
+   */
+  protected async spend(
+    identity: IdentityEntity,
+    data: TotpIdentityData,
+    realm?: string,
+  ): Promise<boolean> {
+    try {
+      await this.identities(realm).save({
+        ...identity,
+        providerData: data,
+      });
+      return true;
+    } catch (error) {
+      if (DbVersionMismatchError.find(error)) {
+        this.log.warn("Second-factor code already spent by a concurrent use", {
+          identityId: identity.id,
+        });
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Sixteen symbols drawn one by one from {@link recoveryCodeAlphabet}:
+   * 5 bits each, 80 bits a code. In four groups of four for legibility:
+   * these get written down and typed back in.
+   */
   protected generateRecoveryCodes(): string[] {
+    const alphabet = this.recoveryCodeAlphabet;
+    const group = () =>
+      Array.from(
+        { length: 4 },
+        () => alphabet[this.crypto.randomInt(alphabet.length)],
+      ).join("");
     return Array.from({ length: MfaService.RECOVERY_CODE_COUNT }, () =>
-      // Grouped for legibility: these get written down and typed back in.
-      `${this.crypto.randomText(5)}-${this.crypto.randomText(5)}`.toLowerCase(),
+      [group(), group(), group(), group()].join("-"),
     );
   }
 

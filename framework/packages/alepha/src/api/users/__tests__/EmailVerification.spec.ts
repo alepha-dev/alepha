@@ -1,10 +1,10 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
-import { BadRequestError } from "alepha/server";
+import { BadRequestError, ForbiddenError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import {
@@ -53,7 +53,7 @@ const setup = async () => {
 const extractCode = (emailBody: string): string => {
   // Code is displayed in the email body as a 6-digit number
   const match = emailBody.match(/(\d{6})/);
-  if (!match) throw new Error("Code not found in email");
+  if (!match) throw new AlephaError("Code not found in email");
   return match[1];
 };
 
@@ -264,53 +264,50 @@ describe("alepha/api/users - Email Verification", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("should check email verification status", async ({ expect }) => {
+  it("should check the caller's own email verification status", async ({
+    expect,
+  }) => {
     const { alepha, userService, actions } = await setup();
 
-    // Create a test user with unverified email
-    await userService.users().create({
+    const unverified = await userService.users().create({
       username: "unverifieduser",
       email: "unverified@example.com",
       roles: ["user"],
       emailVerified: false,
     });
-
-    // Create a test user with verified email
-    await userService.users().create({
+    const verified = await userService.users().create({
       username: "verifieduser",
       email: "verified@example.com",
       roles: ["user"],
       emailVerified: true,
     });
 
-    // checkEmailVerification requires $secure() authentication
-    await alepha.context.run(async () => {
-      alepha.store.set(currentUserAtom, {
-        id: "admin-1",
-        name: "Admin",
-        email: "admin@example.com",
-        realm: "users",
-        roles: ["admin"],
+    const check = (caller: { id: string; email?: string }, email: string) =>
+      alepha.context.run(async () => {
+        alepha.store.set(currentUserAtom, {
+          id: caller.id,
+          email: caller.email,
+          realm: "users",
+          roles: ["user"],
+        });
+        return actions.checkEmailVerification({ query: { email } });
       });
 
-      // Check unverified email
-      const unverifiedResult = await actions.checkEmailVerification({
-        query: { email: "unverified@example.com" },
-      });
-      expect(unverifiedResult.verified).toBe(false);
-
-      // Check verified email
-      const verifiedResult = await actions.checkEmailVerification({
-        query: { email: "verified@example.com" },
-      });
-      expect(verifiedResult.verified).toBe(true);
-
-      // Check non-existent email
-      const nonExistentResult = await actions.checkEmailVerification({
-        query: { email: "nonexistent@example.com" },
-      });
-      expect(nonExistentResult.verified).toBe(false);
+    expect(await check(unverified, "unverified@example.com")).toEqual({
+      verified: false,
     });
+    expect(await check(verified, "verified@example.com")).toEqual({
+      verified: true,
+    });
+
+    // Somebody else's address, on file or not, is refused: the answer would
+    // tell whether they hold a verified account.
+    await expect(check(unverified, "verified@example.com")).rejects.toThrow(
+      ForbiddenError,
+    );
+    await expect(check(unverified, "nonexistent@example.com")).rejects.toThrow(
+      ForbiddenError,
+    );
   });
 
   it("should respect rate limiting on verification requests", async ({

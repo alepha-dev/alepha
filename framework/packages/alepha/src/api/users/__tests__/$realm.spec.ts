@@ -158,6 +158,8 @@ describe("alepha/api/users - $realm with parameters", () => {
     const cryptoProvider = alepha.inject(CryptoProvider);
     const user = await userService.users().create({
       email: "admin-promo@example.com",
+      // `adminEmails` promotes a verified address only.
+      emailVerified: true,
       roles: ["user"],
     });
     await sessionService.identities().create({
@@ -166,7 +168,7 @@ describe("alepha/api/users - $realm with parameters", () => {
       password: await cryptoProvider.hashPassword("SecurePassword123!"),
     });
 
-    // Login — user should NOT be admin
+    // Login, user should NOT be admin
     const loggedIn = await sessionService.login(
       "credentials",
       "admin-promo@example.com",
@@ -181,7 +183,7 @@ describe("alepha/api/users - $realm with parameters", () => {
       adminEmails: ["admin-promo@example.com"],
     });
 
-    // Login again — user should now be promoted to admin
+    // Login again, user should now be promoted to admin
     const loggedIn2 = await sessionService.login(
       "credentials",
       "admin-promo@example.com",

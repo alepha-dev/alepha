@@ -37,7 +37,6 @@ interface RegistrationIntent {
     phoneNumber?: string;
     firstName?: string;
     lastName?: string;
-    picture?: string;
     passwordHash: string;
   };
   requirements: {
@@ -64,7 +63,7 @@ export class RegistrationService {
   protected readonly intentTtlMinutes = 10;
 
   /**
-   * The single rejection used for every taken identifier — username, email or
+   * The single rejection used for every taken identifier, username, email or
    * phone. One message for all three so the response cannot be read as an
    * answer to "does this person have an account here?".
    */
@@ -147,13 +146,18 @@ export class RegistrationService {
     const realm = this.realmProvider.getRealm(userRealmName);
     const realmSettings = await realm.getSettings();
 
-    // IP rate limiting — threshold driven by realm settings so dev/e2e can
+    // IP rate limiting, threshold driven by realm settings so dev/e2e can
     // bump it (a single localhost IP otherwise burns through the default 10
     // before the suite finishes).
+    //
+    // A request with no client address shares one bucket, as the login
+    // does (`SessionService.ipBucket`): no address is not a reason to skip
+    // the budget. A call with no HTTP request at all is not counted.
     const request = this.alepha.store.get("alepha.http.request");
-    if (request?.ip) {
+    const bucket = request ? (request.ip ?? "unknown") : undefined;
+    if (bucket) {
       const attempt = await this.registrationIp.consume({
-        key: request.ip,
+        key: bucket,
         max: realmSettings.registrationIpMaxAttempts,
       });
       // An outage is not a limit this address hit: "too many attempts" would
@@ -164,7 +168,7 @@ export class RegistrationService {
           { message: "Registration is temporarily unavailable" },
         );
       if (!attempt.allowed) {
-        this.log.warn("Registration rate limit exceeded", { ip: request.ip });
+        this.log.warn("Registration rate limit exceeded", { ip: bucket });
         throw new BadRequestError(
           "Too many registration attempts, please try again later",
         );
@@ -214,7 +218,7 @@ export class RegistrationService {
       throw new BadRequestError("Username is required");
     }
 
-    // In "email" mode the server is authoritative — any username sent in
+    // In "email" mode the server is authoritative, any username sent in
     // the request is dropped on the floor and replaced by the slugger
     // output below.
     if (realmSettings?.username === "email") {
@@ -239,7 +243,7 @@ export class RegistrationService {
         }
       }
 
-      // Manual usernames must also clear the realm blocklist — same set
+      // Manual usernames must also clear the realm blocklist, same set
       // that the slugger uses, so apps can't be sidestepped by clients
       // POSTing the reserved name directly.
       if (await this.usernameSlugger.isBlocked(userRealmName, body.username)) {
@@ -313,8 +317,8 @@ export class RegistrationService {
     // Check for existing users (username, email, phone).
     //
     // A taken email is handled differently from the other two when the realm
-    // verifies email: instead of rejecting — which confirms the address is
-    // registered — the flow continues as if the address were new and mints a
+    // verifies email: instead of rejecting, which confirms the address is
+    // registered, the flow continues as if the address were new and mints a
     // decoy intent below. The stranger sees the ordinary "check your inbox"
     // response and cannot tell the two cases apart.
     const conflict = await this.findAvailabilityConflict(body, userRealmName);
@@ -347,7 +351,7 @@ export class RegistrationService {
         !!body.email &&
         !preAuthorizedEmail,
       phone: realmSettings?.verifyPhoneRequired === true && !!body.phoneNumber,
-      captcha: false, // validated above, single-use — no gate at complete time
+      captcha: false, // validated above, single-use, no gate at complete time
     };
 
     // Create verification sessions and send codes.
@@ -385,7 +389,6 @@ export class RegistrationService {
         phoneNumber: body.phoneNumber,
         firstName: body.firstName,
         lastName: body.lastName,
-        picture: body.picture,
         passwordHash,
       },
       requirements,
@@ -478,7 +481,7 @@ export class RegistrationService {
       await this.verifyPhoneCode(intent.data.phoneNumber, body.phoneCode);
     }
 
-    // Captcha is validated at intent creation (see createIntent) so bots can't
+    // Captcha is validated at intent creation (see createRegistrationIntent) so bots can't
     // trigger verification emails; nothing to re-check here.
 
     // Final availability check (race condition guard)
@@ -502,7 +505,6 @@ export class RegistrationService {
       phoneNumber: intent.data.phoneNumber,
       firstName: intent.data.firstName,
       lastName: intent.data.lastName,
-      picture: intent.data.picture,
       roles: realmSettings.defaultRoles,
       enabled: true,
       // Verified if we checked a code here, or if the app pre-authorized the
@@ -553,7 +555,7 @@ export class RegistrationService {
    * Find the first identifier already on file, without throwing.
    *
    * Returns which field collided so the caller can decide what to do about
-   * it — the decision differs by field and by realm settings, and the choice
+   * it, the decision differs by field and by realm settings, and the choice
    * is security-sensitive enough that it does not belong in a lookup.
    */
   protected async findAvailabilityConflict(
@@ -632,15 +634,14 @@ export class RegistrationService {
     realmName?: string,
   ): Promise<void> {
     try {
-      // Deliberately NOT `inline`, unlike every other notification on this
-      // path, and it is not an oversight. This mail goes to the OWNER of the
-      // address, who is somebody other than whoever is registering. Blocking
-      // the registration response on it turns response time into an
-      // account-enumeration oracle: a slow answer means the address was on
-      // file and the warning went out.
+      // `inline`, like the verification code a fresh address is sent: both
+      // paths then wait for one mail before answering. Queued, this branch
+      // answered at once while the other waited for its send, and a fast
+      // answer meant the address was on file.
       await this.userNotifications(realmName).registrationAttempt.push({
         contact: email,
         variables: { email },
+        inline: true,
       });
     } catch (error) {
       this.log.warn("Failed to send registration attempt warning", { error });

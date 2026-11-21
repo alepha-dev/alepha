@@ -4,22 +4,47 @@ import { realmAuthSettingsAtom } from "../atoms/realmAuthSettingsAtom.ts";
 import { publicRealmSettingsSchema } from "./realmConfigSchema.ts";
 
 describe("publicRealmSettingsSchema", () => {
-  it("omits the privileged-account allowlist from the public projection", () => {
-    const keys = Object.keys(publicRealmSettingsSchema.shape);
-    expect(keys).not.toContain("adminEmails");
-    expect(keys).not.toContain("adminUsernames");
-  });
+  const keys = Object.keys(publicRealmSettingsSchema.shape);
 
-  it("still carries fields the login/registration UI needs", () => {
-    const keys = Object.keys(publicRealmSettingsSchema.shape);
-    expect(keys).toContain("registrationAllowed");
-    expect(keys).toContain("passwordPolicy");
-  });
-
-  it("does not silently drop new sensitive fields — full settings still has them", () => {
-    // Guards against the atom being refactored so the omit becomes a no-op.
+  it("names only settings of the atom", () => {
     const fullKeys = Object.keys(realmAuthSettingsAtom.schema.shape);
-    expect(fullKeys).toContain("adminEmails");
-    expect(fullKeys).toContain("adminUsernames");
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      expect(fullKeys).toContain(key);
+    }
+  });
+
+  it("carries the fields the login and registration pages read", () => {
+    for (const key of [
+      "registrationAllowed",
+      "passwordPolicy",
+      "username",
+      "usernameRegExp",
+      "resetPasswordAllowed",
+      "captchaRequired",
+      "mfa",
+      "passkeys",
+    ]) {
+      expect(keys).toContain(key);
+    }
+  });
+
+  it("leaves out the admin lists, the brute-force budgets and the server configuration", () => {
+    for (const key of [
+      "adminEmails",
+      "adminUsernames",
+      "loginRateLimit",
+      "registrationIpMaxAttempts",
+      "usernameBlocklist",
+      "defaultRoles",
+      "trustProviderEmail",
+      "verifyEmailUrl",
+      "refreshToken",
+      "passkeyRelyingParty",
+    ]) {
+      // Each is a setting of the atom: a rename there fails here.
+      expect(Object.keys(realmAuthSettingsAtom.schema.shape)).toContain(key);
+      expect(keys).not.toContain(key);
+    }
   });
 });

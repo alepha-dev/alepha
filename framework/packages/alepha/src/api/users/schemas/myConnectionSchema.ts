@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 /**
- * One OAuth client holding access to the caller's account — an MCP client, a
+ * One OAuth client holding access to the caller's account, an MCP client, a
  * CLI, a third-party integration.
  *
  * ⚠️ **One entry per CLIENT, not per session.** It used to be one per
@@ -19,8 +19,8 @@ import { type Infer, z } from "alepha";
  * devices out.
  *
  * It is presented separately from `mySessionSchema` because the two answer
- * different questions — "where am I signed in" versus "what has access to my
- * account" — and because revoking a connection is a decision about software,
+ * different questions, "where am I signed in" versus "what has access to my
+ * account", and because revoking a connection is a decision about software,
  * not about a device.
  *
  * `refreshToken` is deliberately absent for the same reason it is absent from
@@ -47,7 +47,7 @@ export const myConnectionSchema = z.object({
 
   /**
    * The client's registered display name, falling back to `clientId` when the
-   * client registration has since been deleted — a session can outlive it.
+   * client registration has since been deleted, a session can outlive it.
    */
   clientName: z.string(),
 
@@ -84,7 +84,7 @@ export const myConnectionSchema = z.object({
     .optional(),
 
   /**
-   * True when ANY of this app's sessions is the one making the request — an
+   * True when ANY of this app's sessions is the one making the request, an
    * MCP client listing its own access.
    */
   current: z.boolean(),

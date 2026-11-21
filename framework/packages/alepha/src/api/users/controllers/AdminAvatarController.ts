@@ -42,8 +42,8 @@ export class AdminAvatarController {
   /**
    * The `user` audit type, when the realm keeps one.
    *
-   * Same lookup as `CredentialService`: the type is registered by the audits
-   * feature, so a realm without it has nothing to log to.
+   * Same lookup as `CredentialService`: every `$realm` registers the type,
+   * and a realm registered straight through `RealmProvider` may not have it.
    */
   protected userAudits(realmName?: string) {
     return this.alepha.has(UserAudits)
@@ -64,17 +64,14 @@ export class AdminAvatarController {
     },
     handler: async ({ params, body, user }) => {
       const repo = this.users(user.realm);
-      const target = await repo.findById(params.id);
-      if (!target) {
-        throw new NotFoundError(`User ${params.id} not found`);
-      }
+      const target = await this.findInRealm(params.id, user.realm);
 
       const file = await this.userFiles.avatars.upload(body.file, { user });
       const updated = await repo.updateById(params.id, { picture: file.id });
 
       // Only after the row points at the new file, like the self-service
       // path: deleting first leaves a broken avatar if the upload then fails.
-      await this.deletePrevious(target.picture, file.id);
+      await this.deletePrevious(user.realm, target.picture, file.id);
 
       await this.userAudits(user.realm)?.user.logSuccess("update", {
         userId: user.id,
@@ -101,15 +98,12 @@ export class AdminAvatarController {
     },
     handler: async ({ params, user }) => {
       const repo = this.users(user.realm);
-      const target = await repo.findById(params.id);
-      if (!target) {
-        throw new NotFoundError(`User ${params.id} not found`);
-      }
+      const target = await this.findInRealm(params.id, user.realm);
 
       // `null`, not `undefined`, for the reason `MyAvatarController` gives:
       // `undefined` leaves the column alone and the row outlives its blob.
       const updated = await repo.updateById(params.id, { picture: null });
-      await this.deletePrevious(target.picture);
+      await this.deletePrevious(user.realm, target.picture);
 
       await this.userAudits(user.realm)?.user.logSuccess("update", {
         userId: user.id,
@@ -125,18 +119,46 @@ export class AdminAvatarController {
   });
 
   /**
-   * Drop the blob an avatar used to point at, once nothing references it.
+   * The target, in the operator's own realm. The table is shared between
+   * realms, so a user of another realm reads as missing, as it does on
+   * `AdminUserController`.
+   */
+  protected async findInRealm(id: string, realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    const target = await this.users(realmName).findOne({
+      where: { id: { eq: id }, realm: { eq: realm.name } },
+    });
+    if (!target) {
+      throw new NotFoundError(`User ${id} not found`);
+    }
+    return target;
+  }
+
+  /**
+   * Drop the file an avatar used to point at, unless another account's
+   * avatar still points at it.
    *
    * Failure is swallowed, for the reason `MyAvatarController` gives: the row
    * has already been updated, so turning a storage hiccup into a failed
    * request would report a lie. The cost is an orphaned blob, not a broken
    * account.
    */
-  protected async deletePrevious(previous?: string, next?: string) {
+  protected async deletePrevious(
+    realm: string | undefined,
+    previous?: string,
+    next?: string,
+  ) {
     if (!previous || previous === next) {
       return;
     }
     try {
+      if (
+        await this.users(realm).findOne({
+          where: { picture: { eq: previous } },
+        })
+      ) {
+        return;
+      }
       await this.userFiles.avatars.delete(previous);
     } catch {
       // Orphaned blob; the account is correct.
