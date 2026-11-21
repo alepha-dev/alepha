@@ -87,6 +87,36 @@ describe("BuildFreshness", () => {
     );
   });
 
+  it("is stale, not an abort, when the manifest comes from an older framework", async ({
+    expect,
+  }) => {
+    const { fs, clock, freshness } = await setup();
+    await scaffold(fs, clock);
+    await fs.writeFile(
+      "/repo/app/dist/manifest.json",
+      JSON.stringify({ version: 1, project: "fixture" }),
+    );
+
+    expect(await freshness.staleReason("/repo/app", "dist")).toContain(
+      "manifestVersion missing is unsupported",
+    );
+  });
+
+  it("is stale, not an abort, when an interrupted build truncated the manifest", async ({
+    expect,
+  }) => {
+    const { fs, clock, freshness } = await setup();
+    await scaffold(fs, clock);
+    await fs.writeFile(
+      "/repo/app/dist/manifest.json",
+      '{"manifestVersion": 2,',
+    );
+
+    expect(await freshness.staleReason("/repo/app", "dist")).toContain(
+      "Cannot read /repo/app/dist/manifest.json",
+    );
+  });
+
   it("is fresh when the build is newer than every input", async ({
     expect,
   }) => {

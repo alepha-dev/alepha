@@ -19,7 +19,7 @@ import { ArchiveCompressor } from "../services/ArchiveCompressor.ts";
  * A `--runtime node,workerd` build writes two near-identical copies of the same
  * bundle, megabytes apart. DEFLATE's match window is 32 KB, so gzip never sees
  * the second copy and the archive is simply twice the size. zstd with
- * long-range matching does see it — but only if its window spans the distance
+ * long-range matching does see it, but only if its window spans the distance
  * between the two copies, and at the DEFAULT window it does not.
  *
  * Nothing fails when it does not. The archive is just twice the size it should
@@ -29,7 +29,7 @@ import { ArchiveCompressor } from "../services/ArchiveCompressor.ts";
  * apps outgrow it, and an assertion alone never sets it.
  *
  * These cases run against real files, because this is the one step of
- * `alepha pack` that reaches `node:fs` and `node:zlib` directly — a zstd
+ * `alepha pack` that reaches `node:fs` and `node:zlib` directly: a zstd
  * stream operates on descriptors, not on a memory file system. That is also
  * why it is its own injectable service: every other pack spec substitutes it.
  */
@@ -52,7 +52,7 @@ describe("the archive compressor's zstd settings", () => {
    * One server slice's worth of bytes.
    *
    * Incompressible on its own (random), so the only thing a compressor can win
-   * on is the duplicate — which is exactly the property under test. Real
+   * on is the duplicate, which is exactly the property under test. Real
    * bundles compress well too, and that would hide the effect behind a ratio
    * that looks fine for the wrong reason.
    *

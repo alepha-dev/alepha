@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 
 import { $inject, Alepha, AlephaError, type AppSurface } from "alepha";
 import type { ActorHostDeclaration } from "alepha/actor";
@@ -24,7 +24,7 @@ import { BuildClientTask } from "./BuildClientTask.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
- * Build the server-side SSR bundle with Vite  -  one **slice** per runtime.
+ * Build the server-side SSR bundle with Vite: one **slice** per runtime.
  *
  * Compiles the server code for production, generates the externals
  * `package.json`, and writes one `dist/index.<runtime>.js` entry wrapper per
@@ -37,7 +37,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * re-exporting the Durable Object class. Everything else about the Vite config
  * is identical. `BuildClientTask` never reads the runtime at all and
  * `BuildPrerenderTask` renders from the live container rather than from a
- * built bundle, so neither has a slice question  -  which is the whole point of
+ * built bundle, so neither has a slice question, which is the whole point of
  * the epic: the slow steps run once and only the server link repeats.
  *
  * ## ⚠️ What must happen exactly once, inside a loop
@@ -66,10 +66,10 @@ export class BuildServerTask extends BuildTask {
   protected readonly slices = $inject(BuildSlices);
 
   /**
-   * Whether the Durable Object class should be re-exported through the app's
-   * server bundle. Set to `true` only for a `workerd` build of an app that uses
-   * the `$websocket` primitive. Any other build leaves this `false`, so the
-   * generated bundle and the slice's entry wrapper carry nothing extra.
+   * The actor hosts whose Durable Object class is re-exported through the
+   * app's server bundle: what the app declares, for a `workerd` slice only.
+   * Any other slice leaves this empty, so the generated bundle and the
+   * slice's entry wrapper carry nothing extra.
    */
   protected hosts: ActorHostDeclaration[] = [];
   protected readonly hostCollection = $inject(ActorHostCollection);
@@ -156,10 +156,11 @@ export class BuildServerTask extends BuildTask {
 
     // `main` names ONE file, and the primary is the honest answer: it is what
     // the manifest declares and what a deployer without slice support spawns.
-    // The externals are the primary's too  -  a workerd slice externalizes
+    // The externals are the primary's too: a workerd slice externalizes
     // nothing and a bun slice externalizes less, so taking any other slice's
     // list would under-declare what `node .` needs.
     await this.generateExternals(
+      ctx.root,
       distDir,
       primaryExternals,
       this.slices.entryFileName(this.slices.primary(runtimes)),
@@ -244,7 +245,7 @@ export class BuildServerTask extends BuildTask {
      * The client manifests, already read and resolved by an earlier slice.
      *
      * Present for every slice after the first. The client bundle is
-     * runtime-agnostic, so re-reading would produce the same answer  -  and
+     * runtime-agnostic, so re-reading would produce the same answer: and
      * cannot anyway, since the directory it reads is deleted once the build is
      * over.
      */
@@ -337,7 +338,7 @@ export class BuildServerTask extends BuildTask {
     // the wrangler `durable_objects`/`migrations` config to be reachable at the
     // edge, it must ride out through the app's own server bundle as a real
     // named export. Only do this for a workerd build of an app that actually
-    // uses `$websocket` or `$room`  -  every other build stays untouched.
+    // uses `$websocket` or `$room`: every other build stays untouched.
     this.hosts = conditions.includes("workerd")
       ? this.hostCollection.collect(opts.alepha)
       : [];
@@ -407,7 +408,7 @@ export class BuildServerTask extends BuildTask {
         sourcemap: true,
         chunkSizeWarningLimit: 10000,
         // ⚠️ Namespaced by runtime. Two slices in one `server/` do not
-        // collide  -  their content hashes differ  -  so both sets sit there and
+        // collide, since their content hashes differ, so both sets sit there and
         // the wrangler `server/*.js` glob sweeps the Node chunks into the
         // Worker upload. See BuildSlices.serverDir.
         outDir: `${opts.distDir}/${serverDir}`,
@@ -425,7 +426,7 @@ export class BuildServerTask extends BuildTask {
             // does not exist, and hydration keeps the server's attribute.
             assetFileNames: `${BuildClientTask.HASHED_PREFIXES.asset}[hash][extname]`,
             format: "esm",
-            // No `codeSplitting.groups` on purpose  -  default splitting wins here.
+            // No `codeSplitting.groups` on purpose: default splitting wins here.
             //
             // This used to force everything matching `node_modules/react(/|-dom/)`
             // into one chunk. That regex covers `react` AND `react-dom/server`,
@@ -440,8 +441,8 @@ export class BuildServerTask extends BuildTask {
             // Measured on Lore (workerd): dropping the group moved the
             // renderer to a genuinely async chunk and took the eagerly-parsed
             // server bundle from ~1556KB to ~1329KB. Splitting the group in two
-            // instead  -  a `react-dom-server` group ahead of a `react` group with
-            // a negative lookahead  -  did NOT work and produced byte-identical
+            // instead (a `react-dom-server` group ahead of a `react` group with
+            // a negative lookahead) did NOT work and produced byte-identical
             // output, so reach for a measurement before reintroducing any group
             // here rather than assuming the pattern is what decides.
 
@@ -665,7 +666,7 @@ export class BuildServerTask extends BuildTask {
    * require factory (see {@link neutralizeWorkerdCreateRequire}).
    *
    * Rolldown injects that exact call as a top-of-chunk CJS-interop banner
-   * whenever a bundled CommonJS module references `require`  -  and on
+   * whenever a bundled CommonJS module references `require`, and on
    * Cloudflare, `import.meta.url` is `undefined` during script validation, so
    * `createRequire(undefined)` throws before the worker ever runs
    * (`Uncaught TypeError: The argument 'path' must be a file URL…`, deploy
@@ -675,7 +676,7 @@ export class BuildServerTask extends BuildTask {
    *
    * The same undefined `import.meta.url` also breaks the standard Vite asset
    * idiom `new URL("./rel.png", import.meta.url)`, which Vite's SSR build
-   * leaves untouched (it is valid on Node)  -  any module-scope occurrence in a
+   * leaves untouched (it is valid on Node): any module-scope occurrence in a
    * workerd chunk throws `Uncaught TypeError: Invalid URL string.` at
    * validation. After the createRequire calls are neutralized (their pattern
    * matches on the literal `import.meta.url` token, so order matters), every
@@ -768,8 +769,8 @@ export class BuildServerTask extends BuildTask {
    *
    * On Cloudflare, `import.meta.url` is `undefined` during deploy-time script
    * validation (and stays useless at runtime), so any module-scope
-   * `new URL(rel, import.meta.url)`  -  the standard Vite asset idiom, which
-   * the SSR build deliberately leaves untouched  -  kills the upload with
+   * `new URL(rel, import.meta.url)` (the standard Vite asset idiom, which
+   * the SSR build deliberately leaves untouched) kills the upload with
    * `Invalid URL string.` (error 10021). Stubbing in the chunk's own module
    * URL keeps the closest possible Node semantics: relative asset paths
    * resolve to deterministic (if fictional) `file:///` URLs instead of
@@ -802,7 +803,7 @@ export class BuildServerTask extends BuildTask {
    * hypothetical: that token is also ordinary *data*. `apps/docs` renders its
    * changelog from commit messages, two of which name the token verbatim, so
    * the rewrite terminated a string literal early. The chunk stopped parsing,
-   * rolldown dropped it, and the build still exited 0  -  the app entry shipped
+   * rolldown dropped it, and the build still exited 0: the app entry shipped
    * as a 37-byte file holding nothing but a sourcemap comment, `run()` never
    * executed, and Cloudflare refused the upload with `ReferenceError:
    * __alepha is not defined`.
@@ -922,6 +923,7 @@ export class BuildServerTask extends BuildTask {
   }
 
   protected async generateExternals(
+    root: string,
     distDir: string,
     externals: string[],
     main: string,
@@ -931,8 +933,11 @@ export class BuildServerTask extends BuildTask {
 
     for (const dep of externals) {
       try {
-        const requirePath = require.resolve(dep);
-        const pkgPath = `${requirePath.split(`node_modules/${dep}`)[0]}node_modules/${dep}/package.json`;
+        let pkgPath = await this.findInstalledPackageJson(root, dep);
+        if (!pkgPath) {
+          const requirePath = require.resolve(dep);
+          pkgPath = `${requirePath.split(`node_modules/${dep}`)[0]}node_modules/${dep}/package.json`;
+        }
         const pkg = JSON.parse(await this.fs.readTextFile(pkgPath));
         deps[dep] = `^${pkg.version}`;
       } catch {
@@ -944,7 +949,7 @@ export class BuildServerTask extends BuildTask {
       type: "module",
       // The primary slice. `node .` has to resolve to something runnable, and
       // there is exactly one `main` to name it with, so the first declared
-      // runtime is the answer  -  the same one the manifest gives.
+      // runtime is the answer: the same one the manifest gives.
       main,
       dependencies: deps,
     };
@@ -954,6 +959,36 @@ export class BuildServerTask extends BuildTask {
       join(distDir, "package.json"),
       JSON.stringify(minimalPkg, null, 2),
     );
+  }
+
+  /**
+   * The `package.json` of `dep` as the app would load it: the nearest
+   * `node_modules/<dep>` from `root` upwards.
+   *
+   * The file is read where it sits, never resolved: an ESM-only package has
+   * no entry `require.resolve` accepts, and may not export `./package.json`.
+   * A file with no version (the shim a package leaves under a subpath) is
+   * not one: it names nothing to declare.
+   */
+  protected async findInstalledPackageJson(
+    root: string,
+    dep: string,
+  ): Promise<string | undefined> {
+    let directory = root;
+    while (true) {
+      const candidate = join(directory, "node_modules", dep, "package.json");
+      if (await this.fs.exists(candidate)) {
+        const { version } = JSON.parse(await this.fs.readTextFile(candidate));
+        if (typeof version === "string" && version !== "") {
+          return candidate;
+        }
+      }
+      const parent = dirname(directory);
+      if (parent === directory) {
+        return undefined;
+      }
+      directory = parent;
+    }
   }
 
   protected async loadJsonFile(path: string): Promise<any> {
@@ -1003,7 +1038,7 @@ export class BuildServerTask extends BuildTask {
    *
    * A `renderChunk` rewrite that corrupts a chunk does not fail the build:
    * rolldown drops the unparseable content and emits an empty file, and the
-   * build exits 0. What ships is an app whose `run()` never executes  -  a
+   * build exits 0. What ships is an app whose `run()` never executes: a
    * failure that first surfaces as Cloudflare refusing the upload with
    * `ReferenceError: __alepha is not defined`, a message that points nowhere
    * near the bundler. An entry chunk always at minimum imports the chunk
@@ -1020,7 +1055,7 @@ export class BuildServerTask extends BuildTask {
       return;
     }
     throw new AlephaError(
-      `The server entry chunk "${entryFile}" is empty  -  it holds no statement ` +
+      `The server entry chunk "${entryFile}" is empty: it holds no statement ` +
         "at all, so the application would never start. This means a chunk " +
         "transform produced code the bundler could not parse and silently " +
         "dropped. Refusing to ship the build.",

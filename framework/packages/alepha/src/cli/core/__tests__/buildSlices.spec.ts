@@ -77,7 +77,7 @@ describe("BuildSlices", () => {
 
     /**
      * ⚠️ The namespacing is load-bearing. Two runtimes in one `server/` do not
-     * collide — their content hashes differ — so both sets sit there, and
+     * collide, since their content hashes differ, so both sets sit there, and
      * `wrangler.jsonc`'s `server/*.js` glob then sweeps the Node chunks into
      * the Worker upload.
      */

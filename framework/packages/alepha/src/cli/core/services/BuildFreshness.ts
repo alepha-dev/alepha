@@ -3,16 +3,17 @@ import { createHash } from "node:crypto";
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
+import type { BuildManifest } from "../schemas/buildManifest.ts";
 import { BuildManifestReader } from "./BuildManifestReader.ts";
 
 /**
  * Decide whether `dist/` still matches the sources it was built from.
  *
  * Backs `alepha build --if-stale`, which exists for one shape: a pipeline that
- * builds and then runs something needing the build. `alepha verify` does
- * exactly that - `yarn build` for every workspace, then `yarn e2e`, whose
- * Playwright `webServer` starts each app with its own `yarn build && node
- * dist`. The second build re-produces an artifact that is already there and
+ * builds and then runs something needing the build. A CI job that
+ * runs `yarn build` for every workspace, then an e2e suite whose Playwright
+ * `webServer` starts each app with its own `yarn build && node dist`, is that
+ * shape. The second build re-produces an artifact that is already there and
  * has not changed, at ~12s per app per run.
  *
  * ⚠️ The obvious check - "does dist exist" - is worse than doing nothing.
@@ -102,16 +103,23 @@ export class BuildFreshness {
     /*
       `manifest.json` rather than an entry file, because there is no longer one
       name an entry is guaranteed to have: a build produces `index.node.js`,
-      `index.workerd.js` or both, a compile build produces a binary instead, and
-      a static build produces no entry at all. The manifest is written by every
-      one of them, and written after the server link, so it is both always
-      present and late enough to date the build.
+      `index.workerd.js` or both, and a static build produces no entry at all.
+      The manifest is written by every one of them, and written after the
+      server link, so it is both always present and late enough to date the
+      build.
     */
     const artifact = this.fs.join(root, distDir, "manifest.json");
     if (!(await this.fs.exists(artifact))) {
       return `${distDir}/manifest.json is missing`;
     }
-    const manifest = await this.manifestReader.read(artifact);
+    // A manifest this framework cannot read (an older build's, or one an
+    // interrupted build truncated) is a build to redo, not a reason to stop.
+    let manifest: BuildManifest;
+    try {
+      manifest = await this.manifestReader.read(artifact);
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
     const builtAt = (await this.fs.stat(artifact)).mtimeMs;
 
     if (optionsHash !== undefined) {

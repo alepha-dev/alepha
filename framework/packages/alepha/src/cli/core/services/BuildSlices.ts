@@ -1,5 +1,3 @@
-import { $inject, Alepha } from "alepha";
-
 import type {
   BuildRuntime,
   BuildRuntimeDeclaration,
@@ -23,15 +21,13 @@ import { STATIC_RUNTIME } from "../atoms/buildOptions.ts";
  *
  * ## ⚠️ Declared order is the decision
  *
- * The FIRST declared runtime is the primary. It is `manifest.runtime`, it is
- * what `dist/package.json` points at, and it is what a deployer spawns.
+ * The FIRST declared runtime is the primary. It is `manifest.runtimes[0]`, it
+ * is what `dist/package.json` points at, and it is what a deployer spawns.
  * `["bun", "node"]` and `["node", "bun"]` produce the same two slices and
  * different behaviour, so nothing here may sort, dedupe-by-preference or
- * reorder the list — only drop a later repeat of a runtime already declared.
+ * reorder the list: only drop a later repeat of a runtime already declared.
  */
 export class BuildSlices {
-  protected readonly alepha = $inject(Alepha);
-
   /**
    * The default set when nothing is declared.
    *
@@ -91,7 +87,7 @@ export class BuildSlices {
   /**
    * The ordered slice set of a resolved build, from the options a task holds.
    *
-   * `runtimes` is what `BuildCommand` resolved; `runtime` is the declaration it
+   * `runtimes` is what `BuildPipeline` resolved; `runtime` is the declaration it
    * resolved FROM, and is the fallback for a caller that built the options by
    * hand (a spec, a prebuilt path) and never went through the command.
    */
@@ -143,7 +139,7 @@ export class BuildSlices {
   }
 
   /**
-   * The slice's entry wrapper, relative to `dist/` — e.g. `index.node.js`.
+   * The slice's entry wrapper, relative to `dist/`, e.g. `index.node.js`.
    *
    * ⚠️ There is deliberately no `index.js` that works out its own host. The
    * manifest is the discovery mechanism, and a second one able to disagree
@@ -155,11 +151,11 @@ export class BuildSlices {
   }
 
   /**
-   * The slice's chunk directory, relative to `dist/` — e.g. `server/node`.
+   * The slice's chunk directory, relative to `dist/`, e.g. `server/node`.
    *
    * ⚠️ **Namespacing is load-bearing, not tidiness.** Two runtimes built into
    * one `server/` do not collide, because their content hashes differ, so both
-   * sets simply sit there — and `wrangler.jsonc` ships with `no_bundle` and a
+   * sets simply sit there, and `wrangler.jsonc` ships with `no_bundle` and a
    * `server/*.js` glob that would then sweep the Node chunks into the Worker
    * upload. Best case a Worker twice the size it needs; likely case a Node
    * chunk importing a node builtin and a refused deploy.

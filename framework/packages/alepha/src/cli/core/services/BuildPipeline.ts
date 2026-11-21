@@ -74,14 +74,14 @@ export class BuildPipeline {
 
   /**
    * Build pipeline: tasks run sequentially in this order.
-   * Each task self-guards (checks target, hasClient, etc.).
+   * Each task self-guards (checks the slices, prebuilt, shell, hasClient).
    * Order matters: compress runs after everything that writes public files.
    * `_headers` is written after the static task, which copies an adopted
    * site (and its own `_headers`) into `dist/public`.
    *
    * ⚠️ There is no compile step here any more. It was `alepha build
    * --compile`, a build option that reached back to constrain `target`, and it
-   * is `alepha compile` now — its own command, reading `./dist`.
+   * is `alepha compile` now: its own command, reading `./dist`.
    */
   protected readonly tasks: BuildTask[] = [
     $inject(BuildClientTask),
@@ -207,7 +207,7 @@ export class BuildPipeline {
     // when no manifest is present (older artifacts).
     let manifest: BuildManifest | null = null;
     if (request.prebuilt) {
-      manifest = await this.loadManifest(root);
+      manifest = await this.loadManifest(root, distDir);
     }
 
     let appAlepha: Alepha | undefined;
@@ -297,11 +297,14 @@ export class BuildPipeline {
   }
 
   /**
-   * Read `dist/manifest.json` produced by a previous `alepha build`.
+   * Read the `manifest.json` a previous `alepha build` left in `distDir`.
    * Returns null when absent; incompatible existing artifacts are refused.
    */
-  protected async loadManifest(root: string): Promise<BuildManifest | null> {
-    return this.manifestReader.readOptional(`${root}/dist/manifest.json`);
+  protected async loadManifest(
+    root: string,
+    distDir: string,
+  ): Promise<BuildManifest | null> {
+    return this.manifestReader.readOptional(`${root}/${distDir}/manifest.json`);
   }
 }
 

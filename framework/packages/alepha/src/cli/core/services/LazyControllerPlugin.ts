@@ -254,11 +254,18 @@ export class LazyControllerPlugin {
       const kept = decl.specifiers.filter(
         (spec: any) => !items.some((it) => it.spec === spec),
       );
-      const keptText = kept.map((spec: any) =>
-        code.slice(spec.start, spec.end),
-      );
-      const text = keptText.length
-        ? `import { ${keptText.join(", ")} } from ${JSON.stringify(decl.source.value)};`
+      const textOf = (spec: any) => code.slice(spec.start, spec.end);
+      // A default (or namespace) import stays outside the braces: inside
+      // them it would bind the named export of the same name.
+      const named = kept.filter((spec: any) => spec.type === "ImportSpecifier");
+      const clause = [
+        ...kept
+          .filter((spec: any) => spec.type !== "ImportSpecifier")
+          .map(textOf),
+        ...(named.length ? [`{ ${named.map(textOf).join(", ")} }`] : []),
+      ].join(", ");
+      const text = clause
+        ? `import ${clause} from ${JSON.stringify(decl.source.value)};`
         : "";
       edits.push({ start: decl.start, end: decl.end, text });
     }

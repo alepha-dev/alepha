@@ -9,8 +9,8 @@ import type { BuildTaskContext } from "../tasks/BuildTask.ts";
 
 describe("--prebuilt guards", () => {
   // In prebuilt/manifest mode `ctx.alepha` is null: there is no live app to
-  // introspect. Neither task checked, so the build died on a TypeError that
-  // named nothing the user could act on.
+  // introspect. The static task did not check, so the build died on a
+  // TypeError that named nothing the user could act on.
   const createCtx = (runtime: string): BuildTaskContext =>
     ({
       alepha: null,
@@ -50,7 +50,7 @@ describe("--prebuilt guards", () => {
     const tasks = create();
 
     await expect(
-      tasks.static.run(createCtx("cloudflare")),
+      tasks.static.run(createCtx("workerd")),
     ).resolves.toBeUndefined();
   });
 });

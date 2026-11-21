@@ -18,9 +18,9 @@ export interface BuildTaskContext {
   alepha: Alepha;
 
   /**
-   * Resolved build options (flags merged with atom defaults).
-   * BuildCommand mutates the atom before creating the context,
-   * so stats, target, runtime are all resolved values.
+   * Resolved build options: the project's, with the request's overrides on
+   * top, as `BuildPipeline.resolveOptions` returns them. `stats`, `runtime`
+   * and `runtimes` are resolved values.
    */
   options: BuildOptions;
 
@@ -44,7 +44,7 @@ export interface BuildTaskContext {
   /**
    * CLI runner for progress logging.
    * Tasks call this when they have work to show.
-   * Tasks decide IF and WHEN to call run — e.g. skip entirely if nothing to do.
+   * Tasks decide IF and WHEN to call run, e.g. skip entirely if nothing to do.
    */
   run: RunnerMethod;
 
@@ -81,7 +81,7 @@ export interface BuildTaskContext {
   /**
    * Build-time snapshot of primitive data, read from
    * `dist/manifest.json`. Populated only in `--prebuilt` mode when a
-   * previous build's manifest is present — lets BuildCloudflareTask
+   * previous build's manifest is present: it lets BuildCloudflareTask
    * regenerate `wrangler.jsonc` without re-booting the workspace.
    * `null` when introspection (`ctx.alepha`) is the source of truth.
    */
@@ -102,22 +102,10 @@ export interface BuildTaskContext {
   define?: Record<string, string>;
 
   flags?: {
-    image?: boolean | string;
-    /**
-     * The name of a compiled binary in `dist/`, when the caller compiled one.
-     *
-     * ⚠️ **A flag rather than a build option**, and that is the point.
-     * `compile` used to live in `buildOptions` and reach back to constrain
-     * `target`, which is a build option deciding other build options. It is
-     * `alepha compile` now, its own command reading `./dist`, and the only
-     * thing the Dockerfile writer still needs to know is whether a binary
-     * exists and what it is called — so that is all it is handed.
-     */
-    compile?: string;
     /**
      * Skip the slow build steps (Vite client + Vite server + asset
      * compression). Only runs the deploy-config generation
-     * (wrangler.jsonc, etc.) — useful when the caller already has a
+     * (wrangler.jsonc, etc.), useful when the caller already has a
      * built `dist/` and just needs the wrangler config refreshed for
      * per-deploy overrides.
      */

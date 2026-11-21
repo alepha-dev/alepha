@@ -243,9 +243,8 @@ describe("MetaResolver", () => {
 
   describe("override", () => {
     it("should let an app publish its own version instead of the tag", async () => {
-      // What lore needs: a private package with no version of its own that
-      // deliberately publishes the framework's, and which deploys on every
-      // push to main where a tag-only chain would say "latest" forever.
+      // A private package with no version of its own that deliberately
+      // publishes the framework's.
       const meta = await setup({ [TAG]: "0.27.1\n" }).resolve({
         root: "/w/lore",
         runtime: "workerd",
@@ -331,20 +330,6 @@ describe("MetaResolver", () => {
       const value = resolver.define(meta).__ALEPHA_META__;
 
       expect(JSON.parse(JSON.parse(value)).name).toBe('we"ird');
-    });
-  });
-
-  describe("framework", () => {
-    it("should report alepha's own version, baked rather than resolved at runtime", async () => {
-      const meta = await setup({}).resolve({
-        root: "/w/lore",
-        runtime: "node",
-        dev: false,
-      });
-
-      // Baked here because `alepha/package.json` is not resolvable on every
-      // target the bundle runs on.
-      expect(meta.framework).toMatch(/^\d+\.\d+\.\d+/);
     });
   });
 

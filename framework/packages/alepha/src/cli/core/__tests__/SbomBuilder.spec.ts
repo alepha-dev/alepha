@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { SbomBuilder } from "../services/SbomBuilder.ts";
 
 /**
- * A project with three packages installed: two the bundle reaches, one it
+ * A project with four packages installed: three the bundle reaches, one it
  * never does (a test runner, the dev-only case), plus a workspace package
  * marked private and a nested `{ "type": "module" }` that names nothing.
  */

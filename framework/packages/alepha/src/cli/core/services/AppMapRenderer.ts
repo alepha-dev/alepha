@@ -374,7 +374,7 @@ export class AppMapRenderer {
         "",
         `\`${action.group}.${action.name}\`${flags.length ? ` (${flags.join(", ")})` : ""}${
           action.description || action.summary
-            ? `: ${action.description ?? action.summary}`
+            ? `: ${action.description || action.summary}`
             : ""
         }`,
       );
@@ -447,7 +447,8 @@ export class AppMapRenderer {
   /**
    * Keep the items of one rendered section that contain `text`, and recount
    * its `## Title (n)` heading. An item is a `### ` block when the section has
-   * them, else a `- ` line, else a table row below the `| --- |` separator.
+   * them, else a `- ` line with the lines indented under it, else a table row
+   * below the `| --- |` separator.
    * Empty when nothing matched, so the caller leaves the section out.
    */
   protected filter(lines: string[], text: string): string[] {
@@ -468,7 +469,10 @@ export class AppMapRenderer {
       if (kind === "table" && line.startsWith("| ---")) inTable = true;
       if (starts) {
         items.push([line]);
-      } else if (items.length && kind === "block") {
+      } else if (
+        items.length &&
+        (kind === "block" || (kind === "list" && line.startsWith("  ")))
+      ) {
         items[items.length - 1].push(line);
       } else if (!items.length) {
         head.push(line);

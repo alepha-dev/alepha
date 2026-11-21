@@ -26,7 +26,8 @@ export interface DevServerOptions {
   root: string;
 
   /**
-   * Path to the server entry file.
+   * The app's entry files: the server entry, and the browser entry and
+   * stylesheet when it has them.
    */
   entry: AppEntry;
 
@@ -177,21 +178,24 @@ export class ViteDevServerProvider {
    *
    * The two halves fail differently, which is why they are no longer in one
    * `try`. An app that throws on start is a code problem: the retry loop
-   * waits for the edit that fixes it, and that is the whole point of
-   * `alepha dev`. A socket that will not bind is not - the port stays taken
-   * however many files you save - and folding it into the same loop left the
-   * command sitting there looking alive while serving nothing at all.
+   * waits for the edit that fixes it, however many saves that takes, and that
+   * is the whole point of `alepha dev`. A socket that will not bind is not
+   * (the port stays taken however many files you save), and folding it into
+   * the same loop left the command sitting there looking alive while serving
+   * nothing at all.
    */
   public async start(): Promise<void> {
-    try {
-      await this.alepha?.start();
-    } catch (err) {
-      this.hasError = true;
-      this.currentError = err instanceof Error ? err : new Error(String(err));
-      this.logError("Startup failed", err);
-      this.alepha = null;
-      this.alepha = await this.waitForSuccessfulLoad();
-      await this.alepha.start();
+    while (true) {
+      try {
+        await this.alepha?.start();
+        break;
+      } catch (err) {
+        this.hasError = true;
+        this.currentError = err instanceof Error ? err : new Error(String(err));
+        this.logError("Startup failed", err);
+        this.alepha = null;
+        this.alepha = await this.waitForSuccessfulLoad();
+      }
     }
 
     await this.listen();
@@ -325,7 +329,7 @@ export class ViteDevServerProvider {
    * `vite:css` keeps its CSS-modules cache in a closure it assigns only in
    * `buildStart`, and the plugin container filters that hook to the **client**
    * environment. Vite starts the client container from its own `initServer`,
-   * which does not run until `listen()` — but {@link loadAlepha} calls
+   * which does not run until `listen()`, but {@link loadAlepha} calls
    * `ssrLoadModule` before that, and the SSR container's lazy self-start skips
    * `vite:css` under the same client-only filter. So the cache stayed
    * undefined, and any app whose *eager* server graph reached a `.module.css`
@@ -459,14 +463,14 @@ export class ViteDevServerProvider {
                 );
                 return;
               }
-              // Everything that is not a browser page — an API call, a health
-              // probe, curl — used to fall through to Vite and come back 404.
+              // Everything that is not a browser page (an API call, a health
+              // probe, curl) used to fall through to Vite and come back 404.
               // "Route not found" sends the caller looking for a routing bug
               // when the app simply does not compile; 500 says the server is
               // broken, which is the truth, and carries the reason with it.
               res.writeHead(500, { "content-type": "text/plain" });
               res.end(
-                `Dev server has no app loaded — the last build failed.\n\n${
+                `Dev server has no app loaded: the last build failed.\n\n${
                   this.currentError?.stack ?? this.currentError?.message ?? ""
                 }`,
               );
@@ -504,7 +508,7 @@ export class ViteDevServerProvider {
         if (this.waitingForRetry) return [];
 
         // React component (.tsx/.jsx) edits always need the SSR module
-        // graph invalidated — the `_ssrModule` shortcut below misses files
+        // graph invalidated: the `_ssrModule` shortcut below misses files
         // that are workspace-linked source-only (e.g. `@alepha/ui/...`).
         // Those don't carry an `_ssrModule` ref on `ctx.modules[0]` on
         // first edit and get classified as browser-only, leaving stale
@@ -682,36 +686,42 @@ export class ViteDevServerProvider {
       this.invalidateModulesWithImporters(filesToInvalidate ?? new Set());
     }
 
-    // Snapshot and restore process.env to isolate each reload
+    // Snapshot and restore process.env to isolate each reload. Restored
+    // however the load ends: a value left behind by a failed load would be
+    // part of the next snapshot, and `??=` would keep it over an edited
+    // `.env`.
     const envSnapshot = { ...process.env };
-    await this.setupEnvironment();
 
     try {
-      await this.server.ssrLoadModule(this.options.entry.server, {
-        fixStacktrace: true,
-      });
-    } catch (err) {
-      this.hasError = true;
+      await this.setupEnvironment();
+
+      try {
+        await this.server.ssrLoadModule(this.options.entry.server, {
+          fixStacktrace: true,
+        });
+      } catch (err) {
+        this.hasError = true;
+        throw err;
+      }
+
+      const alepha = this.getLoadedAlepha();
+
+      // Expose Vite server to Alepha for Logger SSR stack trace fixing
+      alepha.store.set("alepha.vite.server", this.server);
+
+      for (const hook of this.alephaLoadedHooks) {
+        await hook(alepha, this.server);
+      }
+
+      this.alepha = alepha;
+      await this.setupAlepha();
+
+      this.hasError = false;
+
+      return alepha;
+    } finally {
       process.env = envSnapshot;
-      throw err;
     }
-
-    const alepha = this.getLoadedAlepha();
-
-    // Expose Vite server to Alepha for Logger SSR stack trace fixing
-    alepha.store.set("alepha.vite.server", this.server);
-
-    for (const hook of this.alephaLoadedHooks) {
-      await hook(alepha, this.server);
-    }
-
-    this.alepha = alepha;
-    await this.setupAlepha();
-
-    this.hasError = false;
-    process.env = envSnapshot;
-
-    return alepha;
   }
 
   /**
@@ -751,7 +761,7 @@ export class ViteDevServerProvider {
    * Generate dev head content for SSR.
    *
    * IMPORTANT: We call transformIndexHtml() on an EMPTY <head> (no script/link
-   * tags) to collect plugin-injected preambles — specifically the React Fast
+   * tags) to collect plugin-injected preambles, specifically the React Fast
    * Refresh runtime from @vitejs/plugin-react. We then manually append our
    * own browser entry and stylesheet tags.
    *
@@ -769,7 +779,7 @@ export class ViteDevServerProvider {
     const { browser, style } = this.options.entry;
 
     // Get plugin preambles (React Fast Refresh, etc.) without triggering
-    // client module graph walk — see JSDoc above for why this matters.
+    // client module graph walk: see JSDoc above for why this matters.
     const emptyHtml = "<!DOCTYPE html><html><head></head><body></body></html>";
     const transformed = await this.server.transformIndexHtml("/", emptyHtml);
     const headMatch = transformed.match(/<head>([\s\S]*?)<\/head>/i);
@@ -871,11 +881,11 @@ createHotContext("/@alepha/reload").on("alepha:reload", async () => {
    * SSR module graphs.
    *
    * Vite registers a file under multiple module ids (one per query
-   * variant — e.g. `?v=…`, `?import` and the bare path), and `getModuleById`
+   * variant, e.g. `?v=…`, `?import` and the bare path), and `getModuleById`
    * only matches one. For workspace-linked source files (`@alepha/ui/...`)
    * the SSR-graph entry is keyed by the absolute path while the client
    * may use the package-qualified id. `getModulesByFile` returns every
-   * variant Vite knows about for a given absolute path — invalidating
+   * variant Vite knows about for a given absolute path: invalidating
    * each catches both halves of the dual graph and prevents stale SSR
    * compiled exports from surviving across edits.
    */
@@ -927,7 +937,7 @@ createHotContext("/@alepha/reload").on("alepha:reload", async () => {
     return new Promise((resolve) => {
       // Files saved since the retry in flight started. A watcher fires once
       // per file, and a "save all" or a git checkout fires many within a few
-      // milliseconds — without this they each began their own `loadAlepha`,
+      // milliseconds: without this they each began their own `loadAlepha`,
       // concurrently, on the same module graph.
       const queued = new Set<string>();
       let running = false;

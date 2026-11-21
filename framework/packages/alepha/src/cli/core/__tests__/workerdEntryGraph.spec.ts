@@ -43,6 +43,27 @@ describe("the workerd entries of the CLI", () => {
   const ALLOWED_BUILTINS = new Set(["node:async_hooks"]);
 
   /**
+   * The dynamic imports the walk does not follow, as `<file> -> <specifier>`.
+   *
+   * A dynamic `import()` is walked like a static one, since a bundler links
+   * its target into the same Worker. These two are known, and are a decision
+   * for the owner of each file, not a statement that they are safe:
+   *
+   * - `FileDetector.peekBytes` imports `node:stream` on its first call, so
+   *   that the browser index, which ships the same file, does not. Nothing
+   *   keeps a Worker from calling it.
+   * - `WorkerCloudflareAdapter.postgresUrl` imports `alepha/orm` to read a
+   *   `DATABASE_URL`. That subpath has no `workerd` entry, so the edge leads
+   *   into the Node index of the ORM and every builtin its drivers import.
+   *
+   * An entry whose edge is gone fails the last test of this file.
+   */
+  const UNFOLLOWED_DYNAMIC_IMPORTS = new Set([
+    "src/system/services/FileDetector.ts -> node:stream",
+    "src/cli/infra-lib/adapters/WorkerCloudflareAdapter.ts -> alepha/orm",
+  ]);
+
+  /**
    * Import and re-export specifiers, minus the ones erased at compile time.
    *
    * Comments and template literals are stripped first. Both are load-bearing:
@@ -51,14 +72,16 @@ describe("the workerd entries of the CLI", () => {
    * `alepha/cli/infra` - which is how this walker first "found" the entire
    * CLI in the orchestrator's closure.
    */
-  const specifiersOf = (source: string): string[] => {
+  const specifiersOf = (
+    source: string,
+  ): Array<{ specifier: string; dynamic: boolean }> => {
     const code = source
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "")
       .replace(/`(?:[^`\\]|\\.)*`/g, "``");
     const pattern =
       /(?:^|\n)\s*(?:import|export)\s+(?!type\s)([^;]*?)\s*from\s*["'`]([^"'`]+)["'`]/g;
-    const found: string[] = [];
+    const found: Array<{ specifier: string; dynamic: boolean }> = [];
     for (const match of code.matchAll(pattern)) {
       const clause = match[1].trim();
       // `import { type A, type B } from "x"` is erased too.
@@ -72,10 +95,35 @@ describe("the workerd entries of the CLI", () => {
           continue;
         }
       }
-      found.push(match[2]);
+      found.push({ specifier: match[2], dynamic: false });
+    }
+    // `import "x"`, for its side effects.
+    for (const match of code.matchAll(
+      /(?:^|\n)\s*import\s*["']([^"']+)["']/g,
+    )) {
+      found.push({ specifier: match[1], dynamic: false });
+    }
+    // `import("x")`: a bundler follows it into a chunk of the same Worker.
+    // `typeof import("x")` is a type, erased with the rest.
+    for (const match of code.matchAll(
+      /(?<!typeof\s)\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
+    )) {
+      found.push({ specifier: match[1], dynamic: true });
     }
     return found;
   };
+
+  /**
+   * Whether an import is one of {@link UNFOLLOWED_DYNAMIC_IMPORTS}. Only its
+   * dynamic form is: a static import of the same specifier from the same
+   * file is walked like any other.
+   */
+  const isUnfollowed = (
+    file: string,
+    edge: { specifier: string; dynamic: boolean },
+  ): boolean =>
+    edge.dynamic &&
+    UNFOLLOWED_DYNAMIC_IMPORTS.has(`${file} -> ${edge.specifier}`);
 
   /**
    * Resolve one of this package's own subpaths the way a workerd bundler does.
@@ -99,15 +147,22 @@ describe("the workerd entries of the CLI", () => {
     const visited = new Set<string>();
     const builtins = new Map<string, Set<string>>();
     const external = new Set<string>();
+    const unfollowed = new Set<string>();
     const queue = [entry];
     while (queue.length > 0) {
       const file = queue.pop();
       if (!file || visited.has(file) || !existsSync(file)) continue;
       visited.add(file);
-      for (const specifier of specifiersOf(readFileSync(file, "utf8"))) {
+      const relative = file.slice(pkgRoot.length + 1);
+      for (const edge of specifiersOf(readFileSync(file, "utf8"))) {
+        const { specifier } = edge;
+        if (isUnfollowed(relative, edge)) {
+          unfollowed.add(`${relative} -> ${specifier}`);
+          continue;
+        }
         if (specifier.startsWith("node:")) {
           const seen = builtins.get(specifier) ?? new Set<string>();
-          seen.add(file.slice(pkgRoot.length + 1));
+          seen.add(relative);
           builtins.set(specifier, seen);
           continue;
         }
@@ -118,7 +173,7 @@ describe("the workerd entries of the CLI", () => {
         else external.add(specifier);
       }
     }
-    return { visited, builtins, external };
+    return { visited, builtins, external, unfollowed };
   };
 
   const entries = {
@@ -166,7 +221,7 @@ describe("the workerd entries of the CLI", () => {
     ).toBe(true);
   });
 
-  it("keeps InfraOrchestrator reachable from platform-lib", ({ expect }) => {
+  it("keeps InfraOrchestrator reachable from infra-lib", ({ expect }) => {
     const { visited } = walk(entries["alepha/cli/infra-lib"]);
 
     expect(
@@ -178,9 +233,8 @@ describe("the workerd entries of the CLI", () => {
     expect,
   }) => {
     // An entry that dropped the adapter would pass every assertion above by
-    // reaching nothing at all - and `resolveAdapter("cloudflare")` would then
-    // refuse a deploy with "this container has no platform adapter", which
-    // reads as a config problem rather than as a missing export.
+    // reaching nothing at all, and a deploy to Cloudflare would then find no
+    // adapter, which reads as a config problem rather than a missing export.
     const { visited } = walk(entries["alepha/cli/infra-lib"]);
     const reached = (file: string) =>
       [...visited].some((it) => it.endsWith(`/${file}`));
@@ -193,5 +247,31 @@ describe("the workerd entries of the CLI", () => {
     // environment and shells out to wrangler for a login (#E75).
     expect(reached("CloudflareAdapter.ts")).toBe(false);
     expect(reached("CloudflareCredentialSource.ts")).toBe(false);
+  });
+
+  it("walks dynamic imports, and still meets every one it does not follow", ({
+    expect,
+  }) => {
+    expect(
+      specifiersOf(
+        'const a = await import("./a.ts");\nimport "./b.ts";\nlet c: typeof import("./c.ts");',
+      ),
+    ).toEqual([
+      { specifier: "./b.ts", dynamic: false },
+      { specifier: "./a.ts", dynamic: true },
+    ]);
+
+    // The exemption is for the lazy form alone: the same specifier imported
+    // statically from the same file is an ordinary edge.
+    const [edge] = [...UNFOLLOWED_DYNAMIC_IMPORTS];
+    const [file, specifier] = edge.split(" -> ");
+    expect(isUnfollowed(file, { specifier, dynamic: true })).toBe(true);
+    expect(isUnfollowed(file, { specifier, dynamic: false })).toBe(false);
+
+    const met = new Set(
+      Object.values(entries).flatMap((entry) => [...walk(entry).unfollowed]),
+    );
+
+    expect([...met].sort()).toEqual([...UNFOLLOWED_DYNAMIC_IMPORTS].sort());
   });
 });

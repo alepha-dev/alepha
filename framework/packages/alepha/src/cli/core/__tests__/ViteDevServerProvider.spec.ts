@@ -1,7 +1,8 @@
 import { EventEmitter } from "node:events";
 
-import { Alepha, AlephaError, type AlephaMeta } from "alepha";
-import { describe, it } from "vitest";
+import { $hook, Alepha, AlephaError, type AlephaMeta } from "alepha";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { afterEach, describe, it } from "vitest";
 
 import {
   type DevServerOptions,
@@ -21,7 +22,6 @@ class TestViteDevServerProvider extends ViteDevServerProvider {
   public readonly firstAttempt = Promise.withResolvers<void>();
 
   public testWaitForSuccessfulLoad = this.waitForSuccessfulLoad.bind(this);
-  public testStart = this.start.bind(this);
 
   public useFakeServer(listen: () => Promise<void>): void {
     this.server = {
@@ -39,7 +39,7 @@ class TestViteDevServerProvider extends ViteDevServerProvider {
     if (attempt === 1) {
       // Hold the first attempt open for as long as the test wants.
       await this.firstAttempt.promise;
-      throw new Error("still broken");
+      throw new AlephaError("still broken");
     }
     return {} as Alepha;
   }
@@ -51,7 +51,7 @@ class TestViteDevServerProvider extends ViteDevServerProvider {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-describe("ViteDevServerProvider — retry loop", () => {
+describe("ViteDevServerProvider: retry loop", () => {
   it("coalesces changes that arrive while a retry is in flight", async ({
     expect,
   }) => {
@@ -99,9 +99,164 @@ describe("ViteDevServerProvider — retry loop", () => {
 
     // No edit can free a socket, so falling into the retry loop here left the
     // command sitting there looking alive while serving nothing.
-    await expect(provider.testStart()).rejects.toThrow(
+    await expect(provider.start()).rejects.toThrow(
       "Port 4321 is already in use",
     );
+  });
+});
+
+/**
+ * A watcher on which a file is saved as soon as something listens for one:
+ * the edit a developer makes after reading the error.
+ */
+class SavingWatcher extends EventEmitter {
+  public override on(event: string, listener: (...args: any[]) => void): this {
+    super.on(event, listener);
+    if (event === "change") {
+      queueMicrotask(() => this.emit("change", "/app/src/main.server.ts"));
+    }
+    return this;
+  }
+}
+
+/**
+ * Stands in for Vite's `loadEnv`: the `.env` of the app, as the test last
+ * wrote it.
+ */
+class EnvFileViteUtils extends ViteUtils {
+  public envFile: Record<string, string> = {};
+
+  public override async importVite(): Promise<any> {
+    return { loadEnv: () => ({ ...this.envFile }) };
+  }
+}
+
+/**
+ * The real loader and the real start, over a Vite server reduced to an entry
+ * module the test writes: `entryModule` is what evaluating it does.
+ */
+class EntryViteDevServerProvider extends ViteDevServerProvider {
+  public loads = 0;
+  public entryModule: () => void = () => {};
+
+  public testLoadAlepha = () => this.loadAlepha(true);
+
+  public useFakeServer(): void {
+    this.options = {
+      root: "/app",
+      entry: { root: "/app", server: "src/main.server.ts" },
+    } as DevServerOptions;
+    this.server = {
+      watcher: new SavingWatcher(),
+      config: { server: { port: 4321 } },
+      moduleGraph: {
+        invalidateAll: () => {},
+        getModulesByFile: () => undefined,
+      },
+      ssrLoadModule: async () => {
+        this.loads += 1;
+        this.entryModule();
+        return {};
+      },
+      listen: async () => {},
+    } as any;
+  }
+
+  protected override sendBrowserReload(): void {}
+  protected override sendErrorOverlay(): void {}
+  protected override logError(): void {}
+}
+
+describe("ViteDevServerProvider: an app that fails to load or start", () => {
+  const ENV_KEY = "ALEPHA_DEV_SPEC_VALUE";
+  const realEnv = process.env;
+
+  afterEach(() => {
+    process.env = realEnv;
+    delete process.env[ENV_KEY];
+    (globalThis as any).__alepha = undefined;
+  });
+
+  const setup = () => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ViteUtils, use: EnvFileViteUtils });
+    const provider = alepha.inject(EntryViteDevServerProvider);
+    provider.useFakeServer();
+    return { provider, vite: alepha.inject(EnvFileViteUtils) };
+  };
+
+  it("drops the .env values of a load that failed after the entry was evaluated", async ({
+    expect,
+  }) => {
+    const { provider, vite } = setup();
+    const seen: Array<string | undefined> = [];
+
+    // An entry saved half-edited: it evaluates, and never reaches `run()`.
+    vite.envFile = { [ENV_KEY]: "one" };
+    provider.entryModule = () => {
+      seen.push(process.env[ENV_KEY]);
+    };
+    await expect(provider.testLoadAlepha()).rejects.toThrow(
+      /Alepha instance not found/,
+    );
+
+    expect(process.env[ENV_KEY]).toBeUndefined();
+
+    // The entry is fixed and the `.env` edited: the next load reads the file
+    // as it is now.
+    vite.envFile = { [ENV_KEY]: "two" };
+    provider.entryModule = () => {
+      seen.push(process.env[ENV_KEY]);
+      (globalThis as any).__alepha = Alepha.create();
+    };
+    await provider.testLoadAlepha();
+
+    expect(seen).toEqual(["one", "two"]);
+  });
+
+  it("keeps waiting for an edit while the app still fails to start", async ({
+    expect,
+  }) => {
+    const { provider } = setup();
+    let failures = 2;
+    let stopped = 0;
+
+    class Database {
+      protected readonly onStop = $hook({
+        on: "stop",
+        handler: () => {
+          stopped += 1;
+        },
+      });
+
+      protected readonly onStart = $hook({
+        on: "start",
+        handler: () => {
+          if (failures > 0) {
+            failures -= 1;
+            throw new AlephaError("db down");
+          }
+        },
+      });
+    }
+
+    provider.entryModule = () => {
+      (globalThis as any).__alepha = Alepha.create().with(Database);
+    };
+    await provider.testLoadAlepha();
+
+    // Every save reloads an app whose start hook still fails: the second
+    // failure used to end `alepha dev`.
+    await provider.start();
+
+    expect(failures).toBe(0);
+    // A failed `start()` unwinds itself: each instance whose start failed
+    // ran its stop hooks, so the retry loop leaves none half-started.
+    expect(stopped).toBe(2);
+    expect(provider.loads).toBe(3);
+    expect(provider.alepha?.isStarted()).toBe(true);
+    await provider.alepha?.stop();
   });
 });
 

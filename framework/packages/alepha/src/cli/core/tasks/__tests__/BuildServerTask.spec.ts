@@ -30,13 +30,13 @@ class TestServerTask extends BuildServerTask {
 }
 
 /**
- * Minimal fake of the workspace's live Alepha  -  only `primitives` is probed
- * by {@link BuildServerTask.usesWebSocket}.
+ * Minimal fake of the workspace's live Alepha: only its actor host registry
+ * is read, through `inject().list()`.
  */
-const fakeAlephaWithPrimitives = (names: string[]) =>
+const fakeAlephaWithHosts = (declared: boolean) =>
   ({
     inject: () => ({
-      list: () => (names.length ? [WebSocketHost.declaration] : []),
+      list: () => (declared ? [WebSocketHost.declaration] : []),
     }),
   }) as any;
 
@@ -68,9 +68,9 @@ describe("BuildServerTask DO re-export", () => {
   });
 
   /**
-   * The DO gate must fire for `$room`-only apps too: a rooms-only realtime
-   * layer still runs inside `AlephaWebSocketDurableObject`, and without the
-   * re-export in `dist/index.workerd.js` wrangler cannot resolve the migration's
+   * The gate reads the app's host registry, never a primitive name: whatever
+   * declared the host (`$websocket`, `$room`), the class must be re-exported
+   * from `dist/index.workerd.js`, or wrangler cannot resolve the migration's
    * `class_name` at deploy time.
    */
   describe("host declarations", () => {
@@ -82,22 +82,12 @@ describe("BuildServerTask DO re-export", () => {
       return alepha.inject(TestServerTask);
     };
 
-    it("is true for a $websocket app", ({ expect }) => {
-      expect(
-        createTask().testHasHosts(fakeAlephaWithPrimitives(["$websocket"])),
-      ).toBe(true);
+    it("is true when the app's registry lists a host", ({ expect }) => {
+      expect(createTask().testHasHosts(fakeAlephaWithHosts(true))).toBe(true);
     });
 
-    it("is true for a $room-only app", ({ expect }) => {
-      expect(
-        createTask().testHasHosts(fakeAlephaWithPrimitives(["$room"])),
-      ).toBe(true);
-    });
-
-    it("is false when neither primitive is registered", ({ expect }) => {
-      expect(createTask().testHasHosts(fakeAlephaWithPrimitives([]))).toBe(
-        false,
-      );
+    it("is false when it lists none", ({ expect }) => {
+      expect(createTask().testHasHosts(fakeAlephaWithHosts(false))).toBe(false);
     });
   });
 
@@ -176,7 +166,7 @@ describe("BuildServerTask DO re-export", () => {
    * but on Cloudflare `import.meta.url` is `undefined` during deploy-time
    * script validation, so any module-scope occurrence throws
    * `Uncaught TypeError: Invalid URL string.` (validation error 10021) before
-   * the worker ever runs  -  e.g. a browser-only sprite module statically
+   * the worker ever runs, e.g. a browser-only sprite module statically
    * reachable from a `$page` tree. The workerd plugin therefore stubs every
    * remaining `import.meta.url` with the chunk's own stable `file:///` URL.
    */
@@ -197,8 +187,6 @@ describe("BuildServerTask DO re-export", () => {
       const out = createTask().testStubImportMetaUrl(chunk, "BrcTAm3C.js");
       expect(out).not.toContain("import.meta.url");
       // Evaluating the rewritten chunk must not throw and must yield a URL.
-      // The point of the test: evaluate the binding this task rewrote into the
-      // bundle and prove it throws only when called.
       // oxlint-disable-next-line typescript/no-implied-eval
       const href = new Function(`${out}return s;`)();
       expect(href).toBe("file:///assets/Shadow.png");
@@ -242,7 +230,7 @@ describe("BuildServerTask DO re-export", () => {
    * git history, and the commit that added the stub is literally titled "stub
    * import.meta.url in workerd server chunks…". A textual rewrite terminates
    * that string early, the chunk stops parsing, rolldown drops it, and the
-   * build still exits 0  -  the app entry silently ships as a 37-byte file with
+   * build still exits 0: the app entry silently ships as a 37-byte file with
    * nothing but a sourcemap comment, so `run()` never executes and Cloudflare
    * refuses the upload with `ReferenceError: __alepha is not defined`.
    *
@@ -282,8 +270,6 @@ describe("BuildServerTask DO re-export", () => {
       expect(out).toContain('var m="stub import.meta.url in chunks"');
       expect(out).toContain('new URL("./a.png","file:///server/y.js")');
       // The whole point: the rewritten chunk is still valid JavaScript.
-      // The point of the test: evaluate the binding this task rewrote into the
-      // bundle and prove it throws only when called.
       // oxlint-disable-next-line typescript/no-implied-eval
       expect(() => new Function(out)).not.toThrow();
     });
@@ -305,7 +291,7 @@ describe("BuildServerTask DO re-export", () => {
   /**
    * The backstop for the whole class of failure above, whatever future cause
    * produces it: when a `renderChunk` rewrite corrupts the entry chunk,
-   * rolldown does not fail the build  -  it emits an empty file and exits 0. The
+   * rolldown does not fail the build: it emits an empty file and exits 0. The
    * app then ships with no `run()` call at all, and the first sign of trouble
    * is Cloudflare rejecting the upload. An entry chunk with no top-level
    * statements is never legitimate, so the build must refuse it.

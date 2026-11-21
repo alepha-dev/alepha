@@ -18,7 +18,7 @@ class TestViteBuildProvider extends ViteBuildProvider {
 
 const provider = () => Alepha.create().inject(TestViteBuildProvider);
 
-describe("ViteBuildProvider — deciding an app has a client", () => {
+describe("ViteBuildProvider: deciding an app has a client", () => {
   it("should see a client when the browser entry is its own file", () => {
     const p = provider();
     p.setEntry({
@@ -34,14 +34,14 @@ describe("ViteBuildProvider — deciding an app has a client", () => {
     /*
       The regression this exists for.
 
-      A server-only app does not get an empty `browser` — it resolves to the
+      A server-only app does not get an empty `browser`: it resolves to the
       SERVER entry. So a bare `if (entry.browser)` is true for every app in the
       repo, and every server-only one started bundling its controllers for the
       browser: `"$action" is not exported by server/core/index.browser.ts`, out
       of a build that had been green for months.
 
       Shipped once already, in a fix that was correct for the app it was found
-      in — which has a real `main.browser.ts` — and wrong for everything else.
+      in, which has a real `main.browser.ts`, and wrong for everything else.
     */
     const p = provider();
     p.setEntry({ root: "/app", server: "src/main.ts", browser: "src/main.ts" });

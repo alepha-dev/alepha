@@ -312,7 +312,14 @@ describe("BuildHeadersTask", () => {
       await fs.writeFile(`${ROOT}/public/asset.logo.png`, "png");
       await fs.writeFile(`${ROOT}/public/images/asset.fine.png`, "png");
 
-      await expect(build(task)).rejects.toThrow(/`asset\.logo\.png`/);
+      // Only the top level is refused: the nested file is none of its
+      // business.
+      const failure = await build(task).then(
+        () => undefined,
+        (error: Error) => error,
+      );
+      expect(failure?.message).toContain("`asset.logo.png`");
+      expect(failure?.message).not.toContain("asset.fine.png");
     });
   });
 

@@ -1,5 +1,6 @@
 import { Alepha, type AlephaMeta } from "alepha";
 import type { RunnerMethod } from "alepha/command";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
 import { buildOptions } from "../../atoms/buildOptions.ts";
@@ -63,7 +64,10 @@ class FakeMetaResolver extends MetaResolver {
  * reads from it.
  */
 class FakeViteBuildProvider extends ViteBuildProvider {
+  public analyzed = 0;
+
   public override async init(): Promise<Alepha> {
+    this.analyzed += 1;
     return Alepha.create();
   }
 
@@ -78,9 +82,15 @@ const createPipeline = () => {
     .with({ provide: ProjectScaffolder, use: FakeProjectScaffolder })
     .with({ provide: PackageManagerUtils, use: FakePackageManagerUtils })
     .with({ provide: MetaResolver, use: FakeMetaResolver })
-    .with({ provide: ViteBuildProvider, use: FakeViteBuildProvider });
+    .with({ provide: ViteBuildProvider, use: FakeViteBuildProvider })
+    .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
   alepha.store.register(buildOptions);
-  return { alepha, pipeline: alepha.inject(TestBuildPipeline) };
+  return {
+    alepha,
+    pipeline: alepha.inject(TestBuildPipeline),
+    fs: alepha.inject(MemoryFileSystemProvider),
+    vite: alepha.inject(FakeViteBuildProvider),
+  };
 };
 
 /**
@@ -120,39 +130,11 @@ describe("BuildPipeline", () => {
       expect(runtimesOf(["node", "workerd"])).toEqual(["node", "workerd"]);
     });
 
-    // node alone: the universal floor. workerd is Cloudflare-only and bun is an
-    // optimization, so neither belongs in a default every app pays for.
-    it("defaults to node when nothing is declared", ({ expect }) => {
-      expect(runtimesOf(undefined)).toEqual(["node"]);
-    });
-
     /**
      * ⚠️ A static app declares `runtime: ["static"]` and gets NO slices.
      */
     it("resolves a static declaration to no slices at all", ({ expect }) => {
       expect(runtimesOf("static")).toEqual([]);
-    });
-
-    it("widens a scalar declaration to a one-slice list", ({ expect }) => {
-      expect(runtimesOf("bun")).toEqual(["bun"]);
-    });
-
-    /**
-     * ⚠️ The same two runtimes declared the other way round must come back the
-     * other way round, because the first is the primary.
-     */
-    it("preserves declared order, and never sorts it", ({ expect }) => {
-      expect(runtimesOf(["node", "workerd"])).toEqual(["node", "workerd"]);
-      expect(runtimesOf(["bun", "node"])).toEqual(["bun", "node"]);
-    });
-
-    // Keeping the FIRST occurrence: a duplicate further down must not be able
-    // to move the primary.
-    it("drops a repeat without moving the primary", ({ expect }) => {
-      expect(runtimesOf(["node", "workerd", "node"])).toEqual([
-        "node",
-        "workerd",
-      ]);
     });
 
     it("makes a shell static whatever the project declared", ({ expect }) => {
@@ -255,6 +237,59 @@ describe("BuildPipeline", () => {
       const [ctx] = pipeline.recorder.contexts;
       expect(ctx.define).toBeUndefined();
       expect(ctx.flags?.shell).toBeUndefined();
+    });
+  });
+
+  describe("a prebuilt build", () => {
+    const manifest = JSON.stringify({
+      manifestVersion: 2,
+      project: "fixture",
+      runtimes: [{ runtime: "node", entry: "index.node.js" }],
+      resources: {
+        hasDatabase: false,
+        hasBucket: false,
+        hasAnalytics: false,
+        hasKV: false,
+        hasQueue: false,
+        hasCron: false,
+        hasWebSocket: false,
+      },
+      crons: [],
+      secrets: [],
+      variables: [],
+    });
+
+    it("reads the manifest of dist and analyzes no app", async ({ expect }) => {
+      const { pipeline, fs, vite } = createPipeline();
+      await fs.writeFile("/app/dist/manifest.json", manifest);
+
+      await pipeline.build({
+        root: "/app",
+        run: createRunner().run,
+        prebuilt: true,
+      });
+
+      const [ctx] = pipeline.recorder.contexts;
+      expect(ctx.manifest?.project).toBe("fixture");
+      expect(vite.analyzed).toBe(0);
+    });
+
+    it("reads the manifest where output.dist says the artifact is", async ({
+      expect,
+    }) => {
+      const { pipeline, fs, vite } = createPipeline();
+      await fs.writeFile("/app/out/manifest.json", manifest);
+
+      await pipeline.build({
+        root: "/app",
+        run: createRunner().run,
+        prebuilt: true,
+        output: { dist: "out" },
+      });
+
+      const [ctx] = pipeline.recorder.contexts;
+      expect(ctx.manifest?.project).toBe("fixture");
+      expect(vite.analyzed).toBe(0);
     });
   });
 });

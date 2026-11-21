@@ -9,14 +9,14 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * Pre-render static pages and routes defined in the Alepha application.
  *
  * Two passes, both writing into `dist/public`:
- * - **pages** — every `$page` with `static: true` is rendered to an HTML file
+ * - **pages**: every `$page` with `static: true` is rendered to an HTML file
  *   (supports parameterized routes via `static.entries`).
- * - **routes** — every `static` route primitive (a `$route({ static: true })`
+ * - **routes**: every `static` route primitive (a `$route({ static: true })`
  *   or a `$sitemap` unless it says `static: false`) is invoked in-process and
  *   its body written verbatim to `{path}` (e.g. `sitemap.xml`, `robots.txt`).
  *
  * Both passes read the primitive registry and call a method on the already
- * created primitive instances — no provider is re-injected, so this works in
+ * created primitive instances: no provider is re-injected, so this works in
  * the build's configured-but-not-started container.
  *
  * ## ⚠️ `configure` runs, `start` never does
@@ -88,7 +88,7 @@ export class BuildPrerenderTask extends BuildTask {
   }
 
   /**
-   * Infer route primitives to snapshot: `$route({ static: true })`, every
+   * The static route primitives to snapshot: `$route({ static: true })`, every
    * `$sitemap` and `$manifest` that is not `static: false`, whose default is
    * `true`, and a `$robots({ static: true })`, whose default is not. All expose
    * a `prerender(): { path, body }`.
