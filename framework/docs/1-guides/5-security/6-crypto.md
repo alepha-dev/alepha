@@ -28,19 +28,19 @@ class AccountService {
 }
 ```
 
-| Method                                       | Notes                                                                                            |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `hashPassword(password)`                     | scrypt (16-byte salt, 64-byte key), stored as a PHC string `$scrypt$ln=14,r=8,p=1$<salt>$<hash>` |
-| `verifyPassword(password, stored)`           | constant-time; reads legacy `salt:hex` hashes too; `false` on a malformed hash, never a throw    |
-| `needsRehash(stored)`                        | `true` for a legacy hash or one below the current scrypt parameters (synchronous)                |
-| `hash(data, algorithm = "sha256")`           | hex digest; `"sha256"`, `"sha384"` or `"sha512"`, anything else is refused                       |
-| `hmac(data, secret, algorithm = "sha256")`   | hex digest; `verifyHmac(data, signature, secret)` compares in constant time                      |
-| `encrypt(plaintext, key)` / `decrypt(...)`   | AES-256-GCM, output `v1:iv:tag:ciphertext` in hex, key hashed to 32 bytes with SHA-256           |
-| `equals(a, b)`                               | constant-time string comparison                                                                  |
-| `randomUUID()` / `randomUUIDv7(timestampMs)` | v7 takes the timestamp, see below                                                                |
-| `randomText(length)`                         | base64url, cut to `length`                                                                       |
-| `randomCode(length)`                         | zero-padded digits, for one-time codes                                                           |
-| `randomInt(maxExclusive)`                    | uniform integer in `[0, maxExclusive)`, the stand-in for `Math.random()`; throws on a bound < 1  |
+| Method                                       | Notes                                                                                                |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `hashPassword(password)`                     | scrypt (16-byte salt, 64-byte key), stored as a PHC string `$scrypt$ln=14,r=8,p=1$<salt>$<hash>`     |
+| `verifyPassword(password, stored)`           | constant-time; reads legacy `salt:hex` hashes too; `false` on a malformed hash, never a throw        |
+| `needsRehash(stored)`                        | `true` for a legacy hash or one below the current scrypt parameters (synchronous)                    |
+| `hash(data, algorithm = "sha256")`           | hex digest; `"sha256"`, `"sha384"` or `"sha512"`, anything else is refused                           |
+| `hmac(data, secret, algorithm = "sha256")`   | hex digest; `verifyHmac(data, signature, secret)` compares in constant time                          |
+| `encrypt(plaintext, key)` / `decrypt(...)`   | AES-256-GCM, output `v1:iv:tag:ciphertext` in hex, key hashed to 32 bytes with SHA-256               |
+| `equals(a, b)`                               | constant-time string comparison                                                                      |
+| `randomUUID()` / `randomUUIDv7(timestampMs)` | v7 takes the timestamp, see below                                                                    |
+| `randomText(length)`                         | base64url, cut to `length`                                                                           |
+| `randomCode(length)`                         | digits, leading zeros kept, for one-time codes; `length` is a positive integer, anything else throws |
+| `randomInt(maxExclusive)`                    | uniform integer in `[0, maxExclusive)`, the stand-in for `Math.random()`; throws on a bound < 1      |
 
 Every transformation (`hashPassword`, `verifyPassword`, `hash`, `hmac`,
 `verifyHmac`, `encrypt`, `decrypt`) returns a promise, on Node as in the

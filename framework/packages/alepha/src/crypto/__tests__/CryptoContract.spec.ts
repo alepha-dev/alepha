@@ -18,7 +18,37 @@ describe("the portable crypto contract", () => {
     expectTypeOf<Parameters<ExportedCryptoProvider["hash"]>[1]>().toEqualTypeOf<
       CryptoAlgorithm | undefined
     >();
-    expect(true).toBe(true);
+
+    const contract = [
+      "needsRehash",
+      "hashPassword",
+      "verifyPassword",
+      "hash",
+      "hmac",
+      "verifyHmac",
+      "encrypt",
+      "decrypt",
+      "equals",
+      "randomUUID",
+      "randomUUIDv7",
+      "randomText",
+      "randomCode",
+      "randomInt",
+      "deriveKeyFromPassphrase",
+      "encryptWithPassphrase",
+      "decryptWithPassphrase",
+    ] as const satisfies readonly (keyof CryptoProviderBase)[];
+    expectTypeOf<(typeof contract)[number]>().toEqualTypeOf<
+      keyof CryptoProviderBase
+    >();
+    for (const provider of [
+      new CryptoProvider(),
+      new BrowserCryptoProvider(),
+    ]) {
+      for (const method of contract) {
+        expect(provider[method], method).toBeTypeOf("function");
+      }
+    }
   });
 
   for (const algorithm of ["sha256", "sha384", "sha512"] as const) {

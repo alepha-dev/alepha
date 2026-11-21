@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { CryptoProvider } from "../providers/CryptoProvider.ts";
@@ -209,6 +209,47 @@ describe("CryptoProvider", () => {
     const code = crypto.randomCode(1);
     expect(code).toHaveLength(1);
     expect(code).toMatch(/^\d$/);
+  });
+
+  it("should refuse a code length that is not a positive integer", () => {
+    const crypto = Alepha.create().inject(CryptoProvider);
+
+    for (const length of [0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => crypto.randomCode(length)).toThrow(
+        `randomCode needs a positive integer length, got ${length}`,
+      );
+      expect(() => crypto.randomCode(length)).toThrow(AlephaError);
+    }
+  });
+
+  it("should generate codes longer than a safe integer holds", () => {
+    const crypto = Alepha.create().inject(CryptoProvider);
+
+    // `10 ** length` passes the 2^48 bound of node:crypto's randomInt from
+    // length 15 up, and the precision of a number from length 16 up.
+    for (const length of [6, 15, 32]) {
+      const code = crypto.randomCode(length);
+      expect(code).toHaveLength(length);
+      expect(code).toMatch(new RegExp(`^\\d{${length}}$`));
+    }
+  });
+
+  it("should draw every digit at every position of a long code", () => {
+    const crypto = Alepha.create().inject(CryptoProvider);
+
+    const seen = Array.from({ length: 32 }, () => new Set<string>());
+    for (let i = 0; i < 400; i++) {
+      const code = crypto.randomCode(32);
+      for (let position = 0; position < 32; position++) {
+        seen[position]!.add(code[position]!);
+      }
+    }
+
+    // A digit missing at one position after 400 draws has a chance below
+    // 1e-15: a padded or truncated number would leave whole positions fixed.
+    for (const digits of seen) {
+      expect(digits.size).toBe(10);
+    }
   });
 
   describe("randomUUIDv7", () => {

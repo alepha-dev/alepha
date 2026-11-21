@@ -6,9 +6,11 @@ import { CryptoProvider } from "./CryptoProvider.ts";
 
 export const DEFAULT_SECRET_KEY_VALUE = "change-me-in-production";
 
-export const alephaSecretEnvSchema = z.object({
+const envSchema = z.object({
   APP_SECRET: z.text({
-    default: DEFAULT_SECRET_KEY_VALUE,
+    // The literal of DEFAULT_SECRET_KEY_VALUE, spelled out because the
+    // generated docs print this text as the default.
+    default: "change-me-in-production",
     description:
       "The secret key used for signing JWTs, encrypting cookies, and other security features.",
   }),
@@ -25,10 +27,10 @@ export class SecretProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly env = $env(alephaSecretEnvSchema);
+  protected readonly env = $env(envSchema);
 
   /**
-   * Secret read or generated from {@link alephaSecretEnvSchema APP_SECRET_FILE}.
+   * Secret read or generated from `APP_SECRET_FILE`.
    *
    * A field the getter prefers, rather than a write-back into the parsed env:
    * `$env` results are inputs and stay immutable, since other providers may
@@ -70,7 +72,7 @@ export class SecretProvider {
         if (this.alepha.isProduction()) {
           throw new AlephaError(
             "APP_SECRET is unset in production (using the built-in default). " +
-              "Set a strong, unique APP_SECRET environment variable — the default " +
+              "Set a strong, unique APP_SECRET environment variable: the default " +
               "is public and lets anyone forge authentication tokens.",
           );
         }
@@ -96,7 +98,7 @@ export class SecretProvider {
    * `secretKey` from another `configure` hook, so the resolved value is in
    * place before any consumer. The one earlier read in the tree is
    * `SecurityProvider.realms`, a class-field initializer gated on
-   * `isTest()` — a container is not a test, and a test has no business
+   * `isTest()`: a container is not a test, and a test has no business
    * pointing `APP_SECRET_FILE` at anything.
    */
   protected async resolveSecretFromFile(): Promise<void> {
@@ -146,8 +148,8 @@ export class SecretProvider {
 
     try {
       // 0600, because a world-readable signing key on a shared host is the
-      // same hole in a different place. Creation-time only, which is all
-      // that is needed: this branch runs when the file does not exist.
+      // same hole in a different place. A mode applies when the write creates
+      // the file: an empty file that was already there keeps the mode it had.
       await this.fs.writeFile(path, generated, { mode: 0o600 });
     } catch (cause) {
       throw new AlephaError(
@@ -157,7 +159,7 @@ export class SecretProvider {
     }
 
     this.resolvedSecret = generated;
-    // Never the value itself — the operator only needs to know a new install
+    // Never the value itself: the operator only needs to know a new install
     // minted one, and that a restart will reuse it.
     this.log.info(`Generated a new APP_SECRET and stored it in '${path}'.`);
   }
