@@ -200,7 +200,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
   /**
    * Copies a file or directory.
    *
-   * By default an existing destination is overwritten — the common case is a
+   * By default an existing destination is overwritten: the common case is a
    * build task re-running over its previous output. With `force: false` an
    * existing destination is an ERROR, never a silent skip: a copy that
    * quietly did nothing is how stale artifacts ship.
@@ -418,7 +418,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * ```
    */
   async readFileStream(path: string): Promise<StreamLike> {
-    // `createReadStream` is lazy — it would only error at first read. Stat
+    // `createReadStream` is lazy: it would only error at first read. Stat
     // upfront so a missing path (or a directory) fails HERE, where the
     // caller named it, not deep inside whatever consumes the stream.
     const stats = await fsStat(path);
@@ -533,7 +533,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    *
    * The content is read lazily: `stream()` opens a fresh read stream per
    * call, `arrayBuffer()`/`text()` load (and memoise) the file. `size` is 0
-   * until loaded — use {@link stat} when the byte count matters upfront.
+   * until loaded: use {@link stat} when the byte count matters upfront.
    *
    * @protected
    */
@@ -638,7 +638,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       lastModified: this.dateTime.nowMillis(),
       // The source itself can only be consumed once. But once text() or
       // arrayBuffer() has buffered it, stream() can serve fresh streams
-      // forever — returning the drained source instead was a silent
+      // forever: returning the drained source instead was a silent
       // empty-payload bug.
       stream: () =>
         buffer

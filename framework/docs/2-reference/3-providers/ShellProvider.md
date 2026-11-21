@@ -13,4 +13,5 @@ Abstract provider for executing shell commands and binaries.
 Implementations:
 
 - `NodeShellProvider` - Real shell execution using Node.js child_process
+- `BunShellProvider` - The same contract on Bun's spawner
 - `MemoryShellProvider` - In-memory mock for testing

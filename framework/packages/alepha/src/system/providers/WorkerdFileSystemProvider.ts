@@ -45,22 +45,48 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
   protected encoder = new TextEncoder();
   protected decoder = new TextDecoder();
 
+  /**
+   * `node:path`'s posix `join`, which workerd lacks: empty segments skipped,
+   * the root kept (`..` never climbs above it), a leading `..` kept on a
+   * relative path, and a trailing slash kept. The same algorithm as
+   * `MemoryFileSystemProvider.posixJoin`.
+   */
   public join(...paths: string[]): string {
-    const joined = paths.join("/").replace(/\/+/g, "/");
-    const parts = joined.split("/");
-    const resolved: string[] = [];
-    for (const part of parts) {
-      if (part === "..") {
-        resolved.pop();
-      } else if (part !== ".") {
-        resolved.push(part);
-      }
+    const joined = paths.filter((part) => part.length > 0).join("/");
+    if (joined === "") {
+      return ".";
     }
-    return resolved.join("/") || ".";
+    const isAbsolute = joined.startsWith("/");
+    const trailingSlash = joined.endsWith("/");
+    const segments: string[] = [];
+    for (const segment of joined.split("/")) {
+      if (segment === "" || segment === ".") {
+        continue;
+      }
+      if (segment === "..") {
+        if (segments.length > 0 && segments.at(-1) !== "..") {
+          segments.pop();
+        } else if (!isAbsolute) {
+          segments.push("..");
+        }
+        continue;
+      }
+      segments.push(segment);
+    }
+    let result = segments.join("/");
+    if (isAbsolute) {
+      result = `/${result}`;
+    } else if (result === "") {
+      result = ".";
+    }
+    if (trailingSlash && !result.endsWith("/")) {
+      result += "/";
+    }
+    return result;
   }
 
   /**
-   * Join, but restart from the last absolute segment — `node:path`'s `resolve`
+   * Join, but restart from the last absolute segment: `node:path`'s `resolve`
    * semantics, minus the cwd anchoring, since workerd has no cwd to anchor to.
    */
   public resolve(...paths: string[]): string {
@@ -204,7 +230,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
 
     // A Response body reads exactly once. Memoise the consumed bytes so
     // text() after arrayBuffer() (or either one twice) works instead of
-    // throwing "Body already read" — same contract as the stream variant.
+    // throwing "Body already read": same contract as the stream variant.
     let buffer: ArrayBuffer | null = null;
     const consume = async (): Promise<ArrayBuffer> => {
       buffer ??= await response.arrayBuffer();
@@ -280,7 +306,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
   }
 
   // -------------------------------------------------------------------------------------------------------------------
-  // Filesystem operations — not available in edge runtimes
+  // Filesystem operations: not available in edge runtimes
   // -------------------------------------------------------------------------------------------------------------------
 
   public async rm(_path: string, _options?: RmOptions): Promise<void> {

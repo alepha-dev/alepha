@@ -1,14 +1,10 @@
 import { AlephaError } from "alepha";
 
 /**
- * Largest value a ZIP header field can hold without ZIP64.
- */
-
-/**
  * How an entry's bytes are stored in the archive.
  *
- * - `store` — no compression (ZIP method 0).
- * - `deflate` — raw DEFLATE (ZIP method 8).
+ * - `store`: no compression (ZIP method 0).
+ * - `deflate`: raw DEFLATE (ZIP method 8).
  */
 export type ZipEntryMethod = "store" | "deflate";
 
@@ -36,7 +32,7 @@ export interface ZipEntry {
   /**
    * Defaults to `deflate`.
    *
-   * Choose `store` for bytes that are already compressed — WebP, JPEG, PNG,
+   * Choose `store` for bytes that are already compressed: WebP, JPEG, PNG,
    * most video. Deflating those gains a percent or two for real CPU, which on
    * a metered runtime is a cost with no benefit.
    */
@@ -47,7 +43,7 @@ export interface ZipEntry {
    *
    * Defaults to 1980-01-01, the start of the DOS epoch ZIP timestamps are
    * expressed in. Taken as a parameter rather than read from the clock so
-   * that identical input yields byte-identical output — and because the
+   * that identical input yields byte-identical output, and because the
    * repo's `DateTimeProvider` rule has no sensible seam inside a stream
    * primitive.
    *
@@ -75,7 +71,7 @@ interface ZipDirectoryRecord {
 
 /**
  * Builds ZIP archives as a stream, using only `ReadableStream`,
- * `TransformStream` and `CompressionStream` — so the same code runs on Node,
+ * `TransformStream` and `CompressionStream`, so the same code runs on Node,
  * Bun, workerd and in the browser, with no dependency.
  *
  * @example
@@ -94,13 +90,13 @@ interface ZipDirectoryRecord {
  * ## Why a data descriptor
  *
  * A ZIP local header carries the CRC-32 and both sizes, but it is written
- * *before* the payload — which for a streamed entry is not yet known. The
+ * *before* the payload, which for a streamed entry is not yet known. The
  * format's answer is general-purpose bit 3: write zeros in the header, then
  * emit the real values in a 16-byte descriptor after the payload. Without it
  * every entry would have to be buffered whole first, which is the thing the
  * streaming design exists to avoid.
  *
- * Entries given as a `Uint8Array` skip the descriptor — their sizes are known
+ * Entries given as a `Uint8Array` skip the descriptor: their sizes are known
  * up front, so the header can be honest and the archive stays maximally
  * compatible.
  *
@@ -110,14 +106,17 @@ interface ZipDirectoryRecord {
  * entries are rejected rather than silently written as a corrupt archive.
  */
 export class ZipArchive {
-  protected readonly zip64Limit = 0xffffffff;
+  /**
+   * Largest value a ZIP header field can hold without ZIP64.
+   */
+  protected readonly zip64Limit: number = 0xffffffff;
 
   /**
    * Lazily-built CRC-32 lookup table (polynomial 0xedb88320).
    *
    * Hand-written because `CompressionStream` exposes no checksum. Harvesting
    * one from a `"gzip"` trailer instead would bet on gzip header framing
-   * being byte-identical across V8, JavaScriptCore and workerd — a runtime
+   * being byte-identical across V8, JavaScriptCore and workerd: a runtime
    * coupling not worth the ten lines it would save.
    */
   protected static table: Uint32Array | undefined;
@@ -188,12 +187,17 @@ export class ZipArchive {
     }
 
     const start = offset;
-    let size = 0;
-    for (const entry of directory) {
-      const record = this.centralHeader(entry);
-      yield record;
-      size += record.length;
+    const records = directory.map((entry) => this.centralHeader(entry));
+    const size = records.reduce((total, record) => total + record.length, 0);
+    // The directory's offset and size go into 32-bit fields as well: an
+    // archive whose directory starts or ends past the limit would be written
+    // with both wrapped. Checked before the first record is yielded.
+    if (start > this.zip64Limit || start + size > this.zip64Limit) {
+      throw new AlephaError(
+        "ZipArchive: archive exceeds the 4 GB ZIP64 boundary (no ZIP64 support)",
+      );
     }
+    yield* records;
 
     yield this.endOfCentralDirectory(directory.length, size, start);
   }
@@ -374,7 +378,7 @@ export class ZipArchive {
   }
 
   /**
-   * Local file header — 30 fixed bytes followed by the name.
+   * Local file header: 30 fixed bytes followed by the name.
    */
   protected localHeader(entry: ZipDirectoryRecord): Uint8Array {
     const buffer = new Uint8Array(30 + entry.name.length);
@@ -394,7 +398,7 @@ export class ZipArchive {
   }
 
   /**
-   * Data descriptor — the real CRC and sizes, written after a streamed
+   * Data descriptor: the real CRC and sizes, written after a streamed
    * payload because the header could not carry them.
    */
   protected dataDescriptor(entry: ZipDirectoryRecord): Uint8Array {
@@ -408,7 +412,7 @@ export class ZipArchive {
   }
 
   /**
-   * Central directory header — 46 fixed bytes followed by the name.
+   * Central directory header: 46 fixed bytes followed by the name.
    */
   protected centralHeader(entry: ZipDirectoryRecord): Uint8Array {
     const buffer = new Uint8Array(46 + entry.name.length);
@@ -430,7 +434,7 @@ export class ZipArchive {
   }
 
   /**
-   * End of central directory record — always 22 bytes, no archive comment.
+   * End of central directory record: always 22 bytes, no archive comment.
    */
   protected endOfCentralDirectory(
     count: number,
@@ -455,7 +459,7 @@ export class ZipArchive {
   /**
    * Raw DEFLATE (ZIP method 8) via `CompressionStream`.
    *
-   * `"deflate-raw"`, never `"deflate"` — the latter wraps the payload in a
+   * `"deflate-raw"`, never `"deflate"`: the latter wraps the payload in a
    * zlib header plus an Adler-32 trailer, which is not what ZIP method 8
    * means, and produces archives that fail on extraction.
    */

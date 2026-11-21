@@ -47,12 +47,12 @@ export interface ShellRunOptions {
    * Bytes to write to the command's stdin, after which the stream is closed.
    *
    * **Argv-array commands only.** The string form is parsed and re-quoted for
-   * a shell, so there is no child to attach a pipe to — passing this with a
+   * a shell, so there is no child to attach a pipe to: passing this with a
    * string command throws rather than silently dropping the data.
    *
    * Buffered, not streamed: the caller hands over a value it already holds.
-   * That is the right trade for what this exists for — piping a ~10 MB deploy
-   * artifact into `ssh` — and a streaming API can be added the day something
+   * That is the right trade for what this exists for (piping a ~10 MB deploy
+   * artifact into `ssh`) and a streaming API can be added the day something
    * needs one.
    */
   stdin?: Uint8Array | string;
@@ -95,6 +95,7 @@ export interface ShellCommandResult {
  *
  * Implementations:
  * - `NodeShellProvider` - Real shell execution using Node.js child_process
+ * - `BunShellProvider` - The same contract on Bun's spawner
  * - `MemoryShellProvider` - In-memory mock for testing
  *
  * @example
@@ -129,7 +130,7 @@ export abstract class ShellProvider {
    *   with NO shell and NO parsing.
    *
    * Always use the argv-array form when any part of the command comes from
-   * a variable (paths, user input, refs, keys...) — it is injection-proof by
+   * a variable (paths, user input, refs, keys...): it is injection-proof by
    * construction.
    *
    * @param command - The command to run
@@ -144,8 +145,8 @@ export abstract class ShellProvider {
   /**
    * Run a command and return its full outcome instead of throwing.
    *
-   * Unlike {@link run}, a non-zero exit RESOLVES — with stdout, stderr and
-   * the exit code — so callers that treat the code as data (`git diff
+   * Unlike {@link run}, a non-zero exit RESOLVES (with stdout, stderr and
+   * the exit code) so callers that treat the code as data (`git diff
    * --quiet`, health probes) don't have to fish it out of a thrown error.
    * It still rejects when the command cannot run at all (executable not
    * found), times out, or is aborted.

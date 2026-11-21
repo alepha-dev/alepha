@@ -1,3 +1,5 @@
+import { posix } from "node:path";
+
 import { Alepha } from "alepha";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -28,6 +30,24 @@ describe("WorkerdFileSystemProvider", () => {
       expect(fs.join("a", "./b")).toBe("a/b");
       expect(fs.join("a", "b", "..", "c")).toBe("a/c");
       expect(fs.join(".")).toBe(".");
+    });
+
+    it("keeps the root and a leading .., as node:path does", () => {
+      // An absolute path used to come out relative: the root's empty segment
+      // was popped by `..`, and a leading `..` was dropped.
+      const cases: Array<[string[], string]> = [
+        [["/", "..", "x"], "/x"],
+        [["/app", "../../etc"], "/etc"],
+        [["..", "x"], "../x"],
+        [["../..", "a", ".."], "../.."],
+        [["/app", ""], "/app"],
+        [["/app/", "x/"], "/app/x/"],
+        [["", ""], "."],
+      ];
+      for (const [parts, expected] of cases) {
+        expect(fs.join(...parts), parts.join(" , ")).toBe(expected);
+        expect(posix.join(...parts)).toBe(expected);
+      }
     });
   });
 
@@ -93,7 +113,7 @@ describe("WorkerdFileSystemProvider", () => {
       expect(file.name).toBe("résumé.pdf");
     });
 
-    it("supports text() after arrayBuffer() — the body is memoised", async () => {
+    it("supports text() after arrayBuffer(): the body is memoised", async () => {
       // A Response body reads once; without memoisation the second accessor
       // threw "Body already read".
       const file = fs.createFile({ response: makeResponse() });
@@ -129,7 +149,7 @@ describe("WorkerdFileSystemProvider", () => {
       });
 
       expect(await file.text()).toBe("streamed");
-      // The one-shot source is drained — these come from the buffer.
+      // The one-shot source is drained: these come from the buffer.
       expect(await file.text()).toBe("streamed");
       expect(await readStream(file.stream() as ReadableStream)).toBe(
         "streamed",

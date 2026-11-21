@@ -8,7 +8,7 @@ import { NodeShellProvider } from "../providers/NodeShellProvider.ts";
 /**
  * `resolveExecutable` only ever touches the filesystem through the injected
  * `FileSystemProvider`, so the whole search order is testable against the
- * memory provider — no real node_modules required.
+ * memory provider: no real node_modules required.
  */
 class TestShellProvider extends NodeShellProvider {
   public testResolveExecutable = this.resolveExecutable.bind(this);

@@ -51,7 +51,7 @@ describe("NodeShellProvider", () => {
     });
 
     it("does not execute shell metacharacters embedded in an argument", async () => {
-      // `;` was missing from the escape set — "echo foo;id" executed `id`.
+      // `;` was missing from the escape set: "echo foo;id" executed `id`.
       const out = await shell.run("echo foo;id", { capture: true });
       expect(out.trim()).toBe("foo;id");
     });
@@ -191,7 +191,7 @@ describe("NodeShellProvider", () => {
       expect(result).toEqual({ stdout: "ok", stderr: "", exitCode: 0 });
     });
 
-    it("RESOLVES on a non-zero exit — the code is data, not an exception", async () => {
+    it("RESOLVES on a non-zero exit: the code is data, not an exception", async () => {
       const result = await shell.capture([
         "node",
         "-e",
@@ -247,7 +247,7 @@ describe("NodeShellProvider", () => {
 
     it("closes stdin so a command that reads to EOF terminates", async () => {
       // Without an explicit end() the child waits forever and the test times
-      // out — which is exactly how a deploy would hang.
+      // out, which is exactly how a deploy would hang.
       const out = await shell.run(
         [
           "node",

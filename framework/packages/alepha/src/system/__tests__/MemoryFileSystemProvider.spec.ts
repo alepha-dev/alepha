@@ -69,7 +69,7 @@ describe("MemoryFileSystemProvider", () => {
 
     it("should create recursive directories from an absolute path", async () => {
       // Parents were rebuilt without the leading slash, so `/app/src` was
-      // registered as `app/src` and `exists()` said no — diverging from the
+      // registered as `app/src` and `exists()` said no, diverging from the
       // node provider, where `mkdir -p` makes every parent visible.
       await fs.mkdir("/app/src/users", { recursive: true });
 
@@ -79,7 +79,7 @@ describe("MemoryFileSystemProvider", () => {
     });
 
     it("should tolerate a duplicate mkdir by default, like the node provider", async () => {
-      // recursive AND force both default to true — the old behavior threw
+      // recursive AND force both default to true: the old behavior threw
       // EEXIST here while NodeFileSystemProvider succeeded, so code passed
       // its tests and failed in production (or vice versa).
       await fs.mkdir("/dir");
@@ -254,7 +254,7 @@ describe("MemoryFileSystemProvider", () => {
     });
 
     it("should see implicit parents of written files", async () => {
-      // `writeFile` implies its parents — `ls` always knew that, while
+      // `writeFile` implies its parents: `ls` always knew that, while
       // `exists` and `rm` said ENOENT for the very same directory.
       await fs.writeFile("/a/b/file.txt", "data");
       expect(await fs.exists("/a")).toBe(true);
@@ -336,7 +336,7 @@ describe("MemoryFileSystemProvider", () => {
     });
 
     it("should record Uint8Array payloads as text, not comma-joined bytes", async () => {
-      // A plain Uint8Array ignores toString("utf-8") — the call log stored
+      // A plain Uint8Array ignores toString("utf-8"): the call log stored
       // "104,105" and wasWrittenMatching could never match.
       await fs.writeFile("/u8.txt", new TextEncoder().encode("hi"));
       expect(fs.wasWrittenMatching("/u8.txt", /^hi$/)).toBe(true);

@@ -15,5 +15,7 @@ unit tests that need to verify file operations without touching the real file sy
 
 One deliberate looseness versus the node provider: `writeFile` succeeds
 without its parent directories existing (and registers them implicitly),
-so tests can seed fixtures in one call. Everything else follows the
-contract pinned by `fileSystemContract.spec.ts`.
+so tests can seed fixtures in one call. Everything else, collisions
+between files and directories, path normalization and `readFile` handing
+out a copy included, follows the contract pinned by
+`fileSystemContract.spec.ts`.

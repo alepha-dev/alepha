@@ -57,7 +57,7 @@ export class NodeShellProvider implements ShellProvider {
         executable = await this.resolveExecutable(executable, cwd);
       }
       if (capture) {
-        // Argv form never touches a shell — args are passed verbatim.
+        // Argv form never touches a shell: args are passed verbatim.
         return this.throwOnFailure(
           await this.argvResult(executable, args, { ...options, cwd }),
         );
@@ -69,16 +69,17 @@ export class NodeShellProvider implements ShellProvider {
       throw new AlephaError(
         'stdin requires the argv-array form: run(["cmd", "arg"], { stdin }). ' +
           "The string form is parsed and re-quoted for a shell, so there is no " +
-          "pipe to attach — dropping the data quietly would be worse.",
+          "pipe to attach, and dropping the data quietly would be worse.",
       );
     }
 
+    const tokens = this.parseTokens(command);
     if (resolve) {
-      const [bin, ...rest] = this.parseCommand(command);
+      const [bin, ...rest] = tokens;
       executable = await this.resolveExecutable(bin, cwd);
       args = rest;
     } else {
-      [executable, ...args] = this.parseCommand(command);
+      [executable, ...args] = tokens;
     }
 
     if (capture) {
@@ -118,7 +119,7 @@ export class NodeShellProvider implements ShellProvider {
       );
     }
 
-    let [executable, ...args] = this.parseCommand(command);
+    let [executable, ...args] = this.parseTokens(command);
     if (resolve) {
       executable = await this.resolveExecutable(executable, cwd);
     }
@@ -138,8 +139,8 @@ export class NodeShellProvider implements ShellProvider {
   /**
    * Writes the bytes and closes the stream.
    *
-   * Closing is the load-bearing half: a child reading to EOF — `ssh` feeding a
-   * request body, `bay deploy -` copying to a temp file — never finishes
+   * Closing is the load-bearing half: a child reading to EOF (`ssh` feeding a
+   * request body, `bay deploy -` copying to a temp file) never finishes
    * without it, and the symptom is a deploy that hangs rather than fails.
    *
    * EPIPE is swallowed on purpose: a command that exits before reading all its
@@ -237,7 +238,7 @@ export class NodeShellProvider implements ShellProvider {
         } else if (aborted) {
           reject(this.abortedError(abortSignal));
         } else if (signal != null) {
-          // `code` is null when the child was killed by a signal — that is a
+          // `code` is null when the child was killed by a signal: that is a
           // failure (SIGKILL, SIGSEGV, OOM), not a success.
           reject(new AlephaError(`Command killed by signal ${signal}`));
         } else if (code === 0 || code === null) {
@@ -256,7 +257,7 @@ export class NodeShellProvider implements ShellProvider {
   /**
    * Build a shell command string where every argument stays literal.
    *
-   * POSIX: single-quote escaping (`'...'` with `'\''` for embedded quotes) —
+   * POSIX: single-quote escaping (`'...'` with `'\''` for embedded quotes):
    * nothing expands inside single quotes, so `;`, backticks, `$(...)`, `|`
    * and friends cannot break out of an argument.
    * Windows (cmd.exe): double-quote escaping.
@@ -285,7 +286,7 @@ export class NodeShellProvider implements ShellProvider {
    * String-form capture engine: a real shell consumes the escaping built by
    * {@link buildShellCommand}.
    *
-   * This is the override point for runtimes with their own spawner (Bun) —
+   * This is the override point for runtimes with their own spawner (Bun):
    * they receive the PARSED argv, never the escaped string, so they cannot
    * corrupt it by re-parsing.
    */
@@ -312,7 +313,7 @@ export class NodeShellProvider implements ShellProvider {
   }
 
   /**
-   * Argv-form capture engine — no shell involved.
+   * Argv-form capture engine: no shell involved.
    */
   protected argvResult(
     executable: string,
@@ -363,8 +364,8 @@ export class NodeShellProvider implements ShellProvider {
    * Whether this child should lead its own process group.
    *
    * Only when we might have to kill it. A detached child is in a different
-   * process group from the terminal, so anything that reads stdin — a
-   * `wrangler login`, a `gh auth login`, an npm prompt — would be stopped by
+   * process group from the terminal, so anything that reads stdin (a
+   * `wrangler login`, a `gh auth login`, an npm prompt) would be stopped by
    * SIGTTIN instead of reading. Those commands never carry a timeout or a
    * signal, so gating on "can we be asked to kill this?" gives the group
    * exactly where it is needed and nowhere else.
@@ -379,8 +380,8 @@ export class NodeShellProvider implements ShellProvider {
   /**
    * Kill the whole process group, not just the pid we hold.
    *
-   * A shell-form command spawns children of its own — a `vite`, a `tsc`, a
-   * `docker compose` — and signalling the shell alone leaves them running
+   * A shell-form command spawns children of its own (a `vite`, a `tsc`, a
+   * `docker compose`) and signalling the shell alone leaves them running
    * detached, still holding the port or the lock the caller timed out
    * waiting for. Signalling the negative pid reaches the group the child
    * leads; when it does not lead one (see `needsProcessGroup`) this falls
@@ -513,7 +514,7 @@ export class NodeShellProvider implements ShellProvider {
             reject(new AlephaError("Command output exceeded maxBuffer"));
             return;
           }
-          // An exit code — any exit code — RESOLVES; only "the command never
+          // An exit code (any exit code) RESOLVES; only "the command never
           // ran to completion on its own terms" rejects.
           if (code !== null) {
             resolve({ stdout, stderr, exitCode: code });
@@ -617,12 +618,12 @@ export class NodeShellProvider implements ShellProvider {
    *
    * That is not hypothetical. `alepha verify` shells `alepha clean`, and on a
    * machine with a global `alepha` the child was a different install
-   * altogether — which surfaced as `MissingContextError: Did you forget to call
+   * altogether, which surfaced as `MissingContextError: Did you forget to call
    * Alepha.create()?`, naming neither the PATH nor the binary that actually
    * ran.
    *
    * Note this changes LOOKUP only. Every token of the command is still a
-   * literal argument — shell operators like `&&` do not compose here (see
+   * literal argument: shell operators like `&&` do not compose here (see
    * `shellStringContract.spec.ts`); callers that want a pipeline must ask
    * for a shell explicitly (`["sh", "-c", "a | b"]`).
    */
@@ -683,7 +684,7 @@ export class NodeShellProvider implements ShellProvider {
    * Check if a command is installed and available in the system PATH.
    */
   public isInstalled(command: string): Promise<boolean> {
-    // The name is interpolated into a shell string below — refuse anything
+    // The name is interpolated into a shell string below: refuse anything
     // that isn't a plain command name rather than letting metacharacters run.
     if (!/^[\w.-]+$/.test(command)) {
       return Promise.resolve(false);
@@ -699,7 +700,21 @@ export class NodeShellProvider implements ShellProvider {
   }
 
   /**
-   * Parse a command string into executable and arguments.
+   * {@link parseCommand}, refusing a command with no token: a blank string
+   * used to run `sh -c ""` (exit 0) with `capture`, and `spawn(undefined)`
+   * without it.
+   */
+  protected parseTokens(command: string): string[] {
+    const tokens = this.parseCommand(command);
+    if (tokens.length === 0) {
+      throw new AlephaError("Cannot run an empty command");
+    }
+    return tokens;
+  }
+
+  /**
+   * Parse a command string into executable and arguments, split on any
+   * whitespace outside quotes (newlines included).
    *
    * Handles quoted arguments properly for paths with spaces.
    * Supports both single and double quotes.
@@ -724,7 +739,7 @@ export class NodeShellProvider implements ShellProvider {
       } else if (char === '"' || char === "'") {
         inQuote = char;
         hasToken = true;
-      } else if (char === " " || char === "\t") {
+      } else if (/\s/.test(char)) {
         if (hasToken) {
           result.push(current);
           current = "";

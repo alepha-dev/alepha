@@ -17,7 +17,7 @@ const execFileAsync = promisify(execFile);
  *
  * The hand-rolled {@link readZip} below can only prove the writer agrees with
  * itself about layout. Only a foreign implementation checks the parts our own
- * reader has no reason to look at — above all the CRC-32, which `unzip -t`
+ * reader has no reason to look at: above all the CRC-32, which `unzip -t`
  * verifies per entry and which nothing else here would catch.
  */
 const unzipTest = async (
@@ -63,7 +63,7 @@ const readZip = async (
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
   // End Of Central Directory: scan back for its signature (no comment
-  // support needed — the writer never emits one).
+  // support needed: the writer never emits one).
   let eocd = -1;
   for (let i = bytes.length - 22; i >= 0; i--) {
     if (view.getUint32(i, true) === 0x06054b50) {
@@ -100,7 +100,7 @@ const readZip = async (
       bytes.subarray(pointer + 46, pointer + 46 + nameLength),
     );
 
-    // Re-read the name/extra lengths from the LOCAL header — they are allowed
+    // Re-read the name/extra lengths from the LOCAL header: they are allowed
     // to differ from the central copy, and using the central ones to skip
     // would silently read from the wrong offset.
     if (view.getUint32(localOffset, true) !== 0x04034b50) {
@@ -184,7 +184,7 @@ describe("ZipArchive", () => {
 
       expect(entries[0].method).toBe(8);
       expect(new TextDecoder().decode(entries[0].content)).toBe(text);
-      // The whole archive, headers included, beats the raw text — proof the
+      // The whole archive, headers included, beats the raw text: proof the
       // payload was actually deflated rather than stored under method 8.
       expect(bytes.length).toBeLessThan(text.length);
     });
@@ -207,7 +207,7 @@ describe("ZipArchive", () => {
       expect(new TextDecoder().decode(entries[0].content)).toBe(
         chunks.join(""),
       );
-      // The real unzip is what proves the data descriptor is right — a wrong
+      // The real unzip is what proves the data descriptor is right: a wrong
       // one still reads back fine through our own helper, which trusts the
       // central directory.
       const result = await unzipTest(bytes);
@@ -256,7 +256,7 @@ describe("ZipArchive", () => {
     });
 
     it("should record a given lastModified as its DOS date and time", async () => {
-      // 2026-08-14 13:45:522026 - 1980 = 46 → date = (46<<9)|(8<<5)|14
+      // 2026-08-14 13:45:52: 2026 - 1980 = 46, so date = (46<<9)|(8<<5)|14
       //                                  time = (13<<11)|(45<<5)|(52>>1)
       const stream = zip.create([
         {
@@ -275,7 +275,7 @@ describe("ZipArchive", () => {
 
     it("should default to the start of the DOS epoch rather than an invalid date", async () => {
       // DOS packs day and month as 1-based, so all-zero bytes decode to day 0
-      // of month 0 — a date no extractor can render. The default has to be a
+      // of month 0: a date no extractor can render. The default has to be a
       // real instant, and a fixed one, or identical input stops producing
       // identical bytes.
       const stream = zip.create([
@@ -307,7 +307,7 @@ describe("ZipArchive", () => {
    * seconds pushing five gigabytes through the CRC to reach a branch that
    * takes one comparison. Driving the protected methods through a subclass is
    * the pattern the repo already uses for exactly this (see AGENTS.md,
-   * "TestProvider Pattern").
+   * Testing, Patterns).
    */
   describe("ZIP64 boundaries", () => {
     let guards: TestZipArchive;
@@ -347,6 +347,36 @@ describe("ZipArchive", () => {
       );
     });
 
+    /**
+     * The central directory's own offset and size go into 32-bit fields too.
+     * Only each entry's START was checked, so an archive whose directory
+     * began or ended past the limit was written with both wrapped.
+     */
+    it("should refuse a central directory that starts or ends past the limit", async () => {
+      const entries = () => [
+        { name: "a.bin", data: new Uint8Array(60), method: "store" as const },
+        { name: "b.bin", data: new Uint8Array(60), method: "store" as const },
+      ];
+      const full = await collect(zip.create(entries()));
+      const eocd = new DataView(full.buffer, full.length - 22);
+      const size = eocd.getUint32(12, true);
+      const start = eocd.getUint32(16, true);
+
+      const limited = (limit: number) => {
+        const alepha = Alepha.create().with(AlephaSystem);
+        const archive = alepha.inject(TestZipArchive);
+        archive.limit = limit;
+        return collect(archive.create(entries()));
+      };
+
+      // Both entries start below it, the directory does not.
+      await expect(limited(start - 1)).rejects.toThrow(AlephaError);
+      // The directory starts at the limit and ends past it.
+      await expect(limited(start)).rejects.toThrow(AlephaError);
+      // Exactly at the limit is still fine.
+      await expect(limited(start + size)).resolves.toBeInstanceOf(Uint8Array);
+    });
+
     it("should accept an entry exactly at the boundary", () => {
       expect(() =>
         guards.testAssertWritable(
@@ -375,9 +405,13 @@ const record = {
 };
 
 /**
- * Exposes the guards for direct assertion — see the `describe` above.
+ * Exposes the guards for direct assertion: see the `describe` above.
  */
 class TestZipArchive extends ZipArchive {
+  protected override zip64Limit: number = 0xffffffff;
+  public set limit(value: number) {
+    this.zip64Limit = value;
+  }
   public testAssertWritable = this.assertWritable.bind(this);
   public testEndOfCentralDirectory = this.endOfCentralDirectory.bind(this);
 }
