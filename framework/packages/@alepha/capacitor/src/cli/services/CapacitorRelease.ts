@@ -39,8 +39,9 @@ import { OtaEnvelope } from "./OtaEnvelope.ts";
  * 5. the ZIP, sealed (Capgo v2), and the manifest, written beside the shell
  *    under `ota/<version>-<platform>/`;
  * 6. unless `--dry-run`, the upload to `<ota.url>/ota/bundles` with
- *    `OTA_API_KEY`, retried on a network failure or a 5xx with the same
- *    release id (the server accepts a retry once).
+ *    `OTA_API_KEY`, over https only (plain http to a loopback host), refused
+ *    before anything is built otherwise; retried on a network failure or a
+ *    5xx with the same release id (the server accepts a retry once).
  *
  * The dry run writes exactly what a release would upload, which the OTA
  * admin accepts as an upload: the browser never signs.
@@ -120,11 +121,12 @@ export class CapacitorRelease {
 
     const publicKey = await this.project.otaPublicKey(root, options);
     const privateKey = await this.signingKey(root);
+    // The keys, not their text: a checkout with CRLF line endings holds the
+    // same key.
+    const body = (pem: string) => pem.replace(/\s/g, "");
     if (
       !publicKey ||
-      this.envelope.keyId(this.envelope.publicKeyOf(privateKey)) !==
-        this.envelope.keyId(publicKey) ||
-      this.envelope.publicKeyOf(privateKey).trim() !== publicKey.trim()
+      body(this.envelope.publicKeyOf(privateKey)) !== body(publicKey)
     ) {
       throw new AlephaError(
         "OTA_SIGNING_KEY is not the private half of capacitor({ ota: { publicKey } }): devices would refuse what it seals.",
@@ -132,11 +134,17 @@ export class CapacitorRelease {
     }
 
     const apiUrl = this.project.resolveApiUrl(options);
-    const otaUrl = this.project.publicConfig(options, "bundled", apiUrl).ota
-      ?.url;
-    if (!otaUrl) {
+    // `bundled` throws when capacitor({ ota }) resolves no origin.
+    const otaUrl = this.project.publicConfig(options, "bundled", apiUrl).ota!
+      .url;
+    const { protocol, hostname } = new URL(otaUrl);
+    if (
+      !opts.dryRun &&
+      protocol !== "https:" &&
+      !["localhost", "127.0.0.1", "[::1]"].includes(hostname)
+    ) {
       throw new AlephaError(
-        "capacitor({ ota }) needs the origin of the server mounting ota-api: set ota.url, or apiUrl.",
+        `The OTA server ${otaUrl} is plain http: the release would send OTA_API_KEY and the bundle in clear. Publish to an https origin (ota.url, or apiUrl), or run with --dry-run and upload the files from the admin.`,
       );
     }
 
@@ -285,7 +293,9 @@ export class CapacitorRelease {
     if (value.includes("-----BEGIN")) {
       return value.replaceAll("\\n", "\n");
     }
-    const path = value.startsWith("/") ? value : this.fs.join(root, value);
+    // `resolve`: an absolute path as it is (`/keys/k.pem`, `C:\keys\k.pem`),
+    // a relative one from the project root.
+    const path = this.fs.resolve(root, value);
     if (!(await this.fs.exists(path))) {
       throw new AlephaError(
         `OTA_SIGNING_KEY names ${value}, which does not exist.`,

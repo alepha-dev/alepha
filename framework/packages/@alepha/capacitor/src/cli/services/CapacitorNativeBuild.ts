@@ -21,10 +21,11 @@ import { NativeGuard } from "./NativeGuard.ts";
  * binary: the binary is what carries the shell. Then compiles:
  *
  * - **debug** (the default), installable without any store: on Android an
- *   APK from `./gradlew assembleDebug` (signed with the debug key, honouring
- *   a `debug-overrides` network security config); on iOS an `.app` from
- *   `xcodebuild`, for the simulator, or with `--device` for a phone signed by
- *   `iosTeamId` (a free personal team is enough, the signature lasts 7 days);
+ *   APK from `./gradlew assembleDebug` (`gradlew.bat` on Windows; signed
+ *   with the debug key, honouring a `debug-overrides` network security
+ *   config); on iOS an `.app` from `xcodebuild`, for the simulator, or with
+ *   `--device` for a phone signed by `iosTeamId` (a free personal team is
+ *   enough, the signature lasts 7 days);
  * - **release** (`--release`), with explicit signing: on Android a signed AAB
  *   or APK from a keystore named in the environment, through `cap build`; on
  *   iOS an IPA from `xcodebuild archive` then `-exportArchive`, exported with
@@ -40,8 +41,9 @@ import { NativeGuard } from "./NativeGuard.ts";
  * anything compiles.
  *
  * Signing secrets are read from the environment and passed as argument
- * arrays, never through a shell, and masked wherever a command is printed:
- * `CAPACITOR_ANDROID_KEYSTORE_PATH`, `CAPACITOR_ANDROID_KEYSTORE_PASSWORD`,
+ * arrays, through no shell on macOS and Linux (on Windows the shell provider
+ * runs every command through cmd.exe), and masked wherever a command is
+ * printed: `CAPACITOR_ANDROID_KEYSTORE_PATH`, `CAPACITOR_ANDROID_KEYSTORE_PASSWORD`,
  * `CAPACITOR_ANDROID_KEY_ALIAS`, `CAPACITOR_ANDROID_KEY_PASSWORD`.
  */
 export class CapacitorNativeBuild {
@@ -221,7 +223,10 @@ export class CapacitorNativeBuild {
       await run({
         name: "gradle assembleDebug",
         handler: async () => {
-          await this.shell.run(["./gradlew", "assembleDebug"], {
+          // On win32 the command goes through cmd.exe, which has no `./`.
+          const gradlew =
+            this.hostPlatform() === "win32" ? "gradlew.bat" : "./gradlew";
+          await this.shell.run([gradlew, "assembleDebug"], {
             root: this.fs.join(root, "android"),
           });
         },
@@ -254,7 +259,8 @@ export class CapacitorNativeBuild {
               s.keyPassword,
             ],
             // `resolve`: the app's own `cap` from node_modules/.bin, run as an
-            // argument array, so the passwords on this line never meet a shell.
+            // argument array, so the passwords on this line meet no shell
+            // (except cmd.exe on Windows, which runs every command).
             {
               root,
               resolve: true,

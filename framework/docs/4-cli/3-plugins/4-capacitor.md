@@ -96,7 +96,7 @@ The platform is required.
 
 | Flag                     | What it does                                                                                                                  |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `--release`              | A signed release build through `cap build`, instead of a debug build.                                                         |
+| `--release`              | A signed release build (Android through `cap build`, iOS through `xcodebuild archive`), instead of a debug build.             |
 | `--device`               | iOS debug: build for a phone instead of the simulator.                                                                        |
 | `--export-method`        | iOS release: `debugging` (the default), `release-testing`, `app-store-connect`, `enterprise`, `developer-id` or `validation`. |
 | `--android-release-type` | Android release: `AAB` (the default) or `APK`.                                                                                |

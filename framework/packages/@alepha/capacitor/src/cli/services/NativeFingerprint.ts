@@ -107,9 +107,11 @@ export class NativeFingerprint {
     if (!stat.isDirectory) {
       return this.hashFile(path);
     }
-    const entries = (
-      await this.fs.ls(path, { recursive: true, hidden: true })
-    ).sort();
+    // Windows lists with backslashes: one path form, so a hash agrees across
+    // hosts.
+    const entries = (await this.fs.ls(path, { recursive: true, hidden: true }))
+      .map((it) => it.replaceAll("\\", "/"))
+      .sort();
     const lines: string[] = [];
     for (const entry of entries) {
       const full = this.fs.join(path, entry);
@@ -137,8 +139,9 @@ export class NativeFingerprint {
       );
     }
     const entries = await this.fs.ls(dir, { recursive: true, hidden: true });
+    // Windows lists with backslashes; the include patterns know `/` only.
     return entries
-      .map((entry) => `${platform}/${entry}`)
+      .map((entry) => `${platform}/${entry.replaceAll("\\", "/")}`)
       .filter((file) => !this.skip.test(file))
       .filter((file) => this.includes[platform].some((re) => re.test(file)))
       .sort();

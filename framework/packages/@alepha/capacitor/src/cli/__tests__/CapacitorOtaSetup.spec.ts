@@ -11,6 +11,7 @@ import { describe, it } from "vitest";
 import { capacitorOptions } from "../atoms/capacitorOptions.ts";
 import { AlephaCliCapacitorPlugin } from "../index.ts";
 import { CapacitorOtaSetup } from "../services/CapacitorOtaSetup.ts";
+import { WindowsMemoryFileSystemProvider } from "./memoryProject.ts";
 
 const ROOT = "/app";
 
@@ -70,9 +71,12 @@ export const WebModule = $module({
   ".env.example": "APP_SECRET=\n",
 };
 
-const setup = async (files: Record<string, string> = saas) => {
+const setup = async (
+  files: Record<string, string> = saas,
+  provider: typeof MemoryFileSystemProvider = MemoryFileSystemProvider,
+) => {
   const alepha = Alepha.create()
-    .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+    .with({ provide: FileSystemProvider, use: provider })
     .with({ provide: ShellProvider, use: MemoryShellProvider })
     .with(AlephaCliCapacitorPlugin);
   alepha.store.set(capacitorOptions, {
@@ -80,7 +84,7 @@ const setup = async (files: Record<string, string> = saas) => {
     appName: "App",
     scheme: "app",
   });
-  const fs = alepha.inject(MemoryFileSystemProvider);
+  const fs = alepha.inject(provider);
   for (const [path, content] of Object.entries(files)) {
     await fs.writeFile(`${ROOT}/${path}`, content);
   }
@@ -217,5 +221,51 @@ describe("alepha capacitor init --ota", () => {
     await run();
     expect(await read("src/web/index.ts")).not.toContain("OtaAdminRouter");
     expect(await read("src/main.server.ts")).toContain("AlephaCapacitorOtaApi");
+  });
+
+  it("puts ota inside a capacitor({ ... }) call written on one line", async ({
+    expect,
+  }) => {
+    const { read, run } = await setup({
+      ...saas,
+      "alepha.config.ts": `import { capacitor } from "@alepha/capacitor/cli";
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  plugins: [capacitor({ appId: "dev.example.app", appName: "App", scheme: "app" })],
+});
+`,
+    });
+    await run();
+    expect(await read("alepha.config.ts")).toContain(
+      'plugins: [capacitor({ ota: { publicKey: "ota-public.pem" }, appId: "dev.example.app", appName: "App", scheme: "app" })],',
+    );
+  });
+
+  it("wires a capacitor({ ... }) call that an ota: after it does not belong to", async ({
+    expect,
+  }) => {
+    const config = saas["alepha.config.ts"].replace(
+      "  ],\n",
+      "    // ota: later\n    other({ ota: true }),\n  ],\n",
+    );
+    const { read, run } = await setup({ ...saas, "alepha.config.ts": config });
+    await run();
+    expect(await read("alepha.config.ts")).toContain(
+      `    capacitor({
+      ota: { publicKey: "ota-public.pem" },
+      appId: "dev.example.app",`,
+    );
+  });
+
+  it("makes only the parent directories on Windows, where paths use backslashes", async ({
+    expect,
+  }) => {
+    const { fs, run } = await setup(saas, WindowsMemoryFileSystemProvider);
+    await run();
+    const made = (fs as WindowsMemoryFileSystemProvider).made;
+    expect(new Set(made)).toEqual(
+      new Set(["\\app", "\\app\\.ota", "\\app\\src", "\\app\\src\\web"]),
+    );
   });
 });

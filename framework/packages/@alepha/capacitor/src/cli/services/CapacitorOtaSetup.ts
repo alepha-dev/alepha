@@ -81,7 +81,8 @@ export class CapacitorOtaSetup {
       name: "wire live updates",
       handler: async () => {
         for (const edit of edits) {
-          await this.fs.mkdir(edit.path.slice(0, edit.path.lastIndexOf("/")), {
+          // The parent, with the provider's separator (`\\` on Windows).
+          await this.fs.mkdir(this.fs.join(edit.path, ".."), {
             recursive: true,
           });
           await this.fs.writeFile(
@@ -233,13 +234,27 @@ export class CapacitorOtaSetup {
         refuse: `alepha.config.ts: expected one capacitor({ ... }) call, found ${calls.length}. Add to it by hand:\n  ota: { publicKey: "${CapacitorOtaSetup.PUBLIC_KEY}" },`,
       };
     }
-    const start = current.indexOf("capacitor({");
-    if (/\bota\s*:/.test(current.slice(start))) {
+    // The call's own braces: an `ota:` after it (a comment, another
+    // plugin's option) is not this call's.
+    const open = current.indexOf("capacitor({") + "capacitor(".length;
+    let close = open;
+    for (let depth = 0; close < current.length; close++) {
+      depth += current[close] === "{" ? 1 : current[close] === "}" ? -1 : 0;
+      if (depth === 0) {
+        break;
+      }
+    }
+    if (/\bota\s*:/.test(current.slice(open, close))) {
       return current;
     }
-    const lineEnd = current.indexOf("\n", start);
+    const ota = `ota: { publicKey: "${CapacitorOtaSetup.PUBLIC_KEY}" },`;
+    const lineEnd = current.indexOf("\n", open);
+    if (current.slice(open + 1, lineEnd).trim() !== "") {
+      // A call written on one line: right after its brace.
+      return `${current.slice(0, open + 1)} ${ota}${current.slice(open + 1)}`;
+    }
     const indent = (current.slice(lineEnd + 1).match(/^\s*/) ?? [""])[0];
-    return `${current.slice(0, lineEnd + 1)}${indent}ota: { publicKey: "${CapacitorOtaSetup.PUBLIC_KEY}" },\n${current.slice(lineEnd + 1)}`;
+    return `${current.slice(0, lineEnd + 1)}${indent}${ota}\n${current.slice(lineEnd + 1)}`;
   }
 
   /**
