@@ -1,7 +1,8 @@
 import { type Infer, z } from "alepha";
 
 /**
- * What an inspectable process writes to `<runDir>/<runId>.json` on start.
+ * What an inspectable process writes to `<runDir>/<runId>.json` once it is
+ * ready (its socket answers).
  *
  * The file is named by `runId`, never the pid: every container's main process
  * is pid 1, so two containers sharing a bind-mounted run directory would

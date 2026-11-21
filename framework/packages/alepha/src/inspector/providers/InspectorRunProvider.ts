@@ -82,7 +82,7 @@ export class InspectorRunProvider {
     // Resolved here rather than injected: the socket server needs this
     // provider's run id, and a field injection both ways is a cycle.
     if (!this.alepha.inject(InspectorSocketServer).listening) {
-      // No socket (Windows, a path too long, a refused bind): an entry
+      // No socket (a path too long, a refused bind): an entry
       // would announce a process nobody can reach.
       return;
     }

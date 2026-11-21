@@ -41,10 +41,9 @@ const normalAtom = $atom({
  * The flag keeps a value out of the *application's* SSR hydration payload. It
  * is not a general secrecy marker, and devtools is not the application: the
  * module refuses to register in production precisely because it already serves
- * the whole environment — every secret in it — in cleartext, and its own atom
- * route already accepts writes to these same atoms. Redacting the read while
- * permitting the write left the one screen that exists to show server state
- * unable to show it.
+ * the whole environment, every secret in it, in cleartext. Redacting one
+ * atom's value would hide nothing the module does not already serve, and left
+ * the one screen that exists to show server state unable to show it.
  */
 describe("DevToolsMetadataProvider — GET /metadata (atoms)", () => {
   it("reports a serverOnly atom's value, and the flag alongside it", async () => {
