@@ -749,6 +749,37 @@ describe("McpServerProvider", () => {
       expect(seen).toEqual({ alice: true, bob: false });
     });
 
+    it("keeps a colon in a client key or a request id from joining two slots", async () => {
+      // `user:a:b` asking about id 3 and `user:a` asking about id "b:3" were
+      // the same string slot, `user:a:b:3`.
+      const { provider, release, observed } = await slowContainer();
+
+      const call = provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: { name: "slow", arguments: {} },
+        },
+        { clientKey: "user:a:b" },
+      );
+
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: { requestId: "b:3" },
+        },
+        { clientKey: "user:a" },
+      );
+
+      release();
+      const response = await call;
+
+      expect(observed.aborted).toBe(false);
+      expect(response?.result).toBeDefined();
+    });
+
     it("does not let one client cancel another's request", async () => {
       const { provider, release, observed } = await slowContainer();
 

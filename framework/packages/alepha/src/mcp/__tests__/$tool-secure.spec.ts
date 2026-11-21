@@ -1,6 +1,6 @@
 import { $pipeline, Alepha, z } from "alepha";
 import { $secure, AlephaSecurity, currentUserAtom } from "alepha/security";
-import { ForbiddenError, UnauthorizedError } from "alepha/server";
+import { $action, ForbiddenError, UnauthorizedError } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
 import { $tool, AlephaMcp, McpServerProvider } from "../index.ts";
@@ -98,5 +98,47 @@ describe("$tool with use: [$secure()]", () => {
     });
 
     expect(result).toBe("u1:undefined atom=undefined");
+  });
+
+  it("names an object permission by its group too, for the step-up check", async () => {
+    // `$secure` enforces `{ group: "report", name: "read" }` as `report:read`;
+    // the pre-dispatch step-up was asked about `read` and found no scope to
+    // grant, so no 403 insufficient_scope ever reached the client.
+    class Guarded {
+      tool = $tool({
+        description: "Reads a report",
+        use: [
+          $secure({
+            permissions: [{ group: "report", name: "read" }, "audit:list"],
+          }),
+        ],
+        schema: { result: z.text() },
+        handler: async () => "ok",
+      });
+
+      action = $action({
+        method: "GET",
+        path: "/reports",
+        description: "Lists reports",
+        mcp: true,
+        use: [$secure({ permissions: [{ group: "report", name: "list" }] })],
+        handler: () => "ok",
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaMcp);
+    alepha.with(Guarded);
+    await alepha.start();
+    const mcp = alepha.inject(McpServerProvider);
+    const required = (name: string) =>
+      mcp.requiredPermissions({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name, arguments: {} },
+      });
+
+    expect(required("tool")).toEqual(["report:read", "audit:list"]);
+    expect(required("action")).toEqual(["report:list"]);
   });
 });

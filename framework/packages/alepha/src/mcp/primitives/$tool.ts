@@ -20,6 +20,7 @@ import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { McpToolOutputError } from "../errors/McpError.ts";
+import { securePermissionNames } from "../helpers/securePermissionNames.ts";
 import type {
   McpContext,
   McpIcon,
@@ -294,28 +295,13 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   );
 
   /**
-   * The permissions this tool's `$secure` middlewares require, by name.
+   * The permissions this tool's `$secure` middlewares require, by name (`group:name` for an object permission).
    * Read from the pipeline's middleware metadata, so the server can evaluate
    * them before dispatch (a step-up challenge must be answered before a
    * progress stream commits the 200).
    */
   public get requiredPermissions(): string[] {
-    const names: string[] = [];
-    for (const meta of this.pipeline.metadata) {
-      if (meta.name !== "$secure") continue;
-      const permissions = (meta.options as { permissions?: unknown[] })
-        ?.permissions;
-      for (const it of permissions ?? []) {
-        const name =
-          typeof it === "string"
-            ? it
-            : (it as { name?: unknown } | undefined)?.name;
-        if (typeof name === "string" && !names.includes(name)) {
-          names.push(name);
-        }
-      }
-    }
-    return names;
+    return securePermissionNames(this.pipeline.metadata);
   }
 
   /**

@@ -30,7 +30,7 @@ describe("StreamableHttpMcpTransport.buildClientKey", () => {
     const transport = await probe();
 
     expect(transport.key({ headers: {}, user: { id: "u-1" } })).toBe(
-      "user:u-1",
+      '["user","u-1"]',
     );
     expect(transport.key({ headers: {}, user: { id: "u-2" } })).not.toBe(
       transport.key({ headers: {}, user: { id: "u-1" } }),
@@ -45,9 +45,23 @@ describe("StreamableHttpMcpTransport.buildClientKey", () => {
         headers: { "mcp-session-id": "s-9" },
         user: { id: "u-1" },
       }),
-    ).toBe("user:u-1:s-9");
+    ).toBe('["user","u-1","s-9"]');
     expect(transport.key({ headers: { "mcp-session-id": "u-1" } })).toBe(
-      "session:u-1",
+      '["session","u-1"]',
+    );
+  });
+
+  it("keeps a colon in a user id or a session id from joining two keys", async () => {
+    const transport = await probe();
+
+    // User `a:b` with no session, and user `a` claiming session `b`, were
+    // both `user:a:b`.
+    expect(transport.key({ headers: {}, user: { id: "a:b" } })).not.toBe(
+      transport.key({ headers: { "mcp-session-id": "b" }, user: { id: "a" } }),
+    );
+    // And a session id is never mistaken for a user.
+    expect(transport.key({ headers: { "mcp-session-id": "u-1" } })).not.toBe(
+      transport.key({ headers: {}, user: { id: "u-1" } }),
     );
   });
 

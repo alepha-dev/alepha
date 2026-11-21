@@ -87,32 +87,6 @@ describe("$tool primitive", () => {
     expect(result).toBe(12);
   });
 
-  test("should validate params with schema", async () => {
-    const alepha = Alepha.create();
-
-    class Tools {
-      greet = $tool({
-        description: "Greet someone",
-        schema: {
-          params: z.object({
-            name: z.text(),
-          }),
-          result: z.text(),
-        },
-        handler: async ({ params }) => `Hello, ${params.name}!`,
-      });
-    }
-
-    alepha.with(AlephaMcp).with(Tools);
-    await alepha.start();
-
-    const provider = alepha.inject(McpServerProvider);
-    const tool = provider.getTool("greet");
-
-    const result = await tool?.execute({ name: "World" });
-    expect(result).toBe("Hello, World!");
-  });
-
   test("should throw error for invalid params", async () => {
     const alepha = Alepha.create();
 

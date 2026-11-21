@@ -1042,9 +1042,14 @@ export class StreamableHttpMcpTransport {
     const header = Array.isArray(raw) ? raw[0] : raw;
     const session = typeof header === "string" && header ? header : undefined;
     const userId = (request.user as { id?: unknown } | undefined)?.id;
+    // Structured rather than joined with ":": a user id (a token `sub`) and
+    // the client-chosen session header may both carry one, and a joined
+    // string made user `a:b` and user `a` with session `b` the same key.
     if (typeof userId === "string" && userId) {
-      return session ? `user:${userId}:${session}` : `user:${userId}`;
+      return JSON.stringify(
+        session ? ["user", userId, session] : ["user", userId],
+      );
     }
-    return session ? `session:${session}` : undefined;
+    return session ? JSON.stringify(["session", session]) : undefined;
   }
 }

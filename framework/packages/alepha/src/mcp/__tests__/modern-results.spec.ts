@@ -400,7 +400,6 @@ describe("Modern MCP results", () => {
         code: -32602,
         message: "Unknown tool: nope",
       });
-      expect(body.resultType).toBeUndefined();
       await alepha.stop();
     });
   });

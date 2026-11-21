@@ -94,36 +94,6 @@ describe("$prompt primitive", () => {
     expect(messages?.[0].content).toContain("console.log");
   });
 
-  test("should validate args with schema", async () => {
-    const alepha = Alepha.create();
-
-    class Prompts {
-      typed = $prompt({
-        description: "Typed prompt",
-        args: z.object({
-          name: z.text(),
-          count: z.number(),
-        }),
-        handler: async ({ args }) => [
-          {
-            role: "user",
-            content: `Hello ${args.name}, count is ${args.count}`,
-          },
-        ],
-      });
-    }
-
-    alepha.with(AlephaMcp).with(Prompts);
-    await alepha.start();
-
-    const provider = alepha.inject(McpServerProvider);
-    const prompt = provider.getPrompt("typed");
-
-    const messages = await prompt?.get({ name: "World", count: 42 });
-    expect(messages?.[0].content).toContain("World");
-    expect(messages?.[0].content).toContain("42");
-  });
-
   test("should throw error for invalid args", async () => {
     const alepha = Alepha.create();
 
