@@ -18,7 +18,7 @@ export interface DetailAsideRow {
   value?: React.ReactNode;
   /**
    * Renders a copy-to-clipboard button beside the value. When `value` is
-   * omitted the row renders this text as the value, in mono — the shape an id
+   * omitted the row renders this text as the value, in mono: the shape an id
    * row wants.
    */
   copy?: string;
@@ -26,7 +26,7 @@ export interface DetailAsideRow {
 
 export interface DetailAsideProps {
   /**
-   * Omit when something else on screen already names the thing — a
+   * Omit when something else on screen already names the thing: a
    * breadcrumb leaf, most often. With no title and no avatar the header
    * block is not rendered at all and the list starts at the top edge.
    */
@@ -54,7 +54,7 @@ export interface DetailAsideProps {
    * title stands alone.
    *
    * The letter fallback earns its place when the thing *has* a picture and
-   * happens to be missing one — a user without an uploaded photo is still a
+   * happens to be missing one: a user without an uploaded photo is still a
    * face-shaped hole. For something that could never have had one, a large
    * square holding the first letter of a title printed beside it is the same
    * character twice at two sizes.
@@ -80,7 +80,7 @@ export interface DetailAsideProps {
  * The identity panel of a detail page: a thumbnail and title above a dense
  * label/value list.
  *
- * Dense rather than a marketing hero — the list is what a reader scans, so it
+ * Dense rather than a marketing hero: the list is what a reader scans, so it
  * is a `<dl>` of small caps labels over their values, and a row with nothing
  * to say is left out by the caller rather than rendered empty.
  *
@@ -223,12 +223,11 @@ export const DetailAside = (props: DetailAsideProps) => {
                       default: `Copy ${row.label}`,
                       args: [row.label],
                     })}
-                    // No background override: `ghost` hovers to `bg-muted`,
-                    // and that class does not resolve to the opaque token:
-                    // `styles.css`
-                    // redirects it to `--state-layer`, a 10% `--foreground`
-                    // wash that DARKENS in light and lifts in dark, so it
-                    // reads over whatever surface it lands on. A literal
+                    // No background override: `minimal` hovers to
+                    // `bg-hover`, which `styles.css` points at
+                    // `--state-layer`, a 10% `--foreground` wash that DARKENS
+                    // in light and lifts in dark, so it reads over whatever
+                    // surface it lands on. A literal
                     // `hover:bg-background` here looked correct in dark and
                     // went white-on-grey in light.
                     className="text-muted-foreground hover:text-foreground absolute inset-y-0 end-2 my-auto shrink-0"

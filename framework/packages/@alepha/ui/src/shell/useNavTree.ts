@@ -6,7 +6,7 @@ import { type NavEntry, useNavEntries } from "./useNavEntries.ts";
 export interface UseNavTreeOptions {
   /**
    * Route name that anchors the shell (e.g. the `/admin` layout page). Only
-   * its descendant pages with `nav` metadata become entries — this is what
+   * its descendant pages with `nav` metadata become entries; this is what
    * lets an app host several shells (a `/` app shell and a `/admin` shell),
    * each scoped to its own subtree.
    */

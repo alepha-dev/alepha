@@ -7,7 +7,7 @@ import { SidebarNavAutoClose } from "../SidebarNavAutoClose.tsx";
 /**
  * Tapping a nav entry on a phone navigated and left the sheet up, so the
  * destination page rendered behind an overlay the reader had to dismiss by
- * hand (feedback #2077, at 491x929). Nothing closed it: `SidebarNavItem`
+ * hand (feedback #2077, at 491x929). Nothing closed it: `AppShellSidebarNavItem`
  * renders a `Link` and never touched `openMobile`.
  *
  * The fix is one capture handler around the whole sidebar rather than a
@@ -125,7 +125,7 @@ describe("SidebarNavAutoClose", () => {
         <button type="button" data-testid="switcher">
           Switch project
         </button>
-        {/* A locked nav row: `SidebarNavItem` renders `item.href ?? "#"`.
+        {/* A locked nav row: `AppShellSidebarNavItem` renders `item.href ?? "#"`.
             The placeholder href is the fixture, so the rule that objects to
             it is objecting to the case under test. */}
         {/* oxlint-disable-next-line jsx-a11y/anchor-is-valid -- the placeholder href is the fixture under test */}

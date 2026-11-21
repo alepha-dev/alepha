@@ -120,13 +120,15 @@ describe("ButtonUser's avatar", () => {
     expect(trigger().textContent).toBe("AD");
   });
 
-  it("draws the slot INSTEAD of the glyph when one is passed", async () => {
+  it("draws the slot INSTEAD of the initials when one is passed", async () => {
     await mount({ avatar: <span data-testid="avatar">face</span> });
 
     expect(trigger().querySelector('[data-testid="avatar"]')).not.toBeNull();
-    // ⚠️ Instead, not beside: the button is `size="icon"`, so a glyph left
-    // next to an avatar would not be a fallback, it would be two things in
-    // one 36px control.
+    // ⚠️ Instead, not beside: the button is `size="icon"`, so initials left
+    // next to an avatar would not be a fallback, they would be two things in
+    // one 36px control. The signed-in default is the text "AD", so the
+    // trigger's whole text is the slot's.
+    expect(trigger().textContent).toBe("face");
     expect(trigger().querySelector("svg")).toBeNull();
   });
 

@@ -31,7 +31,7 @@ export interface ButtonLanguageProps {
  * active locale via `useI18n().setLang(code)`.
  *
  * Labels come from translation keys `language.<code>` (e.g. `language.en`,
- * `language.fr`). If the key is missing, the raw code is shown — so adding a
+ * `language.fr`). If the key is missing, the raw code is shown, so adding a
  * new language to the picker is a one-line `tr` entry per dictionary.
  *
  * Renders nothing when only one language is registered.

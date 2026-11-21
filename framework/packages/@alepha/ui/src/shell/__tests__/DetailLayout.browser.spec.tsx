@@ -209,7 +209,7 @@ describe("DetailLayout", () => {
 
   /**
    * `loading` wins over `notFound`. A page computes "not found" as "no record",
-   * which is also true on the very first render — ordering it the other way
+   * which is also true on the very first render: ordering it the other way
    * flashes "not found" before every successful load.
    */
   it("prefers the loading state over not-found", async () => {

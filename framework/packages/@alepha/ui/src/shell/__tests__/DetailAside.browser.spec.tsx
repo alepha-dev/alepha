@@ -12,7 +12,7 @@ import { DetailAside } from "../DetailAside.tsx";
  * The identity panel shared by every detail page. What it pins is the row
  * contract: a `copy` row renders its own value and a working copy button, a
  * plain row renders exactly what it was given, and the copy affordance names
- * the row it belongs to — a page with several copyable rows would otherwise
+ * the row it belongs to: a page with several copyable rows would otherwise
  * offer a screen reader several buttons all called "Copy".
  */
 describe("DetailAside", () => {
@@ -156,7 +156,7 @@ describe("DetailAside", () => {
   it("drops the avatar entirely on avatar={false}", async () => {
     await mount(<DetailAside avatar={false} title="bague aurore" rows={[]} />);
 
-    // The initial and nothing else — asserted as the ABSENCE of the "B",
+    // The initial and nothing else, asserted as the ABSENCE of the "B",
     // because the title is still rendered and starts with the same letter.
     // `queryAllByText` on the exact string is what separates the avatar's
     // lone initial from the title beside it.

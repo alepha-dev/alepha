@@ -12,7 +12,7 @@ export interface NavShellProps extends Omit<
   "nav" | "breadcrumbs"
 > {
   /**
-   * Route name that anchors this shell — typically the layout `$page` mounted
+   * Route name that anchors this shell, typically the layout `$page` mounted
    * at the shell's base path (e.g. `/admin`). The sidebar and breadcrumbs are
    * derived from this page's subtree, so an app can host several shells (a `/`
    * app shell and a `/admin` shell), each scoped to its own routes.
@@ -30,8 +30,8 @@ export interface NavShellProps extends Omit<
 /**
  * Data-driven {@link AppShell}: the sidebar nav and breadcrumb trail are
  * derived from the route tree under `root` (via each `$page`'s `nav`
- * metadata), instead of hand-maintained lists. Everything else — brand,
- * top-bar actions, layout variant, fill — passes straight through to
+ * metadata), instead of hand-maintained lists. Everything else (brand,
+ * top-bar actions, layout variant, fill) passes straight through to
  * `AppShell`.
  */
 export const NavShell = (props: NavShellProps) => {

@@ -22,7 +22,7 @@ export interface NavItem {
    * Either an icon *component* (e.g. a lucide `Users`) which is instantiated
    * with the row's sizing className, or an already-rendered ReactNode element
    * (e.g. `<Users />`). The latter lets nav metadata declared on a `$page`
-   * (which is pure React) carry its icon as a node — see `useNavTree`.
+   * (which is pure React) carry its icon as a node: see `useNavTree`.
    */
   icon?: IconType | ReactNode;
   /**
@@ -159,8 +159,8 @@ export function findOpenPath(nav: NavGroup[]): number[] {
 /**
  * Render a NavItem icon. An already-created element (e.g. `<Users />`, which
  * `React.isValidElement` recognises) is returned as-is; anything else is
- * treated as a component *type* — including lucide's `forwardRef` icons, which
- * are objects rather than plain functions — and instantiated with the row's
+ * treated as a component *type* (including lucide's `forwardRef` icons, which
+ * are objects rather than plain functions) and instantiated with the row's
  * sizing className.
  */
 export function renderNavIcon(

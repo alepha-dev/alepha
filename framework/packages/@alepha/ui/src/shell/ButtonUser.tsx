@@ -13,7 +13,7 @@ export interface ButtonUserProps {
    * Custom menu items rendered between the email header and the logout
    * footer. When omitted, a default menu is rendered: email + account + admin
    * (when permitted) + logout. When provided, the consumer is responsible for the
-   * full layout — use `ButtonUser.Email`, `ButtonUser.AdminMenuItem`,
+   * full layout: use `ButtonUser.Email`, `ButtonUser.AdminMenuItem`,
    * `ButtonUser.LogoutMenuItem` as building blocks.
    */
   children?: ReactNode;

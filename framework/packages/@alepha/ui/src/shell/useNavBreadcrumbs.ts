@@ -28,7 +28,7 @@ export interface NavCrumb {
  *
  * Because the trail is the genuine nested-route chain, a detail page mounted
  * directly under the shell layout (rather than under its list page) yields
- * `Shell > Detail` — there is no synthetic "list" crumb in between, unless
+ * `Shell > Detail`: there is no synthetic "list" crumb in between, unless
  * the page supplies one through `useNavCrumbs`, which replaces the open
  * leaf's crumb with its own list.
  */
@@ -61,7 +61,9 @@ export function useNavBreadcrumbs(
         crumbs.push(...override.crumbs);
         continue;
       }
-      crumbs.push({ label: navLabel(route, i18n.tr), href: route.match });
+      // The layer's compiled path, not `route.match`: the pattern would link
+      // a parameterised parent to `/projects/:id`.
+      crumbs.push({ label: navLabel(route, i18n.tr), href: layer.path });
     }
 
     // The current page is a label, not a link.

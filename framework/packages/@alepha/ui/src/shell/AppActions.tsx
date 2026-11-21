@@ -11,8 +11,8 @@ import { ButtonUser } from "./ButtonUser.tsx";
 export interface AppActionsProps {
   /**
    * Extra menu items appended to the account dropdown, below the built-ins
-   * and above Logout. For an application-specific destination — "My orders",
-   * "Billing" — that belongs with the account rather than in the page chrome.
+   * and above Logout. For an application-specific destination ("My orders",
+   * "Billing") that belongs with the account rather than in the page chrome.
    */
   children?: ReactNode;
 
@@ -99,17 +99,17 @@ export interface AppActionsProps {
  * options, reading the real registry rather than a flag a caller has to keep
  * in sync. So an application with a single locale and a single theme renders
  * exactly two controls here, and gains the others the day it registers a
- * second — with no change at any call site.
+ * second, with no change at any call site.
  *
  * `ButtonUser` likewise renders a sign-in button when signed out and the
  * account menu when signed in, and `ButtonUser.AccountMenuItem` hides itself
- * when no `account` route is mounted.
+ * when the account dialog has no visible section.
  *
  * ### What it deliberately does not include
  *
  * Search. `AdminLayout` keeps its ⌘K trigger outside this cluster because the
  * Spotlight open-state is local to that layout, so a shared component could
- * never own it — and Lore's own search is a field-sized element that reads as
+ * never own it, and Lore's own search is a field-sized element that reads as
  * a different kind of control next to four icons. Pass it via `before` when a
  * surface wants it adjacent.
  */
@@ -134,11 +134,12 @@ export const AppActions = (props: AppActionsProps) => {
         onSignIn={() => router.push(props.loginRouteName ?? "login")}
       >
         <ButtonUser.Email />
-        {/* Account before admin — see `ButtonUser`'s `DefaultMenu` for why. */}
+        {/* Account before admin: see `ButtonUser`'s `DefaultMenu` for why. */}
         <ButtonUser.AccountMenuItem label={props.labels?.account} />
         {/*
-          `routeName`, not `onClick`: both of these are destinations, so they
-          render as real anchors and keep ⌘-click and open-in-new-tab.
+          `routeName`, not `onClick`: the admin item is a destination, so it
+          renders as a real anchor and keeps ⌘-click and open-in-new-tab. The
+          account item above is a click handler that opens a dialog.
         */}
         <ButtonUser.AdminMenuItem
           label={props.labels?.admin}

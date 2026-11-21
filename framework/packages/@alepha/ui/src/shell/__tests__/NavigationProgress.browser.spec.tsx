@@ -96,14 +96,34 @@ describe("NavigationProgress", () => {
     await begin(app);
     await end(app);
 
+    // Read the width while the bar is still fading out: a leaked interval
+    // keeps calling `setProgress`, so the width would move off 100%.
+    const bar = () =>
+      screen.getByTestId("navigation-progress")
+        .firstElementChild as HTMLElement | null;
+    await waitFor(() => expect(bar()?.style.width).toBe("100%"));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(bar()?.style.width).toBe("100%");
+
     await waitFor(() => {
       expect(screen.queryByTestId("navigation-progress")).toBeNull();
     });
+  });
 
-    // A leaked interval would still be calling `setProgress` on an unmounted
-    // tree, so nothing may bring the bar back on its own.
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(screen.queryByTestId("navigation-progress")).toBeNull();
+  /**
+   * A fast navigation lands and the next one starts within the 200 ms fade:
+   * the first one's hide timer must not take the bar away from the second.
+   */
+  it("shows the bar for a navigation started right after another lands", async () => {
+    const app = await mount(<NavigationProgress />);
+
+    await begin(app);
+    await end(app);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await begin(app);
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(screen.queryByTestId("navigation-progress")).toBeTruthy();
   });
 
   it("takes its height and colour from the caller", async () => {

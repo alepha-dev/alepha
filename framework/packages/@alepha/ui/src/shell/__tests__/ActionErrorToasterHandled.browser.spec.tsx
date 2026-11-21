@@ -43,7 +43,11 @@ describe("ActionErrorToaster and handled errors", () => {
     alepha = undefined;
   });
 
-  const mount = async (ui: ReactNode, links?: typeof LinkProvider) => {
+  const mount = async (
+    ui: ReactNode,
+    links?: typeof LinkProvider,
+    toaster: ReactNode = <ActionErrorToaster />,
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -58,7 +62,7 @@ describe("ActionErrorToaster and handled errors", () => {
     return render(
       <AlephaContext.Provider value={alepha}>
         <Toaster visibleToasts={20} />
-        <ActionErrorToaster />
+        {toaster}
         {ui}
       </AlephaContext.Provider>,
     );
@@ -72,19 +76,19 @@ describe("ActionErrorToaster and handled errors", () => {
 
   it("skips a handled event before its filter runs", async () => {
     const filtered: string[] = [];
-    await mount(null);
-    const app = alepha!;
-    alepha = undefined;
-    const view = render(
-      <AlephaContext.Provider value={app}>
-        <ActionErrorToaster
-          filter={(error) => {
-            filtered.push(error.message);
-            return true;
-          }}
-        />
-      </AlephaContext.Provider>,
+    // The filtered toaster in place of the default one: beside it, an
+    // unhandled error would be toasted twice.
+    await mount(
+      null,
+      undefined,
+      <ActionErrorToaster
+        filter={(error) => {
+          filtered.push(error.message);
+          return true;
+        }}
+      />,
     );
+    const app = alepha!;
 
     await app.events.emit("react:action:error", {
       type: "custom",
@@ -97,13 +101,16 @@ describe("ActionErrorToaster and handled errors", () => {
     });
 
     await waitFor(() =>
-      expect(screen.getAllByText("Reaches the filter")).toHaveLength(1),
+      expect(screen.getAllByText("Reaches the filter").length).toBeGreaterThan(
+        0,
+      ),
     );
+    // Once, read after a settle: inside `waitFor` a length of one passes on
+    // the first frame, before a second toast could land.
+    await settle();
+    expect(screen.getAllByText("Reaches the filter")).toHaveLength(1);
     expect(filtered).toEqual(["Reaches the filter"]);
     expect(screen.queryByText("Handled before the filter")).toBeNull();
-
-    view.unmount();
-    await app.stop();
   });
 
   it("toasts a useAction with no onError exactly once", async () => {
