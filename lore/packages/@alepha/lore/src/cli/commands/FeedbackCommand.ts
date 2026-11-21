@@ -423,6 +423,12 @@ export class FeedbackCommand {
       description: z.text({
         description: "What was seen or is asked for, in Markdown.",
       }),
+      type: z
+        .enum(["bug", "idea", "question", "other"])
+        .describe(
+          "What it is, as the request form asks; tagged the same way (an idea as feature).",
+        )
+        .optional(),
       tags: z
         .text({ description: "Comma-separated tags: bug,feat." })
         .optional(),
@@ -443,6 +449,19 @@ export class FeedbackCommand {
           .map((it) => it.trim())
           .filter(Boolean);
         if (flags.as) tags.push(`agent:${flags.as.toLowerCase()}`);
+        // The type as Lore's request form tags it (#Q4037): first, once,
+        // replacing any other type tag. The CLI ships alone, so the four
+        // tags are spelled here rather than imported.
+        if (flags.type) {
+          const typeTags = new Set(["bug", "feature", "question", "other"]);
+          const kept = tags.filter((tag) => !typeTags.has(tag));
+          tags.splice(
+            0,
+            tags.length,
+            flags.type === "idea" ? "feature" : flags.type,
+            ...kept,
+          );
+        }
         const created = await this.feedbackApi.submitFeedback({
           params: { projectId },
           body: { title: flags.title, description: flags.description, tags },
