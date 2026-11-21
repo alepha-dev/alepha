@@ -37,7 +37,8 @@ const ProjectSettingsRanksPage = () => {
   return (
     // Fills the settings body (a `fullWidth` tab): the rank editor scrolls
     // its permissions inside it, under a header that stays put (#Q3666).
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    // Half the body's gutter, as Members (#Q4053).
+    <div className="-m-2 flex min-h-0 flex-1 flex-col gap-4 md:-m-3">
       <OrganizationRanks
         organizationId={project.organizationId}
         // A new rank starts from admin, member or viewer (#Q3661): no blank one.

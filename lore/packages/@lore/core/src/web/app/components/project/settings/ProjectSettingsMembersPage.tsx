@@ -13,7 +13,10 @@ const ProjectSettingsMembersPage = () => {
   if (!project) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    // Half the settings body's gutter (#Q4053): the member list, like the
+    // Ranks matrix beside it, reads as a list, not a column of setting
+    // blocks, and the full 24px made it look inset next to the tables.
+    <div className="-m-2 flex flex-col gap-6 md:-m-3">
       <OrganizationMembers
         organizationId={project.organizationId}
         can={can}
