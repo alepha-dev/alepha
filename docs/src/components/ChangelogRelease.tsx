@@ -8,6 +8,12 @@ import styles from "./Changelog.module.css";
 export interface ChangelogReleaseProps {
   entry: ChangelogEntry;
   isLatest: boolean;
+  /**
+   * Whether its changes are shown. Only the latest release is, by default
+   * (#Q4011): the others are a header with their change count.
+   */
+  open: boolean;
+  onOpenChange: (version: string, open: boolean) => void;
   expandedItems: Set<string>;
   onToggleItem: (key: string) => void;
 }
@@ -15,12 +21,18 @@ export interface ChangelogReleaseProps {
 /**
  * One release on the timeline, with its changes.
  *
- * Releases were collapsible for one release cycle, to keep the whole history
- * off a single page. The page now carries ten releases rather than all of
- * them, which is the same saving without a page of shut drawers to open.
+ * Collapsible again since #Q4011: ten releases, every one open, were 1,754
+ * changes and a page 92,000 px tall at 1920x868, a scrollbar with nothing to
+ * hold. A shut release is its header and its change count, a native
+ * `<details>`: its changes stay in the prerendered HTML, so the scope filter
+ * and the hydration pass see the same page, and opening one needs no script.
  */
 const ChangelogRelease = (props: ChangelogReleaseProps) => {
   const entry = props.entry;
+  const count = entry.groups.reduce(
+    (sum, group) => sum + group.changes.length,
+    0,
+  );
 
   return (
     <article
@@ -40,15 +52,24 @@ const ChangelogRelease = (props: ChangelogReleaseProps) => {
       </div>
 
       {/* Content */}
-      <div className={styles.content}>
-        <div className={styles.versionHeader}>
+      <details
+        className={styles.content}
+        open={props.open}
+        onToggle={(event) =>
+          props.onOpenChange(entry.version, event.currentTarget.open)
+        }
+      >
+        <summary className={styles.versionHeader}>
           <h2 className={styles.version} id={`version-${entry.version}`}>
             v{entry.version}
           </h2>
           <time className={styles.date} dateTime={entry.date}>
             {formatDate(entry.date)}
           </time>
-        </div>
+          <span className={styles.count}>
+            {count} {count === 1 ? "change" : "changes"}
+          </span>
+        </summary>
 
         {/* The Lore release's own grouping (#Q3638): its epics, then the
             quests of each area that belong to no epic. */}
@@ -75,7 +96,7 @@ const ChangelogRelease = (props: ChangelogReleaseProps) => {
             onToggleItem={props.onToggleItem}
           />
         ))}
-      </div>
+      </details>
     </article>
   );
 };

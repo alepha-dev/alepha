@@ -11,7 +11,7 @@ import { expect, test } from "@playwright/test";
  * it.
  */
 test.describe("Changelog", () => {
-  test("shows the most recent releases, open, ten at most", async ({
+  test("shows the most recent releases, ten at most, the latest open", async ({
     page,
   }) => {
     await page.goto("/changelog");
@@ -21,8 +21,8 @@ test.describe("Changelog", () => {
     expect(count).toBeGreaterThan(0);
     expect(count).toBeLessThanOrEqual(10);
 
-    // Open, not collapsed: the changes of the newest release are on the page
-    // without anything being clicked first.
+    // The newest release is open: its changes are on the page without
+    // anything being clicked first.
     await expect(releases.first().locator("li").first()).toBeVisible();
 
     // Older releases are reachable rather than dropped.
@@ -92,6 +92,35 @@ test.describe("Changelog", () => {
     await expect(
       page.getByText(/No change in the last 10 releases/),
     ).toBeVisible();
+  });
+
+  /**
+   * Ten open releases made a page 92,000 px tall (#Q4011): the older ones are
+   * shut to their header and change count, and the index above the timeline
+   * reaches any of them in one click, opening it.
+   */
+  test("shuts the older releases, and the index opens the one it jumps to", async ({
+    page,
+  }) => {
+    await page.goto("/changelog");
+    const releases = page.locator("article");
+    test.skip((await releases.count()) < 2, "one release only in this build");
+
+    const second = releases.nth(1);
+    await expect(second.locator("summary")).toContainText(/\d+ changes?/);
+    await expect(second.locator("li").first()).toBeHidden();
+
+    const version = (await second.locator("h2").textContent())!.trim();
+    await page
+      .getByRole("navigation", { name: "Releases" })
+      .getByRole("link", { name: version, exact: true })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`#version-${version.slice(1)}$`));
+    await expect(second.locator("li").first()).toBeVisible();
+
+    // And a click on a header shuts it again.
+    await second.locator("summary").click();
+    await expect(second.locator("li").first()).toBeHidden();
   });
 
   /**

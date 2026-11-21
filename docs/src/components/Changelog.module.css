@@ -222,6 +222,57 @@
   color: #ffffff;
 }
 
+/*
+ * The release index (#Q4011): one link per release on the page, under the
+ * filter, wrapping like it.
+ */
+.index {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.indexLink {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.indexLink:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+/*
+ * A shut release is its summary: the header, as before, with its change
+ * count. The marker is the browser's own triangle, hidden: the whole header
+ * is the control, and the count says there is more.
+ */
+.versionHeader {
+  cursor: pointer;
+  list-style: none;
+}
+
+.versionHeader::-webkit-details-marker {
+  display: none;
+}
+
+details:not([open]) > .versionHeader {
+  margin-bottom: 0;
+}
+
+.count {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+details:not([open]) .count::after {
+  content: " ▸";
+}
+
 .version {
   font-family: var(--font-mono);
   font-size: var(--text-sm);

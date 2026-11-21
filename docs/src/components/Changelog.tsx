@@ -8,6 +8,7 @@ import {
   parseChangelogScope,
 } from "../config/changelogScopes.ts";
 import type { ChangelogEntry } from "../config/docs.ts";
+import ChangelogIndex from "./ChangelogIndex.tsx";
 import ChangelogRelease from "./ChangelogRelease.tsx";
 import ChangelogScopeFilter from "./ChangelogScopeFilter.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
@@ -40,7 +41,9 @@ const RELEASE_LIMIT = 10;
 const CHANGELOG_URL = "https://github.com/alepha-dev/alepha/releases";
 
 /**
- * The recent release history on one route, every release open.
+ * The recent release history on one route: the latest release open, the
+ * others shut to their header and change count, and an index above them that
+ * jumps to any one and opens it (#Q4011).
  *
  * `?scope=` narrows it: a group id from the buttons (`framework`, `cli`, `ui`,
  * `lore`, `bay`) or a raw comma-separated list of scope tokens. A release with
@@ -52,6 +55,14 @@ const Changelog = (props: ChangelogProps) => {
     format: "querystring",
   });
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  /**
+   * Which releases the reader opened or shut, by version. Unset, a release
+   * reads its default: the latest alone is open on the page as prerendered,
+   * and every release a scope leaves is open, since the scope already
+   * narrowed the page to what the reader asked for. Picking a scope starts
+   * over from those defaults.
+   */
+  const [toggled, setToggled] = useState<Map<string, boolean>>(() => new Map());
 
   /**
    * ⚠️ The filter is applied only after hydration, and this is why.
@@ -88,7 +99,10 @@ const Changelog = (props: ChangelogProps) => {
   }, []);
 
   const onSelect = useCallback(
-    (next: string | undefined) => setParams({ scope: next }),
+    (next: string | undefined) => {
+      setToggled(new Map());
+      setParams({ scope: next });
+    },
     [setParams],
   );
 
@@ -116,6 +130,16 @@ const Changelog = (props: ChangelogProps) => {
 
   const latest = props.entries[0]?.version;
 
+  const isOpen = (version: string) =>
+    toggled.get(version) ?? (scope ? true : version === latest);
+
+  const onOpenChange = useCallback((version: string, open: boolean) => {
+    setToggled((prev) => {
+      if (prev.get(version) === open) return prev;
+      return new Map(prev).set(version, open);
+    });
+  }, []);
+
   return (
     <div className="terminal-page">
       <div className={styles.container}>
@@ -130,6 +154,10 @@ const Changelog = (props: ChangelogProps) => {
             <small aria-hidden="true">.md</small>
           </h1>
           <ChangelogScopeFilter scope={scope} onSelect={onSelect} />
+          <ChangelogIndex
+            entries={releases}
+            onJump={(version) => onOpenChange(version, true)}
+          />
         </header>
 
         {/* Timeline */}
@@ -143,6 +171,8 @@ const Changelog = (props: ChangelogProps) => {
               key={entry.version}
               entry={entry}
               isLatest={entry.version === latest}
+              open={isOpen(entry.version)}
+              onOpenChange={onOpenChange}
               expandedItems={expandedItems}
               onToggleItem={toggleItem}
             />
