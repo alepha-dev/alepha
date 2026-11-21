@@ -198,8 +198,11 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   public async list(bucketName: string): Promise<string[]> {
+    // Outside the `try`, as in `download`: a refused bucket name is the
+    // caller's error, not "Error listing files".
+    const dir = this.path(bucketName);
     try {
-      const entries = await this.fileSystemProvider.ls(this.path(bucketName));
+      const entries = await this.fileSystemProvider.ls(dir);
       // Sidecars are an implementation detail of this provider: the other
       // backends carry the same metadata inside the object, and `list` is
       // documented as returning file identifiers. `path` rejects the suffix
@@ -219,8 +222,12 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   protected path(bucket: string, fileId = ""): string {
-    // File ids are opaque keys on S3/R2 but filesystem paths here — reject
-    // separators and dot-dot so a caller-supplied id cannot escape the root.
+    // Bucket names and file ids are opaque keys on S3/R2 but filesystem paths
+    // here: reject separators and dot-dot in both, so neither can escape the
+    // root. S3 and R2 refuse the same bucket names.
+    if (/[/\\]/.test(bucket) || bucket.includes("..")) {
+      throw new AlephaError(`Invalid bucket name: ${bucket}`);
+    }
     if (/[/\\]/.test(fileId) || fileId.includes("..")) {
       throw new AlephaError(`Invalid file id: ${fileId}`);
     }

@@ -278,7 +278,6 @@ export const testListFiles = async (provider: FileStorageProvider) => {
   // Unknown bucket lists to nothing rather than throwing.
   expect(await provider.list("test-unknown-bucket")).toEqual([]);
 
-  // Use a declared bucket so directory-backed providers have it provisioned.
   const a = await provider.upload(
     TEST_DOCUMENTS_BUCKET,
     fs.createFile({ text: "a", name: "a.txt" }),
