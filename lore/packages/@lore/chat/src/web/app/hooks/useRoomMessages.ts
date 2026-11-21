@@ -6,7 +6,7 @@ import {
   useInject,
   useQueryClient,
 } from "alepha/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { ChatMessageController } from "../../../api/controllers/ChatMessageController.ts";
 import type {
@@ -57,13 +57,24 @@ export const useRoomMessages = (projectId: number, roomId?: string) => {
     [api, projectId, roomId],
   );
 
+  // What this tab sent and the server has not answered yet (#Q4112),
+  // drawn after the stored messages until the answer replaces it.
+  const [sending, setSending] = useState<ChatMessageResource[]>([]);
+
   const messages = useMemo(() => {
     const byId = new Map<string, ChatMessageResource>();
     for (const page of query.pages) {
       for (const message of page.items) byId.set(message.id, message);
     }
-    return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
-  }, [query.pages]);
+    const stored = [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+    const own = sending.filter((it) => it.roomId === roomId);
+    return own.length ? [...stored, ...own] : stored;
+  }, [query.pages, sending, roomId]);
+
+  const sendingIds = useMemo(
+    () => new Set(sending.map((it) => it.id)),
+    [sending],
+  );
 
   /**
    * Write into the newest page, or change a message wherever it is held.
@@ -126,5 +137,47 @@ export const useRoomMessages = (projectId: number, roomId?: string) => {
      * A message this tab just sent, shown before its frame arrives.
      */
     add,
+    /**
+     * Show a message as pending while its send is in flight; returns its
+     * local id, for {@link settle}.
+     */
+    pend: (draft: {
+      roomId: string;
+      authorId?: string;
+      body: string;
+      files: Array<{ id: string; name: string }>;
+    }): string => {
+      const id = crypto.randomUUID();
+      setSending((current) => [
+        ...current,
+        {
+          id,
+          roomId: draft.roomId,
+          createdAt: dateTime.nowISOString(),
+          ...(draft.authorId ? { authorId: draft.authorId } : {}),
+          body: draft.body,
+          mentions: [],
+          references: [],
+          reactions: [],
+          attachments: draft.files.map((file) => ({
+            id: file.id,
+            name: file.name,
+            mimeType: "application/octet-stream",
+            size: 0,
+            url: `/api/files/${file.id}`,
+          })),
+        },
+      ]);
+      return id;
+    },
+    /**
+     * The send answered, either way: the pending copy goes.
+     */
+    settle: (id: string) =>
+      setSending((current) => current.filter((it) => it.id !== id)),
+    /**
+     * The local ids of the pending messages.
+     */
+    sending: sendingIds,
   };
 };

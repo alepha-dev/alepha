@@ -46,11 +46,43 @@ export class RecordingChatLive extends ChatLive {
     message: ChatServerFrame;
   }> = [];
 
+  /**
+   * Set by a spec to hold every send until it resolves, as a slow fan-out
+   * over Durable Objects does on Workers.
+   */
+  public gate?: Promise<void>;
+
   public override async send(
     userIds: string[],
     frame: ChatServerFrame,
   ): Promise<void> {
+    await this.gate;
     this.frames.push({ roomIds: [...new Set(userIds)], message: frame });
+    for (const waiter of this.waiters) waiter();
+  }
+
+  protected readonly waiters = new Set<() => void>();
+
+  /**
+   * Resolves once the `message.created` frame of `messageId` was sent: a
+   * send answers before its frames go (#Q4112).
+   */
+  public created(messageId: string): Promise<void> {
+    const sent = () =>
+      this.frames.some(
+        (it) =>
+          it.message.type === "message.created" &&
+          it.message.message.id === messageId,
+      );
+    if (sent()) return Promise.resolve();
+    return new Promise((resolve) => {
+      const waiter = () => {
+        if (!sent()) return;
+        this.waiters.delete(waiter);
+        resolve();
+      };
+      this.waiters.add(waiter);
+    });
   }
 }
 

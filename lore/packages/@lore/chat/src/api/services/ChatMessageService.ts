@@ -1,6 +1,7 @@
 import { ProjectRoster, ProjectSecurityService } from "@lore/core/api";
 import { $inject, Alepha, z } from "alepha";
 import { FileService } from "alepha/api/files";
+import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $rateLimit } from "alepha/rate-limit";
@@ -47,6 +48,12 @@ export class ChatMessageService {
    */
   protected static readonly NIL = "00000000-0000-0000-0000-000000000000";
 
+  /**
+   * How long the work after a send (frames, the agent's start) may take,
+   * once the sender has their answer.
+   */
+  protected static readonly AFTER_SEND_MS = 30_000;
+
   protected readonly messages = $repository(chatMessages);
   protected readonly mentions = $repository(chatMentions);
   protected readonly reactions = $repository(chatReactions);
@@ -62,6 +69,7 @@ export class ChatMessageService {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly background = $inject(BackgroundTaskProvider);
 
   /**
    * A person's sends, counted per member: 30 a minute. A conversation never
@@ -90,18 +98,21 @@ export class ChatMessageService {
     }
     await this.assertOwnUploads(attachments, userId);
 
-    const limited = await this.sendLimit.consume(userId);
+    // Read at once (#Q4112): on Workers each await is a round trip to D1
+    // or to a Durable Object, and the sender waits for every one of them.
+    const [limited, membership, audience, roster] = await Promise.all([
+      this.sendLimit.consume(userId),
+      this.rooms.membershipOf(room.id, userId),
+      this.audience.of(room),
+      this.roster.of(room.projectId),
+    ]);
     if (!limited.allowed) {
       throw new TooManyRequestsError(
         "Too many messages: at most 30 a minute. Wait a moment and send again.",
       );
     }
 
-    // Writing in an open room joins it: the read state and the notify level
-    // live on the membership row.
-    await this.rooms.join(projectId, roomId, userId);
-
-    const parsed = await this.parse(room, body);
+    const parsed = this.parseFor(body, audience, roster);
     const message = await this.messages.create({
       roomId: room.id,
       authorId: userId,
@@ -109,35 +120,75 @@ export class ChatMessageService {
       references: parsed.references,
       ...(attachments.length ? { attachments } : {}),
     });
-    await this.writeMentions(message, parsed.userIds);
-    for (const agent of parsed.agents) {
-      await this.mentions.create({
-        messageId: message.id,
-        roomId: message.roomId,
-        agent,
-      });
-    }
-    // The author has read what they wrote.
-    await this.markRead(projectId, roomId, userId, message.id);
+    await Promise.all([
+      this.mentions.createMany([
+        ...parsed.userIds.map((mentioned) => ({
+          messageId: message.id,
+          roomId: message.roomId,
+          userId: mentioned,
+        })),
+        ...parsed.agents.map((agent) => ({
+          messageId: message.id,
+          roomId: message.roomId,
+          agent,
+        })),
+      ]),
+      // Writing in an open room joins it, and the author has read what they
+      // wrote: the read state and the notify level live on the membership
+      // row. A private room's writer is already in it.
+      membership
+        ? !membership.lastReadMessageId ||
+          membership.lastReadMessageId < message.id
+          ? this.roomMembers.updateById(membership.id, {
+              lastReadMessageId: message.id,
+            })
+          : undefined
+        : this.roomMembers.create({
+            roomId: room.id,
+            userId,
+            lastReadMessageId: message.id,
+          }),
+    ]);
 
     const [resource] = await this.decorate([message]);
-    await this.live.send(await this.audience.of(room), {
-      type: "message.created",
-      projectId,
-      roomId: room.id,
-      message: resource!,
-    });
+    // The sender's answer is the stored message. The frames to every reader
+    // (one Durable Object call per member on Workers, seconds in all) and
+    // the `@lore` run (#Q3930) go after the response, in this order, so the
+    // agent's answer never reaches a reader before the message it answers.
+    // Own signal: the request's is aborted when the sender's tab closes,
+    // and the room must hear of a message that was stored.
+    const joined = !membership;
+    this.background.defer(() =>
+      this.alepha.context.run(
+        async () => {
+          if (joined) {
+            await this.live.send(audience, {
+              type: "room.changed",
+              projectId,
+              roomId: room.id,
+            });
+          }
+          await this.live.send(audience, {
+            type: "message.created",
+            projectId,
+            roomId: room.id,
+            message: resource!,
+          });
+          // Only a member's message starts a run: an agent's never reaches
+          // `send`.
+          if (user && parsed.agents.length > 0) {
+            await this.alepha
+              .inject(ChatAgentRunner)
+              .start(room, message, user, parsed.agents[0]!);
+          }
+        },
+        { signal: AbortSignal.timeout(ChatMessageService.AFTER_SEND_MS) },
+      ),
+    );
     // Who was named and is away hears of it (#Q3931).
     this.alepha
       .inject(ChatMentionNotifier)
       .notify(room, message, userId, parsed.userIds);
-    // `@lore` asks the agent, as the member who wrote it (#Q3930). Only a
-    // member's message starts a run: an agent's never reaches `send`.
-    if (user && parsed.agents.length > 0) {
-      await this.alepha
-        .inject(ChatAgentRunner)
-        .start(room, message, user, parsed.agents[0]!);
-    }
     return { message: resource!, mentioned: parsed.userIds };
   }
 
@@ -505,13 +556,25 @@ export class ChatMessageService {
   }
 
   protected async parse(room: ChatRoom, body: string) {
-    const audience = new Set(await this.audience.of(room));
-    const roster = (await this.roster.of(room.projectId)).filter((it) =>
-      audience.has(it.userId),
-    );
+    const [audience, roster] = await Promise.all([
+      this.audience.of(room),
+      this.roster.of(room.projectId),
+    ]);
+    return this.parseFor(body, audience, roster);
+  }
+
+  /**
+   * Resolve a body's mentions against the members who can see the room.
+   */
+  protected parseFor(
+    body: string,
+    audience: string[],
+    roster: Awaited<ReturnType<ProjectRoster["of"]>>,
+  ) {
+    const allowed = new Set(audience);
     return this.parser.parse(
       body,
-      roster,
+      roster.filter((it) => allowed.has(it.userId)),
       this.alepha.inject(ChatResponderRegistry).names(),
     );
   }

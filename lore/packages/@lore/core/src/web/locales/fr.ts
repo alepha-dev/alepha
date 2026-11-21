@@ -641,6 +641,7 @@ export default {
   "chat.message.deleted": "Ce message a été supprimé.",
   "chat.message.removedMember": "Membre retiré",
   "chat.message.edited": "(modifié)",
+  "chat.message.sending": "Envoi…",
   "chat.message.older": "Les messages plus anciens se chargent en remontant.",
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message dans #$1",

@@ -24,6 +24,10 @@ import ChatAgentAnswer from "./ChatAgentAnswer.tsx";
 
 export interface ChatMessageRowProps {
   message: ChatMessageResource;
+  /**
+   * Sent by this tab, not answered yet (#Q4112): dimmed, with no actions.
+   */
+  pending?: boolean;
   author: string;
   user?: ProjectUser;
   /**
@@ -127,6 +131,7 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
   };
 
   const actions =
+    !props.pending &&
     !message.deletedAt &&
     draft === undefined &&
     (props.canEdit || props.canDelete || !!props.onReact);
@@ -135,7 +140,10 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
     <li
       data-testid="chat-message"
       data-mentions-me={props.mentionsMe ? "true" : undefined}
+      data-pending={props.pending ? "true" : undefined}
+      aria-busy={props.pending || undefined}
       className={cn(
+        props.pending && "opacity-60",
         "group hover:bg-foreground/7 focus-within:bg-foreground/7 has-[[data-popup-open]]:bg-foreground/7 relative flex gap-2.5 px-3.5 py-0.5",
         !props.continued && "mt-2",
         props.mentionsMe &&
@@ -166,10 +174,16 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
                 {tr("chat.agent.tag")}
               </Badge>
             )}
-            <TimeAgo
-              value={message.createdAt}
-              className="text-muted-foreground text-[11px]"
-            />
+            {props.pending ? (
+              <span className="text-muted-foreground text-[11px]">
+                {tr("chat.message.sending")}
+              </span>
+            ) : (
+              <TimeAgo
+                value={message.createdAt}
+                className="text-muted-foreground text-[11px]"
+              />
+            )}
           </div>
         )}
         {message.agent && props.agent && (
