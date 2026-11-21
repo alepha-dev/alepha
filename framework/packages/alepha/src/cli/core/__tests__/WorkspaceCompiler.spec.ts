@@ -43,7 +43,7 @@ class CompilingShell extends MemoryShellProvider {
  *
  * It used to be `alepha build --compile`, a build option that reached back to
  * constrain `target`. Standalone it is three sentences: take the bun slice,
- * embed `public/`, emit a binary — and these cases are the same ones that
+ * embed `public/`, emit a binary. These cases are the same ones that
  * covered the task, moved across.
  */
 describe("WorkspaceCompiler", () => {
@@ -148,7 +148,7 @@ describe("WorkspaceCompiler", () => {
    * ⚠️ The one failure this task must never handle gracefully.
    *
    * The node slice runs under Bun, so compiling it would succeed and produce a
-   * working binary — built from the generic bundle, with every Bun-native API
+   * working binary, built from the generic bundle, with every Bun-native API
    * and every dependency the bun conditions exist to drop still inside it. A
    * binary that works is the worst outcome available, because nothing ever
    * says the wrong slice was taken.
@@ -364,7 +364,6 @@ describe("WorkspaceCompiler", () => {
     const { fs, shell, task } = await createTestEnv();
     const entry = "/project/dist/index.bun.js";
     const before = fs.getFileContent(entry);
-    const command = [...shell.calls];
     shell.errors.set(
       `bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=${task.defaultBunTarget()} --minify --outfile=notepad index.bun.js`,
       "bun build failed",
@@ -372,7 +371,6 @@ describe("WorkspaceCompiler", () => {
 
     await expect(task.compile(bare)).rejects.toThrow(/bun build failed/);
 
-    expect(command).toEqual([]);
     expect(fs.getFileContent(entry)).toBe(before);
     expect(await fs.exists("/project/node_modules/.alepha/compile-stage")).toBe(
       false,

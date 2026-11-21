@@ -77,7 +77,9 @@ export class AssetWalker {
 
   /**
    * Every file under `root`, relative to it with `/` separators, sorted, with
-   * {@link EXCLUDES} left out. Directories are not listed.
+   * {@link EXCLUDES} left out. Directories are not listed, and neither is
+   * anything under a dot entry (`.well-known/`), which the listing skips and
+   * the tar of `alepha pack` keeps.
    *
    * An absent `root` answers an empty list: a build with no `public/` has no
    * assets, which is not an error.

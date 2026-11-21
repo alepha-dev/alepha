@@ -31,9 +31,6 @@ export class BuildCloudflareTask extends BuildTask {
   protected readonly cloudflareEmail = $inject(CloudflareEmailDetector);
   protected readonly cloudflareAi = $inject(CloudflareAiDetector);
 
-  // Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
-  // here because the CF provider isn't on the node barrel).
-  protected readonly websocketDoBinding = "ALEPHA_WEBSOCKET";
   protected hosts: ActorHostDeclaration[] = [];
   protected readonly hostCollection = $inject(ActorHostCollection);
   protected readonly durableObjectConfig = $inject(DurableObjectConfig);
@@ -61,22 +58,22 @@ export class BuildCloudflareTask extends BuildTask {
     "// Changes to this file will be lost when the code is regenerated.\n";
 
   /**
-   * Whether the workspace registers any `$websocket` OR `$room` primitive  -
+   * Whether the workspace registers any `$websocket` OR `$room` primitive:
    * both ride the same worker upgrade branch and the same
    * `AlephaWebSocketDurableObject`, so a rooms-only app needs the exact same
-   * wiring. Gates `enhanceDurableObjects`  -  resolved in `generateCloudflare`
+   * wiring. Gates `enhanceDurableObjects`. Resolved in `generateCloudflare`
    * from either `ctx.manifest` (prebuilt/manifest mode) or a live
    * `ctx.alepha` probe.
    */
   protected hasWebSocket = false;
 
   /**
-   * Registered realtime channel paths (e.g. `/ws/chat`)  -  the dedup'd union
-   * of every `$websocket` and `$room` channel  -  resolved in
+   * Registered realtime channel paths (e.g. `/ws/chat`), the dedup'd union
+   * of every `$websocket` and `$room` channel, resolved in
    * `generateCloudflare` alongside `hasWebSocket`. From a live `ctx.alepha`
    * probe, or from `ctx.manifest.websocketPaths` in prebuilt/manifest mode
    * (see `BuildManifestTask`, which captures the same paths at artifact-build
-   * time so the manifest-only deploy path  -  Lore Deploy `--prebuilt`  -
+   * time so the manifest-only deploy path (Lore Deploy `--prebuilt`)
    * doesn't need a live Alepha to introspect). Baked into the worker entry
    * point's upgrade-routing guard so only requests to a known channel path
    * are forwarded to the room Durable Object.
@@ -90,20 +87,8 @@ export class BuildCloudflareTask extends BuildTask {
   protected pageEdge?: Record<string, any>;
 
   async run(ctx: BuildTaskContext): Promise<void> {
-    /*
-      Triggered by a workerd SLICE, not by `--target=cloudflare`.
-
-      The target only ever meant "link for workerd", and once the runtimes are
-      declared directly it says the same thing twice. More to the point, a
-      `--runtime node,workerd` build cannot use the target at all  -  it names
-      one destination and the build has two slices  -  so gating on it would make
-      the multi-slice artifact the one case that never gets a `wrangler.jsonc`,
-      which is exactly the case the whole epic exists for.
-
-      Backwards compatible in the direction that matters: `--target=cloudflare`
-      still resolves to a workerd slice, so a build that generated wrangler
-      config before still does.
-    */
+    // Triggered by a workerd SLICE: any build that declares one gets a
+    // `wrangler.jsonc`, a `--runtime node,workerd` build included.
     if (!this.slices.fromOptions(ctx.options).includes("workerd")) {
       return;
     }
@@ -139,34 +124,35 @@ export class BuildCloudflareTask extends BuildTask {
     distDir: string,
   ): Promise<void> {
     const root = ctx.root;
-    // Slugify the dir basename  -  wrangler rejects names that aren't
+    // Slugify the dir basename: wrangler rejects names that aren't
     // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
     // Without this, running `alepha build --runtime=workerd` in a dir like
     // `My App` or `acme-0.0.2` produces an unusable `wrangler.jsonc`.
     //
     // This is a build-time PLACEHOLDER, not the deployed worker name. A
-    // build is environment-agnostic  -  the same artifact ships to staging
-    // and production  -  so the real name is only resolved at deploy time
+    // build is environment-agnostic (the same artifact ships to staging
+    // and production), so the real name is only resolved at deploy time
     // by `naming.worker()`, as `<name>-<environment>`.
     //
     // Consequence worth knowing: pointing wrangler at this config picks
     // the wrong worker and reports a baffling "Worker does not exist".
     // Use the name printed by `alepha deploy`, e.g.
     // `wrangler tail my-app-production`. The file cannot carry a comment
-    // saying so  -  example-ssr's build-artifacts spec pins it as strict
+    // saying so: example-ssr's build-artifacts spec pins it as strict
     // JSON-parseable.
     const name = this.basename(root)
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 63);
+    const publicDir = ctx.options.output?.public ?? "public";
     const hasAssets = await this.fs.exists(
-      this.fs.join(root, distDir, ctx.options.output?.public ?? "public"),
+      this.fs.join(root, distDir, publicDir),
     );
 
     // In prebuilt mode the workspace's `alepha.config.ts` is never loaded, so
     // `ctx.options` carries CLI flags only. The manifest is the artifact's
-    // memory of what the author actually declared  -  read it there, or this
+    // memory of what the author actually declared: read it there, or this
     // deploy quietly regenerates `wrangler.jsonc` with the defaults and
     // overwrites a correct file with a worse one.
     const appConfig =
@@ -205,12 +191,12 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceRequestSignal(wrangler);
 
     if (hasAssets) {
-      // Merged, not `??=`. The app only ever wants to add a key  -
-      // `not_found_handling`, `run_worker_first`  -  and an all-or-nothing
+      // Merged, not `??=`. The app only ever wants to add a key
+      // (`not_found_handling`, `run_worker_first`), and an all-or-nothing
       // replace made it restate `directory` and `binding` to do so, which is
       // a silent footgun: forget `binding` and `env.ASSETS` is simply gone.
       wrangler.assets = {
-        directory: "./public",
+        directory: `./${publicDir}`,
         binding: "ASSETS",
         ...wrangler.assets,
       };
@@ -218,7 +204,7 @@ export class BuildCloudflareTask extends BuildTask {
 
     this.enhanceObservability(ctx, wrangler);
 
-    // Manifest/prebuilt mode: ctx.alepha is a null cast (see BuildCommand),
+    // Manifest/prebuilt mode: ctx.alepha is a null cast (see BuildPipeline),
     // so read the resource flag captured at artifact-build time instead of
     // probing a live instance.
     if (ctx.manifest) {
@@ -242,7 +228,7 @@ export class BuildCloudflareTask extends BuildTask {
         // Union of both realtime primitives: a `$room` registers on its
         // `$channel` path exactly like a `$websocket`, and a rooms-only app
         // (no `$websocket` at all) still needs the upgrade branch, the DO
-        // binding and the DO class export. Dedup'd  -  a `$room` may share its
+        // binding and the DO class export. Dedup'd: a `$room` may share its
         // channel with a `$websocket` on the same path.
         const realtimePrimitives = [
           ...ctx.alepha.primitives("$websocket"),
@@ -287,7 +273,7 @@ export class BuildCloudflareTask extends BuildTask {
     );
 
     // `dist/manifest.json` is written by BuildManifestTask, which runs for
-    // every target  -  the manifest describes the app, not the destination.
+    // every target: the manifest describes the app, not the destination.
     await this.writeWorkerEntryPoint(root, distDir);
   }
 
@@ -546,7 +532,7 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   protected discoverCrons(ctx: BuildTaskContext): string[] {
-    // `CronProvider` is the single registry of cron expressions  -  every
+    // `CronProvider` is the single registry of cron expressions: every
     // `$job({ cron })` lands there. This used to bail early unless a
     // `scheduler` primitive existed, which would emit zero cron triggers
     // for an app whose scheduled work is all `$job`.
@@ -595,9 +581,9 @@ export class BuildCloudflareTask extends BuildTask {
     const binding = BuildCloudflareTask.D1_BINDING;
     // No `jurisdiction` here: unlike r2_buckets, the wrangler D1 binding schema
     // has no jurisdiction field (it warns on the unexpected key). D1 data
-    // residency is fixed when the database is created  -  see
-    // CloudflareProvisionClient.ensureD1  -
-    // and the binding just references it by `database_id`.
+    // residency is fixed when the database is created (see
+    // CloudflareProvisionClient.ensureD1), and the binding just references
+    // it by `database_id`.
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({
       binding,
@@ -670,7 +656,7 @@ export class BuildCloudflareTask extends BuildTask {
    * `CLOUDFLARE_ANALYTICS_DATASET`.
    *
    * A write-only, fire-and-forget sink: `env.ANALYTICS.writeDataPoint({...})`
-   * returns nothing and is not awaited  -  the runtime writes in the
+   * returns nothing and is not awaited: the runtime writes in the
    * background. Reading it back is **not** this binding's job and cannot be:
    * queries go over the account-scoped SQL API at
    * `api.cloudflare.com/…/analytics_engine/sql`, which is plain HTTP with a
@@ -678,7 +664,7 @@ export class BuildCloudflareTask extends BuildTask {
    * and a Worker that also reads needs two credentials that have nothing to do
    * with each other.
    *
-   * The dataset does not have to be created first  -  Cloudflare provisions it
+   * The dataset does not have to be created first: Cloudflare provisions it
    * on the first data point, which is why there is no id here to pair with the
    * name, unlike KV or D1.
    */
@@ -735,7 +721,7 @@ export class BuildCloudflareTask extends BuildTask {
 
     // The worker's queue handler calls `msg.retry()` on any throw. Cloudflare
     // only gives a failing message somewhere to land if the consumer declares a
-    // `dead_letter_queue`  -  otherwise it burns `max_retries` and DISCARDS the
+    // `dead_letter_queue`; otherwise it burns `max_retries` and DISCARDS the
     // message, with no record and no signal. CF creates the DLQ on demand, so a
     // derived default is safe.
     // `Number("")` is 0, which would silently disable retries when the
@@ -835,7 +821,7 @@ export class BuildCloudflareTask extends BuildTask {
 
     // NOTE: do NOT set `destination_address` here. On a Cloudflare
     // `send_email` binding, `destination_address` is a *recipient* allow-list
-    // lock (the worker may then only send TO that one address)  -  it is not the
+    // lock (the worker may then only send TO that one address): it is not the
     // sender. Setting it to `EMAIL_FROM` (the sender) broke all outbound mail:
     // a bare address locked delivery to that single recipient ("email to … not
     // allowed"), and a display-name form like `Lore <noreply@…>` is a malformed
@@ -1047,7 +1033,7 @@ const pageEdgeFresh = async (cache, key, at) => {
           headers: new Headers(request.headers),
         });
         // Strip any client-forged x-alepha-ws-* before setting the trusted
-        // values  -  these headers are the worker->DO identity contract.
+        // values: these headers are the worker->DO identity contract.
         forward.headers.delete("x-alepha-ws-channel");
         forward.headers.delete("x-alepha-ws-room");
         forward.headers.delete("x-alepha-ws-conn");
@@ -1078,7 +1064,7 @@ __alepha.set("cloudflare.tracing", __cloudflareWorkers.tracing);
 //
 // It must be the async context, never the shared store: one isolate serves
 // concurrent invocations, so a store slot would let request B overwrite
-// request A's handle  -  A's background work would then call B's already-returned
+// request A's handle: A's background work would then call B's already-returned
 // context ("waitUntil after response") and be silently dropped.
 const withExecutionContext = (executionCtx, fn) => {
   const waitUntil =
@@ -1235,7 +1221,7 @@ const writeBookmarkCookie = (response, bookmark) => {
 };
 
 // A shared entry is keyed by URL ALONE. Anything the caller's identity could
-// have influenced must stay out however loudly the route opts in  -  hence the
+// have influenced must stay out however loudly the route opts in, hence the
 // request-side credential check, which no Cache-Control directive can override.
 const isEdgeCacheable = (request, response) => {
   if (request.method !== "GET") return false;
@@ -1255,7 +1241,7 @@ export default {
 
     // Before \`__alepha.start()\`, deliberately. A hit that still paid for the
     // container boot would leave the expensive half of a cold request exactly
-    // where it was  -  that boot is what separates a 60ms warm response from a
+    // where it was: that boot is what separates a 60ms warm response from a
     // 700-990ms cold one. Consulting the cache for every GET is safe because
     // only \`isEdgeCacheable\` responses are ever written to it.
     const cache = edgeCache();

@@ -15,7 +15,7 @@ class TestBuildManifestTask extends BuildManifestTask {
 }
 
 /**
- * Minimal fake of the workspace's live `ctx.alepha`  -  only `primitives` is
+ * Minimal fake of the workspace's live `ctx.alepha`: only `primitives` is
  * exercised meaningfully; every other lookup `writeManifest` makes (`inject`,
  * `dump`) is wrapped in try/catch there, so a throwing stub is enough to
  * exercise the "resource absent" paths without a real Alepha instance.
@@ -37,7 +37,7 @@ const fakeAlepha = {
 };
 
 /**
- * Same fake, but with the primitive answers parameterized per name  -  for the
+ * Same fake, but with the primitive answers parameterized per name, for the
  * `$websocket` / `$room` union cases.
  */
 const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
@@ -63,7 +63,7 @@ const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
   }) as any;
 
 /**
- * Same fake, but answering `dump()` with a declared env surface  -  the shape
+ * Same fake, but answering `dump()` with a declared env surface: the shape
  * `writeManifest` reads to fill `env` and `secrets`.
  */
 const fakeAlephaWithEnv = (env: Record<string, { secret?: boolean }>) =>
@@ -171,7 +171,7 @@ describe("BuildManifestTask", () => {
     /**
      * A `$room` rides the same worker upgrade branch and the same Durable
      * Object as a `$websocket`, so an app whose realtime layer is rooms-only
-     * must still record `hasWebSocket` + its channel paths  -  otherwise the
+     * must still record `hasWebSocket` + its channel paths; otherwise the
      * `--prebuilt` deploy path emits a worker with no WebSocket wiring.
      */
     it("unions $room channel paths into websocketPaths", async () => {

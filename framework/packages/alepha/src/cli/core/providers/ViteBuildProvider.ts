@@ -24,7 +24,7 @@ export class ViteBuildProvider {
    * Whether the app declares a browser entry of its own.
    *
    * `!== server` is load-bearing. `browser` is not left empty for a
-   * server-only app — it resolves to the SERVER entry — so a bare truthiness
+   * server-only app: it resolves to the SERVER entry, so a bare truthiness
    * check is true for every app in the repo. The first version of this did
    * exactly that, and every server-only app started trying to bundle its
    * controllers for the browser: `"$action" is not exported by
@@ -45,7 +45,7 @@ export class ViteBuildProvider {
     //
     // The probe below only reports whether the server-side analysis happened to
     // instantiate `ReactServerProvider`, which depends on when the router was
-    // registered — an app that composes it asynchronously (an `await import()`
+    // registered: an app that composes it asynchronously (an `await import()`
     // of its page tree) finishes analysis without it. The build then completes,
     // reports success, and ships with no client bundle and no public assets.
     // Found in an app that does exactly that.

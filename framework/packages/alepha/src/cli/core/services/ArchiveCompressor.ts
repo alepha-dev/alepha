@@ -11,7 +11,7 @@ import { constants as zlibConstants, createZstdCompress } from "node:zlib";
  * It is the one step of `alepha pack` that cannot go through
  * `FileSystemProvider`: a zstd stream operates on real descriptors, and its
  * input is a tar a real `tar` binary just wrote. So a spec running against
- * `MemoryShellProvider` — where no tar was ever produced — has nothing for it
+ * `MemoryShellProvider`, where no tar was ever produced, has nothing for it
  * to read, and every spec that drives the packer to assert a shell command
  * would fail on a step it is not about.
  *

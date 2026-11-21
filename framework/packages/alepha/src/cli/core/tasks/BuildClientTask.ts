@@ -12,7 +12,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  *
  * Compiles the browser/client code for production,
  * including code splitting and minification.
- * Analyze step stays in BuildCommand (ViteBuildProvider).
+ * Analyze step stays in BuildPipeline (ViteBuildProvider).
  * This task wraps only the actual Vite client build call.
  */
 export class BuildClientTask extends BuildTask {
@@ -166,7 +166,7 @@ export class BuildClientTask extends BuildTask {
         ],
       },
       // Deliberately NOT set here. Vite's own `build()` auto-loads the app's
-      // vite.config.ts and merges it under this inline config — an inline
+      // vite.config.ts and merges it under this inline config: an inline
       // scalar wins over the loaded file on the same key, so hardcoding
       // `publicDir: "public"` used to silently discard an app-configured
       // `publicDir` (e.g. a monorepo app whose static assets live in a

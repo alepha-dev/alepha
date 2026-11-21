@@ -61,10 +61,10 @@ export class AlephaCliUtils {
    * drizzle-kit).
    *
    * The CLI runs the result via `node <path>` so the toolchain works under
-   * every package manager — including pnpm with a strict node-linker, where
+   * every package manager, including pnpm with a strict node-linker, where
    * a transitive dependency's bin is NOT hoisted into the project's
    * `node_modules/.bin`. Resolution starts from `alepha`'s own location, so
-   * the version is whatever `alepha` shipped — the project never pins it.
+   * the version is whatever `alepha` shipped: the project never pins it.
    *
    * @param pkg - npm package name (e.g. `"typescript"`)
    * @param binName - which `bin` entry to use (e.g. `"tsc"`); defaults to the
@@ -117,7 +117,7 @@ export class AlephaCliUtils {
 
     // Locate the package root by scanning the `node_modules` directories
     // Node would search, then reading `package.json` from disk directly.
-    // We deliberately avoid `require.resolve("<pkg>/package.json")` — a
+    // We deliberately avoid `require.resolve("<pkg>/package.json")`: a
     // strict `exports` map (e.g. drizzle-kit) blocks that subpath.
     for (const nm of require.resolve.paths(pkg) ?? []) {
       const candidate = join(nm, pkg);
@@ -127,7 +127,7 @@ export class AlephaCliUtils {
     }
 
     throw new AlephaError(
-      `Cannot locate package '${pkg}' — is it installed alongside alepha?`,
+      `Cannot locate package '${pkg}'. Is it installed alongside alepha?`,
     );
   }
 

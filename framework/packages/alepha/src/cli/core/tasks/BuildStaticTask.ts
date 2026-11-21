@@ -5,13 +5,17 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { SbomBuilder } from "../services/SbomBuilder.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
  * Generate a static site output.
  *
- * Ensures index.html, 200.html, and 404.html exist in the client directory,
- * then removes all server artifacts from dist, keeping only the public directory.
+ * A site gets `index.html`, `200.html`, `404.html`, `CNAME` and, when the app
+ * declares a browser env key, `config.js` in the client directory; an app
+ * shell gets `index.html` alone. Either way the server artifacts are then
+ * removed from dist, which keeps the client directory, `manifest.json` and
+ * the SBOM.
  */
 export class BuildStaticTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
@@ -95,16 +99,6 @@ export class BuildStaticTask extends BuildTask {
   }
 
   /**
-   * Write an app shell's `index.html`: the application's document with an
-   * empty root, and nothing else.
-   *
-   * No page is rendered, so no loader runs: a shell build needs no API, and a
-   * page's data would be stripped from the shell anyway. The document still
-   * goes through the server template, so global `$head` entries (language,
-   * viewport, theme script) and the entry assets are what a rendered page
-   * would carry.
-   */
-  /**
    * `config.js`: the `browser: true` keys of the env with their build-time
    * values, one global every emitted HTML file loads before the entry. A
    * host replaces this one file per environment (one build, many
@@ -140,6 +134,16 @@ export class BuildStaticTask extends BuildTask {
    */
   public static readonly BROWSER_CONFIG_FILE = "config.js";
 
+  /**
+   * Write an app shell's `index.html`: the application's document with an
+   * empty root, and nothing else.
+   *
+   * No page is rendered, so no loader runs: a shell build needs no API, and a
+   * page's data would be stripped from the shell anyway. The document still
+   * goes through the server template, so global `$head` entries (language,
+   * viewport, theme script) and the entry assets are what a rendered page
+   * would carry.
+   */
   protected async renderShell(
     ctx: BuildTaskContext,
     publicDir: string,
@@ -170,8 +174,8 @@ export class BuildStaticTask extends BuildTask {
    * Copy a client the workspace built itself into the client directory.
    *
    * Everything else this task can ship, Alepha rendered: its own Vite client
-   * build, or a `$page` at `/`. A site built by anything else — a hand-written
-   * `index.html` through plain Vite, an Astro export, a docs generator — had no
+   * build, or a `$page` at `/`. A site built by anything else (a hand-written
+   * `index.html` through plain Vite, an Astro export, a docs generator) had no
    * way in, because the build cleans `dist/` before any task runs, so filling
    * `dist/public` first only got it deleted. Bay can host a site with no
    * process behind it; without this there was no way to produce one.
@@ -191,13 +195,13 @@ export class BuildStaticTask extends BuildTask {
     }
 
     // `join` would quietly turn an absolute path into a relative one appended
-    // to the root — `/tmp/site` becoming `<root>/tmp/site`, a directory that
+    // to the root: `/tmp/site` becoming `<root>/tmp/site`, a directory that
     // does not exist, reported as a source the author "did not build".
     const from = isAbsolute(source) ? source : this.fs.join(ctx.root, source);
     const dist = this.fs.join(ctx.root, distDir);
     if (from === dist || from.startsWith(`${dist}/`)) {
       throw new AlephaError(
-        `static.source "${source}" is inside ${distDir}/, which this build deletes before any task runs — the files would be gone by the time they are read. Point it outside dist/ (e.g. "dist-client") so the client build survives the clean.`,
+        `static.source "${source}" is inside ${distDir}/, which this build deletes before any task runs: the files would be gone by the time they are read. Point it outside dist/ (e.g. "dist-client") so the client build survives the clean.`,
       );
     }
 
@@ -276,11 +280,18 @@ export class BuildStaticTask extends BuildTask {
    * detail: this task runs AFTER `BuildManifestTask`, so removing everything
    * but `public/` deleted the artifact contract itself. A static build then
    * packed into an archive that every deploy consumer rejects with "read
-   * manifest: no such file" — a failure that names the missing file but not the
-   * task that removed it.
+   * manifest: no such file", a failure that names the missing file but not the
+   * task that removed it. `sbom.cdx.json` is kept for the same reason:
+   * `BuildSbomTask` wrote it before this task ran.
    */
   protected async cleanDist(distDir: string, clientDir: string): Promise<void> {
-    const keep = new Set([clientDir, "manifest.json"]);
+    const keep = new Set([
+      // `ls` answers top-level names: a nested `output.public` is kept by its
+      // first segment.
+      clientDir.split(/[\\/]/).find((part) => part !== "" && part !== "."),
+      "manifest.json",
+      SbomBuilder.FILE,
+    ]);
     const entries = await this.fs.ls(distDir);
     for (const entry of entries) {
       if (!keep.has(entry)) {

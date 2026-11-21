@@ -459,12 +459,12 @@ export class WorkspaceCompiler {
    * ⚠️ **It has to be every one, not just the compiled slice.** Compiling
    * consumes `dist/`: `server/` and `public/` both go, because the binary
    * carries them. A sibling `index.node.js` left behind then imports a
-   * `server/node/` that is no longer there — a file that looks runnable,
+   * `server/node/` that is no longer there: a file that looks runnable,
    * is not, and fails at `node index.node.js` with a resolution error rather
    * than anything naming the compile that removed its chunks.
    *
    * The manifest is the discovery mechanism for slices, so it is what is read.
-   * Missing or incompatible manifests are refused before compilation.
+   * A missing or incompatible manifest is refused.
    */
   protected async declaredRuntimes(dist: string): Promise<BuildRuntime[]> {
     const manifest = await this.manifestReader.read(
@@ -479,7 +479,7 @@ export class WorkspaceCompiler {
    * Refuse a `dist/` with no bun slice, by name.
    *
    * ⚠️ **Never a fallback to whatever slice is there.** The node slice runs
-   * under Bun, so compiling it would succeed and produce a working binary —
+   * under Bun, so compiling it would succeed and produce a working binary,
    * built from the generic bundle, with every Bun-native API and every
    * dependency the bun conditions exist to drop still in it. A binary that
    * works is the worst possible failure here, because nothing ever says the
@@ -580,7 +580,7 @@ export class WorkspaceCompiler {
     publicDir: string,
     runtimes: BuildRuntime[],
   ): Promise<void> {
-    // `server/` whole, and EVERY slice's entry wrapper — not just the compiled
+    // `server/` whole, and EVERY slice's entry wrapper, not just the compiled
     // one. A multi-slice build that also compiles leaves the other slices
     // beside the binary otherwise: megabytes of bundle the binary already
     // carries, and an `index.node.js` an operator could plausibly run instead

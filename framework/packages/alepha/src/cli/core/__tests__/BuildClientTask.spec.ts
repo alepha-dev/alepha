@@ -84,7 +84,10 @@ describe("BuildClientTask", () => {
 
     await task.run(createContext({ dist: "build", public: "static" }));
 
-    expect(fs.wasWritten("build/static/.vite/manifest.json")).toBe(true);
+    // The manifest names the entry where it ends up, not where Vite read it.
+    expect(
+      JSON.parse(fs.getFileContent("build/static/.vite/manifest.json") ?? "{}"),
+    ).toEqual({ "index.html": { file: "e.js" } });
     expect(await fs.exists("build/static/index.html")).toBe(true);
   });
 

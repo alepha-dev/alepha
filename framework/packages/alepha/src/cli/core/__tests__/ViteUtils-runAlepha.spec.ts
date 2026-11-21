@@ -30,7 +30,7 @@ class FakeViteUtils extends ViteUtils {
 
 const entry: AppEntry = { root: "/app", server: "src/main.server.ts" };
 
-describe("ViteUtils — the server behind runAlepha", () => {
+describe("ViteUtils: the server behind runAlepha", () => {
   it("should keep the client dependency optimizer off", async () => {
     /*
       The regression this exists for.

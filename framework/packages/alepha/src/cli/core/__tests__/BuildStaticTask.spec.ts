@@ -31,6 +31,13 @@ const fakeAlepha = {
   },
 } as any;
 
+/**
+ * Exposes the protected clean, the one step of the task that deletes.
+ */
+class TestBuildStaticTask extends BuildStaticTask {
+  public testCleanDist = this.cleanDist.bind(this);
+}
+
 describe('a static build, declared as runtime: ["static"]', () => {
   const createManifestTask = () => {
     const alepha = Alepha.create().with({
@@ -75,7 +82,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
       expect(readManifest(fs).runtimes[0].runtimeVersion).toBeUndefined();
     });
 
-    it("still records node for a bare build", async () => {
+    it("still records node for a node build", async () => {
       const { task, fs } = createManifestTask();
 
       await task.testWriteManifest(contextFor({ runtime: "node" }), "dist");
@@ -86,8 +93,8 @@ describe('a static build, declared as runtime: ["static"]', () => {
 
   describe("adopting a client the app built itself", () => {
     /*
-      Bay can host a site with no process behind it. This target is the only
-      thing that produces one  -  and until now it could only ship what Alepha
+      Bay can host a site with no process behind it. This build is the only
+      thing that produces one, and until now it could only ship what Alepha
       itself rendered: its own Vite client build, or a `$page` at `/`. A site
       built by anything else (a hand-written `index.html` through plain Vite,
       an Astro export, a docs generator) had no way in, because `alepha build`
@@ -158,7 +165,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
     });
 
     it("takes an absolute source as written", async () => {
-      // `join(root, "/elsewhere/site")` yields `<root>/elsewhere/site`  -  a
+      // `join(root, "/elsewhere/site")` yields `<root>/elsewhere/site`: a
       // directory that does not exist, reported as a client the author never
       // built, for a path they gave correctly.
       const fs = await runStaticTask("/elsewhere/site", async (fs) => {
@@ -172,7 +179,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
     it("refuses a source inside dist, which the build has already deleted", async () => {
       /*
         The trap worth naming: `dist/public` is the obvious place to point a
-        client build at, and it is the one place that cannot work  -  the clean
+        client build at, and it is the one place that cannot work: the clean
         step removes it before this task ever runs. Left to the copy, the
         error would be a bare ENOENT on a path the author did write, which
         reads as "my build didn't run" rather than "it ran and was deleted".
@@ -192,7 +199,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
 
     it("refuses a source with no index.html", async () => {
       // Otherwise the failure surfaces further down as ENOENT on
-      // `dist/public/index.html`  -  a path the author never wrote.
+      // `dist/public/index.html`: a path the author never wrote.
       await expect(
         runStaticTask("dist-client", async (fs) => {
           await fs.mkdir("/root/my-app/dist-client");
@@ -209,7 +216,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
     it("emits the sidecars the proxy looks for", async () => {
       /*
         Bay serves a `.br`/`.gz` sidecar when the request carries a matching
-        Accept-Encoding, rather than recompressing per request  -  the build is
+        Accept-Encoding, rather than recompressing per request: the build is
         expected to have emitted them.
 
         `BuildCompressTask` skipped on `!hasClient`, which is exactly what an
@@ -249,49 +256,82 @@ describe('a static build, declared as runtime: ["static"]', () => {
         use: MemoryFileSystemProvider,
       });
       return {
-        task: alepha.inject(BuildStaticTask) as BuildStaticTask & {
-          cleanDist: (dist: string, clientDir: string) => Promise<void>;
-        },
+        task: alepha.inject(TestBuildStaticTask),
         fs: alepha.inject(MemoryFileSystemProvider),
       };
     };
 
-    it("keeps the manifest, which the deploy side cannot work without", async () => {
-      /*
-        The bug this exists for.
-
-        `BuildStaticTask` runs AFTER `BuildManifestTask` in the pipeline and
-        removed every `dist/` entry that was not `public/`  -  so a static build
-        shipped no manifest at all, and `alepha pack` produced an archive Bay
-        rejects with "read manifest: no such file".
-      */
-      const { task, fs } = createStaticTask();
+    /**
+     * A built `dist/`: the manifest, one server slice, and the site under
+     * `clientDir`.
+     */
+    const seedDist = async (
+      fs: MemoryFileSystemProvider,
+      clientDir: string,
+    ) => {
       await fs.writeFile("/root/my-app/dist/manifest.json", "{}");
-      await fs.writeFile("/root/my-app/dist/index.js", "server");
+      await fs.writeFile("/root/my-app/dist/index.node.js", "server");
+      await fs.writeFile("/root/my-app/dist/server/node/app.js", "server");
       await fs.writeFile(
-        "/root/my-app/dist/public/index.html",
+        `/root/my-app/dist/${clientDir}/index.html`,
         "<html></html>",
       );
+    };
 
-      await (task as any).cleanDist("/root/my-app/dist", "public");
+    it("keeps the manifest, which the deploy side cannot work without", async () => {
+      // This task runs after `BuildManifestTask`: a clean that kept the client
+      // directory alone shipped a static build no deploy consumer can read.
+      const { task, fs } = createStaticTask();
+      await seedDist(fs, "public");
 
-      expect(await fs.exists("/root/my-app/dist/manifest.json")).toBe(true);
+      await task.testCleanDist("/root/my-app/dist", "public");
+
+      expect((await fs.ls("/root/my-app/dist")).sort()).toEqual([
+        "manifest.json",
+        "public",
+      ]);
       expect(await fs.exists("/root/my-app/dist/public/index.html")).toBe(true);
     });
 
     it("still removes the server bundle", async () => {
-      // The point of the target: what ships is files, not a process.
+      // The point of a static build: what ships is files, not a process.
       const { task, fs } = createStaticTask();
-      await fs.writeFile("/root/my-app/dist/manifest.json", "{}");
-      await fs.writeFile("/root/my-app/dist/index.js", "server");
-      await fs.writeFile(
-        "/root/my-app/dist/public/index.html",
-        "<html></html>",
+      await seedDist(fs, "public");
+
+      await task.testCleanDist("/root/my-app/dist", "public");
+
+      expect(await fs.exists("/root/my-app/dist/index.node.js")).toBe(false);
+      expect(await fs.exists("/root/my-app/dist/server")).toBe(false);
+    });
+
+    it("keeps the SBOM that build.sbom wrote before this task ran", async () => {
+      const { task, fs } = createStaticTask();
+      await seedDist(fs, "public");
+      await fs.writeFile("/root/my-app/dist/sbom.cdx.json", "{}");
+
+      await task.testCleanDist("/root/my-app/dist", "public");
+
+      expect((await fs.ls("/root/my-app/dist")).sort()).toEqual([
+        "manifest.json",
+        "public",
+        "sbom.cdx.json",
+      ]);
+    });
+
+    it("keeps a site whose output.public is nested", async () => {
+      // `ls` answers top-level names, so `client/www` is kept by `client`.
+      const { task, fs } = createStaticTask();
+      await seedDist(fs, "client/www");
+
+      await task.testCleanDist("/root/my-app/dist", "client/www");
+
+      expect(await fs.exists("/root/my-app/dist/client/www/index.html")).toBe(
+        true,
       );
-
-      await (task as any).cleanDist("/root/my-app/dist", "public");
-
-      expect(await fs.exists("/root/my-app/dist/index.js")).toBe(false);
+      expect((await fs.ls("/root/my-app/dist")).sort()).toEqual([
+        "client",
+        "manifest.json",
+      ]);
     });
   });
 

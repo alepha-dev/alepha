@@ -98,11 +98,17 @@ describe("BuildCloudflareTask", () => {
    */
   const ambient = () => ({}) as BuildTaskContext;
 
-  // Snapshot + restore the env vars these enhancers read so tests don't leak.
+  // Every variable the task reads starts each test unset, whatever the
+  // machine exports, and is put back afterwards.
   const ENV_KEYS = [
     "DATABASE_URL",
+    "POSTGRES_SCHEMA",
+    "HYPERDRIVE_ID",
     "R2_BUCKET_NAME",
     "CLOUDFLARE_JURISDICTION",
+    "CLOUDFLARE_KV_NAME",
+    "CLOUDFLARE_KV_ID",
+    "CLOUDFLARE_SERVICES",
     "CLOUDFLARE_QUEUE_NAME",
     "CLOUDFLARE_QUEUE_DLQ_NAME",
     "CLOUDFLARE_QUEUE_MAX_RETRIES",
@@ -115,7 +121,10 @@ describe("BuildCloudflareTask", () => {
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
-    for (const k of ENV_KEYS) saved[k] = process.env[k];
+    for (const k of ENV_KEYS) {
+      saved[k] = process.env[k];
+      delete process.env[k];
+    }
   });
   afterEach(() => {
     for (const k of ENV_KEYS) {
@@ -239,7 +248,7 @@ describe("BuildCloudflareTask", () => {
   describe("enhanceD1", () => {
     it("does not emit `jurisdiction` on the D1 binding (wrangler rejects it)", async () => {
       // D1 jurisdiction is applied at database-creation time, not on the
-      // binding  -  wrangler warns on the unexpected field. See
+      // binding: wrangler warns on the unexpected field. See
       // CloudflareProvisionClient.ensureD1.
       process.env.DATABASE_URL = "d1://my-db:db-id-123";
       process.env.CLOUDFLARE_JURISDICTION = "eu";
@@ -315,7 +324,7 @@ describe("BuildCloudflareTask", () => {
   describe("enhanceQueue", () => {
     /**
      * The worker's queue handler calls `msg.retry()` on any throw. Without a
-     * `dead_letter_queue`, CF burns its retries and then DISCARDS the message  -
+     * `dead_letter_queue`, CF burns its retries and then DISCARDS the message:
      * a poison job disappears with no record and no signal.
      */
     it("gives the consumer a dead-letter queue and a retry ceiling", () => {
@@ -527,7 +536,7 @@ describe("BuildCloudflareTask", () => {
      * A single CF isolate serves concurrent invocations. Stashing the
      * per-invocation `executionCtx.waitUntil` on the shared Alepha store means
      * request B overwrites request A's, and A's background work then calls B's
-     * (already-returned) context  -  "waitUntil after response"  -  silently
+     * (already-returned) context ("waitUntil after response"), silently
      * killing it. The handle must ride the per-invocation async context.
      */
     it("does not stash waitUntil on the shared global store", async () => {
@@ -535,6 +544,7 @@ describe("BuildCloudflareTask", () => {
 
       await task.testWriteWorkerEntryPoint("/root", "dist");
 
+      expect(fs.wasWritten(ENTRY)).toBe(true);
       expect(
         fs.wasWrittenMatching(
           ENTRY,
@@ -593,10 +603,12 @@ describe("BuildCloudflareTask", () => {
 
         await task.testWriteWorkerEntryPoint("/root", "dist");
 
+        // `anchor` is the request's own cookie: the `readOnPrimary` helper
+        // sets the same key to a constant, which this must not match.
         expect(
           fs.wasWrittenMatching(
             ENTRY,
-            /__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.bookmark["']/,
+            /__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.bookmark["'],\s*anchor\b/,
           ),
         ).toBe(true);
       });
@@ -633,6 +645,7 @@ describe("BuildCloudflareTask", () => {
         // every response the moment an app enabled sessions.
         const source = fs.getFileContent(ENTRY) ?? "";
 
+        expect(source.indexOf("const cacheable =")).toBeGreaterThan(-1);
         expect(source.indexOf("const cacheable =")).toBeLessThan(
           source.indexOf("writeBookmarkCookie(ctx.res"),
         );
@@ -927,6 +940,7 @@ describe("BuildCloudflareTask", () => {
 
         // The whole point: a hit that still paid for __alepha.start() would
         // leave the expensive half of a cold request exactly where it was.
+        expect(source.indexOf("cache.match(request)")).toBeGreaterThan(-1);
         expect(source.indexOf("cache.match(request)")).toBeLessThan(
           source.indexOf("await __alepha.start()"),
         );
@@ -1165,7 +1179,7 @@ describe("BuildCloudflareTask", () => {
 
       /**
        * A `$room` registers on the provider's room registry, not the
-       * `$websocket` endpoint registry  -  `getEndpoint(path)` returns
+       * `$websocket` endpoint registry: `getEndpoint(path)` returns
        * `undefined` for a room-only path, which silently skipped the 401
        * check and let anonymous sockets into a `$room({ secure: true })`.
        */
@@ -1200,7 +1214,7 @@ describe("BuildCloudflareTask", () => {
         );
 
         // A forged inbound `x-alepha-ws-user` header must be deleted before
-        // the trusted value is conditionally set  -  otherwise an anonymous
+        // the trusted value is conditionally set; otherwise an anonymous
         // client on a non-secure endpoint could forge its identity.
         expect(deleteIndex).toBeGreaterThan(-1);
         expect(setIndex).toBeGreaterThan(-1);
@@ -1213,6 +1227,7 @@ describe("BuildCloudflareTask", () => {
 
         await task.testWriteWorkerEntryPoint("/root", "dist");
 
+        expect(fs.wasWritten(ENTRY)).toBe(true);
         expect(
           fs.wasWrittenMatching(ENTRY, /AlephaWebSocketDurableObject/),
         ).toBe(false);
@@ -1224,10 +1239,10 @@ describe("BuildCloudflareTask", () => {
   describe("generateCloudflare (manifest/prebuilt mode)", () => {
     /**
      * In `--prebuilt`/manifest mode there is no live Alepha to probe, so
-     * `websocketPaths` must come from `ctx.manifest` instead  -  otherwise the
+     * `websocketPaths` must come from `ctx.manifest` instead; otherwise the
      * emitted worker's `wsPaths` routing guard stays empty and WebSocket
      * upgrades silently fail to route even though the DO binding and
-     * migration are still emitted (see FIX 3).
+     * migration are still emitted.
      */
     it("resolves websocketPaths from ctx.manifest so the emitted worker's routing guard is populated", async () => {
       const { task, fs } = createTaskWithFs();
@@ -1327,7 +1342,6 @@ describe("BuildCloudflareTask", () => {
     });
 
     it("binds ai under the provider's binding name when the live app registers AlephaAiCloudflare", async () => {
-      const { Alepha } = await import("alepha");
       const { AlephaAiCloudflare } = await import("alepha/ai/cloudflare");
       const app = Alepha.create({ env: { AI_BINDING: "MODELS" } }).with(
         AlephaAiCloudflare,
@@ -1339,7 +1353,6 @@ describe("BuildCloudflareTask", () => {
     });
 
     it("binds nothing for an app without Workers AI, and keeps a declared binding", async () => {
-      const { Alepha } = await import("alepha");
       const task = createTask();
       const none: any = {};
       task.testEnhanceAi({ alepha: Alepha.create() } as any, none);
@@ -1513,11 +1526,27 @@ describe("BuildCloudflareTask", () => {
       });
     });
 
+    it("points the assets at the directory build.output.public names", async () => {
+      const { task, fs } = createTaskWithFs();
+      await fs.mkdir("/root/dist/client", { recursive: true });
+
+      const ctx = contextFor({});
+      ctx.options = { output: { public: "client" } };
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.assets).toEqual({
+        directory: "./client",
+        binding: "ASSETS",
+      });
+    });
+
     /**
      * Prebuilt deploys never load the workspace's `alepha.config.ts`, so the
      * artifact has to remember what it declared. Without this, the build wrote
      * a correct `wrangler.jsonc` and the deploy silently regenerated it with
-     * the defaults  -  no error, and the only symptom was in production.
+     * the defaults: no error, and the only symptom was in production.
      */
     it("recovers the app's cloudflare config from the manifest in prebuilt mode", async () => {
       const { task, fs } = createTaskWithFs();

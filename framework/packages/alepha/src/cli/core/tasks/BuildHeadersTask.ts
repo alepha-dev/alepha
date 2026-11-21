@@ -32,13 +32,12 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * ## Where the author's file comes from
  *
  * From `dist/public/_headers` itself, as Vite or `static.source` left it.
- * `BuildCommand` removes `dist/` before any task runs, so that file can only be
+ * `BuildPipeline` removes `dist/` before any task runs, so that file can only be
  * the author's copy, and reading it there honours an app-configured Vite
  * `publicDir` and an adopted static site with no extra plumbing.
  *
  * Runs after `BuildStaticTask`, which copies an adopted site in, and before
- * `BuildCompressTask` and `BuildCompileTask`: the binary embeds `dist/public`
- * and the directory is deleted.
+ * `BuildCompressTask`.
  */
 export class BuildHeadersTask extends BuildTask {
   /**

@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 
-import type { AppSurface } from "alepha";
+import { Alepha, type AppSurface } from "alepha";
 import { describe, it } from "vitest";
 
 import { LazyControllerPlugin } from "../services/LazyControllerPlugin.ts";
@@ -25,9 +25,16 @@ const surface = (
   ...extra,
 });
 
+/**
+ * Exposes the protected reading of the build list.
+ */
+class TestLazyControllerPlugin extends LazyControllerPlugin {
+  public testLazyable = this.lazyable.bind(this);
+}
+
 const run = (code: string, list: AppSurface) => {
-  const plugin = new LazyControllerPlugin() as any;
-  const plan = plugin.plan(parseAst(code), plugin.lazyable(list));
+  const plugin = Alepha.create().inject(TestLazyControllerPlugin);
+  const plan = plugin.plan(parseAst(code), plugin.testLazyable(list));
   return { plan, code: plan.length ? plugin.rewrite(code, plan) : code };
 };
 
@@ -56,6 +63,36 @@ describe("LazyControllerPlugin", () => {
       'import { helper } from "./controllers/QuestApi.ts";',
     );
     expect(out.code).not.toMatch(/import \{[^}]*QuestApi[^}]*\} from/);
+  });
+
+  it("keeps a default import beside the rewritten controller a default import", ({
+    expect,
+  }) => {
+    const code = [
+      'import helper, { OrderController, other } from "./OrderController.ts";',
+      'export const M = $module({ name: "orders", services: [OrderController] });',
+      "helper(other);",
+    ].join("\n");
+    const out = run(code, surface([["orders:OrderController", true]]));
+
+    expect(out.plan.map((it: any) => it.key)).toEqual([
+      "orders:OrderController",
+    ]);
+    expect(out.code).toContain(
+      'import helper, { other } from "./OrderController.ts";',
+    );
+  });
+
+  it("keeps a lone default import with no braces", ({ expect }) => {
+    const code = [
+      'import helper, { OrderController } from "./OrderController.ts";',
+      'export const M = $module({ name: "orders", services: [OrderController] });',
+      "helper();",
+    ].join("\n");
+    const out = run(code, surface([["orders:OrderController", true]]));
+
+    expect(out.code).toContain('import helper from "./OrderController.ts";');
+    expect(out.code).not.toContain("import { helper }");
   });
 
   it("rewrites a pure controller passed to alepha.with, keyed by its name", ({

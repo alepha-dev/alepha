@@ -39,7 +39,7 @@ export interface CompressOptions {
 /**
  * Compresses all matching files in the public output directory.
  *
- * Creates .gz and .br copies alongside each matching file.
+ * Creates a .br copy alongside each matching file.
  * Runs as the LAST step in the build pipeline, after all other tasks
  * have written their files.
  */
@@ -67,7 +67,7 @@ export class BuildCompressTask extends BuildTask {
       return;
     }
     // Cloudflare Workers Static Assets compresses at the edge and has no
-    // filename negotiation — there is no request that can ever reach a `.br`
+    // filename negotiation: there is no request that can ever reach a `.br`
     // sidecar as an encoding. Uploading them anyway made a third of the asset
     // manifest dead weight (651 of 1349 files for the docs app) and published
     // every one of them as its own fetchable URL.
@@ -89,8 +89,8 @@ export class BuildCompressTask extends BuildTask {
       return;
     }
     // `hasClient` asks whether ALEPHA bundled a client, which is false for a
-    // site adopted through `static.source` — nothing here was bundled, the
-    // files were built by the workspace itself. They still need the `.br`/`.gz`
+    // site adopted through `static.source`: nothing here was bundled, the
+    // files were built by the workspace itself. They still need the `.br`
     // sidecars a static host serves in place of recompressing per request, so
     // an adopted client is the second way to have something worth compressing.
     if (!ctx.hasClient && !ctx.options.static?.source) {
@@ -141,7 +141,8 @@ export class BuildCompressTask extends BuildTask {
   }
 
   /**
-   * Compress a single file. Creates .gz and .br alongside original.
+   * Compress a single file. Creates a .br alongside the original, and a .gz
+   * when `options.gzip` asks for one.
    */
   protected async compressFile(
     filePath: string,

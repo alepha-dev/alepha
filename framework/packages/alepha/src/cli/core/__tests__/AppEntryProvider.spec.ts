@@ -25,7 +25,7 @@ describe("AppEntryProvider", () => {
   it("should not fail with a raw ENOENT when src/ is absent", async () => {
     // A project that configures its entry explicitly has no reason to own a
     // `src/`, but the conventional-locations scan ran unconditionally and
-    // `ls` is a raw readdir — the CLI died on an errno naming nothing.
+    // `ls` is a raw readdir: the CLI died on an errno naming nothing.
     const { provider, fs } = create({ server: "app/server.ts" });
     await fs.writeFile("/project/app/server.ts", "export {};");
 
