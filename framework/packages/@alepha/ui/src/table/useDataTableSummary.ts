@@ -80,7 +80,8 @@ export const useDataTableSummary = (options: UseDataTableSummaryOptions) => {
     const controller = new AbortController();
     setLoading(true);
     fetcher({
-      // A copy: `currentValues` is mutated in place as the reader types.
+      // The values as the request leaves; the form moves on as the reader
+      // types.
       filters: form ? { ...form.currentValues } : undefined,
       signal: controller.signal,
     })

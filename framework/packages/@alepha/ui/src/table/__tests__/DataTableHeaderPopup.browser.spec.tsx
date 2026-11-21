@@ -37,6 +37,7 @@ const filterFields = {
     schema: z.array(z.enum(["open", "closed"])),
     label: "Status",
     column: "status",
+    operators: "is",
     items: [
       { value: "open", label: "Open" },
       { value: "closed", label: "Closed" },
@@ -196,6 +197,26 @@ describe("DataTable headerPopup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     await waitFor(() => expect(last()?.filters?.statuses).toBeUndefined());
     expect(last()?.sort).toBe("status");
+    expect(chevron("status")?.hasAttribute("data-active")).toBe(false);
+  });
+
+  it("clears the operator with the last ticked value", async () => {
+    // Off the bar, the bar's own "the operator leaves with the value" never
+    // runs for a popup filter: an operator left alone narrows nothing and
+    // still counts as a filter.
+    const { last } = await mount();
+    await open("status");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Open" }));
+    await waitFor(() => expect(last()?.filters?.statuses).toEqual(["open"]));
+    fireEvent.click(screen.getByRole("radio", { name: "is not" }));
+    await waitFor(() => expect(last()?.filters?.statusesOp).toBe("not"));
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Open" }));
+    await waitFor(() =>
+      expect(last()?.filters).not.toHaveProperty("statusesOp", "not"),
+    );
+    expect(last()?.filters?.statuses).toBeUndefined();
+    expect(last()?.filters?.statusesOp).toBeUndefined();
     expect(chevron("status")?.hasAttribute("data-active")).toBe(false);
   });
 

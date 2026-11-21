@@ -174,7 +174,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                   <span>{def.label}</span>
                 ) : def.sortable ? (
                   // A real button so keyboard and assistive-tech
-                  // users can sort — a th onClick is mouse-only.
+                  // users can sort; a th onClick is mouse-only.
                   <button
                     type="button"
                     onClick={() => toggleSort(key, def)}

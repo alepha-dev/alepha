@@ -116,7 +116,7 @@ export const useDataTableFilterForm = <T>(
   });
 
   // Read persisted filter values synchronously so they reach useForm's
-  // first invocation. Reading inside an effect would be too late —
+  // first invocation. Reading inside an effect would be too late:
   // useForm captures `initialValues` only once via useMemo.
   const persistedFilterValues = useMemo(() => {
     if (!filtersKey || !definition) return undefined;
@@ -205,7 +205,7 @@ export const useDataTableFilterForm = <T>(
     schema: definition?.schema ?? EMPTY_FILTERS_SCHEMA,
     initialValues: mergedFilterInitialValues,
     handler: async () => {
-      // No-op — the table subscribes to `form:submit:success` to refetch.
+      // No-op: the table subscribes to `form:submit:success` to refetch.
     },
   });
 
