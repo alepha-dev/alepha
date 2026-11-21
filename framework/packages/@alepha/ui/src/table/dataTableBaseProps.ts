@@ -227,6 +227,20 @@ export interface DataTableBaseProps<
    */
   pollMs?: number;
   /**
+   * Reload when the reader comes back to the tab (#Q4069): on
+   * `visibilitychange` to visible, the signal `useQuery`'s `refetchOnFocus`
+   * reads. Off by default, as there.
+   *
+   * A background reload: the rows stay on screen and the page, sort,
+   * filters and selection are kept. Skipped when the rows were read in the
+   * last 10 seconds, while rows are selected, and while a field inside the
+   * table has focus. Prefer it to `pollMs` for a list that only moves while
+   * the reader is away: it sends nothing while nobody looks.
+   *
+   * Meaningless in static-data mode, like `pollMs`.
+   */
+  refreshOnFocus?: boolean;
+  /**
    * External refetch trigger. Bump this value (e.g. from a `useState`
    * counter) after a mutation performed *outside* the table — such as a
    * toolbar upload action — to make the table reload. Row/bulk actions

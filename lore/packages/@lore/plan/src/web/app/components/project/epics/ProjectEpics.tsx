@@ -838,6 +838,8 @@ const ProjectEpics = () => {
       <DataTable<EpicResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={`lor.epics.${project.id}`}
+        // Back on the tab, the rows read again (#Q4069).
+        refreshOnFocus
         bulkActions={bulkActions}
         defaultSort={{ field: "updatedAt", direction: "desc" }}
         emptyMessage={tr("epic.list.empty")}

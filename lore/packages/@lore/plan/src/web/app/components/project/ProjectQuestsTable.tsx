@@ -164,12 +164,15 @@ const ProjectQuestsTable = () => {
     ).data ?? NO_TAGS;
 
   // The presets' badges. Re-read whenever the table refreshes, so a quest
-  // taken, finished or re-prioritised here moves them. Quiet on failure: the
-  // rail then draws no badges.
+  // taken, finished or re-prioritised here moves them, and on a tab return
+  // as the table is (#Q4069). Quiet on failure: the rail then draws no
+  // badges.
   const presetCounts = useQuery(
     {
       key: ["quest-presets", project?.id, reload],
       enabled: !!project?.id,
+      refetchOnFocus: true,
+      staleTime: [10, "seconds"],
       handler: () =>
         questApi.getQuestPresets({
           params: { projectId: project?.id as number },
@@ -882,6 +885,9 @@ const ProjectQuestsTable = () => {
         // hand-rolled toolbar + localStorage that used to live here).
         persistenceKey={`lor.board.${project.id}`}
         refreshSignal={reload}
+        // Back on the tab, the rows read again (#Q4069): an agent may have
+        // finished three quests meanwhile.
+        refreshOnFocus
         bulkActions={bulkActions}
         // The table's one primary action, labelled so it is visible (quest
         // #1682): the same sheet the header's create button opens, staying
