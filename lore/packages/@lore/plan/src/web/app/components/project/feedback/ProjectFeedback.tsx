@@ -147,6 +147,9 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
           }
         : undefined,
       staleTime: [30, "seconds"],
+      // Back on the tab, the inbox reads again (#Q4069), once the 30 s
+      // staleTime has run out.
+      refetchOnFocus: true,
       keepPreviousData: true,
       handler: (_ctx, offset: number) =>
         feedbackApi.listFeedback({

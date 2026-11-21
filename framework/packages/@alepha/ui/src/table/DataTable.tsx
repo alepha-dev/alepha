@@ -49,6 +49,7 @@ import { useDataTableFilterForm } from "./useDataTableFilterForm.ts";
 import { useDataTableFilterVisibility } from "./useDataTableFilterVisibility.ts";
 import { useDataTableRefresh } from "./useDataTableRefresh.ts";
 import { useDataTableSummary } from "./useDataTableSummary.ts";
+import { useDataTableWake } from "./useDataTableWake.ts";
 import { useOptimisticRows } from "./useOptimisticRows.ts";
 import { useTableSelection } from "./useTableSelection.ts";
 
@@ -367,6 +368,18 @@ export const DataTable = <
     clearSelection,
   } = useTableSelection(data, rowKey);
 
+  // Back on the tab: a background reload, unless the rows are fresh or the
+  // reader is mid-selection or mid-edit (#Q4069).
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useDataTableWake({
+    enabled: props.refreshOnFocus === true && !isStatic,
+    loadedRequestId,
+    freshMs: 10_000,
+    selecting: selection.size > 0,
+    root: rootRef,
+    reload,
+  });
+
   // The bulk actions offered for THIS selection: an action's `visible`
   // predicate reads the selected rows. Computed once, here, so the pill's
   // contents and the pill's own presence come from the same list.
@@ -672,6 +685,7 @@ export const DataTable = <
 
   const table = (
     <div
+      ref={rootRef}
       className={cn(
         "flex flex-col gap-2",
         // Beside the rail the table and the rail are one panel: every band
