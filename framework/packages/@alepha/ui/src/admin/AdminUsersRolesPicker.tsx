@@ -20,7 +20,7 @@ export interface AdminUsersRolesPickerProps {
   user: UserEntity;
   /**
    * Role metadata from the realm. Empty while the fetch is in flight, or
-   * permanently if it failed — the picker degrades rather than blocking.
+   * permanently if it failed: the picker degrades rather than blocking.
    */
   availableRoles: ReadonlyArray<RoleMeta>;
   /**
@@ -67,7 +67,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
   // If the metadata fetch hasn't landed yet, union the user's roles
   // with a sane fallback so the popover still renders rows for everything
   // the user currently has. Default state isn't known until metadata
-  // arrives — only the disable rule degrades.
+  // arrives: only the disable rule degrades.
   const rows: ReadonlyArray<RoleMeta> =
     props.availableRoles.length > 0
       ? props.availableRoles

@@ -15,7 +15,7 @@ import type {
  *
  * There is deliberately no `scope` or `pinned` member. A scoped endpoint
  * publishes descriptors with its pinned dimensions already removed, so the
- * whole UI hides them by knowing nothing about them — the group-by chips,
+ * whole UI hides them by knowing nothing about them, the group-by chips,
  * the filter editor and the value probes all read the same descriptor and
  * none of them can offer a key it does not list. A pin the UI had to
  * remember to honour would be a pin some future control forgets.

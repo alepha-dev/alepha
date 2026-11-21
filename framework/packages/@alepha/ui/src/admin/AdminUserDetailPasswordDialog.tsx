@@ -46,7 +46,7 @@ export const AdminUserDetailPasswordDialog = (
           <DialogDescription>
             {tr("admin.userDetail.setPasswordSub", {
               default:
-                "The user can sign in with this password immediately. Existing sessions are not revoked.",
+                "The user can sign in with this password immediately. Every session the user has open is signed out.",
             })}
           </DialogDescription>
         </DialogHeader>

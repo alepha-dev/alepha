@@ -190,7 +190,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
                       v.creatorId}
                   </button>
                 ) : (
-                  (v.creatorName ?? "—")
+                  (v.creatorName ?? "-")
                 )}
               </dd>
 
@@ -230,14 +230,14 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
       <ParameterJsonDialog
         open={jsonOpen}
         onOpenChange={setJsonOpen}
-        title={`v${v.version} — ${v.name}`}
+        title={`v${v.version} - ${v.name}`}
         content={v.content}
       />
       {hasPrevious && (
         <ParameterDiffDialog
           open={diffOpen}
           onOpenChange={setDiffOpen}
-          title={`v${v.version} — ${v.name}`}
+          title={`v${v.version} - ${v.name}`}
           previous={v.previousContent}
           current={v.content}
         />

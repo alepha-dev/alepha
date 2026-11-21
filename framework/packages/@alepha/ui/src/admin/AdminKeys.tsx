@@ -176,6 +176,18 @@ export const AdminKeys = () => {
     [client, dialog, toast, tr],
   );
 
+  // The key is the admin's own, so the names it may not take are the admin's
+  // own keys, not the ones in this table. An action, so the button holds
+  // while it runs and a failure reaches the action-error toaster.
+  const listOwnKeys = useAction(
+    {
+      handler: async () => {
+        setOwnKeys(await userClient.listApiKeys());
+      },
+    },
+    [userClient],
+  );
+
   return (
     <AdminPage>
       <DataTable<AdminApiKeyResource, typeof filterFields>
@@ -189,15 +201,12 @@ export const AdminKeys = () => {
             label: tr("admin.keys.create", { default: "Add API key" }),
             // The page's one create control.
             primary: true,
+            disabled: listOwnKeys.loading,
             onClick: async () => {
-              // The key is the admin's own, so the names it may not take are
-              // the admin's own keys, not the ones in this table. Without the
-              // list the server still refuses a clash, in blunter words.
-              try {
-                setOwnKeys(await userClient.listApiKeys());
-              } catch {
-                setOwnKeys([]);
-              }
+              // Without the list the server still refuses a clash, in
+              // blunter words: a failed read is reported and the dialog
+              // opens anyway.
+              if (!(await listOwnKeys.run()).ok) setOwnKeys([]);
               setCreateOpen(true);
             },
           },
@@ -225,7 +234,7 @@ export const AdminKeys = () => {
           tokenPrefix: {
             label: tr("admin.keys.colPrefix", { default: "Prefix" }),
             cell: (k) => (
-              <code className="text-xs">{k.tokenPrefix ?? "—"}</code>
+              <code className="text-xs">{k.tokenPrefix ?? "-"}</code>
             ),
           },
           owner: {
@@ -244,7 +253,7 @@ export const AdminKeys = () => {
                   ))}
                 </div>
               ) : (
-                <span className="text-muted-foreground text-xs">—</span>
+                <span className="text-muted-foreground text-xs">-</span>
               ),
           },
           permissions: {

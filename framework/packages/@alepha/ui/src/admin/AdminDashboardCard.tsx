@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
  * `can` mirrors the rule the sidebar already applies to nav entries: a card
  * whose backing module was never registered does not render at all, rather
  * than rendering an error or a misleading zero. Gate on an **action**
- * (`someApi.someAction.can()`), not on a permission name — a permission
+ * (`someApi.someAction.can()`), not on a permission name: a permission
  * declared by a page's own `$secure` is granted to a `*` wildcard holder
  * whether or not any controller backs it, so a permission check would leave a
  * card standing over a dead API.
@@ -57,7 +57,7 @@ export interface AdminDashboardCard {
   can?: () => boolean;
 
   /**
-   * The tile. Free to fetch its own data — it is mounted only after `can`
+   * The tile. Free to fetch its own data: it is mounted only after `can`
    * has already said its backend exists.
    */
   render: () => ReactNode;

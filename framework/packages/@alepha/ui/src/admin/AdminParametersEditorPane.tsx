@@ -50,7 +50,7 @@ export const AdminParametersEditorPane = (
     [client, props.name, props.reloadKey],
   );
 
-  // Factory reset is a write mutation — runs through useAction so the action
+  // Factory reset is a write mutation: it runs through useAction so the action
   // button can disable while it's in flight. Reads `current` at call time
   // (the hook must sit above the early returns below).
   const factoryReset = useAction(
@@ -192,8 +192,9 @@ export const AdminParametersEditorPane = (
           destructive: true,
           loading: factoryReset.loading,
           onConfirm: async () => {
-            await factoryReset.run();
-            setResetOpen(false);
+            // `run` resolves `{ ok: false }` on a failure rather than
+            // throwing: the dialog stays open, as the Save dialog does.
+            if ((await factoryReset.run()).ok) setResetOpen(false);
           },
         }}
       />

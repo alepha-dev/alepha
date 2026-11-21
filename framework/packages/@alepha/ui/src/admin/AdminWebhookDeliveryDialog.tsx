@@ -82,7 +82,6 @@ export const AdminWebhookDeliveryDialog = (
         props.onRedelivered?.(result.deliveryId);
         return result;
       },
-      invalidates: [["webhook-deliveries"]],
     },
     [api, id, props.onRedelivered],
   );

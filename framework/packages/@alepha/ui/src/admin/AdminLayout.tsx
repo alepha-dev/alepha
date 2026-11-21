@@ -15,7 +15,7 @@ import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
  * The admin shell.
  *
  * The sidebar and breadcrumb trail are derived from the route subtree
- * anchored at `admin` — every page carries its own `nav` metadata, so there
+ * anchored at `admin`: every page carries its own `nav` metadata, so there
  * is no hand-synced list here and an application page that adopts the layout
  * appears in the sidebar without registering anywhere.
  *
@@ -25,19 +25,19 @@ import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
  *   application's own layout. Without it the dark-mode toggle updates the
  *   atom and no subscriber applies the class to `<html>` until a full reload.
  *   `colorScheme: false` opts out, for applications whose host document owns
- *   the `<html>` theme class itself — see `AdminRouterOptions.colorScheme`.
+ *   the `<html>` theme class itself; see `AdminRouterOptions.colorScheme`.
  * - `h-svh` on the wrapper plus `fill` on `NavShell` switches
  *   `SidebarProvider` from `min-h-svh` to `h-full`, which is what lets a table
  *   body scroll inside the main area instead of pushing the whole page taller.
  * - Spotlight is `root`-scoped to `admin`, so ⌘K searches admin pages only.
  *   Its trigger button renders outside the `topbarActions` slot: the open
  *   state is local to this component, so a replacement cluster could never
- *   rebuild the button — replacing the cluster must not cost the affordance.
+ *   rebuild the button: replacing the cluster must not cost the affordance.
  * - The default cluster is `ButtonSettings`: signed in, one account button
  *   with language, theme and display mode in its menu.
  * - `ButtonUser` is given custom `children` rather than its default
  *   `onAdminClick` menu: that default item is labelled "Admin Panel" and
- *   documented as `router.push("admin")` — the exact opposite of what it
+ *   documented as `router.push("admin")`, the exact opposite of what it
  *   would do here, since the account menu already lives inside `/admin` and
  *   the only useful action is leaving it. Composing the menu by hand keeps
  *   `ButtonUser`'s own default label correct for its normal use outside

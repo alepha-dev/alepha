@@ -61,7 +61,7 @@ export const TotalsCards = (props: TotalsCardsProps) => {
                 tone={percent === null ? "neutral" : up ? "success" : "warning"}
                 className="h-[18px] flex-none px-[7px] text-[11px] tabular-nums"
               >
-                {percent === null ? "–" : `${up ? "+" : ""}${percent}%`}
+                {percent === null ? "-" : `${up ? "+" : ""}${percent}%`}
               </Badge>
             </div>
             <div className="text-[28px] leading-[1.1] font-semibold tracking-[-0.02em] tabular-nums">

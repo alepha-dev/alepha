@@ -26,8 +26,8 @@ export interface AdminUserDetailIdentityAsideProps {
  * Identity sheet shown alongside the user detail tabs.
  *
  * Everything here is *which* facts a user has and how they read; the chrome
- * around them belongs to {@link DetailAside}. Only fields with a value are
- * listed; ID and Status always show. Display order is ID → username → email →
+ * around them belongs to {@link DetailAside}. ID, Status, Name, Last login and
+ * Created always show; the other fields only when they hold a value. Display order is ID → username → email →
  * (phone) → status → name → roles → dates.
  */
 export const AdminUserDetailIdentityAside = (
@@ -111,7 +111,7 @@ export const AdminUserDetailIdentityAside = (
     label: tr("admin.userDetail.name", { default: "Name" }),
     value: (
       <span className="block truncate">
-        {fullName || <span className="text-muted-foreground">—</span>}
+        {fullName || <span className="text-muted-foreground">-</span>}
       </span>
     ),
   });

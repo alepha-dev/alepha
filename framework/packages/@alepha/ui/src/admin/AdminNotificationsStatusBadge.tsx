@@ -18,7 +18,7 @@ export interface AdminNotificationsStatusBadgeProps {
  * every badge fell through to the neutral outline and the column said
  * nothing.
  *
- * The tone and the glyph both come from `admin-notifications-status-tones`,
+ * The tone and the glyph both come from `adminNotificationsStatusTones.ts`,
  * which is the single map: the list and the detail sheet cannot then show the
  * same status two different ways.
  */

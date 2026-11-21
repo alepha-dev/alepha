@@ -91,7 +91,7 @@ export const resolveUserDetailId = (params: {
 /**
  * Composition root for the admin user detail page.
  *
- * Owns the data (queries, forms, mutations) and the shell — top bar, tab
+ * Owns the data (queries, forms, mutations) and the shell: top bar, tab
  * selection, identity aside. Each tab body lives in its own file beside this
  * one; they render what they are given and hold no fetching of their own.
  */
@@ -118,18 +118,18 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   // -- Load user, roles, identities -----------------------------------------
   // All three are read-only fetches via useQuery: each runs on mount, re-runs
   // when realm/id change, aborts on unmount via the passed signal, and exposes
-  // refetch() — so the mutations below just call the relevant refetch()
+  // refetch(), so the mutations below just call the relevant refetch()
   // instead of bumping a manual reload key.
 
   // ⚠️ Every query keyed on `userId` is gated on it being non-empty.
   //
   // `resolveUserDetailId` falls back to `""` on purpose, so a vendored
-  // consumer declaring `/users/:id` keeps working — but the fallback used to
+  // consumer declaring `/users/:id` keeps working, but the fallback used to
   // be dispatched anyway. `useRouterState` is a GLOBAL store, so navigating
   // away re-renders this component with the next route's params before it
   // unmounts: `userId` becomes `""`, the dep changes, and the query re-runs
   // with it. The batch then posts `params: { id: "" }` and the server answers
-  // `Invalid GUID at /id` — error #358, seven hits, and #118 before it on
+  // `Invalid GUID at /id`: error #358, seven hits, and #118 before it on
   // the previous bundle.
   //
   // Skipping the request is also what makes the fallback fail VISIBLY: with
@@ -181,7 +181,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
           { query: { userRealmName: props.userRealmName } },
           { request: { signal } },
         ),
-      // Role metadata is non-blocking — swallow errors so the page still loads.
+      // Role metadata is non-blocking: swallow errors so the page still loads.
       onError: () => {},
     },
     [userClient, props.userRealmName],
@@ -198,7 +198,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
           { query: { userId, size: 100, userRealmName: props.userRealmName } },
           { request: { signal } },
         ),
-      // Identities may fail if the controller isn't mounted — non-blocking.
+      // Identities may fail if the controller isn't mounted, non-blocking.
       onError: () => {},
     },
     [identityClient, userId, props.userRealmName],
@@ -214,7 +214,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
           { query: { realmName: props.userRealmName } },
           { request: { signal } },
         ),
-      // Realm settings only shape which profile fields are offered — a
+      // Realm settings only shape which profile fields are offered: a
       // failure must not block the page. `profilePolicy` degrades to
       // "everything optional" without them.
       onError: () => {},
@@ -223,8 +223,8 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   );
 
   // What the realm collects decides what this form offers and demands.
-  // Hardcoding "email is required" here made every save fail — a role change
-  // included — on a realm that signs users in by username alone.
+  // Hardcoding "email is required" here made every save fail (a role change
+  // included) on a realm that signs users in by username alone.
   const policy = profilePolicy(realmQuery.data?.settings, user);
 
   // -- Profile form ---------------------------------------------------------
@@ -334,6 +334,9 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
       passwordForm.input.password.set?.("");
       passwordForm.input.mustChangePassword.set?.(false);
       setPasswordOpen(false);
+      // A user created without a password gets its `credentials` identity
+      // now: the Security tab reads it from here.
+      await identitiesQuery.refetch();
     },
   });
   const { loading: passwordSubmitting } = useFormState(passwordForm, [

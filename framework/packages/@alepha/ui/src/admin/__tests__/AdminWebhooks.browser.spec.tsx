@@ -251,6 +251,18 @@ describe("AdminWebhooks", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("webhook-secret")).toBeNull(),
     );
+
+    // Reopened, the form is empty: the dialog stays mounted while closed, and
+    // a form that kept the last endpoint would register it a second time.
+    fireEvent.click(screen.getByRole("button", { name: /New endpoint/ }));
+    const reopened = await waitFor(() => {
+      const input = document.querySelector<HTMLInputElement>(
+        '[role="dialog"] form [id$="-url"]',
+      );
+      expect(input).toBeTruthy();
+      return input!;
+    });
+    expect(reopened.value).toBe("");
   });
 
   it("pauses with an Undo that resumes", async () => {

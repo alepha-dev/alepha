@@ -8,7 +8,7 @@ export interface DiffLine {
 /**
  * Compute a line-based diff between two strings using a longest-common-
  * subsequence walk. Returns an ordered list of lines tagged as added,
- * removed, or unchanged — enough to render a side-less unified diff for small
+ * removed, or unchanged: enough to render a side-less unified diff for small
  * JSON blobs without pulling in a diff dependency.
  */
 export const diffLines = (before: string, after: string): DiffLine[] => {

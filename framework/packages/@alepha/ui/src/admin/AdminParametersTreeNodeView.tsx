@@ -17,6 +17,10 @@ export interface AdminParametersTreeNodeViewProps {
   selected: string | undefined;
   onSelect: (name: string) => void;
   onDeleteOrphan: (name: string) => void | Promise<void>;
+  /**
+   * The orphan whose delete is in flight: its button shows busy.
+   */
+  deletingOrphan?: string;
 }
 
 export const AdminParametersTreeNodeView = (
@@ -64,6 +68,7 @@ export const AdminParametersTreeNodeView = (
               default: `Delete ${node.path}`,
               args: [node.path],
             })}
+            loading={props.deletingOrphan === node.path}
             onClick={() => props.onDeleteOrphan(node.path)}
           >
             <Trash2 className="size-3.5" />
@@ -97,6 +102,7 @@ export const AdminParametersTreeNodeView = (
             selected={props.selected}
             onSelect={props.onSelect}
             onDeleteOrphan={props.onDeleteOrphan}
+            deletingOrphan={props.deletingOrphan}
           />
         ))}
     </>

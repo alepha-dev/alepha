@@ -14,7 +14,7 @@ import type { AdminUsersProps } from "./AdminUsers.tsx";
  *
  * The seam is deliberately narrow: chrome slots plus the props of the three
  * pages that accept props. An application wanting different URLs, different
- * page composition or a different shell writes its own router — the same
+ * page composition or a different shell writes its own router, the same
  * trade `AuthRouter` documents.
  */
 export interface AdminRouterOptions {
@@ -24,7 +24,7 @@ export interface AdminRouterOptions {
    *
    * ⚠️ **It must handle the sidebar collapsing to an icon rail itself.**
    * `SidebarHeader` renders this node as given, at whatever width it asks for,
-   * while the rail around it shrinks to about one icon — so a title with no
+   * while the rail around it shrinks to about one icon, so a title with no
    * opinion about the collapsed state wraps, takes the header's height with
    * it, and overlaps the collapse toggle. Both apps have hit this.
    *
@@ -58,8 +58,8 @@ export interface AdminRouterOptions {
    * Extra class(es) merged onto the shell's root element.
    *
    * Exists for applications whose `/admin` lives inside a document they do
-   * not fully own — a host page that paints fixed overlays over the viewport,
-   * or hardcodes a theme class on `<html>` — and that need one stable hook to
+   * not fully own: a host page that paints fixed overlays over the viewport,
+   * or hardcodes a theme class on `<html>`, and that need one stable hook to
    * fence the console off from that chrome. Styling inside the shell does not
    * go through this; components carry their own classes.
    */
@@ -71,8 +71,8 @@ export interface AdminRouterOptions {
    * The shell mounts it because `/admin` is normally not a child of the
    * application's own layout, so nothing else would apply the dark-mode
    * atom's class to `<html>`. An application whose host document owns that
-   * class itself — a hardcoded `<html class="dark">`, a theme manager of its
-   * own — turns this off so entering `/admin` cannot rewrite the document's
+   * class itself (a hardcoded `<html class="dark">`, a theme manager of its
+   * own) turns this off so entering `/admin` cannot rewrite the document's
    * theme underneath the rest of the app.
    *
    * @default true
@@ -89,7 +89,7 @@ export interface AdminRouterOptions {
    * Cards appended to the dashboard after the built-in ones.
    *
    * Each carries its own `can` gate, so a card is responsible for saying when
-   * it should not render — the dashboard never guesses on a card's behalf.
+   * it should not render: the dashboard never guesses on a card's behalf.
    *
    * The built-in cards (Users, Connected, Failed audits) sit at `order`
    * 1000 and up, so a card declaring no `order` leads the dashboard. The
@@ -165,14 +165,14 @@ export interface AdminRouterOptions {
  * before start.
  *
  * The schema is a `z.custom` passthrough because the value carries React
- * nodes and component references, whose shape TypeScript already owns — the
+ * nodes and component references, whose shape TypeScript already owns: the
  * exact case `z.custom`'s own documentation names. Nothing here crosses a
  * trust boundary: it is written by the application at boot and read only by
  * the admin shell.
  *
  * Being boot-configured also keeps it out of the SSR payload.
  * `StateManager.exportAtoms()` reads scope `"current"`, so it sees
- * request-scoped writes only and never an atom set on the app store — which
+ * request-scoped writes only and never an atom set on the app store, which
  * matters here, because a `ReactNode` would not survive JSON serialization.
  */
 export const adminRouterOptionsAtom = $atom({

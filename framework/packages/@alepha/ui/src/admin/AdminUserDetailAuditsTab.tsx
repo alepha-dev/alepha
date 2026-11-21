@@ -61,8 +61,8 @@ export const AdminUserDetailAuditsTab = (
             cell: (a) => (
               <span className="font-mono text-xs">
                 {a.resourceType
-                  ? `${a.resourceType}:${a.resourceId ?? "—"}`
-                  : "—"}
+                  ? `${a.resourceType}:${a.resourceId ?? "-"}`
+                  : "-"}
               </span>
             ),
           },

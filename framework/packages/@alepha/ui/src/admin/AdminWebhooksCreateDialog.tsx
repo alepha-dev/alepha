@@ -47,6 +47,9 @@ export const AdminWebhooksCreateDialog = (
     schema: createWebhookEndpointSchema,
     initialValues: { url: "", events: [] },
     onSuccess: (created) => {
+      // The dialog stays mounted while closed: without the reset, the next
+      // New endpoint opens on this one and registers it again.
+      form.reset();
       props.onOpenChange(false);
       props.onCreated(created);
     },

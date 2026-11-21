@@ -75,7 +75,7 @@ export const AdminNotifications = () => {
   >({});
 
   /**
-   * The catalogue this app can send, for the template and category filters.
+   * The catalogue this app can send, for the channel and template filters.
    *
    * Falls back to an empty list on any failure, including a missing
    * permission: a filter that cannot offer its options should narrow to

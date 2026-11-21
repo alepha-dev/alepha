@@ -191,6 +191,32 @@ describe("analyticsChartModel", () => {
   });
 });
 
+describe("analyticsChartModel on a gauge", () => {
+  it("does not stack a gauge's breakdown into its bars", () => {
+    // The bar's value is the max over the breakdown; a stack of the parts
+    // would sum to 83 under a bar of 30.
+    const rows: AnalyticsRow[] = [
+      { day: "2026-08-19", country: "fr", temp_max: 30 },
+      { day: "2026-08-19", country: "de", temp_max: 25 },
+      { day: "2026-08-19", country: "es", temp_max: 28 },
+    ];
+    const model = analyticsChartModel({
+      rows,
+      groupBy: ["day", "country"],
+      measures: ["temp_max"],
+      folds: { temp_max: "max" },
+      measure: null,
+      axis: null,
+      shape: "bars",
+      untilMode: "yesterday",
+    });
+    expect(model.shape).toBe("bars");
+    expect(model.points[0].value).toBe(30);
+    expect(model.slots).toEqual([]);
+    expect(model.points[0].segments).toEqual([]);
+  });
+});
+
 describe("analyticsCollapsedKeys", () => {
   it("counts both time keys as drawn by a heatmap", () => {
     expect(
@@ -213,6 +239,19 @@ describe("analyticsHeatRows", () => {
     expect(heat[0].cells[9].value).toBe(5);
     expect(heat[1].cells[23].value).toBe(8);
     expect(heat[0].total).toBe(5);
+  });
+
+  it("scales the intensity by the days it keeps, not by every day", () => {
+    // Twenty days, the first one huge: only the last sixteen are drawn, so
+    // the dropped spike must not flatten all of them.
+    const rows: AnalyticsRow[] = Array.from({ length: 20 }, (_, index) => ({
+      hour: `2026-08-${String(index + 1).padStart(2, "0")}T09`,
+      count: index === 0 ? 1000 : 10,
+    }));
+    const heat = analyticsHeatRows(rows, "count");
+    expect(heat).toHaveLength(16);
+    expect(heat[0].day).toBe("2026-08-05");
+    expect(heat[0].cells[9].intensity).toBeCloseTo(1);
   });
 
   it("ignores a row with no hour bucket rather than inventing one", () => {

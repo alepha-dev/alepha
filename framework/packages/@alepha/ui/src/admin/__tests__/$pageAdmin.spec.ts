@@ -8,8 +8,8 @@ import { AdminRouter } from "../AdminRouter.tsx";
 /**
  * `$pageAdmin` is the one-call form of "a page inside the shared admin shell".
  *
- * It exists because the alternative — injecting `AdminRouter` and writing
- * `parent: this.admin.layout` by hand — puts the rules of the composition
+ * It exists because the alternative (injecting `AdminRouter` and writing
+ * `parent: this.admin.layout` by hand) puts the rules of the composition
  * nowhere an author will read them.
  */
 describe("$pageAdmin", () => {
@@ -47,7 +47,7 @@ describe("$pageAdmin", () => {
     await alepha.start();
 
     // The app registered only its own class. Declaring one admin page is what
-    // brought the shell — and with it the built-in pages — into the container.
+    // brought the shell, and with it the built-in pages, into the container.
     const names = alepha.primitives($page).map((page) => page.name);
     expect(names).toContain("admin");
     expect(names).toContain("users");

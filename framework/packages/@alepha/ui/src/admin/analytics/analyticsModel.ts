@@ -381,9 +381,9 @@ export const analyticsKeyFold = (
   dataset: AdminDatasetDescriptor | undefined,
   key: string,
 ): { measure: string; fold: string } => {
-  for (const measure of Object.keys(dataset?.measures?.properties ?? {})) {
+  if (!dataset) return { measure: key, fold: "sum" };
+  for (const measure of Object.keys(dataset.measures?.properties ?? {})) {
     if (key === measure) return { measure, fold: "sum" };
-    if (!dataset) break;
     for (const fold of analyticsFolds(dataset, measure)) {
       if (key === `${measure}_${fold}`) return { measure, fold };
     }
@@ -525,13 +525,20 @@ export const analyticsRequestBody = (
 ): AdminAnalyticsQuery => {
   const measures = analyticsActiveMeasures(dataset, state);
   const groupBy = analyticsEffectiveGroupBy(dataset, state, window, nowMillis);
+  const select = analyticsSelect(dataset, measures);
+  // A chosen order on a key the query no longer carries (its measure
+  // deselected, its grain swapped by a wider window) would sort on nothing,
+  // and the limit would keep arbitrary groups.
+  const queried = [...groupBy, ...analyticsSelectKeys(select)];
   return {
     ...analyticsWindowBody(window),
     where: analyticsWhere(state.filters),
     groupBy: groupBy.length > 0 ? groupBy : undefined,
-    select: analyticsSelect(dataset, measures),
+    select,
     orderBy:
-      state.orderBy ?? analyticsDefaultOrderBy(groupBy, measures[0] ?? ""),
+      state.orderBy && queried.includes(state.orderBy.key)
+        ? state.orderBy
+        : analyticsDefaultOrderBy(groupBy, measures[0] ?? ""),
     limit: state.limit,
   };
 };

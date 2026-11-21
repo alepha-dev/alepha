@@ -9,8 +9,8 @@ import { AdminUserCell } from "../AdminUserCell.tsx";
 
 /**
  * The cell is the single way admin tables name a user, so what it pins is
- * the identifier precedence (email > username > real name > truncated id)
- * and that the label is always a real link to the user detail page — the
+ * the identifier precedence (real name > username > email > truncated id)
+ * and that the label is always a real link to the user detail page: the
  * fallbacks must never silently drop the navigation.
  */
 describe("AdminUserCell", () => {
@@ -88,7 +88,7 @@ describe("AdminUserCell", () => {
     await mount(<AdminUserCell />);
 
     expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText("-")).toBeTruthy();
   });
 
   it("uses the snapshot label before the truncated id, still linked", async () => {
