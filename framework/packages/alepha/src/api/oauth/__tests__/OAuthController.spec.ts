@@ -298,48 +298,6 @@ describe("OAuthController", () => {
     expect(body.error).toBe("invalid_redirect_uri");
     expect(body.error_description).toContain("http://localhost.example.com/cb");
   });
-
-  /**
-   * Dynamic client registration is unauthenticated by design - a client
-   * discovering this server has no credential yet - which leaves the write
-   * path open: every call creates a row, and nothing bounded how many.
-   */
-  it("throttles a burst of registrations from one address", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create()
-      .with(AlephaServer)
-      .with(AlephaOrmTestPostgres)
-      .with(AlephaOAuth);
-    alepha.set(oauthOptions, {
-      realm: "users",
-      resource: "/mcp",
-      loginPath: "/login",
-    });
-    await alepha.start();
-
-    const { hostname } = alepha.inject(ServerProvider);
-    const register = () =>
-      fetch(`${hostname}/oauth/register`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          client_name: "Burst",
-          redirect_uris: ["https://example.com/cb"],
-        }),
-      });
-
-    const statuses: number[] = [];
-    for (let i = 0; i < 12; i++) {
-      statuses.push((await register()).status);
-    }
-
-    // A real client registers once and keeps its id, so the budget is small.
-    expect(statuses.filter((s) => s === 201)).toHaveLength(10);
-    // 429, not 400: a caller that waits and retries is doing the right thing,
-    // and only this status tells it so.
-    expect(statuses.filter((s) => s === 429)).toHaveLength(2);
-  });
 });
 
 describe("OAuthController connectionsPath", () => {
@@ -554,8 +512,8 @@ describe("OAuthController authorize + token", () => {
 
 describe("OAuthController refresh_token grant", () => {
   /**
-   * Boot a server with a **session-backed** issuer (like the platform IdP
-   * realm, which wires `onCreateSession`/`onRefreshSession` via
+   * Boot a server with a **session-backed** issuer (like a `$realm`, which
+   * wires `onCreateSession`/`onRefreshSession` via
    * `alepha/api/users`). Token-only issuers can't refresh through the endpoint
    * (the old access token isn't carried), so a session store is required to
    * exercise the refresh grant end-to-end.
@@ -580,7 +538,7 @@ describe("OAuthController refresh_token grant", () => {
           },
           onRefreshSession: async (refreshToken) => {
             const session = sessions.get(refreshToken);
-            if (!session) throw new Error("unknown refresh token");
+            if (!session) throw new AlephaError("unknown refresh token");
             return {
               user: { id: session.userId, roles: [] } as UserAccount,
               expiresIn: 3600,
@@ -666,7 +624,7 @@ describe("OAuthController refresh_token grant", () => {
     expect(typeof tokenBody.refresh_token).toBe("string");
     expect(typeof tokenBody.id_token).toBe("string");
 
-    // 2) refresh_token grant — MUST return a fresh id_token so an id_token-based
+    // 2) refresh_token grant: MUST return a fresh id_token so an id_token-based
     //    relying party (a stateless RP that forwards the id_token as Bearer)
     //    actually renews its identity, not just the access token.
     const refreshResp = await fetch(`${hostname}/oauth/token`, {
@@ -744,7 +702,7 @@ describe("OAuthController refresh_token grant", () => {
 
     // The attacker presents someone else's refresh token under their own
     // client_id. Unbound, this mints an id_token whose `aud` is the attacker's
-    // client — which any RP that forwards id_tokens as Bearer will accept.
+    // client, which any RP that forwards id_tokens as Bearer will accept.
     const resp = await fetch(`${hostname}/oauth/token`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -1089,7 +1047,7 @@ describe("OAuth consent cannot be skipped by the request", () => {
       redirectUris: [redirectUri],
       scopes: ["mcp"],
     });
-    // The victim is logged into the AS — the cookie is Lax, so it rides along
+    // The victim is logged into the AS: the cookie is Lax, so it rides along
     // on a cross-site top-level GET and the user resolves.
     const { access_token } = await app.issuer.createToken({
       id: "victim-user-id",
@@ -1283,7 +1241,7 @@ describe("OAuth bearer tokens are access tokens only", () => {
       scopes: ["mcp"],
     });
 
-    // Seeing a code — browser history, Referer, proxy logs — must not be
+    // Seeing a code (browser history, Referer, proxy logs) must not be
     // enough to act as its subject. Otherwise PKCE protects nothing: the
     // attacker never has to reach /oauth/token at all.
     expect(await resolve(alepha, code)).toBeUndefined();
@@ -1363,7 +1321,7 @@ describe("device authorization grant", () => {
     // A page this module serves itself (#Q2217). It used to advertise
     // `/device`, which nothing served, so no code could ever be approved.
     expect(body.verification_uri).toBe(`${hostname}/oauth/device`);
-    // RFC 8628 §3.3.1 — the same page with the code filled in, for anyone who
+    // RFC 8628 §3.3.1: the same page with the code filled in, for anyone who
     // can follow a link. The plain URI stays, for anyone who cannot.
     expect(body.verification_uri_complete).toContain("user_code=");
     expect(body.interval).toBeGreaterThan(0);
@@ -1490,7 +1448,7 @@ describe("device approval page", () => {
         where: { clientId: { eq: clientId } },
       });
       await app.oauthClients.updateById(row!.id, {
-        revokedAt: new Date().toISOString(),
+        revokedAt: alepha.inject(DateTimeProvider).nowISOString(),
       });
     };
 
@@ -1921,7 +1879,7 @@ describe("device approval page", () => {
  * Both bypasses were silent, which is what made them worth a quest: the
  * control was absent and looked present.
  */
-describe("OAuthController — the DCR limiter cannot silently disappear", () => {
+describe("OAuthController: the DCR limiter cannot silently disappear", () => {
   const boot = async (
     env?: Record<string, string | boolean>,
     cache?: object,
@@ -2003,7 +1961,7 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
     expect(controller.testBucket("203.0.113.7")).toBe("203.0.113.7");
     expect(logs.logs.filter((l) => l.level === "WARN")).toHaveLength(0);
 
-    // Bucketed, not exempted — the old code returned early and counted
+    // Bucketed, not exempted: the old code returned early and counted
     // nothing at all.
     expect(controller.testBucket(undefined)).toBe("unknown");
     const warnings = logs.logs.filter((l) => l.level === "WARN");
@@ -2104,6 +2062,29 @@ describe("OAuthController fails closed on scopes", () => {
     expect(body.error_description).toContain("admin");
   });
 
+  it("says in the registration answer which scopes the client holds", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+
+    const narrow = (await (
+      await register(hostname, { scope: "mcp" })
+    ).json()) as Record<string, string>;
+    const wide = (await (
+      await register(hostname, { scope: "mcp cli" })
+    ).json()) as Record<string, string>;
+    const unnamed = (await (await register(hostname, {})).json()) as Record<
+      string,
+      string
+    >;
+
+    expect(narrow.scope).toBe("mcp");
+    expect(wide.scope).toBe("mcp cli");
+    expect(wide.client_id).not.toBe(narrow.client_id);
+    expect(unnamed.scope).toBe("mcp");
+    expect(unnamed.client_id).toBe(narrow.client_id);
+  });
+
   it("answers invalid_scope when no requested scope is one the client holds", async ({
     expect,
   }) => {
@@ -2155,5 +2136,125 @@ describe("OAuthController fails closed on scopes", () => {
       scope: "cli",
     });
     expect(ok.status).toBe(200);
+  });
+});
+
+describe("OAuthController when the application does not declare mcp", () => {
+  class TestClients extends OAuthClientService {
+    public documents = new Map<string, unknown>();
+
+    protected override async requestMetadataDocument(
+      url: URL,
+    ): Promise<Response> {
+      return new Response(JSON.stringify(this.documents.get(url.toString())), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+  }
+
+  const boot = async () => {
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
+      .with(AlephaServer)
+      .with(AlephaOrmTestPostgres)
+      .with({ provide: OAuthClientService, use: TestClients })
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+      scopes: {
+        projects: { label: "Projects", permissions: ["project:read"] },
+      },
+    });
+    await alepha.start();
+    const { hostname } = alepha.inject(ServerProvider);
+    const clients = alepha.inject(OAuthClientService) as TestClients;
+    return { hostname, clients };
+  };
+
+  const register = (hostname: string, body: Record<string, unknown>) =>
+    fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Scoped Client",
+        redirect_uris: ["https://client.example/callback"],
+        ...body,
+      }),
+    });
+
+  const authorize = (hostname: string, clientId: string) =>
+    fetch(
+      `${hostname}/oauth/authorize?${new URLSearchParams({
+        response_type: "code",
+        client_id: clientId,
+        redirect_uri: "https://client.example/callback",
+        code_challenge: "x".repeat(43),
+        code_challenge_method: "S256",
+      })}`,
+      { redirect: "manual" },
+    );
+
+  it("tells a registration naming no scope to name one, without inventing mcp", async ({
+    expect,
+  }) => {
+    const { hostname } = await boot();
+
+    const unnamed = await register(hostname, {});
+    const named = await register(hostname, { scope: "projects" });
+
+    expect(unnamed.status).toBe(400);
+    const body = (await unnamed.json()) as Record<string, string>;
+    expect(body.error).toBe("invalid_client_metadata");
+    expect(body.error_description).toBe(
+      "No scope named, and this server declares no default one. Declared: projects",
+    );
+    expect(named.status).toBe(201);
+    expect(((await named.json()) as Record<string, string>).scope).toBe(
+      "projects",
+    );
+  });
+
+  it("registers a metadata document for the declared scopes it names, never for mcp", async ({
+    expect,
+  }) => {
+    const { hostname, clients } = await boot();
+    const named = "https://client.example/named.json";
+    clients.documents.set(named, {
+      client_id: named,
+      client_name: "Named",
+      redirect_uris: ["https://client.example/callback"],
+      scope: "projects admin",
+    });
+
+    const response = await authorize(hostname, named);
+
+    expect(response.status).toBe(302);
+    expect((await clients.findByClientId(named))?.scopes).toEqual(["projects"]);
+  });
+
+  it("refuses a metadata document left with no scope this server declares", async ({
+    expect,
+  }) => {
+    const { hostname, clients } = await boot();
+    const unnamed = "https://client.example/unnamed.json";
+    const undeclared = "https://client.example/undeclared.json";
+    clients.documents.set(unnamed, {
+      client_id: unnamed,
+      client_name: "Unnamed",
+      redirect_uris: ["https://client.example/callback"],
+    });
+    clients.documents.set(undeclared, {
+      client_id: undeclared,
+      client_name: "Undeclared",
+      redirect_uris: ["https://client.example/callback"],
+      scope: "admin",
+    });
+
+    expect((await authorize(hostname, unnamed)).status).toBe(400);
+    expect((await authorize(hostname, undeclared)).status).toBe(400);
+    expect(await clients.findByClientId(unnamed)).toBeNull();
+    expect(await clients.findByClientId(undeclared)).toBeNull();
   });
 });

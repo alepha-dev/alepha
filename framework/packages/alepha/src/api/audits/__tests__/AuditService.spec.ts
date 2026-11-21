@@ -196,7 +196,7 @@ describe("alepha/api/audits - AuditService", () => {
 
       const result = await auditService.find({ type: "auth" });
 
-      expect(result.content.every((e) => e.type === "auth")).toBe(true);
+      expect(result.content.map((e) => e.type)).toEqual(["auth"]);
     });
 
     it("should filter by severity", async ({ expect }) => {
@@ -215,7 +215,7 @@ describe("alepha/api/audits - AuditService", () => {
 
       const result = await auditService.find({ severity: "warning" });
 
-      expect(result.content.every((e) => e.severity === "warning")).toBe(true);
+      expect(result.content.map((e) => e.action)).toEqual(["warning"]);
     });
 
     it("should filter by userId", async ({ expect }) => {
@@ -227,7 +227,7 @@ describe("alepha/api/audits - AuditService", () => {
 
       const result = await auditService.find({ userId });
 
-      expect(result.content.every((e) => e.userId === userId)).toBe(true);
+      expect(result.content.map((e) => e.action)).toEqual(["a"]);
     });
 
     it("should filter by success status", async ({ expect }) => {
@@ -246,23 +246,125 @@ describe("alepha/api/audits - AuditService", () => {
 
       const failures = await auditService.find({ success: false });
 
-      expect(failures.content.every((e) => e.success === false)).toBe(true);
+      expect(failures.content.map((e) => e.action)).toEqual(["failure"]);
     });
 
     it("should sort by createdAt descending by default", async ({ expect }) => {
-      const { auditService } = await setup();
+      const { auditService, time } = await setup();
 
       await auditService.create({ type: "test", action: "first" });
-      await new Promise((r) => setTimeout(r, 10));
+      await time.travel([1, "minute"]);
       await auditService.create({ type: "test", action: "second" });
 
       const result = await auditService.find({ type: "test" });
 
-      if (result.content.length >= 2) {
-        const first = new Date(result.content[0].createdAt).getTime();
-        const second = new Date(result.content[1].createdAt).getTime();
-        expect(first).toBeGreaterThanOrEqual(second);
+      expect(result.content.map((e) => e.action)).toEqual(["second", "first"]);
+    });
+  });
+
+  describe("the actor", () => {
+    const actorA = {
+      id: "00000000-0000-4000-8000-00000000000a",
+      email: "admin@example.com",
+      realm: "admins",
+    };
+    const actorB = "00000000-0000-4000-8000-00000000000b";
+
+    const inRequestOf = async <T>(
+      alepha: Alepha,
+      user: typeof actorA,
+      run: () => Promise<T>,
+    ): Promise<T> =>
+      alepha.fork(async () => {
+        alepha.store.set("alepha.http.request", {
+          ip: "10.0.0.1",
+          headers: {},
+          user,
+        } as never);
+        return run();
+      });
+
+    it("never describes one user with another's email and realm", async ({
+      expect,
+    }) => {
+      const { alepha, auditService } = await setup();
+
+      const row = await inRequestOf(alepha, actorA, () =>
+        auditService.create({ type: "key", action: "mint", userId: actorB }),
+      );
+
+      expect(row).toMatchObject({ userId: actorB, ipAddress: "10.0.0.1" });
+      expect(row.userEmail).toBeUndefined();
+      expect(row.userRealm).toBeUndefined();
+    });
+
+    it("keeps an explicit actor whole when it names only an email", async ({
+      expect,
+    }) => {
+      const { alepha, auditService } = await setup();
+
+      const row = await inRequestOf(alepha, actorA, () =>
+        auditService.create({
+          type: "auth",
+          action: "invite",
+          userEmail: "invitee@example.com",
+        }),
+      );
+
+      expect(row.userEmail).toBe("invitee@example.com");
+      expect(row.userId).toBeUndefined();
+      expect(row.userRealm).toBeUndefined();
+    });
+
+    it("takes the request's user, whole, when none is named or the same one is", async ({
+      expect,
+    }) => {
+      const { alepha, auditService } = await setup();
+
+      const unnamed = await inRequestOf(alepha, actorA, () =>
+        auditService.create({ type: "key", action: "list" }),
+      );
+      const same = await inRequestOf(alepha, actorA, () =>
+        auditService.create({ type: "key", action: "mint", userId: actorA.id }),
+      );
+
+      for (const row of [unnamed, same]) {
+        expect(row).toMatchObject({
+          userId: actorA.id,
+          userEmail: actorA.email,
+          userRealm: actorA.realm,
+        });
       }
+    });
+  });
+
+  describe("search", () => {
+    it("reads % and _ as the characters they are", async ({ expect }) => {
+      const { auditService } = await setup();
+      await auditService.create({
+        type: "t",
+        action: "a",
+        description: "plain text",
+      });
+      await auditService.create({
+        type: "t",
+        action: "a",
+        description: "50% off",
+      });
+      await auditService.create({
+        type: "t",
+        action: "a",
+        description: "snake_case",
+      });
+
+      const descriptions = async (search: string) =>
+        (await auditService.find({ search })).content.map(
+          (entry) => entry.description,
+        );
+
+      expect(await descriptions("%")).toEqual(["50% off"]);
+      expect(await descriptions("_")).toEqual(["snake_case"]);
+      expect(await descriptions("plain")).toEqual(["plain text"]);
     });
   });
 
@@ -274,9 +376,14 @@ describe("alepha/api/audits - AuditService", () => {
       await auditService.create({ type: "auth", action: "login", userId });
       await auditService.create({ type: "user", action: "update", userId });
 
+      await auditService.create({ type: "auth", action: "other" });
+
       const result = await auditService.findByUser(userId);
 
-      expect(result.content.every((e) => e.userId === userId)).toBe(true);
+      expect(result.content.map((e) => e.action).sort()).toEqual([
+        "login",
+        "update",
+      ]);
     });
   });
 
@@ -299,13 +406,19 @@ describe("alepha/api/audits - AuditService", () => {
         resourceId: "user-123",
       });
 
+      await auditService.create({
+        type: "user",
+        action: "other",
+        resourceType: "user",
+        resourceId: "user-456",
+      });
+
       const result = await auditService.findByResource("user", "user-123");
 
-      expect(
-        result.content.every(
-          (e) => e.resourceType === "user" && e.resourceId === "user-123",
-        ),
-      ).toBe(true);
+      expect(result.content.map((e) => e.action).sort()).toEqual([
+        "create",
+        "update",
+      ]);
     });
   });
 
@@ -339,14 +452,14 @@ describe("alepha/api/audits - AuditService", () => {
 
       const stats = await auditService.getStats();
 
-      expect(stats.total).toBeGreaterThanOrEqual(4);
-      expect(stats.byType).toBeDefined();
-      expect(stats.bySeverity).toBeDefined();
-      expect(stats.bySeverity.info).toBeGreaterThanOrEqual(0);
-      expect(stats.bySeverity.warning).toBeGreaterThanOrEqual(0);
-      expect(stats.bySeverity.critical).toBeGreaterThanOrEqual(0);
-      expect(stats.successRate).toBeDefined();
-      expect(stats.recentFailures).toBeDefined();
+      expect(stats.total).toBe(4);
+      expect(stats.byType).toEqual({ auth: 2, user: 1, system: 1 });
+      expect(stats.bySeverity).toEqual({ info: 2, warning: 1, critical: 1 });
+      expect(stats.successRate).toBe(0.5);
+      expect(stats.recentFailures.map((e) => e.action).sort()).toEqual([
+        "error",
+        "login",
+      ]);
     });
 
     it("should calculate correct success rate", async ({ expect }) => {
@@ -376,10 +489,7 @@ describe("alepha/api/audits - AuditService", () => {
 
       const stats = await auditService.getStats();
 
-      // Success rate should be around 75% for the entries we created
-      // (but there might be other entries from other tests)
-      expect(stats.successRate).toBeGreaterThan(0);
-      expect(stats.successRate).toBeLessThanOrEqual(1);
+      expect(stats.successRate).toBe(0.75);
     });
   });
 
@@ -421,8 +531,6 @@ describe("alepha/api/audits - AuditService", () => {
   });
 
   describe("deleteExpired", () => {
-    // Cutoffs are always computed from `now`, so backdating entries keeps the
-    // delete window in the past — concurrent test files' recent rows are safe.
     const countByType = async (db: Db, type: string): Promise<number> =>
       (await db.audits.findMany({ where: { type: { eq: type } } })).length;
 
@@ -432,7 +540,6 @@ describe("alepha/api/audits - AuditService", () => {
       const { auditService, db, time } = await setup();
       const type = "av-default";
 
-      await db.audits.deleteMany({ type: { eq: type } });
       await db.audits.create({
         type,
         action: "old",
@@ -446,7 +553,7 @@ describe("alepha/api/audits - AuditService", () => {
 
       const deleted = await auditService.deleteExpired(time.now().toDate(), 90);
 
-      expect(deleted).toBeGreaterThanOrEqual(1);
+      expect(deleted).toBe(1);
       expect(await countByType(db, type)).toBe(1);
     });
 
@@ -456,7 +563,6 @@ describe("alepha/api/audits - AuditService", () => {
       const { auditService, db, time } = await setup();
       const type = "av-within";
 
-      await db.audits.deleteMany({ type: { eq: type } });
       await db.audits.create({
         type,
         action: "x",
@@ -478,9 +584,6 @@ describe("alepha/api/audits - AuditService", () => {
         actions: ["x"],
         retentionDays: 7,
       });
-
-      await db.audits.deleteMany({ type: { eq: "av-short" } });
-      await db.audits.deleteMany({ type: { eq: "av-long" } });
 
       // 30 days old: beyond the 7-day override, within the 90-day default.
       await db.audits.create({
@@ -509,7 +612,6 @@ describe("alepha/api/audits - AuditService", () => {
         retentionDays: 0,
       });
 
-      await db.audits.deleteMany({ type: { eq: "av-permanent" } });
       await db.audits.create({
         type: "av-permanent",
         action: "x",
@@ -527,7 +629,6 @@ describe("alepha/api/audits - AuditService", () => {
       const { auditService, db, time } = await setup();
       const type = "av-disabled";
 
-      await db.audits.deleteMany({ type: { eq: type } });
       await db.audits.create({
         type,
         action: "x",

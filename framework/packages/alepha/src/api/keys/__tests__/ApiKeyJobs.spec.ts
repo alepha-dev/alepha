@@ -5,7 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { apiKeyEntity } from "../entities/apiKeyEntity.ts";
 import { AlephaApiKeys } from "../index.ts";
@@ -101,11 +101,13 @@ const setup = async (
  * `travel()` can be skipped by the cron's own run lock.
  */
 describe("ApiKeyJobs.purgeExpired", () => {
-  it("deletes a key expired past the window and keeps one inside it, under travel()", async () => {
+  it("deletes a key expired past the window and keeps one inside it, under travel()", async ({
+    expect,
+  }) => {
     const { keys, time, expiredFor, remaining } = await setup();
 
     const inside = await expiredFor("expired 88 days", 88);
-    const outside = await expiredFor("expired 90 days", 90);
+    await expiredFor("expired 90 days", 90);
 
     // One day on: 89 days against 91. `travel()` may fire the daily cron on
     // the way, so only the end state is asserted, after a purge run.
@@ -113,51 +115,51 @@ describe("ApiKeyJobs.purgeExpired", () => {
     await keys.purgeDeadKeys();
 
     expect(await remaining()).toEqual([inside]);
-    expect(await remaining()).not.toContain(outside);
   });
 
-  it("deletes a key revoked past the window", async () => {
+  it("deletes a key revoked past the window", async ({ expect }) => {
     const { keys, time, revokedAt, remaining } = await setup();
 
-    const old = await revokedAt("revoked long ago");
+    await revokedAt("revoked long ago");
     await time.travel(91, "days");
     const recent = await revokedAt("revoked just now");
 
     await keys.purgeDeadKeys();
 
     expect(await remaining()).toEqual([recent]);
-    expect(await remaining()).not.toContain(old);
   });
 
-  it("disables the expired window alone with purgeExpiredAfterDays: 0", async () => {
+  it("disables the expired window alone with purgeExpiredAfterDays: 0", async ({
+    expect,
+  }) => {
     const { keys, time, expiredFor, revokedAt, remaining } = await setup({
       purgeExpiredAfterDays: 0,
     });
 
     const expired = await expiredFor("expired a year ago", 365);
-    const revoked = await revokedAt("revoked");
+    await revokedAt("revoked");
     await time.travel(91, "days");
     await keys.purgeDeadKeys();
 
     expect(await remaining()).toEqual([expired]);
-    expect(await remaining()).not.toContain(revoked);
   });
 
-  it("disables the revoked window alone with purgeRevokedAfterDays: 0", async () => {
+  it("disables the revoked window alone with purgeRevokedAfterDays: 0", async ({
+    expect,
+  }) => {
     const { keys, time, expiredFor, revokedAt, remaining } = await setup({
       purgeRevokedAfterDays: 0,
     });
 
-    const expired = await expiredFor("expired a year ago", 365);
+    await expiredFor("expired a year ago", 365);
     const revoked = await revokedAt("revoked");
     await time.travel(91, "days");
     await keys.purgeDeadKeys();
 
     expect(await remaining()).toEqual([revoked]);
-    expect(await remaining()).not.toContain(expired);
   });
 
-  it("never touches an active key, however old", async () => {
+  it("never touches an active key, however old", async ({ expect }) => {
     const { keys, time, userId, remaining } = await setup();
 
     const forever = await keys.create({ userId, name: "no expiry", roles: [] });
@@ -175,7 +177,7 @@ describe("ApiKeyJobs.purgeExpired", () => {
     );
   });
 
-  it("drains a backlog larger than one run across runs", async () => {
+  it("drains a backlog larger than one run across runs", async ({ expect }) => {
     const { expiredFor, remaining, keys, userId } = await setup(
       {},
       SmallBatchApiKeyService,
@@ -195,7 +197,9 @@ describe("ApiKeyJobs.purgeExpired", () => {
     expect(await remaining()).toEqual([active.apiKey.id]);
   });
 
-  it("is a daily system job that runs the purge when triggered", async () => {
+  it("is a daily system job that runs the purge when triggered", async ({
+    expect,
+  }) => {
     // Without `travel()`: a cron fired on the way can still hold its run lock
     // when a trigger follows, and a skipped trigger reads as a purge that
     // deleted nothing.

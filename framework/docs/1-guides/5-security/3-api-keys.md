@@ -60,7 +60,7 @@ answers `401`:
 
 ```mermaid
 flowchart TD
-  T[token from header or query] --> L[lookup by hash, cached 15 minutes]
+  T[token from header or query] --> L[lookup by hash, cached 30 seconds]
   L --> R{revoked or expired?}
   R -->|yes| X[refused]
   R -->|no| I{IP allowlist admits the address?}
@@ -73,13 +73,16 @@ flowchart TD
 ```
 
 The owner check is never cached, so disabling, deleting or demoting the owner
-applies on the next request. The key row itself is cached for 15 minutes in
-each instance's memory, and revoking or rotating a key evicts it there.
+applies on the next request. The key row itself is cached for 30 seconds in
+each instance's memory, and revoking or rotating a key evicts it there. A
+token no key holds is never cached.
 
 ⚠️ The eviction reaches only the instance that served the revocation. With
-several instances, a revoked or rotated-away token can keep authenticating on
-the others until their cached row expires, up to 15 minutes. A new instance
-always reads the database first.
+several instances (or isolates, on Workers), a revoked or rotated-away token
+can keep authenticating on the others until their cached row expires, at most
+30 seconds later. That bound is the same on every runtime, with or without a
+shared cache: the row is cached in memory only. A new instance always reads
+the database first.
 
 ## The lifecycle
 
@@ -149,8 +152,8 @@ window.
 Rotating replaces the secret and keeps the key: its name, roles, permission
 scope, IP allowlist and audit history stay, while the token, the expiry and the
 usage counters start again. The old token stops authenticating at once on the
-instance that rotated it, and within the 15-minute validation cache on the
-others (see the warning above). An expired key can be rotated, which is
+instance that rotated it, and within 30 seconds on the others (see the
+warning above). An expired key can be rotated, which is
 how it is renewed; a revoked one cannot.
 
 ### Revocation, names and retention

@@ -10,7 +10,7 @@ import {
   type UserAccountToken,
 } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
 import { AlephaApiKeys } from "../index.ts";
@@ -79,7 +79,9 @@ const setup = async (options: Partial<ApiKeyOptions> = {}) => {
 
 describe("GET /api-keys/options", () => {
   describe("the permission ceiling", () => {
-    it("never offers a permission the caller's roles do not grant, and names them in full", async () => {
+    it("never offers a permission the caller's roles do not grant, and names them in full", async ({
+      expect,
+    }) => {
       const { options$, names } = await setup();
 
       const response = await options$({ roles: ["reporter"] });
@@ -92,7 +94,9 @@ describe("GET /api-keys/options", () => {
       expect(names(response)).not.toContain("danger:delete");
     });
 
-    it("gives a scoped caller its scope, not its roles' reach", async () => {
+    it("gives a scoped caller its scope, not its roles' reach", async ({
+      expect,
+    }) => {
       const { options$, names } = await setup();
 
       // The endpoint itself needs `api-key:create`, so the scope holds it.
@@ -104,7 +108,9 @@ describe("GET /api-keys/options", () => {
       expect(names(response)).toEqual(["api-key:create", "reports:read"]);
     });
 
-    it("expands a wildcard role to every permission the application declares", async () => {
+    it("expands a wildcard role to every permission the application declares", async ({
+      expect,
+    }) => {
       const { security, options$, names } = await setup();
 
       const response = await options$({ roles: ["admin"] });
@@ -117,7 +123,9 @@ describe("GET /api-keys/options", () => {
       expect(names(response)).toContain("danger:delete");
     });
 
-    it("returns labels as the raw translation keys they were declared with", async () => {
+    it("returns labels as the raw translation keys they were declared with", async ({
+      expect,
+    }) => {
       const { options$ } = await setup();
 
       const response = await options$({ roles: ["reporter"] });
@@ -136,7 +144,9 @@ describe("GET /api-keys/options", () => {
       });
     });
 
-    it("throws for a role the code no longer declares, as $secure does", async () => {
+    it("throws for a role the code no longer declares, as $secure does", async ({
+      expect,
+    }) => {
       const { security } = await setup();
 
       expect(() =>
@@ -149,7 +159,9 @@ describe("GET /api-keys/options", () => {
   });
 
   describe("the expiry policy", () => {
-    it("offers every preset and the configured default while uncapped", async () => {
+    it("offers every preset and the configured default while uncapped", async ({
+      expect,
+    }) => {
       const { options$ } = await setup();
 
       const { expiry } = await options$({ roles: ["reporter"] });
@@ -161,7 +173,9 @@ describe("GET /api-keys/options", () => {
       });
     });
 
-    it("shortens the presets to the cap, drops 'never', and preselects what the cap admits", async () => {
+    it("shortens the presets to the cap, drops 'never', and preselects what the cap admits", async ({
+      expect,
+    }) => {
       const { options$ } = await setup({ maxExpiryDays: 60 });
 
       const { expiry } = await options$({ roles: ["reporter"] });

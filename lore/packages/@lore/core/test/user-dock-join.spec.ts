@@ -67,7 +67,7 @@ const setup = async (): Promise<Ctx> => {
         z.object({ username: z.string(), email: z.email() }),
       );
       const res = await admin.createUser.fetch(
-        { body: { ...data, roles: ["user"] } },
+        { body: { ...data, roles: ["user"], emailVerified: true } },
         { user: adminUser },
       );
       return { id: res.data.id, roles: res.data.roles, email: data.email };

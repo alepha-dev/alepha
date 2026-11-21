@@ -1,16 +1,13 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, type Page } from "alepha/orm";
+import { $repository, type Page, sql } from "alepha/orm";
 import type { ServerRequest } from "alepha/server";
 
-import {
-  type AuditEntity,
-  type AuditSeverity,
-  audits,
-} from "../entities/audits.ts";
+import { type AuditEntity, audits } from "../entities/audits.ts";
 import type { AuditActionPair } from "../schemas/auditActionPairSchema.ts";
 import type { AuditQuery } from "../schemas/auditQuerySchema.ts";
+import type { AuditSeverity } from "../schemas/auditSeveritySchema.ts";
 import type { CreateAudit } from "../schemas/createAuditSchema.ts";
 
 /**
@@ -130,9 +127,9 @@ export class AuditService {
    * The pair is what an audit row is identified by, so it is what the filter
    * offers.
    *
-   * Sourced from the `$audit` type registry. Audit types register lazily —
-   * when their holder (e.g. `SessionAudits`, `ParameterAudits`) is first
-   * injected — so the admin filter only lists actions for audit domains that
+   * Sourced from the `$audit` type registry. Audit types register lazily
+   * (when their holder, e.g. `SessionAudits` or `ParameterAudits`, is first
+   * injected), so the admin filter only lists actions for audit domains that
    * are actually in use, which is the intended behaviour.
    */
   public getDistinctActions(): AuditActionPair[] {
@@ -156,7 +153,7 @@ export class AuditService {
    *
    * Read from the rows rather than a hardcoded list: the set of resource types
    * an app audits is app-specific, and the realms in play depend on the
-   * deployment. Nulls are dropped — an audit entry without a resource type is
+   * deployment. Nulls are dropped: an audit entry without a resource type is
    * not a filterable value.
    */
   public async getDistinctFilterValues(): Promise<{
@@ -213,9 +210,17 @@ export class AuditService {
       if (!data.sessionId && request.metadata?.sessionId) {
         contextData.sessionId = request.metadata.sessionId;
       }
-      // Extract user from request.user (set by ServerSecurityProvider)
+      // The actor is one identity. A caller that names one (any of the
+      // three fields) is describing somebody: the request's user completes
+      // the description only when it is the same account, and is the actor
+      // when the caller named nobody. Filled field by field, a row carried
+      // one user's id with another's email and realm.
       const user = request.user;
-      if (user) {
+      const named =
+        data.userId !== undefined ||
+        data.userEmail !== undefined ||
+        data.userRealm !== undefined;
+      if (user && (!named || (data.userId && data.userId === user.id))) {
         if (!data.userId && user.id) {
           contextData.userId = user.id;
         }
@@ -312,7 +317,10 @@ export class AuditService {
    * Two concurrent writes can both miss and both insert, degrading to one row
    * each - exactly today's behaviour. An audit write must never block the
    * action it is recording, and a duplicated row is a far smaller cost than a
-   * contended one.
+   * contended one. Two that both find the open row both count: `eventCount`
+   * is incremented by the statement. Their `metadata` is merged from the row
+   * each one read, so of two concurrent events the later write's `fields`
+   * win and the earlier one's can be missing.
    */
   protected async coalesceInto(
     data: CreateAudit,
@@ -368,7 +376,9 @@ export class AuditService {
 
     const now = new Date(this.dateTime.nowMillis()).toISOString();
     return await this.repo.updateById(open.id, {
-      eventCount: (open.eventCount ?? 1) + 1,
+      // Incremented in the statement: written back as a value read
+      // earlier, five events arriving together counted as one.
+      eventCount: sql`COALESCE(${this.repo.table.eventCount}, 1) + 1`,
       // The row's span. `createdAt` stays where it was, which is what keeps
       // the feed's ordering honest.
       updatedAt: now,
@@ -444,9 +454,6 @@ export class AuditService {
   }
 
   /**
-   * Find audit entries with filtering and pagination.
-   */
-  /**
    * A comma-separated filter, as one condition.
    *
    * ⚠️ Never `inArray: []`, which throws: an empty selection is the ABSENCE
@@ -474,6 +481,9 @@ export class AuditService {
     }
   }
 
+  /**
+   * Find audit entries with filtering and pagination.
+   */
   public async find(query: AuditQuery = {}): Promise<Page<AuditEntity>> {
     this.log.trace("Finding audit entries", { query });
 
@@ -545,7 +555,8 @@ export class AuditService {
     }
 
     if (query.search) {
-      where.description = { like: `%${query.search}%` };
+      // `contains` escapes `%` and `_`, and ignores case on every driver.
+      where.description = { contains: query.search };
     }
 
     const result = await this.repo.paginate(query, { where }, { count: true });
@@ -612,7 +623,7 @@ export class AuditService {
     }
 
     // Aggregated in SQL. This used to `findMany({ where })` with no limit and
-    // count in JS — O(rows) memory on an admin endpoint, over a table whose
+    // count in JS: O(rows) memory on an admin endpoint, over a table whose
     // whole point is to grow without bound.
     const [byTypeRows, bySeverityRows, bySuccessRows, failures] =
       await Promise.all([
@@ -675,6 +686,24 @@ export class AuditService {
   }
 
   /**
+   * Delete audit entries by id, and answer the ids that went.
+   *
+   * In batches: the statement binds one parameter per id, and a driver
+   * binds only so many (100 on Cloudflare D1).
+   */
+  public async deleteByIds(ids: string[]): Promise<string[]> {
+    const size = Math.min(1000, this.repo.provider.maxBoundParameters - 10);
+    const deleted: string[] = [];
+    for (let index = 0; index < ids.length; index += size) {
+      const batch = await this.repo.deleteMany({
+        id: { inArray: ids.slice(index, index + size) },
+      });
+      deleted.push(...batch.map(String));
+    }
+    return deleted;
+  }
+
+  /**
    * Delete audit entries created before the given date (retention policy).
    *
    * @returns number of deleted entries.
@@ -695,8 +724,8 @@ export class AuditService {
    * Delete audit entries that have outlived their retention window.
    *
    * Each registered audit type that declares a dedicated `retentionDays` is
-   * pruned using its own window; every other type — including unregistered or
-   * legacy types — falls back to `defaultRetentionDays`. A retention of `0`
+   * pruned using its own window; every other type (including unregistered or
+   * legacy types) falls back to `defaultRetentionDays`. A retention of `0`
    * (per-type or default) keeps that scope forever.
    *
    * `now` is injected rather than read from the clock so the policy is

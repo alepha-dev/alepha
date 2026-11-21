@@ -5,7 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
 import { AlephaApiKeys } from "../index.ts";
@@ -43,7 +43,7 @@ const setup = async (maxExpiryDays = 0) => {
 };
 
 describe("API key expiry policy", () => {
-  it("resolves every preset from the current time", async () => {
+  it("resolves every preset from the current time", async ({ expect }) => {
     const { service, time } = await setup();
 
     // Move the clock so a preset resolved from the real wall clock, rather
@@ -73,7 +73,9 @@ describe("API key expiry policy", () => {
     }
   });
 
-  it("creates a key without expiry for 'never' and for no expiry at all while uncapped", async () => {
+  it("creates a key without expiry for 'never' and for no expiry at all while uncapped", async ({
+    expect,
+  }) => {
     const { service } = await setup();
 
     const never = await service.create({
@@ -92,7 +94,9 @@ describe("API key expiry policy", () => {
     expect(omitted.apiKey.expiresAt).toBeUndefined();
   });
 
-  it("refuses a preset over the cap, naming it, and admits one within", async () => {
+  it("refuses a preset over the cap, naming it, and admits one within", async ({
+    expect,
+  }) => {
     const { service } = await setup(30);
 
     await expect(
@@ -113,7 +117,9 @@ describe("API key expiry policy", () => {
     expect(apiKey.expiresAt).toBeDefined();
   });
 
-  it("refuses 'never' and an omitted expiry under a cap", async () => {
+  it("refuses 'never' and an omitted expiry under a cap", async ({
+    expect,
+  }) => {
     const { service } = await setup(30);
 
     await expect(
@@ -129,7 +135,9 @@ describe("API key expiry policy", () => {
     ).rejects.toThrow("30 days");
   });
 
-  it("refuses a raw expiresAt over the cap rather than clamping it", async () => {
+  it("refuses a raw expiresAt over the cap rather than clamping it", async ({
+    expect,
+  }) => {
     // The whole point of resolving the preset on the server: a client that
     // computes its own date cannot step around the policy.
     const { service, time } = await setup(30);
@@ -153,7 +161,7 @@ describe("API key expiry policy", () => {
     expect(new Date(apiKey.expiresAt!).getTime()).toBe(within.getTime());
   });
 
-  it("refuses expiresIn and expiresAt together", async () => {
+  it("refuses expiresIn and expiresAt together", async ({ expect }) => {
     const { service, time } = await setup();
 
     await expect(
@@ -167,7 +175,9 @@ describe("API key expiry policy", () => {
     ).rejects.toThrow("not both");
   });
 
-  it("enforces the cap in the service, so action.run() is refused too", async () => {
+  it("enforces the cap in the service, so action.run() is refused too", async ({
+    expect,
+  }) => {
     const { controller, time } = await setup(30);
     time.pause();
     const user = { id: randomUUID(), name: "Owner", roles: ["admin"] };

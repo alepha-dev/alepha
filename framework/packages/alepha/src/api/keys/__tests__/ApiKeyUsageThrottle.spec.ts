@@ -6,7 +6,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaApiKeys } from "../index.ts";
 import { apiKeyOptions } from "../parameters/ApiKeyParameters.ts";
@@ -69,7 +69,9 @@ const setup = async (usageWriteIntervalMinutes?: number) => {
 };
 
 describe("API key usage write throttle", () => {
-  it("writes once for two validations inside the interval, on the cache-hit path", async () => {
+  it("writes once for two validations inside the interval, on the cache-hit path", async ({
+    expect,
+  }) => {
     const { service, background, time, token } = await setup();
     time.pause();
 
@@ -83,7 +85,9 @@ describe("API key usage write throttle", () => {
     expect(service.usageWrites).toBe(1);
   });
 
-  it("writes again once the interval has passed, still from the cache", async () => {
+  it("writes again once the interval has passed, and not before when the row is read again", async ({
+    expect,
+  }) => {
     const { service, background, time, token } = await setup();
     time.pause();
 
@@ -97,11 +101,13 @@ describe("API key usage write throttle", () => {
     await service.validate(token);
     await background.flush();
 
-    expect(service.databaseReads).toBe(1);
+    // The cached row ended twice meanwhile (30 seconds): each validation
+    // read the database, and the throttle still held inside the interval.
+    expect(service.databaseReads).toBe(3);
     expect(service.usageWrites).toBe(2);
   });
 
-  it("writes on every call when the interval is 0", async () => {
+  it("writes on every call when the interval is 0", async ({ expect }) => {
     const { service, background, token } = await setup(0);
 
     await service.validate(token);
@@ -112,7 +118,7 @@ describe("API key usage write throttle", () => {
     expect(service.usageWrites).toBe(3);
   });
 
-  it("throttles each key on its own", async () => {
+  it("throttles each key on its own", async ({ expect }) => {
     const { service, background, time, token } = await setup();
     time.pause();
     const other = await service.create({

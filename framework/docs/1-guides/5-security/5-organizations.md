@@ -57,7 +57,9 @@ against the caller's rank (see [Ranks](/docs/guides-security-organizations#ranks
 
 Ownership is transferred, never assigned as an ordinary rank. The transfer
 updates the old and new owner together, so an organization is not left with
-zero or two owners. The owner cannot leave or be removed until ownership has
+zero or two owners. The rank the outgoing owner keeps must be one the
+organization defines (`member` when none is named); an unknown rank is refused
+and nothing changes. The owner cannot leave or be removed until ownership has
 been transferred, and a user who still owns an organization cannot delete their
 account (`user:delete:before` answers `409`) until they transfer or delete it.
 
@@ -232,6 +234,30 @@ under `/organizations/invitations`: `me` (my pending invitations),
 invitation's own address), and `preview?token=...`, which needs no session and
 tells a landing page whether a token is `ok`, `invalid`, `expired`, `accepted`,
 `declined` or `revoked`.
+
+⚠️ An invitation is matched to an account by its address, so the address has to
+be one the account proved. `me`, `accept` and `decline` answer only an account
+whose stored email is **verified** and that belongs to the **inviter's realm**:
+
+- An account that registered the invited address and never verified it lists
+  nothing and is refused with `403`, like an account the invitation was not
+  sent to. It verifies its email through its realm first.
+- An account of another realm holding the same address is another person, and
+  is refused the same way.
+- A new account created from the invitation link in a closed realm (see
+  [Closed-realm signup](#closed-realm-signup)) is verified by the link, so it
+  can accept at once.
+- An invitation whose inviter's account was deleted can no longer be accepted:
+  invite again.
+
+The preview says something only to a caller holding the whole link. A token
+whose secret is wrong, or whose first half is not an invitation id, is
+`invalid` whatever the invitation's state, and the address and organization are
+returned only with a status other than `invalid`. A wrong secret costs the link
+nothing: the secret is a random UUID (122 random bits), so the link is not
+protected by an attempt counter, and nobody can lock the recipient out by
+previewing with wrong secrets. Once an expired link's verification row has been
+purged (within the hour), the link reads `invalid` rather than `expired`.
 
 Creating an invitation checks the inviter's rank, validates the target rank,
 checks organization capacity through `OrganizationPolicyProvider.assertRoom`,

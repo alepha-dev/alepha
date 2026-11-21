@@ -52,24 +52,25 @@ export class ApiKeyService {
   protected readonly securityProvider = $inject(SecurityProvider);
 
   /**
-   * Cache validated API keys for 15 minutes.
+   * Remember a validated key's row for 30 seconds, in this process.
    *
-   * Pinned to per-isolate memory:
-   * - The cache replaces a single indexed SELECT on `api_keys`. Routing it
-   *   through a distributed K/V (KV/Redis) buys little — the SELECT is
-   *   already cheap — and pinning to DB would actively trade one SQL read
-   *   for another.
-   * - Cold-start gives a fresh DB read on every new isolate, which is
-   *   *better* for revocation visibility than a distributed cache that
-   *   keeps serving stale entries until its own TTL.
-   * - Avoids provisioning KV/Redis just for this one cache. Users who need
-   *   cross-isolate sharing for high-throughput API auth can override
-   *   globally via `alepha.with({ provide: CacheProvider, use: ... })`.
+   * The ttl is the revocation delay: revoking or rotating a key evicts the
+   * row in the process that did it, and no other process hears of it. An
+   * instance or isolate that validated the token before keeps its own copy
+   * until the entry ends, so a revoked or rotated-away token stops
+   * authenticating at once where the change was made and within 30 seconds
+   * everywhere else, on every runtime and with or without a shared cache.
+   *
+   * Pinned to memory because the entry replaces a single indexed SELECT on
+   * `api_keys`: a distributed cache would trade that read for a network
+   * round trip, and on Workers the application cache is the database
+   * itself. A token no key holds is never remembered (see
+   * {@link validate}).
    */
-  protected readonly validationCache = $cache<ApiKeyEntity | null, [string]>({
+  protected readonly validationCache = $cache<ApiKeyEntity, [string]>({
     provider: "memory",
     name: "api:keys:validation",
-    ttl: [15, "minutes"],
+    ttl: [30, "seconds"],
   });
 
   /**
@@ -78,8 +79,8 @@ export class ApiKeyService {
    *
    * Invalidating the cache is not enough on its own: a validation that read
    * the key *before* the revocation still writes it back afterwards, and the
-   * revoked key then authenticates until the 15-minute TTL expires. The
-   * counter is per-isolate, exactly like the cache it guards.
+   * revoked key then authenticates until the entry's ttl ends. The counter
+   * is per-isolate, exactly like the cache it guards.
    */
   protected revocationEpoch = 0;
 
@@ -119,7 +120,7 @@ export class ApiKeyService {
    * `api_keys.userId` → `users.id`.
    *
    * The `users` entity is resolved from the repository registry at runtime
-   * rather than imported — same pattern and same reason as
+   * rather than imported: same pattern and same reason as
    * `FileService.resolveCreatorJoin`: the users module already depends on
    * this one (`$realm` wires the key resolver), so a compile-time import here
    * would form a circular dependency. Only applied when the `users` table is
@@ -374,7 +375,7 @@ export class ApiKeyService {
    * @param options.priority - Priority of this resolver (default: 50, JWT is 100)
    * @param options.prefix - API key prefix to match in Bearer header (default: "ak")
    * @param options.resolveOwner - Called with the key's userId on every
-   * validation. Return `undefined` (or `enabled: false`) to refuse the key —
+   * validation. Return `undefined` (or `enabled: false`) to refuse the key,
    * so keys stop authenticating the moment their owner is disabled or
    * deleted; an API key must never outlive its account. The returned `roles`
    * cap the key's own stored roles, so a demoted owner's outstanding keys
@@ -651,7 +652,7 @@ export class ApiKeyService {
 
   /**
    * Find all API keys with optional filtering (admin only). Rows carry an
-   * owner summary under `user` when the users table is registered — see
+   * owner summary under `user` when the users table is registered: see
    * {@link resolveOwnerJoin}.
    *
    * Typed without `user` on purpose, like `FileService.findFiles`: the join
@@ -763,8 +764,8 @@ export class ApiKeyService {
   }
 
   /**
-   * Revoke many API keys in one repository call (admin only). Already-revoked
-   * keys are silently skipped. Returns the ids that were actually revoked.
+   * Revoke many API keys (admin only). Already-revoked keys are silently
+   * skipped. Returns the ids that were actually revoked.
    */
   public async revokeManyByAdmin(
     ids: string[],
@@ -772,29 +773,39 @@ export class ApiKeyService {
   ): Promise<string[]> {
     if (ids.length === 0) return [];
 
-    const keys = await this.repo.findMany({
-      where: { id: { inArray: ids } },
-      columns: ["id", "tokenHash", "revokedAt", "name", "userId"],
-    });
-    const toRevoke = keys.filter((k) => !k.revokedAt);
+    // One parameter per id in each statement, so the ids go in batches the
+    // driver can bind (Cloudflare D1 binds 100 per statement).
+    const size = this.purgeBatchSize();
+    const toRevoke: Array<
+      Pick<ApiKeyEntity, "id" | "tokenHash" | "name" | "userId">
+    > = [];
+    for (let index = 0; index < ids.length; index += size) {
+      const keys = await this.repo.findMany({
+        where: { id: { inArray: ids.slice(index, index + size) } },
+        columns: ["id", "tokenHash", "revokedAt", "name", "userId"],
+      });
+      const batch = keys.filter((k) => !k.revokedAt);
+      if (batch.length === 0) continue;
+
+      this.markRevocation();
+      await Promise.all(
+        batch.map((k) => this.validationCache.invalidate(k.tokenHash)),
+      );
+
+      await this.repo.updateMany(
+        { id: { inArray: batch.map((k) => k.id) } },
+        {
+          revokedAt: this.dateTimeProvider.now().toISOString(),
+        },
+      );
+
+      this.markRevocation();
+      await Promise.all(
+        batch.map((k) => this.validationCache.invalidate(k.tokenHash)),
+      );
+      toRevoke.push(...batch);
+    }
     if (toRevoke.length === 0) return [];
-
-    this.markRevocation();
-    await Promise.all(
-      toRevoke.map((k) => this.validationCache.invalidate(k.tokenHash)),
-    );
-
-    await this.repo.updateMany(
-      { id: { inArray: toRevoke.map((k) => k.id) } },
-      {
-        revokedAt: this.dateTimeProvider.now().toISOString(),
-      },
-    );
-
-    this.markRevocation();
-    await Promise.all(
-      toRevoke.map((k) => this.validationCache.invalidate(k.tokenHash)),
-    );
 
     this.log.info("API keys revoked by admin", { count: toRevoke.length });
 
@@ -962,21 +973,24 @@ export class ApiKeyService {
     const hash = this.hashToken(token);
 
     // Try cache first
-    let apiKey = await this.validationCache.get(hash);
+    let apiKey: ApiKeyEntity | null | undefined =
+      await this.validationCache.get(hash);
 
     // If not in cache, look up in database
     if (apiKey === undefined) {
       // Snapshot BEFORE the read: if a revocation lands while this query is
       // in flight, the row we get back is already stale and must not be
-      // cached. `invalidate()` alone could not prevent that — it runs before
+      // cached. `invalidate()` alone could not prevent that: it runs before
       // our `set`, so the write simply resurrected the pre-revocation row and
-      // the revoked key kept authenticating for the full 15-minute TTL.
+      // the revoked key kept authenticating for the entry's whole ttl.
       const epoch = this.revocationEpoch;
 
       apiKey = await this.findByTokenHash(hash);
 
-      // Store in cache (even if null, to prevent repeated lookups)
-      if (epoch === this.revocationEpoch) {
+      // Only a row is remembered. The token comes from an unauthenticated
+      // caller, so an entry per unknown token is a cache anybody can grow
+      // without bound, one entry and one timer per guess.
+      if (apiKey && epoch === this.revocationEpoch) {
         await this.validationCache.set(hash, apiKey);
       }
     }
@@ -1020,7 +1034,7 @@ export class ApiKeyService {
     }
 
     // A key must never outlive its account: refuse when the owner is
-    // disabled or deleted. Deliberately NOT cached — revocation must be
+    // disabled or deleted. Deliberately NOT cached: revocation must be
     // visible immediately.
     let roles = apiKey.roles;
     if (resolveOwner) {
@@ -1036,7 +1050,7 @@ export class ApiKeyService {
       // Cap the key's stored roles by what the owner holds *now*. The stored
       // set is a snapshot from creation time, so without this a key minted
       // while its owner was an admin keeps granting admin after they are
-      // demoted — making demotion meaningless while any key is outstanding.
+      // demoted, making demotion meaningless while any key is outstanding.
       // Intersecting (rather than replacing) preserves least privilege: a
       // deliberately narrow key never widens when its owner is promoted.
       if (owner.roles) {

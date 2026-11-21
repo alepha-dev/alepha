@@ -1,8 +1,10 @@
 /**
- * Single-use guard for short-lived assertion `jti`s. Bounded + self-pruning so
- * it can't grow without limit in a long-lived process. Best-effort per-instance
- * (assertions are also `aud`-bound + ~60s TTL, so a cross-isolate replay window
- * is tiny); use a shared store if you need a hard cross-instance guarantee.
+ * Single-use guard for short-lived token ids (`jti`), in one process's
+ * memory. Bounded and self-pruning, so it cannot grow without limit in a
+ * long-lived process. It knows nothing of another instance: a guarantee that
+ * must hold between instances needs a shared store, which is why
+ * authorization codes are counted in the cache instead
+ * (`OAuthClientService.usedCodes`).
  */
 export class JtiReplayGuard {
   protected readonly seen = new Map<string, number>(); // jti -> expiry epoch ms
@@ -19,8 +21,8 @@ export class JtiReplayGuard {
    * Records `jti` and returns true if fresh; false if already used (replay).
    *
    * `now` is required rather than defaulted to the wall clock: the replay
-   * window is the whole point of this guard, so the caller — which has a
-   * container and therefore a `DateTimeProvider` — owns the clock. A default
+   * window is the whole point of this guard, so the caller (which has a
+   * container and therefore a `DateTimeProvider`) owns the clock. A default
    * here would make the window untestable from the outside and silently
    * ignore `travel()` / `pause()`.
    */

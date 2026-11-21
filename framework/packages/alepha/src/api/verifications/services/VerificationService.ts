@@ -1,4 +1,4 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -145,16 +145,26 @@ export class VerificationService {
       expiresAt: entry.expiresAt,
     });
 
+    // The entry's own lifetime when it was given one, as `verifyCode`
+    // enforces it.
+    const codeExpiration = verification.expiresAt
+      ? Math.max(
+          0,
+          this.dateTimeProvider.of(verification.expiresAt).unix() -
+            this.dateTimeProvider.now().unix(),
+        )
+      : settings.codeExpiration;
+
     this.log.info("Verification created", {
       id: verification.id,
       type: entry.type,
       target: entry.target,
-      expiresInSeconds: settings.codeExpiration,
+      expiresInSeconds: codeExpiration,
     });
 
     return {
       token,
-      codeExpiration: settings.codeExpiration,
+      codeExpiration,
       verificationCooldown: settings.verificationCooldown,
       maxVerificationAttempts: settings.maxAttempts,
     };
@@ -172,13 +182,36 @@ export class VerificationService {
     const settings = this.verificationParameters.get(entry.type);
 
     const verification = await this.findByEntry(entry);
+    // Checked first, a verified entry included: the code that proved the
+    // target once must not go on answering after its lifetime.
+    const now = this.dateTimeProvider.now();
+    // The row's own expiry wins when it has one: the caller said this entry
+    // lives as long as something else, and the type-wide `codeExpiration` is
+    // not that something else.
+    const expirationDate = verification.expiresAt
+      ? this.dateTimeProvider.of(verification.expiresAt)
+      : this.dateTimeProvider
+          .of(verification.createdAt)
+          .add(settings.codeExpiration, "seconds");
+
+    if (now > expirationDate) {
+      this.log.warn("Verification code expired", {
+        id: verification.id,
+        type: entry.type,
+        target: entry.target,
+        createdAt: verification.createdAt,
+        expiredAt: expirationDate.toISOString(),
+      });
+      throw new BadRequestError("Verification code has expired");
+    }
+
     if (verification.verifiedAt) {
-      // Already verified — but STILL require the submitted code to match the
+      // Already verified, but STILL require the submitted code to match the
       // record. Short-circuiting on `verifiedAt` alone means any code (or a
       // blank one) passes once the target has been verified, so any flow
       // re-using verifyCode as an authz gate would accept an attacker's guess.
       //
-      // Wrong guesses burn the same attempt budget as unverified records —
+      // Wrong guesses burn the same attempt budget as unverified records:
       // without the counter this branch is brute-forceable forever.
       if (!(await this.consumeAttempt(verification.id, settings.maxAttempts))) {
         this.log.warn("Verification locked due to max attempts", {
@@ -210,27 +243,6 @@ export class VerificationService {
 
     // DO NOT DELETE THE VERIFICATION WHEN IT IS REJECTED,
     // or we won't be able to cooldown the verification
-
-    const now = this.dateTimeProvider.now();
-    // The row's own expiry wins when it has one: the caller said this entry
-    // lives as long as something else, and the type-wide `codeExpiration` is
-    // not that something else.
-    const expirationDate = verification.expiresAt
-      ? this.dateTimeProvider.of(verification.expiresAt)
-      : this.dateTimeProvider
-          .of(verification.createdAt)
-          .add(settings.codeExpiration, "seconds");
-
-    if (now > expirationDate) {
-      this.log.warn("Verification code expired", {
-        id: verification.id,
-        type: entry.type,
-        target: entry.target,
-        createdAt: verification.createdAt,
-        expiredAt: expirationDate.toISOString(),
-      });
-      throw new BadRequestError("Verification code has expired");
-    }
 
     if (!(await this.consumeAttempt(verification.id, settings.maxAttempts))) {
       this.log.warn("Verification locked due to max attempts", {
@@ -315,11 +327,7 @@ export class VerificationService {
   public generateToken(type: VerificationTypeEnum): string {
     if (type === "code") {
       const settings = this.verificationParameters.get("code");
-      // Bounded by the configured length: a fixed 1e6 range produced
-      // 5-6 digit codes for shorter settings and zero-padded ones for longer.
-      return randomInt(0, 10 ** settings.codeLength)
-        .toString()
-        .padStart(settings.codeLength, "0");
+      return this.crypto.randomCode(settings.codeLength);
     } else if (type === "link") {
       return this.crypto.randomUUID();
     }
@@ -335,8 +343,8 @@ export interface VerificationEntry {
   /**
    * Logical purpose bucket. Cooldown and daily-limit checks are scoped to
    * `(type, target, purpose)`, so flows that share a `(type, target)` pair
-   * — e.g. email verification and password reset, both `type: "code"` on the
-   * same email — get independent rate-limit windows instead of colliding.
+   * (email verification and password reset, say, both `type: "code"` on the
+   * same email) get independent rate-limit windows instead of colliding.
    *
    * Defaults to `"default"` when omitted (back-compatible with callers and
    * rows that predate this field).

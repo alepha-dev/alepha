@@ -1,9 +1,7 @@
 import { $inject, z } from "alepha";
-import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
-import { audits } from "../entities/audits.ts";
 import { auditActionPairSchema } from "../schemas/auditActionPairSchema.ts";
 import { auditQuerySchema } from "../schemas/auditQuerySchema.ts";
 import { auditResourceSchema } from "../schemas/auditResourceSchema.ts";
@@ -23,7 +21,6 @@ export class AdminAuditController {
   protected readonly url = "/audits";
   protected readonly group = "admin:audits";
   protected readonly auditService = $inject(AuditService);
-  protected readonly repo = $repository(audits);
 
   /**
    * Find audit entries with filtering and pagination.
@@ -60,8 +57,8 @@ export class AdminAuditController {
   });
 
   /**
-   * Delete many audit entries by id in one repository call. Use with care —
-   * audit logs are usually retained for compliance reasons.
+   * Delete many audit entries by id. Use with care: audit logs are usually
+   * retained for compliance reasons.
    */
   public readonly deleteAudits = $action({
     method: "POST",
@@ -77,17 +74,14 @@ export class AdminAuditController {
         deleted: z.array(z.text()),
       }),
     },
-    handler: async ({ body }) => {
-      const deleted = await this.repo.deleteMany({
-        id: { inArray: body.ids },
-      });
-      return { deleted: deleted.map(String) };
-    },
+    handler: async ({ body }) => ({
+      deleted: await this.auditService.deleteByIds(body.ids),
+    }),
   });
 
   /**
    * Create a new audit entry.
-   * System-only — this permission should never be assigned to human roles.
+   * System-only: this permission should never be assigned to human roles.
    */
   public readonly createAudit = $action({
     method: "POST",
@@ -183,7 +177,8 @@ export class AdminAuditController {
   });
 
   /**
-   * List distinct action names present in the audit log (for filters).
+   * List the `(type, action)` pairs the registered audit types declare (for
+   * filters).
    */
   public readonly getAuditActions = $action({
     method: "GET",
@@ -241,7 +236,9 @@ export class AdminAuditController {
       const distinct = await this.auditService.getDistinctFilterValues();
       return {
         types: types.map((t) => t.type),
-        actions: types.flatMap((t) => t.actions),
+        // Bare names, once each. The pairs a filter needs are
+        // `getAuditActions`.
+        actions: [...new Set(types.flatMap((t) => t.actions))].sort(),
         ...distinct,
       };
     },

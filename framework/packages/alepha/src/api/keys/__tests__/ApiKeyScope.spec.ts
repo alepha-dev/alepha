@@ -10,7 +10,7 @@ import {
   type UserAccountToken,
 } from "alepha/security";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
 import { apiKeyEntity } from "../entities/apiKeyEntity.ts";
@@ -84,7 +84,9 @@ const setup = async () => {
 };
 
 describe("an API key's permission scope", () => {
-  it("leaves an existing key with an empty column exactly as it was", async () => {
+  it("leaves an existing key with an empty column exactly as it was", async ({
+    expect,
+  }) => {
     const { app, service, userId, call } = await setup();
 
     const { apiKey, token } = await service.create({
@@ -104,7 +106,9 @@ describe("an API key's permission scope", () => {
     ).toBe(200);
   });
 
-  it("refuses a scoped key a permission its roles do grant", async () => {
+  it("refuses a scoped key a permission its roles do grant", async ({
+    expect,
+  }) => {
     const { service, userId, reporter, call } = await setup();
 
     const { token } = await service.create({
@@ -125,7 +129,9 @@ describe("an API key's permission scope", () => {
     expect(await refused.text()).toContain("permission scope");
   });
 
-  it("refuses at creation a permission beyond the caller, naming it", async () => {
+  it("refuses at creation a permission beyond the caller, naming it", async ({
+    expect,
+  }) => {
     const { service, userId, reporter } = await setup();
 
     await expect(
@@ -139,7 +145,9 @@ describe("an API key's permission scope", () => {
     ).rejects.toThrow("'danger:delete'");
   });
 
-  it("measures the ceiling against the caller's own scope, not only its roles", async () => {
+  it("measures the ceiling against the caller's own scope, not only its roles", async ({
+    expect,
+  }) => {
     const { service, userId, reporter } = await setup();
 
     await expect(
@@ -153,7 +161,9 @@ describe("an API key's permission scope", () => {
     ).rejects.toThrow("'reports:export'");
   });
 
-  it("refuses a pattern and an unregistered name at creation", async () => {
+  it("refuses a pattern and an unregistered name at creation", async ({
+    expect,
+  }) => {
     const { service, userId, reporter } = await setup();
 
     await expect(
@@ -177,7 +187,9 @@ describe("an API key's permission scope", () => {
     ).rejects.toThrow("'reports:raed'");
   });
 
-  it("refuses in the service, so action.run() is refused too, and serializes the scope", async () => {
+  it("refuses in the service, so action.run() is refused too, and serializes the scope", async ({
+    expect,
+  }) => {
     const { controller, reporter } = await setup();
 
     await expect(
@@ -199,7 +211,7 @@ describe("an API key's permission scope", () => {
     ]);
   });
 
-  it("keeps the scope through a rotation", async () => {
+  it("keeps the scope through a rotation", async ({ expect }) => {
     const { service, userId, reporter } = await setup();
 
     const { apiKey } = await service.create({

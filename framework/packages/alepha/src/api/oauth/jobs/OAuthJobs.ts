@@ -35,7 +35,7 @@ export class OAuthJobs {
    *
    * ## ⚠️ Four conditions, and "never used" is the one that matters
    *
-   * - `source = 'dcr'` only. A client Platform seeded with an explicit id is
+   * - `source = 'dcr'` only. A client an application seeded with an explicit id is
    *   configuration, not litter, and may legitimately have no session yet.
    * - **Older than 24 hours.** An authorization code lives about a minute,
    *   but a client registered while a human reads a consent screen must
