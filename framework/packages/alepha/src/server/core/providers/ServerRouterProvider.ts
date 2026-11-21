@@ -7,6 +7,7 @@ import {
   $inject,
   $store,
   Alepha,
+  AlephaError,
   coerceScalar,
   type Infer,
   isFileLike,
@@ -41,14 +42,6 @@ import type {
 } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
-
-/**
- * Statuses the Fetch spec forbids a body on.
- *
- * `new Response(body, { status })` throws a TypeError for any of these on
- * workerd and undici, and Node's http server emits a malformed message.
- */
-const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
 
 /**
  * How a JSON response is checked against its schema.
@@ -100,6 +93,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
    */
   public static readonly ROUTE_KEY = "alepha.server.route";
 
+  /**
+   * Statuses the Fetch spec forbids a body on.
+   *
+   * `new Response(body, { status })` throws a TypeError for any of these on
+   * workerd and undici, and Node's http server emits a malformed message.
+   */
+  protected static readonly NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
 
@@ -141,8 +142,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     options?: PushMiddlewareOptions,
   ): void {
     this.globalMiddlewareRegistry.push({ pattern, middleware, ...options });
-    for (const route of this.getRoutes(pattern)) {
-      if (this.matchesMiddlewareFilter(route, options)) {
+    for (const route of this.routes) {
+      if (
+        this.matchesMiddlewarePattern(route.path, pattern) &&
+        this.matchesMiddlewareFilter(route, options)
+      ) {
         route.handler.use(...middleware);
       }
     }
@@ -168,7 +172,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
     if (options?.exclude) {
       for (const exclude of options.exclude) {
-        if (route.path === exclude || route.path.startsWith(`${exclude}/`)) {
+        if (
+          this.matchesMiddlewarePattern(
+            route.path,
+            `${exclude.replace(/\/+$/, "")}/*`,
+          )
+        ) {
           return false;
         }
       }
@@ -185,6 +194,63 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       return routePath.startsWith(pattern.slice(0, -1));
     }
     return routePath === pattern;
+  }
+
+  /**
+   * Whether a middleware registered for `pattern` covers a route path. A
+   * prefix pattern (`/admin/*`) covers the prefix itself (`/admin`) as well as
+   * what is under it: a guard on a path family that left its root open would
+   * be a hole. `/administrator` is another path. A pattern with no wildcard
+   * covers that one path.
+   *
+   * Both sides are compared as the router's own segments
+   * ({@link middlewareSegments}), so the answer is the one the router gives a
+   * request: case, a doubled or missing slash and the name of a param make no
+   * difference. A param in the pattern covers whatever the route has at that
+   * position; a static segment covers only itself, so a prefix does not
+   * reach a route that gets there through a param or a catch-all of its own
+   * (`/:section/users`, `/*`).
+   */
+  protected matchesMiddlewarePattern(
+    routePath: string,
+    pattern: string,
+  ): boolean {
+    const prefix = pattern.endsWith("/*");
+    const wanted = this.middlewareSegments(
+      prefix ? pattern.slice(0, -2) : pattern,
+    );
+    const declared = this.middlewareSegments(routePath);
+    if (
+      prefix
+        ? declared.length < wanted.length
+        : declared.length !== wanted.length
+    ) {
+      return false;
+    }
+    return wanted.every((segment, index) => {
+      const other = declared[index];
+      if (segment.kind === "param") {
+        return true;
+      }
+      return (
+        segment.kind === other.kind &&
+        (segment.kind !== "static" ||
+          (other.kind === "static" && segment.part === other.part))
+      );
+    });
+  }
+
+  /**
+   * A declared path as the segments the router matches on: {@link parse},
+   * given the path the way {@link createRoute} hands it over. The root is no
+   * segment at all.
+   */
+  protected middlewareSegments(path: string) {
+    return this.parse({
+      path: `/${path}`.replace(/\/+/g, "/"),
+    } as ServerRouteMatcher).filter(
+      (segment) => segment.kind !== "static" || segment.part !== "",
+    );
   }
 
   /**
@@ -297,7 +363,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     for (const entry of route.placeholder
       ? []
       : this.globalMiddlewareRegistry) {
-      if (this.matchesPattern(route.path, entry.pattern)) {
+      if (this.matchesMiddlewarePattern(route.path, entry.pattern)) {
         if (this.matchesMiddlewareFilter(route, entry)) {
           route.handler.use(...entry.middleware);
         }
@@ -449,7 +515,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
   /**
    * Process an incoming request through the full lifecycle:
-   * onRequest → handler → onSend → response → onResponse
+   * `server:request:before`, the handler (or the error handler),
+   * `server:response:before`, the response, `server:response:after`.
    */
   protected async processRequest(
     request: ServerRequest,
@@ -488,7 +555,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       // write and reads as harmless, but `new Response(body, { status: 204 })`
       // is a TypeError on workerd and malformed on Node. Drop the body here,
       // once, rather than asking every handler and every adapter to remember.
-      body: NULL_BODY_STATUSES.has(status) ? undefined : (reply.body as any),
+      body: ServerRouterProvider.NULL_BODY_STATUSES.has(status)
+        ? undefined
+        : (reply.body as any),
     };
     if (reply.native) {
       (response as ServerResponse).native = reply.native;
@@ -526,7 +595,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       return;
     }
 
-    // Store route path info for middleware (e.g. $secure auto-permission lookup)
+    // The route's own path and method, for what keys on the route rather
+    // than on the URL (the ETag and page caches).
     request.metadata.routePath = route.path;
     request.metadata.routeMethod = route.method;
 
@@ -746,6 +816,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     request: ServerRequest,
     error: Error,
   ) {
+    // `throw "text"`, `throw null`, a promise rejected with a string: what
+    // follows reads the thrown value as an object, so anything else becomes
+    // an error carrying it and takes the 500 path like any unknown error.
+    if (typeof error !== "object" || error === null) {
+      error = new AlephaError(String(error), { cause: error });
+    }
+
     // Reset body AND status: both are what the handler produced before it
     // threw. Keeping the status let a `setStatus(201)` that preceded the
     // throw answer a blank 201, which the check below then mistook for a
@@ -785,7 +862,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       errorJson.data = data;
 
       // A 5xx cause is internal (DB URLs, upstream errors, stack-y hints) and
-      // must not reach the client in production — the same rule the
+      // must not reach the client in production, the same rule the
       // non-HttpError branches below already apply to `message`. 4xx causes
       // are deliberate, client-facing context and are kept.
       if (error.status >= 500 && this.alepha.isProduction()) {
@@ -810,7 +887,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.body = JSON.stringify({
         name: errorNameByStatus[status],
         // 4xx messages are intentional and client-facing; 5xx messages can
-        // leak internals (DB errors, stack-y hints) — sanitize them in
+        // leak internals (DB errors, stack-y hints): sanitize them in
         // production, exactly like the unknown-error fallback below.
         message:
           status >= 500 && this.alepha.isProduction()
@@ -825,7 +902,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     //
     // Outside production, say so loudly. A handler that throws a bare
     // `Error` for a business rule ("Current password is incorrect") reads
-    // as working in development — the message is passed through — and
+    // as working in development (the message is passed through) and
     // then silently becomes a generic "Internal Server Error" the moment
     // it ships, because 5xx messages are sanitised above. The author
     // never sees the difference locally, so the mistake survives to
@@ -917,7 +994,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   ) {
     if (route.schema?.params) {
       try {
-        // Path params are always strings on the wire — coerce each declared
+        // Path params are always strings on the wire: coerce each declared
         // param to its schema type (int/bool/date) before strict validation,
         // mirroring the `query` / `headers` handling below. Without this a
         // numeric route param like `/users/:id` (id: z.integer()) fails strict
@@ -959,7 +1036,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           }
         }
 
-        // Validate the decoded subset against the full schema — decoding only
+        // Validate the decoded subset against the full schema: decoding only
         // present keys would silently accept a missing required parameter.
         request.query = this.alepha.codec.validate(schemaQuery, query) as any;
       } catch (error) {
@@ -1030,7 +1107,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
    * Coerce a raw query/header value (always a string on the wire) to the JS
    * type its schema declares, mirroring `z.coerce` at the HTTP boundary.
    *
-   * Only the boundary coerces — request bodies and the ORM stay strict. Values
+   * Only the boundary coerces: request bodies and the ORM stay strict. Values
    * that can't be coerced are passed through unchanged so the subsequent
    * validation produces a proper rejection. Arrays coerce element-wise.
    */

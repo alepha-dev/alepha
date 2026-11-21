@@ -9,7 +9,7 @@ import { $route, ServerProvider } from "../index.ts";
  * The shape is easy to write and reads as harmless: the schema declares a
  * response, so the handler returns something to satisfy it, and the status is
  * set separately to mean "actually, nothing to report". Lore's outpost command
- * channel does exactly this — `reply.status = 204; return {}` on the common
+ * channel does exactly this: `reply.status = 204; return {}` on the common
  * "no work for you" branch, polled every five seconds.
  *
  * The Fetch spec forbids a body on 101/204/205/304. `new Response(body, {

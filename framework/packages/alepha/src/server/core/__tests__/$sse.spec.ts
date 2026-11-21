@@ -1,12 +1,12 @@
 import { Alepha, AlephaError, z } from "alepha";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { LinkProvider, ServerLinksProvider } from "alepha/server/links";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { $sse } from "../index.ts";
 
 describe("$sse", () => {
-  test("should stream events via run()", async ({ expect }) => {
+  it("should stream events via run()", async ({ expect }) => {
     class Api {
       events = $sse({
         path: "/events",
@@ -39,7 +39,7 @@ describe("$sse", () => {
     ]);
   });
 
-  test("should expose name, declared path, method and prefix", async ({
+  it("should expose name, declared path, method and prefix", async ({
     expect,
   }) => {
     class Api {
@@ -66,29 +66,7 @@ describe("$sse", () => {
     expect(app.notifications.prefix).toBe("/api");
   });
 
-  test("should use custom path when provided", async ({ expect }) => {
-    class Api {
-      feed = $sse({
-        path: "/custom/feed",
-        schema: {
-          data: z.object({
-            value: z.text(),
-          }),
-        },
-        handler: async ({ close }) => {
-          close();
-        },
-      });
-    }
-
-    const alepha = Alepha.create();
-    const app = alepha.inject(Api);
-    await alepha.start();
-
-    expect(app.feed.path).toBe("/custom/feed");
-  });
-
-  test("should fill path params declared in the path", async ({ expect }) => {
+  it("should fill path params declared in the path", async ({ expect }) => {
     class Api {
       stream = $sse({
         path: "/stream/:id",
@@ -121,7 +99,7 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ value: "item-42" }]);
   });
 
-  test("should refuse an endpoint without a path at init", ({ expect }) => {
+  it("should refuse an endpoint without a path at init", ({ expect }) => {
     class Api {
       // An untyped caller: the options type requires `path`.
       events = $sse({ handler: () => {} } as any);
@@ -132,7 +110,7 @@ describe("$sse", () => {
     );
   });
 
-  test("should stream via fetch() (HTTP)", async ({ expect }) => {
+  it("should stream via fetch() (HTTP)", async ({ expect }) => {
     class Api {
       events = $sse({
         path: "/events",
@@ -166,7 +144,7 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ seq: 1 }, { seq: 2 }, { seq: 3 }]);
   });
 
-  test("should propagate handler errors through the stream", async ({
+  it("should propagate handler errors through the stream", async ({
     expect,
   }) => {
     class Api {
@@ -198,7 +176,66 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ value: "before-error" }]);
   });
 
-  test("should auto-close stream when handler finishes", async ({ expect }) => {
+  it("should fail the client's iteration when the handler throws mid-stream over HTTP", async ({
+    expect,
+  }) => {
+    class Api {
+      failing = $sse({
+        path: "/failing-http",
+        schema: {
+          data: z.object({
+            value: z.text(),
+          }),
+        },
+        handler: async ({ emit }) => {
+          emit({ value: "before-error" });
+          await new Promise((resolve) => setTimeout(resolve, 30));
+          throw new AlephaError("handler failed");
+        },
+      });
+    }
+
+    const alepha = Alepha.create();
+    const app = alepha.inject(Api);
+    await alepha.start();
+
+    // As with `run()`: the events sent so far arrive, then the loop throws.
+    // The stream is cut, not ended, so a failure is never read as a complete
+    // answer. The handler's own message stays on the server.
+    const events: Array<{ value: string }> = [];
+    const response = await app.failing.fetch();
+    expect(response.status).toBe(200);
+    await expect(async () => {
+      for await (const event of response) {
+        events.push(event);
+      }
+    }).rejects.toThrow();
+
+    expect(events).toStrictEqual([{ value: "before-error" }]);
+  });
+
+  it("should answer 500 when the handler throws at once over HTTP", async ({
+    expect,
+  }) => {
+    class Api {
+      failing = $sse({
+        path: "/failing-first",
+        schema: { data: z.object({ value: z.text() }) },
+        handler: async () => {
+          throw new AlephaError("handler failed");
+        },
+      });
+    }
+
+    const alepha = Alepha.create();
+    const app = alepha.inject(Api);
+    await alepha.start();
+
+    const response = await app.failing.fetch();
+    expect(response.status).toBe(500);
+  });
+
+  it("should auto-close stream when handler finishes", async ({ expect }) => {
     class Api {
       autoClose = $sse({
         path: "/autoClose",
@@ -227,7 +264,7 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ n: 1 }, { n: 2 }]);
   });
 
-  test("should be callable as a function", async ({ expect }) => {
+  it("should be callable as a function", async ({ expect }) => {
     class Api {
       ticker = $sse({
         path: "/ticker",
@@ -255,7 +292,7 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ tick: 1 }]);
   });
 
-  test("should not be exposed when disabled", async ({ expect }) => {
+  it("should not be exposed when disabled", async ({ expect }) => {
     class Api {
       disabled = $sse({
         path: "/disabled",
@@ -280,7 +317,7 @@ describe("$sse", () => {
     );
   });
 
-  test("should work via $client proxy", async ({ expect }) => {
+  it("should work via $client proxy", async ({ expect }) => {
     class Api {
       chat = $sse({
         path: "/chat",
@@ -311,7 +348,7 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ token: "Hello" }, { token: "world" }]);
   });
 
-  test("should abort the handler signal when the client disconnects", async ({
+  it("should abort the handler signal when the client disconnects", async ({
     expect,
   }) => {
     // Without this the handler loops forever on every disconnected client:
@@ -366,7 +403,7 @@ describe("$sse", () => {
     expect(emitAfterDisconnect).toBe(false);
   });
 
-  test("should register as a link", async ({ expect }) => {
+  it("should register as a link", async ({ expect }) => {
     class Api {
       chat = $sse({
         path: "/chat",

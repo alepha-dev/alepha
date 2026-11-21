@@ -59,6 +59,49 @@ describe("$sse signal", () => {
     expect(alepha.context.isAbortError(reason)).toBe(true);
   });
 
+  it("aborts the handler's signal when the consumer of fetch() leaves the loop early", async ({
+    expect,
+  }) => {
+    let aborted!: () => void;
+    const aborting = new Promise<"aborted">((resolve) => {
+      aborted = () => resolve("aborted");
+    });
+
+    class App {
+      ticks = $sse({
+        path: "/early",
+        schema: { data: z.object({ n: z.integer() }) },
+        handler: async ({ emit, signal }) => {
+          signal.addEventListener("abort", aborted, { once: true });
+          for (let n = 0; n < 200 && !signal.aborted; n++) {
+            emit({ n });
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(App).with(AlephaServer);
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const response = await app.ticks.fetch();
+    for await (const event of response) {
+      if (event.n >= 1) break;
+    }
+
+    // Leaving the loop cancels the body, which the server sees as a
+    // disconnect: a handler left running would emit for nobody.
+    const outcome = await Promise.race([
+      aborting,
+      new Promise<"still running">((resolve) =>
+        setTimeout(() => resolve("still running"), 1000),
+      ),
+    ]);
+    expect(outcome).toBe("aborted");
+    expect(response.response.body?.locked).toBe(false);
+  });
+
   it("composes the caller's ambient signal for an in-process run()", async ({
     expect,
   }) => {

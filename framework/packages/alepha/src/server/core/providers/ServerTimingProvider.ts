@@ -72,10 +72,10 @@ export class ServerTimingProvider {
         if (!timingHeader) {
           return;
         }
-        if (request.reply.headers["Server-Timing"]) {
-          request.reply.headers["Server-Timing"] += `, ${timingHeader}`;
+        if (request.reply.headers["server-timing"]) {
+          request.reply.headers["server-timing"] += `, ${timingHeader}`;
         } else {
-          request.reply.headers["Server-Timing"] = timingHeader;
+          request.reply.headers["server-timing"] = timingHeader;
         }
       }
     },

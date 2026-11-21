@@ -26,7 +26,7 @@ export class ServerNotReadyProvider {
         return;
       }
 
-      reply.headers["Retry-After"] = "5"; // Retry after 5 seconds
+      reply.headers["retry-after"] = "5"; // Retry after 5 seconds
 
       throw new HttpError(
         { status: 503 },

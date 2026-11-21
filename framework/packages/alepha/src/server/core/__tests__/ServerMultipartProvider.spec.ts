@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   multipartOptions,
@@ -24,8 +24,27 @@ class App {
   });
 }
 
+/**
+ * One multipart upload over HTTP. `run()` hands the handler its `File` as it
+ * is, so only a real request goes through the provider.
+ */
+const upload = async (
+  alepha: Alepha,
+  fields: Record<string, string | File>,
+) => {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    form.append(key, value);
+  }
+  const resp = await fetch(
+    `${alepha.inject(ServerProvider).hostname}/api/upload`,
+    { method: "POST", body: form },
+  );
+  return { status: resp.status, text: await resp.text() };
+};
+
 describe("ServerMultipartProvider", () => {
-  test("should upload file via HTTP", async ({ expect }) => {
+  it("should upload file via HTTP", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
@@ -42,7 +61,7 @@ describe("ServerMultipartProvider", () => {
     expect(await resp.text()).toBe("test.txt (12b, text/plain)");
   });
 
-  test("should upload file locally via run()", async ({ expect }) => {
+  it("should upload file locally via run()", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
@@ -55,7 +74,7 @@ describe("ServerMultipartProvider", () => {
     expect(result).toBe("test.txt (12b, text/plain)");
   });
 
-  test("should read file content via text()", async ({ expect }) => {
+  it("should read file content via text()", async ({ expect }) => {
     class TextApp {
       upload = $action({
         method: "POST",
@@ -83,7 +102,7 @@ describe("ServerMultipartProvider", () => {
     expect(await resp.text()).toBe("hello world");
   });
 
-  test("should read file content via arrayBuffer()", async ({ expect }) => {
+  it("should read file content via arrayBuffer()", async ({ expect }) => {
     class BufferApp {
       upload = $action({
         method: "POST",
@@ -104,14 +123,12 @@ describe("ServerMultipartProvider", () => {
 
     const file = new File(["buffer test"], "buf.txt", { type: "text/plain" });
 
-    const result = await alepha.inject(BufferApp).upload.run({
-      body: { file },
-    });
+    const result = await upload(alepha, { file });
 
-    expect(result).toBe("buffer test");
+    expect(result).toEqual({ status: 200, text: "buffer test" });
   });
 
-  test("should handle binary file uploads", async ({ expect }) => {
+  it("should handle binary file uploads", async ({ expect }) => {
     class BinaryApp {
       upload = $action({
         method: "POST",
@@ -134,27 +151,23 @@ describe("ServerMultipartProvider", () => {
     const binary = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
     const file = new File([binary], "image.png", { type: "image/png" });
 
-    const result = await alepha.inject(BinaryApp).upload.run({
-      body: { file },
-    });
+    const result = await upload(alepha, { file });
 
-    expect(result).toBe("image.png: 6b, image/png");
+    expect(result).toEqual({ status: 200, text: "image.png: 6b, image/png" });
   });
 
-  test("should handle empty file", async ({ expect }) => {
+  it("should handle empty file", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
     const file = new File([], "empty.txt", { type: "text/plain" });
 
-    const result = await alepha.inject(App).upload.run({
-      body: { file },
-    });
+    const result = await upload(alepha, { file });
 
-    expect(result).toBe("empty.txt (0b, text/plain)");
+    expect(result).toEqual({ status: 200, text: "empty.txt (0b, text/plain)" });
   });
 
-  test("should handle mixed file and text fields", async ({ expect }) => {
+  it("should handle mixed file and text fields", async ({ expect }) => {
     class MixedApp {
       upload = $action({
         method: "POST",
@@ -177,18 +190,19 @@ describe("ServerMultipartProvider", () => {
 
     const file = new File(["content"], "doc.txt", { type: "text/plain" });
 
-    const result = await alepha.inject(MixedApp).upload.run({
-      body: {
-        name: "Test Document",
-        description: "A test file upload",
-        file,
-      },
+    const result = await upload(alepha, {
+      name: "Test Document",
+      description: "A test file upload",
+      file,
     });
 
-    expect(result).toBe("Test Document: A test file upload (7b)");
+    expect(result).toEqual({
+      status: 200,
+      text: "Test Document: A test file upload (7b)",
+    });
   });
 
-  test("should not have filepath (no filesystem)", async ({ expect }) => {
+  it("should not have filepath (no filesystem)", async ({ expect }) => {
     class PathApp {
       upload = $action({
         method: "POST",
@@ -206,16 +220,39 @@ describe("ServerMultipartProvider", () => {
 
     const file = new File(["data"], "f.txt", { type: "text/plain" });
 
-    const result = await alepha.inject(PathApp).upload.run({
-      body: { file },
-    });
+    const result = await upload(alepha, { file });
 
-    expect(result).toBe("none");
+    expect(result).toEqual({ status: 200, text: "none" });
+  });
+
+  it("should read the media type whatever its case", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaServer).with(App);
+    await alepha.start();
+
+    const boundary = "----AlephaCase";
+    const resp = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/upload`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": `Multipart/Form-Data; boundary=${boundary}`,
+        },
+        body:
+          `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="file"; filename="a.txt"\r\n` +
+          `Content-Type: text/plain\r\n\r\n` +
+          `hi\r\n` +
+          `--${boundary}--\r\n`,
+      },
+    );
+
+    expect(resp.status).toBe(200);
+    expect(await resp.text()).toBe("a.txt (2b, text/plain)");
   });
 });
 
 describe("ServerMultipartProvider - Size Limits", () => {
-  test("should reject file exceeding individual file size limit", async ({
+  it("should reject file exceeding individual file size limit", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
@@ -242,9 +279,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(body.message).toMatch(/exceeds size limit/i);
   });
 
-  test("should reject request exceeding total size limit", async ({
-    expect,
-  }) => {
+  it("should reject request exceeding total size limit", async ({ expect }) => {
     class MultiFileApp {
       upload = $action({
         method: "POST",
@@ -288,7 +323,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(body.message).toMatch(/size limit exceeded/i);
   });
 
-  test("should abort oversized streamed upload without buffering it", async ({
+  it("should abort oversized streamed upload without buffering it", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
@@ -300,8 +335,8 @@ describe("ServerMultipartProvider - Size Limits", () => {
     await alepha.start();
 
     // Chunked transfer-encoding: no content-length header, so the fail-fast
-    // header check can't fire. The stream itself must be cut at `limit` —
-    // otherwise formData() buffers the entire body into RAM (DoS).
+    // header check can't fire. The stream itself must be cut at `limit`,
+    // or a body of any size is read (DoS).
     const boundary = "----alepha-test-boundary";
     const encoder = new TextEncoder();
     const head = encoder.encode(
@@ -347,7 +382,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(pulled).toBeLessThan(totalChunks);
   });
 
-  test("should reject request with too many files", async ({ expect }) => {
+  it("should reject request with too many files", async ({ expect }) => {
     class ManyFilesApp {
       upload = $action({
         method: "POST",
@@ -387,7 +422,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(body.message).toMatch(/Too many files/i);
   });
 
-  test("should accept file exactly at the size limit", async ({ expect }) => {
+  it("should accept file exactly at the size limit", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
@@ -400,14 +435,15 @@ describe("ServerMultipartProvider - Size Limits", () => {
       type: "text/plain",
     });
 
-    const result = await alepha.inject(App).upload.run({
-      body: { file },
-    });
+    const result = await upload(alepha, { file });
 
-    expect(result).toBe("exact.txt (100b, text/plain)");
+    expect(result).toEqual({
+      status: 200,
+      text: "exact.txt (100b, text/plain)",
+    });
   });
 
-  test("should reject file just over the size limit", async ({ expect }) => {
+  it("should reject file just over the size limit", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
@@ -432,7 +468,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(body.message).toMatch(/exceeds size limit/i);
   });
 
-  test("should reject via content-length pre-check", async ({ expect }) => {
+  it("should reject via content-length pre-check", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 50,
@@ -457,9 +493,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(body.message).toMatch(/size limit exceeded/i);
   });
 
-  test("should count only file fields toward file count limit", async ({
-    expect,
-  }) => {
+  it("should count text fields toward the part limit", async ({ expect }) => {
     class TextAndFilesApp {
       upload = $action({
         method: "POST",
@@ -486,20 +520,30 @@ describe("ServerMultipartProvider - Size Limits", () => {
     }));
     await alepha.start();
 
-    const result = await alepha.inject(TextAndFilesApp).upload.run({
-      body: {
-        field1: "a",
-        field2: "b",
-        field3: "c",
-        file1: new File(["x"], "f1.txt", { type: "text/plain" }),
-        file2: new File(["y"], "f2.txt", { type: "text/plain" }),
-      },
-    });
+    const fields = {
+      field1: "a",
+      field2: "b",
+      field3: "c",
+      file1: new File(["x"], "f1.txt", { type: "text/plain" }),
+      file2: new File(["y"], "f2.txt", { type: "text/plain" }),
+    };
 
-    expect(result).toBe("success");
+    // Five parts against a limit of two: refused, although only two are files.
+    const refused = await upload(alepha, fields);
+    expect(refused.status).toBe(413);
+    expect(refused.text).toMatch(/Too many files/i);
+
+    alepha.store.mut(multipartOptions, (options) => ({
+      ...options,
+      fileCount: 5,
+    }));
+    expect(await upload(alepha, fields)).toEqual({
+      status: 200,
+      text: "success",
+    });
   });
 
-  test("should use default limits", async ({ expect }) => {
+  it("should use default limits", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
@@ -507,20 +551,21 @@ describe("ServerMultipartProvider - Size Limits", () => {
       type: "text/plain",
     });
 
-    const result = await alepha.inject(App).upload.run({
-      body: { file },
+    expect(await upload(alepha, { file })).toEqual({
+      status: 200,
+      text: "normal.txt (1000b, text/plain)",
     });
 
-    expect(result).toBe("normal.txt (1000b, text/plain)");
+    // One byte past the default 5 MB a file may weigh.
+    const tooBig = new File([new Uint8Array(5_000_001)], "big.bin", {
+      type: "application/octet-stream",
+    });
+    const refused = await upload(alepha, { file: tooBig });
+    expect(refused.status).toBe(413);
+    expect(refused.text).toMatch(/exceeds size limit/i);
   });
 });
 
-/**
- * The parser's own `finally` cancels the source — but only if its generator is
- * driven to completion or explicitly returned, and the two paths that matter
- * do neither: a streamed field leaves the iterator suspended on purpose, and a
- * blown limit throws from the part's own iterator, not from `parse`.
- */
 describe("ServerMultipartProvider - scalar fields", () => {
   /**
    * A multipart part is a string-only boundary: the wire has no way to say
@@ -566,14 +611,14 @@ describe("ServerMultipartProvider - scalar fields", () => {
     return { status: resp.status, text: await resp.text() };
   };
 
-  test("should decode a boolean sent as text", async ({ expect }) => {
+  it("should decode a boolean sent as text", async ({ expect }) => {
     const resp = await post({ flag: "true" });
 
     expect(resp.status).toBe(200);
     expect(resp.text).toContain("boolean:true");
   });
 
-  test("should decode false rather than read it as truthy", async ({
+  it("should decode false rather than read it as truthy", async ({
     expect,
   }) => {
     const resp = await post({ flag: "false" });
@@ -582,7 +627,7 @@ describe("ServerMultipartProvider - scalar fields", () => {
     expect(resp.text).toContain("boolean:false");
   });
 
-  test("should decode an integer sent as text", async ({ expect }) => {
+  it("should decode an integer sent as text", async ({ expect }) => {
     const resp = await post({ count: "42" });
 
     expect(resp.status).toBe(200);
@@ -594,7 +639,7 @@ describe("ServerMultipartProvider - scalar fields", () => {
    * that was not. A value that cannot be coerced is passed through unchanged
    * so the schema is still what rejects it.
    */
-  test("should still refuse a value that is not a boolean", async ({
+  it("should still refuse a value that is not a boolean", async ({
     expect,
   }) => {
     const resp = await post({ flag: "yes" });
@@ -602,7 +647,7 @@ describe("ServerMultipartProvider - scalar fields", () => {
     expect(resp.status).toBe(400);
   });
 
-  test("should leave an absent optional field absent", async ({ expect }) => {
+  it("should leave an absent optional field absent", async ({ expect }) => {
     const resp = await post({});
 
     expect(resp.status).toBe(200);
@@ -610,6 +655,12 @@ describe("ServerMultipartProvider - scalar fields", () => {
   });
 });
 
+/**
+ * The parser's own `finally` cancels the source, but only if its generator is
+ * driven to completion or explicitly returned, and the two paths that matter
+ * do neither: a streamed field leaves the iterator suspended on purpose, and a
+ * blown limit throws from the part's own iterator, not from `parse`.
+ */
 describe("ServerMultipartProvider - source cleanup", () => {
   const BOUNDARY = "----AlephaCleanup";
 
@@ -618,8 +669,8 @@ describe("ServerMultipartProvider - source cleanup", () => {
    *
    * Delivered in small chunks and followed by an epilogue nobody reads, so the
    * source is still open at the moment cleanup should happen. A stream that has
-   * already closed itself cannot report a cancellation — `cancel()` is not
-   * called on a source that is done — which makes an exhausted body useless as
+   * already closed itself cannot report a cancellation (`cancel()` is not
+   * called on a source that is done), which makes an exhausted body useless as
    * evidence either way.
    */
   const trackedRequest = (raw: string) => {
@@ -662,7 +713,7 @@ describe("ServerMultipartProvider - source cleanup", () => {
     maxHeaderBytes: 16 * 1024,
   });
 
-  test("cancels the body when a limit refuses a buffered field", async ({
+  it("cancels the body when a limit refuses a buffered field", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaServer);
@@ -679,7 +730,7 @@ describe("ServerMultipartProvider - source cleanup", () => {
     expect(state.cancelled).toBe(true);
   });
 
-  test("cancels the body once a streamed field has been drained", async ({
+  it("cancels the body once a streamed field has been drained", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaServer);
@@ -692,7 +743,7 @@ describe("ServerMultipartProvider - source cleanup", () => {
     const body = await provider.parseMultipart(route, request, caps(1_000_000));
     const part = body.file as { data: AsyncIterable<Uint8Array> };
 
-    // Still open while the handler owns the bytes — cancelling here is exactly
+    // Still open while the handler owns the bytes: cancelling here is exactly
     // the bug the hand-driven iterator exists to avoid.
     expect(state.cancelled).toBe(false);
 
@@ -705,10 +756,10 @@ describe("ServerMultipartProvider - source cleanup", () => {
 });
 
 describe("ServerMultipartProvider - the clock", () => {
-  test("names an unnamed part from the injected clock", async ({ expect }) => {
+  it("names an unnamed part from the injected clock", async ({ expect }) => {
     // `materialise` falls back to `${field}_${now}` when a part carries no
-    // filename. Reading the wall clock directly there made that name — and the
-    // `lastModified` beside it — untestable, and `DateTimeProvider` exists
+    // filename. Reading the wall clock directly there made that name (and the
+    // `lastModified` beside it) untestable, and `DateTimeProvider` exists
     // precisely so time is a dependency like any other.
     const alepha = Alepha.create().with(AlephaServer);
     await alepha.start();
@@ -716,7 +767,7 @@ describe("ServerMultipartProvider - the clock", () => {
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
     // Away from wall time, or the assertion passes on a wall clock too and
-    // proves nothing — a paused clock still reads "now" on the millisecond it
+    // proves nothing: a paused clock still reads "now" on the millisecond it
     // was paused.
     await clock.travel(365, "days");
     const now = clock.nowMillis();

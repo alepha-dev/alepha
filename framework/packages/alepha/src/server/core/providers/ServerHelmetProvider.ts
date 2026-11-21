@@ -464,8 +464,14 @@ export class ServerHelmetProvider {
    */
   protected cachedCspDirectives?: Map<string, CspDirective | boolean>;
 
+  /**
+   * The policy as a header value. A directive set to `false` is off and is
+   * left out: `sandbox false` would be the `sandbox` directive with an
+   * unknown token, which a browser reads as sandboxing everything.
+   */
   protected serializeCsp(directives: Map<string, CspDirective | boolean>) {
     return [...directives]
+      .filter(([, value]) => value !== false)
       .map(([kebabKey, value]) => {
         if (Array.isArray(value)) {
           return `${kebabKey} ${value.join(" ")}`;
@@ -553,13 +559,15 @@ export class ServerHelmetProvider {
         return;
       }
 
-      // this check is important. Only add HSTS on HTTPS requests.
+      // HSTS goes out on a secure request, when `isSecure` forces it, and on
+      // every response in production: a production app is reached over HTTPS,
+      // whether or not its proxy says so, and a browser ignores the header
+      // over plain HTTP (RFC 6797, section 8.1). Outside production a plain
+      // HTTP response carries none.
       //
-      // Read from the REQUEST: `x-forwarded-proto` is what the proxy told us
-      // about the inbound connection. Testing it on the response — which
-      // never carries it — made the check collapse to `isProduction()`, so
-      // HSTS went out over plain HTTP in production and never went out over
-      // HTTPS anywhere else.
+      // The scheme is read from the REQUEST: `x-forwarded-proto` is what the
+      // proxy told us about the inbound connection, and a response never
+      // carries it.
       const isSecure =
         request.headers["x-forwarded-proto"] === "https" ||
         request.protocol === "https" ||

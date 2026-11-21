@@ -5,14 +5,8 @@ import * as zlib from "node:zlib";
 
 import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
-import type { ServerResponse } from "alepha/server";
 
-const gzip = promisify(zlib.gzip);
-const createGzip = zlib.createGzip;
-const brotli = promisify(zlib.brotliCompress);
-const createBrotliCompress = zlib.createBrotliCompress;
-const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
-const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
+import type { ServerResponse } from "../interfaces/ServerRequest.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -70,21 +64,24 @@ export class ServerCompressProvider {
     | undefined
   > = {
     gzip: {
-      compress: gzip,
+      compress: promisify(zlib.gzip),
       compressSync: zlib.gzipSync,
-      stream: createGzip,
+      stream: zlib.createGzip,
     },
     br: {
-      compress: brotli,
+      compress: promisify(zlib.brotliCompress),
       compressSync: zlib.brotliCompressSync,
-      stream: createBrotliCompress,
+      stream: zlib.createBrotliCompress,
     },
+    // Not every runtime's zlib has zstd.
     zstd:
-      zstd && createZstdCompress && zlib.zstdCompressSync
+      typeof zlib.zstdCompress === "function" &&
+      typeof zlib.createZstdCompress === "function" &&
+      typeof zlib.zstdCompressSync === "function"
         ? {
-            compress: zstd,
+            compress: promisify(zlib.zstdCompress),
             compressSync: zlib.zstdCompressSync,
-            stream: createZstdCompress,
+            stream: zlib.createZstdCompress,
           }
         : undefined,
   };
@@ -134,7 +131,7 @@ export class ServerCompressProvider {
         return;
       }
 
-      // skip if not json or html (for now)
+      // skip a content type outside `allowedContentTypes`
       if (
         !this.isAllowedContentType(response.headers["content-type"], options)
       ) {
@@ -468,7 +465,7 @@ export class ServerCompressProvider {
     response: ServerResponse,
     encoding: keyof typeof ServerCompressProvider.compressors,
   ): void {
-    // Append — CORS may already have added `Origin`, and overwriting it lets a
+    // Append: CORS may already have added `Origin`, and overwriting it lets a
     // shared cache serve one origin's response to another.
     const current = response.headers.vary;
     const parts = (typeof current === "string" ? current.split(",") : [])

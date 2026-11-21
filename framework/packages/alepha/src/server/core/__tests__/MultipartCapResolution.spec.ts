@@ -17,8 +17,8 @@ import { ServerMultipartProvider } from "../providers/ServerMultipartProvider.ts
 /**
  * Exposes the resolution so it can be asserted without moving bytes.
  *
- * The budget is decided before a single byte is read — that is the whole reason
- * it can be raised safely by a level that knows where the bytes are going — so
+ * The budget is decided before a single byte is read (that is the whole reason
+ * it can be raised safely by a level that knows where the bytes are going), so
  * testing it through an upload would only make the assertion slower and the
  * failure harder to read.
  */
@@ -33,7 +33,7 @@ const routeWith = (body: any): ServerRoute =>
   ({ schema: { body } }) as unknown as ServerRoute;
 
 const setup = async (cap?: MultipartCap) => {
-  const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+  const alepha = Alepha.create();
 
   if (cap) {
     const answer = cap;
@@ -43,7 +43,7 @@ const setup = async (cap?: MultipartCap) => {
       }
     }
     // Substituted before `AlephaServer` is registered: the module resolves the
-    // provider on the way in, and a substitution after that point is refused —
+    // provider on the way in, and a substitution after that point is refused,
     // loudly, which is the right call, but it means order is part of the API.
     alepha.with({ provide: MultipartCapProvider, use: FixedCap });
   }
@@ -120,7 +120,7 @@ describe("multipart cap resolution", () => {
     const provider = await setup({ maxFileBytes: 1_000 });
 
     // The resolver is the only level that knows where the bytes actually land,
-    // which is why it speaks last — even to lower a ceiling the route asked for.
+    // which is why it speaks last, even to lower a ceiling the route asked for.
     const caps = provider.testResolve(
       routeWith(z.object({ file: z.file({ maxBytes: 50_000_000 }) })),
     );
@@ -142,7 +142,7 @@ describe("multipart cap resolution", () => {
   it("has no opinion by default, so nothing is raised behind the app's back", async ({
     expect,
   }) => {
-    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    const alepha = Alepha.create();
     alepha.with(AlephaServer);
     const caps = alepha.inject(MultipartCapProvider);
     await alepha.start();
@@ -157,12 +157,11 @@ describe("multipart cap resolution", () => {
       expect,
     }) => {
       const provider = await setup();
-      const content = "x".repeat(20_000);
+      // Past the 5 MB a file may weigh by default: only the route's own
+      // ceiling lets it through.
+      const content = "x".repeat(5_100_000);
       const raw = `--${BOUNDARY}\r\nContent-Disposition: form-data; name="file"; filename="a.bin"\r\n\r\n${content}\r\n--${BOUNDARY}--\r\n`;
 
-      // Bigger than the 5 MB default would allow? No — but bigger than the
-      // route's own tightened ceiling below, which is what makes the pair of
-      // assertions meaningful.
       const request = new Request("http://localhost/upload", {
         method: "POST",
         headers: {
@@ -172,11 +171,11 @@ describe("multipart cap resolution", () => {
       });
 
       const body = await provider.parseMultipart(
-        routeWith(z.object({ file: z.file({ maxBytes: 100_000 }) })),
+        routeWith(z.object({ file: z.file({ maxBytes: 6_000_000 }) })),
         request,
       );
 
-      expect((body.file as { size: number }).size).toBe(20_000);
+      expect((body.file as { size: number }).size).toBe(5_100_000);
     });
 
     it("refuses the same file when the route declares a smaller ceiling", async ({
@@ -215,7 +214,7 @@ describe("multipart cap resolution", () => {
       });
 
       // "a part exceeds 1000 bytes" is a worse thing to read than the name of
-      // the input that did it — the parser cannot know, so the HTTP layer says.
+      // the input that did it: the parser cannot know, so the HTTP layer says.
       await expect(
         provider.parseMultipart(
           routeWith(z.object({ avatar: z.file({ maxBytes: 1_000 }) })),
@@ -229,8 +228,8 @@ describe("multipart cap resolution", () => {
 /**
  * `before:` on a hook has to actually order something.
  *
- * It used to accept a class and silently order nothing — `dep.constructor` on a
- * class is `Function`, which matches no service — so the constraint compiled,
+ * It used to accept a class and silently order nothing (`dep.constructor` on a
+ * class is `Function`, which matches no service), so the constraint compiled,
  * ran, and guaranteed nothing. A constraint that quietly does nothing is worse
  * than one that refuses: the order it promises is then merely believed.
  *
@@ -241,7 +240,7 @@ describe("multipart cap resolution", () => {
  * the Node path the body is captured by the multipart hook itself
  * (`Readable.toWeb(node.req)`); any hook that awaits before that capture lets
  * the request stream drain into nothing. Ordering security first was tried and
- * emptied every upload — see the note on `ServerSecurityProvider`.
+ * emptied every upload: see the note on `ServerSecurityProvider`.
  */
 describe("hook ordering constraints", () => {
   it("lets an earlier hook decide what the body hook sees", async ({
@@ -282,7 +281,7 @@ describe("hook ordering constraints", () => {
     }
 
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
+      env: { SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
     });
     alepha.with(AlephaServer);
     alepha.inject(EarlyProbe);
@@ -300,7 +299,7 @@ describe("hook ordering constraints", () => {
 
     expect(res.status).toBe(200);
     // The resolver runs inside the body hook. Seeing the marker there is only
-    // possible if the hook that set it ran first — which is the whole claim.
+    // possible if the hook that set it ran first, which is the whole claim.
     expect(seen).toEqual(["ran-first"]);
 
     await alepha.stop();

@@ -77,7 +77,7 @@ export class ServerLoggerProvider {
     on: "server:request:before",
     priority: "first",
     handler: ({ route, request }) => {
-      if (route.silent || request.metadata.vite) {
+      if (route.silent) {
         return;
       }
 
@@ -103,7 +103,7 @@ export class ServerLoggerProvider {
     handler: ({ error }) => {
       // An expected 4xx is the server working correctly: a missing
       // session, a role the caller lacks, a malformed body. Logging
-      // those at `error` with a stack buries genuine faults — on a
+      // those at `error` with a stack buries genuine faults: on a
       // public app the error channel becomes almost entirely
       // unauthenticated traffic, and any alerting on it is worthless.
       //
@@ -146,7 +146,7 @@ export class ServerLoggerProvider {
     on: "server:response:after",
     priority: "last",
     handler: ({ route, request, response }) => {
-      if (route.silent || request.metadata.vite) {
+      if (route.silent) {
         return;
       }
 

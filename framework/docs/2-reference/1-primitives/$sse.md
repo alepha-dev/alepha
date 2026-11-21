@@ -46,7 +46,7 @@ property never moves the URL.
 | `description` | `string`                    | No       | A short description of the endpoint                                                                                                                                    |
 | `disabled`    | `boolean`                   | No       | Disable the SSE endpoint.                                                                                                                                              |
 | `use`         | `TUse`                      | No       | Middlewares wrapping the handler, as on `$action`: `use: [$secure()]` refuses an anonymous caller before the stream opens and hands the handler a non-optional `user`. |
-| `handler`     | `SseHandler<TConfig, TUse>` | Yes      |                                                                                                                                                                        |
+| `handler`     | `SseHandler<TConfig, TUse>` | Yes      | Main SSE handler                                                                                                                                                       |
 
 ## Examples
 

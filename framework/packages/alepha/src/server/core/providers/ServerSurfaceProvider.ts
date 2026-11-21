@@ -9,12 +9,10 @@ import {
   type Service,
 } from "alepha";
 
+import { serverApiOptions } from "../atoms/serverApiOptions.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import type { ServerRequestData } from "../interfaces/ServerRequest.ts";
-import {
-  type ActionPrimitive,
-  serverApiOptions,
-} from "../primitives/$action.ts";
+import type { ActionPrimitive } from "../primitives/$action.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
 /**

@@ -6,7 +6,7 @@ import {
   ServerProvider,
   versionOptions,
 } from "alepha/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 /**
  * `GET /version` answers "what is running here?".
@@ -32,7 +32,9 @@ const server = async (
 };
 
 describe("ServerVersionProvider", () => {
-  it("should expose /version on a plain server, with no module opted in", async () => {
+  it("should expose /version on a plain server, with no module opted in", async ({
+    expect,
+  }) => {
     const srv = await server();
 
     const res = await fetch(`${srv.hostname}/version`);
@@ -47,7 +49,9 @@ describe("ServerVersionProvider", () => {
     });
   });
 
-  it("should leave /health alone, which is a different question", async () => {
+  it("should leave /health alone, which is a different question", async ({
+    expect,
+  }) => {
     const srv = await server();
 
     const health = await fetch(`${srv.hostname}/health`);
@@ -63,7 +67,9 @@ describe("ServerVersionProvider", () => {
   });
 
   describe("expose", () => {
-    it("should publish the version while hiding the commit, for a closed-source app", async () => {
+    it("should publish the version while hiding the commit, for a closed-source app", async ({
+      expect,
+    }) => {
       const srv = await server({ expose: ["name", "version"] });
 
       const body = await (await fetch(`${srv.hostname}/version`)).json();
@@ -71,7 +77,9 @@ describe("ServerVersionProvider", () => {
       expect(body).toEqual({ name: "unknown", version: "latest" });
     });
 
-    it("should drop build's three members together when build is not exposed", async () => {
+    it("should drop build's three members together when build is not exposed", async ({
+      expect,
+    }) => {
       const srv = await server({ expose: ["version", "framework"] });
 
       const body = await (await fetch(`${srv.hostname}/version`)).json();
@@ -82,7 +90,9 @@ describe("ServerVersionProvider", () => {
   });
 
   describe("enabled", () => {
-    it("should 404 when disabled, indistinguishable from no such route", async () => {
+    it("should 404 when disabled, indistinguishable from no such route", async ({
+      expect,
+    }) => {
       const srv = await server({ enabled: false });
 
       const res = await fetch(`${srv.hostname}/version`);
@@ -90,7 +100,7 @@ describe("ServerVersionProvider", () => {
       expect(res.status).toBe(404);
     });
 
-    it("should not take /health down with it", async () => {
+    it("should not take /health down with it", async ({ expect }) => {
       const srv = await server({ enabled: false });
 
       const health = await fetch(`${srv.hostname}/health`);
@@ -102,7 +112,9 @@ describe("ServerVersionProvider", () => {
   });
 
   describe("runtime writes", () => {
-    it("should honour an expose written after the container was created", async () => {
+    it("should honour an expose written after the container was created", async ({
+      expect,
+    }) => {
       // Unlike `path`, this is read per request, so a later write takes
       // effect without the container having to be rebuilt.
       const alepha = Alepha.create().with(AlephaServer);
@@ -117,7 +129,7 @@ describe("ServerVersionProvider", () => {
   });
 
   describe("path", () => {
-    it("should serve from a configured path instead", async () => {
+    it("should serve from a configured path instead", async ({ expect }) => {
       // Pins the field-initializer ordering: `$store(versionOptions)` has to be
       // declared before the `$route` that reads `path`, and the route's options
       // are built during configure, after an app's `alepha.set` at wiring time.
@@ -141,7 +153,9 @@ describe("ServerVersionProvider", () => {
       delete (globalThis as Record<string, unknown>).__ALEPHA_META__;
     });
 
-    it("should stamp the responses of a built app with its build", async () => {
+    it("should stamp the responses of a built app with its build", async ({
+      expect,
+    }) => {
       (globalThis as Record<string, unknown>).__ALEPHA_META__ =
         JSON.stringify(built);
       const srv = await server();
@@ -155,7 +169,9 @@ describe("ServerVersionProvider", () => {
       expect(health.headers.get(BUILD_HEADER)).toBe(token);
     });
 
-    it("should hold the build even when /version withholds it", async () => {
+    it("should hold the build even when /version withholds it", async ({
+      expect,
+    }) => {
       (globalThis as Record<string, unknown>).__ALEPHA_META__ =
         JSON.stringify(built);
       const srv = await server({ enabled: false });
@@ -166,7 +182,7 @@ describe("ServerVersionProvider", () => {
       expect(res.headers.get(BUILD_HEADER)).toBe(buildToken(built));
     });
 
-    it("should send no header in development", async () => {
+    it("should send no header in development", async ({ expect }) => {
       const srv = await server();
 
       const res = await fetch(`${srv.hostname}/health`);
@@ -174,7 +190,7 @@ describe("ServerVersionProvider", () => {
       expect(res.headers.get(BUILD_HEADER)).toBeNull();
     });
 
-    it("should name another build after a rebuild", () => {
+    it("should name another build after a rebuild", ({ expect }) => {
       const rebuilt = {
         ...built,
         build: { ...built.build, date: "2026-11-15T11:00:00.000Z" },

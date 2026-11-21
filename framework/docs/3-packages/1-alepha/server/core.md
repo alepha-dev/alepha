@@ -17,7 +17,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 - Type-safe API endpoints with schema validation
 - Lower-level HTTP route definitions
 - Automatic request/response validation via Zod
-- Convention-based URL generation (`/api/{ActionName}`)
+- API actions under one configurable prefix (`/api` by default)
 - Direct invocation (`run()`) or HTTP (`fetch()`)
 - Built-in authentication integration
 - Multipart file upload handling
@@ -32,7 +32,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 ### Primitives
 
 - [`$action`](/docs/reference-primitives-$action) - Creates a server action primitive for defining type-safe HTTP endpoints.
-- [`$middleware`](/docs/reference-primitives-$middleware) - Applies middleware functions to every route whose path starts with a prefix.
+- [`$middleware`](/docs/reference-primitives-$middleware) - Applies middleware functions to the route at a path prefix and to every
 - [`$route`](/docs/reference-primitives-$route) - Create a basic endpoint.
 - [`$sse`](/docs/reference-primitives-$sse) - Creates a Server-Sent Events (SSE) primitive for streaming typed events to clients.
 

@@ -29,9 +29,9 @@ import type { UserAgentInfo } from "../services/UserAgentParser.ts";
  *
  * Both unions read as a whitelist but do not behave as one: `StreamSchema` and
  * `FileSchema` are aliases of `ZType`, the supertype of every member, so each
- * union collapses to "any schema". Listing the members is still worth it — it
+ * union collapses to "any schema". Listing the members is still worth it (it
  * documents what is actually *handled* downstream, and a reader reaching for
- * something exotic is warned — but do not rely on the compiler to reject a
+ * something exotic is warned), but do not rely on the compiler to reject a
  * shape the serializer cannot produce.
  *
  * Narrowing them for real is a breaking change (schemas that compile today
@@ -177,7 +177,9 @@ export interface ServerRequest<
   signal: AbortSignal;
 
   /**
-   * The raw underlying request object (Web Request).
+   * The raw underlying request: `node` (the `IncomingMessage` and its
+   * response) on a Node server, `web` (the Fetch `Request`) on Bun and
+   * workerd.
    */
   raw: ServerRawRequest;
 }

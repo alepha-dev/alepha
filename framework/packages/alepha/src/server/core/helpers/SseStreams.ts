@@ -128,11 +128,15 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
 
     const decoder = new TextDecoder();
     let buffer = "";
+    let ended = false;
 
     try {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          ended = true;
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
 
@@ -161,6 +165,12 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
         }
       }
     } finally {
+      // A consumer that leaves the loop early (`break`, `return`, a throw)
+      // is done with the response: cancel the body, or the connection stays
+      // open and the server-side handler keeps emitting for nobody.
+      if (!ended) {
+        await reader.cancel().catch(() => {});
+      }
       reader.releaseLock();
     }
   }

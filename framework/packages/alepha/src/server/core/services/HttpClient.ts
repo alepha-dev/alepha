@@ -667,7 +667,7 @@ export class HttpClient {
 
   /**
    * Fast, collision-resistant string hash (two FNV-1a accumulators combined).
-   * Used only to namespace a cache — not a security boundary; the remote still
+   * Used only to namespace a cache, not a security boundary; the remote still
    * authorizes every request.
    */
   protected hashScope(input: string): string {
@@ -796,7 +796,10 @@ export class HttpClient {
       return;
     }
 
-    const contentType = response.headers.get("Content-Type") ?? "";
+    // Lower case: a media type is case-insensitive (RFC 9110, 8.3.1).
+    const contentType = (
+      response.headers.get("Content-Type") ?? ""
+    ).toLowerCase();
 
     // Before any body branch: a text/html error page used to come back as
     // DATA because the text branch ran first, so a 404 "Not Found" resolved.
@@ -841,7 +844,7 @@ export class HttpClient {
     contentType: string,
   ): Promise<HttpError> {
     let error: HttpError;
-    if (contentType.startsWith("application/json")) {
+    if (contentType.toLowerCase().startsWith("application/json")) {
       const json = await response.json().catch(() => undefined);
       const parsed = errorSchema.safeParse(json);
       // A registered name (an `$error` constant, a built-in) rebuilds its
@@ -878,12 +881,17 @@ export class HttpClient {
   }
 
   protected isMaybeFile(response: Response): boolean {
-    const contentType = response.headers.get("Content-Type");
+    const contentType = response.headers.get("Content-Type")?.toLowerCase();
     if (!contentType) {
       return false;
     }
 
-    if (response.headers.get("Content-Disposition")?.includes("attachment")) {
+    if (
+      response.headers
+        .get("Content-Disposition")
+        ?.toLowerCase()
+        .includes("attachment")
+    ) {
       return true; // If Content-Disposition indicates an attachment, treat it as a file
     }
 
@@ -897,18 +905,103 @@ export class HttpClient {
     );
   }
 
+  /**
+   * The file name a `Content-Disposition` header carries, or `undefined`.
+   *
+   * `filename*` (RFC 5987, percent-encoded UTF-8) wins when it is there and
+   * readable, otherwise `filename`. Either way the result is a base name:
+   * whatever path the server put in front of it is dropped, since a caller
+   * may write the file under that name.
+   */
+  protected fileNameOf(disposition: string): string | undefined {
+    const params = this.dispositionParams(disposition);
+
+    // `charset'language'value`: only the first two apostrophes separate.
+    const extended = /^([^']*)'[^']*'(.*)$/s.exec(
+      params.get("filename*") ?? "",
+    );
+    if (extended && extended[1].toLowerCase() === "utf-8") {
+      try {
+        const name = this.baseName(decodeURIComponent(extended[2]));
+        if (name) {
+          return name;
+        }
+      } catch {
+        // not percent-encoded UTF-8 after all: the plain name below
+      }
+    }
+
+    return this.baseName(params.get("filename") ?? "");
+  }
+
+  /**
+   * The parameters of a `Content-Disposition` header, by lower-case name. A
+   * quoted value ends at its closing quote, whatever it contains (a `;`,
+   * something that looks like another parameter), and the backslash escapes
+   * the server wrote for `"` and `\` are undone. The first of a repeated
+   * parameter wins.
+   */
+  protected dispositionParams(disposition: string): Map<string, string> {
+    const parts: string[] = [];
+    let current = "";
+    let quoted = false;
+    for (let i = 0; i < disposition.length; i++) {
+      const char = disposition[i];
+      if (quoted && char === "\\" && i + 1 < disposition.length) {
+        current += char + disposition[++i];
+        continue;
+      }
+      if (char === '"') {
+        quoted = !quoted;
+      }
+      if (char === ";" && !quoted) {
+        parts.push(current);
+        current = "";
+        continue;
+      }
+      current += char;
+    }
+    parts.push(current);
+
+    const params = new Map<string, string>();
+    for (const part of parts) {
+      const equals = part.indexOf("=");
+      if (equals === -1) {
+        continue;
+      }
+      const name = part.slice(0, equals).trim().toLowerCase();
+      let value = part.slice(equals + 1).trim();
+      if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1).replace(/\\(.)/g, "$1");
+      }
+      if (name && !params.has(name)) {
+        params.set(name, value);
+      }
+    }
+    return params;
+  }
+
+  /**
+   * The last segment of a name that may carry a path, with `/` or `\`, or
+   * `undefined` when nothing usable is left (empty, `.`, `..`).
+   */
+  protected baseName(name: string): string | undefined {
+    const base = name.split(/[\\/]/).pop() ?? "";
+    return base === "" || base === "." || base === ".." ? undefined : base;
+  }
+
   protected createFileLike(response: Response, defaultFileName = ""): FileLike {
-    const match = (response.headers.get("Content-Disposition") ?? "").match(
-      /filename="(.+)"/,
+    const name = this.fileNameOf(
+      response.headers.get("Content-Disposition") ?? "",
     );
     return {
-      name: match?.[1] ? match[1] : defaultFileName,
+      name: name ?? defaultFileName,
       type: response.headers.get("Content-Type") ?? "application/octet-stream",
       size: Number(response.headers.get("Content-Length") ?? 0),
       // alepha-allow no-date-now: file metadata, the moment a download was received, never a decision the app makes
       lastModified: Date.now(),
       stream: () => {
-        // `response.body` was right there — throwing here broke every
+        // `response.body` was right there: throwing here broke every
         // consumer piping a downloaded file straight into a bucket. A body
         // can only be read once, so say so instead of returning a stream
         // that silently yields nothing.
@@ -953,7 +1046,7 @@ export class HttpClient {
       // - values are percent-encoded, so `/`, `?`, `#` and spaces can no
       //   longer break out of their segment.
       //
-      // Unknown tokens are left untouched — that also keeps the port in
+      // Unknown tokens are left untouched: that also keeps the port in
       // `http://host:3000` from being read as a parameter.
       url = url.replace(
         /\{([A-Za-z0-9_]+)\}|:([A-Za-z0-9_]+)/g,
@@ -975,9 +1068,11 @@ export class HttpClient {
     args: ServerRequestConfigEntry = {},
   ): string {
     if (typeof args.query === "object") {
+      // A copy when it is the caller's own object: the loop below drops
+      // keys and rewrites values, and a caller may use its query again.
       const query = action.schema?.query
         ? this.alepha.codec.decode(action.schema.query, args.query ?? {})
-        : args.query;
+        : { ...args.query };
 
       for (const key of Object.keys(query)) {
         if (query[key] === undefined) {
@@ -1032,7 +1127,7 @@ export type RequestInitWithOptions<T extends ZType = ZType> = RequestInit &
   FetchOptions<T>;
 
 /**
- * Internal resolved fetch options — built in {@link HttpClient.fetch},
+ * Internal resolved fetch options, built in {@link HttpClient.fetch},
  * consumed by {@link HttpClient.responseData} and the `client:fetch:before`
  * event. Distinct from the external {@link FetchOptions}: `schema` is the
  * already-unwrapped response schema and `cache` is the resolved cache directive.

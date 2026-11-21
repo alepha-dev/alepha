@@ -236,7 +236,7 @@ export class MemoryHttpClient extends HttpClient {
       return undefined;
     }
     if (typeof body === "string") {
-      if (contentType?.startsWith("application/json")) {
+      if (contentType?.toLowerCase().startsWith("application/json")) {
         try {
           return JSON.parse(body);
         } catch {
@@ -278,8 +278,8 @@ export class MemoryHttpClient extends HttpClient {
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
+    // An IPv6 literal keeps its brackets in `URL.hostname`.
     "[::1]",
-    "::1",
   ]);
 
   /**

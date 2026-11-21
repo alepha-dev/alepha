@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
-import { afterEach, describe, expect, it, test } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
+import { $route } from "../index.ts";
 import { NodeHttpServerProvider } from "../providers/NodeHttpServerProvider.ts";
 
 describe("NodeHttpServerProvider", () => {
@@ -9,7 +10,7 @@ describe("NodeHttpServerProvider", () => {
      * Every case pins SERVER_PORT and PORT explicitly, `undefined` included:
      * `Alepha.create()` merges `process.env`, so a runner that happens to
      * export either one would otherwise decide the outcome. NODE_ENV is
-     * development so that no port is ever bound — `hostname` reports the
+     * development so that no port is ever bound: `hostname` reports the
      * resolved port before the server listens.
      */
     const hostname = (env: { SERVER_PORT?: number; PORT?: number }) =>
@@ -17,25 +18,25 @@ describe("NodeHttpServerProvider", () => {
         NodeHttpServerProvider,
       ).hostname;
 
-    it("reads PORT when SERVER_PORT is not set", () => {
+    it("reads PORT when SERVER_PORT is not set", ({ expect }) => {
       expect(hostname({ SERVER_PORT: undefined, PORT: 4002 })).toBe(
         "http://localhost:4002",
       );
     });
 
-    it("ignores PORT when SERVER_PORT is set", () => {
+    it("ignores PORT when SERVER_PORT is set", ({ expect }) => {
       expect(hostname({ SERVER_PORT: 4001, PORT: 4002 })).toBe(
         "http://localhost:4001",
       );
     });
 
-    it("keeps the 3000 default when neither is set", () => {
+    it("keeps the 3000 default when neither is set", ({ expect }) => {
       expect(hostname({ SERVER_PORT: undefined, PORT: undefined })).toBe(
         "http://localhost:3000",
       );
     });
 
-    it("listens on PORT when SERVER_PORT is not set", async () => {
+    it("listens on PORT when SERVER_PORT is not set", async ({ expect }) => {
       const alepha = Alepha.create({
         env: { NODE_ENV: "development", SERVER_PORT: undefined, PORT: 0 },
       });
@@ -65,81 +66,99 @@ describe("NodeHttpServerProvider", () => {
       await alepha?.stop().catch(() => {});
     });
 
-    test("dev mode: destroys connections immediately on close", async () => {
-      alepha = Alepha.create({
-        env: { NODE_ENV: "development", SERVER_PORT: 0 },
+    /**
+     * An app with a request that answers after `delay`, or never when there
+     * is none, and a promise resolved once that request reached its handler.
+     */
+    const withPendingRequest = async (
+      env: Record<string, string | number>,
+      delay?: number,
+    ) => {
+      let arrived!: () => void;
+      const arriving = new Promise<void>((resolve) => {
+        arrived = resolve;
       });
-      alepha.with(NodeHttpServerProvider);
 
+      class App {
+        slow = $route({
+          path: "/slow",
+          handler: async ({ signal }) => {
+            arrived();
+            await new Promise<void>((resolve) => {
+              if (delay !== undefined) {
+                setTimeout(resolve, delay);
+              }
+              signal.addEventListener("abort", () => resolve(), {
+                once: true,
+              });
+            });
+            return "done";
+          },
+        });
+      }
+
+      alepha = Alepha.create({ env: { SERVER_PORT: 0, ...env } }).with(App);
+      alepha.with(NodeHttpServerProvider);
       await alepha.start();
       server = alepha.inject(NodeHttpServerProvider);
 
-      // Make a request to establish connection
-      await fetch(`${server.hostname}/`);
+      // `connection: close`: an idle keep-alive socket would hold a
+      // graceful stop until the client let go of it.
+      const pending = fetch(`${server.hostname}/slow`, {
+        headers: { connection: "close" },
+      })
+        .then((response) => response.text())
+        .catch(() => "broken");
+      await arriving;
+      // In an object: an async function returning the promise would wait for it.
+      return { pending };
+    };
 
-      const startTime = Date.now();
+    it("dev mode: destroys connections immediately on close", async ({
+      expect,
+    }) => {
+      const { pending } = await withPendingRequest({ NODE_ENV: "development" });
+
+      // The request never answers: a stop that waited for it would not
+      // return.
       await alepha.stop();
-      const elapsed = Date.now() - startTime;
 
-      // Should close instantly (under 100ms)
-      expect(elapsed).toBeLessThan(100);
+      expect(await pending).toBe("broken");
       expect(server.getConnectionsCount()).toBe(0);
     });
 
-    test("production mode: waits for connections then closes", async () => {
-      alepha = Alepha.create({
-        env: {
-          NODE_ENV: "production",
-          SERVER_PORT: 0,
-          APP_SECRET: "test-secret",
-        },
-      });
-      alepha.with(NodeHttpServerProvider);
+    it("production mode: lets a request in flight finish, then closes", async ({
+      expect,
+    }) => {
+      const { pending } = await withPendingRequest(
+        { NODE_ENV: "production", APP_SECRET: "test-secret" },
+        100,
+      );
+      server.options.shutdownTimeout = 5000;
 
-      await alepha.start();
-      server = alepha.inject(NodeHttpServerProvider);
-      server.options.shutdownTimeout = 500;
-
-      // Make a request to establish keep-alive connection
-      await fetch(`${server.hostname}/`);
-
-      const startTime = Date.now();
       await alepha.stop();
-      const elapsed = Date.now() - startTime;
 
-      // In production, should not be instant (waits for graceful close or timeout)
-      // But should complete within timeout
-      expect(elapsed).toBeLessThan(server.options.shutdownTimeout + 100);
+      // Destroying the sockets at once, as development does, would have
+      // broken it.
+      expect(await pending).toBe("done");
       expect(server.getConnectionsCount()).toBe(0);
     });
 
-    test("production mode: forces close after timeout", async () => {
-      alepha = Alepha.create({
-        env: {
-          NODE_ENV: "production",
-          SERVER_PORT: 0,
-          APP_SECRET: "test-secret",
-        },
+    it("production mode: forces close after timeout", async ({ expect }) => {
+      const { pending } = await withPendingRequest({
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
       });
-      alepha.with(NodeHttpServerProvider);
-
-      await alepha.start();
-      server = alepha.inject(NodeHttpServerProvider);
       server.options.shutdownTimeout = 50;
 
-      // Make a request to establish connection
-      await fetch(`${server.hostname}/`);
-
-      const startTime = Date.now();
+      // The request never answers, so only the timeout can end the stop.
       await alepha.stop();
-      const elapsed = Date.now() - startTime;
 
-      // Should close around timeout
-      expect(elapsed).toBeLessThan(200);
+      expect(await pending).toBe("broken");
       expect(server.getConnectionsCount()).toBe(0);
     });
 
-    test("connections are tracked and cleared", async () => {
+    it("connections are tracked and cleared", async ({ expect }) => {
       alepha = Alepha.create({
         env: { NODE_ENV: "development", SERVER_PORT: 0 },
       });
@@ -158,7 +177,7 @@ describe("NodeHttpServerProvider", () => {
       expect(server.getConnectionsCount()).toBe(0);
     });
 
-    test("rejects new requests during shutdown", async () => {
+    it("rejects new requests during shutdown", async ({ expect }) => {
       alepha = Alepha.create({
         env: {
           NODE_ENV: "production",

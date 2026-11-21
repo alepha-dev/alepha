@@ -15,21 +15,6 @@ import type {
 } from "../interfaces/ServerRequest.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
-// ============================================================================
-// Performance Constants
-// ============================================================================
-
-// Note: We cannot use frozen/shared empty objects here because downstream code
-// may mutate params/query (e.g., validation, React page rendering)
-
-// Header constants for fast property access
-const HEADER_X_FORWARDED_PROTO = "x-forwarded-proto";
-const HEADER_HOST = "host";
-
-// Protocol prefixes
-const PROTO_HTTPS = "https://";
-const PROTO_HTTP = "http://";
-
 /**
  * Base server provider to handle incoming requests and route them.
  *
@@ -59,21 +44,11 @@ export class ServerProvider {
    * URL base (protocol + host) for a request's headers.
    */
   protected getUrlBase(headers: Record<string, string>): string {
-    const host = headers[HEADER_HOST];
     const proto =
-      headers[HEADER_X_FORWARDED_PROTO] === "https" ? PROTO_HTTPS : PROTO_HTTP;
-    return proto + host;
+      headers["x-forwarded-proto"] === "https" ? "https://" : "http://";
+    return proto + headers.host;
   }
 
-  // ============================================================================
-  // P0: Manual Query String Parser - faster than URLSearchParams
-  // Parses query string without creating URL object
-  // ============================================================================
-
-  /**
-   * Parse query string manually - faster than new URL() + URLSearchParams.
-   * Returns empty object if no query string.
-   */
   /**
    * The answer to a HEAD request, from the response its GET route produced:
    * the same status, the same headers, and no body.
@@ -123,6 +98,10 @@ export class ServerProvider {
     return { status: response.status, headers };
   }
 
+  /**
+   * The query string of a raw URL as an object, parsed by hand: faster than
+   * `new URL()` and `URLSearchParams`. Empty when there is no query string.
+   */
   protected parseQueryString(rawUrl: string): Record<string, string> {
     const qIndex = rawUrl.indexOf("?");
     if (qIndex === -1) {
@@ -155,7 +134,7 @@ export class ServerProvider {
           query[this.fastDecode(key)] = this.fastDecode(value);
         } else if (eqIdx === -1 && i > start) {
           // A bare `?flag` with no '='. This used to be dropped entirely,
-          // while URLSearchParams on Bun/workerd yields `{ flag: "" }` — the
+          // while URLSearchParams on Bun/workerd yields `{ flag: "" }`: the
           // same request reached different handlers on different runtimes.
           query[this.fastDecode(qs.slice(start, i))] = "";
         }
@@ -373,6 +352,43 @@ export class ServerProvider {
 
     // if response.body is web stream
     if (response.body instanceof ReadableStream) {
+      const reader = response.body.getReader();
+      // The first read starts before the head goes out, and gets until the
+      // next `setImmediate` to fail: a source that breaks before its first
+      // chunk is answered a 500, while there is still a status to choose. A
+      // source that is merely not ready (an SSE stream waiting for its first
+      // event) holds the head back by that one turn and no more.
+      let read = reader.read();
+      const failure = await Promise.race([
+        read.then(
+          () => undefined,
+          (error: unknown) => ({ error }),
+        ),
+        new Promise<undefined>((resolve) =>
+          setImmediate(() => resolve(undefined)),
+        ),
+      ]);
+      if (failure) {
+        this.log.error(
+          "Response stream failed before its first chunk",
+          failure.error,
+        );
+        reader.releaseLock();
+        if (!res.destroyed) {
+          res.writeHead(500, { "content-type": "text/plain" });
+          res.end(this.internalServerErrorMessage);
+        }
+        return;
+      }
+      if (res.destroyed) {
+        await reader
+          .cancel(new AbortedError("Client disconnected"))
+          .catch((error) =>
+            this.log.debug("Failed to cancel response stream", error),
+          );
+        return;
+      }
+
       res.writeHead(response.status, response.headers);
       // Flush headers immediately and disable Nagle's algorithm for streaming.
       // Optional call: a node:http shim may hand out a socket without
@@ -395,7 +411,6 @@ export class ServerProvider {
       });
       res.once("close", onClientGone);
 
-      const reader = response.body.getReader();
       // Built once: it was a new promise on every chunk.
       const gone = disconnected.then(() => undefined);
 
@@ -421,8 +436,8 @@ export class ServerProvider {
         }
       };
 
+      let failed = false;
       try {
-        let read = reader.read();
         while (!clientGone) {
           const next = await Promise.race(
             tick ? [read, gone, tick] : [read, gone],
@@ -445,13 +460,14 @@ export class ServerProvider {
           read = reader.read();
         }
       } catch (error) {
+        failed = true;
         this.log.error("Error piping response stream", error);
       } finally {
         res.off("close", onClientGone);
 
         if (clientGone) {
           await reader
-            .cancel(new Error("Client disconnected"))
+            .cancel(new AbortedError("Client disconnected"))
             .catch((error) =>
               this.log.debug("Failed to cancel response stream", error),
             );
@@ -459,7 +475,15 @@ export class ServerProvider {
           reader.releaseLock();
         }
 
-        res.end();
+        // A source that failed mid-stream: the headers are out, so the only
+        // way left to say the body is broken is to break the connection, as
+        // `pipeline` does for a Node stream above. Ending it normally would
+        // hand the client a complete-looking response with a truncated body.
+        if (failed) {
+          res.destroy();
+        } else {
+          res.end();
+        }
       }
       return;
     }

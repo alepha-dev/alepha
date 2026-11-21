@@ -3,352 +3,114 @@ import { describe, it } from "vitest";
 
 import { $action, $route, ServerRouterProvider } from "../index.ts";
 
+class TestApp {
+  users = $action({
+    method: "GET",
+    path: "/users",
+    schema: { response: z.object({ id: z.integer() }) },
+    handler: () => ({ id: 1 }),
+  });
+
+  userDetail = $action({
+    method: "GET",
+    path: "/users/:id",
+    schema: { response: z.object({ id: z.integer() }) },
+    handler: () => ({ id: 1 }),
+  });
+
+  createUser = $action({
+    method: "POST",
+    path: "/users",
+    schema: { response: z.object({ id: z.integer() }) },
+    handler: () => ({ id: 1 }),
+  });
+
+  nested = $action({
+    method: "GET",
+    path: "/v1/users/:id/posts",
+    schema: { response: z.object({ id: z.integer() }) },
+    handler: () => ({ id: 1 }),
+  });
+
+  about = $route({
+    path: "/about",
+    handler: () => "about",
+  });
+
+  apiRoot = $route({
+    path: "/api",
+    handler: () => "root",
+  });
+}
+
 describe("ServerRouterProvider - getRoutes", () => {
-  it("should return all routes when no pattern is provided", async ({
+  /**
+   * The routes a pattern selects, as sorted `METHOD path` lines.
+   */
+  const select = async (pattern?: string) => {
+    const alepha = Alepha.create().with(TestApp);
+    await alepha.start();
+    return alepha
+      .inject(ServerRouterProvider)
+      .getRoutes(pattern)
+      .map((route) => `${route.method} ${route.path}`)
+      .sort();
+  };
+
+  const actions = [
+    "GET /api/users",
+    "GET /api/users/:id",
+    "GET /api/v1/users/:id/posts",
+    "POST /api/users",
+  ];
+
+  it("should return every route when no pattern is given", async ({
     expect,
   }) => {
-    const alepha = Alepha.create();
+    const routes = await select();
 
-    class TestApp {
-      action1 = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      action2 = $action({
-        method: "GET",
-        path: "/posts",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      route1 = $route({
-        path: "/health",
-        handler: () => "OK",
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes();
-
-    expect(routes.length).toBeGreaterThanOrEqual(3);
+    expect(routes).toEqual(
+      expect.arrayContaining([...actions, "GET /about", "GET /api"]),
+    );
+    // The server's own routes are in the list too.
+    expect(routes).toContain("GET /health");
   });
 
-  it("should return routes matching wildcard pattern", async ({ expect }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      users = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      userDetail = $action({
-        method: "GET",
-        path: "/users/:id",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      posts = $action({
-        method: "GET",
-        path: "/posts",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      health = $route({
-        path: "/health",
-        handler: () => "OK",
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes("/api/*");
-
-    // Should include the actions under /api/*
-    const paths = routes.map((r) => r.path);
-    expect(paths.length).toBeGreaterThanOrEqual(3);
-    expect(paths.some((p) => p.includes("/users"))).toBe(true);
-    expect(paths.some((p) => p.includes("/posts"))).toBe(true);
-    // health route should not match /api/*
-    expect(paths.some((p) => p === "/GET/health")).toBe(false);
-  });
-
-  it("should return empty array when pattern doesn't match any routes", async ({
+  it("should return what is under a wildcard prefix, and not the prefix itself", async ({
     expect,
   }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      users = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      posts = $action({
-        method: "GET",
-        path: "/posts",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes("/v2/*");
-
-    expect(routes).toHaveLength(0);
+    expect(await select("/api/*")).toEqual(actions);
   });
 
-  it("should return empty array when exact pattern doesn't match", async ({
+  it("should return several levels under a nested prefix", async ({
     expect,
   }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      users = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes("/admin");
-
-    expect(routes).toHaveLength(0);
+    expect(await select("/api/users/*")).toEqual(["GET /api/users/:id"]);
+    expect(await select("/api/v1/*")).toEqual(["GET /api/v1/users/:id/posts"]);
   });
 
-  it("should differentiate between exact match and wildcard match patterns", async ({
+  it("should return only the exact path for a pattern with no wildcard", async ({
     expect,
   }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      apiInfo = $action({
-        method: "GET",
-        path: "/api-info",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      apiUsers = $action({
-        method: "GET",
-        path: "/api-users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      settings = $route({
-        path: "/settings",
-        handler: () => "OK",
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-
-    // Wildcard pattern matches multiple routes
-    const wildcardRoutes = routerProvider.getRoutes("/api/*");
-    expect(wildcardRoutes.length).toBeGreaterThan(0);
+    expect(await select("/about")).toEqual(["GET /about"]);
+    expect(await select("/api")).toEqual(["GET /api"]);
+    // Every method declared on the path.
+    expect(await select("/api/users")).toEqual([
+      "GET /api/users",
+      "POST /api/users",
+    ]);
   });
 
-  it("should return multiple routes for deep nested paths", async ({
+  it("should return nothing for a pattern no route matches", async ({
     expect,
   }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      level1 = $action({
-        method: "GET",
-        path: "/v1/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      level2 = $action({
-        method: "GET",
-        path: "/v1/users/:id/posts",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      level3 = $action({
-        method: "GET",
-        path: "/v1/users/:id/posts/:postId/comments",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      v2 = $action({
-        method: "GET",
-        path: "/v2/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes("/api/*");
-
-    // Should find nested routes under /api/*
-    expect(routes.length).toBeGreaterThanOrEqual(2);
-    const paths = routes.map((r) => r.path);
-    expect(paths.some((p) => p.includes("v1"))).toBe(true);
-    expect(paths.some((p) => p.includes("v2"))).toBe(true);
+    expect(await select("/v2/*")).toEqual([]);
+    expect(await select("/admin")).toEqual([]);
+    // A longer first segment is another path.
+    expect(await select("/ap/*")).toEqual([]);
   });
 
-  it("should match all routes with root wildcard pattern", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      health = $route({
-        path: "/health",
-        schema: { response: z.object({ status: z.string() }) },
-        handler: () => ({ status: "ok" }),
-      });
-
-      about = $route({
-        path: "/about",
-        schema: { response: z.object({ name: z.string() }) },
-        handler: () => ({ name: "app" }),
-      });
-
-      users = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes("/*");
-
-    expect(routes.length).toBeGreaterThanOrEqual(3);
-  });
-
-  it("should correctly filter by path prefix", async ({ expect }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      publicApi = $action({
-        method: "GET",
-        path: "/public/info",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      adminApi = $action({
-        method: "GET",
-        path: "/admin/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      privateRoute = $route({
-        path: "/private",
-        handler: () => "private",
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-
-    // Get routes matching /api/* pattern
-    const apiRoutes = routerProvider.getRoutes("/api/*");
-    expect(apiRoutes.length).toBeGreaterThan(0);
-
-    // Get routes matching a specific non-api pattern
-    const privateRoutes = routerProvider.getRoutes("/private");
-    expect(privateRoutes.length).toBeGreaterThanOrEqual(0);
-  });
-
-  it("should handle routes with method-specific paths", async ({ expect }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      getUsers = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.array(z.object({ id: z.integer() })) },
-        handler: () => [],
-      });
-
-      createUser = $action({
-        method: "POST",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      updateUser = $action({
-        method: "PATCH",
-        path: "/users/:id",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const routes = routerProvider.getRoutes("/api/*");
-
-    // Should return routes with different HTTP methods for /users path
-    expect(routes.length).toBeGreaterThanOrEqual(2);
-    const paths = routes.map((r) => r.path);
-    expect(paths.some((p) => p.includes("/users"))).toBe(true);
-  });
-
-  it("should be case-sensitive for path matching", async ({ expect }) => {
-    const alepha = Alepha.create();
-
-    class TestApp {
-      users = $action({
-        method: "GET",
-        path: "/users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-
-      users2 = $action({
-        method: "GET",
-        path: "/Users",
-        schema: { response: z.object({ id: z.integer() }) },
-        handler: () => ({ id: 1 }),
-      });
-    }
-
-    await alepha.with(TestApp).start();
-
-    const routerProvider = alepha.inject(ServerRouterProvider);
-    const allRoutes = routerProvider.getRoutes();
-
-    // Both routes should exist
-    expect(allRoutes.length).toBeGreaterThanOrEqual(2);
+  it("should return every route for the root wildcard", async ({ expect }) => {
+    expect(await select("/*")).toEqual(await select());
   });
 });
