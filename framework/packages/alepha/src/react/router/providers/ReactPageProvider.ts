@@ -41,6 +41,7 @@ import {
 } from "../primitives/$page.ts";
 import { ReactDeferred } from "../services/ReactDeferred.ts";
 import { ReactPrefetchCache } from "../services/ReactPrefetchCache.ts";
+import type { BrowserRoute } from "./ReactBrowserRouterProvider.ts";
 import { RootComponentsProvider } from "./RootComponentsProvider.ts";
 import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
@@ -206,7 +207,6 @@ export class ReactPageProvider {
 
   protected buildTree(): void {
     {
-      let hasNotFoundHandler = false;
       const pages = this.alepha.primitives($page);
 
       const hasParent = (it: PagePrimitive) => {
@@ -227,10 +227,6 @@ export class ReactPageProvider {
       };
 
       for (const page of pages) {
-        if (page.options.path === "/*") {
-          hasNotFoundHandler = true;
-        }
-
         // skip children, we only want root pages
         if (hasParent(page)) {
           continue;
@@ -238,6 +234,10 @@ export class ReactPageProvider {
 
         this.add(this.map(pages, page));
       }
+
+      // The app's own not-found page is the one matching `/*` in full: a
+      // `/*` under `/docs` is `/docs/*`, a section's content.
+      const hasNotFoundHandler = this.pages.some((it) => it.match === "/*");
 
       if (!hasNotFoundHandler && pages.length > 0) {
         // add a default 404 page if not already defined
@@ -315,7 +315,7 @@ export class ReactPageProvider {
    *
    * Public because callers that hold a possibly-synthetic layer name (the
    * `not-found` layer the router inserts when no route matched) need to ask
-   * without being thrown at — `page()` throws for unknown names, so the
+   * without being thrown at: `page()` throws for unknown names, so the
    * `?.` in `page(name)?.onLeave?.()` guarded nothing.
    */
   public findRoute(
@@ -415,10 +415,10 @@ export class ReactPageProvider {
         const propSchema = z.schema.unwrap(shape[key]);
         if (z.schema.isObject(propSchema) && typeof value[key] === "string") {
           try {
-            value[key] = this.alepha.codec.decode(
-              propSchema,
-              decodeURIComponent(value[key]),
-            );
+            // As it stands: the query was percent-decoded when it was
+            // parsed, and a second pass throws on a lone `%` and rewrites a
+            // literal `%41`.
+            value[key] = this.alepha.codec.decode(propSchema, value[key]);
           } catch (e) {
             // ignore
           }
@@ -479,7 +479,7 @@ export class ReactPageProvider {
             )
           : {};
       } catch (e) {
-        it.error = e instanceof Error ? e : new Error(String(e));
+        it.error = e instanceof Error ? e : new AlephaError(String(e));
         break;
       }
 
@@ -494,7 +494,7 @@ export class ReactPageProvider {
             )
           : {};
       } catch (e) {
-        it.error = e instanceof Error ? e : new Error(String(e));
+        it.error = e instanceof Error ? e : new AlephaError(String(e));
         break;
       }
 
@@ -507,7 +507,7 @@ export class ReactPageProvider {
       if (previous?.[i] && !forceRefresh && previous[i].name === route.name) {
         // The decoded query participates: loaders read `query`, so a
         // query-only navigation (`/search?q=foo` → `/search?q=bar`) must
-        // re-run them — reusing the layer would keep stale data on screen
+        // re-run them: reusing the layer would keep stale data on screen
         // and diverge from SSR, which re-runs loaders for the same URL.
         //
         // ⚠️ The identity, never `part` + the decoded params. A page with
@@ -577,14 +577,11 @@ export class ReactPageProvider {
       // and render protected pages for anyone.
       //
       // Browser-only: on the server, ReactServerProvider already wraps the
-      // page handler with the collected middleware chain — running it here
-      // too would double-execute it. `$cache` is excluded: like on the
-      // server it is handled separately, not as a loader-wrapping middleware.
-      const middleware = this.alepha.isBrowser()
-        ? (route.use ?? []).filter((m) => m[OPTIONS]?.name !== "$cache")
-        : [];
+      // page handler with the collected middleware chain: running it here
+      // too would double-execute it.
+      const middleware = this.alepha.isBrowser() ? (route.use ?? []) : [];
 
-      // Nothing to run for this layer — render a basic view by default.
+      // Nothing to run for this layer: render a basic view by default.
       if (!route.loader && middleware.length === 0) {
         continue;
       }
@@ -595,7 +592,7 @@ export class ReactPageProvider {
 
         // Terminal handler = the loader (or a no-op when the page has none).
         // `reached` stays false if a guard middleware short-circuits without
-        // calling `next` — that is how $secure denies access in the browser.
+        // calling `next`: that is how $secure denies access in the browser.
         let reached = false;
         const terminal = async (a: any) => {
           reached = true;
@@ -644,19 +641,19 @@ export class ReactPageProvider {
         // 403 for an under-privileged visitor, or a 404 for a row that is not
         // there, renders its page's refusal view exactly as intended. Logging
         // every one of those at error level buries the 5xx that are real. Same
-        // rule the crash reporter uses: 4xx is debug, everything else — 5xx,
-        // and anything with no status, which never became a response at all —
+        // rule the crash reporter uses: 4xx is debug, everything else (5xx,
+        // and anything with no status, which never became a response at all)
         // stays an error.
         const status = (e as { status?: number } | undefined)?.status;
         const expected = typeof status === "number" && status < 500;
         this.log[expected ? "debug" : "error"]("Page loader has failed", e);
 
-        it.error = e instanceof Error ? e : new Error(String(e));
+        it.error = e instanceof Error ? e : new AlephaError(String(e));
         break;
       }
     }
 
-    // A route that opts out of SSR emits no HTML for its whole chain — the
+    // A route that opts out of SSR emits no HTML for its whole chain: the
     // root layer is wrapped in `ClientOnly` below. So on the server there is
     // nothing to gain from importing any layer's component, and quite a lot to
     // lose: `createElement` awaits `page.lazy()`, which pulls that page's
@@ -665,7 +662,7 @@ export class ReactPageProvider {
     //
     // On Node that is only wasted memory. On Cloudflare Workers it took Lore's
     // folio route down in production: importing MDXEditor + Lexical server-side
-    // exceeded the isolate's ceiling, killing it mid-stream — the client got
+    // exceeded the isolate's ceiling, killing it mid-stream: the client got
     // the early-head flush and nothing else, then the error boundary. It never
     // reproduced in dev or under `node dist`, because neither is workerd.
     //
@@ -693,7 +690,10 @@ export class ReactPageProvider {
       // with one too, so the accumulator carries "//" at every level: collapse
       // all of them, not only the first run (this path is the canonical URL).
       const path = acc.replace(/\/+/g, "/");
-      const localErrorHandler = this.getErrorHandler(it.route);
+      // The layer's OWN handler: a parent's was chained at the parent's
+      // layer, and chaining the inherited one again here would run it once
+      // per layer below it.
+      const localErrorHandler = it.route.errorHandler;
       if (localErrorHandler) {
         const onErrorParent = state.onError;
         state.onError = (error, context) => {
@@ -748,7 +748,7 @@ export class ReactPageProvider {
             cache: it.cache,
           });
         } catch (e) {
-          it.error = e instanceof Error ? e : new Error(String(e));
+          it.error = e instanceof Error ? e : new AlephaError(String(e));
         }
       }
 
@@ -812,7 +812,7 @@ export class ReactPageProvider {
    * The nearest `errorHandler` for a page: its own, else the closest parent's.
    *
    * Public because the pre-stream error path (`ReactServerErrorProvider`) has
-   * to resolve the same handler from outside `createLayers` — a failure in a
+   * to resolve the same handler from outside `createLayers`: a failure in a
    * guard or a hook must reach the handler the page already declares.
    */
   public getErrorHandler(route: PageRoute): ErrorHandler | undefined {
@@ -969,7 +969,9 @@ export class ReactPageProvider {
     );
   }
 
-  /** Set once this document has started reloading after a chunk failure. */
+  /**
+   * Set once this document has started reloading after a chunk failure.
+   */
   protected chunkReloadPending = false;
 
   /**
@@ -1018,7 +1020,7 @@ export class ReactPageProvider {
    * Same rules as `HttpClient.pathVariables`: the token is matched whole (so
    * `:id` cannot eat the prefix of `:idType`), a replace function keeps `$&`
    * literal instead of expanding it as a substitution pattern, and values are
-   * percent-encoded — the router decodes path params, so an unencoded value
+   * percent-encoded: the router decodes path params, so an unencoded value
    * does not round-trip to itself.
    */
   public compile(path: string, params: Record<string, string> = {}) {
@@ -1113,7 +1115,7 @@ export class ReactPageProvider {
   /**
    * Outcome for a page whose `use` chain refused to call the loader.
    *
-   * A guard middleware denies by short-circuiting — `$secure` returns
+   * A guard middleware denies by short-circuiting: `$secure` returns
    * `undefined` in the browser rather than throwing, so the signal is "next was
    * never called", not the value that came back. Both the browser navigation
    * path and the server render path funnel here so a denial means the same
@@ -1129,13 +1131,13 @@ export class ReactPageProvider {
    * ⚠️ **`login` is the fallback, not the only answer.** One route can carry
    * that name, so an application serving two realms could not say which of
    * its doors a denied page belongs to, and every denial landed on whichever
-   * page held the name — an expired back-office session sending an agent to
+   * page held the name: an expired back-office session sending an agent to
    * the citizen's sign-in form. {@link loginRoutesAtom} maps a path prefix to
    * a route name for those applications; unset, this resolves exactly as it
    * always did.
    *
    * Throws when there is no usable `login` route to send an anonymous visitor
-   * to — a page that cannot be entered and cannot redirect is an error, not a
+   * to: a page that cannot be entered and cannot redirect is an error, not a
    * blank render.
    */
   public denyGuardedPage(url: URL): { redirect: string } {
@@ -1166,7 +1168,7 @@ export class ReactPageProvider {
    * top to bottom is what lets `{ prefix: "/", route: "signIn" }` sit at the
    * end as a catch-all beside a `/admin` entry above it.
    *
-   * Falls back to the conventional `login` name on every miss — an unset
+   * Falls back to the conventional `login` name on every miss: an unset
    * atom, a URL under no declared prefix, and a prefix naming a route that
    * does not exist. That last one matters: a typo in the list degrades to the
    * behaviour of an application that never set it, instead of to a redirect
@@ -1186,7 +1188,7 @@ export class ReactPageProvider {
   /**
    * Resolve the effective `ssr` value for a route by walking up the parent
    * chain. Returns the nearest explicit `ssr` value, and otherwise derives one
-   * from whether the page is behind a guard — defaulting to `true`.
+   * from whether the page is behind a guard: defaulting to `true`.
    *
    * The decision is made at the leaf: a parent's value only acts as a default
    * for descendants that did not decide for themselves.
@@ -1194,7 +1196,7 @@ export class ReactPageProvider {
    * ## Why a guarded page defaults to CSR
    *
    * Server-rendering exists to hand HTML to something that will not run
-   * JavaScript — a crawler, a link unfurler, a slow first paint that should not
+   * JavaScript: a crawler, a link unfurler, a slow first paint that should not
    * wait on a bundle. A page behind a login wall has none of those readers:
    * every visitor is authenticated, no crawler will ever see past the
    * redirect, and the render costs CPU on every single request. On a per-request
@@ -1203,14 +1205,14 @@ export class ReactPageProvider {
    *
    * It costs nothing in data: `ssr: false` still runs the loader on the server
    * and serialises the result for hydration, so a CSR page makes no extra round
-   * trip — it only skips painting HTML.
+   * trip: it only skips painting HTML.
    *
    * ## Precedence
    *
    * At each level of the walk: an explicit `ssr` wins outright; otherwise a
    * guard at that level means CSR; otherwise keep walking. So a guarded layout
    * puts its whole subtree in CSR, and any page can still opt back in with an
-   * explicit `ssr: true` — which is what a public marketing page nested under a
+   * explicit `ssr: true`, which is what a public marketing page nested under a
    * guarded shell would do.
    *
    * The guard is recognised by the {@link MIDDLEWARE_PROTECTED} capability flag,
@@ -1234,7 +1236,7 @@ export class ReactPageProvider {
   /**
    * Does this single route level carry a guard middleware?
    *
-   * Only its own `use` — the caller walks the chain, so looking further here
+   * Only its own `use`: the caller walks the chain, so looking further here
    * would double-count and make a child indistinguishable from its parent.
    */
   protected isProtected(route: PageRoute): boolean {
@@ -1301,27 +1303,24 @@ export class ReactPageProvider {
     page.match = this.createMatch(page);
 
     /*
-     * A `/*` page IS the not-found page, so it answers 404 unless the app says
-     * otherwise.
+     * A page matching `/*` in full IS the not-found page, so it answers 404
+     * unless the app says otherwise. A `/*` nested under a path (`/docs/*`)
+     * is that section's content and is left alone.
      *
-     * The framework already treats the catch-all that way everywhere else: the
-     * `configure` hook above skips its built-in 404 page as soon as one exists
-     * (`hasNotFoundHandler`), and `ReactServerProvider.resolveNotFoundRoute`
-     * falls back to `/*` by design. Only the status disagreed, and it did so
-     * exactly when an app customized the page: the built-in carries an
-     * `onServerResponse` setting 404, an app-declared `/*` replaces it
-     * wholesale, and nothing puts the status back. So designing your own 404
-     * page silently downgraded it to a 200 - which is worse than no 404 page
-     * at all, because a crawler indexes a soft 404 as a real page.
+     * The framework already treats the catch-all that way everywhere else:
+     * `buildTree` skips its built-in 404 page as soon as one exists, and
+     * `ReactServerProvider.resolveNotFoundRoute` falls back to `/*` by
+     * design. Only the status disagreed, and it did so exactly when an app
+     * customized the page, which answered 200: worse than no 404 page at
+     * all, because a crawler indexes a soft 404 as a real page.
      *
-     * Setting it here rather than in the `configure` hook covers both: the
-     * built-in no longer needs to repeat itself, and a `/*` added through this
-     * public method gets the same treatment.
+     * Setting it here rather than in `buildTree` covers the built-in page
+     * and a `/*` added through this public method alike.
      *
      * `??=` is the escape hatch. A `/*` that resolves real content (a CMS
      * slug, a proxy) declares its own `onServerResponse` and keeps its 200.
      */
-    if (page.match === "/*" || page.path === "/*") {
+    if (page.match === "/*") {
       page.onServerResponse ??= ({ reply }) => {
         reply.status = 404;
       };
@@ -1363,7 +1362,10 @@ export class ReactPageProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const isPageRoute = (it: any): it is PageRoute => {
+/**
+ * Whether a matched browser route carries a page.
+ */
+export const isPageRoute = (it: any): it is BrowserRoute => {
   return (
     it &&
     typeof it === "object" &&
@@ -1394,19 +1396,12 @@ export interface PageRoute extends PageRouteEntry {
   name: string;
   parent?: PageRoute;
   match: string;
-
-  /**
-   * Optional meta information associated with the page route, can be used for any purpose (e.g. menu label, icon, etc.).
-   */
-  label?: string;
 }
 
 export interface Layer {
   config?: {
     query?: Record<string, any>;
     params?: Record<string, any>;
-    // stack of resolved props
-    context?: Record<string, any>;
   };
 
   name: string;

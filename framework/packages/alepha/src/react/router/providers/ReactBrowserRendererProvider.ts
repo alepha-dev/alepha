@@ -106,7 +106,7 @@ export class ReactBrowserRendererProvider {
    *
    * ## Why the option is passed at all
    *
-   * Without it React installs its own handler, which calls `reportError` —
+   * Without it React installs its own handler, which calls `reportError`,
    * so the error reaches `window.onerror` and any crash reporter listening
    * there, **stripped**. A production hydration mismatch arrives as the
    * minified code `#418` with its arguments blanked (`args[]=HTML&args[]=`):
@@ -127,17 +127,17 @@ export class ReactBrowserRendererProvider {
    *
    * `react:render:recovered` is what carries it. A crash reporter listens for
    * that event rather than for `window.onerror`, and gets the component stack
-   * with it — see `@alepha/lore`'s `SigilBrowserProvider`.
+   * with it, see `@alepha/lore`'s `SigilBrowserProvider`.
    *
    * ## What it does NOT mean
    *
-   * Not "the page is broken". React recovered — for a hydration mismatch, by
-   * re-rendering that subtree on the client — so the visitor sees a correct
+   * Not "the page is broken". React recovered (for a hydration mismatch, by
+   * re-rendering that subtree on the client), so the visitor sees a correct
    * page. It is a defect worth a report and never worth an error boundary.
    *
    * Nor is it hydration-only: a root keeps this handler for its whole life, so
    * an error a Suspense boundary retried past also arrives here. Hence the
-   * name, and hence `createRoot` taking the same option — a client-rendered
+   * name, and hence `createRoot` taking the same option: a client-rendered
    * app has the same blank-report problem and no hydration at all.
    */
   protected onRecoverableError(

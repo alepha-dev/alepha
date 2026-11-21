@@ -1,7 +1,13 @@
-import { fireEvent, render, renderHook } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaReact } from "alepha/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, it, vi } from "vitest";
 
 import { AlephaContext } from "../../core/contexts/AlephaContext.ts";
 import { $page, Link, ReactRouter, useActive } from "../index.browser.ts";
@@ -43,15 +49,17 @@ const clickEvent = (init: Partial<MouseEvent> = {}) => ({
 
 describe("anchor click semantics", () => {
   beforeEach(() => {
-    // jsdom shares window.history across tests — a previous test's SPA
+    // jsdom shares window.history across tests: a previous test's SPA
     // navigation must not leak into this one's isActive checks.
     window.history.replaceState({}, "", "/");
   });
-  it("router.anchor() lets modified clicks fall through to the browser", async () => {
+  it("router.anchor() lets modified clicks fall through to the browser", async ({
+    expect,
+  }) => {
     const { router } = await setup();
     const props = router.anchor("/about");
 
-    // cmd/ctrl-click means "open in a new tab" — the SPA must not hijack it.
+    // cmd/ctrl-click means "open in a new tab": the SPA must not hijack it.
     for (const init of [
       { metaKey: true },
       { ctrlKey: true },
@@ -65,7 +73,9 @@ describe("anchor click semantics", () => {
     }
   });
 
-  it("router.anchor() still SPA-navigates on plain clicks", async () => {
+  it("router.anchor() still SPA-navigates on plain clicks", async ({
+    expect,
+  }) => {
     const { router } = await setup();
     const props = router.anchor("/about");
 
@@ -74,7 +84,7 @@ describe("anchor click semantics", () => {
     expect(ev.preventDefault).toHaveBeenCalled();
   });
 
-  it("router.anchor() respects target=_blank anchors", async () => {
+  it("router.anchor() respects target=_blank anchors", async ({ expect }) => {
     const { router } = await setup();
     const props = router.anchor("/about");
 
@@ -85,7 +95,7 @@ describe("anchor click semantics", () => {
     expect(ev.preventDefault).not.toHaveBeenCalled();
   });
 
-  it("<Link> runs the caller's onClick", async () => {
+  it("<Link> runs the caller's onClick", async ({ expect }) => {
     const { wrapper } = await setup();
     const onClick = vi.fn();
 
@@ -100,21 +110,38 @@ describe("anchor click semantics", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("<Link> skips SPA navigation when the caller prevented default", async () => {
+  it("<Link> skips SPA navigation when the caller prevented default", async ({
+    expect,
+  }) => {
     const { wrapper, router } = await setup();
 
     const { getByText } = render(
-      <Link href="/about" onClick={(ev) => ev.preventDefault()}>
-        go
-      </Link>,
+      <>
+        <Link href="/about" onClick={(ev) => ev.preventDefault()}>
+          stay
+        </Link>
+        <Link href="/about">go</Link>
+      </>,
       { wrapper },
     );
 
-    fireEvent.click(getByText("go"));
+    // Long enough for a navigation to land, had one started.
+    await act(async () => {
+      fireEvent.click(getByText("stay"));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
     expect(router.isActive("/about")).toBe(false);
+
+    // The same link without the caller's `preventDefault` does navigate.
+    await act(async () => {
+      fireEvent.click(getByText("go"));
+    });
+    await waitFor(() => expect(router.isActive("/about")).toBe(true));
   });
 
-  it("useActive anchorProps let modified clicks fall through", async () => {
+  it("useActive anchorProps let modified clicks fall through", async ({
+    expect,
+  }) => {
     const { wrapper } = await setup();
 
     const { result } = renderHook(() => useActive("/about"), { wrapper });

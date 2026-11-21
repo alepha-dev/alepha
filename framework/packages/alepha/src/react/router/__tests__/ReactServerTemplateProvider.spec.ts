@@ -65,7 +65,7 @@ describe("ReactServerTemplateProvider", () => {
       await alepha.stop();
     });
 
-    it("should include hydration data when enabled", async ({ expect }) => {
+    it("should include hydration data", async ({ expect }) => {
       const alepha = Alepha.create({
         env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
       }).with(App);

@@ -39,7 +39,7 @@ describe("query-only navigation", () => {
     });
     expect(seen).toEqual(["foo"]);
 
-    // Same path, different query — the loader reads `query`, so reusing the
+    // Same path, different query: the loader reads `query`, so reusing the
     // cached layer here leaves stale data on screen (and diverges from SSR,
     // which re-runs the loader for the same URL).
     await act(async () => {
@@ -68,7 +68,7 @@ describe("query-only navigation", () => {
       router.setQueryParams({ tab: "security" });
     });
 
-    // Both the URL and the router's own view of it must agree — two
+    // Both the URL and the router's own view of it must agree: two
     // components reading `router.query` desync otherwise.
     expect(window.location.search).toBe("?tab=security");
     expect(router.query.tab).toBe("security");
@@ -76,6 +76,99 @@ describe("query-only navigation", () => {
     // restoration and canGoBack() read it back on popstate, and a bare
     // `replaceState({})` used to wipe it.
     expect(window.history.state).toEqual({ alephaKey: expect.any(Number) });
+  });
+
+  it("setQueryParams removes a key whose value is undefined", async () => {
+    class App {
+      home = $page({
+        path: "/",
+        component: () => <div>Home</div>,
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaReact).with(App);
+    await alepha.start();
+    const router = alepha.inject(ReactRouter);
+
+    await act(async () => {
+      await router.push("/?tab=a&page=2");
+    });
+
+    act(() => {
+      router.setQueryParams((query) => ({ ...query, tab: undefined }));
+    });
+
+    expect(window.location.search).toBe("?page=2");
+    expect(router.query).toEqual({ page: "2" });
+
+    act(() => {
+      router.setQueryParams({ tab: undefined, page: null, size: 0 });
+    });
+
+    expect(window.location.search).toBe("?size=0");
+  });
+
+  it("useQueryParams keeps text beyond Latin-1 in its base64 format", async () => {
+    class App {
+      home = $page({
+        path: "/",
+        component: () => <div>Home</div>,
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaReact).with(App);
+    await alepha.start();
+    const router = alepha.inject(ReactRouter);
+
+    await act(async () => {
+      await router.push("/");
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    const schema = z.object({ search: z.string().optional() });
+    const { result } = renderHook(() => useQueryParams(schema), { wrapper });
+
+    act(() => {
+      result.current[1]({ search: "10 € 日本語 œ" });
+    });
+
+    expect(result.current[0].search).toBe("10 € 日本語 œ");
+    expect(router.query.q).toBeTypeOf("string");
+
+    // Read back from the URL alone, as a reload would.
+    const reloaded = renderHook(() => useQueryParams(schema), { wrapper });
+    expect(reloaded.result.current[0].search).toBe("10 € 日本語 œ");
+  });
+
+  it("useQueryParams still reads a base64 value written as Latin-1", async () => {
+    class App {
+      home = $page({
+        path: "/",
+        component: () => <div>Home</div>,
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaReact).with(App);
+    await alepha.start();
+    const router = alepha.inject(ReactRouter);
+
+    // What the previous encoding wrote for `café`: one byte per character.
+    const legacy = btoa(JSON.stringify({ search: "café" }));
+    await act(async () => {
+      await router.push(`/?q=${encodeURIComponent(legacy)}`);
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    const { result } = renderHook(
+      () => useQueryParams(z.object({ search: z.string().optional() })),
+      { wrapper },
+    );
+
+    expect(result.current[0].search).toBe("café");
   });
 
   it("useQueryParams re-syncs when the router state changes", async () => {

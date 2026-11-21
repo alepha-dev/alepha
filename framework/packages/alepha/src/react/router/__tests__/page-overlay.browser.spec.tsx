@@ -26,6 +26,7 @@ describe("$page overlay", () => {
 
   const log: string[] = [];
   let boardLoads = 0;
+  let cardLoads = 0;
 
   const Board = () => {
     const state = useRouterState();
@@ -86,6 +87,7 @@ describe("$page overlay", () => {
       path: "/cards/:id",
       schema: { params: z.object({ id: z.text() }) },
       loader: async ({ params }) => {
+        cardLoads += 1;
         if (params.id === "missing") {
           throw new Error("nope");
         }
@@ -311,6 +313,7 @@ describe("$page overlay", () => {
       await router.push("/cards/1");
     });
     const loads = boardLoads;
+    const sheetLoads = cardLoads;
 
     await act(async () => {
       await router.invalidate();
@@ -318,6 +321,7 @@ describe("$page overlay", () => {
 
     expect(text()).toBe("Board[board]Sheet 1");
     expect(boardLoads).toBe(loads);
+    expect(cardLoads).toBe(sheetLoads + 1);
   });
 
   it("is a full page on a first screen, whatever the entry says", async () => {

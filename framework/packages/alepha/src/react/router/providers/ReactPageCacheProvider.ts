@@ -27,9 +27,11 @@ import { type PageRoute, ReactPageProvider } from "./ReactPageProvider.ts";
  * Every server-rendered page whose render read nothing personal (see
  * `ReadRecorder`) is cached, with no option: its shared bytes, everything but
  * the private hydration script, are kept under
- * `page:<build>:<name>:<params>:<query>:<lang>`. A later request for the same
- * key, signed in or not, gets those bytes followed by a private script built
- * for it, without running a loader or React.
+ * `page:<build>:<name>:<params>:<query>:<lang>:<origin>`. A later request for
+ * the same key, signed in or not, gets those bytes followed by a private
+ * script built for it, without running a loader or React. The origin is the
+ * request's own (its `Host`), since a page may write it into its markup: one
+ * host is never answered with bytes rendered for another.
  *
  * - Lifetime: a page with no loader anywhere in its layer chain lives until
  *   the next deploy (the build is in the key); a page with a loader, 60 s.
@@ -138,7 +140,7 @@ export class ReactPageCacheProvider {
     if (!params) {
       return head;
     }
-    return `${head}${this.segment(this.paramsSegment(params))}:`;
+    return `${head}${this.segment(this.valuesSegment(params))}:`;
   }
 
   /**
@@ -149,16 +151,18 @@ export class ReactPageCacheProvider {
     params: Record<string, unknown>,
     query: Record<string, unknown>,
     lang: string | undefined,
+    origin?: string,
   ): string {
     const declared = this.declaredQuery(route);
-    const kept = Object.keys(query)
-      .filter((name) => declared.has(name) && query[name] !== undefined)
-      .sort()
-      .map((name) => `${name}=${this.stringify(query[name])}`)
-      .join("&");
+    const kept: Record<string, unknown> = {};
+    for (const name of Object.keys(query)) {
+      if (declared.has(name)) {
+        kept[name] = query[name];
+      }
+    }
     return (
       this.prefix(route, params) +
-      `${this.segment(kept || "-")}:${this.segment(lang || "-")}`
+      `${this.segment(this.valuesSegment(kept))}:${this.segment(lang || "-")}:${this.segment(origin || "-")}`
     );
   }
 
@@ -191,7 +195,13 @@ export class ReactPageCacheProvider {
     }
 
     return {
-      key: this.key(route, request.params, request.query, this.lang()),
+      key: this.key(
+        route,
+        request.params,
+        request.query,
+        this.lang(),
+        request.url.origin,
+      ),
       ttlMs: this.ttlMs(route),
     };
   }
@@ -235,19 +245,11 @@ export class ReactPageCacheProvider {
     if (!provider) {
       const lifetime = this.edge() ? this.edgeTtlMs(ttlMs) : ttlMs;
       const at = this.dateTime.nowMillis();
-      this.local.delete(key);
-      this.local.set(key, {
+      this.keep(key, {
         entry,
         at,
         expiresAt: lifetime > 0 ? at + lifetime : 0,
       });
-      while (this.local.size > this.options.max) {
-        const oldest = this.local.keys().next().value;
-        if (oldest === undefined) {
-          break;
-        }
-        this.local.delete(oldest);
-      }
       await this.edgeWrite(key, entry, at, lifetime);
       return;
     }
@@ -261,6 +263,22 @@ export class ReactPageCacheProvider {
     await provider.setTyped(ReactPageCacheProvider.CONTAINER, key, entry, {
       ttl,
     });
+  }
+
+  /**
+   * Put an entry in the in-process tier as its most recently used, and evict
+   * the least recently used ones past `max`.
+   */
+  protected keep(key: string, entry: LocalEntry): void {
+    this.local.delete(key);
+    this.local.set(key, entry);
+    while (this.local.size > this.options.max) {
+      const oldest = this.local.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.local.delete(oldest);
+    }
   }
 
   /**
@@ -411,7 +429,7 @@ export class ReactPageCacheProvider {
         return undefined;
       }
       const { at, ...entry } = stored;
-      this.local.set(key, {
+      this.keep(key, {
         entry,
         at,
         expiresAt: at + this.edgeTtlMs(0),
@@ -737,29 +755,43 @@ export class ReactPageCacheProvider {
   protected declaredQuery(route: PageRoute): Set<string> {
     const names = new Set<string>();
     for (let it: PageRoute | undefined = route; it; it = it.parent) {
-      const shape = (it.schema?.query as { shape?: Record<string, unknown> })
-        ?.shape;
-      for (const name of Object.keys(shape ?? {})) {
-        names.add(name);
+      // Unwrapped like `ReactPageProvider` reads it: a query schema that is
+      // `.optional()` still declares its fields.
+      const schema = it.schema?.query
+        ? z.schema.unwrap(it.schema.query)
+        : undefined;
+      if (z.schema.isObject(schema)) {
+        for (const name of Object.keys(z.schema.shape(schema))) {
+          names.add(name);
+        }
       }
     }
     return names;
   }
 
-  protected paramsSegment(params: Record<string, unknown>): string {
-    const names = Object.keys(params)
-      .filter((name) => params[name] !== undefined)
+  /**
+   * The params or the query of a key, as one string no two different records
+   * share: the defined values sorted by name and written as JSON, where names
+   * and values are quoted and escaped, so no value can spell out a second
+   * parameter. JSON has no bigint, so a bigint and every string are written
+   * with a tag (`n:` and `s:`), which keeps `5n` apart from `"5n"`.
+   */
+  protected valuesSegment(values: Record<string, unknown>): string {
+    const names = Object.keys(values)
+      .filter((name) => values[name] !== undefined)
       .sort();
     if (names.length === 0) {
       return "-";
     }
-    return names
-      .map((name) => `${name}=${this.stringify(params[name])}`)
-      .join("&");
-  }
-
-  protected stringify(value: unknown): string {
-    return typeof value === "string" ? value : JSON.stringify(value);
+    return JSON.stringify(
+      names.map((name) => [name, values[name]]),
+      (_key, value) =>
+        typeof value === "bigint"
+          ? `n:${value}`
+          : typeof value === "string"
+            ? `s:${value}`
+            : value,
+    );
   }
 
   /**

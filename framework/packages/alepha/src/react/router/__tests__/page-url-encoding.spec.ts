@@ -4,22 +4,18 @@ import { describe, it } from "vitest";
 import { ReactPageProvider } from "../providers/ReactPageProvider.ts";
 
 /**
- * Exposes the protected path compiler — it is what `router.push(name, params)`
- * and `<Link>` put in the address bar.
+ * The path compiler: what `router.push(name, { params })` and `<Link>` put
+ * in the address bar.
  */
-class TestReactPageProvider extends ReactPageProvider {
-  public testCompile = this.compile.bind(this);
-}
-
 describe("ReactPageProvider.compile", () => {
   const compile = () => {
-    const alepha = Alepha.create();
-    return alepha.inject(TestReactPageProvider).testCompile;
+    const pages = Alepha.create().inject(ReactPageProvider);
+    return pages.compile.bind(pages);
   };
 
   it("should percent-encode a param value", ({ expect }) => {
     // The server decodes path params now, so a raw value here does not just
-    // produce an ugly URL — it round-trips to something different.
+    // produce an ugly URL: it round-trips to something different.
     expect(compile()("/users/:id", { id: "John Doe" })).toBe(
       "/users/John%20Doe",
     );

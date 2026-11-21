@@ -46,7 +46,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * - Automatic fallback handling during hydration
  *
  * **Performance Optimization**
- * - Infer generation for pre-rendered pages at build time
+ * - Static generation for pre-rendered pages at build time
  * - Automatic page cache: a page that reads nothing about its visitor is
  *   cached for everyone, signed in or not (see the `cache` option)
  * - Code splitting through lazy component loading
@@ -106,7 +106,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * });
  * ```
  *
- * @example Infer generation with caching
+ * @example Static generation
  * ```typescript
  * const blogPost = $page({
  *   path: "/blog/:slug",
@@ -198,7 +198,7 @@ export interface PagePrimitiveOptions<
    * Loader can be stopped by throwing an error, which will be handled by the `errorHandler` function.
    * It's common to throw a `NotFoundError` to display a 404 page.
    *
-   * RedirectError can be thrown to redirect the user to another page.
+   * A `Redirection` can be thrown to redirect the user to another page.
    */
   loader?: (context: PageLoader<TConfig, TPropsParent>) => Async<TProps>;
 
@@ -294,7 +294,7 @@ export interface PagePrimitiveOptions<
    * Attach child pages to create nested routes, adopting them as children of
    * this page.
    *
-   * Use this when you want a parent to own children it cannot modify — most
+   * Use this when you want a parent to own children it cannot modify, most
    * notably pages that come from an injected router in another package, whose
    * `$page` definitions are frozen and cannot declare `parent` themselves.
    *
@@ -312,7 +312,7 @@ export interface PagePrimitiveOptions<
    * same class.
    *
    * **Declare each edge from one side only.** If a child already sets
-   * `parent: thisPage`, do NOT also add it to `children` — the link is
+   * `parent: thisPage`, do NOT also add it to `children`: the link is
    * already established, and declaring it on both sides creates a TypeScript
    * circular dependency between the two class fields (each references the
    * other before it is initialised).
@@ -322,13 +322,13 @@ export interface PagePrimitiveOptions<
   /**
    * Define a parent page for nested routing.
    *
-   * Use this when you own the child page and can edit its definition — it is
+   * Use this when you own the child page and can edit its definition: it is
    * the simplest way to nest routes and reads top-down. For pages you do NOT
    * own (e.g. pages exposed by an injected router from another package), let
    * the parent adopt them via its `children` option instead.
    *
    * **Declare each edge from one side only.** If you set `parent` here, do
-   * NOT also add this page to the parent's `children` array — the link is
+   * NOT also add this page to the parent's `children` array: the link is
    * already established, and declaring it on both sides creates a TypeScript
    * circular dependency between the two class fields.
    */
@@ -341,11 +341,11 @@ export interface PagePrimitiveOptions<
    * breadcrumbs, command palette), never by the router.
    *
    * Receives a `{ has }` context (a permission probe equivalent to
-   * `useAuth().has`) so it can express arbitrary access logic — including
+   * `useAuth().has`) so it can express arbitrary access logic, including
    * OR-of-permissions, which `nav.permission` (AND) cannot.
    *
    * - `true` (or omitted) → nav entry visible and enabled.
-   * - `"disabled"` → visible but disabled (greyed — e.g. insufficient role / paywalled).
+   * - `"disabled"` → visible but disabled (greyed, e.g. insufficient role / paywalled).
    * - `false` → hidden.
    *
    * For the common "needs these permissions" case, prefer the declarative
@@ -362,7 +362,7 @@ export interface PagePrimitiveOptions<
    * `$page` is pure React, so `label` / `icon` / `description` / `badge` accept
    * `ReactNode` (pass `<Users />` directly).
    *
-   * Visibility is UI-only (NOT security — gate the route with `use: [$secure(...)]`):
+   * Visibility is UI-only (NOT security: gate the route with `use: [$secure(...)]`):
    * an entry is hidden when `nav.hidden`, when `nav.permission` is set and not
    * fully granted, or when `can()` returns `false`; it renders disabled when
    * `can()` returns `"disabled"`.
@@ -377,8 +377,9 @@ export interface PagePrimitiveOptions<
    * - a Redirection to redirect the user
    * - undefined to let the error propagate
    *
-   * If not defined, the error will be thrown and handled by the server or client error handler.
-   * If a leaf $page does not define an error handler, the error can be caught by parent pages.
+   * A page with no handler inherits the nearest parent's. With none in the
+   * chain, or when every one returns `undefined`, the router renders its
+   * built-in error view in the layer that failed.
    *
    * @example Catch a 404 from API and render a custom not found component:
    * ```ts
@@ -483,7 +484,7 @@ export interface PagePrimitiveOptions<
    *
    * By default a page is streamed with an early `<head>` flush: the head leaves
    * before the loader has run, which is what makes the first paint fast. The cost
-   * is that the HTTP status is already committed by then — `onServerResponse` runs
+   * is that the HTTP status is already committed by then: `onServerResponse` runs
    * before the loader, so it cannot know what the loader found, and a page whose
    * existence depends on data has no way to answer 404. A missing product
    * rendered the error boundary with a 200, which a crawler indexes as a real
@@ -491,9 +492,9 @@ export interface PagePrimitiveOptions<
    *
    * With `stream: false` the page renders to a string first and only then
    * replies, so `onServerResponse` sees the finished render and can set
-   * `reply.status`. This is the same path a cached page already takes.
+   * `reply.status`.
    *
-   * Use it for the handful of routes that can legitimately not exist — a product,
+   * Use it for the handful of routes that can legitimately not exist: a product,
    * an article, a profile. Leave it alone everywhere else: buffering delays the
    * first byte by the whole render.
    *
@@ -518,7 +519,7 @@ export interface PagePrimitiveOptions<
    * Called before the server response is sent to the client. (server only)
    *
    * Runs *before* the loader on a streamed page, and *after* the render on one
-   * with `stream: false` — which is the only way it can react to what the loader
+   * with `stream: false`, which is the only way it can react to what the loader
    * found. See {@link stream}.
    */
   onServerResponse?: (request: ServerRequest) => unknown;
@@ -587,7 +588,7 @@ export interface PagePrimitiveOptions<
    *
    * Can be a static object or a function that receives resolved props.
    *
-   * @example Infer head
+   * @example Static head
    * ```ts
    * head: {
    *   title: "My Page",
@@ -651,7 +652,8 @@ export class PagePrimitive<
   PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName>
 > {
   /**
-   * `table` for the pure controller rule: served on request: matched by the page router.
+   * `table` for the pure controller rule: a page is served on request,
+   * matched by the page router.
    */
   public static override readonly side: PrimitiveSide = "table";
 
@@ -676,7 +678,7 @@ export class PagePrimitive<
    * Give a guarded page a `can` predicate so navigation surfaces hide it.
    *
    * A page gated with `use: [$secure({ permissions })]` is already refused at
-   * the router — but the sidebar, breadcrumbs and command palette read `can`,
+   * the router, but the sidebar, breadcrumbs and command palette read `can`,
    * so without one the entry stayed visible and led straight to a redirect or a
    * 403. Declaring the permissions twice (once to guard, once to hide) is the
    * kind of duplication that drifts, so derive the second from the first.
@@ -685,7 +687,7 @@ export class PagePrimitive<
    * `SecureOptions`: `alepha/react/router` must not depend on
    * `alepha/security`. The `$secure` name match is the price of that direction.
    *
-   * An explicit `can` always wins — this only fills a gap, and `false` from a
+   * An explicit `can` always wins: this only fills a gap, and `false` from a
    * hand-written predicate must never be widened by a derived one.
    */
   protected deriveCanFromGuards(): void {
@@ -766,10 +768,6 @@ $page[KIND] = PagePrimitive;
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Context passed to {@link PagePrimitiveOptions.can} — a permission probe
- * (equivalent to `useAuth().has`) supplied by the navigation builder.
- */
-/**
  * Options of the automatic page cache for one page. See `$page`'s `cache`.
  */
 export interface PageCacheOptions {
@@ -834,12 +832,16 @@ export interface PageInvalidationEvent {
   body: any;
 }
 
+/**
+ * Context passed to {@link PagePrimitiveOptions.can}: a permission probe
+ * (equivalent to `useAuth().has`) supplied by the navigation builder.
+ */
 export interface PageCanContext {
   has: (permission: string) => boolean;
 }
 
 /**
- * Navigation metadata for a page — see {@link PagePrimitiveOptions.nav}.
+ * Navigation metadata for a page, see {@link PagePrimitiveOptions.nav}.
  * Consumed by the sidebar, breadcrumbs and the command palette, all derived
  * from the route tree (no separate nav list).
  */
@@ -849,7 +851,7 @@ export interface PageNav {
    */
   label?: ReactNode;
   /**
-   * Leading icon — a React element, e.g. `icon: <Users />`.
+   * Leading icon: a React element, e.g. `icon: <Users />`.
    */
   icon?: ReactNode;
   /**
@@ -861,7 +863,7 @@ export interface PageNav {
    */
   order?: number;
   /**
-   * Permission(s) required to SEE the entry — a single string or an array
+   * Permission(s) required to SEE the entry: a single string or an array
    * (ALL required, matching `$secure({ permissions })`). UI gate only; the
    * real route gate is `use: [$secure(...)]`. For OR / custom logic use `can`.
    */
@@ -871,7 +873,7 @@ export interface PageNav {
    */
   keywords?: string[];
   /**
-   * Short description — command-palette subtitle / sidebar tooltip.
+   * Short description: command-palette subtitle / sidebar tooltip.
    */
   description?: ReactNode;
   /**
@@ -903,10 +905,10 @@ export interface PagePrimitiveRenderOptions {
   query?: Record<string, string>;
 
   /**
-   * If true, the HTML layout will be included in the response.
-   * If false, only the page content will be returned.
+   * If true, the whole HTML document is returned.
+   * If false, only the page content: what React rendered, inside the root.
    *
-   * @default true
+   * @default false
    */
   html?: boolean;
   hydration?: boolean;

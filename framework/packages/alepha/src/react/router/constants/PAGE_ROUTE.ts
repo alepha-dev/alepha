@@ -6,7 +6,7 @@ import type { PageRoute } from "../providers/ReactPageProvider.ts";
  *
  * The router registers pages by spreading the `PageRoute` into `createRoute`,
  * so the page's own fields (`component`, `lazy`, `errorHandler`, …) do survive
- * onto the server route — but sniffing them is guesswork, and `alepha/server`
+ * onto the server route, but sniffing them is guesswork, and `alepha/server`
  * cannot type a field it must not know about. An explicit symbol says what is
  * true without either compromise.
  */

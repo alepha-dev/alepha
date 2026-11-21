@@ -93,7 +93,9 @@ A personal page is never cached, whatever `cache` says. A `$cache` middleware in
 
 ### What makes the key
 
-`page:<build>:<page>:<params>:<query>:<language>`. Only the query parameters the page declares in `schema.query` count. A request carrying a query parameter the page does not declare bypasses the cache: a page without a query schema receives the raw query and may print it, so a `/reset?token=...` must never be served to the next visitor. Links carrying `utm_*` therefore miss the cache until the page declares them.
+`page:<build>:<page>:<params>:<query>:<language>:<origin>`. Params and query are each written as JSON, names and values escaped, so a value holding `&` or `=` cannot pass for a second parameter. The origin is the request's own, scheme and `Host`: a page may print it, so a request sent with another `Host` gets an entry of its own and never fills the one your visitors read. Set `PUBLIC_URL` and the absolute URLs the framework writes (the `hreflang` alternates, the canonical link, the sitemap) come from it instead of the request.
+
+Only the query parameters the page declares in `schema.query` count. A request carrying a query parameter the page does not declare bypasses the cache: a page without a query schema receives the raw query and may print it, so a `/reset?token=...` must never be served to the next visitor. Links carrying `utm_*` therefore miss the cache until the page declares them.
 
 ### Never written
 

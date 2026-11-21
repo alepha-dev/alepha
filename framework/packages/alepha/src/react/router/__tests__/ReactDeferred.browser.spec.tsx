@@ -10,7 +10,7 @@ import {
 } from "../services/ReactDeferred.ts";
 
 describe("ReactDeferred", () => {
-  const deferred = new ReactDeferred();
+  const deferred = Alepha.create().inject(ReactDeferred);
 
   it("reads a settled payload value synchronously", () => {
     const layers = [

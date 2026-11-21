@@ -4,8 +4,8 @@ import { useStore } from "alepha/react";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 
 /**
- * Subscribes to the router's live state - the matched route, its params and
- * query, and the pending-transition flag. Re-renders on every navigation.
+ * Subscribes to the router's live state: the matched route, its URL, params
+ * and query, and its layers. Re-renders on every navigation.
  * Throws outside a router context.
  */
 export const useRouterState = (): ReactRouterState => {

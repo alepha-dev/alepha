@@ -1,10 +1,12 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $page } from "../index.ts";
 
 describe("nested layer paths", () => {
-  it("collapses every doubled slash, not only the first run", async () => {
+  it("collapses every doubled slash, not only the first run", async ({
+    expect,
+  }) => {
     // Three levels deep with leading-slash paths, the documented style: the
     // server-side layer accumulator used to come out as `/alepha//folios//1012`,
     // which is what the canonical URL and the exit-animation match were built

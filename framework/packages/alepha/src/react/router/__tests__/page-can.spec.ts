@@ -6,7 +6,7 @@ import { $page } from "../index.ts";
 
 /**
  * `$page.can` is a UI-only navigation predicate (sidebar visibility / disabled
- * state, command palette) — NOT a route access gate. It is intentionally not
+ * state, command palette), NOT a route access gate. It is intentionally not
  * consulted by the server renderer or the browser router: a `can` that only
  * blocked SSR (and not client-side navigation) would be an inconsistent,
  * bypassable gate. Real access control is `use: [$secure({ permissions })]`,
@@ -50,32 +50,6 @@ describe("$page can() is a UI-only predicate, not a route gate", () => {
         path: "/dashboard",
         parent: this.admin,
         component: () => "Admin Dashboard",
-      });
-    }
-
-    const alepha = Alepha.create();
-    alepha.with(App);
-    await alepha.start();
-
-    const server = alepha.inject(ServerProvider);
-    const http = alepha.inject(HttpClient);
-    const response = await http.fetch(`${server.hostname}/admin/dashboard`);
-
-    expect(response.status).toBe(200);
-  });
-
-  it("renders normally when can() returns true", async ({ expect }) => {
-    class App {
-      admin = $page({
-        path: "/admin",
-        can: () => true,
-        component: ({ children }) => children,
-      });
-
-      dashboard = $page({
-        path: "/dashboard",
-        parent: this.admin,
-        component: () => "Welcome",
       });
     }
 

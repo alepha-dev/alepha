@@ -134,7 +134,6 @@ export class ReactServerProvider {
       // route at all and answer 404 for every page (#Q3486).
       const ssrEnabled = pages.length > 0 || deferred;
 
-      // production mode
       let root = "";
 
       // A compiled binary carries its own public/: serve that, even when a
@@ -177,7 +176,7 @@ export class ReactServerProvider {
         return;
       }
 
-      // no SSR enabled, serve a minimal fallback
+      // No page at all: nothing is registered.
       this.log.info("SSR is disabled");
     },
   });
@@ -275,7 +274,7 @@ export class ReactServerProvider {
               ...page,
               schema: undefined, // schema is handled by the page primitive provider
               // A page's `static` is page-shaped (`{ entries }`) and handled by the
-              // page prerender pass — it must not leak into the route's boolean
+              // page prerender pass: it must not leak into the route's boolean
               // `static` snapshot flag.
               static: undefined,
               method: "GET",
@@ -291,7 +290,7 @@ export class ReactServerProvider {
         // no extra route param is needed and matching stays native.
         // Tested explicitly rather than left to `withPrefix`: on an excluded
         // page that returns the path unchanged, so the loop below would
-        // re-register `page.match` once per locale — a duplicate route, not a
+        // re-register `page.match` once per locale: a duplicate route, not a
         // no-op.
         if (
           this.localeProvider.enabled &&
@@ -396,7 +395,7 @@ export class ReactServerProvider {
         ? `${faviconTag}\n${manifest.devHead}\n`
         : `${manifest.devHead}\n`;
       this.templateProvider.setEarlyHeadContent(devContent, globalHead);
-      // Vite's dev head is the module graph — the client runtime and the entry,
+      // Vite's dev head is the module graph: the client runtime and the entry,
       // with the stylesheets reachable only through them. There is no subset to
       // keep, so a dev error page carries the favicon alone and relies on the
       // inline styles ErrorViewer already ships with.
@@ -749,7 +748,7 @@ export class ReactServerProvider {
    * Turn a guard's refusal into the same answer a client-side navigation gives.
    *
    * A page's `use` chain runs here, wrapped around the whole route handler, so
-   * it sits *outside* `createLayers` — the loop that owns `errorHandler`. A
+   * it sits *outside* `createLayers`: the loop that owns `errorHandler`. A
    * guard that throws therefore bypasses every handler an application could have
    * written, and the two `$secure` variants do not even fail the same way: the
    * browser short-circuits by returning, the server throws. Left alone, one
@@ -761,8 +760,8 @@ export class ReactServerProvider {
    * A **401** redirects to login: the visitor is anonymous, and there is a page
    * that fixes that.
    *
-   * A **403** renders the not-found page. Redirecting is not an option — the
-   * user is already past login, so a bounce there is a loop — but neither is
+   * A **403** renders the not-found page. Redirecting is not an option: the
+   * user is already past login, so a bounce there is a loop, but neither is
    * letting the error escape: this is a page route, and a page route's caller
    * is a browser doing a hard navigation. It has asked for HTML, and what it
    * got was `{"name":"FORBIDDEN",…}` painted as text on a white
@@ -771,7 +770,7 @@ export class ReactServerProvider {
    * project already gave it, and tells a user who cannot enter the one true
    * thing they can act on: there is nothing here for you.
    *
-   * It also stops the URL confirming what it is guarding — a signed-in user
+   * It also stops the URL confirming what it is guarding: a signed-in user
    * probing `/admin` learns only that it is not their app to see, which is the
    * same answer GitHub gives for a private repository. The real reason stays
    * in the logs, where the developer is.
@@ -793,7 +792,7 @@ export class ReactServerProvider {
 
         if (status === 403) {
           const notFound = this.resolveNotFoundRoute();
-          // No `/*` page to fall back on — an app with no pages at all. The
+          // No `/*` page to fall back on: an app with no pages at all. The
           // error is still the most useful thing we have.
           if (!notFound) {
             throw e;
@@ -811,7 +810,7 @@ export class ReactServerProvider {
         }
 
         // Throws for an authenticated caller, or when there is no `login` route
-        // to send an anonymous one to — both cases keep surfacing as errors.
+        // to send an anonymous one to, both cases keep surfacing as errors.
         const { redirect } = this.pageApi.denyGuardedPage(url);
 
         this.log.debug("Guard denied page, redirecting", {
@@ -837,7 +836,7 @@ export class ReactServerProvider {
     const pages = this.pageApi.getPages();
     return (
       pages.find((page) => page.name === "notFound") ??
-      pages.find((page) => page.match === "/*" || page.path === "/*")
+      pages.find((page) => page.match === "/*")
     );
   }
 
@@ -885,7 +884,7 @@ export class ReactServerProvider {
           "alepha.server.request.apiLinks",
           await this.alepha.inject(ServerLinksProvider).getCachedUserApiLinks({
             // `user` is declaration-merged onto `ServerRequest` by
-            // `alepha/security`, which react cannot import — an optional
+            // `alepha/security`, which react cannot import: an optional
             // module must not become a compile-time dependency of the router.
             // Hence the cast: the field is real, react just cannot see it.
             user: serverRequest.user,
@@ -897,7 +896,7 @@ export class ReactServerProvider {
       // Route access control is enforced by `use: [$secure(...)]` middleware
       // in the loader pipeline (below). `$page.can` is a UI-only nav gate
       // (sidebar visibility / disabled state) and is intentionally NOT consulted
-      // here — it has no server-side permission context to evaluate against.
+      // here: it has no server-side permission context to evaluate against.
 
       await this.alepha.events.emit("react:server:render:begin", {
         request: serverRequest,
@@ -996,7 +995,7 @@ export class ReactServerProvider {
 
       // In locale-prefix mode the language is known from the URL before any
       // rendering, so stamp the correct `<html lang>` onto the early head
-      // (per-request copy — never mutate the shared global head).
+      // (per-request copy, never mutate the shared global head).
       if (this.localeProvider.enabled) {
         globalHead = {
           ...globalHead,
@@ -1043,7 +1042,7 @@ export class ReactServerProvider {
               this.log.debug("Streaming resulted in redirection", {
                 redirect: error.data.redirect,
               });
-              // Can't do redirect after streaming started - already handled above
+              // The headers have left: no HTTP redirect is possible any more.
             } else {
               // disable logging here, it's noisy and duplicate
               // this.log.error("HTML stream error", error);
@@ -1304,13 +1303,26 @@ export class ReactServerProvider {
   // ---------------------------------------------------------------------------
 
   /**
+   * The app's own address, from `PUBLIC_URL` (what `$sitemap` and `$robots`
+   * write their absolute URLs with), or nothing when it is not set.
+   *
+   * An absolute URL written into a page must come from here when it can: the
+   * request's origin is its `Host` header, which the visitor chooses.
+   */
+  protected publicOrigin(): string | undefined {
+    const url = String(this.alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
+    return url || undefined;
+  }
+
+  /**
    * Inject SEO `hreflang` alternate links for the current route when
    * locale-prefix routing is enabled. Each registered locale gets an absolute
    * alternate URL (the default locale stays unprefixed), plus an `x-default`
-   * pointing at the unprefixed URL — this is what lets crawlers index every
-   * language. Also sets a best-effort `<html lang>` for the non-streaming /
-   * prerender path; the streamed path's `<html lang>` is finalized on the
-   * client (the early HTML head is flushed before the route is known).
+   * pointing at the unprefixed URL: this is what lets crawlers index every
+   * language. The origin is `PUBLIC_URL` when set, else the request's own
+   * (see {@link publicOrigin}). Also sets `<html lang>` for the buffered and
+   * prerender paths; the streamed path stamps it on its early head, from the
+   * URL.
    *
    * No-op unless `routing: "prefix"` is enabled on the i18n module.
    */
@@ -1319,12 +1331,13 @@ export class ReactServerProvider {
       return;
     }
 
-    const { origin, search } = state.url;
+    const { search } = state.url;
+    const origin = this.publicOrigin() ?? state.url.origin;
     const canonical = this.localeProvider.detect(state.url.pathname).pathname;
 
     // An excluded page has exactly one URL, so there is no alternate to point
     // at. Emitting them anyway would advertise one URL per language that all
-    // resolve to the same page — the duplicate-content problem hreflang exists
+    // resolve to the same page: the duplicate-content problem hreflang exists
     // to solve, caused by hreflang.
     if (this.localeProvider.isExcluded(canonical)) {
       return;
@@ -1411,7 +1424,7 @@ export class ReactServerProvider {
     // Resolve page layers (loaders)
     const { redirect } = await this.pageApi.createLayers(route, state);
     if (redirect) {
-      this.log.debug("Resolver resulted in redirection", { redirect });
+      this.log.debug("Loader resulted in redirection", { redirect });
       return { redirect };
     }
 
@@ -1442,8 +1455,8 @@ export class ReactServerProvider {
     //
     // The streaming path opts out: it emits the same links itself, before this
     // function is even called, so that the browser starts pulling the page's
-    // chunks while the loaders are still running. The buffered ($cache) and
-    // prerender paths build the whole document from `state.head` and have no
+    // chunks while the loaders are still running. The buffered
+    // (`stream: false`) and prerender paths build the whole document from `state.head` and have no
     // early phase to put them in, so they still fill it here.
     if (options.preloadLinks !== false) {
       const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
@@ -1474,7 +1487,7 @@ export class ReactServerProvider {
     );
 
     // Loaded here rather than imported at the top so the renderer stays off the
-    // cold-start path — and loaded BEFORE the stream opens, because the error
+    // cold-start path, and loaded BEFORE the stream opens, because the error
     // paths inside it are synchronous controller callbacks that can only read
     // an already-resolved module. See ReactDomServerProvider.
     const { renderToReadableStream } = await this.reactDomServer.load();
@@ -1542,11 +1555,9 @@ export class ReactServerProvider {
 
     await this.alepha.events.emit("react:server:render:begin", { state });
 
-    // Render page and collect the stream into a serializable result.
-    // This must happen inside the middleware pipeline so that $cache
-    // wraps a function returning { html, redirect? } — not a ReadableStream.
-    // The URL string is passed as argument so middleware like $cache can
-    // derive a unique cache key per URL (params + query).
+    // Render the page and collect the stream into a string, inside the
+    // page's middleware pipeline: a middleware wraps a function returning
+    // { html, redirect? }, not a ReadableStream, and is handed the URL.
     const renderFn = async (
       _url: string,
     ): Promise<{
@@ -1579,14 +1590,14 @@ export class ReactServerProvider {
         : await renderFn(url.href);
     } catch (e) {
       // A guard refused an anonymous visitor. The two `$secure` variants
-      // disagree on how they say so — the browser returns, the server throws —
+      // disagree on how they say so (the browser returns, the server throws),
       // and that disagreement used to reach the user: the same guarded URL
       // redirected to login on a client-side navigation and answered a bare 401
       // on a hard load or a crawl.
       //
       // The page's own `errorHandler` cannot paper over it either. On the server
-      // the middleware chain wraps the whole render (so `$cache` sees a
-      // `{ html }`), which puts it *outside* `createLayers` — the loop that owns
+      // the middleware chain wraps the whole render, which puts it *outside*
+      // `createLayers`: the loop that owns
       // `errorHandler`. A guard that throws therefore bypasses every handler an
       // app could have written.
       //
@@ -1603,7 +1614,7 @@ export class ReactServerProvider {
     }
 
     // A guard middleware short-circuited without calling `next`, so `renderFn`
-    // never ran and the pipeline resolved to whatever the guard returned —
+    // never ran and the pipeline resolved to whatever the guard returned:
     // `undefined` for `$secure` / `$owns`. Reading `.redirect` off that used to
     // throw a bare TypeError, which is neither a denial nor a render.
     //

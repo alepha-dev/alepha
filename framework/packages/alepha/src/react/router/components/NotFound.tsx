@@ -1,9 +1,13 @@
 import type { CSSProperties } from "react";
 
+export interface NotFoundProps {
+  style?: CSSProperties;
+}
+
 /**
  * Default 404 Not Found page component.
  */
-const NotFound = (props: { style?: CSSProperties }) => (
+const NotFound = (props: NotFoundProps) => (
   <div
     style={{
       width: "100%",

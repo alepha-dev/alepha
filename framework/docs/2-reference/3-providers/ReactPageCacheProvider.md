@@ -13,9 +13,11 @@ The automatic page cache.
 Every server-rendered page whose render read nothing personal (see
 `ReadRecorder`) is cached, with no option: its shared bytes, everything but
 the private hydration script, are kept under
-`page:<build>:<name>:<params>:<query>:<lang>`. A later request for the same
-key, signed in or not, gets those bytes followed by a private script built
-for it, without running a loader or React.
+`page:<build>:<name>:<params>:<query>:<lang>:<origin>`. A later request for
+the same key, signed in or not, gets those bytes followed by a private
+script built for it, without running a loader or React. The origin is the
+request's own (its `Host`), since a page may write it into its markup: one
+host is never answered with bytes rendered for another.
 
 - Lifetime: a page with no loader anywhere in its layer chain lives until
   the next deploy (the build is in the key); a page with a loader, 60 s.

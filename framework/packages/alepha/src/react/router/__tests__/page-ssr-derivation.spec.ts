@@ -15,7 +15,7 @@ import { ReactPageProvider } from "../providers/ReactPageProvider.ts";
  * A guarded page defaults to CSR.
  *
  * Server-rendering pays for HTML that only an authenticated visitor will ever
- * see — no crawler gets past the redirect — so a page behind a guard skips the
+ * see (no crawler gets past the redirect) so a page behind a guard skips the
  * render by default and keeps its loader. These pin the precedence rules, which
  * are the part that is easy to get subtly wrong.
  */
@@ -31,7 +31,7 @@ const resolve = (alepha: Alepha, name: string): boolean => {
 };
 
 /**
- * An application's own auth middleware — declares the capability without being
+ * An application's own auth middleware: declares the capability without being
  * `$secure`, which is the whole point of a flag over a name match.
  */
 const $ownGuard = (): Middleware =>
@@ -118,7 +118,7 @@ describe("ssr derivation from guards", () => {
     const alepha = setup();
 
     class App {
-      // A page that is gated but still wants real HTML — e.g. it is linked
+      // A page that is gated but still wants real HTML, e.g. it is linked
       // publicly and the guard only narrows what the loader returns.
       shared = $page({
         path: "/shared",

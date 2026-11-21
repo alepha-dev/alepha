@@ -106,20 +106,42 @@ export interface UseQueryParamsHookOptions {
   push?: boolean;
 }
 
+/**
+ * base64 write: the JSON as UTF-8 bytes, since `btoa` takes one byte per
+ * character and throws on anything above U+00FF (`€`, CJK, an emoji).
+ */
 const encodeBase64 = (alepha: Alepha, schema: ZObject, data: any) => {
-  return btoa(JSON.stringify(alepha.codec.decode(schema, data)));
+  const bytes = new TextEncoder().encode(
+    JSON.stringify(alepha.codec.decode(schema, data)),
+  );
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
 };
 
+/**
+ * base64 read: UTF-8, falling back to one character per byte for a value an
+ * earlier version wrote that way (a bookmarked `café`), which is not valid
+ * UTF-8.
+ */
 const decodeBase64 = <T extends ZObject>(
   alepha: Alepha,
   schema: T,
   data: any,
 ): Infer<T> | undefined => {
   try {
-    return alepha.codec.decode(
-      schema,
-      JSON.parse(atob(decodeURIComponent(data))),
-    );
+    const binary = atob(decodeURIComponent(data));
+    let json = binary;
+    try {
+      json = new TextDecoder("utf-8", { fatal: true }).decode(
+        Uint8Array.from(binary, (char) => char.charCodeAt(0)),
+      );
+    } catch {
+      // not UTF-8: read as it was written
+    }
+    return alepha.codec.decode(schema, JSON.parse(json));
   } catch {
     return;
   }
@@ -127,7 +149,7 @@ const decodeBase64 = <T extends ZObject>(
 
 /**
  * querystring read: each schema field is its own URL param. Mirrors the
- * server's per-key query decode — `codec.decode(propertySchema, rawString)`
+ * server's per-key query decode: `codec.decode(propertySchema, rawString)`
  * coerces the raw string into the declared type (number, boolean, …).
  */
 const decodeQueryString = <T extends ZObject>(

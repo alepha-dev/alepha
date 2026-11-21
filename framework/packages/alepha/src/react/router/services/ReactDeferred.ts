@@ -1,3 +1,6 @@
+import { $inject, Alepha, AlephaError } from "alepha";
+import { errorNameByStatus, HttpError } from "alepha/server";
+
 /**
  * The deferred values of a page: promises at the top level of what a loader
  * returned, which the page reads with `use()` inside a `<Suspense>`.
@@ -7,6 +10,7 @@
  * an inline script delivers it later (`DeferredScript`).
  */
 export class ReactDeferred {
+  protected readonly alepha = $inject(Alepha);
   protected readonly settledCache = new WeakMap<object, DeferredPromise>();
 
   /**
@@ -138,6 +142,10 @@ export class ReactDeferred {
   /**
    * A value's state in the form that crosses to the browser. An error keeps
    * `name`, `message` and `status`, so `isHttpError` works on the other side.
+   *
+   * In production the message follows the rule the HTTP layer answers a
+   * request with: a 4xx is said on purpose and is kept, anything else reads
+   * "Internal Server Error".
    */
   protected describe(promise: DeferredPromise): DeferredState {
     if (promise.status === "fulfilled") {
@@ -152,12 +160,21 @@ export class ReactDeferred {
             data?: { status?: number };
           }
         | undefined;
+      const status = reason?.status ?? reason?.data?.status;
+      const shown =
+        !this.alepha.isProduction() ||
+        (typeof status === "number" &&
+          status < 500 &&
+          (reason instanceof HttpError ||
+            errorNameByStatus[status] !== undefined));
       return {
         status: "rejected",
         error: {
           name: reason?.name ?? "Error",
-          message: reason?.message ?? "A deferred value was rejected",
-          status: reason?.status ?? reason?.data?.status,
+          message: shown
+            ? (reason?.message ?? "A deferred value was rejected")
+            : "Internal Server Error",
+          status,
         },
       };
     }
@@ -251,7 +268,7 @@ export class ReactDeferred {
   }
 
   protected errorOf(state: DeferredState): Error {
-    const error = new Error(state.error?.message);
+    const error = new AlephaError(state.error?.message);
     error.name = state.error?.name ?? "Error";
     return Object.assign(error, { status: state.error?.status });
   }

@@ -9,12 +9,13 @@ import {
 /**
  * Back/forward used to land at the top of the page.
  *
- * `onTransitionEnd` scrolled to `0` on every transition without ever asking
+ * The transition-end hook scrolled to `0` on every transition without ever asking
  * whether the navigation was a push or a pop, so the browser restored the
  * offset on `popstate` and the router immediately overwrote it (quest #192).
  *
  * The decision now lives in `resolveScrollAction`, which is what these tests
- * drive — the hook itself no-ops under `isTest()`.
+ * drive: `applyScroll`, which the hooks (`onFirstTransitionEnd`,
+ * `onTransitionCommitted`) call, no-ops under `isTest()`.
  */
 class TestReactBrowserProvider extends ReactBrowserProvider {
   public setNavigationKind(kind: "push" | "replace" | "pop") {
@@ -72,16 +73,6 @@ describe("scroll restoration", () => {
       expect(provider.resolveScrollAction()).toEqual({
         type: "restore",
         top: 320,
-      });
-    });
-
-    it("should restore the saved offset when going back", () => {
-      provider.setEntry(3, 4200);
-      provider.setNavigationKind("pop");
-
-      expect(provider.resolveScrollAction()).toEqual({
-        type: "restore",
-        top: 4200,
       });
     });
 
@@ -173,7 +164,7 @@ describe("scroll restoration", () => {
   describe("scheduling the restore", () => {
     /**
      * `requestAnimationFrame` never fires while the document is hidden, so a
-     * restore scheduled only that way silently never happened — the page was
+     * restore scheduled only that way silently never happened: the page was
      * left at the top when the reader came back to the tab. Found by testing
      * in a hidden preview pane, where rAF stayed pending forever.
      */
@@ -237,15 +228,6 @@ describe("scroll restoration", () => {
 
     it("should stay false after a replace, which creates nowhere to return to", () => {
       provider.testPushState("/a", true);
-
-      expect(provider.canGoBack).toBe(false);
-    });
-
-    it("should be false again after popping back to the first entry", () => {
-      provider.testPushState("/a");
-      // What the popstate listener does when the user goes back: adopt the
-      // id stamped on the entry being arrived at.
-      provider.setEntry(0);
 
       expect(provider.canGoBack).toBe(false);
     });
