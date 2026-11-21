@@ -632,7 +632,11 @@ visitor following it is sent to sign in first and lands in the dialog after.
 
 ## Error Handling
 
-Use `errorHandler` to catch loader or rendering errors. It receives the error and the router state, and returns a ReactNode for a custom error page, a `Redirection` to redirect, `null` for the built-in error page, or `undefined` to let the error propagate. A page without a handler of its own uses its nearest parent's.
+Use `errorHandler` to catch loader or rendering errors. It receives the error and the router state, and returns a ReactNode for a custom error page, a `Redirection` to redirect, `null` for the built-in error page, or `undefined` to let the error propagate. A page without a handler of its own uses its nearest parent's. Each handler in the chain runs at most once per error.
+
+In production, an error the server caught reaches the browser's handler, on hydration, with its `name`, `status` and `requestId` only. The message and the `data` are kept for an `HttpError` below 500, which is said on purpose. For anything else (a 5xx, a plain `Error`, a library's error that carries a `status`) the message reads "Internal Server Error". This is stricter than an API response, which keeps the message of a library's error carrying a known 4xx status. Outside production the whole error is kept.
+
+So an `errorHandler` that prints `error.message` for such an error shows the real message in the server's HTML and the constant one after hydration: a hydration mismatch, and a leak in the HTML. Render from `error.name` and `error.status` (`isHttpError(error, 404)`), and print `error.message` only for an `HttpError` you threw for the visitor.
 
 ```typescript
 import { NotFound, Redirection } from "alepha/react/router";
@@ -675,6 +679,8 @@ context (`useRouter`, `useI18n`) work, event handlers do not.
 
 - `onEnter`: called when the user enters the page (browser only)
 - `onLeave`: called when the user leaves the page (browser only)
+
+Neither fires for a page that stays on screen: `router.invalidate()`, `router.reload()` and a query change re-run the loaders without leaving or entering anything.
 
 ```typescript
 onEnter: () => {
@@ -728,7 +734,7 @@ const Product = (props: ProductProps) => (
 - On a server render the shell leaves first and each value streams into its boundary. In a build, hydration starts right after the shell, so the page answers clicks while a value is pending. `alepha dev` streams the same way but hydrates at the end of the document, since Vite's entry cannot run ahead of React Refresh.
 - On a client navigation the page renders at once and suspends.
 - Only top-level promises are deferred: one nested in an object is not looked at.
-- A rejection reaches the nearest `errorHandler`, and keeps `name`, `message` and `status`, so `isHttpError` works. Add a `.catch` in the loader for a value the page can live without.
+- A rejection reaches the nearest `errorHandler`, and keeps `name`, `message` and `status`, so `isHttpError` works. In production the message of anything but an `HttpError` below 500 reads "Internal Server Error". Add a `.catch` in the loader for a value the page can live without.
 - A page with a deferred value is never stored in the [page cache](/docs/guides-frontend-page-cache).
 - `stream: false` and a prerender await everything and write the settled values. So does a page with `ssr: false`, which has no HTML for a value to stream into.
 - `head` never sees a deferred value: it is filled before the render.
@@ -928,28 +934,28 @@ const Nav = () => {
 
 **Key methods and properties:**
 
-| Method/Property                         | Description                                                                                                                                         |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `push(name, opts)` / `push(path, opts)` | Navigate to a page name (options: `params`, `query`, `replace`, `meta`, `force`) or to a path starting with `/` (no `params`).                      |
-| `back()`                                | Go back in history.                                                                                                                                 |
-| `forward()`                             | Go forward in history.                                                                                                                              |
-| `reload()`                              | Reload the current page.                                                                                                                            |
-| `isActive(href, { startWith? })`        | Check if the given path is the current route (`startWith` matches on a segment boundary).                                                           |
-| `pathname`                              | Current pathname string.                                                                                                                            |
-| `query`                                 | Current query parameters as `Record<string, string>`.                                                                                               |
-| `path(name, cfg)`                       | Resolve a page name to its URL path.                                                                                                                |
-| `anchor(name, opts)` / `anchor(path)`   | Returns `{ href, onClick }` props for anchor elements, under the same two forms as `push`.                                                          |
-| `setQueryParams(record, { push? })`     | Update URL query parameters without navigation. Accepts a record or an updater `(current) => next`; replaces the history entry unless `push: true`. |
-| `invalidate(props?)`                    | Re-run the current route's loaders without navigating (after a mutation the loader computes).                                                       |
-| `canGoBack`                             | Whether there is an in-app history entry to go back to.                                                                                             |
-| `state`                                 | The current `ReactRouterState` (`url`, `params`, `query`, `layers`, ...).                                                                           |
+| Method/Property                         | Description                                                                                                                                                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `push(name, opts)` / `push(path, opts)` | Navigate to a page name (options: `params`, `query`, `replace`, `meta`, `force`) or to a path starting with `/` (no `params`).                                                                             |
+| `back()`                                | Go back in history.                                                                                                                                                                                        |
+| `forward()`                             | Go forward in history.                                                                                                                                                                                     |
+| `reload()`                              | Reload the current page.                                                                                                                                                                                   |
+| `isActive(href, { startWith? })`        | Check if the given path is the current route (`startWith` matches on a segment boundary).                                                                                                                  |
+| `pathname`                              | Current pathname string.                                                                                                                                                                                   |
+| `query`                                 | Current query parameters as `Record<string, string>`.                                                                                                                                                      |
+| `path(name, cfg)`                       | Resolve a page name to its URL path.                                                                                                                                                                       |
+| `anchor(name, opts)` / `anchor(path)`   | Returns `{ href, onClick }` props for anchor elements, under the same two forms as `push`.                                                                                                                 |
+| `setQueryParams(record, { push? })`     | Update URL query parameters without navigation. Accepts a record or an updater `(current) => next`; replaces the history entry unless `push: true`. A key whose value is `undefined` or `null` is removed. |
+| `invalidate(props?)`                    | Re-run the current route's loaders without navigating (after a mutation the loader computes). A navigation in flight is not dropped: the invalidation runs once it has landed.                             |
+| `canGoBack`                             | Whether there is an in-app history entry to go back to.                                                                                                                                                    |
+| `state`                                 | The current `ReactRouterState` (`url`, `params`, `query`, `layers`, ...).                                                                                                                                  |
 
 `push` and `anchor` take one of two forms, told apart by type:
 
 - **A page name**, with that page's params: `router.push("userProfile", { params: { id } })`. On a typed router (`useRouter<AppRouter>()`) a misspelled name is a compile error, and `params` is typed from the page's `schema.params` and required when it has a required key. A page that declares `schema.params` gets exactly the params given; one that does not still inherits the current route's.
 - **A path starting with `/`**: `router.push("/settings", { query: { tab: "security" } })`. It honours `query` and `replace`; `params` belongs to a page name and is a type error here.
 
-Nothing else is router navigation. A relative path, a bare `?query` and an absolute `https://` URL are refused: changing only the query is `setQueryParams`, and leaving the app is an `<a href>` or `window.location.assign`. A dynamic path is typed `` `/${string}` `` where it is produced (the router exports it as `RouterPath`), not cast at the call.
+Nothing else is router navigation. A relative path, a bare `?query`, an absolute `https://` URL and a protocol-relative one (`//host/path`, `/\host/path`) are refused: changing only the query is `setQueryParams`, and leaving the app is an `<a href>` or `window.location.assign`. A dynamic path is typed `` `/${string}` `` where it is produced (the router exports it as `RouterPath`), not cast at the call.
 
 A name no page has throws an `AlephaError` naming the closest ones, typed router or not. It used to navigate to the relative URL instead.
 

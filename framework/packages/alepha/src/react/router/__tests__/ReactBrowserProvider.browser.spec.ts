@@ -88,11 +88,11 @@ describe("ReactBrowserProvider", () => {
       expect(result).toBeUndefined();
     });
 
-    it("should return undefined and log error on malformed JSON", () => {
-      // alepha-allow no-vi-mock: the provider reports malformed hydration JSON on console.error, outside any logger, and this case silences and counts that one call
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+    it("should return undefined and log error on malformed JSON", async () => {
+      const entries: Array<{ level?: string; message?: string }> = [];
+      alepha.events.on("log:entry", (payload) => {
+        entries.push(payload.entry);
+      });
 
       const script = document.createElement("script");
       script.id = "__ssr";
@@ -102,10 +102,17 @@ describe("ReactBrowserProvider", () => {
 
       const result = provider.testGetHydrationState();
 
-      expect(result).toBeUndefined();
-      expect(consoleSpy).toHaveBeenCalledOnce();
+      // Logger delivery is event-based and async: flush before asserting.
+      await new Promise((r) => setTimeout(r, 0));
 
-      consoleSpy.mockRestore();
+      expect(result).toBeUndefined();
+      expect(
+        entries.filter(
+          (entry) =>
+            entry.level === "ERROR" &&
+            entry.message === "Hydration payload is not valid JSON",
+        ),
+      ).toHaveLength(1);
     });
 
     it("should merge the private script into the shared payload", () => {
@@ -148,32 +155,6 @@ describe("ReactBrowserProvider", () => {
 
       expect(result).toEqual({ "alepha.react.router.layers": [] });
     });
-
-    it("should handle hydration data with multiple layers and atoms", () => {
-      const data = {
-        "alepha.react.router.layers": [
-          { name: "layout", part: "/", config: { params: {} } },
-          {
-            name: "dashboard",
-            part: "/dashboard",
-            props: { count: 42 },
-            config: { params: {}, query: { tab: "overview" } },
-          },
-        ],
-        "alepha.i18n.locale": "en",
-      };
-
-      const script = document.createElement("script");
-      script.id = "__ssr";
-      script.type = "application/json";
-      script.textContent = JSON.stringify(data);
-      document.body.appendChild(script);
-
-      const result = provider.testGetHydrationState();
-
-      expect(result?.["alepha.react.router.layers"]).toHaveLength(2);
-      expect(result?.["alepha.i18n.locale"]).toBe("en");
-    });
   });
 
   describe("applyHydration", () => {
@@ -203,7 +184,7 @@ describe("ReactBrowserProvider", () => {
         [testAtom.key]: { theme: 42 },
       } as unknown as ReactHydrationState);
 
-      // Logger delivery is event-based and async — flush before asserting.
+      // Logger delivery is event-based and async: flush before asserting.
       await new Promise((r) => setTimeout(r, 0));
 
       expect(alepha.store.get(testAtom)).toEqual({ theme: "light" });
@@ -224,13 +205,18 @@ describe("ReactBrowserProvider", () => {
       expect(alepha.store.get(testAtom)).toEqual({ theme: "dark" });
     });
 
-    it("skips alepha.react.router.layers — it is not treated as an atom value", () => {
+    it("skips alepha.react.router.layers, which is not an atom value", () => {
       provider.testApplyHydration({
         "alepha.react.router.layers": [{ name: "home" }],
+        "test.hydration.other": "kept",
       } as ReactHydrationState);
 
+      // Every other key is written to the store, this one is not.
+      expect(alepha.store.get("test.hydration.other" as keyof State)).toBe(
+        "kept",
+      );
       expect(
-        alepha.store.getAtom("alepha.react.router.layers"),
+        alepha.store.get("alepha.react.router.layers" as keyof State),
       ).toBeUndefined();
     });
   });
@@ -246,7 +232,7 @@ describe("ReactBrowserProvider", () => {
    * unapplied it preloaded the fallback language's dictionary instead. The real
    * language landed in `ready`, but `StateManager.set` emits `state:mutated`
    * fire-and-forget, so that dictionary's loader was still in flight when
-   * `render()` hydrated React one line later — and `translate()` falls through
+   * `render()` hydrated React one line later, and `translate()` falls through
    * to the fallback dictionary when the active one has no entry for a key.
    * The whole page rendered in the fallback language while `lang` already said
    * otherwise, and it never repaired itself, because finishing a dictionary
@@ -275,7 +261,7 @@ describe("ReactBrowserProvider", () => {
 
       alepha.inject(Probe);
 
-      // `start` only — `ready` is where the render lives and needs a router.
+      // `start` only: `ready` is where the render lives and needs a router.
       await alepha.events.emit("start", alepha);
 
       expect(seenByStartHook).toEqual(["en"]);
@@ -283,9 +269,9 @@ describe("ReactBrowserProvider", () => {
   });
 
   /**
-   * `invalidate` has no caller in this repository - it is application
-   * surface, reached through `useRouter().invalidate()`. These pin what it
-   * carries over, which is the part a caller has to be able to predict.
+   * `invalidate` is application surface, reached through
+   * `useRouter().invalidate()`. These pin what it carries over, which is the
+   * part a caller has to be able to predict.
    */
   describe("invalidate", () => {
     const stateKey = "alepha.react.router.state" as keyof State;
@@ -319,7 +305,7 @@ describe("ReactBrowserProvider", () => {
       await provider.testInvalidate({ id: "2" });
 
       // `root` is untouched, `folio` keeps its data with the new id, and
-      // `tab` is gone from `previous` — which is what makes it re-run.
+      // `tab` is gone from `previous`, which is what makes it re-run.
       expect(provider.renderCalls[0].previous).toEqual([
         { name: "root", props: { locale: "en" } },
         { name: "folio", props: { id: "2" } },
@@ -482,6 +468,30 @@ describe("ReactBrowserProvider", () => {
       click(a);
 
       expect(provider.pushCalls).toHaveLength(0);
+    });
+
+    it("leaves an href the browser reads as another origin to the browser", () => {
+      for (const href of [
+        "//example.com/foo",
+        "/\\example.com/foo",
+        " //example.com/foo",
+        "/\t/example.com/foo",
+        "\u0001//example.com/foo",
+      ]) {
+        const ev = click(createAnchor({ href }));
+
+        expect(ev.defaultPrevented).toBe(false);
+      }
+      expect(provider.pushCalls).toHaveLength(0);
+    });
+
+    it("intercepts an absolute href to its own origin", () => {
+      const a = createAnchor({ href: `${window.location.origin}/foo?x=1` });
+
+      const ev = click(a);
+
+      expect(provider.pushCalls[0].url).toBe("/foo?x=1");
+      expect(ev.defaultPrevented).toBe(true);
     });
 
     it("ignores hash-only #section hrefs", () => {

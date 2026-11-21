@@ -533,6 +533,10 @@ language gets a `/<lang>` path prefix. With prefix routing on:
   <link rel="alternate" hreflang="x-default" href="https://site.com/about" />
   ```
 
+  The origin is `PUBLIC_URL` when it is set, and the request's own otherwise.
+  Set it in production: the request's origin is its `Host` header, which the
+  client chooses.
+
 - **There is no automatic redirect.** An unprefixed path (`/about`) is the default
   language by definition - visiting it never bounces a French browser to `/fr`.
   Google's guidance discourages auto-redirecting by perceived language, and it

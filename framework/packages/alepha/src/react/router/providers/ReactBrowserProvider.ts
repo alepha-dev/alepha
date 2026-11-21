@@ -234,8 +234,8 @@ export class ReactBrowserProvider {
    * Each call to `render()` captures `++this.transitionId` and any
    * subsequent `render()` invalidates older in-flight transitions.
    * This prevents a slow page from racing past a newer navigation
-   * (e.g. user clicks /pageA which has a 2s loader, then clicks /pageB
-   * — pageB must remain the committed page).
+   * (e.g. user clicks /pageA which has a 2s loader, then clicks /pageB:
+   * pageB must remain the committed page).
    */
   protected transitionId = 0;
 
@@ -284,7 +284,7 @@ export class ReactBrowserProvider {
   /**
    * Whether there is an in-app entry to go back to.
    *
-   * `history.back()` cannot answer this — it silently does nothing at the
+   * `history.back()` cannot answer this: it silently does nothing at the
    * start of the session, or walks out of the app entirely. `historyKey`
    * can: it is `0` for the entry the app was loaded into and increments on
    * every push, so `> 0` means "we navigated here from inside the app" and
@@ -392,10 +392,19 @@ export class ReactBrowserProvider {
    * owned by different layers have no single answer. If several are ever
    * needed, the shape has to change, not the loop.
    *
+   * A navigation in flight is never dropped: the invalidation waits for it,
+   * then re-runs the loaders of the page it landed on.
+   *
    * @public Reached through `ReactRouter.invalidate`, which is what
-   * applications call. No caller in this repository.
+   * applications call.
    */
   public async invalidate(props?: Record<string, any>) {
+    // Rendering now would take a new transition id for the URL still in the
+    // address bar, and the pending push would find itself superseded.
+    while (this.navigating) {
+      await this.navigating;
+    }
+
     const previous: PreviousLayerData[] = [];
 
     this.log.trace("Invalidating layers");
@@ -467,6 +476,33 @@ export class ReactBrowserProvider {
 
     const myTransitionId = ++this.transitionId;
 
+    const navigation = this.navigate(url, options, myTransitionId);
+    const settled: Promise<void> = navigation
+      .catch(() => undefined)
+      .finally(() => {
+        if (this.navigating === settled) {
+          this.navigating = undefined;
+        }
+      });
+    this.navigating = settled;
+    await navigation;
+  }
+
+  /**
+   * The `push()` in flight, settled once it committed, failed or was
+   * superseded. What {@link invalidate} waits for.
+   */
+  protected navigating?: Promise<void>;
+
+  /**
+   * The navigation half of {@link push}: render the target, then record it
+   * in history unless a newer navigation took over.
+   */
+  protected async navigate(
+    url: string,
+    options: RouterPushOptions,
+    myTransitionId: number,
+  ): Promise<void> {
     await this.render({
       url,
       previous: options.force ? [] : this.state.layers,
@@ -476,7 +512,7 @@ export class ReactBrowserProvider {
       prefetched: !options.force,
     });
 
-    // A newer navigation has superseded us — bail out without touching
+    // A newer navigation has superseded us: bail out without touching
     // history, otherwise we'd push a duplicate/stale entry.
     if (myTransitionId !== this.transitionId) {
       return;
@@ -504,7 +540,7 @@ export class ReactBrowserProvider {
     // (the getter reads an atom nothing has ever `set` yet). The redirect-follow-up call below
     // (`return await this.render({ url: redirect, transitionId: myTransitionId })`) omits
     // `previous` entirely, so when the very first render's route loader throws a Redirection,
-    // this.state is still unset — fall back to an empty layer stack instead of crashing when
+    // this.state is still unset: fall back to an empty layer stack instead of crashing when
     // reading `.layers` off `undefined`.
     // Optional-chained with a `[]` fallback, matching the same defensive read this file already
     // uses for `this.state?.url.pathname` a few lines below.
@@ -535,7 +571,7 @@ export class ReactBrowserProvider {
     // transition() and now. Drop everything: don't follow redirects, don't
     // log success, don't clear `transitioning` (the newer render owns it).
     if (isStale()) {
-      this.log.debug("Transition superseded — discarding stale result", {
+      this.log.debug("Transition superseded: discarding stale result", {
         to: url,
       });
       return;
@@ -585,7 +621,7 @@ export class ReactBrowserProvider {
   }
 
   /**
-   * Cached `#__ssr` payload. `null` means "read, and there was none" — as
+   * Cached `#__ssr` payload. `null` means "read, and there was none", as
    * opposed to `undefined`, "not read yet".
    */
   protected hydrationState?: ReactHydrationState | null;
@@ -601,7 +637,7 @@ export class ReactBrowserProvider {
         return { ...shared, ...this.readPrivateState() } as ReactHydrationState;
       }
     } catch (error) {
-      console.error(error);
+      this.log.error("Hydration payload is not valid JSON", error);
     }
   }
 
@@ -617,7 +653,7 @@ export class ReactBrowserProvider {
         return JSON.parse(el.textContent) as Record<string, unknown>;
       }
     } catch (error) {
-      console.error(error);
+      this.log.error("Hydration payload is not valid JSON", error);
     }
   }
 
@@ -627,18 +663,18 @@ export class ReactBrowserProvider {
    * Hydration is inbound state: it is what the server already decided, so the
    * app must boot with it in place, not adopt it afterwards. Applying it in
    * `ready` (where the render happens) left every `start` hook reading a store
-   * the server had already filled in — they saw defaults and configured
+   * the server had already filled in: they saw defaults and configured
    * themselves against a value that was about to change.
    *
    * i18n is the case that exposed it. `I18nProvider`'s `start` hook preloads
    * the dictionaries for the active language; with the payload unapplied it
    * read `lang` as empty, fell back to `fallbackLang`, and preloaded the wrong
-   * dictionary. `applyHydration` then set the real language in `ready` — but
+   * dictionary. `applyHydration` then set the real language in `ready`, but
    * `StateManager.set` emits `state:mutated` fire-and-forget, so the loader for
    * the real language was still in flight when `render()` hydrated React one
    * line later. `translate()` found the active dictionary empty, fell through
    * to the loaded fallback one, and rendered the whole page in the fallback
-   * language while `lang` already said otherwise — a hydration mismatch that
+   * language while `lang` already said otherwise: a hydration mismatch that
    * never repaired itself, because finishing a dictionary load notifies nobody.
    *
    * Applying the payload here closes that window at the source: `start` hooks
@@ -698,14 +734,14 @@ export class ReactBrowserProvider {
    * `alepha.react.router.layers` is deliberately skipped by this loop: it
    * carries render instructions (`part`, `name`, `config`, `props`,
    * `error`), not atom values. Those are NOT hardened here and are trusted
-   * as-is from the SSR payload — a tampered payload can still influence
+   * as-is from the SSR payload: a tampered payload can still influence
    * rendering through this key. Validating router layers is separate,
    * future work; this method only guarantees atom values.
    */
   protected applyHydration(hydration: ReactHydrationState): void {
     for (const [key, value] of Object.entries(hydration)) {
       if (key === "alepha.react.router.layers") {
-        // Render instructions, not an atom value — see the method doc
+        // Render instructions, not an atom value, see the method doc
         // above. Intentionally trusted as-is.
         continue;
       }
@@ -723,7 +759,7 @@ export class ReactBrowserProvider {
           skipValidation: true,
         });
       } else {
-        // Not registered yet — register() will decode it when the atom
+        // Not registered yet: register() will decode it when the atom
         // first gets used.
         this.alepha.set(key as keyof State, value);
       }
@@ -838,13 +874,13 @@ export class ReactBrowserProvider {
    *
    * Setting it synchronously is too early: the layers have committed but the
    * browser has not laid the new content out, so the container is still short
-   * and the offset clamps — restoring 4200px into a page that is momentarily
+   * and the offset clamps: restoring 4200px into a page that is momentarily
    * 900px tall silently lands at 0. A fixed one- or two-frame delay is no
    * better, because how long the real height takes depends on the page.
    *
    * So retry per frame until the offset sticks, giving up after
    * `maxScrollRestoreFrames` (~half a second) so a target that is genuinely
-   * unreachable — the page really is shorter now — cannot spin forever.
+   * unreachable (the page really is shorter now) cannot spin forever.
    * A newer navigation also cancels it: that one owns the scroll position now.
    */
   protected readonly maxScrollRestoreFrames = 30;
@@ -853,7 +889,7 @@ export class ReactBrowserProvider {
    * Run `fn` on the next frame.
    *
    * `requestAnimationFrame` does not fire at all while the document is
-   * hidden — a background tab, or a restored session — so a restore scheduled
+   * hidden (a background tab, or a restored session) so a restore scheduled
    * that way would simply never happen and the page would be left at the top
    * when the reader came back to it. Fall back to a timer in that case.
    */
@@ -981,8 +1017,8 @@ export class ReactBrowserProvider {
       this.viewsMounted = true;
 
       this.lastBuildCheck = this.dateTimeProvider.nowMillis();
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
+      this.document.addEventListener("visibilitychange", () => {
+        if (this.document.visibilityState === "visible") {
           void this.checkBuild();
         }
       });
@@ -1005,7 +1041,7 @@ export class ReactBrowserProvider {
         // Skip rendering only if the entire URL (path + search) is
         // unchanged from current state. Comparing pathname alone misses
         // back/forward between two URLs that share a path but differ
-        // in query params (e.g. an in-page filter `?dir=5` → root) —
+        // in query params (e.g. an in-page filter `?dir=5` → root),
         // those legitimately need a re-render. If you want to update
         // query params silently without triggering a render, use
         // history.replaceState directly; popstate by definition means
@@ -1029,7 +1065,9 @@ export class ReactBrowserProvider {
         });
 
         const entry = this.history.state as { background?: string } | null;
-        void this.render({ overlay: !!entry?.background });
+        this.render({ overlay: !!entry?.background }).catch((e) =>
+          this.log.error(e),
+        );
       });
 
       this.attachAnchorInterceptor();
@@ -1190,8 +1228,9 @@ export class ReactBrowserProvider {
    * clicks through the SPA router. Returns a detach function (used in tests).
    *
    * Bails out on modifier keys, non-primary mouse buttons, `target`, `download`,
-   * `data-no-router`, hash-only/external/non-http hrefs, and already-prevented
-   * events. Honors the runtime `interceptAnchorClicks` flag.
+   * `data-no-router`, hash-only hrefs, hrefs to another origin (a scheme, a
+   * protocol-relative `//host`, `mailto:`), and already-prevented events.
+   * Honors the runtime `interceptAnchorClicks` flag.
    */
   protected attachAnchorInterceptor(): () => void {
     const onClick = (ev: MouseEvent) => {
@@ -1213,23 +1252,25 @@ export class ReactBrowserProvider {
       const href = a.getAttribute("href");
       if (!href) return;
       if (href.startsWith("#")) return;
-      if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
-        // absolute scheme: only intercept if it points at our own origin
-        let url: URL;
-        try {
-          url = new URL(href);
-        } catch {
-          return;
-        }
-        if (url.origin !== this.location.origin) return;
-        ev.preventDefault();
-        const path = url.pathname + url.search + url.hash;
-        this.push(this.stripBase(path)).catch((e) => this.log.error(e));
+      // Resolved the way the browser will follow it, never read by hand: a
+      // scheme, `//host`, `/\host`, or either behind whitespace or a control
+      // character all leave this origin, and so do `mailto:` and `tel:`.
+      // Scheme and host rather than `origin`, which is opaque ("null") for
+      // the custom scheme a WebView shell is served from.
+      let url: URL;
+      try {
+        url = new URL(href, this.location.href);
+      } catch {
+        return;
+      }
+      if (
+        url.protocol !== this.location.protocol ||
+        url.host !== this.location.host
+      ) {
         return;
       }
 
       ev.preventDefault();
-      const url = new URL(href, this.location.href);
       const path = url.pathname + url.search + url.hash;
       this.push(this.stripBase(path)).catch((e) => this.log.error(e));
     };

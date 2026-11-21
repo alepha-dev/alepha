@@ -27,9 +27,17 @@ import { type PageRoute, ReactPageProvider } from "./ReactPageProvider.ts";
  * Every server-rendered page whose render read nothing personal (see
  * `ReadRecorder`) is cached, with no option: its shared bytes, everything but
  * the private hydration script, are kept under
- * `page:<build>:<name>:<params>:<query>:<lang>`. A later request for the same
- * key, signed in or not, gets those bytes followed by a private script built
- * for it, without running a loader or React.
+ * `page:<build>:<name>:<params>:<query>:<lang>:<origin>`. A later request for
+ * the same key, signed in or not, gets those bytes followed by a private
+ * script built for it, without running a loader or React.
+ *
+ * A page may write the request's origin into its markup, and that origin is
+ * the `Host` header, which the visitor chooses. With `PUBLIC_URL` set, the
+ * origin of every key is `PUBLIC_URL`'s, and a request for another host is
+ * rendered without reading or writing the cache. Without it, the origin is
+ * the request's own (see {@link requestOrigin}): one host is never answered
+ * with bytes rendered for another, and each host a visitor makes up gets an
+ * entry of its own.
  *
  * - Lifetime: a page with no loader anywhere in its layer chain lives until
  *   the next deploy (the build is in the key); a page with a loader, 60 s.
@@ -138,7 +146,7 @@ export class ReactPageCacheProvider {
     if (!params) {
       return head;
     }
-    return `${head}${this.segment(this.paramsSegment(params))}:`;
+    return `${head}${this.segment(this.valuesSegment(params))}:`;
   }
 
   /**
@@ -149,16 +157,18 @@ export class ReactPageCacheProvider {
     params: Record<string, unknown>,
     query: Record<string, unknown>,
     lang: string | undefined,
+    origin?: string,
   ): string {
     const declared = this.declaredQuery(route);
-    const kept = Object.keys(query)
-      .filter((name) => declared.has(name) && query[name] !== undefined)
-      .sort()
-      .map((name) => `${name}=${this.stringify(query[name])}`)
-      .join("&");
+    const kept: Record<string, unknown> = {};
+    for (const name of Object.keys(query)) {
+      if (declared.has(name)) {
+        kept[name] = query[name];
+      }
+    }
     return (
       this.prefix(route, params) +
-      `${this.segment(kept || "-")}:${this.segment(lang || "-")}`
+      `${this.segment(this.valuesSegment(kept))}:${this.segment(lang || "-")}:${this.segment(origin || "-")}`
     );
   }
 
@@ -190,10 +200,78 @@ export class ReactPageCacheProvider {
       }
     }
 
+    const origin = this.keyOrigin(request.url);
+    if (!origin) {
+      this.warnForeignHost(request.url);
+      return { bypass: `host "${request.url.host}" is not PUBLIC_URL's` };
+    }
+
     return {
-      key: this.key(route, request.params, request.query, this.lang()),
+      key: this.key(route, request.params, request.query, this.lang(), origin),
       ttlMs: this.ttlMs(route),
     };
+  }
+
+  /**
+   * A request's origin with its host in one spelling: lower case (the URL
+   * parser's doing) and no trailing dot, so `Example.com.` and `example.com`
+   * are one site. The scheme is the one the render saw.
+   */
+  public requestOrigin(url: URL): string {
+    return `${url.protocol}//${this.hostOf(url)}`;
+  }
+
+  /**
+   * The origin segment of a request's key, or nothing when the request must
+   * not use the cache: `PUBLIC_URL` is set and names another host.
+   *
+   * Hosts are compared, not schemes: behind a proxy that ends TLS the
+   * request may read `http` for an `https` site.
+   */
+  protected keyOrigin(url: URL): string | undefined {
+    const configured = String(this.alepha.env.PUBLIC_URL ?? "");
+    if (!configured || !URL.canParse(configured)) {
+      return this.requestOrigin(url);
+    }
+    const site = new URL(configured);
+    return this.hostOf(site) === this.hostOf(url) ? site.origin : undefined;
+  }
+
+  /**
+   * How many hosts {@link warnForeignHost} reports in the life of a process.
+   */
+  public static readonly FOREIGN_HOST_WARNINGS = 10;
+
+  /**
+   * The hosts already reported by {@link warnForeignHost}.
+   */
+  protected readonly foreignHosts = new Set<string>();
+
+  /**
+   * Say, once per host, that its pages are rendered on every request: the
+   * bypass is otherwise silent in production, and an alias host, an apex
+   * beside its `www`, another port or a proxy rewriting `Host` all end here.
+   * Capped, since the host is the client's to make up.
+   */
+  protected warnForeignHost(url: URL): void {
+    const host = this.hostOf(url);
+    if (
+      this.foreignHosts.has(host) ||
+      this.foreignHosts.size >= ReactPageCacheProvider.FOREIGN_HOST_WARNINGS
+    ) {
+      return;
+    }
+    this.foreignHosts.add(host);
+    const site = this.hostOf(new URL(String(this.alepha.env.PUBLIC_URL)));
+    this.log.warn(
+      `Host "${host}" is not served from the page cache: PUBLIC_URL names "${site}", and only its host is cached. ` +
+        "Serve the site on its PUBLIC_URL host and redirect the others to it, or, behind a proxy, pass the original Host header.",
+    );
+  }
+
+  protected hostOf(url: URL): string {
+    const hostname = url.hostname.replace(/\.$/, "");
+    return url.port ? `${hostname}:${url.port}` : hostname;
   }
 
   public async read(key: string): Promise<PageCacheEntry | undefined> {
@@ -235,19 +313,11 @@ export class ReactPageCacheProvider {
     if (!provider) {
       const lifetime = this.edge() ? this.edgeTtlMs(ttlMs) : ttlMs;
       const at = this.dateTime.nowMillis();
-      this.local.delete(key);
-      this.local.set(key, {
+      this.keep(key, {
         entry,
         at,
         expiresAt: lifetime > 0 ? at + lifetime : 0,
       });
-      while (this.local.size > this.options.max) {
-        const oldest = this.local.keys().next().value;
-        if (oldest === undefined) {
-          break;
-        }
-        this.local.delete(oldest);
-      }
       await this.edgeWrite(key, entry, at, lifetime);
       return;
     }
@@ -261,6 +331,22 @@ export class ReactPageCacheProvider {
     await provider.setTyped(ReactPageCacheProvider.CONTAINER, key, entry, {
       ttl,
     });
+  }
+
+  /**
+   * Put an entry in the in-process tier as its most recently used, and evict
+   * the least recently used ones past `max`.
+   */
+  protected keep(key: string, entry: LocalEntry): void {
+    this.local.delete(key);
+    this.local.set(key, entry);
+    while (this.local.size > this.options.max) {
+      const oldest = this.local.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.local.delete(oldest);
+    }
   }
 
   /**
@@ -411,7 +497,7 @@ export class ReactPageCacheProvider {
         return undefined;
       }
       const { at, ...entry } = stored;
-      this.local.set(key, {
+      this.keep(key, {
         entry,
         at,
         expiresAt: at + this.edgeTtlMs(0),
@@ -737,29 +823,58 @@ export class ReactPageCacheProvider {
   protected declaredQuery(route: PageRoute): Set<string> {
     const names = new Set<string>();
     for (let it: PageRoute | undefined = route; it; it = it.parent) {
-      const shape = (it.schema?.query as { shape?: Record<string, unknown> })
-        ?.shape;
-      for (const name of Object.keys(shape ?? {})) {
-        names.add(name);
+      // Unwrapped like `ReactPageProvider` reads it: a query schema that is
+      // `.optional()` still declares its fields.
+      const schema = it.schema?.query
+        ? z.schema.unwrap(it.schema.query)
+        : undefined;
+      if (z.schema.isObject(schema)) {
+        for (const name of Object.keys(z.schema.shape(schema))) {
+          names.add(name);
+        }
       }
     }
     return names;
   }
 
-  protected paramsSegment(params: Record<string, unknown>): string {
-    const names = Object.keys(params)
-      .filter((name) => params[name] !== undefined)
+  /**
+   * The params or the query of a key, as one string no two different records
+   * share: the defined values sorted by name and written as JSON, where names
+   * and values are quoted and escaped, so no value can spell out a second
+   * parameter.
+   *
+   * Every value is written as the text a URL carries it as. A request's
+   * params are strings, while a purge is handed whatever the caller holds
+   * (`{ id: 5 }` from an action's result): both must spell the same key.
+   */
+  protected valuesSegment(values: Record<string, unknown>): string {
+    const names = Object.keys(values)
+      .filter((name) => values[name] !== undefined)
       .sort();
     if (names.length === 0) {
       return "-";
     }
-    return names
-      .map((name) => `${name}=${this.stringify(params[name])}`)
-      .join("&");
+    return JSON.stringify(
+      names.map((name) => [name, this.textOf(values[name])]),
+    );
   }
 
-  protected stringify(value: unknown): string {
-    return typeof value === "string" ? value : JSON.stringify(value);
+  /**
+   * A value as a URL carries it: a string as is, a number, a bigint or a
+   * boolean as it prints, anything else (a repeated query parameter) as
+   * JSON.
+   */
+  protected textOf(value: unknown): string {
+    switch (typeof value) {
+      case "string":
+        return value;
+      case "number":
+      case "bigint":
+      case "boolean":
+        return String(value);
+      default:
+        return JSON.stringify(value) ?? "";
+    }
   }
 
   /**

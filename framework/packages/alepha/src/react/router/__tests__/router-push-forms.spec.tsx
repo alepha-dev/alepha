@@ -69,6 +69,26 @@ describe("router.push forms, at runtime", () => {
     );
   });
 
+  it("refuses a target the browser reads as another origin", async () => {
+    const router = await boot();
+
+    for (const target of [
+      "//other.example/x",
+      "/\\other.example/x",
+      "/\t/other.example/x",
+      "/\n\\other.example/x",
+    ]) {
+      expect(() => router.anchor(target as never)).toThrow(AlephaError);
+      expect(() => router.anchor(target as never)).toThrow(/another origin/);
+      await expect(router.push(target as never)).rejects.toThrow(
+        /another origin/,
+      );
+      expect(() =>
+        router.anchor(target as never, { query: { tab: "a" } }),
+      ).toThrow(/another origin/);
+    }
+  });
+
   it("resolves a page name with its params, and a path with its query", async () => {
     const router = await boot();
 

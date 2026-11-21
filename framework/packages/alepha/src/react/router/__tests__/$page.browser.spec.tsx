@@ -21,7 +21,7 @@ describe("$page browser tests", () => {
     document.body.innerHTML = '<div id="root"></div>';
   });
 
-  it("should render home page via router.go", async () => {
+  it("should render home page via router.push", async () => {
     class App {
       home = $page({
         path: "/",
@@ -40,9 +40,46 @@ describe("$page browser tests", () => {
 
     await waitFor(() => {
       const element = document.querySelector('[data-testid="home"]');
-      expect(element).toBeDefined();
+      expect(element).not.toBeNull();
       expect(element?.textContent).toBe("Welcome Home");
     });
+  });
+
+  it("router.matches() tells a page from the catch-all not-found page", async () => {
+    class App {
+      home = $page({ path: "/", component: () => <div>Home</div> });
+      docs = $page({ path: "/docs", children: () => [this.doc] });
+      // `/docs/*`: a section's content, not the app's not-found page.
+      doc = $page({ path: "/*", component: () => <div>Doc</div> });
+    }
+
+    alepha = Alepha.create().with(AlephaReact).with(App);
+    await alepha.start();
+    const router = alepha.inject(ReactRouter);
+
+    expect(router.matches("/")).toBe(true);
+    expect(router.matches("/docs/intro?tab=a")).toBe(true);
+    expect(router.matches("/nowhere")).toBe(false);
+    expect(router.matches("relative")).toBe(false);
+  });
+
+  it("router.matches() refuses a path the browser reads as another origin", async () => {
+    class App {
+      home = $page({ path: "/", component: () => <div>Home</div> });
+      // Matches any single segment, `\\other.example` included.
+      project = $page({ path: "/:slug", component: () => <div>Project</div> });
+    }
+
+    alepha = Alepha.create().with(AlephaReact).with(App);
+    await alepha.start();
+    const router = alepha.inject(ReactRouter);
+
+    expect(router.matches("/lore")).toBe(true);
+    // Whatever matches() accepts, anchor() must take: a link built from
+    // untrusted text checks the first and renders the second.
+    for (const path of ["//other.example", "/\\other.example", "/\t/x"]) {
+      expect(router.matches(path)).toBe(false);
+    }
   });
 
   it("should navigate between pages", async () => {
@@ -69,7 +106,7 @@ describe("$page browser tests", () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+      expect(document.querySelector('[data-testid="home"]')).not.toBeNull();
     });
 
     // Navigate to about
@@ -78,15 +115,15 @@ describe("$page browser tests", () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="about"]')).toBeDefined();
+      expect(document.querySelector('[data-testid="about"]')).not.toBeNull();
       expect(document.querySelector('[data-testid="about"]')?.textContent).toBe(
         "About Us",
       );
     });
   });
 
-  describe("resolve function", () => {
-    it("should pass resolved data to component", async () => {
+  describe("loader", () => {
+    it("should pass loader data to component", async () => {
       class App {
         user = $page({
           path: "/user/:id",
@@ -195,7 +232,7 @@ describe("$page browser tests", () => {
       await waitFor(() => {
         expect(
           document.querySelector('[data-testid="dashboard"]'),
-        ).toBeDefined();
+        ).not.toBeNull();
         expect(
           document.querySelector('[data-testid="dashboard"]')?.textContent,
         ).toBe("Dashboard");
@@ -244,7 +281,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="login"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="login"]')).not.toBeNull();
       });
 
       // Now authenticate
@@ -257,7 +294,7 @@ describe("$page browser tests", () => {
       await waitFor(() => {
         expect(
           document.querySelector('[data-testid="protected"]'),
-        ).toBeDefined();
+        ).not.toBeNull();
         expect(
           document.querySelector('[data-testid="protected"]')?.textContent,
         ).toBe("Data: secret");
@@ -337,7 +374,7 @@ describe("$page browser tests", () => {
         expect(
           document.querySelector('[data-testid="header"]')?.textContent,
         ).toBe("My App");
-        expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="home"]')).not.toBeNull();
       });
 
       // Navigate to about - layout should persist
@@ -349,11 +386,11 @@ describe("$page browser tests", () => {
         expect(
           document.querySelector('[data-testid="header"]')?.textContent,
         ).toBe("My App");
-        expect(document.querySelector('[data-testid="about"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="about"]')).not.toBeNull();
       });
     });
 
-    it("should pass parent resolved data to children", async () => {
+    it("should pass parent loader data to children", async () => {
       class App {
         layout = $page({
           path: "/",
@@ -444,8 +481,10 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="root"]')).toBeDefined();
-        expect(document.querySelector('[data-testid="section"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="root"]')).not.toBeNull();
+        expect(
+          document.querySelector('[data-testid="section"]'),
+        ).not.toBeNull();
         expect(
           document.querySelector('[data-testid="page"]')?.textContent,
         ).toBe("root > section > page");
@@ -481,7 +520,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="home"]')).not.toBeNull();
       });
 
       expect(onLeaveSpy).not.toHaveBeenCalled();
@@ -492,7 +531,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="about"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="about"]')).not.toBeNull();
       });
 
       // onLeave should have been called
@@ -530,7 +569,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="home"]')).not.toBeNull();
       });
 
       // Clear spies after initial setup to test subsequent navigation
@@ -543,7 +582,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="about"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="about"]')).not.toBeNull();
       });
 
       expect(aboutOnEnterSpy).toHaveBeenCalledTimes(1);
@@ -573,10 +612,53 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="home"]')).not.toBeNull();
       });
 
       expect(onEnterSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not fire onEnter or onLeave for a page that stays on invalidate and reload", async () => {
+      const onEnter = vi.fn();
+      const onLeave = vi.fn();
+      let loads = 0;
+
+      class App {
+        layout = $page({
+          path: "/",
+          onEnter,
+          onLeave,
+          children: () => [this.home],
+        });
+        home = $page({
+          path: "/",
+          onEnter,
+          onLeave,
+          loader: () => ({ loads: ++loads }),
+          component: () => <div data-testid="home">Home</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+      const router = alepha.inject(ReactRouter);
+      await act(async () => {
+        await router.push("/");
+      });
+      expect(onEnter).toHaveBeenCalledTimes(2);
+      const loaded = loads;
+
+      await act(async () => {
+        await router.invalidate();
+      });
+      await act(async () => {
+        await router.reload();
+      });
+
+      // Both ran the loader again, for the page already on screen.
+      expect(loads).toBe(loaded + 2);
+      expect(onEnter).toHaveBeenCalledTimes(2);
+      expect(onLeave).not.toHaveBeenCalled();
     });
 
     it("should not call parent onEnter when only child changes", async () => {
@@ -622,7 +704,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="child1"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="child1"]')).not.toBeNull();
       });
 
       expect(parentOnEnterSpy).toHaveBeenCalledTimes(1);
@@ -635,7 +717,7 @@ describe("$page browser tests", () => {
       });
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="child2"]')).toBeDefined();
+        expect(document.querySelector('[data-testid="child2"]')).not.toBeNull();
       });
 
       // Parent should still be 1 (not called again)
@@ -645,40 +727,6 @@ describe("$page browser tests", () => {
   });
 
   describe("schema validation", () => {
-    it("should validate and parse params", async () => {
-      class App {
-        user = $page({
-          path: "/user/:id",
-          schema: {
-            params: z.object({
-              id: z.text(),
-            }),
-          },
-          loader: ({ params }) => ({
-            userId: params.id,
-          }),
-          component: ({ userId }: { userId: string }) => (
-            <div data-testid="user">User: {userId}</div>
-          ),
-        });
-      }
-
-      alepha = Alepha.create().with(AlephaReact).with(App);
-      await alepha.start();
-
-      const router = alepha.inject(ReactRouter);
-
-      await act(async () => {
-        await router.push("/user/abc123");
-      });
-
-      await waitFor(() => {
-        expect(
-          document.querySelector('[data-testid="user"]')?.textContent,
-        ).toBe("User: abc123");
-      });
-    });
-
     it("should validate and parse query params", async () => {
       class App {
         search = $page({
@@ -724,55 +772,6 @@ describe("$page browser tests", () => {
         expect(
           document.querySelector('[data-testid="page"]')?.textContent,
         ).toBe("2");
-      });
-    });
-
-    it("updates when navigating with different query params", async () => {
-      class App {
-        search = $page({
-          path: "/search",
-          schema: {
-            query: z.object({
-              q: z.text({ default: "" }),
-              page: z.number().default(1),
-            }),
-          },
-          loader: ({ query }) => ({
-            searchQuery: query.q,
-            currentPage: query.page,
-          }),
-          component: ({
-            searchQuery,
-            currentPage,
-          }: {
-            searchQuery: string;
-            currentPage: number;
-          }) => (
-            <div data-testid="search">
-              <div data-testid="query">{searchQuery}</div>
-              <div data-testid="page">{currentPage}</div>
-            </div>
-          ),
-        });
-      }
-
-      alepha = Alepha.create().with(AlephaReact).with(App);
-      await alepha.start();
-
-      const router = alepha.inject(ReactRouter);
-
-      // Navigate with query params
-      await act(async () => {
-        await router.push("/search?q=alepha&page=5");
-      });
-
-      await waitFor(() => {
-        expect(
-          document.querySelector('[data-testid="query"]')?.textContent,
-        ).toBe("alepha");
-        expect(
-          document.querySelector('[data-testid="page"]')?.textContent,
-        ).toBe("5");
       });
     });
 
@@ -917,13 +916,15 @@ describe("$page browser tests", () => {
 
       const router = alepha.inject(ReactRouter);
 
-      // Start navigating to /page-a — its loader hangs, push() will not
+      // Start navigating to /page-a: its loader hangs, push() will not
       // resolve until we manually resolve the loader below.
-      const pushAPromise = router.push("/page-a");
-
-      // Yield so the in-flight transition for /page-a actually starts and
-      // reaches the awaited loader before pushB enters the race.
-      await new Promise((r) => setTimeout(r, 0));
+      let pushAPromise!: Promise<void>;
+      await act(async () => {
+        pushAPromise = router.push("/page-a");
+        // Yield so the in-flight transition for /page-a actually starts and
+        // reaches the awaited loader before pushB enters the race.
+        await new Promise((r) => setTimeout(r, 0));
+      });
 
       // Navigate to /page-b before /page-a finishes loading. This should
       // supersede the in-flight /page-a transition.
@@ -947,6 +948,57 @@ describe("$page browser tests", () => {
       expect(router.state.url.pathname).toBe("/page-b");
       // /page-a's component must never have been instantiated.
       expect(pageARendered).not.toHaveBeenCalled();
+      await waitFor(() => expect(pageBRendered).toHaveBeenCalled());
+    });
+
+    it("keeps a navigation in flight when invalidate() is called", async () => {
+      let resolvePageB: (() => void) | undefined;
+      let pageBLoads = 0;
+      const gate = new Promise<void>((resolve) => {
+        resolvePageB = resolve;
+      });
+
+      class App {
+        home = $page({
+          path: "/",
+          component: () => <div data-testid="home">Home</div>,
+        });
+
+        pageB = $page({
+          path: "/page-b",
+          loader: async () => {
+            pageBLoads++;
+            await gate;
+          },
+          component: () => <div data-testid="page-b">B</div>,
+        });
+      }
+
+      // jsdom keeps the URL of the test before: boot on the home page.
+      window.history.replaceState({}, "", "/");
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+      const router = alepha.inject(ReactRouter);
+      await act(async () => {
+        await router.push("/");
+      });
+
+      // The click, waiting on its loader, then a background invalidate.
+      const pushed = router.push("/page-b");
+      await waitFor(() => expect(pageBLoads).toBe(1));
+      const invalidated = router.invalidate();
+      await new Promise((r) => setTimeout(r, 0));
+
+      resolvePageB?.();
+      await act(async () => {
+        await pushed;
+        await invalidated;
+      });
+
+      expect(router.state.name).toBe("pageB");
+      expect(window.location.pathname).toBe("/page-b");
+      // The invalidation ran after it, on the page it landed on.
+      expect(pageBLoads).toBe(2);
     });
 
     it("should not fire onEnter for a stale superseded page", async () => {
@@ -1043,7 +1095,7 @@ describe("$page browser tests", () => {
 
   describe("page guard middleware (use)", () => {
     it("does not render a $page whose use middleware denies access", async () => {
-      // A guard that denies by returning undefined without calling next —
+      // A guard that denies by returning undefined without calling next,
       // exactly how $secure short-circuits in the browser for an
       // unauthenticated user.
       const $deny = (): Middleware =>

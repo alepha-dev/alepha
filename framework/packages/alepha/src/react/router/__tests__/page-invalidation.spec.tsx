@@ -51,7 +51,45 @@ describe("page cache invalidation", () => {
     }
   }
 
+  const revisions: Record<number, number> = {};
+
+  /**
+   * A page whose param is a number: the request's is the string `"5"`, a
+   * purge is handed the number `5`.
+   */
+  class Items {
+    itemUpdate = $action({
+      path: "/items/:id",
+      method: "POST",
+      schema: {
+        params: z.object({ id: z.number() }),
+        response: z.object({ id: z.number() }),
+      },
+      handler: ({ params }) => {
+        revisions[params.id] = (revisions[params.id] ?? 0) + 1;
+        return { id: params.id };
+      },
+    });
+
+    item = $page({
+      path: "/item/:id",
+      schema: { params: z.object({ id: z.number() }) },
+      cache: {
+        invalidatedBy: [
+          { action: "itemUpdate", params: ({ result }) => ({ id: result.id }) },
+        ],
+      },
+      loader: ({ params }) => ({
+        label: `item ${params.id} r${revisions[params.id] ?? 0}`,
+      }),
+      component: (props: { label: string }) => props.label,
+    });
+  }
+
   const boot = async (remote = false) => {
+    for (const id of Object.keys(revisions)) {
+      delete revisions[Number(id)];
+    }
     const stock: Record<string, number> = { ring: 1, collar: 1 };
     let renders = 0;
 
@@ -107,7 +145,7 @@ describe("page cache invalidation", () => {
     if (remote) {
       alepha.with({ provide: CacheProvider, use: RemoteCacheProvider });
     }
-    alepha.with(AlephaReactRouter).with(App);
+    alepha.with(AlephaReactRouter).with(App).with(Items);
     // Counts renders; the anonymous re-render would double them.
     alepha.store.mut(reactPageCacheOptions, (it) => ({
       ...it,
@@ -133,6 +171,7 @@ describe("page cache invalidation", () => {
 
     return {
       app,
+      items: alepha.inject(Items),
       visit,
       post,
       renders: () => renders,
@@ -171,6 +210,30 @@ describe("page cache invalidation", () => {
 
       expect((await visit("/product/ring")).cache).toBe("miss");
       expect((await visit("/product/collar")).cache).toBe("miss");
+    });
+  }
+
+  for (const remote of [false, true]) {
+    const where = remote ? "a remote provider" : "the in-process tier";
+
+    it(`purges a page whose param is a number, by action and by hand, on ${where}`, async ({
+      expect,
+    }) => {
+      const { items, visit } = await boot(remote);
+      expect((await visit("/item/5")).body).toContain("item 5 r0");
+      expect((await visit("/item/5")).cache).toBe("hit; verdict=shared");
+      await visit("/item/6");
+
+      await items.itemUpdate.run({ params: { id: 5 } });
+
+      expect((await visit("/item/5")).body).toContain("item 5 r1");
+      expect((await visit("/item/5")).cache).toBe("hit; verdict=shared");
+      expect((await visit("/item/6")).cache).toBe("hit; verdict=shared");
+
+      await items.item.invalidate({ id: 5 });
+
+      expect((await visit("/item/5")).cache).toBe("miss");
+      expect((await visit("/item/6")).cache).toBe("hit; verdict=shared");
     });
   }
 

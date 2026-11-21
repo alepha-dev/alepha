@@ -44,7 +44,9 @@ const DeferredScript = (props: DeferredScriptProps) => {
   // prerendered file. The empty element still matches the browser's, and an
   // empty inline script is never checked against the policy.
   if (!alepha.store.getUntracked("alepha.react.router.streamed")) {
-    return <script dangerouslySetInnerHTML={{ __html: "" }} />;
+    return (
+      <script dangerouslySetInnerHTML={{ __html: TrustedTypes.html("") }} />
+    );
   }
 
   use(deferred.settled(props.promise) as Promise<unknown>);

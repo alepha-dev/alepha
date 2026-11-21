@@ -18,7 +18,7 @@ meant to run in any app writes.
 ## Examples
 
 class App {
-home = $page();
+home = $page({ path: "/", component: Home });
 }
 
 declare module "alepha/react/router" {

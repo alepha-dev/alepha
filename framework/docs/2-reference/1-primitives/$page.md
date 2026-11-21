@@ -37,7 +37,7 @@ It provides a declarative way to define pages with powerful features:
 
 **Performance Optimization**
 
-- Infer generation for pre-rendered pages at build time
+- Static generation for pre-rendered pages at build time
 - Automatic page cache: a page that reads nothing about its visitor is
   cached for everyone, signed in or not (see the `cache` option)
 - Code splitting through lazy component loading
@@ -135,7 +135,7 @@ const projectSection = $page({
 });
 ```
 
-Infer generation with caching
+Static generation
 
 ```typescript
 const blogPost = $page({

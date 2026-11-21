@@ -1,6 +1,9 @@
 import { Alepha } from "alepha";
+import { AlephaReact } from "alepha/react";
+import { act } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { $page, ReactRouter } from "../index.browser.ts";
 import {
   ReactBrowserProvider,
   reactBrowserOptions,
@@ -9,12 +12,13 @@ import {
 /**
  * Back/forward used to land at the top of the page.
  *
- * `onTransitionEnd` scrolled to `0` on every transition without ever asking
+ * The transition-end hook scrolled to `0` on every transition without ever asking
  * whether the navigation was a push or a pop, so the browser restored the
  * offset on `popstate` and the router immediately overwrote it (quest #192).
  *
  * The decision now lives in `resolveScrollAction`, which is what these tests
- * drive — the hook itself no-ops under `isTest()`.
+ * drive: `applyScroll`, which the hooks (`onFirstTransitionEnd`,
+ * `onTransitionCommitted`) call, no-ops under `isTest()`.
  */
 class TestReactBrowserProvider extends ReactBrowserProvider {
   public setNavigationKind(kind: "push" | "replace" | "pop") {
@@ -72,16 +76,6 @@ describe("scroll restoration", () => {
       expect(provider.resolveScrollAction()).toEqual({
         type: "restore",
         top: 320,
-      });
-    });
-
-    it("should restore the saved offset when going back", () => {
-      provider.setEntry(3, 4200);
-      provider.setNavigationKind("pop");
-
-      expect(provider.resolveScrollAction()).toEqual({
-        type: "restore",
-        top: 4200,
       });
     });
 
@@ -173,7 +167,7 @@ describe("scroll restoration", () => {
   describe("scheduling the restore", () => {
     /**
      * `requestAnimationFrame` never fires while the document is hidden, so a
-     * restore scheduled only that way silently never happened — the page was
+     * restore scheduled only that way silently never happened: the page was
      * left at the top when the reader came back to the tab. Found by testing
      * in a hidden preview pane, where rAF stayed pending forever.
      */
@@ -240,14 +234,58 @@ describe("scroll restoration", () => {
 
       expect(provider.canGoBack).toBe(false);
     });
+  });
 
-    it("should be false again after popping back to the first entry", () => {
-      provider.testPushState("/a");
-      // What the popstate listener does when the user goes back: adopt the
-      // id stamped on the entry being arrived at.
-      provider.setEntry(0);
+  /**
+   * Going back and forward for real: the `popstate` listener adopts the id
+   * stamped on the entry arrived at, which `canGoBack` and the saved scroll
+   * offsets are read by.
+   */
+  describe("popstate", () => {
+    const popped = () =>
+      new Promise<void>((resolve) => {
+        window.addEventListener("popstate", () => resolve(), { once: true });
+      });
 
-      expect(provider.canGoBack).toBe(false);
+    it("adopts the id of the entry the browser arrived at", async () => {
+      class App {
+        home = $page({ path: "/", component: () => "home" });
+        other = $page({ path: "/other", component: () => "other" });
+      }
+
+      window.history.replaceState(null, "", "/");
+      document.body.innerHTML = '<div id="root"></div>';
+      const alepha = Alepha.create().with(AlephaReact).with(App);
+      await act(async () => {
+        await alepha.start();
+      });
+      const router = alepha.inject(ReactRouter);
+      expect(router.canGoBack).toBe(false);
+
+      await act(async () => {
+        await router.push("/other");
+      });
+      const pushed = (window.history.state as { alephaKey: number }).alephaKey;
+      expect(router.canGoBack).toBe(true);
+
+      await act(async () => {
+        const event = popped();
+        window.history.back();
+        await event;
+      });
+      expect(window.location.pathname).toBe("/");
+      expect(router.canGoBack).toBe(false);
+
+      await act(async () => {
+        const event = popped();
+        window.history.forward();
+        await event;
+      });
+      expect(window.location.pathname).toBe("/other");
+      expect((window.history.state as { alephaKey: number }).alephaKey).toBe(
+        pushed,
+      );
+      expect(router.canGoBack).toBe(true);
     });
   });
 });
