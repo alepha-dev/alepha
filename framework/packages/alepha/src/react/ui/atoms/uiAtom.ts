@@ -5,7 +5,8 @@ import { $atom, type Infer, z } from "alepha";
  * collapsed state, etc.
  *
  * The atom is bound to a single `alepha-ui` cookie via {@link UiPersistence},
- * so values survive page reloads and are available during SSR.
+ * so values survive page reloads. No server render reads them (see
+ * `useUiState`): the boot script paints them on `<html>` before first paint.
  */
 export const uiAtom = $atom({
   name: "alepha.react.ui",

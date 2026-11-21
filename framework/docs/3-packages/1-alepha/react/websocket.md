@@ -11,8 +11,8 @@ npm install alepha
 ## Overview
 
 React hooks for real-time WebSocket communication - `useRoom` connects a
-component to a `$channel`, exposing typed `send` and the live message
-stream, and no-ops during SSR.
+component to a `$channel`, exposing typed `send` and the connection state,
+hands each message to its `handler`, and no-ops during SSR.
 
 ## API Reference
 

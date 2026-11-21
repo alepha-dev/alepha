@@ -135,6 +135,24 @@ head: (props) => ({
 });
 ```
 
+A page's head is merged over the global `$head()` and over the heads of the layouts above it, by one rule on the server and in the browser: **the tags a head declares for a key replace every tag the heads before it declared for that key**. The key of a meta tag is its `name` or `property` plus its `media`, so a page's `meta: [{ name: "robots", content: "noindex" }]` replaces a global `robots` tag instead of sitting beside it, and two `theme-color` tags with different media queries stay two tags. One head may declare a key several times (two `og:image`, several `article:tag`), and all of them are kept, in order. Links accumulate, except the canonical: a page's own `url` or `link: [{ rel: "canonical" }]` replaces the one above it, and no canonical is filled in beside one you wrote.
+
+A global `titleSeparator` chains the titles of every level, deepest first: with `$head({ title: "App", titleSeparator: " | " })`, a layout titled "Docs" and its child titled "Intro" give `Intro | Docs | App`. A page that sets only `title` also gives that title to an `og:title` or `twitter:title` that came from a `title` above it. One set on purpose, through `og: { title }`, `twitter: { title }` or a `meta` entry, is left as it is.
+
+`bodyAttributes` belong to the page that sets them: a client navigation to a page without them removes them, as a full load would. For `class`, only the class names the head added are removed, so one set by another script (a theme's `dark`) stays.
+
+A data block (any script whose `type` is not JavaScript) cannot close its `<script>` element with a value from a loader: a JSON block (`application/json`, `application/ld+json`, `importmap`, `speculationrules`) is written with `<` as a JSON escape, and any other gets a backslash inside `</script`, and inside a `<!--` that a `<script` follows. An executable inline script is written as given.
+
+```typescript
+head: (props) => ({
+  script: [
+    { type: "application/ld+json", content: JSON.stringify(props.product) },
+  ],
+});
+```
+
+`useHead()` updates the head from a component. It takes the same fields, SEO fields included (`description`, `image`, `url`), and only adds or updates tags.
+
 #### Canonical URLs
 
 Every page gets a `<link rel="canonical">`, plus `og:url` and `twitter:url`, without declaring anything. Set `PUBLIC_URL` and they are built from it and the page's matched route path:
@@ -156,6 +174,8 @@ head: {
 ```
 
 Set it on a **page**, never in the global `$head()`: there it names the same URL for the whole site, and search engines read that as every page being a duplicate of that one. Alepha logs a warning if you do.
+
+A canonical written as a link, `link: [{ rel: "canonical", href }]`, wins the same way: nothing is filled in beside it, and when its `href` is absolute `og:url` and `twitter:url` take it too, so the three agree. It is inherited like any head tag, so one declared in a global head or on a layout is the canonical of every page under it, until a page declares its own `url` or canonical link: those pages then all name that one URL, with no warning for the link form.
 
 ### static
 

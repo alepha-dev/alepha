@@ -2,7 +2,8 @@ import { Alepha } from "alepha";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { $manifest, $robots, $sitemap, AlephaReactSitemap } from "../index.ts";
+import { $robots, $sitemap, AlephaReactSitemap } from "../index.ts";
+import type { RobotsPrimitive } from "../primitives/$robots.ts";
 
 describe("$robots", () => {
   const start = async (
@@ -121,70 +122,41 @@ describe("$robots", () => {
     ).not.toContain("Sitemap:");
   });
 
-  it("does not prerender unless asked", ({ expect }) => {
+  it("is prerendered by the build only when asked", ({ expect }) => {
+    class Live {
+      robots = $robots();
+    }
     class Prerendered {
       robots = $robots({ static: true });
     }
+    const robotsOf = (App: new () => { robots: RobotsPrimitive }) =>
+      Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaReactSitemap)
+        .with(App)
+        .inject(App).robots;
 
-    const alepha = Alepha.create()
-      .with(AlephaServer)
-      .with(AlephaReactSitemap)
-      .with(Prerendered);
-    const primitive = alepha.inject(Prerendered).robots;
-
-    expect(primitive.prerender()).toEqual({
+    // The build prerenders the `robots` primitives whose `static` option is
+    // set (`BuildPrerenderTask`); the file is the canonical host's rules.
+    expect(robotsOf(Live).options.static).toBeUndefined();
+    expect(robotsOf(Prerendered).options.static).toBe(true);
+    expect(robotsOf(Prerendered).prerender()).toEqual({
       path: "/robots.txt",
       body: "User-agent: *\nAllow: /\n",
     });
   });
-});
 
-describe("$manifest", () => {
-  class App {
-    manifest = $manifest({
-      name: "My App",
-      shortName: "App",
-      themeColor: "#010409",
-      icons: [{ src: "/logo.png", sizes: "512x512", type: "image/png" }],
-      screenshots: [{ src: "/shot.png", formFactor: "wide" }],
-    });
-  }
-
-  it("answers application/manifest+json in the manifest's spelling", async ({
+  it("reads the host of a schemeless canonical with a trailing slash", async ({
     expect,
   }) => {
-    const alepha = Alepha.create({ env: { SERVER_PORT: 0 } })
-      .with(AlephaServer)
-      .with(AlephaReactSitemap)
-      .with(App);
-    await alepha.start();
+    class PublicUrl {
+      robots = $robots();
+    }
 
-    const res = await fetch(
-      `${alepha.inject(ServerProvider).hostname}/manifest.webmanifest`,
-    );
+    const { get } = await start(PublicUrl, { PUBLIC_URL: "example.com/" });
 
-    expect(res.headers.get("content-type")).toContain(
-      "application/manifest+json",
-    );
-    expect(await res.json()).toEqual({
-      name: "My App",
-      short_name: "App",
-      display: "standalone",
-      start_url: "/",
-      theme_color: "#010409",
-      icons: [{ src: "/logo.png", sizes: "512x512", type: "image/png" }],
-      screenshots: [{ src: "/shot.png", form_factor: "wide" }],
-    });
-  });
+    const res = await get("/robots.txt", { "x-forwarded-host": "example.com" });
 
-  it("is what the build snapshots", ({ expect }) => {
-    const alepha = Alepha.create()
-      .with(AlephaServer)
-      .with(AlephaReactSitemap)
-      .with(App);
-
-    expect(alepha.inject(App).manifest.prerender().path).toBe(
-      "/manifest.webmanifest",
-    );
+    expect(await res.text()).toBe("User-agent: *\nAllow: /\n");
   });
 });

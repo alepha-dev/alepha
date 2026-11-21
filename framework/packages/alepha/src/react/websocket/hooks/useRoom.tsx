@@ -118,7 +118,12 @@ export interface UseRoomReturn<TServer extends TWSObject> {
  * Provides automatic connection management, reconnection, and type-safe messaging
  * for WebSocket rooms using the injected WebSocketClient service.
  *
- * Multiple useRoom hooks on the same channel will share a single WebSocket connection.
+ * Multiple useRoom hooks on the same channel will share a single WebSocket connection,
+ * built from the options of the first one: `url` and the reconnection options of a
+ * later hook on that channel are ignored.
+ *
+ * `disconnect()` ends this hook's subscription, and the connection with its last one;
+ * `reconnect()` then subscribes again.
  *
  * @example
  * ```tsx
@@ -150,6 +155,8 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
   const [isConnecting, setIsConnecting] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
+  // Bumped by `reconnect()` after a `disconnect()`, to subscribe again.
+  const [attempt, setAttempt] = useState(0);
 
   const {
     roomId,
@@ -172,7 +179,7 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
   handlerRef.current = handler;
 
   useEffect(() => {
-    // Subscribe to room — use ref so handler is always current
+    // Subscribe to room: use ref so handler is always current
     const unsubscribe = webSocketClient.subscribe(
       roomId,
       channel,
@@ -204,7 +211,22 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
       },
     );
 
-    unsubscribeRef.current = unsubscribe;
+    // Once only, whoever calls it first, `disconnect()` or the cleanup. The
+    // client's unsubscribe is not idempotent: run again after another hook
+    // has subscribed to the channel, it sees its own, abandoned connection
+    // with no room left and drops the channel's entry, which by then is the
+    // other hook's live connection.
+    let released = false;
+    const release = () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      unsubscribeRef.current = null;
+      unsubscribe();
+    };
+
+    unsubscribeRef.current = release;
 
     // Get initial state from connection. This is the "synchronize with an
     // external system" case the rule exempts in principle: the socket already
@@ -220,11 +242,8 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
     }
 
     // Cleanup on unmount or deps change
-    return () => {
-      unsubscribe();
-      unsubscribeRef.current = null;
-    };
-  }, deps);
+    return release;
+  }, [...deps, attempt]);
 
   const alepha = useAlepha();
 
@@ -255,11 +274,24 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
     isError,
     error,
     reconnect: () => {
+      if (!unsubscribeRef.current) {
+        // After `disconnect()` there is no subscription to reconnect:
+        // subscribe again.
+        setAttempt((it) => it + 1);
+        return;
+      }
       const connection = webSocketClient.getConnection(channel);
       connection?.reconnect();
     },
     disconnect: () => {
-      unsubscribeRef.current?.();
+      if (!unsubscribeRef.current) {
+        return;
+      }
+      unsubscribeRef.current();
+      // Said here: the unsubscribe removes this hook's `onDisconnect` before
+      // the socket closes, so no callback reports the end.
+      setIsConnected(false);
+      setIsConnecting(false);
     },
   };
 };

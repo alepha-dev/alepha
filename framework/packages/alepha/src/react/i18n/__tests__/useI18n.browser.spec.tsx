@@ -1,23 +1,28 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
-import { act } from "react";
-import { describe, test } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 import { useI18n } from "../hooks/useI18n.ts";
 import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
-import { I18nProvider } from "../providers/I18nProvider.ts";
 
 describe("useI18n hook", () => {
+  // `setLang` writes the `lang` cookie, and jsdom keeps one document for the
+  // whole file: left there, each test would boot in the previous one's
+  // language.
+  afterEach(() => {
+    document.cookie = "lang=; Path=/; Max-Age=0";
+  });
+
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
     return render(
       <AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
     );
   };
 
-  test("should provide translation function", async ({ expect }) => {
+  it("should provide translation function", async ({ expect }) => {
     const TranslationComponent = () => {
       const { tr } = useI18n();
       return <div data-testid="greeting">{tr("hello")}</div>;
@@ -38,7 +43,7 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("greeting").textContent).toBe("Hello, World!");
   });
 
-  test("should support type-safe translation keys", async ({ expect }) => {
+  it("should support type-safe translation keys", async ({ expect }) => {
     const TypeSafeComponent = () => {
       const { tr } = useI18n<App, "en">();
       return (
@@ -70,7 +75,7 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("goodbye").textContent).toBe("Goodbye");
   });
 
-  test("should react to language changes", async ({ expect }) => {
+  it("should react to language changes", async ({ expect }) => {
     const LanguageSwitcher = () => {
       const i18n = useI18n();
 
@@ -119,21 +124,19 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("message").textContent).toBe("Welcome");
 
     // Switch to French
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("switch-fr"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("message").textContent).toBe("Bienvenue");
+    fireEvent.click(ui.getByTestId("switch-fr"));
+    await waitFor(() =>
+      expect(ui.getByTestId("message").textContent).toBe("Bienvenue"),
+    );
 
     // Switch to Spanish
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("switch-es"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("message").textContent).toBe("Bienvenido");
+    fireEvent.click(ui.getByTestId("switch-es"));
+    await waitFor(() =>
+      expect(ui.getByTestId("message").textContent).toBe("Bienvenido"),
+    );
   });
 
-  test("should provide current language", async ({ expect }) => {
+  it("should provide current language", async ({ expect }) => {
     const LanguageDisplay = () => {
       const i18n = useI18n();
       return (
@@ -162,24 +165,19 @@ describe("useI18n hook", () => {
 
     const alepha = Alepha.create().with(AlephaReactI18n);
     alepha.inject(App);
-    const i18n = alepha.inject(I18nProvider);
     await alepha.start();
-
-    // Ensure we start with English
-    await i18n.setLang("en");
 
     const ui = renderWithAlepha(alepha, <LanguageDisplay />);
 
     expect(ui.getByTestId("current-lang").textContent).toBe("en");
 
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("change-lang"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("current-lang").textContent).toBe("de");
+    fireEvent.click(ui.getByTestId("change-lang"));
+    await waitFor(() =>
+      expect(ui.getByTestId("current-lang").textContent).toBe("de"),
+    );
   });
 
-  test("should provide available languages", async ({ expect }) => {
+  it("should provide available languages", async ({ expect }) => {
     const LanguageList = () => {
       const i18n = useI18n();
       return (
@@ -215,7 +213,7 @@ describe("useI18n hook", () => {
     expect(text).toContain("de");
   });
 
-  test("should support interpolation with args", async ({ expect }) => {
+  it("should support interpolation with args", async ({ expect }) => {
     const InterpolationComponent = () => {
       const { tr } = useI18n();
       return (
@@ -246,7 +244,7 @@ describe("useI18n hook", () => {
     );
   });
 
-  test("should support default option", async ({ expect }) => {
+  it("should support default option", async ({ expect }) => {
     const DefaultComponent = () => {
       const { tr } = useI18n();
       return (
@@ -275,7 +273,7 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("missing").textContent).toBe("Default Message");
   });
 
-  test("should provide number formatter", async ({ expect }) => {
+  it("should provide number formatter", async ({ expect }) => {
     const NumberFormatComponent = () => {
       const i18n = useI18n();
       return (
@@ -297,13 +295,10 @@ describe("useI18n hook", () => {
 
     const ui = renderWithAlepha(alepha, <NumberFormatComponent />);
 
-    const formatted = ui.getByTestId("number").textContent;
-    expect(formatted).toBeDefined();
-    // Number format will vary by locale, just check it's formatted
-    expect(formatted).toMatch(/1[,.]234[,.]567/);
+    expect(ui.getByTestId("number").textContent).toBe("1,234,567.89");
   });
 
-  test("should handle multiple language switches", async ({ expect }) => {
+  it("should handle multiple language switches", async ({ expect }) => {
     const MultiSwitchComponent = () => {
       const i18n = useI18n();
       return (
@@ -350,36 +345,29 @@ describe("useI18n hook", () => {
 
     const alepha = Alepha.create().with(AlephaReactI18n);
     alepha.inject(App);
-    const i18n = alepha.inject(I18nProvider);
     await alepha.start();
-
-    // Ensure we start with English
-    await i18n.setLang("en");
 
     const ui = renderWithAlepha(alepha, <MultiSwitchComponent />);
 
     expect(ui.getByTestId("text").textContent).toBe("Active");
 
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("fr"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("text").textContent).toBe("Actif");
+    fireEvent.click(ui.getByTestId("fr"));
+    await waitFor(() =>
+      expect(ui.getByTestId("text").textContent).toBe("Actif"),
+    );
 
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("de"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("text").textContent).toBe("Aktiv");
+    fireEvent.click(ui.getByTestId("de"));
+    await waitFor(() =>
+      expect(ui.getByTestId("text").textContent).toBe("Aktiv"),
+    );
 
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("en"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("text").textContent).toBe("Active");
+    fireEvent.click(ui.getByTestId("en"));
+    await waitFor(() =>
+      expect(ui.getByTestId("text").textContent).toBe("Active"),
+    );
   });
 
-  test("should fallback to fallback language for missing keys", async ({
+  it("should fallback to fallback language for missing keys", async ({
     expect,
   }) => {
     const FallbackComponent = () => {
@@ -428,11 +416,10 @@ describe("useI18n hook", () => {
     expect(ui.getByTestId("common").textContent).toBe("Common text");
     expect(ui.getByTestId("specific").textContent).toBe("English specific");
 
-    await act(async () => {
-      fireEvent.click(ui.getByTestId("switch"));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(ui.getByTestId("common").textContent).toBe("Texte commun");
+    fireEvent.click(ui.getByTestId("switch"));
+    await waitFor(() =>
+      expect(ui.getByTestId("common").textContent).toBe("Texte commun"),
+    );
     // Should fallback to English for 'specific'
     expect(ui.getByTestId("specific").textContent).toBe("English specific");
   });

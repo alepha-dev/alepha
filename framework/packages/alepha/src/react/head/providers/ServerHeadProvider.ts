@@ -13,10 +13,11 @@ export class ServerHeadProvider {
   protected readonly headProvider = $inject(HeadProvider);
 
   /**
-   * Resolve global head configuration (htmlAttributes only).
+   * Resolve what the document starts with: `htmlAttributes`, `charset` and
+   * `viewport`.
    *
-   * Used for early streaming optimization - htmlAttributes can be sent
-   * before page loaders run since they come from global $head only.
+   * Used for early streaming optimization: they can be sent before page
+   * loaders run since they come from global $head only.
    */
   public resolveGlobalHead(): Head {
     return this.headProvider.resolveGlobalHead();
@@ -37,7 +38,7 @@ export class ServerHeadProvider {
    */
   public constantInlineScripts(): string[] {
     const scripts: string[] = [];
-    for (const head of this.headProvider.global ?? []) {
+    for (const head of this.headProvider.global) {
       if (typeof head !== "object") {
         continue;
       }

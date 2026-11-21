@@ -6,8 +6,8 @@ export * from "./render.ts";
  * Write notification and transactional emails as React components.
  *
  * `render()` turns a component into the `(variables) => Promise<string>` that
- * `$notification`'s `body` and `$email.send()` both already accept, so a
- * template becomes a component and nothing else in the stack changes.
+ * the email `body` of a `$notification` already accepts, so a template
+ * becomes a component and nothing else in the stack changes.
  *
  * ```tsx
  * const WelcomeEmail = (props: { name: string }) => (

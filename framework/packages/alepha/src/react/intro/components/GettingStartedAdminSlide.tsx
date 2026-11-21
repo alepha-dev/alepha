@@ -18,7 +18,16 @@ export const useAdminSlide = (): GettingStartedSlide | undefined => {
     return undefined;
   }
 
-  const adminAnchorProps = router.anchor(router.path("admin"));
+  const adminPath = router.path("admin");
+  const adminAnchorProps = router.anchor(adminPath);
+
+  // The scaffold's `src/api/Realm.ts` reads `adminEmails` from `ADMIN_EMAIL`.
+  const adminEmailStep = (
+    <>
+      Set <code>ADMIN_EMAIL</code> in <code>.env</code> to your email:{" "}
+      <code>adminEmails</code> in <code>src/api/Realm.ts</code> reads it
+    </>
+  );
   const canAccessAdmin = has("admin:*");
 
   // User is admin - show success message
@@ -35,7 +44,7 @@ export const useAdminSlide = (): GettingStartedSlide | undefined => {
           num: "→",
           text: (
             <>
-              Go to <a {...adminAnchorProps}>/admin</a> to manage your
+              Go to <a {...adminAnchorProps}>{adminPath}</a> to manage your
               application
             </>
           ),
@@ -52,18 +61,13 @@ export const useAdminSlide = (): GettingStartedSlide | undefined => {
       steps: [
         {
           num: "1",
-          text: (
-            <>
-              Add your email to <code>adminEmails</code> in{" "}
-              <code>AppSecurity.ts</code>
-            </>
-          ),
+          text: adminEmailStep,
         },
         {
           num: "2",
           text: (
             <>
-              Go to <a {...adminAnchorProps}>/admin</a>
+              Go to <a {...adminAnchorProps}>{adminPath}</a>
             </>
           ),
         },
@@ -78,19 +82,14 @@ export const useAdminSlide = (): GettingStartedSlide | undefined => {
     steps: [
       {
         num: "1",
-        text: (
-          <>
-            Add your email to <code>adminEmails</code> in{" "}
-            <code>AppSecurity.ts</code>
-          </>
-        ),
+        text: adminEmailStep,
       },
       { num: "2", text: "Create a user account with that email" },
       {
         num: "3",
         text: (
           <>
-            Go to <a {...adminAnchorProps}>/admin</a>
+            Go to <a {...adminAnchorProps}>{adminPath}</a>
           </>
         ),
       },

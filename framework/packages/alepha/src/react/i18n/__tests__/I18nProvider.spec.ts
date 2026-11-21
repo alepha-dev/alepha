@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
@@ -7,16 +7,22 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
 
 /**
  * Reads whether the lazily-built `Intl` formatters exist yet, which is the
- * only way to assert from outside that construction built neither.
+ * only way to assert from outside that construction built neither, and
+ * exposes the protected request resolution.
  */
 class TestI18nProvider extends I18nProvider<object, never> {
   public get builtFormatters() {
-    return { date: !!this.dateFormatRef, number: !!this.numberFormatRef };
+    return {
+      date: this.dateFormats.size > 0,
+      number: this.numberFormats.size > 0,
+    };
   }
+
+  public testResolveRequestLang = this.resolveRequestLang.bind(this);
 }
 
 describe("I18nProvider", () => {
-  test("should register dictionaries on initialization", async ({ expect }) => {
+  it("should register dictionaries on initialization", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello" } }),
@@ -36,7 +42,7 @@ describe("I18nProvider", () => {
     expect(i18n.registry[1].lang).toBe("fr");
   });
 
-  test("should load all translations on server start", async ({ expect }) => {
+  it("should load all translations on server start", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello", world: "World" } }),
@@ -63,7 +69,7 @@ describe("I18nProvider", () => {
     });
   });
 
-  test("should default to fallback language", async ({ expect }) => {
+  it("should default to fallback language", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello" } }),
@@ -77,7 +83,7 @@ describe("I18nProvider", () => {
     expect(i18n.lang).toBe("en");
   });
 
-  test("should translate keys in current language", async ({ expect }) => {
+  it("should translate keys in current language", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { greeting: "Hello, World!" } }),
@@ -100,7 +106,7 @@ describe("I18nProvider", () => {
     expect(i18n.tr("greeting")).toBe("Bonjour, Monde!");
   });
 
-  test("should fallback to fallback language when key missing", async ({
+  it("should fallback to fallback language when key missing", async ({
     expect,
   }) => {
     class App {
@@ -126,7 +132,7 @@ describe("I18nProvider", () => {
     expect(i18n.tr("world")).toBe("World"); // Falls back to English
   });
 
-  test("should return key when translation not found", async ({ expect }) => {
+  it("should return key when translation not found", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello" } }),
@@ -142,7 +148,7 @@ describe("I18nProvider", () => {
     expect(i18n.tr("missing.key")).toBe("missing.key");
   });
 
-  test("should support default option when key missing", async ({ expect }) => {
+  it("should support default option when key missing", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello" } }),
@@ -160,7 +166,7 @@ describe("I18nProvider", () => {
     );
   });
 
-  test("should support variable interpolation", async ({ expect }) => {
+  it("should support variable interpolation", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({
@@ -180,7 +186,7 @@ describe("I18nProvider", () => {
     );
   });
 
-  test("should list all available languages", async ({ expect }) => {
+  it("should list all available languages", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello" } }),
@@ -206,7 +212,7 @@ describe("I18nProvider", () => {
     expect(languages).toHaveLength(3);
   });
 
-  test("should support custom language codes", async ({ expect }) => {
+  it("should support custom language codes", async ({ expect }) => {
     class App {
       enUS = $dictionary({
         lang: "en-US",
@@ -229,7 +235,7 @@ describe("I18nProvider", () => {
     expect(i18n.registry[1].lang).toBe("en-GB");
   });
 
-  test("should support custom dictionary names", async ({ expect }) => {
+  it("should support custom dictionary names", async ({ expect }) => {
     class App {
       english = $dictionary({
         name: "custom-en",
@@ -245,7 +251,7 @@ describe("I18nProvider", () => {
     expect(i18n.registry[0].name).toBe("custom-en");
   });
 
-  test("should update state when language changes", async ({ expect }) => {
+  it("should update state when language changes", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: { hello: "Hello" } }),
@@ -270,11 +276,14 @@ describe("I18nProvider", () => {
     expect(alepha.store.get("alepha.react.i18n.lang")).toBe("fr");
   });
 
-  test("should have number formatter for current language", async ({
+  it("should have a number formatter for the current language", async ({
     expect,
   }) => {
     class App {
       en = $dictionary({
+        lazy: async () => ({ default: {} }),
+      });
+      de = $dictionary({
         lazy: async () => ({ default: {} }),
       });
     }
@@ -285,11 +294,12 @@ describe("I18nProvider", () => {
 
     await alepha.start();
 
-    expect(i18n.numberFormat).toBeDefined();
-    expect(i18n.numberFormat.format).toBeTypeOf("function");
+    expect(i18n.numberFormat.format(1234.5)).toBe("1,234.5");
+    await i18n.setLang("de");
+    expect(i18n.numberFormat.format(1234.5)).toBe("1.234,5");
   });
 
-  test("should not build an Intl formatter until one is read", async ({
+  it("should not build an Intl formatter until one is read", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaReactI18n);
@@ -306,7 +316,7 @@ describe("I18nProvider", () => {
     expect(i18n.builtFormatters).toEqual({ date: true, number: false });
   });
 
-  test("should cache the formatters and rebuild them on a language switch", async ({
+  it("should cache the formatters and rebuild them on a language switch", async ({
     expect,
   }) => {
     class App {
@@ -330,8 +340,7 @@ describe("I18nProvider", () => {
     const date = i18n.dateFormat;
     const number = i18n.numberFormat;
 
-    // And dropped on a switch, which is what the two assignments in
-    // `refreshLocale` used to do. Without this the app keeps formatting in the
+    // One per language: without this the app keeps formatting in the
     // language it booted in, silently.
     await i18n.setLang("fr");
 
@@ -342,7 +351,7 @@ describe("I18nProvider", () => {
     );
   });
 
-  test("should handle multiple translations with same key across dictionaries", async ({
+  it("should handle multiple translations with same key across dictionaries", async ({
     expect,
   }) => {
     class App {
@@ -392,7 +401,7 @@ describe("I18nProvider", () => {
     expect(i18n.tr("settings")).toBe("Configuración");
   });
 
-  test("should handle empty dictionaries", async ({ expect }) => {
+  it("should handle empty dictionaries", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({ default: {} }),
@@ -408,7 +417,7 @@ describe("I18nProvider", () => {
     expect(i18n.tr("anything")).toBe("anything");
   });
 
-  test("should handle complex interpolation patterns", async ({ expect }) => {
+  it("should handle complex interpolation patterns", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({
@@ -431,7 +440,7 @@ describe("I18nProvider", () => {
   });
 
   describe("when only non-English dictionaries are registered", () => {
-    test("should default to the first registered language", async ({
+    it("should default to the first registered language", async ({
       expect,
     }) => {
       class App {
@@ -447,7 +456,7 @@ describe("I18nProvider", () => {
       expect(i18n.lang).toBe("fr");
     });
 
-    test("should translate using the first registered language", async ({
+    it("should translate using the first registered language", async ({
       expect,
     }) => {
       class App {
@@ -468,7 +477,7 @@ describe("I18nProvider", () => {
       expect(i18n.tr("settings")).toBe("Paramètres");
     });
 
-    test("should not include 'en' in languages list", async ({ expect }) => {
+    it("should not include 'en' in languages list", async ({ expect }) => {
       class App {
         fr = $dictionary({
           lazy: async () => ({ default: { hello: "Bonjour" } }),
@@ -486,7 +495,7 @@ describe("I18nProvider", () => {
       expect(i18n.languages).toEqual(["fr", "de"]);
     });
 
-    test("should fallback to the first registered language for missing keys", async ({
+    it("should fallback to the first registered language for missing keys", async ({
       expect,
     }) => {
       class App {
@@ -520,13 +529,15 @@ describe("I18nProvider", () => {
      * (cookie → header → fallback) can be unit-tested against a true registry.
      */
     const setup = (AppClass: new () => unknown) => {
-      const alepha = Alepha.create().with(AlephaReactI18n);
+      const alepha = Alepha.create()
+        .with({ provide: I18nProvider, use: TestI18nProvider })
+        .with(AlephaReactI18n);
       alepha.inject(AppClass as any);
-      const i18n = alepha.inject(I18nProvider);
+      const i18n = alepha.inject(TestI18nProvider);
       return {
         i18n,
         resolve: (cookieLang?: string, headerLang?: string): string =>
-          (i18n as any).resolveRequestLang(cookieLang, headerLang),
+          i18n.testResolveRequestLang(cookieLang, headerLang),
       };
     };
 
@@ -540,39 +551,33 @@ describe("I18nProvider", () => {
       });
     }
 
-    test("uses the Accept-Language header when no cookie is set", ({
+    it("uses the Accept-Language header when no cookie is set", ({
       expect,
     }) => {
       expect(setup(App).resolve(undefined, "fr")).toBe("fr");
     });
 
-    test("lets a manually-selected cookie win over the header", ({
-      expect,
-    }) => {
+    it("lets a manually-selected cookie win over the header", ({ expect }) => {
       expect(setup(App).resolve("en", "fr")).toBe("en");
     });
 
-    test("falls back when the header language is not registered", ({
+    it("falls back when the header language is not registered", ({
       expect,
     }) => {
       expect(setup(App).resolve(undefined, "de")).toBe("en");
     });
 
-    test("falls back when neither cookie nor header is present", ({
-      expect,
-    }) => {
+    it("falls back when neither cookie nor header is present", ({ expect }) => {
       expect(setup(App).resolve(undefined, undefined)).toBe("en");
     });
 
-    test("normalizes a region-qualified header to a registered base language", ({
+    it("normalizes a region-qualified header to a registered base language", ({
       expect,
     }) => {
       expect(setup(App).resolve(undefined, "fr-FR")).toBe("fr");
     });
 
-    test("prefers an exact region match when one is registered", ({
-      expect,
-    }) => {
+    it("prefers an exact region match when one is registered", ({ expect }) => {
       class RegionApp {
         enUS = $dictionary({
           lang: "en-US",
@@ -587,13 +592,13 @@ describe("I18nProvider", () => {
       expect(setup(RegionApp).resolve(undefined, "en-US")).toBe("en-US");
     });
 
-    test("ignores the header when autoDetect is disabled", ({ expect }) => {
+    it("ignores the header when autoDetect is disabled", ({ expect }) => {
       const { i18n, resolve } = setup(App);
       i18n.options.autoDetect = false;
       expect(resolve(undefined, "fr")).toBe("en");
     });
 
-    test("still honours a manual cookie when autoDetect is disabled", ({
+    it("still honours a manual cookie when autoDetect is disabled", ({
       expect,
     }) => {
       const { i18n, resolve } = setup(App);
@@ -602,7 +607,7 @@ describe("I18nProvider", () => {
     });
   });
 
-  test("should handle partial interpolation args", async ({ expect }) => {
+  it("should handle partial interpolation args", async ({ expect }) => {
     class App {
       en = $dictionary({
         lazy: async () => ({

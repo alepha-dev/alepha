@@ -1,4 +1,5 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { Alepha } from "alepha";
+import { AlephaReactRouter, type ReactRouterState } from "alepha/react/router";
 import { describe, it } from "vitest";
 
 import { ReactVitalsProvider } from "../index.ts";
@@ -11,13 +12,13 @@ describe("ReactVitalsProvider", () => {
   }
 
   const end = (alepha: Alepha, pathname: string, overlay?: string) =>
-    (alepha.events as any).emit("react:transition:end", {
+    alepha.events.emit("react:transition:end", {
       state: {
         url: new URL(`http://localhost${pathname}`),
         overlay: overlay
           ? { url: new URL(`http://localhost${overlay}`) }
           : undefined,
-      },
+      } as ReactRouterState,
     });
 
   it("follows the router, to the overlay's URL when one is open", async ({
@@ -34,34 +35,10 @@ describe("ReactVitalsProvider", () => {
     expect(provider.current).toBe("/cards/1");
   });
 
-  it("does not emit without a consumer asking for it", async ({ expect }) => {
-    const seen: string[] = [];
-
-    class Consumer {
-      measured = $hook({
-        on: "react:vital:measured",
-        handler: ({ metric }) => {
-          seen.push(metric);
-        },
-      });
-    }
-
-    const alepha = Alepha.create().with(Consumer);
+  it("is opt-in: the router does not register it", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
     await alepha.start();
 
-    expect(seen).toEqual([]);
-  });
-
-  it("is what a consumer injects", async ({ expect }) => {
-    class Consumer {
-      provider = $inject(ReactVitalsProvider);
-    }
-
-    const alepha = Alepha.create().with(Consumer);
-    await alepha.start();
-
-    expect(alepha.inject(Consumer).provider).toBeInstanceOf(
-      ReactVitalsProvider,
-    );
+    expect(alepha.has(ReactVitalsProvider)).toBe(false);
   });
 });

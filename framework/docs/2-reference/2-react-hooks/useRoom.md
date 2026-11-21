@@ -13,7 +13,12 @@ React hook for WebSocket room communication
 Provides automatic connection management, reconnection, and type-safe messaging
 for WebSocket rooms using the injected WebSocketClient service.
 
-Multiple useRoom hooks on the same channel will share a single WebSocket connection.
+Multiple useRoom hooks on the same channel will share a single WebSocket connection,
+built from the options of the first one: `url` and the reconnection options of a
+later hook on that channel are ignored.
+
+`disconnect()` ends this hook's subscription, and the connection with its last one;
+`reconnect()` then subscribes again.
 
 ## Examples
 

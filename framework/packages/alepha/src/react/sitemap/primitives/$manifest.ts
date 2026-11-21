@@ -99,7 +99,7 @@ export class ManifestPrimitive extends Primitive<ManifestPrimitiveOptions> {
 
   protected onInit() {
     this.head.global = [
-      ...(this.head.global ?? []),
+      ...this.head.global,
       { link: [{ rel: "manifest", href: this.path }] },
     ];
 

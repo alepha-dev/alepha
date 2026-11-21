@@ -5,11 +5,6 @@ import type { Head, HeadLink, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 /**
- * Marks a meta/link tag as owned by the router's head reconciliation.
- */
-const MANAGED_ATTRIBUTE = "data-alepha-head";
-
-/**
  * Browser-side head provider that manages document head elements.
  *
  * Used by ReactBrowserProvider and ReactBrowserRouterProvider to update
@@ -19,6 +14,37 @@ const MANAGED_ATTRIBUTE = "data-alepha-head";
 export class BrowserHeadProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly headProvider = $inject(HeadProvider);
+
+  /**
+   * Marks a meta/link tag as owned by the router's head reconciliation.
+   */
+  protected static readonly MANAGED_ATTRIBUTE = "data-alepha-head";
+
+  /**
+   * The layers of the page on screen, kept so {@link refreshGlobalHead} can
+   * fill the head again with the page's own on top.
+   */
+  protected layers?: Array<any>;
+
+  /**
+   * The `<body>` and `<html>` attributes the last reconciled pass set: the
+   * ones a later pass may remove. An attribute set by anything else (a theme
+   * script, a browser extension) is never in here.
+   */
+  protected managedAttributes = {
+    body: new Set<string>(),
+    html: new Set<string>(),
+  };
+
+  /**
+   * The `class` tokens the last reconciled pass added to `<body>` and
+   * `<html>`. `class` is a list several writers share (a theme script's
+   * `dark`, a sidebar's state), so it is owned token by token, never whole.
+   */
+  protected managedClasses = {
+    body: new Set<string>(),
+    html: new Set<string>(),
+  };
 
   protected get document(): Document {
     return window.document;
@@ -36,6 +62,7 @@ export class BrowserHeadProvider {
       return;
     }
 
+    this.layers = state.layers;
     this.headProvider.fillHead(state);
     if (state.head) {
       // `reconcile`: a navigation replaces the page's head wholesale, so tags
@@ -50,11 +77,20 @@ export class BrowserHeadProvider {
    * Re-evaluate all global $head entries and apply the result to the DOM.
    *
    * Call this when something that affects global $head output changes at runtime
-   * (e.g., theme switch). Page-level head (title, meta from routes) is not touched.
+   * (e.g., theme switch). The head of the page on screen stays on top: the
+   * head is filled again from the global entries and that page's layers, as a
+   * navigation to the same page would. Before any page has rendered, the
+   * global head is applied alone.
    */
   public refreshGlobalHead(): void {
-    const head = this.headProvider.resolveGlobal();
-    this.renderHead(this.document, head);
+    if (!this.layers) {
+      this.renderHead(this.document, this.headProvider.resolveGlobal());
+      return;
+    }
+
+    const state = { head: {} as Head, layers: this.layers };
+    this.headProvider.fillHead(state);
+    this.renderHead(this.document, state.head, { reconcile: true });
   }
 
   public getHead(document: Document): Head {
@@ -112,7 +148,7 @@ export class BrowserHeadProvider {
     head: Head,
     options?: RenderHeadOptions,
   ): void {
-    // Every meta/link this pass renders — created or updated in place. In
+    // Every meta/link this pass renders, created or updated in place. In
     // reconcile mode it becomes the new set of managed tags; anything
     // previously managed and absent from it is stale and gets removed.
     const rendered = options?.reconcile ? new Set<Element>() : undefined;
@@ -121,29 +157,26 @@ export class BrowserHeadProvider {
       document.title = head.title;
     }
 
-    if (head.bodyAttributes) {
-      for (const [key, value] of Object.entries(head.bodyAttributes)) {
-        if (value) {
-          document.body.setAttribute(key, value);
-        } else {
-          document.body.removeAttribute(key);
-        }
-      }
-    }
-
-    if (head.htmlAttributes) {
-      for (const [key, value] of Object.entries(head.htmlAttributes)) {
-        if (value) {
-          document.documentElement.setAttribute(key, value);
-        } else {
-          document.documentElement.removeAttribute(key);
-        }
-      }
-    }
+    this.renderAttributes(
+      document.body,
+      head.bodyAttributes,
+      options?.reconcile ? "body" : undefined,
+    );
+    this.renderAttributes(
+      document.documentElement,
+      head.htmlAttributes,
+      options?.reconcile ? "html" : undefined,
+    );
 
     if (head.meta) {
+      // A key may come several times (`og:image`, `article:tag`): the nth
+      // tag of a key in the head is the nth element of that key.
+      const seen = new Map<string, number>();
       for (const it of head.meta) {
-        const el = this.renderMetaTag(document, it);
+        const key = `${it.property ? "p" : "n"}\n${it.property ?? it.name}\n${it.media ?? ""}`;
+        const index = seen.get(key) ?? 0;
+        seen.set(key, index + 1);
+        const el = this.renderMetaTag(document, it, index);
         if (el) {
           rendered?.add(el);
         }
@@ -175,6 +208,63 @@ export class BrowserHeadProvider {
   }
 
   /**
+   * Write `attributes` on `<body>` or `<html>`. With `owner` (a reconciled
+   * pass), an attribute the previous pass set and this one does not is
+   * removed: a page's `bodyAttributes` must not follow the reader to the next
+   * page, where a hard load would not have them. `class` is reconciled token
+   * by token, so a class another script put there stays.
+   */
+  protected renderAttributes(
+    el: Element,
+    attributes: Record<string, string> | undefined,
+    owner: "body" | "html" | undefined,
+  ): void {
+    const set = new Set<string>();
+    for (const [key, value] of Object.entries(attributes ?? {})) {
+      if (owner && key === "class") {
+        continue;
+      }
+      if (value) {
+        el.setAttribute(key, value);
+        set.add(key);
+      } else {
+        el.removeAttribute(key);
+      }
+    }
+
+    if (!owner) {
+      return;
+    }
+
+    const managed = this.managedAttributes[owner];
+    for (const key of managed) {
+      if (!set.has(key)) {
+        el.removeAttribute(key);
+      }
+    }
+    managed.clear();
+    for (const key of set) {
+      managed.add(key);
+    }
+
+    const classes = this.managedClasses[owner];
+    const tokens = (attributes?.class ?? "").split(/\s+/).filter(Boolean);
+    for (const token of classes) {
+      if (!tokens.includes(token)) {
+        el.classList.remove(token);
+      }
+    }
+    classes.clear();
+    for (const token of tokens) {
+      el.classList.add(token);
+      classes.add(token);
+    }
+    if (el.classList.length === 0) {
+      el.removeAttribute("class");
+    }
+  }
+
+  /**
    * Remove every previously-managed meta/link that this pass did not render,
    * and mark the ones it did.
    *
@@ -183,21 +273,23 @@ export class BrowserHeadProvider {
    * equivalent to leaving it in place.
    */
   protected reconcile(document: Document, rendered: Set<Element>): void {
-    for (const el of document.head.querySelectorAll(`[${MANAGED_ATTRIBUTE}]`)) {
+    for (const el of document.head.querySelectorAll(
+      `[${BrowserHeadProvider.MANAGED_ATTRIBUTE}]`,
+    )) {
       if (!rendered.has(el)) {
         el.remove();
       }
     }
 
     for (const el of rendered) {
-      el.setAttribute(MANAGED_ATTRIBUTE, "");
+      el.setAttribute(BrowserHeadProvider.MANAGED_ATTRIBUTE, "");
     }
   }
 
   protected renderLinkTag(document: Document, link: HeadLink): Element {
     const { rel, href } = link;
     const existing = document.querySelector(
-      `link[rel="${rel}"][href="${href}"]`,
+      `link[rel=${this.quote(rel)}][href=${this.quote(href)}]`,
     );
     if (existing) {
       return existing;
@@ -256,9 +348,13 @@ export class BrowserHeadProvider {
 
     // src-based scripts: dedupe by src attribute (existing behaviour).
     if (attrs.src) {
-      if (document.querySelector(`script[src="${attrs.src}"]`)) return;
+      if (
+        document.querySelector(`script[src=${this.quote(String(attrs.src))}]`)
+      ) {
+        return;
+      }
     } else if (typeof attrs.id === "string") {
-      // id-based dedupe — single source of truth per id.
+      // id-based dedupe: single source of truth per id.
       if (document.querySelector(`script#${CSS.escape(attrs.id)}`)) return;
     } else if (content) {
       // Inline scripts with `content` and no src/id: fall back to content match.
@@ -320,16 +416,27 @@ export class BrowserHeadProvider {
     return null;
   }
 
+  /**
+   * An attribute value as a quoted CSS string, for a selector. A value is
+   * free text (a data URI `href`, a media query), and written raw a quote or
+   * a backslash in it made the selector invalid: `querySelector` threw, on
+   * hydration and on every navigation.
+   */
+  protected quote(value: string): string {
+    return `"${CSS.escape(value)}"`;
+  }
+
   protected renderMetaTag(
     document: Document,
     meta: HeadMeta,
+    index = 0,
   ): Element | undefined {
     const { content } = meta;
 
     const key = meta.property
-      ? `property="${meta.property}"`
+      ? `property=${this.quote(meta.property)}`
       : meta.name
-        ? `name="${meta.name}"`
+        ? `name=${this.quote(meta.name)}`
         : undefined;
 
     if (!key) {
@@ -339,16 +446,16 @@ export class BrowserHeadProvider {
     // The identity of a meta tag is its name/property AND its media query, not
     // the name alone. Two `theme-color` tags differing only by
     // `prefers-color-scheme` are two tags, and matching on the name would make
-    // the second overwrite the first — leaving one tag whose media query no
+    // the second overwrite the first, leaving one tag whose media query no
     // longer matches the colour it carries.
     //
     // `:not([media])` on the unqualified side is the other half of that: a
     // plain tag must not adopt a media-qualified one it happens to find first.
-    const existing = document.querySelector(
+    const existing = document.querySelectorAll(
       meta.media
-        ? `meta[${key}][media="${meta.media}"]`
+        ? `meta[${key}][media=${this.quote(meta.media)}]`
         : `meta[${key}]:not([media])`,
-    );
+    )[index];
 
     if (existing) {
       existing.setAttribute("content", content);
@@ -377,9 +484,9 @@ export interface RenderHeadOptions {
    * it does not re-declare.
    *
    * On (navigation), the DOM ends up matching what a hard load of the same URL
-   * would produce. Off (the default, used by `refreshGlobalHead`), the call
-   * only adds and updates — a partial head must never be read as "everything
-   * else is stale".
+   * would produce, `<body>` and `<html>` attributes included. Off (the
+   * default, used by `useHead`), the call only adds and updates: a partial
+   * head must never be read as "everything else is stale".
    */
   reconcile?: boolean;
 }

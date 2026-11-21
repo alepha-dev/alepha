@@ -1,8 +1,10 @@
 import { $module } from "alepha";
 import { AlephaReact } from "alepha/react";
 
+import { SeoExpander } from "./helpers/SeoExpander.ts";
 import { $head } from "./primitives/$head.ts";
 import { BrowserHeadProvider } from "./providers/BrowserHeadProvider.ts";
+import { HeadProvider } from "./providers/HeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -24,5 +26,5 @@ export * from "./providers/HeadProvider.ts";
 export const AlephaReactHead = $module({
   name: "alepha.react.head",
   primitives: [$head],
-  services: [AlephaReact, BrowserHeadProvider],
+  services: [AlephaReact, BrowserHeadProvider, HeadProvider, SeoExpander],
 });
