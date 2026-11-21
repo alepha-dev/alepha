@@ -3,7 +3,10 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
 import { NativeFingerprint } from "../services/NativeFingerprint.ts";
-import { seedNativeProject } from "./memoryProject.ts";
+import {
+  seedNativeProject,
+  WindowsMemoryFileSystemProvider,
+} from "./memoryProject.ts";
 
 const ROOT = "/app";
 const identity = {
@@ -13,17 +16,19 @@ const identity = {
   variant: "base",
 };
 
-const setup = async () => {
+const setup = async (
+  provider: typeof MemoryFileSystemProvider = MemoryFileSystemProvider,
+) => {
   const alepha = Alepha.create().with({
     provide: FileSystemProvider,
-    use: MemoryFileSystemProvider,
+    use: provider,
   });
-  const fs = alepha.inject(MemoryFileSystemProvider);
+  const fs = alepha.inject(provider);
   await seedNativeProject(fs, ROOT);
   const fingerprint = alepha.inject(NativeFingerprint);
   const compute = (platform: "ios" | "android" = "android") =>
     fingerprint.compute({ root: ROOT, platform, identity });
-  return { fs, compute };
+  return { fs, fingerprint, compute };
 };
 
 describe("NativeFingerprint", () => {
@@ -113,5 +118,23 @@ describe("NativeFingerprint", () => {
     );
 
     expect((await compute("ios")).fingerprint).toBe(before);
+  });
+
+  it("reads the same files and hashes on Windows, where listings use backslashes", async ({
+    expect,
+  }) => {
+    const posix = await setup();
+    const windows = await setup(WindowsMemoryFileSystemProvider);
+
+    for (const platform of ["android", "ios"] as const) {
+      expect((await windows.compute(platform)).inputs).toEqual(
+        (await posix.compute(platform)).inputs,
+      );
+    }
+    // An iOS .app is a directory: hashed by its relative paths too.
+    const app = `${ROOT}/ios/App/App`;
+    expect(await windows.fingerprint.hashArtifact(app)).toBe(
+      await posix.fingerprint.hashArtifact(app),
+    );
   });
 });

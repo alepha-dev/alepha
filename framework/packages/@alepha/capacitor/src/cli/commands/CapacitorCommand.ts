@@ -115,7 +115,7 @@ export class CapacitorCommand {
       release: z
         .boolean()
         .describe(
-          "A signed release build through cap build, instead of a debug build",
+          "A signed release build (Android through cap build, iOS through xcodebuild archive), instead of a debug build",
         )
         .optional(),
       device: z

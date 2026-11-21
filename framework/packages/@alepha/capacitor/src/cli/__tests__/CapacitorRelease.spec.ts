@@ -20,7 +20,10 @@ import { AlephaCliCapacitorPlugin } from "../index.ts";
 import { CapacitorNativeBuild } from "../services/CapacitorNativeBuild.ts";
 import { CapacitorRelease } from "../services/CapacitorRelease.ts";
 import { OtaEnvelope } from "../services/OtaEnvelope.ts";
-import { seedNativeProject } from "./memoryProject.ts";
+import {
+  seedNativeProject,
+  WindowsMemoryFileSystemProvider,
+} from "./memoryProject.ts";
 
 const ROOT = "/app";
 const envelope = new OtaEnvelope();
@@ -96,8 +99,13 @@ const base: CapacitorOptions = {
 };
 
 const setup = async (
-  opts: { env?: Record<string, string>; options?: CapacitorOptions } = {},
+  opts: {
+    env?: Record<string, string>;
+    options?: CapacitorOptions;
+    provider?: typeof MemoryFileSystemProvider;
+  } = {},
 ) => {
+  const provider = opts.provider ?? MemoryFileSystemProvider;
   const alepha = Alepha.create({
     env: {
       OTA_SIGNING_KEY: keys.privateKey,
@@ -105,7 +113,7 @@ const setup = async (
       ...opts.env,
     },
   })
-    .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+    .with({ provide: FileSystemProvider, use: provider })
     .with({ provide: ShellProvider, use: MemoryShellProvider })
     .with({ provide: BuildPipeline, use: ShellPipeline })
     .with({ provide: CapacitorNativeBuild, use: MacNativeBuild })
@@ -113,7 +121,7 @@ const setup = async (
     .with(AlephaCliCapacitorPlugin);
   alepha.store.set(capacitorOptions, opts.options ?? base);
 
-  const fs = alepha.inject(MemoryFileSystemProvider);
+  const fs = alepha.inject(provider);
   alepha.inject(ShellPipeline).fs = fs;
   const cli = alepha.inject(CliProvider);
   const cmd = alepha.inject(CapacitorCommand);
@@ -259,6 +267,72 @@ describe("alepha capacitor release", () => {
     await expect(
       none.release("android --channel production --dry-run"),
     ).rejects.toThrow(/OTA_SIGNING_KEY is not set/);
+  });
+
+  it("refuses to send the API key over plain http to a remote host, before building", async ({
+    expect,
+  }) => {
+    const { build, release, publisher, fs } = await setup({
+      options: { ...base, apiUrl: "http://staging.example.com" },
+    });
+    await build("android");
+    await expect(release("android --channel production")).rejects.toThrow(
+      /http:\/\/staging\.example\.com.*https/,
+    );
+    expect(publisher.posts).toEqual([]);
+    expect(await fs.exists(`${ROOT}/dist-capacitor/ota`)).toBe(false);
+
+    // A dry run sends nothing: allowed.
+    await release("android --channel production --dry-run");
+    expect(publisher.posts).toEqual([]);
+  });
+
+  it("uploads over plain http to a loopback host", async ({ expect }) => {
+    for (const origin of [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://[::1]:3000",
+    ]) {
+      const { build, release, publisher } = await setup({
+        options: { ...base, ota: { ...base.ota!, url: origin } },
+      });
+      await build("android");
+      await release("android --channel production");
+      expect(publisher.posts.map((it) => it.origin)).toEqual([origin]);
+    }
+  });
+
+  it("accepts the binaries' public key checked out with CRLF line endings", async ({
+    expect,
+  }) => {
+    // Git for Windows with autocrlf writes ota-public.pem this way.
+    const { fs, build, release, manifest } = await setup({
+      options: { ...base, ota: { publicKey: "ota-public.pem" } },
+    });
+    await fs.writeFile(
+      `${ROOT}/ota-public.pem`,
+      keys.publicKey.replaceAll("\n", "\r\n"),
+    );
+    await build("android");
+
+    await release("android --channel production --dry-run");
+
+    expect((await manifest()).keyId).toBe(envelope.keyId(keys.publicKey));
+  });
+
+  it("reads OTA_SIGNING_KEY from an absolute Windows path", async ({
+    expect,
+  }) => {
+    const { fs, build, release, manifest } = await setup({
+      env: { OTA_SIGNING_KEY: "C:\\keys\\ota-signing.pem" },
+      provider: WindowsMemoryFileSystemProvider,
+    });
+    await fs.writeFile("C:\\keys\\ota-signing.pem", keys.privateKey);
+    await build("android");
+
+    await release("android --channel production --dry-run");
+
+    expect((await manifest()).keyId).toBe(envelope.keyId(keys.publicKey));
   });
 
   it("refuses a rollout outside 0-100 and an app without an updater", async ({

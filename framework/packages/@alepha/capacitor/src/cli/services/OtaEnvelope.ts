@@ -13,7 +13,7 @@ import { AlephaError } from "alepha";
 
 /**
  * Capgo v2 bundle encryption, byte for byte what the pinned `@capgo/cli`
- * 8.75.2 writes for `@capgo/capacitor-updater` 8.52.1, on the publisher's
+ * 8.107.0 writes for `@capgo/capacitor-updater` 8.54.2, on the publisher's
  * machine only.
  *
  * - a fresh 16-byte AES key and IV per bundle; the ZIP is encrypted with

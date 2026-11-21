@@ -1,4 +1,10 @@
-import type { MemoryFileSystemProvider } from "alepha/system";
+import { win32 } from "node:path";
+
+import {
+  type LsOptions,
+  MemoryFileSystemProvider,
+  type MkdirOptions,
+} from "alepha/system";
 
 import { capacitorTemplates } from "./fixtures.ts";
 
@@ -86,3 +92,37 @@ export const seedNativeProject = async (
     "build product",
   );
 };
+
+/**
+ * A memory file system answering paths the way the node provider does on
+ * Windows: `join` and `resolve` with backslashes, `ls` entries with
+ * backslashes. It records every directory made.
+ */
+export class WindowsMemoryFileSystemProvider extends MemoryFileSystemProvider {
+  public readonly made: string[] = [];
+
+  public override join(...paths: string[]): string {
+    return win32.join(...paths);
+  }
+
+  public override resolve(...paths: string[]): string {
+    return win32.resolve(...paths);
+  }
+
+  public override async ls(
+    path: string,
+    options?: LsOptions,
+  ): Promise<string[]> {
+    return (await super.ls(path, options)).map((it) =>
+      it.replaceAll("/", "\\"),
+    );
+  }
+
+  public override async mkdir(
+    path: string,
+    options?: MkdirOptions,
+  ): Promise<void> {
+    this.made.push(path);
+    return super.mkdir(path, options);
+  }
+}

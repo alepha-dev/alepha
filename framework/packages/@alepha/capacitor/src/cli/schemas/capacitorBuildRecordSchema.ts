@@ -40,8 +40,9 @@ export const capacitorBuildRecordSchema = z.object({
   inputs: z.record(z.string(), z.string()),
 
   /**
-   * Who signed it: `debug` for a development build, `team:<id>` for an iOS
-   * release, `keystore:<alias>` for an Android release. Never a secret.
+   * Who signed it: `debug` for a simulator or Android debug build,
+   * `team:<id>` for an iOS release or `--device` build, `keystore:<alias>`
+   * for an Android release. Never a secret.
    */
   signing: z.string(),
 

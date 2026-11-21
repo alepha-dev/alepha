@@ -53,6 +53,12 @@ class LinuxNativeBuild extends CapacitorNativeBuild {
   }
 }
 
+class WindowsNativeBuild extends CapacitorNativeBuild {
+  protected override hostPlatform(): NodeJS.Platform {
+    return "win32";
+  }
+}
+
 const ROOT = "/app";
 const APK = `${ROOT}/android/app/build/outputs/apk/debug/app-debug.apk`;
 
@@ -196,6 +202,18 @@ describe("alepha capacitor build", () => {
       artifact: { path: "android/app/build/outputs/apk/debug/app-debug.apk" },
     });
     expect(record.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("runs the Gradle wrapper cmd.exe knows on Windows", async ({ expect }) => {
+    // On win32 the shell provider goes through cmd.exe, where ./gradlew is
+    // not a command.
+    const { shell, build } = await setup({ native: WindowsNativeBuild });
+
+    await build("android");
+
+    const gradle = shell.calls.find((call) => call.command.includes("gradlew"));
+    expect(gradle?.argv).toEqual(["gradlew.bat", "assembleDebug"]);
+    expect(gradle?.options.root).toBe(`${ROOT}/android`);
   });
 
   it("appends nothing when the native build fails", async ({ expect }) => {
