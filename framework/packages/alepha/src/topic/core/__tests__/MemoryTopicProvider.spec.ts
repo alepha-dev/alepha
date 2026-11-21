@@ -7,6 +7,7 @@ import {
   testTopicLateSubscribe,
   testTopicParams,
   testTopicRetain,
+  testTopicSameCallbackTwice,
 } from "../__tests__/shared.ts";
 
 describe("$topic - memory", () => {
@@ -22,6 +23,10 @@ describe("$topic - memory", () => {
 
   test("should subscribe after start with provider", async () => {
     await testTopicLateSubscribe(provider);
+  });
+
+  it("should remove one subscription of a callback subscribed twice", async () => {
+    await testTopicSameCallbackTwice(SharedTopicProvider);
   });
 
   it("should deliver retained message to new subscriber", async () => {

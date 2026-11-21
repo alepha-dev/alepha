@@ -67,13 +67,6 @@ export abstract class TopicProvider {
   ): Promise<UnSubscribeFn>;
 
   /**
-   * Unsubscribe from a topic.
-   *
-   * @param topic - The topic to unsubscribe from.
-   */
-  public abstract unsubscribe(topic: string): Promise<void>;
-
-  /**
    * Encode and publish a typed message to a topic.
    */
   public async publishMessage<T extends TopicMessageSchema>(
@@ -202,6 +195,11 @@ export abstract class TopicProvider {
 
   /**
    * Subscribe a typed handler to a topic, with error wrapping and message parsing.
+   *
+   * A templated name subscribes to its wildcard form, and the provider's
+   * wildcard may match more than the template does (on Redis `*` crosses
+   * `/`): a message on a topic the template does not match is dropped, and
+   * never reaches the handler.
    */
   public async subscribeHandler<T extends TopicMessageSchema>(
     name: string,
@@ -218,15 +216,20 @@ export abstract class TopicProvider {
       subscribeTopic,
       async (message, receivedTopic?: string, transportMeta?) => {
         try {
+          const params =
+            parser.hasParams && receivedTopic
+              ? parser.extract(receivedTopic)
+              : undefined;
+          if (params === null) {
+            return;
+          }
+
           const parsed = this.parseMessage<T>(schema, message);
           const meta = transportMeta ?? this.decodeMeta(message);
-          const call = () => {
-            if (parser.hasParams && receivedTopic) {
-              const params = parser.extract(receivedTopic) ?? {};
-              return handler({ ...parsed, params } as TopicMessage<T>, meta);
-            }
-            return handler(parsed, meta);
-          };
+          const call = () =>
+            params
+              ? handler({ ...parsed, params } as TopicMessage<T>, meta)
+              : handler(parsed, meta);
 
           // Each message is a unit of work of its own, like a queue message
           // (#E86): its own correlation id and scoped registry, and a root
@@ -459,7 +462,8 @@ export abstract class TopicProvider {
    *
    * A templated name (`devices/{id}/status`) subscribes to its wildcard
    * form, like `subscribeHandler`, and the message handed to `filter` and
-   * resolved carries the params of the topic it arrived on. It never joins
+   * resolved carries the params of the topic it arrived on; a message on a
+   * topic the template does not match is ignored. It never joins
    * a shared group: a one-shot listener must not take messages from the
    * group's handlers.
    */
@@ -522,6 +526,14 @@ export abstract class TopicProvider {
           const clear = await this.subscribe(
             subscribeTopic,
             (raw, receivedTopic?: string) => {
+              const params =
+                parser.hasParams && receivedTopic
+                  ? parser.extract(receivedTopic)
+                  : undefined;
+              if (params === null) {
+                return;
+              }
+
               let message: TopicMessage<T>;
               try {
                 message = this.parseMessage<T>(schema, raw);
@@ -530,11 +542,8 @@ export abstract class TopicProvider {
                 return;
               }
 
-              if (parser.hasParams && receivedTopic) {
-                message = {
-                  ...message,
-                  params: parser.extract(receivedTopic) ?? {},
-                } as TopicMessage<T>;
+              if (params) {
+                message = { ...message, params } as TopicMessage<T>;
               }
 
               if (!filter(message)) {
@@ -547,7 +556,7 @@ export abstract class TopicProvider {
           ref.clear = clear;
 
           // A retained message can be delivered synchronously from inside
-          // `subscribe`, i.e. before `clear` existed — unsubscribe now so the
+          // `subscribe`, i.e. before `clear` existed: unsubscribe now so the
           // subscription does not leak.
           if (ref.settled) {
             await clear();

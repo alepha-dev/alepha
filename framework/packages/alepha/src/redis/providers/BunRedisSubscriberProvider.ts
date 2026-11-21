@@ -27,6 +27,16 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
   protected readonly redisProvider = $inject(BunRedisProvider);
   protected client?: Bun.RedisClient;
 
+  /**
+   * The listener handed to Bun for each callback, by channel. `subscribe`
+   * wraps the callback to normalize the message, so removing one callback
+   * means finding the wrapper Bun knows.
+   */
+  protected readonly listeners = new Map<
+    string,
+    Map<SubscribeCallback, Bun.RedisClient.StringPubSubListener>
+  >();
+
   public get subscriber(): Bun.RedisClient {
     if (!this.client?.connected) {
       throw new AlephaError("Redis subscriber client is not ready");
@@ -66,6 +76,7 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
       this.log.debug("Closing subscriber connection...");
       this.client.close();
       this.client = undefined;
+      this.listeners.clear();
       this.log.info("Subscriber connection closed");
     }
   }
@@ -74,22 +85,97 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
     channel: string,
     callback: SubscribeCallback,
   ): Promise<void> {
-    await this.subscriber.subscribe(channel, (message, ch) => {
+    const subscriber = this.subscriber;
+    const listener: Bun.RedisClient.StringPubSubListener = (message, ch) => {
       // Bun's callback provides Buffer or string, normalize to string
       const msg =
         typeof message === "object" && message !== null
           ? Buffer.from(message as Uint8Array).toString()
           : String(message);
       callback(msg, ch);
-    });
+    };
+
+    let listeners = this.listeners.get(channel);
+    if (!listeners) {
+      listeners = new Map();
+      this.listeners.set(channel, listeners);
+    }
+    // The same callback subscribed twice to one channel is one listener.
+    if (listeners.has(callback)) {
+      return;
+    }
+    listeners.set(callback, listener);
+
+    try {
+      await subscriber.subscribe(channel, listener);
+    } catch (error) {
+      // Not subscribed: forget the listener, or a later subscribe of this
+      // callback would take it for done.
+      this.forget(channel, callback);
+      throw error;
+    }
   }
 
   public override async unsubscribe(
     channel: string,
-    _callback?: SubscribeCallback,
+    callback?: SubscribeCallback,
   ): Promise<void> {
-    // Bun's unsubscribe doesn't support callback filtering
-    await this.subscriber.unsubscribe(channel);
+    // Nothing subscribed here: Bun refuses an UNSUBSCRIBE outside
+    // subscriber mode, which is where the last removal leaves the client.
+    const listeners = this.listeners.get(channel);
+    if (!listeners) {
+      return;
+    }
+
+    // Read first: the getter throws when the client is not connected, and
+    // nothing must be forgotten then.
+    const subscriber = this.subscriber;
+
+    if (!callback) {
+      this.listeners.delete(channel);
+      try {
+        await subscriber.unsubscribe(channel);
+      } catch (error) {
+        this.listeners.set(channel, listeners);
+        throw error;
+      }
+      return;
+    }
+
+    const listener = listeners.get(callback);
+    if (!listener) {
+      return;
+    }
+
+    this.forget(channel, callback);
+    try {
+      await subscriber.unsubscribe(channel, listener);
+    } catch (error) {
+      // Not removed: keep the listener, so the removal can be tried again.
+      let current = this.listeners.get(channel);
+      if (!current) {
+        current = new Map();
+        this.listeners.set(channel, current);
+      }
+      current.set(callback, listener);
+      throw error;
+    }
+  }
+
+  /**
+   * Drop a callback's listener from the map, and the channel's entry with
+   * its last one.
+   */
+  protected forget(channel: string, callback: SubscribeCallback): void {
+    const listeners = this.listeners.get(channel);
+    if (!listeners) {
+      return;
+    }
+
+    listeners.delete(callback);
+    if (listeners.size === 0) {
+      this.listeners.delete(channel);
+    }
   }
 
   public override async pSubscribe(
@@ -99,7 +185,7 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
     // Failing loudly beats a plain SUBSCRIBE on the pattern, which would be
     // treated as a literal channel name and silently never receive anything.
     throw new AlephaError(
-      "Bun's native Redis client does not support PSUBSCRIBE — parameterized topics are not available with BunRedisSubscriberProvider.",
+      "Bun's native Redis client does not support PSUBSCRIBE: parameterized topics are not available with BunRedisSubscriberProvider.",
     );
   }
 
@@ -108,7 +194,7 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
     _callback?: SubscribeCallback,
   ): Promise<void> {
     throw new AlephaError(
-      "Bun's native Redis client does not support PUNSUBSCRIBE — parameterized topics are not available with BunRedisSubscriberProvider.",
+      "Bun's native Redis client does not support PUNSUBSCRIBE: parameterized topics are not available with BunRedisSubscriberProvider.",
     );
   }
 }

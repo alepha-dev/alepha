@@ -34,5 +34,6 @@ Leave it unset and topics stay inside this process. An app's own
 
 ### Providers
 
+- [`MemoryTopicProvider`](/docs/reference-providers-memorytopicprovider) - Topics in memory, inside one container.
 - [`RedisTopicProvider`](/docs/reference-providers-redistopicprovider) - Topics over Redis pub/sub.
 - [`TopicProvider`](/docs/reference-providers-topicprovider) - Base class for topic providers.

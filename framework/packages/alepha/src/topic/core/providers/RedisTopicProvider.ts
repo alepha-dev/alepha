@@ -1,5 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
-import { $logger } from "alepha/logger";
+import { $hook, $inject } from "alepha";
 import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 
 import {
@@ -19,11 +18,8 @@ import {
  * `parameter:sync` and `lock:end` included. Set `APP_NAME` to separate them.
  */
 export class RedisTopicProvider extends TopicProvider {
-  protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(RedisProvider);
   protected readonly redisSubscriberProvider = $inject(RedisSubscriberProvider);
-
-  protected readonly log = $logger();
 
   protected readonly start = $hook({
     on: "start",
@@ -81,21 +77,18 @@ export class RedisTopicProvider extends TopicProvider {
   }
 
   /**
-   * Wrapped listeners by original callback — the wrapper strips the Redis
-   * channel prefix so param extraction sees the bare topic name, and the map
-   * preserves listener identity for unsubscribe.
-   */
-  protected readonly listeners = new Map<
-    SubscribeCallback,
-    SubscribeCallback
-  >();
-
-  /**
    * Subscribe to a topic.
    *
    * Topic names containing the wildcard char (parameterized topics) go
-   * through PSUBSCRIBE — a plain SUBSCRIBE would treat the pattern as a
+   * through PSUBSCRIBE: a plain SUBSCRIBE would treat the pattern as a
    * literal channel name and silently never receive anything.
+   *
+   * Each call registers a listener of its own, which strips the Redis
+   * channel prefix so param extraction sees the bare topic name. The
+   * returned function removes that listener and no other: the same callback
+   * subscribed to a second topic, and the other listeners of this one, keep
+   * receiving, and calling it again does nothing. A call that fails (the
+   * subscriber is not connected) removed nothing and can be made again.
    */
   public async subscribe(
     name: string,
@@ -104,7 +97,6 @@ export class RedisTopicProvider extends TopicProvider {
   ): Promise<UnSubscribeFn> {
     const listener: SubscribeCallback = (message, channel) =>
       callback(message, channel === undefined ? name : this.unprefix(channel));
-    this.listeners.set(callback, listener);
 
     // Subscribe first to avoid message loss window
     if (this.isPattern(name)) {
@@ -116,7 +108,7 @@ export class RedisTopicProvider extends TopicProvider {
       const topic = this.prefix(name);
       await this.redisSubscriberProvider.subscribe(topic, listener);
 
-      // Then deliver retained message if exists (literal channels only —
+      // Then deliver retained message if exists (literal channels only:
       // a pattern has no single retained key)
       const retained = await this.redisProvider.get(`${topic}:retained`);
       if (retained) {
@@ -124,32 +116,32 @@ export class RedisTopicProvider extends TopicProvider {
       }
     }
 
-    return () => this.unsubscribe(name, callback);
-  }
+    let subscribed = true;
+    return async () => {
+      if (!subscribed) {
+        return;
+      }
+      subscribed = false;
 
-  /**
-   * Unsubscribe from a topic.
-   */
-  public async unsubscribe(
-    name: string,
-    callback?: SubscribeCallback,
-  ): Promise<void> {
-    const listener = callback ? this.listeners.get(callback) : undefined;
-    if (callback) {
-      this.listeners.delete(callback);
-    }
-
-    if (this.isPattern(name)) {
-      await this.redisSubscriberProvider.pUnsubscribe(
-        this.pattern(name),
-        listener,
-      );
-    } else {
-      await this.redisSubscriberProvider.unsubscribe(
-        this.prefix(name),
-        listener,
-      );
-    }
+      try {
+        if (this.isPattern(name)) {
+          await this.redisSubscriberProvider.pUnsubscribe(
+            this.pattern(name),
+            listener,
+          );
+        } else {
+          await this.redisSubscriberProvider.unsubscribe(
+            this.prefix(name),
+            listener,
+          );
+        }
+      } catch (error) {
+        // Not removed (the subscriber is closed or reconnecting): the
+        // listener is still registered, so a later call must try again.
+        subscribed = true;
+        throw error;
+      }
+    };
   }
 
   protected isPattern(name: string): boolean {

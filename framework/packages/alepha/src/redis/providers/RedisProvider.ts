@@ -18,6 +18,20 @@
  */
 export abstract class RedisProvider {
   /**
+   * `incr` with a ttl, as one script: increment, then arm the expiry only
+   * if the key has none (PTTL answers -1). Asking the key, and not comparing
+   * the result with the amount, is what keeps the window fixed when a
+   * counter comes back to its first value or is incremented by zero.
+   */
+  protected static readonly INCR_WITH_TTL_SCRIPT = `
+local value = redis.call("INCRBY", KEYS[1], ARGV[1])
+if redis.call("PTTL", KEYS[1]) == -1 then
+  redis.call("PEXPIRE", KEYS[1], ARGV[2])
+end
+return value
+`;
+
+  /**
    * Whether the Redis client is ready to accept commands.
    */
   public abstract readonly isReady: boolean;
@@ -78,7 +92,7 @@ export abstract class RedisProvider {
   public abstract del(keys: string[]): Promise<void>;
 
   // ---------------------------------------------------------
-  // Queue operations (for alepha/queue-redis)
+  // Queue operations (for RedisQueueProvider in alepha/queue)
   // ---------------------------------------------------------
 
   /**
@@ -98,7 +112,7 @@ export abstract class RedisProvider {
   public abstract rpop(key: string): Promise<string | undefined>;
 
   // ---------------------------------------------------------
-  // Sorted set operations (for alepha/queue-redis's delay tier)
+  // Sorted set operations (for RedisQueueProvider's delay tier)
   // ---------------------------------------------------------
 
   /**
@@ -168,8 +182,10 @@ export abstract class RedisProvider {
    *
    * @param key The key to increment.
    * @param amount The amount to increment by.
-   * @param ttl Optional lifetime in milliseconds, armed when the counter is
-   * created (fixed window — increments do not extend it).
+   * @param ttl Optional lifetime in milliseconds, armed in the same atomic
+   * step when the key has no expiry: on creation, and on a counter that was
+   * written without one. A key that already expires keeps its deadline
+   * (fixed window: increments do not extend it).
    * @returns The new value after incrementing.
    */
   public abstract incr(

@@ -60,8 +60,11 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
   }
 
   public override async close(): Promise<void> {
-    if (!this.client?.isReady) {
-      this.log.debug("Subscriber client not ready, skipping close");
+    // `isOpen`, not `isReady`, as in `NodeRedisProvider.close`: a subscriber
+    // that is reconnecting at stop is open and not ready, and must be closed
+    // or it keeps reconnecting. One that never connected has nothing to
+    // close, and node-redis throws on it.
+    if (!this.client?.isOpen) {
       return;
     }
     this.log.debug("Closing subscriber connection...");

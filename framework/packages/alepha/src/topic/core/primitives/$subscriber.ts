@@ -94,7 +94,6 @@ export interface SubscriberPrimitiveOptions<
    * - Schema validation: Messages are validated before reaching the subscriber
    * - Real-time delivery: Messages are delivered immediately upon publication
    * - Error isolation: Subscriber errors don't affect the topic or other subscribers
-   * - Monitoring: Topic metrics include subscriber processing statistics
    *
    * @example
    * ```ts
@@ -116,95 +115,40 @@ export interface SubscriberPrimitiveOptions<
   topic: TopicPrimitive<T>;
 
   /**
-   * Message handler function that processes individual messages from the topic.
+   * The handler run for every message published to the topic.
    *
-   * This function:
-   * - Receives fully typed and validated message payloads from the connected topic
-   * - Executes immediately when messages are published to the topic
-   * - Should implement the core business logic for reacting to these events
-   * - Runs independently of other subscribers to the same topic
-   * - Should handle errors gracefully to avoid affecting other subscribers
-   * - Has access to the full Alepha dependency injection container
+   * It receives the decoded message, runs independently of the topic's
+   * other subscribers, in a context of its own, and can use anything the
+   * service injects.
    *
-   * **Handler Design Guidelines**:
-   * - Keep handlers focused on a single responsibility
-   * - Use proper error handling and logging
-   * - Consider performance impact for high-frequency topics
-   * - Make handlers idempotent when possible for reliability
-   * - Validate business rules within the handler logic
-   * - Log important processing steps for debugging and monitoring
+   * A handler that throws does not affect the other subscribers: the
+   * provider catches the error and logs it, so there is nothing to catch
+   * for that purpose. On a topic with a `response` schema, what the handler
+   * returns is the reply to a `request()`, and a handler that throws sends
+   * none (the requester times out): catching the error there and returning
+   * normally would send a reply.
    *
-   * **Error Handling Strategy**:
-   * - Log errors but don't re-throw to avoid affecting other subscribers
-   * - Use try-catch blocks for external service calls
-   * - Implement circuit breakers for resilience with external systems
-   * - Monitor error rates and patterns for system health
-   * - Consider implementing retry logic for temporary failures
+   * A topic does not redeliver: make the handler idempotent, keep it short
+   * on a busy topic, and hand heavy work or work that must not be lost to a
+   * queue.
    *
-   * **Performance Considerations**:
-   * - Keep handler execution time minimal for high-throughput topics
-   * - Use background queues for heavy processing triggered by events
-   * - Implement batching for efficiency when processing many similar events
-   * - Consider async processing patterns for non-critical operations
-   *
-   * @param message - The topic message with validated payload and optional params
-   * @param message.payload - The typed message data based on the topic's schema
-   * @returns Promise that resolves when processing is complete
+   * @param message - The decoded message: `payload`, and `params` when the
+   * topic's schema declares them
    *
    * @example
    * ```ts
    * handler: async (message) => {
    *   const { userId, eventType, timestamp } = message.payload;
    *
-   *   try {
-   *     // Log event receipt
-   *     this.logger.info(`Processing ${eventType} event for user ${userId}`, {
-   *       timestamp,
-   *       userId,
-   *       eventType
-   *     });
-   *
-   *     // Perform event-specific processing
-   *     switch (eventType) {
-   *       case 'user.login':
-   *         await this.updateLastLogin(userId, timestamp);
-   *         await this.sendWelcomeNotification(userId);
-   *         break;
-   *       case 'user.logout':
-   *         await this.updateSessionDuration(userId, timestamp);
-   *         break;
-   *       case 'user.purchase':
-   *         await this.updateRewardsPoints(userId, message.payload.purchaseAmount);
-   *         await this.triggerRecommendations(userId);
-   *         break;
-   *       default:
-   *         this.logger.warn(`Unknown event type: ${eventType}`);
-   *     }
-   *
-   *     // Update analytics
-   *     await this.analytics.track(eventType, {
-   *       userId,
-   *       timestamp,
-   *       source: 'topic-subscriber'
-   *     });
-   *
-   *     this.logger.info(`Successfully processed ${eventType} for user ${userId}`);
-   *
-   *   } catch (error) {
-   *     // Log error but don't re-throw to avoid affecting other subscribers
-   *     this.logger.error(`Failed to process ${eventType} for user ${userId}`, {
-   *       error: error.message,
-   *       stack: error.stack,
-   *       userId,
-   *       eventType,
-   *       timestamp
-   *     });
-   *
-   *     // Optionally send to error tracking service
-   *     await this.errorTracker.captureException(error, {
-   *       context: { userId, eventType, timestamp },
-   *       tags: { component: 'topic-subscriber' }
-   *     });
+   *   switch (eventType) {
+   *     case "user.login":
+   *       await this.updateLastLogin(userId, timestamp);
+   *       break;
+   *     case "user.logout":
+   *       await this.updateSessionDuration(userId, timestamp);
+   *       break;
+   *     default:
+   *       this.log.warn(`Unknown event type: ${eventType}`);
    *   }
    * }
    * ```

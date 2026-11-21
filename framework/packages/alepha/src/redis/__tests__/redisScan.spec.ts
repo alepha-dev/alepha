@@ -12,15 +12,16 @@ import { NodeRedisProvider } from "../providers/NodeRedisProvider.ts";
 process.env.REDIS_URL ??= "redis://localhost:16379";
 
 /**
- * `keys(pattern)` ran the blocking `KEYS` command. On a shared or large Redis
- * that stalls every other client for the duration of a full keyspace walk —
- * and container flush, wildcard `invalidate("x*")` and `clear()` all go
- * through it. The contract is unchanged; only the traversal is.
- */
-/**
  * Counts SCAN round-trips so pagination can be observed, not assumed.
+ *
+ * `keys(pattern)` walks the keyspace with SCAN and never with the blocking
+ * `KEYS` command, which stalls every other client of a shared or large Redis
+ * for a full keyspace walk: container flush, wildcard `invalidate("x*")` and
+ * `clear()` all go through it.
  */
 class Probe extends NodeRedisProvider {
+  public static readonly pageSize = NodeRedisProvider.SCAN_COUNT;
+
   public pages = 0;
 
   protected override async scanPage(cursor: string, pattern: string) {
@@ -40,17 +41,24 @@ const setup = async () => {
 
 describe("RedisProvider.keys", () => {
   it("finds every matching key across multiple SCAN pages", async () => {
-    const { alepha, redis } = await setup();
+    // Injected directly, for the reason given on the last test of this file.
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    const redis = alepha.inject(Probe);
+    await alepha.start();
     const ns = `scan-${randomUUID()}`;
 
-    // Comfortably more than one SCAN page at the default COUNT.
-    const total = 500;
-    for (let i = 0; i < total; i++) {
-      await redis.set(`${ns}:${i}`, String(i));
-    }
+    // Three times the COUNT hint: these keys alone cannot fit in one page.
+    const total = Probe.pageSize * 3;
+    await Promise.all(
+      Array.from({ length: total }, (_, i) =>
+        redis.set(`${ns}:${i}`, String(i)),
+      ),
+    );
 
     const found = await redis.keys(`${ns}:*`);
     expect(found).toHaveLength(total);
+    expect(new Set(found).size).toBe(total);
+    expect(redis.pages).toBeGreaterThan(1);
 
     await redis.del(found);
     await alepha.stop();

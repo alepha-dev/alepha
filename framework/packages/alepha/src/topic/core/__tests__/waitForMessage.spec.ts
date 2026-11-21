@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
+import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import { TopicProvider } from "../providers/TopicProvider.ts";
 
@@ -29,7 +30,7 @@ describe("TopicProvider.waitForMessage", () => {
     ).rejects.toThrow(/broker unreachable/);
   });
 
-  it("should still time out when no message arrives", async () => {
+  it("should reject with TopicTimeoutError when no message arrives", async () => {
     const alepha = Alepha.create();
     const topics = alepha.inject(MemoryTopicProvider);
     await alepha.start();
@@ -38,7 +39,7 @@ describe("TopicProvider.waitForMessage", () => {
       topics.waitForMessage("quiet-topic", payload, {
         timeout: [50, "milliseconds"],
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(TopicTimeoutError);
   });
 
   it("should resolve with a matching message", async () => {
