@@ -71,6 +71,26 @@ export class McpProjectScope {
     });
   }
 
+  /**
+   * Pins the current MCP request to one project (#Q3995): what a job key's
+   * call runs under, set by `JobKeyService` before the tool runs. Throws
+   * when the request is already pinned to another one.
+   */
+  public pin(projectId: number): void {
+    const holder = this.alepha.context.get<McpProjectHolder>(
+      McpProjectScope.KEY,
+    );
+    if (!holder) {
+      throw new ForbiddenError("A job key reaches Lore's MCP only");
+    }
+    if (holder.pinned !== undefined && holder.pinned !== projectId) {
+      throw new ForbiddenError(
+        `This run belongs to project ${holder.pinned}: it cannot reach project ${projectId}`,
+      );
+    }
+    holder.pinned = projectId;
+  }
+
   current(): string {
     const holder = this.alepha.context.get<McpProjectHolder>(
       McpProjectScope.KEY,

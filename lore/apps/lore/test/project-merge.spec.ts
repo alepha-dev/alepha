@@ -58,6 +58,9 @@ const NOT_MOVED: Record<string, string> = {
   // A host job ran for the project that started it (#Q3984), with that
   // project's key, prompt and subject: its record stays with the source.
   host_jobs: "the source's runs, as they ran",
+  // A job key is pinned to the project it was minted for (#Q3995), and dies
+  // with its job: moved, it would widen to the target.
+  job_keys: "the source's keys, pinned to the source",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on
