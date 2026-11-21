@@ -83,8 +83,10 @@ const DiscussionComposer = (props: DiscussionComposerProps) => {
 
   return (
     // Same gutter as the rows above, so the composer reads as the next entry
-    // in the feed rather than a form bolted under it.
-    <div className="flex gap-3 px-1 pt-3">
+    // in the feed rather than a form bolted under it. The slot sets the
+    // editor in the app's text face (`main.css`, #Q4056): a comment is
+    // prose, written in the face it is read in.
+    <div data-slot="discussion-composer" className="flex gap-3 px-1 pt-3">
       <UserAvatar
         public
         fileId={(auth.user as { picture?: string } | undefined)?.picture}
