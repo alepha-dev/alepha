@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type { DateTimeProvider } from "alepha/datetime";
 
 import { isAbortError, isNetworkError } from "./isNetworkError.ts";
@@ -91,7 +92,7 @@ const shouldRetry = (
   }
   if (typeof retry === "function") {
     return retry(
-      error instanceof Error ? error : new Error(String(error)),
+      error instanceof Error ? error : new AlephaError(String(error)),
       attempt,
     );
   }

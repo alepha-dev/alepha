@@ -2,13 +2,13 @@ import { renderHook } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { act, type ReactNode } from "react";
-import { describe, test, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { type RunResult, useAction } from "../hooks/useAction.ts";
 
 describe("useAction", () => {
-  test("should handle successful action", async ({ expect }) => {
+  it("should handle successful action", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -48,7 +48,7 @@ describe("useAction", () => {
     expect(result.current.error).toBe(undefined);
   });
 
-  test("should emit react:action events", async ({ expect }) => {
+  it("should emit react:action events", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -83,7 +83,7 @@ describe("useAction", () => {
     expect(events).toEqual(["begin", "success", "end"]);
   });
 
-  test("should handle errors", async ({ expect }) => {
+  it("should handle errors", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -115,7 +115,7 @@ describe("useAction", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  test("should emit react:action:error on failure", async ({ expect }) => {
+  it("should emit react:action:error on failure", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -143,18 +143,14 @@ describe("useAction", () => {
 
     const action = result.current;
 
-    try {
-      await action.run();
-    } catch {
-      // Expected
-    }
+    await action.run();
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("error");
     expect(events[0].error).toBe(error);
   });
 
-  test("should call custom error handler", async ({ expect }) => {
+  it("should call custom error handler", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -179,7 +175,7 @@ describe("useAction", () => {
     expect(onError).toHaveBeenCalledWith(error);
   });
 
-  test("should call custom success handler", async ({ expect }) => {
+  it("should call custom success handler", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -201,7 +197,7 @@ describe("useAction", () => {
     expect(onSuccess).toHaveBeenCalledWith("result");
   });
 
-  test("should include action id in events", async ({ expect }) => {
+  it("should include action id in events", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -228,7 +224,7 @@ describe("useAction", () => {
     expect(events[0].id).toBe("test-action");
   });
 
-  test("should prevent concurrent executions", async ({ expect }) => {
+  it("should prevent concurrent executions", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -262,7 +258,7 @@ describe("useAction", () => {
     expect(executionCount).toBe(1);
   });
 
-  test("should debounce action calls", async ({ expect }) => {
+  it("should debounce action calls", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -294,7 +290,7 @@ describe("useAction", () => {
     expect(mockAction).toHaveBeenCalledWith(expect.any(Object), "value-99");
   });
 
-  test("should reset debounce timer on each call", async ({ expect }) => {
+  it("should reset debounce timer on each call", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -327,7 +323,7 @@ describe("useAction", () => {
     expect(mockAction).toHaveBeenCalledWith(expect.any(Object), "third");
   });
 
-  test("should pass AbortSignal to handler", async ({ expect }) => {
+  it("should pass AbortSignal to handler", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -354,7 +350,7 @@ describe("useAction", () => {
     expect(receivedSignal?.aborted).toBe(false);
   });
 
-  test("should cancel in-flight request with cancel()", async ({ expect }) => {
+  it("should cancel in-flight request with cancel()", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -388,7 +384,7 @@ describe("useAction", () => {
     expect(wasAborted).toBe(true);
   });
 
-  test("should cancel debounced action", async ({ expect }) => {
+  it("should cancel debounced action", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -420,7 +416,7 @@ describe("useAction", () => {
     expect(mockAction).not.toHaveBeenCalled();
   });
 
-  test("should handle AbortError gracefully", async ({ expect }) => {
+  it("should handle AbortError gracefully", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -446,7 +442,7 @@ describe("useAction", () => {
     expect(result.current.error).toBe(undefined);
   });
 
-  test("should run action on mount with runOnInit", async ({ expect }) => {
+  it("should run action on mount with runOnInit", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -467,9 +463,7 @@ describe("useAction", () => {
     expect(mockAction).toHaveBeenCalledTimes(1);
   });
 
-  test("should not run action on mount without runOnInit", async ({
-    expect,
-  }) => {
+  it("should not run action on mount without runOnInit", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -490,7 +484,7 @@ describe("useAction", () => {
     expect(mockAction).not.toHaveBeenCalled();
   });
 
-  test("should run action periodically with runEvery (milliseconds)", async ({
+  it("should run action periodically with runEvery (milliseconds)", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -510,7 +504,7 @@ describe("useAction", () => {
     // Wait for multiple intervals
     await new Promise((resolve) => setTimeout(resolve, 160));
 
-    // Should have been called approximately 3 times (at 50ms, 100ms, 150ms)
+    // One tick every 60 ms: two fit in 160 ms, with slack for the timers.
     expect(mockAction.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(mockAction.mock.calls.length).toBeLessThanOrEqual(4);
 
@@ -518,7 +512,7 @@ describe("useAction", () => {
     unmount();
   });
 
-  test("should run action periodically with runEvery (duration tuple)", async ({
+  it("should run action periodically with runEvery (duration tuple)", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -547,7 +541,7 @@ describe("useAction", () => {
     unmount();
   });
 
-  test("should keep polling when the component re-renders faster than runEvery", async ({
+  it("should keep polling when the component re-renders faster than runEvery", async ({
     expect,
   }) => {
     // The interval effect keyed on `runAction`, whose identity changed on
@@ -586,10 +580,10 @@ describe("useAction", () => {
     unmount();
   });
 
-  test("should keep polling when runEvery is an inline duration tuple", async ({
+  it("should keep polling when runEvery is an inline duration tuple", async ({
     expect,
   }) => {
-    // `[50, "milliseconds"]` is a fresh array on every render — the documented
+    // `[50, "milliseconds"]` is a fresh array on every render: the documented
     // form of the option, and enough on its own to reset the interval.
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
@@ -616,7 +610,7 @@ describe("useAction", () => {
     unmount();
   });
 
-  test("should cleanup interval on unmount", async ({ expect }) => {
+  it("should cleanup interval on unmount", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -645,7 +639,7 @@ describe("useAction", () => {
     expect(mockAction.mock.calls.length).toBe(callsBeforeUnmount);
   });
 
-  test("settles a pending debounced run when the component unmounts", async ({
+  it("settles a pending debounced run when the component unmounts", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -670,7 +664,7 @@ describe("useAction", () => {
     expect(mockAction).not.toHaveBeenCalled();
   });
 
-  test("keeps a successful run successful when onSuccess or invalidates throws", async ({
+  it("keeps a successful run successful when onSuccess or invalidates throws", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);

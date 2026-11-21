@@ -124,7 +124,7 @@ const fetch = useAction(
   },
   [],
 );
-// Automatically cancelled on unmount or when new request starts
+// Aborted on unmount, on cancel(), and when a newer run supersedes it
 ```
 
 With error handling

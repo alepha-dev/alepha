@@ -375,4 +375,86 @@ describe("useInfiniteQuery", () => {
     expect(result.current.error?.message).toBe("boom");
     expect(result.current.pages).toHaveLength(1);
   });
+
+  it("a refetch landing after a loadMore() keeps the page just loaded", async ({
+    expect,
+  }) => {
+    const { wrapper } = await setup();
+    const paged = pagedApi(() => rows(6));
+    const gates: Array<() => void> = [];
+    let gated = false;
+    const handler: typeof paged = vi.fn(async (ctx: unknown, page: number) => {
+      if (gated && page === 0) {
+        await new Promise<void>((resolve) => gates.push(resolve));
+      }
+      return paged(ctx, page);
+    });
+    const { result } = renderHook(() => useInfiniteQuery(byPage(handler), []), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.pages).toHaveLength(1));
+
+    // The refetch reads page 0 and hangs there; the reader asks for more.
+    gated = true;
+    let refetching: Promise<void> = Promise.resolve();
+    act(() => {
+      refetching = result.current.refetch();
+    });
+    await waitFor(() => expect(gates).toHaveLength(1));
+    await act(() => result.current.loadMore());
+    expect(result.current.pages).toHaveLength(2);
+
+    await act(async () => {
+      gates[0]();
+      await refetching;
+    });
+    expect(result.current.pages.flatMap((page) => page.content)).toEqual(
+      rows(4),
+    );
+  });
+
+  it("a refetch and a loadMore() answering in the same tick keep every page", async ({
+    expect,
+  }) => {
+    const { wrapper } = await setup();
+    const paged = pagedApi(() => rows(8));
+    const gates = new Map<number, Array<() => void>>();
+    let gated = false;
+    const handler: typeof paged = vi.fn(async (ctx: unknown, page: number) => {
+      if (gated && page > 0) {
+        await new Promise<void>((resolve) => {
+          gates.set(page, [...(gates.get(page) ?? []), resolve]);
+        });
+      }
+      return paged(ctx, page);
+    });
+    const { result } = renderHook(() => useInfiniteQuery(byPage(handler), []), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.pages).toHaveLength(1));
+    await act(() => result.current.loadMore());
+    expect(result.current.pages).toHaveLength(2);
+
+    // The refetch waits on its last page (1), loadMore() on the next (2).
+    gated = true;
+    let refetching: Promise<void> = Promise.resolve();
+    let loadingMore: Promise<void> = Promise.resolve();
+    act(() => {
+      refetching = result.current.refetch();
+    });
+    await waitFor(() => expect(gates.get(1)).toHaveLength(1));
+    act(() => {
+      loadingMore = result.current.loadMore();
+    });
+    await waitFor(() => expect(gates.get(2)).toHaveLength(1));
+
+    await act(async () => {
+      gates.get(1)![0]();
+      gates.get(2)![0]();
+      await Promise.all([refetching, loadingMore]);
+    });
+    expect(result.current.pages.flatMap((page) => page.content)).toEqual(
+      rows(6),
+    );
+  });
 });

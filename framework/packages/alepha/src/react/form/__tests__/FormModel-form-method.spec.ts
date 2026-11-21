@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { FormModel } from "../services/FormModel.ts";
 
@@ -18,7 +18,9 @@ describe("FormModel.props form method", () => {
       ],
     }) as FormModel<any>;
 
-  it("declares POST, so a submit that never reaches onSubmit cannot leak fields into the URL", () => {
+  it("declares POST, so a submit that never reaches onSubmit cannot leak fields into the URL", ({
+    expect,
+  }) => {
     // A `<form>` with no `method` defaults to GET, and with no `action` it
     // targets the current URL. Every named input is then serialised into the
     // query string by any submit that happens before `onSubmit` is attached,
@@ -37,7 +39,7 @@ describe("FormModel.props form method", () => {
     expect(form.props.method).toBe("post");
   });
 
-  it("still handles submission itself", () => {
+  it("still handles submission itself", ({ expect }) => {
     // The method matters only for submissions this handler never sees. When it
     // is attached it preventDefaults, so the browser never navigates and the
     // declared method is never used.

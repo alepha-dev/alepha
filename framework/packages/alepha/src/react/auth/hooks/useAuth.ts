@@ -1,6 +1,7 @@
 import { useAlepha, useStore } from "alepha/react";
 import { currentUserAtom } from "alepha/security";
 import { LinkProvider } from "alepha/server/links";
+import { useMemo } from "react";
 
 import { ReactAuth } from "../services/ReactAuth.ts";
 
@@ -23,68 +24,74 @@ export const useAuth = <T extends object = any>() => {
   const alepha = useAlepha();
   const [user] = useStore(currentUserAtom);
 
-  return {
-    user,
-    logout: () => alepha.inject(ReactAuth).logout(),
-    login: async (
-      provider: keyof T,
-      options: {
-        username?: string;
-        password?: string;
-        redirect?: string;
-        realm?: string;
-        [extra: string]: any;
-      } = {},
-    ) => {
-      await alepha.inject(ReactAuth).login(provider as string, options);
-    },
-    /**
-     * Clear a second-factor challenge that `login()` refused with, and
-     * finish signing in.
-     *
-     * @example
-     * ```typescript
-     * try {
-     *   await login("credentials", { username, password });
-     * } catch (error) {
-     *   if (error instanceof MfaRequiredError) {
-     *     await loginMfa(error.data.challenge, code);
-     *   }
-     * }
-     * ```
-     */
-    loginMfa: async (challenge: string, code: string) => {
-      await alepha.inject(ReactAuth).loginMfa(challenge, code);
-    },
-    /**
-     * Sign in with a passkey, or clear a pending second factor with one by
-     * passing its `challenge`. Resolves `undefined` when the user dismissed
-     * the prompt.
-     */
-    loginPasskey: (
-      options: {
-        challenge?: string;
-        mediation?: CredentialMediationRequirement;
-        signal?: AbortSignal;
-        realm?: string;
-      } = {},
-    ) => alepha.inject(ReactAuth).loginPasskey(options),
-    /**
-     * Send an out-of-band code again. Does nothing useful for a factor whose
-     * code is generated on the user's own device.
-     */
-    resendMfaCode: async (challenge: string) => {
-      return alepha.inject(ReactAuth).resendMfaCode(challenge);
-    },
-    /**
-     * UI permission check — does the current user hold this permission?
-     * Supports exact and wildcard names (e.g. `"admin:*"`, `"admin:user:read"`).
-     *
-     * UI affordance only (show/hide/disable). Real access control is enforced
-     * server-side via `$secure` on the route/action.
-     */
-    has: (permission: string): boolean => {
-      return alepha.inject(LinkProvider).can(permission);
-    },
-  };
+  // Built once per container, so a consumer may list any of them in a
+  // dependency array. `ReactAuth` is resolved at call time, not here.
+  const methods = useMemo(
+    () => ({
+      logout: () => alepha.inject(ReactAuth).logout(),
+      login: async (
+        provider: keyof T,
+        options: {
+          username?: string;
+          password?: string;
+          redirect?: string;
+          realm?: string;
+          [extra: string]: any;
+        } = {},
+      ) => {
+        await alepha.inject(ReactAuth).login(provider as string, options);
+      },
+      /**
+       * Clear a second-factor challenge that `login()` refused with, and
+       * finish signing in.
+       *
+       * @example
+       * ```typescript
+       * try {
+       *   await login("credentials", { username, password });
+       * } catch (error) {
+       *   if (error instanceof MfaRequiredError) {
+       *     await loginMfa(error.data.challenge, code);
+       *   }
+       * }
+       * ```
+       */
+      loginMfa: async (challenge: string, code: string) => {
+        await alepha.inject(ReactAuth).loginMfa(challenge, code);
+      },
+      /**
+       * Sign in with a passkey, or clear a pending second factor with one by
+       * passing its `challenge`. Resolves `undefined` when the user dismissed
+       * the prompt.
+       */
+      loginPasskey: (
+        options: {
+          challenge?: string;
+          mediation?: CredentialMediationRequirement;
+          signal?: AbortSignal;
+          realm?: string;
+        } = {},
+      ) => alepha.inject(ReactAuth).loginPasskey(options),
+      /**
+       * Send an out-of-band code again. Does nothing useful for a factor whose
+       * code is generated on the user's own device.
+       */
+      resendMfaCode: async (challenge: string) => {
+        return alepha.inject(ReactAuth).resendMfaCode(challenge);
+      },
+      /**
+       * UI permission check: does the current user hold this permission?
+       * Supports exact and wildcard names (e.g. `"admin:*"`, `"admin:user:read"`).
+       *
+       * UI affordance only (show/hide/disable). Real access control is enforced
+       * server-side via `$secure` on the route/action.
+       */
+      has: (permission: string): boolean => {
+        return alepha.inject(LinkProvider).can(permission);
+      },
+    }),
+    [alepha],
+  );
+
+  return { user, ...methods };
 };

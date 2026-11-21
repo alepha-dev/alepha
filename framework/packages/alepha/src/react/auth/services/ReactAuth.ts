@@ -58,7 +58,7 @@ export class ReactAuth {
   /**
    * Get the current authenticated user.
    *
-   * Alias for `alepha.state.get("user")`
+   * Reads `currentUserAtom` from the store.
    */
   public get user(): UserAccountToken | undefined {
     return this.alepha.store.get(currentUserAtom) as
@@ -103,10 +103,11 @@ export class ReactAuth {
     const realmParam = options.realm
       ? `&realm=${encodeURIComponent(options.realm)}`
       : "";
+    const providerParam = encodeURIComponent(provider);
 
     if (options.username || options.password) {
       const { data } = await this.httpClient.fetch(
-        `${this.authUrl(alephaServerAuthRoutes.token, options.hostname)}?provider=${provider}${realmParam}`,
+        `${this.authUrl(alephaServerAuthRoutes.token, options.hostname)}?provider=${providerParam}${realmParam}`,
         {
           method: "POST",
           ...(await this.transport.request({ authenticated: false })),
@@ -137,7 +138,7 @@ export class ReactAuth {
           ? window.location.origin + browser.transitioning.to
           : window.location.href);
 
-      const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${encodeURIComponent(redirect)}`;
+      const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${providerParam}${realmParam}&redirect_uri=${encodeURIComponent(redirect)}`;
 
       if (browser.transitioning) {
         throw new Redirection({ redirect: href });
@@ -148,7 +149,7 @@ export class ReactAuth {
     }
 
     throw new Redirection({
-      redirect: `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
+      redirect: `${alephaServerAuthRoutes.login}?provider=${providerParam}${realmParam}&redirect_uri=${encodeURIComponent(options.redirect || "/")}`,
     });
   }
 

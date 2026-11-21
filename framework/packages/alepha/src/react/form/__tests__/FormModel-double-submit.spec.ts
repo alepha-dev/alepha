@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { FormModel } from "../services/FormModel.ts";
 
@@ -19,10 +19,12 @@ describe("FormModel.submit double-submit guard", () => {
       ],
     }) as FormModel<any>;
 
-  it("should run the handler once when a listener defers the begin events", async () => {
+  it("should run the handler once when a listener defers the begin events", async ({
+    expect,
+  }) => {
     // `submitInProgress` used to be set only AFTER the two awaited
     // `react:action:begin` / `form:submit:begin` emits. Any async listener on
-    // either — a toaster, an analytics call — opened a window in which a
+    // either (a toaster, an analytics call) opened a window in which a
     // second submit passed the guard: a double-clicked "Pay" button ran the
     // handler twice.
     const alepha = Alepha.create().with(AlephaLogger);
@@ -42,7 +44,9 @@ describe("FormModel.submit double-submit guard", () => {
     expect(calls).toBe(1);
   });
 
-  it("should accept a second submit once the first has settled", async () => {
+  it("should accept a second submit once the first has settled", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with(AlephaLogger);
     await alepha.start();
 

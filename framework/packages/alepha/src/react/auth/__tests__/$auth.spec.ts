@@ -12,7 +12,7 @@ import {
   tokensSchema,
 } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { ReactAuth, type ReactAuthProvider } from "../index.ts";
 
@@ -94,7 +94,7 @@ describe("$auth", () => {
         },
       );
 
-  test("should login with credentials", async ({ expect }) => {
+  it("should login with credentials", async ({ expect }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaSecurity)
@@ -116,7 +116,36 @@ describe("$auth", () => {
     });
   });
 
-  test("should get userinfo", async ({ expect }) => {
+  it("should encode the provider and the redirect of a server-side redirect sign-in", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaSecurity)
+      .with(App);
+    const auth = alepha.inject(ReactAuth);
+    await alepha.start();
+
+    // Unencoded, the server read `redirect_uri` as `/orders?tab=open` and
+    // `page=2` as a parameter of the login route.
+    await expect(
+      auth.login("auth", { redirect: "/orders?tab=open&page=2" }),
+    ).rejects.toMatchObject({
+      data: {
+        redirect: `${alephaServerAuthRoutes.login}?provider=auth&redirect_uri=%2Forders%3Ftab%3Dopen%26page%3D2`,
+      },
+    });
+
+    await expect(
+      auth.login("my provider&realm=other", {}),
+    ).rejects.toMatchObject({
+      data: {
+        redirect: `${alephaServerAuthRoutes.login}?provider=my%20provider%26realm%3Dother&redirect_uri=%2F`,
+      },
+    });
+  });
+
+  it("should get userinfo", async ({ expect }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaSecurity)
@@ -141,7 +170,7 @@ describe("$auth", () => {
     });
   });
 
-  test("should reject expired token", async ({ expect }) => {
+  it("should reject expired token", async ({ expect }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaSecurity)
@@ -160,7 +189,7 @@ describe("$auth", () => {
     });
   });
 
-  test("should refresh expired token", async ({ expect }) => {
+  it("should refresh expired token", async ({ expect }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaSecurity)
@@ -194,7 +223,7 @@ describe("$auth", () => {
     });
   });
 
-  test("should reject expired refresh token", async ({ expect }) => {
+  it("should reject expired refresh token", async ({ expect }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaSecurity)

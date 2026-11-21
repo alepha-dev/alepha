@@ -6,7 +6,8 @@ import { SchemaValidationError } from "alepha";
  *
  * `useFormState` pins it under that field, and `ActionErrorPolicy` treats one
  * naming a field as handled, so a mounted `ActionErrorToaster` does not toast
- * it on top.
+ * it on top. A path that names no field of the form's schema is shown
+ * nowhere, so the form reports that one unhandled and it is toasted.
  *
  * ```ts
  * throw new FormValidationError({ message: "Email already in use", path: "/email" });

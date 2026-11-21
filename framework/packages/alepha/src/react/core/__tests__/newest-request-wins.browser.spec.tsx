@@ -80,11 +80,12 @@ describe("the newest request wins", () => {
     expect(answered).toEqual(["results for abc"]);
   });
 
-  it("writes a late answer under the key it was asked for, not the key on screen", async ({
+  it("never writes a late answer under the key on screen", async ({
     expect,
   }) => {
     const { wrapper } = await boot();
     const pending: Record<string, ReturnType<typeof deferred<string>>> = {};
+    const asked: string[] = [];
 
     const { result, rerender } = renderHook(
       ({ key }: { key: string }) =>
@@ -93,6 +94,7 @@ describe("the newest request wins", () => {
             key: ["newest-wins", key],
             staleTime: [1, "minute"],
             handler: () => {
+              asked.push(key);
               pending[key] = deferred<string>();
               return pending[key].promise;
             },
@@ -110,7 +112,7 @@ describe("the newest request wins", () => {
     await waitFor(() => expect(result.current.data).toBe("data for k1"));
 
     // To k2, which hangs, then straight back to a still-fresh k1: no run
-    // starts for k1, so nothing supersedes k2's request.
+    // starts for k1, and the hook lets go of k2's.
     rerender({ key: "k2" });
     await waitFor(() => expect(pending.k2).toBeDefined());
     rerender({ key: "k1" });
@@ -118,12 +120,18 @@ describe("the newest request wins", () => {
 
     // k2 answers late. It used to be written under k1, the key on screen.
     await act(async () => {
-      pending.k2.resolve("data for k2");
+      pending.k2.resolve("late data for k2");
       await sleep(10);
     });
     expect(result.current.data).toBe("data for k1");
 
+    // The run was let go of, so its answer was not kept: k2 asks again.
     rerender({ key: "k2" });
-    await waitFor(() => expect(result.current.data).toBe("data for k2"));
+    await waitFor(() => expect(asked).toEqual(["k1", "k2", "k2"]));
+    await act(async () => {
+      pending.k2.resolve("data for k2");
+      await sleep(10);
+    });
+    expect(result.current.data).toBe("data for k2");
   });
 });
