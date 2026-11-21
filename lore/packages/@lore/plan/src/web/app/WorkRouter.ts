@@ -495,6 +495,20 @@ export class WorkRouter {
   });
 
   /**
+   * Plan > Tag colours (#Q4061): a palette colour per quest tag, out of the
+   * Features tab.
+   */
+  projectSettingsTagColors = $pageProjectSettings({
+    name: "projectSettingsTagColors",
+    path: "/work/tags",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Tag colours`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsTagColorsPage.tsx"),
+  });
+
+  /**
    * Quests > Board: the kanban columns. Its tab is listed while the `board`
    * option is on; the route is not guarded, like every settings route.
    */

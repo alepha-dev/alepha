@@ -1203,6 +1203,7 @@ export default {
   "project.settings.tab.features": "Features",
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
+  "project.settings.tab.tagColors": "Tag colours",
   "project.settings.tab.prompts": "Prompts",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",

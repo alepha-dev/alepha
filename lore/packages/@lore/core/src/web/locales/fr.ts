@@ -1193,6 +1193,7 @@ export default {
   "project.settings.tab.features": "Fonctionnalités",
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
+  "project.settings.tab.tagColors": "Couleurs des étiquettes",
   "project.settings.tab.prompts": "Invites",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",

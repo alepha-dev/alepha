@@ -70,6 +70,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsArea",
   "projectSettingsWork",
   "projectSettingsBoard",
+  "projectSettingsTagColors",
   "projectSettingsPrompts",
   "projectSettingsApps",
   // The bay console's rail - BayLayout.tsx, plus the instance page the Apps
