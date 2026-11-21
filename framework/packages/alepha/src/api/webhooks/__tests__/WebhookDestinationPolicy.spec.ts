@@ -235,6 +235,57 @@ describe("WebhookDestinationPolicy", () => {
       }
     });
 
+    it("refuses a local name written with its trailing root dot", async ({
+      expect,
+    }) => {
+      const { policy } = await boot({ production: true });
+      for (const host of [
+        "localhost.",
+        "app.localhost.",
+        "printer.local.",
+        "metadata.google.internal.",
+        "intranet.",
+        "localhost..",
+      ]) {
+        expect(
+          refusal(() => policy.checkUrl(`https://${host}/hooks`)),
+          host,
+        ).toBe("/url");
+      }
+      // A public name is as public when fully qualified.
+      for (const host of ["example.app.", "hooks.acme.com."]) {
+        expect(
+          refusal(() => policy.checkUrl(`https://${host}/hooks`)),
+          host,
+        ).toBe(undefined);
+      }
+    });
+
+    it("refuses an IPv6 literal that carries a private IPv4 address: NAT64 local-use and 6to4", async ({
+      expect,
+    }) => {
+      const { policy } = await boot({ production: true });
+      for (const host of [
+        "[64:ff9b:1::7f00:1]",
+        "[64:ff9b:1::a00:5]",
+        "[2002:7f00:1::]",
+        "[2002:a00:5::1]",
+        "[2002:c0a8:101::]",
+      ]) {
+        expect(
+          refusal(() => policy.checkUrl(`https://${host}/hooks`)),
+          host,
+        ).toBe("/url");
+      }
+      // 6to4 of a public address (8.8.8.8), and a neighbouring public prefix.
+      for (const host of ["[2002:808:808::1]", "[2001:4860:4860::8888]"]) {
+        expect(
+          refusal(() => policy.checkUrl(`https://${host}/hooks`)),
+          host,
+        ).toBe(undefined);
+      }
+    });
+
     it("names the host, never the URL, in its refusal", async ({ expect }) => {
       const { policy } = await boot({ production: true });
       try {

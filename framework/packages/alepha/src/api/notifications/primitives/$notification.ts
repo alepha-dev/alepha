@@ -21,8 +21,8 @@ import type { NotificationAttachment } from "../schemas/notificationAttachmentSc
  * Provides type-safe, reusable notification templates with multi-language
  * support, variable substitution, and categorization.
  *
- * **The channel set is open.** `email` and `sms` are the two the framework
- * ships, and each is one `NotificationChannel` service among however many the
+ * **The channel set is open.** `email`, `sms` and `inbox` are the three the
+ * framework ships, and each is one `NotificationChannel` service among however many the
  * container registers. A package outside the framework adds its own key by
  * declaration merging on {@link NotificationChannels}, and a template that
  * names a channel nothing provides refuses to boot rather than silently
@@ -79,7 +79,7 @@ export interface NotificationPrimitiveOptions<
   /**
    * Marks the template's rendered `variables` as personal data. Admin
    * endpoints withhold them (the notification itself is still delivered and
-   * listed) — use it for password resets, verification codes, invoices, and
+   * listed), use it for password resets, verification codes, invoices, and
    * anything else an operator should not be able to read after the fact.
    */
   sensitive?: boolean;
@@ -96,7 +96,7 @@ export interface NotificationPrimitiveOptions<
  * Every option key that is NOT a channel.
  *
  * Channel blocks sit flat in the options object (`$notification({ discord })`),
- * so telling one from a normal option needs a list — and a hand-maintained
+ * so telling one from a normal option needs a list, and a hand-maintained
  * list would drift the first time an option is added, silently turning it
  * into "a channel nothing provides" and refusing to boot.
  *
@@ -140,7 +140,7 @@ export class NotificationPrimitive<
   /**
    * Recipient language for `translations` resolution. Explicit `lang` wins;
    * otherwise the language is captured FROM THE CURRENT REQUEST at push time
-   * (the i18n `lang` cookie, then `Accept-Language`) — the send job may run
+   * (the i18n `lang` cookie, then `Accept-Language`), the send job may run
    * out of request context, so this must be resolved here, not in the sender.
    */
   protected resolveLang(explicit?: string): string | undefined {

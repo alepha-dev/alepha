@@ -147,6 +147,9 @@ export class WebhookDeliveryService {
       return;
     }
 
+    // A text column refuses a NUL byte on Postgres, and a receiver may
+    // answer with anything: an attempt that cannot be recorded is retried.
+    const excerpt = response.bodyExcerpt.replaceAll("\u0000", "\uFFFD");
     const now = this.dateTime.nowISOString();
     if (response.status >= 200 && response.status < 300) {
       await this.endpoints.updateById(endpoint.id, {
@@ -158,7 +161,7 @@ export class WebhookDeliveryService {
         status: "delivered",
         attempt: count,
         responseStatus: response.status,
-        responseExcerpt: response.bodyExcerpt,
+        responseExcerpt: excerpt,
         durationMs: response.durationMs,
         deliveredAt: now,
         error: null as any,
@@ -175,7 +178,7 @@ export class WebhookDeliveryService {
 
     const failure = {
       responseStatus: response.status,
-      responseExcerpt: response.bodyExcerpt,
+      responseExcerpt: excerpt,
       durationMs: response.durationMs,
       error: `answered ${response.status}`,
     };

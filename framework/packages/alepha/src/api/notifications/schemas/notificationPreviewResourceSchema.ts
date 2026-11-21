@@ -9,8 +9,8 @@ import { type Infer, z } from "alepha";
  * receipt lives 90, and a `sensitive` template is never rendered for an
  * operator at all. Both are states the UI has to draw, and telling them
  * apart by introspecting HTTP status codes on a thrown client error is worse
- * than reading a field. A tenant-scope failure still throws, from
- * `requireReceipt`, because that one really is "you may not see this".
+ * than reading a field. A receipt that does not exist still throws, from
+ * `requireReceipt`.
  */
 export const notificationPreviewResourceSchema = z.object({
   available: z.boolean(),

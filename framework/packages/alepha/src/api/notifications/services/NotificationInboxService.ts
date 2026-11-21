@@ -26,7 +26,7 @@ export class NotificationInboxService {
    * Cutoff is on `createdAt`, the message's own age, which is the same clock
    * the receipt sweep next door uses.
    *
-   * Bounded exactly like the executions sweep: select ids with a cap, then
+   * Bounded exactly like the receipt sweep: select ids with a cap, then
    * delete by id. An unbounded `DELETE ... WHERE created_at < ?` over a
    * table that grows with every mention is the one statement that can time
    * an hourly D1 cron out.

@@ -14,9 +14,9 @@ import {
 /**
  * The notifications module historically forced `AlephaApiJobsQueue`. After
  * the direct-mode change it must boot without any queue infrastructure and
- * deliver via direct mode (push → process in-process → row removed on success).
+ * deliver via direct mode (push → process in-process → the row ends `ok`).
  */
-describe("AlephaApiNotifications — runs without AlephaApiJobsQueue", () => {
+describe("AlephaApiNotifications: runs without AlephaApiJobsQueue", () => {
   it("module starts in direct mode and delivers an email notification", async ({
     expect,
   }) => {

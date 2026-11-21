@@ -60,7 +60,7 @@ export type IntentQuery = Infer<typeof intentQuerySchema>;
 export const intentResourceSchema = paymentIntents.schema.extend({
   /**
    * Paying-user summary, embedded by the admin listing via a best-effort
-   * left join. Optional — see `paymentUserSummarySchema`.
+   * left join. Optional, see `paymentUserSummarySchema`.
    */
   user: paymentUserSummarySchema.optional(),
 });

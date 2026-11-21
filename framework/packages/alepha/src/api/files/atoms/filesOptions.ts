@@ -3,16 +3,6 @@ import { $atom, type Infer, z } from "alepha";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Configuration of `alepha/api/files` as a whole.
- *
- * Each `$storage` declares its own limits (`maxSize`, `mimeTypes`), and those
- * are about one file. What lives here is about all of them together.
- *
- * `maxTotalSize` is seeded from the `FILES_MAX_TOTAL_SIZE` environment
- * variable when the host sets it, see `FileService`. Absent both, it is
- * {@link DEFAULT_MAX_TOTAL_SIZE}.
- */
-/**
  * The default total quota, in megabytes: 10 GB.
  */
 export const DEFAULT_MAX_TOTAL_SIZE = 10 * 1024;
@@ -22,6 +12,16 @@ export const DEFAULT_MAX_TOTAL_SIZE = 10 * 1024;
  */
 export const DEFAULT_MAX_USER_SIZE = 1024;
 
+/**
+ * Configuration of `alepha/api/files` as a whole.
+ *
+ * Each `$storage` declares its own limits (`maxSize`, `mimeTypes`), and those
+ * are about one file. What lives here is about all of them together.
+ *
+ * `maxTotalSize` is seeded from the `FILES_MAX_TOTAL_SIZE` environment
+ * variable when the host sets it, see `FileService`. Absent both, it is
+ * {@link DEFAULT_MAX_TOTAL_SIZE}.
+ */
 export const filesOptions = $atom({
   name: "alepha.api.files.options",
   schema: z.object({

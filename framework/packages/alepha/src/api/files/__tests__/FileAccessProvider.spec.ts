@@ -31,7 +31,7 @@ const admin: UserAccountToken = {
   ownership: false,
 };
 
-describe("FileAccessProvider — default policy", () => {
+describe("FileAccessProvider: default policy", () => {
   const provider = Alepha.create().inject(FileAccessProvider);
 
   it("allows the uploader to download their own file", async () => {
@@ -68,7 +68,7 @@ describe("FileAccessProvider — default policy", () => {
   });
 });
 
-describe("FileAccessProvider — override", () => {
+describe("FileAccessProvider: override", () => {
   class OpenAccess extends FileAccessProvider {
     async assertReadable() {
       // permissive override

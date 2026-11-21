@@ -239,7 +239,7 @@ describe("admin notification preview", () => {
   });
 
   /**
-   * `renderEmail` resolves attachment bytes from storage and throws on a
+   * `NotificationEmailChannel.render` resolves attachment bytes from storage and throws on a
    * missing object. A preview needs the picture, not the bytes, and a
    * purged attachment must not turn it into a 500.
    */

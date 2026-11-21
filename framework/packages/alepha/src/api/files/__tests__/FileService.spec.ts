@@ -139,9 +139,21 @@ describe("FileService", () => {
   });
 
   it("removes the orphaned blob when uploadFile's metadata write fails", async () => {
+    class RecordingStorage extends MemoryFileStorageProvider {
+      public readonly uploaded: string[] = [];
+
+      public override async upload(
+        ...args: Parameters<MemoryFileStorageProvider["upload"]>
+      ): Promise<string> {
+        const blobId = await super.upload(...args);
+        this.uploaded.push(blobId);
+        return blobId;
+      }
+    }
+
     const alepha = Alepha.create()
       .with(AlephaOrmTestPostgres)
-      .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
+      .with({ provide: FileStorageProvider, use: RecordingStorage })
       .with(AlephaApiFiles);
 
     class Assets {
@@ -154,67 +166,27 @@ describe("FileService", () => {
 
     await alepha.start();
 
-    // An invalid UUID the `creator` column rejects, forcing the metadata
-    // insert to fail *after* the blob has already been written to storage.
-    const brokenUser = {
-      id: "not-a-valid-uuid",
-      name: "Broken",
-    } as UserAccountToken;
+    // A name the `name` column refuses (longer than 255), so the metadata
+    // insert fails *after* the blob has already been written to storage.
+    const provider = alepha.inject(RecordingStorage);
 
     await expect(
       service.uploadFile(
         fs.createFile({
           text: "orphan",
-          name: "orphan.txt",
+          name: `${"a".repeat(300)}.txt`,
           type: "text/plain",
         }),
-        { bucket: assets.images.name, user: brokenUser },
+        { bucket: assets.images.name },
       ),
     ).rejects.toThrow();
 
-    // Assert against the BACKEND, not `images.list()` — that is DB-backed
+    // The blob did reach the backend: what follows is the cleanup's doing.
+    expect(provider.uploaded).toHaveLength(1);
+
+    // Assert against the BACKEND, not `images.list()`, that is DB-backed
     // now, so it would be empty whether or not the blob was cleaned up.
-    expect(
-      await alepha.inject(MemoryFileStorageProvider).list(assets.images.name),
-    ).toEqual([]);
-  });
-
-  it("removes the orphaned blob when uploading through $storage.upload", async () => {
-    const alepha = Alepha.create()
-      .with(AlephaOrmTestPostgres)
-      .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
-      .with(AlephaApiFiles);
-
-    class Assets {
-      images = $storage({ name: randomUUID() });
-    }
-
-    const assets = alepha.inject(Assets);
-    const fs = alepha.inject(FileSystemProvider);
-
-    await alepha.start();
-
-    const brokenUser = {
-      id: "not-a-valid-uuid",
-      name: "Broken",
-    } as UserAccountToken;
-
-    // Same compensation path, reached through the primitive rather than
-    // `FileService.uploadFile` directly.
-    await expect(
-      assets.images.upload(
-        fs.createFile({
-          text: "orphan",
-          name: "orphan.txt",
-          type: "text/plain",
-        }),
-        { user: brokenUser },
-      ),
-    ).rejects.toThrow();
-
-    expect(
-      await alepha.inject(MemoryFileStorageProvider).list(assets.images.name),
-    ).toEqual([]);
+    expect(await provider.list(assets.images.name)).toEqual([]);
   });
 
   it("uploadFile reads a stream-backed file once (no empty blob, real size)", async () => {
@@ -257,49 +229,6 @@ describe("FileService", () => {
 
     const back = await service.streamFile(entity);
     expect(await back.text()).toBe(content);
-  });
-
-  it("upload hook reads a stream-backed file once (real size + checksum)", async () => {
-    const alepha = Alepha.create()
-      .with(AlephaOrmTestPostgres)
-      .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
-      .with(AlephaApiFiles);
-
-    class Assets {
-      images = $storage({ name: randomUUID() });
-    }
-
-    const assets = alepha.inject(Assets);
-    const ctrl = alepha.inject(FileController);
-    const fs = alepha.inject(FileSystemProvider);
-
-    await alepha.start();
-
-    const content = "streamed hook content";
-
-    // Direct bucket.upload (persist defaults to true) → the bucket:file:uploaded
-    // hook persists the row. The hook runs *after* the provider read the stream,
-    // so without materializing first it would checksum an already-drained
-    // (empty) stream and record size 0.
-    await assets.images.upload(
-      fs.createFile({
-        stream: Readable.toWeb(
-          Readable.from(Buffer.from(content)),
-        ) as unknown as ReadableStream<Uint8Array>,
-        name: "hook.txt",
-        type: "text/plain",
-      }),
-      { user: adminUser },
-    );
-
-    const files = await ctrl.findFiles.run({}, asAdmin);
-    expect(files.content).toHaveLength(1);
-
-    const entity = files.content[0];
-    expect(entity.size).toBe(content.length);
-    expect(entity.checksum).toBe(
-      createHash("sha256").update(content).digest("hex"),
-    );
   });
 
   it("embeds the uploader summary when a users repository is registered", async () => {

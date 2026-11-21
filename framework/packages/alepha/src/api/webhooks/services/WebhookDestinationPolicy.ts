@@ -18,8 +18,8 @@ import { WebhookAddressResolver } from "./WebhookAddressResolver.ts";
  * - in production: `https` only, port 443 or one of
  *   `webhookOptions.allowedPorts`, and a host that is not an address in a
  *   private, loopback, link-local, unique-local, shared, multicast,
- *   reserved or unspecified range (IPv4 and IPv6, IPv4-mapped and NAT64
- *   included, in any spelling the URL parser normalises), nor `localhost`,
+ *   reserved or unspecified range (IPv4 and IPv6, IPv4-mapped, NAT64 and
+ *   6to4 included, in any spelling the URL parser normalises), nor `localhost`,
  *   a `.localhost`, `.local` or `.internal` name, nor an undotted name.
  *
  * Outside production, and with `allowPrivateDestinations`, only the first
@@ -115,17 +115,19 @@ export class WebhookDestinationPolicy {
 
   /**
    * `localhost`, the `.localhost`, `.local` and `.internal` names (cloud
-   * metadata names among them), and any undotted name: the names the OAuth
-   * metadata fetch refuses too.
+   * metadata names among them), and any undotted name, each with or without
+   * its trailing root dot: the names the OAuth metadata fetch refuses too.
    */
   public isLocalName(host: string): boolean {
     if (host.startsWith("[") || this.parseIPv4(host)) return false;
+    // `localhost.` is `localhost`: a trailing root dot names the same host.
+    const name = host.replace(/\.+$/, "");
     return (
-      host === "localhost" ||
-      host.endsWith(".localhost") ||
-      host.endsWith(".local") ||
-      host.endsWith(".internal") ||
-      !host.includes(".")
+      name === "localhost" ||
+      name.endsWith(".localhost") ||
+      name.endsWith(".local") ||
+      name.endsWith(".internal") ||
+      !name.includes(".")
     );
   }
 
@@ -191,6 +193,9 @@ export class WebhookDestinationPolicy {
     ) {
       return this.isPrivateIPv4(embedded);
     }
+    if (g0 === 0x64 && g1 === 0xff9b && g2 === 1) return true; // NAT64 local-use 64:ff9b:1::/48
+    // 6to4 (2002:a.b.c.d::/48) reaches the embedded IPv4 address.
+    if (g0 === 0x2002) return this.isPrivateIPv4(((g1 << 16) | g2) >>> 0);
     if ((g0 & 0xfe00) === 0xfc00) return true; // unique-local fc00::/7
     if ((g0 & 0xffc0) === 0xfe80) return true; // link-local fe80::/10
     if ((g0 & 0xffc0) === 0xfec0) return true; // site-local fec0::/10

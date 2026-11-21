@@ -7,7 +7,7 @@ import {
 } from "alepha/server/multipart";
 
 import { FileController } from "../controllers/FileController.ts";
-import { FileService } from "../services/FileService.ts";
+import { DEFAULT_STORAGE, FileService } from "../services/FileService.ts";
 
 /**
  * Lets the targeted `$storage` decide how many bytes a request may carry.
@@ -32,7 +32,7 @@ export class StorageMultipartCapProvider {
    *
    * Substituting `MultipartCapProvider` was the first attempt and it cannot
    * work: the server resolves it while registering, and this module usually
-   * loads afterwards — the container refuses the late substitution, loudly and
+   * loads afterwards, the container refuses the late substitution, loudly and
    * correctly. Adding a resolver has no such ordering constraint.
    */
   public readonly register = $hook({
@@ -46,7 +46,7 @@ export class StorageMultipartCapProvider {
    * The query parameter carrying the destination.
    *
    * Matches what `FileController.uploadFile` reads, so the budget and the
-   * bucket cannot disagree — a request whose bytes are checked against one
+   * bucket cannot disagree, a request whose bytes are checked against one
    * bucket and stored in another is a bug that only shows up at the size
    * boundary, which is the worst place to find one.
    */
@@ -69,18 +69,17 @@ export class StorageMultipartCapProvider {
       return undefined;
     }
 
-    const name = this.bucketOf(request);
-    if (!name) {
-      return undefined;
-    }
+    // No `bucket` means the default storage: that is where `FileService`
+    // stores the upload, so that is whose budget applies.
+    const name = this.bucketOf(request) ?? DEFAULT_STORAGE;
 
     try {
       // `storage.maxSize`, not `options.maxSize`: the declared value *or* the
       // documented default. Reading the raw option meant an undeclared bucket
-      // answered nothing and fell through to the application-wide ceiling —
+      // answered nothing and fell through to the application-wide ceiling,
       // half of what `$storage` promises, and silently.
       const { maxSize } = this.files.storage(name);
-      // `$storage` speaks megabytes — it is a declaration a human writes — and
+      // `$storage` speaks megabytes, it is a declaration a human writes, and
       // everything below this line speaks bytes. One conversion, in the one
       // place that bridges the two vocabularies.
       return { maxFileBytes: maxSize * 1024 * 1024 };
@@ -95,12 +94,12 @@ export class StorageMultipartCapProvider {
   /**
    * Whether this route is the upload action, and not merely shaped like it.
    *
-   * Asked of the action itself — its method and its resolved path, prefix
-   * included — rather than of the path's spelling. `endsWith("/files")` was the
+   * Asked of the action itself, its method and its resolved path, prefix
+   * included, rather than of the path's spelling. `endsWith("/files")` was the
    * first answer and it claimed routes this provider has no business claiming:
    * any application's `POST /api/projects/:id/files` matched, and so did the
    * listing on `GET /api/files`. On a `z.file()` route that mistake is not
-   * cosmetic — the granted budget is memory, spent before `$secure` runs.
+   * cosmetic, the granted budget is memory, spent before `$secure` runs.
    *
    * Reading it from the action also means a change of URL cannot leave the two
    * disagreeing, which a literal here would have allowed.

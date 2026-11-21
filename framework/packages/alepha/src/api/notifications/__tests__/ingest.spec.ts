@@ -9,6 +9,7 @@ import { describe, it } from "vitest";
 import {
   $notification,
   AlephaApiNotifications,
+  NotificationDeliveryService,
   NotificationIngestService,
   NotificationSenderService,
   NotificationSuppressionService,
@@ -254,6 +255,78 @@ describe("brevo webhook", () => {
 
     expect(res.status).toBe(200);
     expect(await suppressions.list({})).toHaveLength(1);
+
+    await alepha.stop();
+  });
+
+  // Brevo sends `date` as `YYYY-MM-DD HH:MM:SS` and `ts_event` as epoch
+  // seconds, never an ISO string: both have to reach the receipt.
+  for (const { name, stamp, at } of [
+    {
+      name: "ts_event alone",
+      stamp: { ts_event: 1604933654 },
+      at: "2020-11-09T14:54:14.000Z",
+    },
+    {
+      name: "date and ts_event, where ts_event is the unambiguous one",
+      stamp: { date: "2020-10-09 00:00:00", ts_event: 1602194400 },
+      at: "2020-10-08T22:00:00.000Z",
+    },
+    {
+      name: "date alone",
+      stamp: { date: "2020-10-09 00:00:00" },
+      at: undefined,
+    },
+  ]) {
+    it(`records and suppresses a hard bounce dated by ${name}`, async ({
+      expect,
+    }) => {
+      const { alepha, hostname, suppressions, sendAndCapture } = await boot();
+      const messageId = await sendAndCapture("ing-brevo");
+
+      const res = await fetch(
+        `${hostname}/notifications/webhooks/brevo?secret=${SECRET}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            event: "hardBounce",
+            email: "a@example.com",
+            "message-id": messageId,
+            id: 43,
+            ...stamp,
+          }),
+        },
+      );
+
+      expect(res.status).toBe(200);
+      const receipt = await alepha
+        .inject(NotificationDeliveryService)
+        .findByMessageId(messageId);
+      expect(receipt?.status).toBe("bounced");
+      expect(receipt?.lastEventAt).toMatch(/^2020-10-0[89]T|^2020-11-09T/);
+      if (at) {
+        expect(receipt?.lastEventAt).toBe(at);
+      }
+      expect(await suppressions.list({})).toHaveLength(1);
+
+      await alepha.stop();
+    });
+  }
+
+  it("dates an event by now when Brevo's date cannot be read", async ({
+    expect,
+  }) => {
+    const { alepha, ingest } = await boot();
+
+    const event = ingest.fromBrevo({
+      event: "delivered",
+      email: "a@example.com",
+      "message-id": "m-1",
+      date: "not a date",
+    });
+
+    expect(event?.occurredAt).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
 
     await alepha.stop();
   });

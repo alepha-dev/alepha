@@ -260,7 +260,7 @@ describe("webhook endpoint health", () => {
   it("without WebhookNotifications the disable still happens and nothing is sent", async ({
     expect,
   }) => {
-    const { alepha, shop, transport } = await boot();
+    const { alepha, shop, transport, background } = await boot();
     expect(alepha.has(WebhookNotifications)).toBe(false);
     const url = "https://gone.example.app/hooks";
     transport.respond(url, { status: 410 });
@@ -271,6 +271,9 @@ describe("webhook endpoint health", () => {
     expect((await shop.endpointRows.getById(endpoint.id)).status).toBe(
       "disabled",
     );
+    await background.flush();
+    const jobNames = (await shop.executions.findMany()).map((it) => it.jobName);
+    expect(jobNames.filter((it) => it.includes("notification"))).toEqual([]);
   });
 
   describe("system.webhooks.purge-old", () => {

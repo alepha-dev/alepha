@@ -275,7 +275,8 @@ run(Alepha.create().with(AlephaAiCloudflare).with(AlephaApiAi).with(MyApp));
 
 The module ships its entities (`ai_conversations`, `ai_messages`), not migrations: generate them
 with the app's (`alepha db migrations create`), as for every `alepha/api/*` module. With several
-`$ai`s in the app, a chat names the one it talks to (`assistant`).
+`$ai`s in the app, a chat names the one it talks to (`assistant`), and so does the resume
+that answers its pause: a request naming none, or one nothing declares, is a 400.
 
 ### Budget, rate and retention: the `api.ai` parameter
 

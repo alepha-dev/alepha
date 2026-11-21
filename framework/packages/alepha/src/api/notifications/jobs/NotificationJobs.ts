@@ -53,7 +53,7 @@ export class NotificationJobs {
   public readonly sendNotification = $job({
     name: "system.notifications.send",
     description:
-      "Sends one notification by email or SMS, retrying up to three times.",
+      "Sends one notification through its channel, retrying up to three times.",
     schema: notificationPayloadSchema,
     retry: {
       retries: 3,

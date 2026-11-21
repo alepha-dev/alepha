@@ -1,4 +1,4 @@
-import { $inject, $store, Alepha } from "alepha";
+import { $inject, $store, Alepha, AlephaError } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -56,15 +56,34 @@ export class PaymentService {
         where: { status: { eq: "processing" }, createdAt: { lt: cutoff } },
       });
 
+      let failed = 0;
       for (const intent of stale) {
         // A missing webhook is not a missing payment: ask the PSP before
         // declaring the intent dead. On providers that can be polled, a
         // payment the buyer completed settles here instead of being
-        // stomped to "expired" — the Mollie-without-webhook case.
-        const status = await this.syncIntent(intent.id);
-        if (status === "processing") {
-          await this.expireIntent(intent);
+        // stomped to "expired", the Mollie-without-webhook case.
+        //
+        // One intent the provider cannot answer for (a session deleted
+        // there, a network error) is left for the next sweep, and must not
+        // keep the others from expiring.
+        try {
+          const status = await this.syncIntent(intent.id);
+          if (status === "processing") {
+            await this.expireIntent(intent);
+          }
+        } catch (error) {
+          failed++;
+          this.log.warn(`Stale sweep could not settle intent ${intent.id}`, {
+            error,
+          });
         }
+      }
+      // Every intent was tried; the run still ends in error, so a provider
+      // outage is not a green run.
+      if (failed > 0) {
+        throw new AlephaError(
+          `Stale sweep could not settle ${failed} of ${stale.length} intents`,
+        );
       }
     },
   });
@@ -136,7 +155,7 @@ export class PaymentService {
   /**
    * Reconcile an intent against the PSP's own record: ask the provider
    * for the session's current status and, when it reports a transition
-   * we never saw, route it through {@link handleWebhookEvent} — the same
+   * we never saw, route it through {@link handleWebhookEvent}, the same
    * guarded path a webhook takes, so ordering and idempotency rules hold.
    *
    * Returns the intent's status after the attempt. No-ops (returning the
@@ -205,7 +224,7 @@ export class PaymentService {
       /**
        * Pre-fills the payer's email on the PSP checkout page. Useful when
        * the session runs on a sub-account (Stripe connected account) where
-       * no customer object exists — without it the hosted checkout makes
+       * no customer object exists, without it the hosted checkout makes
        * the payer retype an address the platform already knows.
        */
       customerEmail?: string;
@@ -226,7 +245,7 @@ export class PaymentService {
 
     // Claim the intent BEFORE the PSP call: two concurrent createSession
     // calls would otherwise both create sessions, and the loser's ref would
-    // overwrite the winner's — orphaning the payment made against the first
+    // overwrite the winner's, orphaning the payment made against the first
     // session.
     try {
       await this.intentRepo.updateOne(
@@ -314,7 +333,7 @@ export class PaymentService {
     });
 
     // Session events reference two PSP objects (session + PaymentIntent);
-    // the stored ref is whichever existed at creation time — try the other.
+    // the stored ref is whichever existed at creation time, try the other.
     if (intents.length === 0 && event.providerRefAlt) {
       intents = await this.intentRepo.findMany({
         where: { providerRef: { eq: event.providerRefAlt } },
@@ -332,7 +351,7 @@ export class PaymentService {
     // Session events put the session id in `providerRef` and the (lazily
     // created) PaymentIntent in `providerRefAlt`. When the stored ref is
     // still the session id, upgrade it to the PI as soon as an event
-    // reveals it — refunds can only target the PI, never the session.
+    // reveals it, refunds can only target the PI, never the session.
     if (
       event.providerRefAlt &&
       intent.providerRef === event.providerRef &&
@@ -348,7 +367,7 @@ export class PaymentService {
 
   /**
    * Valid status transitions from webhook events.
-   * Only these transitions are allowed — all others are silently ignored.
+   * Only these transitions are allowed, all others are silently ignored.
    *
    * `expired` accepts a late authorization or capture: the PSP page can
    * outlive the sweep's local expiry (a failed or racing expire call), and a
@@ -417,19 +436,15 @@ export class PaymentService {
     }
 
     const webhookStatus = status as WebhookStatus;
-    if (
-      status === "captured" &&
-      (intent.status === "captured" ||
-        PaymentService.VALID_WEBHOOK_TRANSITIONS[intent.status]?.includes(
-          "captured",
-        ))
-    ) {
-      await this.reconcileSavedCard(intent);
-    }
 
     // Validate status transition
     const allowed = PaymentService.VALID_WEBHOOK_TRANSITIONS[intent.status];
     if (!allowed?.includes(webhookStatus)) {
+      // A redelivered capture is the retry that saves a card the provider
+      // did not have yet the first time.
+      if (webhookStatus === "captured" && intent.status === "captured") {
+        await this.reconcileSavedCard(intent);
+      }
       this.log.warn(
         `Ignoring webhook: cannot transition ${intent.status} → ${webhookStatus}`,
         { intentId: intent.id },
@@ -447,7 +462,12 @@ export class PaymentService {
         { id: { eq: intent.id }, status: { eq: intent.status } },
         { status: webhookStatus, providerRaw: raw as any },
       )
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        // Only a row that moved is a lost race. Any other failure is thrown,
+        // so the provider redelivers instead of reading a 200.
+        if (error instanceof DbEntityNotFoundError) return undefined;
+        throw error;
+      });
 
     if (!moved) {
       this.log.warn(
@@ -470,18 +490,33 @@ export class PaymentService {
       await this.closeProviderSession(intent);
     }
 
+    // The card is saved once the capture is on the record, never before: the
+    // provider holds the money whether or not the card can be reconciled.
+    // A failure is thrown after the event, so the provider redelivers and
+    // the card is tried again.
+    let cardError: unknown;
+    if (webhookStatus === "captured") {
+      await this.reconcileSavedCard(intent).catch((error: unknown) => {
+        cardError = error;
+      });
+    }
+
     await this.alepha.events.emit(eventMap[webhookStatus], {
       intentId: intent.id,
       amount: intent.amount,
       currency: intent.currency,
       metadata: intent.metadata,
     });
+
+    if (cardError) {
+      throw cardError;
+    }
   }
 
   /**
    * Create a session for an embedded card field, and claim the intent.
    *
-   * Mirrors {@link createSession}'s state handling — the intent moves to
+   * Mirrors {@link createSession}'s state handling, the intent moves to
    * `processing` before the PSP call, so two concurrent attempts cannot both
    * create a payment against the same intent.
    *
@@ -584,13 +619,25 @@ export class PaymentService {
       );
     }
 
-    await this.reconcileSavedCard(intent);
-    const updated = await this.transition(
+    let updated = await this.transition(
       intent.id,
       "authorized",
       { status: "captured", amount },
       "capture",
     );
+
+    // After the status write: the provider has captured, and a card that
+    // cannot be saved must not leave the intent `authorized`.
+    if (intent.saveCard && !intent.paymentMethodId) {
+      try {
+        await this.reconcileSavedCard(intent);
+        updated = await this.getIntent(intent.id);
+      } catch (error) {
+        this.log.warn(`Failed to save the card of intent ${intent.id}`, {
+          error,
+        });
+      }
+    }
 
     await this.alepha.events.emit("payments:captured", {
       intentId: intent.id,
@@ -660,7 +707,7 @@ export class PaymentService {
     // ambient transaction when several refunds run in the same async context,
     // so one loser's rollback would erase the winner's reservation. The
     // version-guarded UPDATE is itself atomic, which is all the mutual
-    // exclusion this needs — exactly one caller wins per version.
+    // exclusion this needs, exactly one caller wins per version.
     const fresh = await this.getIntent(intentId);
 
     // Allow refunds from both "captured" and "partially_refunded" states
@@ -688,7 +735,7 @@ export class PaymentService {
     // callers read the version first and the refund rows second, so any
     // competitor that observes our bumped version is guaranteed to also see
     // this row in its refunded-total read. Claiming first opens a window
-    // where a competitor sees the new version but not yet the new refund —
+    // where a competitor sees the new version but not yet the new refund,
     // three concurrent 500s then all pass a "1000 remaining" check.
     const pending = await this.refundRepo.create({
       intentId: fresh.id,
@@ -704,7 +751,7 @@ export class PaymentService {
         { version: (fresh.version ?? 0) + 1 },
       );
     } catch (error) {
-      // Lost the claim — release the reservation so it stops counting
+      // Lost the claim, release the reservation so it stops counting
       // against the remaining refundable amount.
       await this.refundRepo.deleteById(pending.id).catch((releaseError) => {
         this.log.warn(`Failed to release refund reservation ${pending.id}`, {
@@ -719,7 +766,7 @@ export class PaymentService {
       throw error;
     }
 
-    // PSP call outside any lock — network I/O must not hold one.
+    // PSP call outside any lock, network I/O must not hold one.
     let refundProviderRef: string | undefined;
     try {
       if (intent.providerRef) {
@@ -731,7 +778,7 @@ export class PaymentService {
         refundProviderRef = result.providerRef;
       }
     } catch (error) {
-      // Release the reservation — a failed refund must not count against
+      // Release the reservation, a failed refund must not count against
       // the remaining refundable amount.
       await this.refundRepo
         .updateById(pending.id, { status: "failed" })
@@ -792,7 +839,7 @@ export class PaymentService {
     await this.alepha.events.emit("payments:captured", {
       intentId: intent.id,
       amount,
-      currency,
+      currency: intent.currency,
       metadata,
     });
 
@@ -836,7 +883,7 @@ export class PaymentService {
    * Joins `payment_intents.userId` → `users.id`.
    *
    * The `users` entity is resolved from the repository registry at runtime
-   * rather than imported — same pattern and same reason as
+   * rather than imported, same pattern and same reason as
    * `FileService.resolveCreatorJoin`: the payments module stays usable
    * standalone, without `alepha/api/users`. Only applied when the `users`
    * table is actually registered.
@@ -858,7 +905,7 @@ export class PaymentService {
 
   /**
    * Find payment intents with optional filters and pagination. Rows carry a
-   * paying-user summary under `user` when the users table is registered —
+   * paying-user summary under `user` when the users table is registered,
    * see {@link resolveUserJoin}.
    *
    * Typed without `user` on purpose, like `FileService.findFiles`: the join
@@ -914,7 +961,7 @@ export class PaymentService {
    * left `from` in the meantime.
    *
    * `assertStatus` only ever describes the *snapshot* the caller read. Between
-   * that read and the write, a webhook or a second operator can move the row —
+   * that read and the write, a webhook or a second operator can move the row,
    * and an unguarded `updateById` would happily overwrite them, emitting a
    * second lifecycle event for a transition that never legitimately happened.
    * Folding the expected status into the WHERE clause makes the check and the
@@ -928,7 +975,10 @@ export class PaymentService {
   ): Promise<PaymentIntentEntity> {
     const updated = await this.intentRepo
       .updateOne({ id: { eq: intentId }, status: { eq: from } }, data)
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (error instanceof DbEntityNotFoundError) return undefined;
+        throw error;
+      });
 
     if (!updated) {
       const current = await this.getIntent(intentId);

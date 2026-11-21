@@ -143,7 +143,7 @@ export class AdminPaymentController {
   });
 
   /**
-   * PSP webhook endpoint (not under /admin, no auth — verified by provider).
+   * PSP webhook endpoint (not under /admin, no auth, verified by provider).
    */
   public readonly webhook = $action({
     method: "POST",

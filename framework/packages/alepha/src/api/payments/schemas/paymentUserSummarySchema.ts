@@ -6,9 +6,9 @@ import { type Infer, z } from "alepha";
  * can render a human-readable identifier instead of a bare UUID.
  *
  * Optional end-to-end: the join only runs when the `users` entity is
- * registered in the running app (see `PaymentService.resolveUserJoin` — the
+ * registered in the running app (see `PaymentService.resolveUserJoin`, the
  * payments module stays usable without `alepha/api/users`), and an intent
- * whose user was deleted — or recorded with no user at all — comes back with
+ * whose user was deleted, or recorded with no user at all, comes back with
  * `user` undefined. Callers fall back to the raw `userId`.
  */
 export const paymentUserSummarySchema = z.object({

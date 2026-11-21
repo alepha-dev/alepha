@@ -96,7 +96,9 @@ module **disables** an endpoint by itself when the receiver answers `410`,
 when it keeps failing for five days (decided on a fresh failure, so an
 endpoint with little traffic is not disabled for one bad day), or when its
 secret can no longer be read. A disabled endpoint receives nothing until an
-operator enables it again.
+operator enables it again. Enabling is for a disabled endpoint only: a paused
+one is resumed, which is what sends the deliveries that waited, and asking to
+enable it is refused.
 
 ## Secrets
 

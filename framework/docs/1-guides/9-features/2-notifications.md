@@ -334,7 +334,8 @@ reader has already dealt with. The admin detail view joins the outbox row when i
 exists and renders correctly when it does not.
 
 `storeRenderedBody` is **off by default**: 90 days of full HTML for every
-notification is real bytes, and a fan-out over a roster multiplies it. The
+notification is real bytes, and a fan-out over a roster multiplies it. A
+stored body is cut at `maxStoredBodyBytes` (64,000 by default). The
 subject is always kept, except on a `sensitive` template.
 
 To ingest bounces and complaints:

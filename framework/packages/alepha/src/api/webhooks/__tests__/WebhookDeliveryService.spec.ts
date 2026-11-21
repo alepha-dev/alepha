@@ -59,7 +59,8 @@ interface Received {
  */
 const startReceiver = async () => {
   const received: Received[] = [];
-  const script: Array<{ status: number; body?: string }> = [];
+  const script: Array<{ status: number; body?: string; location?: string }> =
+    [];
   class Receiver {
     hooks = $route({
       method: "POST",
@@ -76,6 +77,7 @@ const startReceiver = async () => {
         received.push({ headers: { ...(request.headers as any) }, body });
         const next = script.shift() ?? { status: 200, body: "ok" };
         request.reply.status = next.status;
+        if (next.location) request.reply.headers.location = next.location;
         return next.body ?? "";
       },
     });
@@ -193,6 +195,38 @@ describe("webhook delivery", () => {
     expect(endpoint.failingSince).toBeUndefined();
     expect(events.success).toHaveLength(1);
     expect(events.success[0]).not.toHaveProperty("url");
+    await receiver.alepha.stop();
+  });
+
+  it("records an answer whose body holds a NUL byte, delivered or failed", async ({
+    expect,
+  }) => {
+    const receiver = await startReceiver();
+    receiver.script.push({ status: 200, body: "ok\u0000binary" });
+    const { shop } = await boot();
+    await shop.endpoints.create({ url: receiver.url });
+    await shop.paid.send({ orderId: "o1", total: 10 });
+
+    // Postgres refuses a NUL in a text column: unrecorded, the attempt was
+    // retried and the receiver got the same event again.
+    const [row] = await waitFor(
+      () => shop.deliveries.findMany(),
+      (rows) => rows[0]?.status === "delivered",
+      { label: "delivered" },
+    );
+    expect(row.attempt).toBe(1);
+    expect(row.responseExcerpt).toBe("ok\uFFFDbinary");
+    expect(receiver.received).toHaveLength(1);
+
+    receiver.script.push({ status: 500, body: "no\u0000" });
+    await shop.paid.send({ orderId: "o2", total: 10 });
+    const failed = await waitFor(
+      () => shop.deliveries.findMany({ where: { status: { eq: "pending" } } }),
+      (rows) => rows[0]?.attempt === 1,
+      { label: "failed attempt recorded" },
+    );
+    expect(failed[0].responseStatus).toBe(500);
+    expect(failed[0].responseExcerpt).toBe("no\uFFFD");
     await receiver.alepha.stop();
   });
 
@@ -343,7 +377,7 @@ describe("webhook delivery", () => {
   it("a 3xx is a failed attempt and is never followed", async ({ expect }) => {
     const receiver = await startReceiver();
     const target = await startReceiver();
-    receiver.script.push({ status: 302 });
+    receiver.script.push({ status: 302, location: target.url });
     const { shop } = await boot();
     await shop.endpoints.create({ url: receiver.url });
     await shop.paid.send({ orderId: "o1", total: 10 });

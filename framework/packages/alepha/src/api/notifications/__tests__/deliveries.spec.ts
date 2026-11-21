@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { AlephaApiJobs, jobExecutionEntity } from "alepha/api/jobs";
+import { AlephaApiJobs } from "alepha/api/jobs";
 import {
   AlephaEmail,
   EmailProvider,
@@ -13,7 +13,7 @@ import {
   type CloudflareEmailSendResult,
   SEND_EMAIL_DEFAULT_BINDING,
 } from "alepha/email/cloudflare";
-import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -22,6 +22,7 @@ import {
   AlephaApiNotifications,
   NotificationDeliveryService,
   NotificationSenderService,
+  NotificationSettings,
   NotificationSuppressionService,
 } from "../index.ts";
 
@@ -51,7 +52,12 @@ class Templates {
     },
   });
 
-  readonly executions = $repository(jobExecutionEntity);
+  readonly long = $notification({
+    name: "rcpt-long",
+    category: "reminders",
+    schema: z.object({ text: z.text({ maxLength: 2_000_000 }) }),
+    email: { subject: "Long", body: (v) => v.text },
+  });
 }
 
 const boot = async (
@@ -81,6 +87,7 @@ const boot = async (
     sender: alepha.inject(NotificationSenderService),
     deliveries: alepha.inject(NotificationDeliveryService),
     suppressions: alepha.inject(NotificationSuppressionService),
+    settings: alepha.inject(NotificationSettings),
     // A getter, not a field: the tests that substitute a throwing provider
     // never register the memory one, and injecting it eagerly would fail
     // them on the setup rather than on what they are testing.
@@ -178,8 +185,15 @@ describe("delivery receipts", () => {
     expect(await deliveries.list({})).toHaveLength(1);
   });
 
-  it("stores no subject for a sensitive template", async ({ expect }) => {
-    const { sender, deliveries } = await boot();
+  it("stores no subject and no body for a sensitive template", async ({
+    expect,
+  }) => {
+    const { sender, deliveries, settings } = await boot();
+    // Bodies are stored here, so the missing one is the template's doing.
+    await settings.parameter.set({
+      ...settings.current,
+      storeRenderedBody: true,
+    });
 
     await sender.send(
       payload("rcpt-reset", {
@@ -206,6 +220,43 @@ describe("delivery receipts", () => {
 
     const [receipt] = await deliveries.list({});
     expect(receipt.body ?? null).toBeNull();
+  });
+
+  it("truncates a stored body at maxStoredBodyBytes instead of losing the receipt", async ({
+    expect,
+  }) => {
+    const { sender, deliveries, settings } = await boot();
+    await settings.parameter.set({
+      ...settings.current,
+      storeRenderedBody: true,
+    });
+
+    // Past the column's 1,000,000 characters: stored whole, the receipt
+    // was refused and lost.
+    await sender.send(
+      payload("rcpt-long", { variables: { text: "a".repeat(1_100_000) } }),
+      { executionId: "exec-long" },
+    );
+    // Short of the cap: stored as it is.
+    await sender.send(
+      payload("rcpt-long", { variables: { text: "<p>short</p>" } }),
+      { executionId: "exec-short" },
+    );
+    // The cap is in bytes, and never cuts a character in two.
+    await settings.parameter.set({
+      ...settings.current,
+      maxStoredBodyBytes: 5,
+    });
+    await sender.send(payload("rcpt-long", { variables: { text: "ééééé" } }), {
+      executionId: "exec-bytes",
+    });
+
+    const receipts = await deliveries.list({});
+    const bodyOf = (executionId: string) =>
+      receipts.find((it) => it.executionId === executionId)?.body;
+    expect(bodyOf("exec-long")).toBe("a".repeat(64_000));
+    expect(bodyOf("exec-short")).toBe("<p>short</p>");
+    expect(bodyOf("exec-bytes")).toBe("éé");
   });
 
   it("still sends when the receipt cannot be written", async ({ expect }) => {

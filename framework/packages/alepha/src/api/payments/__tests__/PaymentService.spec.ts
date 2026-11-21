@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
+import { JobProvider } from "alepha/api/jobs";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { users } from "../../users/entities/users.ts";
 import { AdminPaymentController } from "../controllers/AdminPaymentController.ts";
+import { paymentIntents } from "../entities/paymentIntents.ts";
 import { PaymentError } from "../errors/PaymentError.ts";
 import { AlephaApiPayments } from "../index.ts";
 import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
@@ -44,6 +47,7 @@ describe("PaymentService", () => {
 
     expect(session.url).toContain("/payments/mock-checkout/");
     expect(session.intentId).toBe(intent.id);
+    expect((await payments.getIntent(intent.id)).status).toBe("processing");
   });
 
   it("should capture an authorized intent", async ({ expect }) => {
@@ -227,7 +231,7 @@ describe("PaymentService", () => {
     expect,
   }) => {
     // A slow PSP widens the window between the status check and the status
-    // write — the realistic shape of the race (PSP calls are network I/O).
+    // write, the realistic shape of the race (PSP calls are network I/O).
     class SlowPaymentProvider extends MemoryPaymentProvider {
       public override async createSession(
         ...args: Parameters<MemoryPaymentProvider["createSession"]>
@@ -363,7 +367,7 @@ describe("PaymentService", () => {
     const { ServerProvider } = await import("alepha/server");
     const hostname = alepha.inject(ServerProvider).hostname;
 
-    // The memory provider is active (no PSP configured) — but in production
+    // The memory provider is active (no PSP configured), but in production
     // an unauthenticated "mark as paid" endpoint must be refused, not
     // silently exposed.
     const resp = await fetch(
@@ -395,7 +399,11 @@ describe("PaymentService", () => {
   });
 
   it("should ignore duplicate webhook for same status", async ({ expect }) => {
-    const { payments } = await setup();
+    const { alepha, payments } = await setup();
+    const authorized: unknown[] = [];
+    alepha.events.on("payments:authorized", (event) => {
+      authorized.push(event);
+    });
 
     const intent = await payments.createIntent(1500, "eur");
     await payments.createSession(intent.id, "https://example.com", true);
@@ -405,6 +413,7 @@ describe("PaymentService", () => {
 
     const current = await payments.getIntent(intent.id);
     expect(current.status).toBe("authorized");
+    expect(authorized).toHaveLength(1);
   });
 
   it("should normalize currency to lowercase", async ({ expect }) => {
@@ -473,9 +482,8 @@ describe("PaymentService", () => {
     expect,
   }) => {
     // Registering a users repository is what flips the best-effort join on
-    // (and creates the `users` table) — same mechanism as the files module's
-    // uploader join. The other tests in this file run without it and confirm
-    // findIntents still works with `user` simply absent.
+    // (and creates the `users` table), same mechanism as the files module's
+    // uploader join.
     class TestUsers {
       repo = $repository(users);
     }
@@ -505,14 +513,14 @@ describe("PaymentService", () => {
     const anonymous = await payments.createIntent(900, "eur");
 
     // Through the controller rather than the service, so the response schema
-    // is exercised too — a summary the schema fails to declare would vanish
+    // is exercised too, a summary the schema fails to declare would vanish
     // silently from the payload.
     const page = await controller.listIntents.run(
       { query: {} },
       { user: { id: randomUUID(), name: "Admin", roles: ["admin"] } },
     );
 
-    // Matched by our own ids — the test database is shared across specs, so
+    // Matched by our own ids, the test database is shared across specs, so
     // absolute counts would race with whatever other tests created.
     const withUser = page.content.find((intent) => intent.id === paid.id);
     const withoutUser = page.content.find(
@@ -522,5 +530,324 @@ describe("PaymentService", () => {
     // No userId on the row means the left join matches nothing.
     expect(withoutUser).toBeDefined();
     expect(withoutUser?.user).toBeUndefined();
+  });
+
+  describe("a capture is recorded whatever happens to the saved card", () => {
+    const collect = (alepha: Alepha) => {
+      const captured: Array<{ intentId: string }> = [];
+      alepha.events.on("payments:captured", (event) => {
+        captured.push(event);
+      });
+      return captured;
+    };
+
+    it("records a captured webhook when the provider has not saved the card", async ({
+      expect,
+    }) => {
+      const { alepha, payments } = await setup();
+      const captured = collect(alepha);
+      const userId = randomUUID();
+      const intent = await payments.createIntent(1500, "eur", undefined, {
+        userId,
+      });
+      await payments.createSession(
+        intent.id,
+        "https://example.com",
+        false,
+        userId,
+        { saveCard: true },
+      );
+
+      // The provider reports no saved method: the card is still refused,
+      // so the PSP retries, but the money it took is on the record.
+      await expect(
+        payments.handleWebhookEvent(intent.id, "captured"),
+      ).rejects.toThrow("Captured payment has not saved its card yet");
+
+      const after = await payments.getIntent(intent.id);
+      expect(after.status).toBe("captured");
+      expect(after.paymentMethodId).toBeUndefined();
+      expect(captured.map((it) => it.intentId)).toEqual([intent.id]);
+    });
+
+    it("records a captured webhook for a session on another payment account", async ({
+      expect,
+    }) => {
+      const { alepha, payments } = await setup();
+      const captured = collect(alepha);
+      const userId = randomUUID();
+      const intent = await payments.createIntent(1500, "eur", undefined, {
+        userId,
+      });
+      await payments.createSession(
+        intent.id,
+        "https://example.com",
+        false,
+        userId,
+        { saveCard: true, stripeAccount: "acct_1" },
+      );
+
+      await expect(
+        payments.handleWebhookEvent(intent.id, "captured"),
+      ).rejects.toThrow("Wrong payment account");
+
+      expect((await payments.getIntent(intent.id)).status).toBe("captured");
+      expect(captured.map((it) => it.intentId)).toEqual([intent.id]);
+    });
+
+    it("a redelivered capture saves the card the provider has by then, with no second event", async ({
+      expect,
+    }) => {
+      const { alepha, payments } = await setup();
+      const captured = collect(alepha);
+      const userId = randomUUID();
+      const intent = await payments.createIntent(1500, "eur", undefined, {
+        userId,
+      });
+      await payments.createSession(
+        intent.id,
+        "https://example.com",
+        false,
+        userId,
+        { saveCard: true },
+      );
+      await expect(
+        payments.handleWebhookEvent(intent.id, "captured"),
+      ).rejects.toThrow("Captured payment has not saved its card yet");
+      const recorded = await payments.getIntent(intent.id);
+      expect(recorded.status).toBe("captured");
+      expect(recorded.paymentMethodId).toBeUndefined();
+
+      // The provider has the card now, and redelivers.
+      await alepha
+        .inject(PaymentProvider)
+        .capturePayment(recorded.providerRef!, intent.amount);
+      await payments.handleWebhookEvent(intent.id, "captured");
+
+      const after = await payments.getIntent(intent.id);
+      expect(after.status).toBe("captured");
+      expect(after.paymentMethodId).toBeDefined();
+      expect(captured.map((it) => it.intentId)).toEqual([intent.id]);
+    });
+
+    it("still saves the card, before the event, when the provider has it", async ({
+      expect,
+    }) => {
+      const { alepha, payments } = await setup();
+      const userId = randomUUID();
+      const intent = await payments.createIntent(1500, "eur", undefined, {
+        userId,
+      });
+      await payments.createSession(
+        intent.id,
+        "https://example.com",
+        false,
+        userId,
+        { saveCard: true },
+      );
+      const { providerRef } = await payments.getIntent(intent.id);
+      await alepha
+        .inject(PaymentProvider)
+        .capturePayment(providerRef!, intent.amount);
+      const seen: Array<string | undefined> = [];
+      alepha.events.on("payments:captured", async (event) => {
+        seen.push((await payments.getIntent(event.intentId)).paymentMethodId);
+      });
+
+      await payments.handleWebhookEvent(intent.id, "captured");
+
+      const after = await payments.getIntent(intent.id);
+      expect(after.status).toBe("captured");
+      expect(after.paymentMethodId).toBeDefined();
+      expect(seen).toEqual([after.paymentMethodId]);
+    });
+
+    it("capture() records the capture the provider made when the card cannot be saved", async ({
+      expect,
+    }) => {
+      const { alepha, payments } = await setup();
+      const captured = collect(alepha);
+      const userId = randomUUID();
+      const intent = await payments.createIntent(1500, "eur", undefined, {
+        userId,
+      });
+      await payments.createSession(
+        intent.id,
+        "https://example.com",
+        true,
+        userId,
+        { saveCard: true, stripeAccount: "acct_1" },
+      );
+      await payments.handleWebhookEvent(intent.id, "authorized");
+
+      const result = await payments.capture(intent.id);
+
+      expect(result.status).toBe("captured");
+      const provider = alepha.inject(PaymentProvider) as MemoryPaymentProvider;
+      expect(provider.wasCharged(result.providerRef!)).toBe(true);
+      expect(captured.map((it) => it.intentId)).toEqual([intent.id]);
+    });
+
+    it("capture() still returns the intent with the card it saved", async ({
+      expect,
+    }) => {
+      const { payments } = await setup();
+      const userId = randomUUID();
+      const intent = await payments.createIntent(1500, "eur", undefined, {
+        userId,
+      });
+      await payments.createSession(
+        intent.id,
+        "https://example.com",
+        true,
+        userId,
+        { saveCard: true },
+      );
+      await payments.handleWebhookEvent(intent.id, "authorized");
+
+      const result = await payments.capture(intent.id);
+
+      expect(result.status).toBe("captured");
+      expect(result.paymentMethodId).toBeDefined();
+    });
+  });
+
+  describe("a failed status write is not a lost race", () => {
+    it("a webhook whose write fails is an error the provider retries, not a silent 200", async ({
+      expect,
+    }) => {
+      const { payments } = await setup();
+      const intent = await payments.createIntent(1500, "eur");
+      await payments.createSession(intent.id, "https://example.com");
+
+      // Postgres refuses a NUL inside a jsonb value: the write fails, and
+      // the intent has not moved.
+      await expect(
+        payments.handleWebhookEvent(intent.id, "captured", {
+          note: "a\u0000b",
+        }),
+      ).rejects.toThrow();
+      expect((await payments.getIntent(intent.id)).status).toBe("processing");
+
+      // The retry, with a payload the column takes, lands.
+      await payments.handleWebhookEvent(intent.id, "captured", { note: "ab" });
+      expect((await payments.getIntent(intent.id)).status).toBe("captured");
+    });
+
+    it("a webhook that lost the race is still ignored", async ({ expect }) => {
+      const { alepha, payments } = await setup();
+      const captured: unknown[] = [];
+      alepha.events.on("payments:captured", (event) => {
+        captured.push(event);
+      });
+      const intent = await payments.createIntent(1500, "eur");
+      await payments.createSession(intent.id, "https://example.com");
+
+      await Promise.all([
+        payments.handleWebhookEvent(intent.id, "captured"),
+        payments.handleWebhookEvent(intent.id, "captured"),
+      ]);
+
+      expect((await payments.getIntent(intent.id)).status).toBe("captured");
+      expect(captured).toHaveLength(1);
+    });
+
+    it("capture() reports the write that failed, not a status that never changed", async ({
+      expect,
+    }) => {
+      const { payments } = await setup();
+      const intent = await payments.createIntent(1500, "eur");
+      await payments.createSession(intent.id, "https://example.com", true);
+      await payments.handleWebhookEvent(intent.id, "authorized");
+
+      // A fractional amount is refused by the integer column.
+      const error = await payments.capture(intent.id, 10.5).then(
+        () => undefined,
+        (it: Error) => it,
+      );
+
+      expect(error).toBeDefined();
+      expect(error?.message).not.toContain("expected 'authorized'");
+    });
+  });
+
+  it("recordCashPayment emits the currency it stored", async ({ expect }) => {
+    const { alepha, payments } = await setup();
+    const captured: Array<{ currency: string }> = [];
+    alepha.events.on("payments:captured", (event) => {
+      captured.push(event);
+    });
+
+    const intent = await payments.recordCashPayment(100, "EUR");
+
+    expect(intent.currency).toBe("eur");
+    expect(captured.map((it) => it.currency)).toEqual(["eur"]);
+  });
+
+  it("the stale sweep expires the other intents when the provider cannot answer for one", async ({
+    expect,
+  }) => {
+    class UnreachableForOne extends MemoryPaymentProvider {
+      public unreachable?: string;
+
+      public override async retrieveSessionStatus(
+        providerRef: string,
+      ): Promise<"authorized" | "captured" | "failed" | null> {
+        if (providerRef === this.unreachable) {
+          throw new AlephaError("No such session");
+        }
+        return null;
+      }
+    }
+
+    class Repos {
+      intents = $repository(paymentIntents);
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with({ provide: PaymentProvider, use: UnreachableForOne })
+      .with(AlephaApiPayments);
+    const payments = alepha.inject(PaymentService);
+    const repos = alepha.inject(Repos);
+    const provider = alepha.inject(UnreachableForOne);
+    const time = alepha.inject(DateTimeProvider);
+    await alepha.start();
+
+    const expired: string[] = [];
+    alepha.events.on("payments:expired", (event) => {
+      expired.push(event.intentId);
+    });
+
+    const stale = async (minutes: number) => {
+      const intent = await payments.createIntent(1500, "eur");
+      await payments.createSession(intent.id, "https://example.com");
+      await repos.intents.updateById(intent.id, {
+        createdAt: time.now().subtract(minutes, "minutes").toISOString(),
+      });
+      return await payments.getIntent(intent.id);
+    };
+    const first = await stale(60);
+    const second = await stale(50);
+    const third = await stale(45);
+    provider.unreachable = first.providerRef;
+
+    // A triggered cron run reports its failure on `job:error`.
+    const jobErrors: string[] = [];
+    alepha.events.on("job:error", ({ error }) => {
+      jobErrors.push(String(error?.message));
+    });
+
+    await alepha
+      .inject(JobProvider)
+      .trigger("system.payments.expire-stale-intents");
+
+    // Every other intent is expired, and the run still ends in error.
+    expect(jobErrors).toEqual(["Stale sweep could not settle 1 of 3 intents"]);
+    expect((await payments.getIntent(second.id)).status).toBe("expired");
+    expect((await payments.getIntent(third.id)).status).toBe("expired");
+    expect(expired.sort()).toEqual([second.id, third.id].sort());
+    // The one nobody could answer for is left for the next sweep.
+    expect((await payments.getIntent(first.id)).status).toBe("processing");
   });
 });

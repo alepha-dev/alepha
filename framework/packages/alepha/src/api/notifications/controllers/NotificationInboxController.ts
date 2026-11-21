@@ -280,7 +280,12 @@ export class NotificationInboxController {
 
     const createdAt = decoded.slice(0, separator);
     const id = decoded.slice(separator + 1);
-    if (Number.isNaN(new Date(createdAt).getTime()) || !id) {
+    // The id reaches a uuid column: anything else is a failed query on
+    // Postgres, where it must be a refused request.
+    if (
+      Number.isNaN(new Date(createdAt).getTime()) ||
+      !z.uuid().safeParse(id).success
+    ) {
       throw new BadRequestError("Malformed cursor");
     }
 

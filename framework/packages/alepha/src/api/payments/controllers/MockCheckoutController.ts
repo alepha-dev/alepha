@@ -17,7 +17,7 @@ export const mockCheckoutOptions = $atom({
       .boolean()
       .describe(
         "Explicitly allow the mock checkout in production. The confirm " +
-          "endpoint is an unauthenticated 'mark as paid' — an app shipped " +
+          "endpoint is an unauthenticated 'mark as paid', an app shipped " +
           "without a real PSP must not silently expose it.",
       )
       .default(false),
@@ -185,7 +185,7 @@ export class MockCheckoutController {
   protected isMemoryProvider() {
     // The confirm endpoint is an unauthenticated capture ("mark as paid").
     // An app shipped to production without a real PSP must not silently
-    // expose it — production requires an explicit opt-in.
+    // expose it, production requires an explicit opt-in.
     if (this.alepha.isProduction() && !this.options.allowInProduction) {
       return false;
     }

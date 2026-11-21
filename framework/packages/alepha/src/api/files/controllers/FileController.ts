@@ -82,16 +82,11 @@ export class FileController {
   });
 
   /**
-   * POST /files - Uploads a new file to storage.
-   * Creates a database record with metadata and calculates checksum.
-   * Optionally specify bucket and expiration date.
-   */
-  /**
    * Uploads a file, taking its bytes as they arrive.
    *
    * `z.stream()` rather than `z.file()`, and it costs the caller nothing: a
    * `FileLike` is re-readable, so declaring one obliges the framework to hold
-   * the whole payload before the handler runs — which caps every upload at what
+   * the whole payload before the handler runs, which caps every upload at what
    * fits in memory, and on a Worker that is around 128 MB for the entire
    * isolate.
    *
@@ -99,7 +94,7 @@ export class FileController {
    * threshold before deciding, so anything short still gets an exact size and a
    * checksum; only what overflows trades those for not being held.
    *
-   * The ceiling comes from the `$storage` this is going to — see
+   * The ceiling comes from the `$storage` this is going to, see
    * `StorageMultipartCapProvider`. The bucket arrives in the query string, so
    * it is known before a single byte is read.
    */
@@ -141,11 +136,11 @@ export class FileController {
    * Dresses a streamed part as the `FileLike` the storage layer speaks.
    *
    * Takes a `FileLike` unchanged, because this action is not only reached over
-   * HTTP: `$action` can be invoked in process — by a job, a test, an MCP tool —
+   * HTTP: `$action` can be invoked in process, by a job, a test, an MCP tool,
    * and then the caller hands a file directly, with no multipart anywhere. A
    * conversion that assumed a part would fail exactly there, and only there.
    *
-   * `size` stays 0 for a real part — it is not known and must not be guessed.
+   * `size` stays 0 for a real part, it is not known and must not be guessed.
    * That is the value `FileService` reads to decide whether it can afford to
    * buffer, and a made-up number would send a 200 MB upload down the buffering
    * path.
@@ -175,7 +170,7 @@ export class FileController {
         }),
       arrayBuffer: async () => {
         throw new AlephaError(
-          "a streamed upload is read once — ask FileService, not the part",
+          "a streamed upload is read once, ask FileService, not the part",
         );
       },
       text: async () => {
@@ -213,7 +208,7 @@ export class FileController {
    * Returns the file content with appropriate Content-Type header.
    *
    * Authorization is delegated to `FileAccessProvider.assertReadable`. The
-   * default policy is creator-only — override the provider via DI to widen
+   * default policy is creator-only, override the provider via DI to widen
    * access (e.g. avatars, shared attachments). See `FileAccessProvider`.
    *
    * Cache-Control is `private` because the per-user authorization decision
@@ -252,7 +247,7 @@ export class FileController {
    *
    * Authorization is delegated to `FileAccessProvider.assertPublic`. The
    * default policy is deny-all (throws `NotFoundError`), so consuming apps
-   * must override the provider to opt files in — typically by bucket name
+   * must override the provider to opt files in, typically by bucket name
    * (avatars, campaign icons, etc.).
    *
    * Cache-Control is `public, immutable, max-age=1w` so Cloudflare's edge
@@ -263,7 +258,7 @@ export class FileController {
    *
    * **A week, not a year, and the difference is deletion.** The worker entry
    * consults `caches.default` BEFORE `__alepha.start()`, so a hit never
-   * reaches `getFileById` or `assertPublic` — no row lookup, no policy. And
+   * reaches `getFileById` or `assertPublic`, no row lookup, no policy. And
    * nothing invalidates: there is no `cache.delete` and no zone-purge call
    * anywhere, and `caches.default.delete()` would only evict the PoP serving
    * it. So once a body is stored, `max-age` IS the retention floor for a file
@@ -275,7 +270,7 @@ export class FileController {
    * store Worker-generated responses, so before the edge cache landed this
    * bound one requesting browser and nothing else.
    *
-   * A week costs close to nothing — the expensive case is the cold D1 + R2 +
+   * A week costs close to nothing, the expensive case is the cold D1 + R2 +
    * boot path for a first-time visitor, and anything requested at all is
    * requested well inside a week (PoPs evict low-traffic entries by LRU long
    * before that regardless). `immutable` stays: it suppresses revalidation

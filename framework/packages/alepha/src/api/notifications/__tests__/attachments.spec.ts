@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiFiles, $storage } from "alepha/api/files";
-import { AlephaApiJobs } from "alepha/api/jobs";
+import { AlephaApiJobs, jobExecutionEntity } from "alepha/api/jobs";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmTestPostgres } from "alepha/orm";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -15,6 +15,7 @@ import {
 
 class App {
   readonly invoices = $storage({ name: "invoices" });
+  readonly executions = $repository(jobExecutionEntity);
 
   readonly invoice = $notification({
     name: "att-invoice",
@@ -86,11 +87,11 @@ describe("notification attachments", () => {
     });
 
     // The reference, and nothing that looks like content.
-    const serialized = JSON.stringify({
-      storage: "invoices",
-      fileId: stored.id,
-    });
+    const [row] = await app.executions.findMany({});
+    const serialized = JSON.stringify(row.payload);
+    expect(serialized).toContain(stored.id);
     expect(serialized).not.toContain("PDF-BYTES");
+    expect(serialized).not.toContain(btoa("PDF-BYTES"));
   });
 
   it("lets the caller override the filename and type", async ({ expect }) => {
@@ -201,6 +202,7 @@ describe("notification attachments", () => {
 
     await sender.send(payload([]), { executionId: "att-7" });
 
+    expect(mail.records).toHaveLength(1);
     expect(mail.last?.attachments).toBeUndefined();
   });
 });

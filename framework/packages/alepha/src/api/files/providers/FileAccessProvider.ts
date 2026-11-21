@@ -40,7 +40,7 @@ export class FileAccessProvider {
       throw new ForbiddenError("File access requires authentication");
     }
     // Privileged identities (admin without narrow ownership scope) bypass
-    // the per-file check — they need to be able to read any file via the
+    // the per-file check, they need to be able to read any file via the
     // admin UI/inspector regardless of who uploaded it.
     if (user.ownership === false) {
       return;

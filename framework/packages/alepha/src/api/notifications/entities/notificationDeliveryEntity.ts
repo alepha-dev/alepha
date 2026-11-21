@@ -88,8 +88,9 @@ export const notificationDeliveryEntity = $entity({
      * The rendered body, only when `storeRenderedBody` is on and the
      * template is not `sensitive`. Off by default: 90 days of full HTML for
      * every notification is real bytes, and a fan-out over a roster
-     * multiplies it. Kept whole when it is stored: the default 255 cap of
-     * `z.text()` would refuse the receipt.
+     * multiplies it. Cut at `maxStoredBodyBytes` when it is stored; the
+     * column is far wider than the default 255 cap of `z.text()`, which
+     * would refuse the receipt.
      */
     body: z.text({ maxLength: 1_000_000 }).nullable().optional(),
 

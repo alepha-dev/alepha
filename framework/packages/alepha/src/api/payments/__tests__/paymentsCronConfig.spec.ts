@@ -7,7 +7,7 @@ import { AlephaApiPayments, paymentsConfig } from "../index.ts";
 /**
  * Guards the declaration-order hazard: `PaymentService.config` must stay
  * declared above the `$job` that reads it. Class fields initialize in order, so
- * moving it below leaves `this.config` undefined at `$job` construction — which
+ * moving it below leaves `this.config` undefined at `$job` construction, which
  * surfaces as a crash at inject time, not as a type error.
  */
 describe("payments cron configuration", () => {

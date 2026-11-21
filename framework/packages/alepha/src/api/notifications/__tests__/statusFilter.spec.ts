@@ -57,7 +57,7 @@ const receipt = (
   ...extra,
 });
 
-describe("admin notification list — status filter", () => {
+describe("admin notification list: status filter", () => {
   it("only accepts statuses a receipt actually carries", () => {
     const values = (notificationQuerySchema.shape.status as any).unwrap()
       .options as string[];
