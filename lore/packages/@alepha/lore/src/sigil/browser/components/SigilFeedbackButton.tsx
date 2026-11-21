@@ -16,6 +16,11 @@ import {
   SIGIL_FEEDBACK_THEME_DEFAULT,
   type SigilFeedbackTheme,
 } from "../../shared/sigilFeedbackTheme.ts";
+import {
+  SIGIL_FEEDBACK_READY_MESSAGE,
+  SIGIL_FEEDBACK_TRAIL_MESSAGE,
+  type SigilFeedbackTrail,
+} from "../../shared/sigilFeedbackTrail.ts";
 import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
 import { sigilScrubUrl } from "../../shared/sigilScrubUrl.ts";
 import { sigilUserAgent } from "../../shared/sigilUserAgent.ts";
@@ -46,6 +51,11 @@ export interface SigilFeedbackButtonProps {
    * The colour preset. Defaults to `indigo`.
    */
   theme?: SigilFeedbackTheme;
+  /**
+   * The feedback trail (#Q4038), read when the popup asks for it. Absent,
+   * the popup gets no trail.
+   */
+  trail?: () => SigilFeedbackTrail;
 }
 
 /**
@@ -121,7 +131,12 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
       ? `${feedbackUrl}${separator}${context}`
       : feedbackUrl;
     const popup = window.open(target, "lore-feedback", features);
-    if (!popup) window.open(target, "_blank");
+    if (!popup) {
+      // No popup, no opener: the `_blank` fallback gets no trail.
+      window.open(target, "_blank");
+      return;
+    }
+    answerTrail(popup, feedbackUrl, props.trail);
   };
 
   return (
@@ -232,4 +247,39 @@ const collectPageContext = (): string => {
     // Best-effort — a missing global just means fewer context fields.
   }
   return params.toString();
+};
+
+/**
+ * Hand the trail to the popup that asks for it (#Q4038), once. The trail
+ * rides a message rather than the URL, which is length-capped and lands in
+ * history and logs. Checked both ways: the asker must be this popup and come
+ * from the feedback URL's origin, and the answer is addressed to that origin
+ * only. Forgotten after a minute: a popup that never asks gets nothing.
+ */
+const answerTrail = (
+  popup: Window,
+  feedbackUrl: string,
+  trail: (() => SigilFeedbackTrail) | undefined,
+): void => {
+  if (!trail) return;
+  let origin: string;
+  try {
+    origin = new URL(feedbackUrl, window.location.href).origin;
+  } catch {
+    return;
+  }
+  const onMessage = (event: MessageEvent) => {
+    if (event.source !== popup || event.origin !== origin) return;
+    if (event.data?.type !== SIGIL_FEEDBACK_READY_MESSAGE) return;
+    window.removeEventListener("message", onMessage);
+    popup.postMessage(
+      { type: SIGIL_FEEDBACK_TRAIL_MESSAGE, trail: trail() },
+      origin,
+    );
+  };
+  window.addEventListener("message", onMessage);
+  window.setTimeout(
+    () => window.removeEventListener("message", onMessage),
+    60_000,
+  );
 };

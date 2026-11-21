@@ -44,6 +44,7 @@ import FeedbackAgentTriage, {
   FeedbackAgentJobLink,
 } from "./FeedbackAgentTriage.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
+import FeedbackTrailList from "./FeedbackTrailList.tsx";
 
 export interface ProjectFeedbackDetailProps {
   feedback: FeedbackResource;
@@ -420,6 +421,12 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                     </Fragment>
                   ))}
             </dl>
+            {/* What happened just before (#Q4038), errors first. */}
+            {feedback.source?.trail && (
+              <div className="mt-3">
+                <FeedbackTrailList trail={feedback.source.trail} />
+              </div>
+            )}
           </CollapsibleBlock>
         )}
 

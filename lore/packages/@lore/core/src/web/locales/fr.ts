@@ -3314,6 +3314,14 @@ export default {
     "Dites-nous ce qui s'est passé ou ce que vous aimeriez, et soyez aussi précis que possible.",
   "feedback.request.pasteHint":
     "Collez une capture d'écran (Ctrl/⌘+V) ou glissez des fichiers ici.",
+  "feedback.request.trail.include":
+    "Joindre ce qui s’est passé sur la page juste avant",
+  "feedback.request.trail.summary": "$1 erreurs, $2 pages, $3 actions",
+  "feedback.trail.errors": "Erreurs",
+  "feedback.trail.pages": "Pages visitées",
+  "feedback.trail.actions": "Actions",
+  "feedback.trail.failed": "échouée",
+  "feedback.trail.succeeded": "réussie",
   "feedback.request.attachments": "Pièces jointes",
   "feedback.request.attachmentsHelper":
     "Captures, CSV, logs (max $1 Mo chacun, jusqu'à $2 fichiers).",

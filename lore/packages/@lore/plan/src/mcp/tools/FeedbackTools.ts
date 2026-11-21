@@ -131,7 +131,7 @@ export class FeedbackTools {
       viewport: source.viewport,
       screen: source.screen,
       timezone: source.timezone,
-      consoleTail: source.consoleTail,
+      trail: source.trail,
       sigilId: source.sigilId,
     };
   }

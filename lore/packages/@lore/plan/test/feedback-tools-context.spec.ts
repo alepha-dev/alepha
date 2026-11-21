@@ -92,7 +92,11 @@ describe("Lore MCP: feedback_get context", () => {
       viewport: "411x845",
       screen: "412x915",
       timezone: "Europe/Paris",
-      consoleTail: ["TypeError: x is undefined"],
+      trail: {
+        errors: [{ message: "TypeError: x is undefined", path: "/", at: 1 }],
+        pages: [{ path: "/", at: 1 }],
+        actions: [],
+      },
     });
 
     const res = await call(feedbackTools.feedback_get, {
@@ -112,7 +116,11 @@ describe("Lore MCP: feedback_get context", () => {
       viewport: "411x845",
       screen: "412x915",
       timezone: "Europe/Paris",
-      consoleTail: ["TypeError: x is undefined"],
+      trail: {
+        errors: [{ message: "TypeError: x is undefined", path: "/", at: 1 }],
+        pages: [{ path: "/", at: 1 }],
+        actions: [],
+      },
       sigilId: undefined,
     });
   });

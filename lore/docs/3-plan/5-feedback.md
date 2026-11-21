@@ -152,9 +152,14 @@ app built with Alepha; see [Telemetry](/lore/docs/ship-telemetry) for the
 wiring. Any other app uses the link above.
 
 The sigil mounts a floating button that opens the form in a popup, carrying
-the page, the browser and the viewport the report was made from. When the
-report is sent, the popup closes by itself. Five keys of `SIGIL_CONFIG`
-control the button:
+the page, the browser and the viewport the report was made from. It also
+hands the form a short trail of what happened on that page just before: the
+last five crashes, the last ten pages visited and the last twenty actions,
+each with its outcome and duration, never what was typed or returned. The
+trail stays in the page's memory until a report is filed; the form shows it,
+and the reporter can leave it out. The report's details show it, errors
+first. When the report is sent, the popup closes by itself. Five keys of
+`SIGIL_CONFIG` control the button:
 
 | Key                           | Default        | What it does                                              |
 | ----------------------------- | -------------- | --------------------------------------------------------- |

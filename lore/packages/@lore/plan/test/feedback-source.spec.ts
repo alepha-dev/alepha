@@ -129,7 +129,16 @@ describe("feedback source field", () => {
             hostUrl: "https://shop.example.com/checkout",
             hostPath: "/checkout",
             userAgent: "Mozilla/5.0",
-            consoleTail: ["TypeError: x is undefined"],
+            trail: {
+              errors: [
+                { message: "TypeError: x is undefined", path: "/cart", at: 1 },
+              ],
+              pages: [
+                { path: "/", at: 1 },
+                { path: "/cart", at: 2 },
+              ],
+              actions: [{ name: "checkout", outcome: "error", ms: 120 }],
+            },
           },
         },
       },
@@ -144,6 +153,49 @@ describe("feedback source field", () => {
     expect(detail.data.source?.hostUrl).toBe(
       "https://shop.example.com/checkout",
     );
+    // The trail persists as sent (#Q4038).
+    expect(detail.data.source?.trail?.errors[0]?.message).toBe(
+      "TypeError: x is undefined",
+    );
+    expect(detail.data.source?.trail?.pages.map((it) => it.path)).toEqual([
+      "/",
+      "/cart",
+    ]);
+    expect(detail.data.source?.trail?.actions).toEqual([
+      { name: "checkout", outcome: "error", ms: 120 },
+    ]);
+  });
+
+  it("refuses a trail past its caps (#Q4038)", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    await expect(
+      ctx.feedbackController.submitFeedback.fetch(
+        {
+          params: { projectId },
+          body: {
+            title: "Embedded bug",
+            description: "From a partner site",
+            source: {
+              hostUrl: "https://shop.example.com/",
+              hostPath: "/",
+              userAgent: "Mozilla/5.0",
+              trail: {
+                errors: Array.from({ length: 6 }, (_, at) => ({
+                  message: "boom",
+                  path: "/",
+                  at,
+                })),
+                pages: [],
+                actions: [],
+              },
+            },
+          },
+        },
+        { user: owner },
+      ),
+    ).rejects.toThrow();
   });
 
   it("persists the full page-context source with no sigilId (sigil-button flow)", async ({
