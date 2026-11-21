@@ -7,8 +7,9 @@ import { build } from "vite";
 import { describe, it } from "vitest";
 
 /**
- * The tracing module on real workerd (#E86): the workerd barrel loads (its
- * `cloudflare:workers` read does not refuse the Worker), the tracer is
+ * The tracing module on real workerd (#E86): the workerd barrel loads (it
+ * reads nothing from `cloudflare:workers`; only this spec's fixture entry
+ * imports it), the tracer is
  * `WorkerdTracer`, and a request traced through it answers normally. Local
  * workerd records no traces, so the Cloudflare side of the mapping is the
  * node spec's (`WorkerdTracer.spec.ts`).

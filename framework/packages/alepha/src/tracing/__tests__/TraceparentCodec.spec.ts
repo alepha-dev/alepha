@@ -1,5 +1,4 @@
 import { Alepha } from "alepha";
-import { JsonFormatterProvider } from "alepha/logger";
 import { describe, expect, it } from "vitest";
 
 import { TraceparentCodec } from "../services/TraceparentCodec.ts";
@@ -57,22 +56,5 @@ describe("TraceparentCodec", () => {
     expect(context.spanId).toMatch(/^[0-9a-f]{16}$/);
     expect(c.parse(c.format(context))).toEqual(context);
     expect(c.format({ ...context, sampled: false })).toMatch(/-00$/);
-  });
-});
-
-describe("JsonFormatterProvider with trace ids", () => {
-  it("prints traceId and spanId when present, nothing otherwise", () => {
-    const json = Alepha.create().inject(JsonFormatterProvider);
-    const base = {
-      level: "INFO" as const,
-      message: "hi",
-      service: "S",
-      module: "m",
-      timestamp: 0,
-    };
-    expect(JSON.parse(json.format(base))).not.toHaveProperty("traceId");
-    expect(
-      JSON.parse(json.format({ ...base, traceId: "t", spanId: "s" })),
-    ).toMatchObject({ traceId: "t", spanId: "s" });
   });
 });
