@@ -16,7 +16,9 @@ import { OtaUpdateService } from "./OtaUpdateService.ts";
  * Per channel and compatibility cohort it keeps the newest `retention`
  * bundles (10 by default), and always: every cohort's `active` and
  * `fallback`, every bundle a device override pins, and every bundle whose
- * download link may still be live. A candidate is checked again against a
+ * download link may still be live: `linkTtlSeconds` after its `lastLinkAt`,
+ * plus the minute `lastLinkAt` is not rewritten in (a link handed out in
+ * that minute outlives the recorded one by as much). A candidate is checked again against a
  * fresh read of those references just before its artifact goes, and its row
  * stays, as `deleted`, so its version is never reused. A storage failure
  * leaves the bundle as it was for the next run.
@@ -67,7 +69,7 @@ export class OtaRetention {
     }
     const linkWindow = this.dateTime
       .now()
-      .subtract(this.options.linkTtlSeconds, "second")
+      .subtract(this.options.linkTtlSeconds + 60, "second")
       .toISOString();
     for (const bundle of await this.bundles.findMany({
       where: { status: { eq: "ready" }, lastLinkAt: { gte: linkWindow } },
@@ -151,22 +153,28 @@ export class OtaRetention {
       .now()
       .subtract(this.options.staleUploadMinutes, "minute")
       .toISOString();
-    let removed = 0;
+    // Collected first, deleted after: deleting while paging by offset
+    // shifts the later files back, and the next page would skip them.
+    const orphans: string[] = [];
     for (let page = 0; ; page++) {
       const files = await this.publisher.storage.list({
         page,
         size: 100,
         createdBefore: before,
       });
-      const orphans = files.content.filter((it) => !referenced.has(it.id));
-      if (orphans.length > 0) {
-        removed += (
-          await this.publisher.storage.deleteMany(orphans.map((it) => it.id))
-        ).length;
+      for (const file of files.content) {
+        if (!referenced.has(file.id)) orphans.push(file.id);
       }
       if (files.content.length < 100) {
         break;
       }
+    }
+    let removed = 0;
+    // A page's worth per call, as before: one query binds every id.
+    for (let at = 0; at < orphans.length; at += 100) {
+      removed += (
+        await this.publisher.storage.deleteMany(orphans.slice(at, at + 100))
+      ).length;
     }
     return removed;
   }

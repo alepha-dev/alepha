@@ -12,7 +12,8 @@ import { OtaBundleInspector } from "../services/OtaBundleInspector.ts";
 
 /**
  * The bytes our publisher writes and our server reads, against the pinned
- * Capgo tooling (`@capgo/cli` 8.75.2, its SDK): each side opens what the
+ * Capgo tooling (`@capgo/cli`, at the version `package.json` pins, and its
+ * SDK): each side opens what the
  * other sealed. The device side of the same contract is the pinned plugin,
  * proven on simulators and devices (#Q2524's evidence folio).
  *

@@ -13,8 +13,9 @@ import { OtaPublishService } from "../services/OtaPublishService.ts";
  * Machine credentials only: an `alepha/api/keys` key holding `ota:release`
  * AND listed on the app it publishes to. A key with the permission and no
  * binding to this app is refused, so one leaked key cannot publish to every
- * app on the server. The admin's own upload goes through `OtaAdminController`
- * with a signed-in session instead.
+ * app on the server (`OtaPublishService.checkPublisher`, which the admin's
+ * upload applies too). The admin's own upload goes through
+ * `OtaAdminController` with a signed-in session instead.
  */
 export class OtaPublishController {
   protected readonly publisher = $inject(OtaPublishService);
@@ -36,14 +37,12 @@ export class OtaPublishController {
       const app = await this.publisher.appOf(manifest);
       const user = this.alepha.store.get(currentUserAtom);
       const credential = user?.credential;
-      if (
-        credential?.type !== "api-key" ||
-        !app.publisherKeyIds.includes(credential.id)
-      ) {
+      if (!credential) {
         throw new ForbiddenError(
           `This credential may not publish to ${app.appId}: use an API key listed on the app`,
         );
       }
+      this.publisher.checkPublisher(app, credential);
       const { bundle, created } = await this.publisher.publish(
         manifest,
         new Uint8Array(await body.bundle.arrayBuffer()),

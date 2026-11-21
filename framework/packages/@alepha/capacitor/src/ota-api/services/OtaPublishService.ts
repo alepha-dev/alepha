@@ -3,9 +3,11 @@ import { $storage } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+import type { UserCredential } from "alepha/security";
 import {
   BadRequestError,
   ConflictError,
+  ForbiddenError,
   HttpError,
   NotFoundError,
 } from "alepha/server";
@@ -88,6 +90,24 @@ export class OtaPublishService {
       throw new NotFoundError(`No live update app ${manifest.appId}`);
     }
     return app;
+  }
+
+  /**
+   * Refuse a machine credential that may not publish to `app`: only an API
+   * key listed on the app may, so one leaked key cannot publish to every app
+   * on the server. A signed-in session (no credential) is left to the
+   * route's `ota:release` permission. Both upload routes call it.
+   */
+  public checkPublisher(app: OtaAppEntity, credential?: UserCredential): void {
+    if (
+      credential &&
+      (credential.type !== "api-key" ||
+        !app.publisherKeyIds.includes(credential.id))
+    ) {
+      throw new ForbiddenError(
+        `This credential may not publish to ${app.appId}: use an API key listed on the app`,
+      );
+    }
   }
 
   /**
@@ -204,7 +224,8 @@ export class OtaPublishService {
   /**
    * Make a bundle its channel cohort's `active`, at `rollout` percent. The
    * previous `active` becomes the `fallback`, the only bundle anyone vouched
-   * for by having served it.
+   * for by having served it, unless it was killed or is no longer `ready`:
+   * the previous `fallback` is kept then.
    */
   public async promote(
     channel: OtaChannelEntity,
@@ -213,9 +234,13 @@ export class OtaPublishService {
   ): Promise<OtaChannelEntity> {
     const key = this.updates.cohortKey(bundle.platform, bundle.fingerprint);
     const previous = channel.cohorts[key];
-    const fallback =
+    const active =
       previous?.active && previous.active !== bundle.id
-        ? previous.active
+        ? await this.bundles.findById(previous.active)
+        : undefined;
+    const fallback =
+      active && !active.killedAt && active.status === "ready"
+        ? active.id
         : previous?.fallback;
     return this.channels.updateById(channel.id, {
       cohorts: {

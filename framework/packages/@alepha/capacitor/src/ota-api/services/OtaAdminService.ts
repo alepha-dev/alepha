@@ -169,7 +169,8 @@ export class OtaAdminService {
 
   /**
    * Serve a bundle from a channel, to `rollout` percent of its cohort. The
-   * cohort's previous `active` becomes its `fallback`.
+   * cohort's previous `active` becomes its `fallback`, unless it was killed
+   * (see `OtaPublishService.promote`).
    */
   public async promote(
     channelId: string,

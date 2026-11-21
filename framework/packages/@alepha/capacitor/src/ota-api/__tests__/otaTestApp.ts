@@ -222,11 +222,13 @@ export const createOtaTestApp = async (
     },
 
     /**
-     * `POST /ota/bundles` over HTTP, as the CLI does.
+     * `POST /ota/bundles` over HTTP, as the CLI does, or the admin's
+     * `POST /api/ota/bundles` given its `path`.
      */
     upload: (
       release: { manifest: OtaReleaseManifest; ciphertext: Uint8Array },
       token?: string,
+      path = "/ota/bundles",
     ) => {
       const form = new FormData();
       form.append(
@@ -243,7 +245,7 @@ export const createOtaTestApp = async (
         }),
         "bundle.zip",
       );
-      return fetch(`${hostname}/ota/bundles`, {
+      return fetch(`${hostname}${path}`, {
         method: "POST",
         body: form,
         headers: token ? { authorization: `Bearer ${token}` } : {},

@@ -1,5 +1,5 @@
-import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
+import { $inject, Alepha, z } from "alepha";
+import { $secure, currentUserAtom } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import type { OtaAppEntity } from "../entities/otaApps.ts";
@@ -37,6 +37,7 @@ export class OtaAdminController {
   protected readonly group = "admin:ota";
   protected readonly admin = $inject(OtaAdminService);
   protected readonly publisher = $inject(OtaPublishService);
+  protected readonly alepha = $inject(Alepha);
 
   // ---------------------------------------------------------------------------
   // Apps
@@ -289,7 +290,8 @@ export class OtaAdminController {
   /**
    * Upload what `alepha capacitor release --dry-run` wrote: the encrypted
    * bundle and its manifest, already sealed by the publisher. The browser
-   * never sees a raw ZIP or a private key.
+   * never sees a raw ZIP or a private key. An API key is held to the same
+   * binding as `POST /ota/bundles`: it must be listed on the app.
    */
   public readonly otaUploadBundle = $action({
     method: "POST",
@@ -306,6 +308,10 @@ export class OtaAdminController {
     },
     handler: async ({ body }) => {
       const manifest = this.publisher.parseManifest(await body.manifest.text());
+      this.publisher.checkPublisher(
+        await this.publisher.appOf(manifest),
+        this.alepha.store.get(currentUserAtom)?.credential,
+      );
       const { bundle, created } = await this.publisher.publish(
         manifest,
         new Uint8Array(await body.bundle.arrayBuffer()),

@@ -48,9 +48,14 @@ export const otaReleaseManifestSchema = z.object({
 
   /**
    * The bundle version devices report once they run it. Unique per app and
-   * platform.
+   * platform. Never `builtin`, the updater's name for the layer shipped in
+   * the binary: a release under it would reset every device it is served to.
    */
-  version: z.text({ maxLength: 128, pattern: /^[0-9A-Za-z][0-9A-Za-z.+_-]*$/ }),
+  version: z
+    .text({ maxLength: 128, pattern: /^[0-9A-Za-z][0-9A-Za-z.+_-]*$/ })
+    .refine((it) => it !== "builtin", {
+      message: "is reserved for the built-in layer",
+    }),
 
   /**
    * The exact native build numbers this bundle may run on, all built from

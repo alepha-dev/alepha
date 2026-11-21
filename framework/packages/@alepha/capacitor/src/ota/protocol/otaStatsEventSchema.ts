@@ -7,7 +7,9 @@ import { otaDeviceSchema } from "./otaDeviceSchema.ts";
  * `checksum_fail`, `update_fail`, `app_moved_to_background`, ...).
  *
  * Untrusted telemetry: the server bounds and stores what it shows (the
- * versions devices were last seen on), and never decides anything from it.
+ * versions devices were last seen on). The one decision it feeds is that
+ * device's own: an `update_fail` adds the version to the device's failed
+ * versions, which it is never offered again.
  */
 export const otaStatsEventSchema = otaDeviceSchema.extend({
   action: z.text({ maxLength: 64 }),

@@ -1,5 +1,3 @@
-import { deflateRawSync } from "node:zlib";
-
 import { describe, it } from "vitest";
 
 import { OtaArchiveWriter } from "../../cli/services/OtaArchiveWriter.ts";
@@ -133,6 +131,43 @@ describe("OtaBundleInspector", () => {
       );
     });
 
+    it("refuses a local header that names another path", async ({ expect }) => {
+      const zip = writer.write([
+        { path: "index.html", data: text("x") },
+        { path: "assets/app.js", data: text("y") },
+      ]);
+      // The local header comes first: patch it alone, and leave the central
+      // directory naming "assets/app.js". Android unpacks by the local name.
+      const rename = (to: string) =>
+        patch(zip, (_, bytes) => {
+          const at = new TextDecoder("latin1")
+            .decode(bytes)
+            .indexOf("assets/app.js");
+          expect(at).toBeLessThan(centralOffset(zip));
+          bytes.set(text(to), at);
+        });
+      await expect(
+        inspector.inspect(rename("../../../evil"), limits),
+      ).rejects.toThrow("two names");
+      // A safe name is refused too: the device would unpack another file set
+      // than the one inspected.
+      await expect(
+        inspector.inspect(rename("assets/app.jz"), limits),
+      ).rejects.toThrow("two names");
+    });
+
+    it("refuses a local header that says the entry is encrypted", async ({
+      expect,
+    }) => {
+      const zip = writer.write([{ path: "index.html", data: text("x") }]);
+      const evil = patch(zip, (view) =>
+        view.setUint16(6, view.getUint16(6, true) | 0x1, true),
+      );
+      await expect(inspector.inspect(evil, limits)).rejects.toThrow(
+        "encrypted",
+      );
+    });
+
     it("refuses a symlink", async ({ expect }) => {
       const zip = writer.write([
         { path: "index.html", data: text("/etc/passwd") },
@@ -148,14 +183,12 @@ describe("OtaBundleInspector", () => {
     }) => {
       // A bomb: 1 MiB of zeros declared as 10 bytes.
       const zeros = new Uint8Array(1024 * 1024);
-      const deflated = deflateRawSync(zeros);
       const zip = writer.write([{ path: "index.html", data: zeros }]);
       expect(zip.length).toBeLessThan(zeros.length);
       const evil = patch(zip, (view) => {
         view.setUint32(22, 10, true);
         view.setUint32(centralOffset(zip) + 24, 10, true);
       });
-      expect(deflated.length).toBeGreaterThan(0);
       await expect(inspector.inspect(evil, limits)).rejects.toThrow(
         "expands past its declared size",
       );
