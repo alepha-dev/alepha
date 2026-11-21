@@ -1,4 +1,4 @@
-import { Badge, cn, textLinkUnderlineClassName } from "@alepha/ui";
+import { Badge, cn, textLinkUnderlineClassName, TimeAgo } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
   DataTable,
@@ -301,14 +301,21 @@ export const AdminHosts = () => {
                 >
                   N/A
                 </span>
+              ) : host.lastSeenAt ? (
+                // Relative, the exact date and time on hover (#Q4050), as on
+                // the project's Hosts tab.
+                <span data-testid="host-last-seen">
+                  <TimeAgo
+                    value={host.lastSeenAt}
+                    className="text-muted-foreground text-xs"
+                  />
+                </span>
               ) : (
                 <span
                   className="text-muted-foreground text-xs"
                   data-testid="host-last-seen"
                 >
-                  {host.lastSeenAt
-                    ? l(host.lastSeenAt, { date: "lll" })
-                    : "never"}
+                  never
                 </span>
               ),
           },

@@ -168,6 +168,28 @@ describe("AdminHosts", () => {
     expect(types[0].className).toContain("bg-muted");
   });
 
+  it("reads Last seen relative to now, the exact date on hover (#Q4050)", async ({
+    expect,
+  }) => {
+    const links = await boot();
+    links.rows = [
+      { ...LOOSE, lastSeenAt: "2020-01-15T10:30:00.000Z" } as AdminHostResource,
+    ];
+    render(
+      <AlephaContext.Provider value={alepha!}>
+        <DialogProvider>
+          <AdminHosts />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const cell = await screen.findByTestId("host-last-seen");
+    await waitFor(() => expect(cell.textContent).toMatch(/ago$/));
+    expect(cell.querySelector("[title]")?.getAttribute("title")).toContain(
+      "2020",
+    );
+  });
+
   it("says online or offline only, and lists capabilities as pills (#Q4010)", async ({
     expect,
   }) => {
