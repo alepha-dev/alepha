@@ -25,6 +25,12 @@ Share that link with the people you want to hear from. Inside the project, the
 
 ![The feedback request form](/screenshots/lore/feedback-form-light.png)
 
+The form opens with **What is it?**: **Bug**, **Idea**, **Question** or
+**Other**, one of them required. The choice becomes the report's first tag
+(`bug`, `feature`, `question` or `other`), so the inbox is sorted before anyone
+reads it, and the text box asks the question that fits it. The attachment
+limits are on the info icon beside **Attachments**.
+
 ⚠️ **The form needs a sign-in.** There is no anonymous report. A visitor who is
 not signed in sees a sign-in prompt instead of the form. Any Lore account can
 submit, and it does not have to be a member of the project.
@@ -132,11 +138,11 @@ out of the browser's history.
 | Parameter                                               | What it does                                                                             |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `tags`                                                  | A tag for the report. Repeat it for several. A report holds at most 20, `type` included. |
-| `type`                                                  | `bug` or `feature`, added to the tags.                                                   |
+| `type`                                                  | `bug` or `feature`: picks **Bug** or **Idea** on the form, never tagged twice.           |
 | `url`                                                   | The page the report is about. Without it, the parameters below are ignored.              |
 | `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz` | That page's path and title, the referrer, and the reporter's browser settings.           |
 
-A report with no tag gets the tag `feedback`.
+A report sent from the form always carries its type's tag.
 
 ### The built-in button
 

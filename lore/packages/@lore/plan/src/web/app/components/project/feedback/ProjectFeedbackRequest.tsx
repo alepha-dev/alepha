@@ -4,6 +4,9 @@ import {
   Button,
   Card,
   CardContent,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   useToast,
   UserAvatar,
   cn,
@@ -28,15 +31,27 @@ import {
   useStore,
 } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { useForm, useFormState } from "alepha/react/form";
+import { useForm, useFormState, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
-import { ArrowLeft, Loader2, Paperclip, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Bug,
+  CircleHelp,
+  Ellipsis,
+  Info,
+  Lightbulb,
+  Loader2,
+  Paperclip,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "../../../../../api/schemas/feedbackSourceSchema.ts";
+import { feedbackTypeSchema } from "../../../../../api/schemas/feedbackTypeSchema.ts";
+import { FeedbackTypeTags } from "../../../../../api/services/FeedbackTypeTags.ts";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
 // Unlike the attachment bucket name (see FeedbackRateLimiter.ATTACHMENT_BUCKET),
@@ -320,8 +335,11 @@ const ProjectFeedbackRequest = () => {
   // One free-text field. Client schema stays looser than the server's — a
   // `minLength` here would fail validation at form-construction time (empty
   // initial value). The server (`feedbackBodySchema`) enforces real bounds.
+  // The report's type comes first and is required (#Q4037); it reaches the
+  // server as a tag, `FeedbackTypeTags` folding it in.
   const form = useForm({
     schema: z.object({
+      type: feedbackTypeSchema,
       message: z.string().max(10_000),
     }),
     initialValues: { message: "" },
@@ -361,8 +379,9 @@ const ProjectFeedbackRequest = () => {
           description: message,
           attachments: attachmentIds,
           // No fallback tag: a generic `feedback` on every untagged item
-          // said nothing in the inbox.
-          tags,
+          // said nothing in the inbox. The type is one, first, and never
+          // twice, whatever a `?type=` put there (#Q4037).
+          tags: FeedbackTypeTags.fold(tags, body.type),
           source,
         },
       });
@@ -397,6 +416,15 @@ const ProjectFeedbackRequest = () => {
     },
   });
   const { loading: submitting } = useFormState(form, ["loading"]);
+  const chosenType = useFormValues(form).type;
+
+  // A `?type=` from the embed launcher preselects its button, once.
+  const [preselected, setPreselected] = useState(false);
+  if (!preselected && seededTags && seededTags.length > 0) {
+    setPreselected(true);
+    const fromUrl = FeedbackTypeTags.typeOf(seededTags);
+    if (fromUrl) form.input.type.set(fromUrl);
+  }
 
   /**
    * Upload the picked, dropped or pasted files, one after another.
@@ -638,6 +666,34 @@ const ProjectFeedbackRequest = () => {
               </div>
 
               <form {...form.props} className="flex flex-col gap-4">
+                {/* What the report is, first and required (#Q4037). */}
+                <Control
+                  input={form.input.type}
+                  label={tr("feedback.request.type")}
+                  segmented
+                  items={[
+                    {
+                      value: "bug",
+                      label: tr("feedback.request.type.bug"),
+                      icon: <Bug className="size-4" />,
+                    },
+                    {
+                      value: "idea",
+                      label: tr("feedback.request.type.idea"),
+                      icon: <Lightbulb className="size-4" />,
+                    },
+                    {
+                      value: "question",
+                      label: tr("feedback.request.type.question"),
+                      icon: <CircleHelp className="size-4" />,
+                    },
+                    {
+                      value: "other",
+                      label: tr("feedback.request.type.other"),
+                      icon: <Ellipsis className="size-4" />,
+                    },
+                  ]}
+                />
                 {/* Single free-text field. It doubles as a paste/drop target
                   for screenshots — global paste works regardless of focus,
                   this just makes dragging files discoverable. */}
@@ -661,6 +717,16 @@ const ProjectFeedbackRequest = () => {
                     input={form.input.message}
                     label={tr("feedback.request.messageField")}
                     description={tr("feedback.request.messageHelper")}
+                    // The question follows the type (#Q4037).
+                    placeholder={
+                      chosenType === "bug"
+                        ? tr("feedback.request.placeholder.bug")
+                        : chosenType === "idea"
+                          ? tr("feedback.request.placeholder.idea")
+                          : chosenType === "question"
+                            ? tr("feedback.request.placeholder.question")
+                            : tr("feedback.request.placeholder.other")
+                    }
                     area
 
                     rows={12}
@@ -671,14 +737,36 @@ const ProjectFeedbackRequest = () => {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">
-                    {tr("feedback.request.attachments")}
-                  </label>
-                  <p className="text-muted-foreground text-xs">
-                    {tr("feedback.request.attachmentsHelper", {
-                      args: [String(maxFileSizeMb), String(maxFiles)],
-                    })}
-                  </p>
+                  <span className="flex items-center gap-1.5">
+                    <label className="text-sm font-medium">
+                      {tr("feedback.request.attachments")}
+                    </label>
+                    {/* The limits, live values, on hover and focus (#Q4037). */}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-[3px]"
+                            aria-label={tr(
+                              "feedback.request.attachmentsHelper",
+                              {
+                                args: [String(maxFileSizeMb), String(maxFiles)],
+                              },
+                            )}
+                            data-testid="feedback-attachments-limits"
+                          />
+                        }
+                      >
+                        <Info className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {tr("feedback.request.attachmentsHelper", {
+                          args: [String(maxFileSizeMb), String(maxFiles)],
+                        })}
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
                       ref={inputRef}

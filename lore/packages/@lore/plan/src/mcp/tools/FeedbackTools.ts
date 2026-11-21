@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { FeedbackCommentController } from "../../api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../api/schemas/feedbackResourceSchema.ts";
+import { FeedbackTypeTags } from "../../api/services/FeedbackTypeTags.ts";
 import {
   feedbackAttachmentGetParamsSchema,
   feedbackCommentAddParamsSchema,
@@ -407,12 +408,16 @@ export class FeedbackTools {
         params.project_name,
       );
       const agentTag = `agent:${(params.as ?? "mcp").toLowerCase()}`;
+      const tags = [...new Set([...(params.tags ?? []), agentTag])];
       const created = await this.feedbackController.submitFeedback({
         params: { projectId },
         body: {
           title: params.title,
           description: params.description,
-          tags: [...new Set([...(params.tags ?? []), agentTag])].slice(0, 20),
+          // The type as the request form tags it (#Q4037): first, once.
+          tags: params.type
+            ? FeedbackTypeTags.fold(tags, params.type)
+            : tags.slice(0, FeedbackTypeTags.MAX_TAGS),
         },
       });
       // Filed from a room of another project: that project's own audit

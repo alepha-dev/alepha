@@ -3,6 +3,7 @@ import { z } from "alepha";
 
 import { feedback } from "../../api/entities/feedback.ts";
 import { feedbackLinkedQuestSchema } from "../../api/schemas/feedbackResourceSchema.ts";
+import { feedbackTypeSchema } from "../../api/schemas/feedbackTypeSchema.ts";
 
 const feedbackRefSchema = z.object({
   id: z.integer(),
@@ -320,6 +321,11 @@ export const feedbackSubmitParamsSchema = projectParamsSchema.extend({
     .min(1)
     .max(10_000)
     .describe("What was seen or is asked for, in Markdown."),
+  type: feedbackTypeSchema
+    .optional()
+    .describe(
+      "What it is, as the request form asks: bug, idea, question or other. Tagged the same way (an idea as feature).",
+    ),
   tags: z
     .array(z.string().max(40))
     .max(10)
