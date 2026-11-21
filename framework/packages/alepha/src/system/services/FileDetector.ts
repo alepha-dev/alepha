@@ -21,7 +21,7 @@ export interface FileTypeResult {
 
 /**
  * A magic-byte signature. `null` bytes are wildcards; `offset` is where the
- * signature starts in the file (0 unless stated — tar's "ustar" magic sits
+ * signature starts in the file (0 unless stated; tar's "ustar" magic sits
  * at byte 257).
  */
 export interface MagicByteSignature {
@@ -142,7 +142,7 @@ export class FileDetector {
       ],
       tar: [
         {
-          // "ustar" — POSIX tar magic. It lives at byte 257 (after the
+          // "ustar": POSIX tar magic. It lives at byte 257 (after the
           // 100-byte name field and the numeric header fields), NOT at the
           // start of the file; an offset-0 check can never match a real tar.
           signature: [0x75, 0x73, 0x74, 0x61, 0x72],
@@ -316,7 +316,7 @@ export class FileDetector {
   ).flatMap(([ext, signatures]) => signatures.map((sig) => ({ ext, ...sig })));
 
   /**
-   * How many bytes {@link detectFileType} peeks — enough for the deepest
+   * How many bytes {@link detectFileType} peeks: enough for the deepest
    * signature in the table (tar's "ustar" ends at byte 262).
    */
   protected static readonly PEEK_BYTES = Math.max(

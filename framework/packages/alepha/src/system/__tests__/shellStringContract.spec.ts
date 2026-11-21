@@ -5,7 +5,7 @@ import { NodeShellProvider } from "../providers/NodeShellProvider.ts";
 
 /**
  * The string form of `shell.run()` passes every token through as a LITERAL
- * argument on both runtimes. Shell metacharacters do not compose commands —
+ * argument on both runtimes. Shell metacharacters do not compose commands:
  * that is the whole point of the POSIX single-quote escaping: `;`, backticks,
  * `$(...)` and `|` cannot break out of an argument.
  *
@@ -25,7 +25,7 @@ const setup = async () => {
   return shell;
 };
 
-describe("shell.run(string) — literal argument contract", () => {
+describe("shell.run(string): literal argument contract", () => {
   it("does not treat && as a command separator", async () => {
     const shell = await setup();
     const out = await shell.run("echo hello && echo world", { capture: true });
@@ -78,5 +78,25 @@ describe("shell.run(string) — literal argument contract", () => {
     const shell = await setup();
     const out = await shell.run(`echo "it's"`, { capture: true });
     expect(out.trim()).toBe("it's");
+  });
+
+  it("splits on a newline or a carriage return as on any whitespace", async () => {
+    const shell = await setup();
+    const out = await shell.run("echo a\nb\r\nc", { capture: true });
+    expect(out.trim()).toBe("a b c");
+    expect(
+      (await shell.run("printf\n%s\n'x y'", { capture: true })).trim(),
+    ).toBe("x y");
+  });
+
+  it("refuses a blank command, as it refuses an empty argv", async () => {
+    const shell = await setup();
+    for (const blank of ["", "   ", "\t\n"]) {
+      await expect(shell.run(blank, { capture: true })).rejects.toThrow(
+        /empty command/,
+      );
+      await expect(shell.run(blank)).rejects.toThrow(/empty command/);
+      await expect(shell.capture(blank)).rejects.toThrow(/empty command/);
+    }
   });
 });

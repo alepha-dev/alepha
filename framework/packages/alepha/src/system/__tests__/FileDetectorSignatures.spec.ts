@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { FileDetector } from "../services/FileDetector.ts";
 
-describe("FileDetector — offsets, extensions, content-disposition", () => {
+describe("FileDetector: offsets, extensions, content-disposition", () => {
   let detector: FileDetector;
 
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe("FileDetector — offsets, extensions, content-disposition", () => {
 
   describe("tar detection (offset signature)", () => {
     /**
-     * A minimal POSIX tar header: the "ustar" magic sits at byte 257 —
+     * A minimal POSIX tar header: the "ustar" magic sits at byte 257:
      * an offset-0 check can never match a real archive.
      */
     const tarHeader = (): Buffer => {

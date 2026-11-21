@@ -28,7 +28,7 @@ export class BunShellProvider extends NodeShellProvider {
       cwd: options.cwd,
       env: {
         ...process.env,
-        // Same PATH prefix as the node engine — without it, a globally
+        // Same PATH prefix as the node engine: without it, a globally
         // installed binary shadows the project's own copy on Bun only.
         PATH: this.localBinPath(options.cwd),
         ...options.env,

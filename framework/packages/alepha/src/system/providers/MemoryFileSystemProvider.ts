@@ -29,8 +29,10 @@ import type {
  *
  * One deliberate looseness versus the node provider: `writeFile` succeeds
  * without its parent directories existing (and registers them implicitly),
- * so tests can seed fixtures in one call. Everything else follows the
- * contract pinned by `fileSystemContract.spec.ts`.
+ * so tests can seed fixtures in one call. Everything else, collisions
+ * between files and directories, path normalization and `readFile` handing
+ * out a copy included, follows the contract pinned by
+ * `fileSystemContract.spec.ts`.
  *
  * @example
  * ```typescript
@@ -136,8 +138,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public readFileError: Error | null = null;
 
   /**
-   * Join path segments using forward slashes.
-   * Uses Node's path.join for proper normalization (handles .. and .)
+   * Join path segments using forward slashes, resolving `.` and `..`
+   * through the local {@link posixJoin} (`node:path` is unavailable on the
+   * browser and workerd builds this provider backs).
    */
   public join(...paths: string[]): string {
     this.joinCalls.push(paths);
@@ -145,7 +148,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * Join, but restart from the last absolute segment — `node:path`'s `resolve`
+   * Join, but restart from the last absolute segment: `node:path`'s `resolve`
    * semantics, minus the cwd anchoring `resolve` applies to a fully relative
    * result. There is no cwd here, and this provider also backs the browser and
    * workerd builds where there is no process to ask.
@@ -162,7 +165,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Join and normalize path segments, resolving `.` and `..`.
    *
    * A local posix implementation rather than `node:path`: this provider is the
-   * portable one — it backs the browser and workerd builds, where importing
+   * portable one: it backs the browser and workerd builds, where importing
    * `node:path` resolves to an empty stub and every call would throw.
    */
   protected posixJoin(...paths: string[]): string {
@@ -226,11 +229,41 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * Normalize path separators to forward slashes for consistent internal storage.
-   * This ensures Windows paths work correctly in the in-memory file system.
+   * The one key a path is stored under: forward slashes (so Windows paths
+   * work), `.`, `..` and repeated slashes resolved, no trailing slash. Node
+   * reads `/b/./f.txt` and `/b/f.txt` as one file and removes `/b/d/` as
+   * `/b/d`; a key kept verbatim made them two. Relative paths stay relative,
+   * and `""` stays the root it already stands for.
    */
   protected normalizePath(path: string): string {
-    return path.replace(/\\/g, "/");
+    const slashed = path.replace(/\\/g, "/");
+    if (slashed === "") {
+      return "";
+    }
+    const joined = this.posixJoin(slashed);
+    return joined.length > 1 && joined.endsWith("/")
+      ? joined.slice(0, -1)
+      : joined;
+  }
+
+  /**
+   * Throws node's ENOTDIR when a file stands where one of `normalized`'s
+   * parent directories should be.
+   */
+  protected assertNoFileAbove(
+    normalized: string,
+    operation: string,
+    path: string,
+  ): void {
+    let index = normalized.indexOf("/", 1);
+    while (index > 0) {
+      if (this.files.has(normalized.slice(0, index))) {
+        throw new AlephaError(
+          `ENOTDIR: not a directory, ${operation} '${path}'`,
+        );
+      }
+      index = normalized.indexOf("/", index + 1);
+    }
   }
 
   /**
@@ -266,7 +299,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   protected registerDirectoryTree(normalizedPath: string): void {
     const parts = normalizedPath.split("/").filter(Boolean);
     // Keep the leading slash: rebuilding `/app/src` as `app/src` registered
-    // a key nothing else looks up, so `exists("/app/src")` said no — while
+    // a key nothing else looks up, so `exists("/app/src")` said no, while
     // the node provider reports every parent of a `mkdir -p`.
     let current = normalizedPath.startsWith("/") ? "" : undefined;
     for (const part of parts) {
@@ -278,7 +311,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   /**
    * Create a FileLike object from various sources.
    *
-   * Supports the full option union — as the DEFAULT provider in tests, any
+   * Supports the full option union: as the DEFAULT provider in tests, any
    * source the node provider accepts has to work here too, or production
    * code paths become untestable by substitution.
    */
@@ -333,9 +366,15 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
           res.headers.get("content-disposition"),
         ) ??
         "file";
+      // The size from content-length, as the node provider reads it.
+      const sizeHeader = res.headers.get("content-length");
+      const parsedSize = sizeHeader
+        ? Number.parseInt(sizeHeader, 10)
+        : Number.NaN;
       return this.fileLikeFromStream(res.body, {
         name,
         type: options.type ?? res.headers.get("content-type") ?? undefined,
+        size: Number.isFinite(parsedSize) ? parsedSize : undefined,
       });
     }
 
@@ -452,6 +491,20 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     if (!content) {
       throw new AlephaError(`ENOENT: no such file or directory, cp '${src}'`);
     }
+    // A file onto a directory, and a file into a missing parent, are refused
+    // as node refuses them. (A directory cp creates its missing parents, as
+    // `fs.cp` does, above.)
+    if (!this.files.has(to) && this.isExistingDirectory(to)) {
+      throw new AlephaError(
+        `EISDIR: cannot overwrite a directory with a file, cp '${src}' to '${dest}'`,
+      );
+    }
+    const parent = this.posixDirname(to);
+    if (parent !== "." && !this.isExistingDirectory(parent)) {
+      throw new AlephaError(
+        `ENOENT: no such file or directory, cp '${src}' to '${dest}'`,
+      );
+    }
     if (!force && this.files.has(to)) {
       throw new AlephaError(`EEXIST: file already exists, cp '${dest}'`);
     }
@@ -463,12 +516,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Create a directory in memory.
    *
    * Follows the interface defaults: recursive AND force both default to
-   * true, exactly like the node provider — a duplicate mkdir is a no-op
+   * true, exactly like the node provider: a duplicate mkdir is a no-op
    * unless the caller explicitly opts into strictness.
    */
   public async mkdir(path: string, options?: MkdirOptions): Promise<void> {
     await this.makeDirectory(path, options);
-    // Recorded on success only — see `rm`.
+    // Recorded on success only: see `rm`.
     this.mkdirCalls.push({ path, options });
   }
 
@@ -483,6 +536,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     const normalized = this.normalizePath(path);
     const recursive = options?.recursive ?? true;
     const force = options?.force ?? true;
+
+    // A file at the path, or above it: node refuses both, whatever the flags.
+    if (this.files.has(normalized)) {
+      throw new AlephaError(`EEXIST: file already exists, mkdir '${path}'`);
+    }
+    this.assertNoFileAbove(normalized, "mkdir", path);
 
     if (options?.mode !== undefined && !this.isExistingDirectory(normalized)) {
       this.modes.set(normalized, options.mode);
@@ -632,7 +691,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         `ENOENT: no such file or directory, open '${path}'`,
       );
     }
-    return content;
+    // A copy, as node returns a fresh buffer: handing out the stored array let
+    // a caller's edit rewrite the file.
+    return new Uint8Array(content);
   }
 
   /**
@@ -674,7 +735,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     data: Uint8Array | string | FileLike,
     options?: WriteFileOptions,
   ): Promise<void> {
-    // Materialise ONCE — FileLike sources may be single-shot streams, so
+    // Materialise ONCE: FileLike sources may be single-shot streams, so
     // consuming them twice (once for the assertion log, once for storage)
     // stored an empty payload.
     const buffer =
@@ -693,7 +754,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     if (isNew && options?.mode !== undefined) {
       this.modes.set(this.normalizePath(path), options.mode);
     }
-    // Recorded on success only — see `rm`.
+    // Recorded on success only: see `rm`.
     this.writeFileCalls.push({
       path,
       data: new TextDecoder().decode(buffer),
@@ -707,6 +768,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     }
 
     const normalized = this.normalizePath(path);
+    if (!this.files.has(normalized) && this.isExistingDirectory(normalized)) {
+      throw new AlephaError(
+        `EISDIR: illegal operation on a directory, open '${path}'`,
+      );
+    }
+    this.assertNoFileAbove(normalized, "open", path);
     this.files.set(normalized, buffer);
     this.mtimes.set(normalized, this.dateTime.nowMillis());
   }
@@ -721,7 +788,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         : new Uint8Array(data);
 
     await this.appendToFile(path, buffer);
-    // Recorded on success only — see `rm`.
+    // Recorded on success only: see `rm`.
     this.appendFileCalls.push({ path, data: new TextDecoder().decode(buffer) });
   }
 
@@ -794,7 +861,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * The last write is the one that counts: a scaffolder that writes a
    * placeholder and then rewrites the real thing left this asserting on the
    * placeholder, so a test could pass on content the run had already thrown
-   * away — or fail on content it had just fixed. Use
+   * away, or fail on content it had just fixed. Use
    * {@link wasEverWrittenMatching} when the intermediate writes are the point.
    *
    * @example
@@ -864,7 +931,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   /**
    * Builds a FileLike over an in-memory buffer.
    *
-   * Streams come from `Blob` — a fresh, standards-based stream per call on
+   * Streams come from `Blob`: a fresh, standards-based stream per call on
    * every runtime, with no `node:stream` import that would poison browser
    * bundles.
    *
@@ -933,9 +1000,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * A fresh web ReadableStream over a buffer's bytes.
-   *
-   * @protected
+   * One buffer holding every chunk, in order.
    */
   protected concatBytes(chunks: Uint8Array[]): Uint8Array {
     const bytes = new Uint8Array(
@@ -949,6 +1014,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     return bytes;
   }
 
+  /**
+   * A fresh web ReadableStream over a buffer's bytes.
+   */
   protected bufferToStream(buffer: Uint8Array): StreamLike {
     const bytes = new Uint8Array(
       buffer.buffer.slice(

@@ -137,4 +137,25 @@ describe("MemoryShellProvider", () => {
       expect(shell.installedCommands.size).toBe(0);
     });
   });
+
+  describe("refusals the real providers make", () => {
+    it("refuses stdin on the string form, an empty argv and a blank command", async () => {
+      await expect(shell.run("cat", { stdin: "x" })).rejects.toThrow(
+        /stdin requires the argv-array form/,
+      );
+      await expect(shell.capture("cat", { stdin: "x" })).rejects.toThrow(
+        /stdin requires the argv-array form/,
+      );
+      await expect(shell.run([])).rejects.toThrow(/empty argv array/);
+      await expect(shell.capture([])).rejects.toThrow(/empty argv array/);
+      await expect(shell.run("  ")).rejects.toThrow(/empty command/);
+      await expect(shell.capture("")).rejects.toThrow(/empty command/);
+      // Nothing refused was recorded as run.
+      expect(shell.calls).toHaveLength(0);
+    });
+
+    it("still takes stdin on the argv form", async () => {
+      await expect(shell.run(["cat"], { stdin: "x" })).resolves.toBe("");
+    });
+  });
 });

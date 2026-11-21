@@ -248,8 +248,8 @@ export abstract class FileSystemProvider {
    *
    * The difference from {@link join} is the whole point: `join("/app", "/tmp/x")`
    * is `/app/tmp/x`, while `resolve("/app", "/tmp/x")` is `/tmp/x`. Anywhere a
-   * user-supplied path is anchored to a project root — a `--out` flag, a config
-   * value — `join` silently reparents an absolute path under the root and the
+   * user-supplied path is anchored to a project root (a `--out` flag, a config
+   * value) `join` silently reparents an absolute path under the root and the
    * write fails on a directory nobody asked for.
    *
    * @param paths - The path segments to resolve, left to right
@@ -328,7 +328,7 @@ export abstract class FileSystemProvider {
    * Opens a readable stream over the content of a file.
    *
    * Unlike {@link readFile}, the content is never fully materialised in
-   * memory — this is the right call for handing large files to an upload
+   * memory: this is the right call for handing large files to an upload
    * or a compression step. Throws when the path does not exist.
    *
    * @param path - The file path to stream

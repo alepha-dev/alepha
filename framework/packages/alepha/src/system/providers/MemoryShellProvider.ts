@@ -122,12 +122,38 @@ export class MemoryShellProvider implements ShellProvider {
   }
 
   /**
+   * The refusals `NodeShellProvider` makes before running anything, so a
+   * spec on this provider cannot pass on a call production refuses. Thrown
+   * before the call is recorded.
+   */
+  protected assertRunnable(
+    command: string | string[],
+    options: ShellRunOptions,
+  ): void {
+    if (Array.isArray(command)) {
+      if (command.length === 0) {
+        throw new AlephaError("Cannot run an empty argv array");
+      }
+      return;
+    }
+    if (options.stdin !== undefined) {
+      throw new AlephaError(
+        'stdin requires the argv-array form: run(["cmd", "arg"], { stdin }).',
+      );
+    }
+    if (command.trim() === "") {
+      throw new AlephaError("Cannot run an empty command");
+    }
+  }
+
+  /**
    * Record command and return simulated output.
    */
   public async run(
     command: string | string[],
     options: ShellRunOptions = {},
   ): Promise<string> {
+    this.assertRunnable(command, options);
     const key = Array.isArray(command) ? command.join(" ") : command;
     this.calls.push({
       command: key,
@@ -148,7 +174,7 @@ export class MemoryShellProvider implements ShellProvider {
   /**
    * Record command and return a simulated structured result.
    *
-   * A configured error becomes `{ exitCode: 1, stderr }` — the structured
+   * A configured error becomes `{ exitCode: 1, stderr }`: the structured
    * API resolves on failure instead of throwing, matching the real
    * providers' contract.
    */
@@ -156,6 +182,7 @@ export class MemoryShellProvider implements ShellProvider {
     command: string | string[],
     options: ShellRunOptions = {},
   ): Promise<ShellCommandResult> {
+    this.assertRunnable(command, options);
     const key = Array.isArray(command) ? command.join(" ") : command;
     this.calls.push({
       command: key,

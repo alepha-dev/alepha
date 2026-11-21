@@ -78,9 +78,9 @@ describe("BunShellProvider", () => {
    * Mirror of `shellStringContract.spec.ts` (Node). Review #2 recorded these
    * as diverging between the two runtimes; they no longer do, and this table
    * is what keeps them from drifting apart again. Every token in the string
-   * form is a literal argument — a pipeline needs an explicit `sh -c`.
+   * form is a literal argument: a pipeline needs an explicit `sh -c`.
    */
-  describe("string form — literal argument contract (parity with Node)", () => {
+  describe("string form: literal argument contract (parity with Node)", () => {
     it("does not treat && as a command separator", async () => {
       const out = await shell.run("echo hello && echo world", {
         capture: true,

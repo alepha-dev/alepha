@@ -10,7 +10,7 @@ import { NodeFileSystemProvider } from "../providers/NodeFileSystemProvider.ts";
 
 /**
  * Every FileSystemProvider implementation must satisfy the SAME behavior
- * table — this is the filesystem twin of `shellStringContract.spec.ts`.
+ * table: this is the filesystem twin of `shellStringContract.spec.ts`.
  *
  * The point is service substitution: a test that runs against
  * `MemoryFileSystemProvider` must mean something about production running
@@ -51,7 +51,7 @@ afterAll(async () => {
 });
 
 for (const impl of implementations) {
-  describe(`FileSystemProvider contract — ${impl.name}`, () => {
+  describe(`FileSystemProvider contract: ${impl.name}`, () => {
     let counter = 0;
 
     /**
@@ -380,6 +380,99 @@ for (const impl of implementations) {
         const file = fs.createFile({ buffer: Buffer.from("again"), name: "a" });
         expect(await streamToString(file.stream())).toBe("again");
         expect(await streamToString(file.stream())).toBe("again");
+      });
+
+      it("reads the size of a response from its content-length", async () => {
+        const { fs } = await setup();
+        const file = fs.createFile({
+          response: new Response("hello", {
+            headers: { "content-length": "5" },
+          }),
+        });
+        expect(file.size).toBe(5);
+      });
+    });
+
+    /**
+     * A file and a directory at one path, or a file standing where a parent
+     * directory should be: node refuses each of these, and the memory
+     * provider used to accept them, so a spec could pass on a write
+     * production refuses.
+     */
+    describe("file and directory collisions", () => {
+      it("refuses a mkdir over a file, or under one", async () => {
+        const { fs, base } = await setup();
+        const f = join(base, "f");
+        await fs.writeFile(f, "x");
+        await expect(fs.mkdir(f)).rejects.toThrow(/EEXIST/);
+        await expect(fs.mkdir(f, { recursive: false })).rejects.toThrow(
+          /EEXIST/,
+        );
+        await expect(fs.mkdir(join(f, "sub"))).rejects.toThrow(/ENOTDIR/);
+        expect(await fs.readTextFile(f)).toBe("x");
+      });
+
+      it("refuses a write onto a directory, or under a file", async () => {
+        const { fs, base } = await setup();
+        const d = join(base, "d");
+        const f = join(base, "f");
+        await fs.mkdir(d);
+        await fs.writeFile(f, "x");
+        await expect(fs.writeFile(d, "y")).rejects.toThrow(/EISDIR/);
+        await expect(fs.writeFile(join(f, "child"), "y")).rejects.toThrow(
+          /ENOTDIR/,
+        );
+        expect((await fs.stat(d)).isDirectory).toBe(true);
+      });
+
+      it("refuses a file cp onto a directory, or into a missing parent", async () => {
+        const { fs, base } = await setup();
+        const src = join(base, "src.txt");
+        const d = join(base, "d");
+        await fs.writeFile(src, "x");
+        await fs.mkdir(d);
+        await expect(fs.cp(src, d)).rejects.toThrow(/EISDIR|directory/);
+        await expect(fs.cp(src, join(base, "no/such/dest"))).rejects.toThrow(
+          /ENOENT/,
+        );
+      });
+
+      it("still copies a directory into a missing parent", async () => {
+        const { fs, base } = await setup();
+        await fs.mkdir(join(base, "from"));
+        await fs.writeFile(join(base, "from/f.txt"), "a");
+        await fs.cp(join(base, "from"), join(base, "no/such/to"));
+        expect(await fs.readTextFile(join(base, "no/such/to/f.txt"))).toBe("a");
+      });
+    });
+
+    describe("paths", () => {
+      it("reads a path written with . and // as its normal form", async () => {
+        const { fs, base } = await setup();
+        await fs.mkdir(join(base, "b"));
+        await fs.writeFile(`${base}/b/./f.txt`, "1");
+        expect(await fs.readTextFile(`${base}/b/f.txt`)).toBe("1");
+        expect(await fs.readTextFile(`${base}//b/f.txt`)).toBe("1");
+        expect(await fs.readTextFile(`${base}/b/../b/f.txt`)).toBe("1");
+      });
+
+      it("removes a directory named with a trailing slash", async () => {
+        const { fs, base } = await setup();
+        await fs.mkdir(join(base, "d"));
+        await fs.writeFile(join(base, "d/f.txt"), "x");
+        await fs.rm(`${base}/d/`, { recursive: true });
+        expect(await fs.exists(join(base, "d"))).toBe(false);
+      });
+    });
+
+    describe("readFile", () => {
+      it("returns a copy: changing it changes nothing stored", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "abc.txt");
+        await fs.writeFile(path, "abc");
+        const bytes = await fs.readFile(path);
+        bytes[0] = 0x7a;
+        expect(await fs.readTextFile(path)).toBe("abc");
       });
     });
   });
