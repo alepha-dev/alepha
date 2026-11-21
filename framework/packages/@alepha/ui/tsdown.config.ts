@@ -7,8 +7,8 @@ import { defineConfig } from "tsdown";
  * code. Vite in particular transforms it in place but never descends into it
  * when scanning for dependencies to pre-bundle, so every bare import made
  * *inside* a component escaped optimization. Any CommonJS-only package among
- * them was then handed to the browser raw — `does not provide an export named
- * 'default'` — which broke the module graph, stopped hydration, and turned the
+ * them was then handed to the browser raw (`does not provide an export named
+ * 'default'`), which broke the module graph, stopped hydration, and turned the
  * login form into a native GET with the password in the query string. The same
  * split gave `alepha` two module instances and two `AlephaContext` objects,
  * so `useAlepha()` threw inside the provider that rendered it.

@@ -86,4 +86,18 @@ describe("PageOutline", () => {
       expect(link.getAttribute("aria-current")).toBe("location"),
     );
   });
+
+  it("renders when opened on a hash that is not valid percent-encoding", async () => {
+    history.replaceState(null, "", `${window.location.pathname}#100%`);
+    render(
+      <PageOutline>
+        <div id="a" {...outlineEntry("A")} />
+        <div id="b" {...outlineEntry("B")} />
+      </PageOutline>,
+    );
+
+    expect(
+      await screen.findByRole("navigation", { name: "On this page" }),
+    ).toBeTruthy();
+  });
 });

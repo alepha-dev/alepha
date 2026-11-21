@@ -8,10 +8,12 @@ export type SliderProps = SliderPrimitive.Root.Props;
 
 const Slider = (props: SliderProps) => {
   const { className, defaultValue, value, min = 0, max = 100, ...rest } = props;
-  const _values = Array.isArray(value)
-    ? value
-    : Array.isArray(defaultValue)
-      ? defaultValue
+  // A number value is a single-thumb slider; no value at all is a range.
+  const current = value ?? defaultValue;
+  const _values = Array.isArray(current)
+    ? current
+    : typeof current === "number"
+      ? [current]
       : [min, max];
 
   // `thumbAlignment="edge"` makes Base UI write an inline pre-hydration

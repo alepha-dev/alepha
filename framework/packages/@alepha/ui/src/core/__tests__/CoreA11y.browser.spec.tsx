@@ -213,6 +213,10 @@ describe("core primitives pass axe", () => {
         <Progress value={40} aria-label="Upload" />
       </main>,
     );
+    // A number value is a single-thumb slider.
+    expect(document.querySelectorAll("[data-slot=slider-thumb]")).toHaveLength(
+      1,
+    );
     await expectAccessible();
   });
 

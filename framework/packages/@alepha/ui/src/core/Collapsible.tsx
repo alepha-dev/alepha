@@ -36,7 +36,7 @@ export interface CollapsibleTriggerProps
 /**
  * The button that opens and closes the panel. It carries `aria-expanded` and
  * `aria-controls`. Its own styles are minimal (a row of its children, a focus
- * ring): pass `render={<Button variant="ghost" />}` for a button look.
+ * ring): pass `render={<Button variant="minimal" />}` for a button look.
  */
 const CollapsibleTrigger = (props: CollapsibleTriggerProps) => {
   const { className, chevron = false, children, ...rest } = props;

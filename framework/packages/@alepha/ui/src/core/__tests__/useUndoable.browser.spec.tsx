@@ -180,6 +180,49 @@ describe("useUndoable", () => {
     expect(reported).toEqual(["refused by the server (spec)"]);
   });
 
+  it("settles the change it re-applies when the server refuses the Undo", async () => {
+    await mount();
+    // Each apply is one overlay entry, like a DataTable row patch: an entry
+    // never settled keeps overriding the server's row.
+    const entries: { settled: boolean; rolledBack: boolean }[] = [];
+    const reported: string[] = [];
+    alepha!.events.on("react:action:error", (event) => {
+      reported.push(event.error.message);
+    });
+
+    await act(async () => {
+      await undoable!.run({
+        message: "Kept one",
+        apply: () => {
+          const entry = { settled: false, rolledBack: false };
+          entries.push(entry);
+          return {
+            rollback: () => {
+              entry.rolledBack = true;
+            },
+            settle: () => {
+              entry.settled = true;
+            },
+          };
+        },
+        commit: async () => {},
+        undo: async () => {
+          throw new Error("undo refused by the server (spec)");
+        },
+      });
+    });
+    await waitFor(() => expect(toastWith("Kept one")).toBeTruthy());
+    fireEvent.click(buttonIn("Kept one", /undo/i));
+
+    await waitFor(() =>
+      expect(reported).toEqual(["undo refused by the server (spec)"]),
+    );
+    expect(entries).toEqual([
+      { settled: true, rolledBack: true },
+      { settled: true, rolledBack: false },
+    ]);
+  });
+
   it("undoes the newest window on Ctrl+Z, and leaves a text field's own undo alone", async () => {
     await mount();
     const { state, options } = harness();

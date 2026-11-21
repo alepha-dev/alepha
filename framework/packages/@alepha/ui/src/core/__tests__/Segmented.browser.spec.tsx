@@ -139,3 +139,32 @@ describe("Segmented on a right-to-left page", () => {
     expect(checked()).toBe("Alpha");
   });
 });
+
+/**
+ * A radio group is one Tab stop: Tab lands on the checked option, or on the
+ * first enabled one when nothing is checked, and the arrow keys move inside.
+ */
+describe("Segmented Tab stops", () => {
+  const tabIndexes = () =>
+    screen.getAllByRole("radio").map((r) => r.getAttribute("tabindex"));
+
+  it("makes only the checked option a Tab stop", () => {
+    render(<Harness initial="b" />);
+
+    expect(tabIndexes()).toEqual(["-1", "0", "-1"]);
+  });
+
+  it("makes the first enabled option the Tab stop when none is checked", () => {
+    render(
+      <Segmented
+        options={[
+          { value: "a", label: "Alpha", disabled: true },
+          { value: "b", label: "Bravo" },
+          { value: "c", label: "Charlie" },
+        ]}
+      />,
+    );
+
+    expect(tabIndexes()).toEqual(["-1", "0", "-1"]);
+  });
+});

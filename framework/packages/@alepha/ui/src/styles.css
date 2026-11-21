@@ -326,7 +326,7 @@
    * way a mix with plain black or white would.
    *
    * `oklab` rather than sRGB so the step is perceptually even across a light
-   * grey border and a dark tinted one. Where `--input` is translucent (dark
+   * grey border and a dark tinted one. Where `--border` is translucent (dark
    * mode ships `oklch(1 0 0 / 15%)`) the mix raises the alpha too, which is
    * the same direction: a hovered field reads as more present, not less.
    */
@@ -684,12 +684,12 @@
  *
  * An absolute fill cannot track a surface that varies, so the step shrinks to
  * nothing as the surface darkens: on `--sidebar` (0.985) it is 1.5%, and a
- * `hover:bg-muted` child sitting on a `bg-muted` panel is a 0% step — the
+ * `hover:bg-muted` child sitting on a `bg-muted` panel is a 0% step: the
  * state is literally invisible. Below 0.97 it inverts and hovering BRIGHTENS.
  *
  * ⚠️ That 0% case is NOT light-specific, and this block was scoped to light
  * for a year on the assumption that it was. `hover:bg-muted` on a `bg-muted`
- * panel is a 0% step in dark too — same token on both sides, and the
+ * panel is a 0% step in dark too: same token on both sides, and the
  * measurement is `oklch(0.269 0 0)` for the hovered control and
  * `oklch(0.269 0 0)` for the panel it sits on. That is the whole of quest
  * #1643: the DataTable toolbar IS a `bg-muted` panel, so its three icon
@@ -714,11 +714,11 @@
   --state-layer-weak: color-mix(in oklch, var(--foreground) 5%, transparent);
 
   /* `--accent` and `--sidebar-accent` are PURE interaction tokens across this
-   * package and Lore (github.com/alepha-dev/lore) — every single use is hover/focus/open/selected,
+   * package and Lore (github.com/alepha-dev/lore): every single use is hover/focus/open/selected,
    * never an opaque surface (verified by grep, incl. the bare `bg-accent`
    * selected-state uses). So the wash goes on the token itself and reaches
-   * every state variant at once — hover, focus, data-open, data-highlighted,
-   * data-active, aria-expanded — with no selector list to keep in sync.
+   * every state variant at once (hover, focus, data-open, data-highlighted,
+   * data-active, aria-expanded) with no selector list to keep in sync.
    *
    * This deliberately overrides the per-theme `--accent` values in Lore's
    * main.css: those were hand-tuned per surface, which is exactly the approach
@@ -747,16 +747,16 @@
  * (progress track, tabs list, kbd, card footer, slider). It must stay opaque,
  * so its state variants are reached by selector instead of via the token.
  *
- * Unlayered on purpose — Tailwind's utilities live in `@layer utilities`, and
+ * Unlayered on purpose: Tailwind's utilities live in `@layer utilities`, and
  * unlayered styles beat layered ones whatever the specificity, so this wins
  * without `!important` and without racing selector counts.
  *
- * Every match is `[class~=]`, the exact space-separated token — never
+ * Every match is `[class~=]`, the exact space-separated token, never
  * `[class*=]`. A substring match looks equivalent and is not: it also matches
  * `dark:hover:bg-muted/50`, so a ghost button rendered in LIGHT mode picked up
  * the weak layer off its dark-mode class and came out at half strength. Exact
  * tokens cannot do that. The cost is that the fractional list below is
- * enumerated rather than wildcarded — a fraction nobody listed keeps today's
+ * enumerated rather than wildcarded: a fraction nobody listed keeps today's
  * behaviour, which is a no-op, not a wrong result. */
 /* ⚠️ The `hover:` and `focus:` entries this list used to carry are GONE, and
  * nothing replaced them: every hover and every menu highlight writes
@@ -778,11 +778,11 @@
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Sidebar active item — a left bar, not a heavier fill.
+ * Sidebar active item: a left bar, not a heavier fill.
  *
  * The state layer above deliberately gives the active item the SAME weight as
  * a hovered one, because shadcn spends one token on both. That leaves two
- * adjacent rows — the current page and the one under the pointer — rendering
+ * adjacent rows (the current page and the one under the pointer) rendering
  * as a single merged shape with no way to tell them apart.
  *
  * The bar resolves it without touching the fill. Presence/absence of a shape
@@ -791,7 +791,7 @@
  * a fill, so the two states never encode the same way.
  *
  * Both modes, unlike the state layer above: the collision it fixes is
- * shadcn's one-token design, which is present in dark too — dark just happens
+ * shadcn's one-token design, which is present in dark too; dark just happens
  * to render both at `oklch(0.308 0 0)` instead of both at a 10% wash.
  *
  * `--sidebar-primary` rather than a fixed color, so every Lore theme carries
@@ -866,7 +866,7 @@
  * was written to close, moved one layer down.
  *
  * Unlayered on purpose: unlayered CSS beats every `@layer`, including
- * Tailwind's `utilities`, which is what the sidebar rules below already rely
+ * Tailwind's `utilities`, which is what the sidebar rules above already rely
  * on. Targeted by ROLE rather than by `data-slot` so it covers the checkbox
  * and radio variants of a menu item without naming five primitives, each of
  * which could rename its slot.
@@ -930,7 +930,7 @@
  * `[data-minimal]` is excluded too: a `minimal` select has no border at rest
  * (`TRIGGER_MINIMAL_CLASSES` makes it transparent), and this rule, which
  * outranks that class, drew one on hover, so the trigger grew a box the
- * moment it was pointed at. Its hover is the `hover:bg-muted` tint alone.
+ * moment it was pointed at. Its hover is the `hover:bg-hover` tint alone.
  */
 :is(
     [data-slot="input"],

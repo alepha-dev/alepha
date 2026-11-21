@@ -1,13 +1,13 @@
 /**
  * One-off generator for the per-character width table in
- * `src/components/markdown-view/diagram/textMetrics.ts`.
+ * `src/markdown/diagram/textMetrics.ts`.
  *
  * The diagram layout core is DOM-free by design, so it cannot call
  * `measureText`. This script does it once, in a real browser, against the
  * real font file `@fontsource-variable/inter` ships, and prints the
  * constants to paste back into the table.
  *
- * Run from the repo root:
+ * Run from `framework/`:
  *   node packages/@alepha/ui/scripts/measure-font.ts
  *
  * The font face and size it measures MUST stay identical to
@@ -33,7 +33,7 @@ const CHARS = [
   "→",
   "←",
   "·",
-  "—",
+  "\u2014",
   "’",
   "“",
   "”",

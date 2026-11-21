@@ -119,8 +119,12 @@ export const useUndoable = (): Undoable => {
             try {
               await options.undo!();
             } catch (error) {
-              // The server kept the change: the screen must say so too.
-              options.apply?.();
+              // The server kept the change: the screen must say so too, and
+              // the re-applied change is settled, as the server holds it.
+              const reapplied = options.apply?.();
+              if (reapplied && typeof reapplied === "object") {
+                reapplied.settle?.();
+              }
               report(error);
               return;
             }

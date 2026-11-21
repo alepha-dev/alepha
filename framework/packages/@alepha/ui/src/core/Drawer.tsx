@@ -1,4 +1,5 @@
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
+import { AlephaError } from "alepha";
 import * as React from "react";
 
 import { cn } from "./utils.ts";
@@ -20,7 +21,7 @@ function useDrawer() {
   const context = React.useContext(DrawerContext);
 
   if (!context) {
-    throw new Error("useDrawer must be used within a Drawer.");
+    throw new AlephaError("useDrawer must be used within a Drawer.");
   }
 
   return context;
