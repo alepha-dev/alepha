@@ -1,3 +1,4 @@
+import { HostJobs } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -44,6 +45,25 @@ export class AgentHostService {
   protected readonly jobRows = $repository(hostJobs);
   protected readonly jobs = $inject(HostJobService);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly port = $inject(HostJobs);
+
+  constructor() {
+    // Build's agent kind finds its host, and asks for a recheck, through the
+    // port: no feature module imports another.
+    this.port.registerAgentHosts({
+      defaultFor: async (projectId) => {
+        const host = await this.defaultFor(projectId);
+        return host
+          ? {
+              id: host.id,
+              slug: host.slug,
+              ...(host.agentStatus ? { status: host.agentStatus } : {}),
+            }
+          : undefined;
+      },
+      recheck: (hostId) => this.recheck(hostId),
+    });
+  }
 
   /**
    * Makes a host an Agent host or not. On, it needs `jobsAllowed` and a

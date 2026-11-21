@@ -16,6 +16,7 @@ export { commitQuestSets } from "../api/entities/commitQuestSets.ts";
 export { projectErrors } from "../api/entities/projectErrors.ts";
 export { deployments } from "../api/entities/deployments.ts";
 export { hostCommands } from "../api/entities/hostCommands.ts";
+export { type HostJob, hostJobs } from "../api/entities/hostJobs.ts";
 export { hostEvents } from "../api/entities/hostEvents.ts";
 export { hostInventories } from "../api/entities/hostInventories.ts";
 export { hostProjects } from "../api/entities/hostProjects.ts";

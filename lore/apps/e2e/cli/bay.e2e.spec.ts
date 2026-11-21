@@ -34,9 +34,9 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -602,6 +602,22 @@ describe("Bay connector against a real Lore", () => {
     lore = await bootLore(lorePort);
     owner = await signUp(lore, "owner");
     await mkdir(bay.root, { recursive: true });
+    // Jobs (#Q3986): a dev build runs them as the suite's own user, with a
+    // stub claude found first on the jobs PATH. A released Bay ignores both.
+    const stubs = join(work, "stub-bin");
+    await mkdir(stubs, { recursive: true });
+    await writeFile(
+      join(stubs, "claude"),
+      [
+        "#!/bin/sh",
+        `echo '{"type":"system","subtype":"init","model":"claude-stub-1","apiKeySource":"none","claude_code_version":"9.9.9"}'`,
+        `echo '{"type":"result","subtype":"success","is_error":false,"result":"OK","modelUsage":{"claude-stub-1":{}}}'`,
+        "",
+      ].join("\n"),
+    );
+    await chmod(join(stubs, "claude"), 0o755);
+    process.env.BAY_DEV_JOBS_AS_SELF = "1";
+    process.env.BAY_DEV_JOBS_PATH = stubs;
     await startBay(bay);
   }, 180_000);
 
@@ -707,6 +723,58 @@ describe("Bay connector against a real Lore", () => {
    * the tick alone would eventually produce a later stamp anyway. Bay's own
    * 5 s coalescing floor is why this waits rather than reads once.
    */
+  it("runs a job on an Agent host: the check job pulls its spec, runs claude, streams its log and marks the host available (#Q3986)", async () => {
+    const jobs = await bayCli(bay, [
+      "config",
+      "jobs",
+      "--user",
+      userInfo().username,
+      "--root",
+      bay.root,
+    ]);
+    expect(jobs.code, jobs.out).toBe(0);
+    await ok(
+      call(lore, owner, "updateHost", {
+        params: { hostId: host.id },
+        body: { jobsAllowed: true, agentHost: true },
+      }),
+    );
+    const checked = await until(
+      "the Agent host check to finish",
+      async () => {
+        const row = (await readHost()) as HostRow & {
+          agentStatus?: string;
+          agentCliVersion?: string;
+          agentModel?: string;
+          agentCredential?: string;
+          agentError?: string;
+        };
+        return row.agentStatus === "available" ||
+          row.agentStatus === "unavailable"
+          ? row
+          : undefined;
+      },
+      90_000,
+    );
+    expect(
+      checked.agentStatus,
+      `${checked.agentError}\n${bay.log.slice(-2000)}`,
+    ).toBe("available");
+    expect(checked.agentCliVersion).toBe("9.9.9");
+    expect(checked.agentModel).toBe("claude-stub-1");
+    expect(checked.agentCredential).toBe("oauth");
+
+    const listed = await ok<{
+      items: Array<{ id: string; kind: string; status: string }>;
+    }>(call(lore, owner, "listProjectJobs", { params: { projectId: homeId } }));
+    const check = listed.items.find((job) => job.kind === "check");
+    expect(check?.status).toBe("succeeded");
+    const log = await ok<{ stdout: string }>(
+      call(lore, owner, "getJobLog", { params: { jobId: check?.id ?? "" } }),
+    );
+    expect(log.stdout).toContain('"result":"OK"');
+  });
+
   it("reports an inventory after the welcome, and answers a query with a fresher one", async () => {
     const first = await until(
       "the first inventory to land",

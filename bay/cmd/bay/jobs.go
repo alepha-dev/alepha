@@ -104,7 +104,8 @@ func cmdConfigJobs(args []string) error {
 			i++
 		case "--clear":
 			clear = true
-		case "--root":
+		case "--root", "--control-socket":
+			// Read by resolveRoot, or not needed: the file is read per job.
 			i++
 		default:
 			return errors.New(jobsUsage)
@@ -124,7 +125,9 @@ func cmdConfigJobs(args []string) error {
 	if err != nil {
 		return fmt.Errorf("no Unix user %q on this host: create it first (useradd --create-home %s)", name, name)
 	}
-	if err := checkJobsUser(u, os.Getuid()); err != nil {
+	// A dev build in the e2e suite runs jobs as itself (devSelf).
+	devSelf := version == "dev" && os.Getenv("BAY_DEV_JOBS_AS_SELF") == "1"
+	if err := checkJobsUser(u, os.Getuid()); err != nil && !devSelf {
 		return err
 	}
 	if err := saveJobsConfig(root, jobsConfig{User: name}); err != nil {
@@ -180,8 +183,31 @@ type processRunner struct {
 }
 
 func newProcessRunner(root string) *processRunner {
-	return &processRunner{root: root, selfUID: os.Getuid(), switchUser: os.Getuid() == 0,
+	r := &processRunner{root: root, selfUID: os.Getuid(), switchUser: os.Getuid() == 0,
 		pathDirs: defaultJobPath, killGrace: 10 * time.Second}
+	r.devSelf()
+	return r
+}
+
+/*
+devSelf is the end-to-end suite's way in, and nothing else's: a Bay built
+from source (version "dev", never a release) with BAY_DEV_JOBS_AS_SELF=1
+runs jobs as the user it runs as, with BAY_DEV_JOBS_PATH searched first for
+claude and git, and job directories under its own root. Lore's e2e drives a
+real Bay with a stub claude this way. A released binary ignores both
+variables, so no host can be talked into running jobs as Bay's own user.
+*/
+func (r *processRunner) devSelf() {
+	if version != "dev" || os.Getenv("BAY_DEV_JOBS_AS_SELF") != "1" {
+		return
+	}
+	r.testRunAsSelf = true
+	r.jobsBase = filepath.Join(r.root, "dev-jobs")
+	if extra := os.Getenv("BAY_DEV_JOBS_PATH"); extra != "" {
+		r.pathDirs = func(home string) []string {
+			return append([]string{extra}, defaultJobPath(home)...)
+		}
+	}
 }
 
 // defaultJobPath is the PATH a job runs with: where an operator installs

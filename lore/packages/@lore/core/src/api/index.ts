@@ -481,6 +481,7 @@ export {
 export { HostJobs } from "./services/HostJobs.ts";
 export { JobKeyService } from "./services/JobKeyService.ts";
 export type {
+  AgentHostDirectory,
   HostJobInput,
   HostJobKeyIssuer,
   HostJobKeyScope,
