@@ -8,8 +8,8 @@ import { type Infer, z } from "alepha";
  *
  * Optional end-to-end: the join only runs when the `users` entity is
  * registered in the running app (see `ParameterProvider.resolveCreatorJoin`),
- * and a version whose creator was deleted — or who lives in a non-default
- * realm — comes back with `creator` undefined. Callers fall back to the raw
+ * and a version whose creator was deleted, or who lives in a non-default
+ * realm, comes back with `creator` undefined. Callers fall back to the raw
  * `creatorId`.
  */
 export const parameterCreatorSummarySchema = z.object({

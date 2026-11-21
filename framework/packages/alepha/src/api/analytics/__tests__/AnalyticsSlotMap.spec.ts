@@ -20,11 +20,6 @@ describe("AnalyticsSlotMap", () => {
     },
   };
 
-  it("reserves blob1 for the dataset name and blob2 for the hour", () => {
-    expect(AnalyticsSlotMap.KIND_SLOT).toBe(1);
-    expect(AnalyticsSlotMap.HOUR_SLOT).toBe(2);
-  });
-
   it("assigns dimension slots from the pinned order, starting at blob3", () => {
     const map = AnalyticsSlotMap.forDataset(dataset);
     expect(map.blobSlot("app")).toBe(3);

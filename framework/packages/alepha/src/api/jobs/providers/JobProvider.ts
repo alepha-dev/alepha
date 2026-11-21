@@ -99,7 +99,7 @@ export interface CancelContext {
 /**
  * The declared shape of the job (set at registration time).
  *
- * **Important** — this `kind` is the *declared* form. The *effective*
+ * **Important**, this `kind` is the *declared* form. The *effective*
  * runtime mode (cron / queue / direct) is exposed by
  * `JobProvider.effectiveMode(name)` and the `JobRegistration.type` field on
  * the admin schema. Don't conflate the two: a `queue` kind can run as
@@ -129,7 +129,7 @@ interface RescheduleIntent {
 // -----------------------------------------------------------------------------------------------------------------
 
 /**
- * One row of the sweep's recovery table — see `JobProvider.sweepTable()`.
+ * One row of the sweep's recovery table, see `JobProvider.sweepTable()`.
  */
 export interface SweepEntry {
   /** Phase name, used for log lines and failure containment. */
@@ -179,14 +179,18 @@ export interface SweepEntry {
  *   it up.
  *
  * Push flow:
- *   push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id)
+ *   push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id), once
+ *             the caller's outermost transaction has committed when the push
+ *             ran inside one
  *   worker  → claim → UPDATE running → handler → UPDATE ok (or DELETE when
  *             successes are not recorded)
  *           → UPDATE error (or DELETE) / scheduled (retry) on failure
  *
  * Cron flow:
- *   scheduler tick → claim the instant → acquire lock → executeInline (no retry)
- *                                                     → enqueue + dispatch (retry declared)
+ *   scheduler tick → claim the instant → stand down if a run of this job is
+ *                    already in progress in this process (`runningCrons`)
+ *                  → acquire lock → executeInline (no retry)
+ *                                 → enqueue + dispatch (retry declared)
  *
  * Sweep responsibilities (every `sweepCron`), one per status, declared in
  * `sweepTable()`:
@@ -213,7 +217,7 @@ export class JobProvider {
   protected readonly config = $store(jobConfig);
 
   /**
-   * Resolved at first use (after the container is fully wired) — picks
+   * Resolved at first use (after the container is fully wired), picks
    * the queue dispatcher when `AlephaApiJobsQueue` was loaded, otherwise
    * the direct dispatcher. Lazy because both dispatchers inject
    * `JobProvider` themselves; resolving them at field-init time would
@@ -253,7 +257,7 @@ export class JobProvider {
     // step (which reads `CronProvider.getCronJobs()` without running
     // any lifecycle hooks) sees them and emits the matching cron
     // triggers into wrangler.jsonc. CronProvider's `start` hook will
-    // boot whatever is in `cronJobs` at runtime — registering here
+    // boot whatever is in `cronJobs` at runtime, registering here
     // (constructor, runs at inject time) is equivalent to registering
     // in `onStart` from CronProvider's POV but visible to build-time
     // introspection.
@@ -424,7 +428,7 @@ export class JobProvider {
    * - **No `retry`**: runs the handler inline, then writes one terminal row
    *   for the outcome, when the job's retention records that status. The
    *   "next tick" is the implicit retry.
-   * - **`retry` declared** — enqueues a synthetic execution row and hands
+   * - **`retry` declared**, enqueues a synthetic execution row and hands
    *   it to the dispatcher. The handler then runs through the same path
    *   as a queue/direct push (claim, retry-on-fail, sweep recovery). Use
    *   this when a single failed tick must not block work for the whole
@@ -432,7 +436,7 @@ export class JobProvider {
    *
    * **Two locks, doing different jobs.** `instant` (present only on a
    * scheduled tick) claims the schedule instant once for the whole cluster
-   * and is never released — see `claimCronInstant`. The per-job lock below
+   * and is never released, see `claimCronInstant`. The per-job lock below
    * is the older one and stays: it keeps a manual `trigger()` on one
    * instance from overlapping a scheduled run on another, which a
    * per-instant key cannot express because a trigger has no instant.
@@ -458,7 +462,7 @@ export class JobProvider {
       const claimed = await this.claimCronInstant(registration, instant);
       if (!claimed) {
         this.log.debug(
-          `Cron '${registration.name}' skipped — instant ${instant.toISOString()} is already claimed`,
+          `Cron '${registration.name}' skipped: instant ${instant.toISOString()} is already claimed`,
         );
         return;
       }
@@ -482,7 +486,7 @@ export class JobProvider {
         const acquired = await this.acquireCronLock(registration);
         if (!acquired) {
           this.log.debug(
-            `Cron '${registration.name}' skipped — another instance holds the lock`,
+            `Cron '${registration.name}' skipped: another instance holds the lock`,
           );
           return;
         }
@@ -523,7 +527,7 @@ export class JobProvider {
 
   /**
    * Materialize a cron tick into the outbox so it goes through the normal
-   * retry/sweep path. Used when the user opts into `retry` on a cron job —
+   * retry/sweep path. Used when the user opts into `retry` on a cron job,
    * a transient failure no longer means "wait for the next cron tick", it
    * means "the sweep will retry within `sweepCron`".
    */
@@ -579,7 +583,7 @@ export class JobProvider {
 
   /**
    * Update only when the row is still in one of the expected statuses.
-   * Logs and returns `false` when the guard rejects — this happens when a
+   * Logs and returns `false` when the guard rejects, this happens when a
    * concurrent operation (most often `cancel()`) has already moved the row
    * into a terminal state. We must not overwrite that. Returns `true` when
    * the write happened, for the callers that must not dispatch otherwise.
@@ -609,7 +613,7 @@ export class JobProvider {
     } catch (e) {
       if (e instanceof DbEntityNotFoundError) {
         this.log.debug(
-          `${label}: row ${executionId} not in expected status — skipping write`,
+          `${label}: row ${executionId} not in expected status: skipping write`,
         );
         return false;
       }
@@ -749,7 +753,7 @@ export class JobProvider {
   }
 
   /**
-   * Stable per-process id used as the lock value — survives multiple ticks.
+   * Stable per-process id used as the lock value, survives multiple ticks.
    * Lazy so that Cloudflare Workers (which forbid random in global scope)
    * stay happy.
    */
@@ -813,13 +817,15 @@ export class JobProvider {
 
     await this.alepha.context.run(
       async () => {
-        await this.alepha.events.emit("job:begin", {
-          name,
-          now: startedAt,
-          executionId,
-        });
-
         try {
+          // Inside the `try`: a listener that throws fails the tick like a
+          // handler that throws, and the controller is released below.
+          await this.alepha.events.emit("job:begin", {
+            name,
+            now: startedAt,
+            executionId,
+          });
+
           await this.traceRun(name, executionId, ctx.attempt, () =>
             this.underRunSignal(abortController.signal, () =>
               this.withTimeout(opts.timeout, (signal) =>
@@ -860,7 +866,8 @@ export class JobProvider {
             { catch: true },
           );
         } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error));
+          const err =
+            error instanceof Error ? error : new AlephaError(String(error));
           if (this.isCancelled(abortController.signal, error)) {
             // Cancelled follows the job's failure rule.
             if (this.retention.records(registration.retention, "error")) {
@@ -1041,7 +1048,7 @@ export class JobProvider {
         ...(seed?.steps ? { steps: seed.steps } : {}),
       });
       if (!created) {
-        // Lost the race to a concurrent same-key push — the winner dispatches.
+        // Lost the race to a concurrent same-key push, the winner dispatches.
         return executionId;
       }
       if (inline) {
@@ -1125,7 +1132,7 @@ export class JobProvider {
 
   /**
    * While a handler runs, keep the row's `updatedAt` fresh so another
-   * instance's sweep can tell a long-running job from a crashed one — the
+   * instance's sweep can tell a long-running job from a crashed one, the
    * sweep treats `max(startedAt, updatedAt)` as the lease. Self-stops when
    * the row leaves `running` (finished, cancelled, swept elsewhere).
    */
@@ -1195,10 +1202,10 @@ export class JobProvider {
    * Whether a failed lease renewal means the heartbeat should stop.
    *
    * Only when the row is gone or no longer `running` (cancelled, completed
-   * elsewhere) — there is nothing left to renew. A transient DB error must
+   * elsewhere), there is nothing left to renew. A transient DB error must
    * NOT stop it: the handler keeps running, so once `crashThresholdMs`
    * elapses another instance's sweep marks the lease crashed and schedules a
-   * retry — a duplicate, concurrent execution of the same job.
+   * retry, a duplicate, concurrent execution of the same job.
    */
   protected shouldStopHeartbeat(error: unknown): boolean {
     return error instanceof DbEntityNotFoundError;
@@ -1241,7 +1248,7 @@ export class JobProvider {
   /**
    * Ceiling for the local promoting timer. Past one day the sweep is the
    * delivery mechanism anyway, and a 32-bit `setTimeout` overflows at
-   * ~24.85 days — an unclamped timer would fire immediately and run the
+   * ~24.85 days, an unclamped timer would fire immediately and run the
    * job weeks early.
    */
   protected readonly maxOptimisticDelayMs = 24 * 60 * 60 * 1000;
@@ -1255,7 +1262,7 @@ export class JobProvider {
    * runs a guarded `status = scheduled AND scheduledAt <= now -> pending`
    * update, and only then calls the dispatcher. Exactly one replica wins the
    * update, and a replica that dies holding a timer leaves the row untouched
-   * for the sweep — degrading to sweep granularity rather than losing an
+   * for the sweep, degrading to sweep granularity rather than losing an
    * execution.
    *
    * Being dispatcher-agnostic is why it is the fallback for a queue backend
@@ -1305,7 +1312,10 @@ export class JobProvider {
     }
     const maxAttempts = (opts.retry?.retries ?? 0) + 1;
 
-    const keyed: PushManyItem[] = [];
+    const keyed: Array<{ item: PushManyItem; index: number }> = [];
+    // Where each bulk row sits in `items`, so the ids come back in the
+    // caller's order whatever the mix of keyed and unkeyed items.
+    const bulkIndexes: number[] = [];
     const bulk: Array<{
       jobName: string;
       payload: Record<string, unknown>;
@@ -1314,12 +1324,16 @@ export class JobProvider {
       scheduledAt?: string;
     }> = [];
 
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
       const validated = this.alepha.codec.validate(opts.schema!, item.payload);
       if (item.key) {
-        keyed.push({ ...item, payload: validated as Infer<ZType> });
+        keyed.push({
+          item: { ...item, payload: validated as Infer<ZType> },
+          index,
+        });
         continue;
       }
+      bulkIndexes.push(index);
       const isDelayed = item.delay || item.scheduledAt;
       const status: JobStatus = isDelayed ? "scheduled" : "pending";
       let scheduledAt: string | undefined;
@@ -1340,20 +1354,21 @@ export class JobProvider {
       });
     }
 
-    const ids: string[] = [];
+    const ids: string[] = Array.from({ length: items.length });
 
-    for (const item of keyed) {
-      const id = await this.push(name, item.payload, {
+    for (const { item, index } of keyed) {
+      ids[index] = await this.push(name, item.payload, {
         key: item.key,
         delay: item.delay,
         scheduledAt: item.scheduledAt,
       });
-      ids.push(id);
     }
 
     if (bulk.length > 0) {
       const created = await this.executions.createMany(bulk);
-      for (const exec of created) ids.push(exec.id);
+      for (const [position, exec] of created.entries()) {
+        ids[bulkIndexes[position]] = exec.id;
+      }
       await this.dispatchAfterCommit(name, async () => {
         // Collect pending rows so we hand them to the dispatcher in a single
         // batch: the queue dispatcher can fan them out in one network call.
@@ -1998,7 +2013,7 @@ export class JobProvider {
     }
 
     // Status-guarded: the execution may complete between our read above and
-    // this write — never stamp `cancelled` over a terminal row. Claim the
+    // this write, never stamp `cancelled` over a terminal row. Claim the
     // status BEFORE aborting: the abort makes the running handler throw, and
     // its failure path would otherwise write `error` first, making this
     // legitimate cancellation lose the race (flaky on slow machines).
@@ -2080,16 +2095,16 @@ export class JobProvider {
   ): Promise<void> {
     const registration = this.jobs.get(jobName);
     if (!registration) {
-      this.log.warn(`Unknown job '${jobName}' — skipping execution`, {
+      this.log.warn(`Unknown job '${jobName}': skipping execution`, {
         executionId,
       });
       return;
     }
-    // Both `queue` and cron-with-retry execute through the outbox path —
+    // Both `queue` and cron-with-retry execute through the outbox path,
     // the DB-level `claim()` is the actual concurrency guard.
     if (registration.kind !== "queue" && !registration.options.retry) {
       this.log.warn(
-        `Job '${jobName}' has no outbox path (no schema and no retry) — skipping`,
+        `Job '${jobName}' has no outbox path (no schema and no retry): skipping`,
         { executionId },
       );
       return;
@@ -2166,16 +2181,19 @@ export class JobProvider {
     try {
       await this.alepha.context.run(
         async () => {
-          await this.alepha.events.emit("job:begin", {
-            name: jobName,
-            now,
-            executionId,
-          });
-
           // Set by the handler's `reschedule()`; read once it resolves. A
           // throw discards it, which is what makes "throw wins" true.
           let parkAgain: RescheduleIntent | undefined;
           try {
+            // Inside the `try`: the row is already `running`, so a listener
+            // that throws has to take the failure path like a handler that
+            // throws, or the row keeps a claim nothing will ever release.
+            await this.alepha.events.emit("job:begin", {
+              name: jobName,
+              now,
+              executionId,
+            });
+
             await this.traceRun(jobName, executionId, execution.attempt, () =>
               this.underRunSignal(abortController.signal, () =>
                 this.withTimeout(opts.timeout, async (signal) => {
@@ -2255,8 +2273,9 @@ export class JobProvider {
             // job does not record successes. Guarded on 'running' either
             // way: a cancellation that landed while the handler was finishing
             // must not be stomped to 'ok' or erased.
+            let recorded: boolean;
             if (this.retention.records(registration.retention, "ok")) {
-              await this.guardedUpdate(
+              recorded = await this.guardedUpdate(
                 executionId,
                 ["running"],
                 {
@@ -2269,20 +2288,27 @@ export class JobProvider {
                 fence,
               );
             } else {
-              await this.executions.deleteMany({
+              const deleted = await this.executions.deleteMany({
                 id: { eq: executionId },
                 status: { eq: "running" },
                 ...this.fenceWhere(fence),
               });
+              recorded = deleted.length > 0;
             }
 
-            await this.alepha.events.emit(
-              "job:success",
-              { name: jobName, executionId },
-              { catch: true },
-            );
+            // Only for the claim that owned the row to the end: a run whose
+            // write missed was cancelled elsewhere or replaced by a newer
+            // attempt, and that outcome is not a success.
+            if (recorded) {
+              await this.alepha.events.emit(
+                "job:success",
+                { name: jobName, executionId },
+                { catch: true },
+              );
+            }
           } catch (error) {
-            let err = error instanceof Error ? error : new Error(String(error));
+            let err =
+              error instanceof Error ? error : new AlephaError(String(error));
 
             if (abortController.signal.aborted) {
               let current = await this.executions.findById(executionId);
@@ -2417,7 +2443,7 @@ export class JobProvider {
    * A **due `scheduled`** row is claimed too, in the same guarded update.
    * That is not a loosening: it is the only way a transport-held delay can
    * work at all. When the dispatcher honours `delaySeconds` itself, the
-   * delivery necessarily arrives while the row still says `scheduled` —
+   * delivery necessarily arrives while the row still says `scheduled`,
    * the delay was requested at the moment the row was written, and nothing
    * promotes it in between. The `scheduledAt <= now` condition is what keeps
    * an early delivery (a clamped Cloudflare delay, clock skew) from running
@@ -2527,7 +2553,7 @@ export class JobProvider {
     const maxAttempts = (retry?.retries ?? 0) + 1;
 
     // `retries: 2` means "1 initial + 2 retries = 3 total attempts". Retry
-    // while we have not yet *executed* the maxAttempts'th attempt — i.e.
+    // while we have not yet *executed* the maxAttempts'th attempt, i.e.
     // currentAttempt (the one that just failed) is strictly less than
     // maxAttempts. The off-by-one fix: previously this was
     // `currentAttempt + 1 < maxAttempts`, which only ran 2 attempts for
@@ -2742,24 +2768,6 @@ export class JobProvider {
    * Every phase serves its oldest rows first, so under a backlog work is
    * picked up in the order it has been waiting.
    */
-  /**
-   * What a sweep read loads: the columns its three actions use, and nothing
-   * else. `steps` above all: every due `scheduled` row is a candidate for
-   * `promote-due`, a sleeping run is exactly that, and its `steps` may hold
-   * up to `jobConfig.stepsMaxBytes`; a full batch of them would be about
-   * 100 MB in one tick, on a runtime with 128 MB. `payload` and `logs` go
-   * for the same reason.
-   */
-  protected readonly sweepColumns = [
-    "id",
-    "jobName",
-    "status",
-    "attempt",
-    "startedAt",
-    "updatedAt",
-    "redispatchCount",
-  ] as const;
-
   protected async runSweepEntry(
     entry: SweepEntry,
     now: DateTime,
@@ -2794,6 +2802,24 @@ export class JobProvider {
   }
 
   /**
+   * What a sweep read loads: the columns its three actions use, and nothing
+   * else. `steps` above all: every due `scheduled` row is a candidate for
+   * `promote-due`, a sleeping run is exactly that, and its `steps` may hold
+   * up to `jobConfig.stepsMaxBytes`; a full batch of them would be about
+   * 100 MB in one tick, on a runtime with 128 MB. `payload` and `logs` go
+   * for the same reason.
+   */
+  protected readonly sweepColumns = [
+    "id",
+    "jobName",
+    "status",
+    "attempt",
+    "startedAt",
+    "updatedAt",
+    "redispatchCount",
+  ] as const;
+
+  /**
    * Sweep action for `redispatch-stale`: a `pending` row nobody claimed, so
    * the dispatch was lost. Re-dispatch it, but count the attempts.
    *
@@ -2803,7 +2829,7 @@ export class JobProvider {
    * state machine with no terminal state: it looped once per sweep, forever.
    *
    * The counter write is guarded on `pending` and is what stamps `updatedAt`,
-   * which is also the phase's staleness clock — so a row re-dispatched here
+   * which is also the phase's staleness clock, so a row re-dispatched here
    * drops out of the phase's window for another `staleThreshold` instead of
    * being picked again on every tick.
    */
@@ -2844,7 +2870,7 @@ export class JobProvider {
         "job:error",
         {
           name: exec.jobName,
-          error: new Error(
+          error: new AlephaError(
             `Never claimed after ${count} sweep re-dispatch(es)`,
           ),
           executionId: exec.id,
@@ -2923,10 +2949,13 @@ export class JobProvider {
   }
 
   /**
-   * Sweep phase 1: promote a due `scheduled` row to `pending` and dispatch.
-   * Status-guarded like `dispatchScheduled` — a concurrent `cancel()` between
-   * the sweep's read and this write must win, not be resurrected. A failure
-   * on one row must not abort the rest of the sweep tick.
+   * Sweep action for `promote-due`: promote a due `scheduled` row to
+   * `pending` and dispatch. Guarded like `dispatchScheduled`, on the status
+   * and on `scheduledAt <= now`: a concurrent `cancel()` between the sweep's
+   * read and this write must win, not be resurrected, and a row that ran and
+   * parked itself again in between (a retry backoff, `reschedule()`, a
+   * sleep) is no longer due. A failure on one row must not abort the rest of
+   * the sweep tick.
    */
   protected async promoteDue(exec: {
     id: string;
@@ -2934,13 +2963,17 @@ export class JobProvider {
   }): Promise<void> {
     try {
       await this.executions.updateOne(
-        { id: { eq: exec.id }, status: { eq: "scheduled" } },
+        {
+          id: { eq: exec.id },
+          status: { eq: "scheduled" },
+          scheduledAt: { lte: this.dt.nowISOString() },
+        },
         { status: "pending" },
       );
     } catch (error) {
       if (error instanceof DbEntityNotFoundError) {
         this.log.trace(
-          `Sweep: skipping ${exec.jobName} (${exec.id}) — no longer scheduled`,
+          `Sweep: skipping ${exec.jobName} (${exec.id}), no longer scheduled and due`,
         );
         return;
       }
@@ -3012,11 +3045,7 @@ export class JobProvider {
       }
       return;
     }
-    try {
-      await this.dispatchSafe(jobName, executionId);
-    } catch {
-      // dispatchSafe reports its own failures; nothing to add here.
-    }
+    await this.dispatchSafe(jobName, executionId);
   }
 
   /**
@@ -3342,7 +3371,7 @@ export class JobProvider {
         await this.sweep();
       }
 
-      // Sweep + trim cron registrations live in the constructor — see
+      // Sweep + trim cron registrations live in the constructor, see
       // the note there. CronProvider's `start` hook (which runs before
       // ours via DI order) has already booted them by the time we get
       // here.

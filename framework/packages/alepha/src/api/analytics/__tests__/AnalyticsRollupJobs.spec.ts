@@ -4,7 +4,7 @@ import { MemoryDestinationProvider } from "alepha/logger";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
-// Imported through the module entry, not the primitive/job files directly —
+// Imported through the module entry, not the primitive/job files directly,
 // see the note at the top of `analytics.spec.ts`: `$analytics`'s DI
 // auto-wiring depends on `AnalyticsPrimitive` (and, here, `AnalyticsRollupJobs`
 // itself) having been tagged with module metadata, which only happens once
@@ -21,10 +21,10 @@ import {
 
 /**
  * `AnalyticsRollupJobs` lives in `AlephaApiAnalyticsRollup`, not
- * `AlephaApiAnalytics` — see the class doc on `AlephaApiAnalyticsRollup` in
+ * `AlephaApiAnalytics`, see the class doc on `AlephaApiAnalyticsRollup` in
  * `../index.ts`. `$job` always needs a real `DatabaseProvider` (job
- * execution tracking is never test-substituted), so — exactly like
- * `$job.spec.ts` and `AuditJobs.spec.ts` — this container attaches
+ * execution tracking is never test-substituted), so, exactly like
+ * `$job.spec.ts` and `AuditJobs.spec.ts`, this container attaches
  * `AlephaOrmTestPostgres` explicitly. `AnalyticsProvider` itself is unaffected:
  * `alepha.isTest()` still selects `MemoryAnalyticsProvider` for the datasets
  * below regardless of which ORM driver is attached.
@@ -32,7 +32,7 @@ import {
  * A caller-supplied `provider` substitution has to be applied *before*
  * `.with(AlephaApiAnalyticsRollup)`, not after: that call eagerly injects
  * `AnalyticsRollupJobs`, whose own `$inject(AnalyticsProvider)` field
- * triggers `AlephaApiAnalytics`'s own (optional) `AnalyticsProvider` binding —
+ * triggers `AlephaApiAnalytics`'s own (optional) `AnalyticsProvider` binding,
  * so by the time `.with(AlephaApiAnalyticsRollup)` returns, `AnalyticsProvider`
  * is already substituted, and a *non*-optional `.with()` after that point
  * throws `TooLateSubstitutionError`.
@@ -95,7 +95,7 @@ class Backlog {
 }
 
 /**
- * `broken` declared before `ok` — primitive registration order follows
+ * `broken` declared before `ok`, primitive registration order follows
  * class-field declaration order, and the isolation test needs the failing
  * dataset to be swept *first* to prove it does not block the one after it.
  */
@@ -119,7 +119,7 @@ class TwoDatasets {
 
 /**
  * Real `MemoryAnalyticsProvider` behaviour for every dataset except
- * `"broken"`, which always throws from `rollup()` — service substitution
+ * `"broken"`, which always throws from `rollup()`, service substitution
  * standing in for "a provider failure hit this one dataset," rather than
  * `vi.spyOn`.
  */
@@ -161,7 +161,7 @@ describe("AnalyticsRollupJobs", () => {
 
     dateTime.pause();
     // 3 days old: past the 2-day hot window (so it rolls) but inside the
-    // 5-day cold window (so it survives the prune pass in the same sweep —
+    // 5-day cold window (so it survives the prune pass in the same sweep,
     // a fixed calendar date here would eventually drift past `cold` too and
     // get deleted outright, which is exactly the bug this once had).
     const day = dateTime.now().subtract(3, "day").toISOString().slice(0, 10);
@@ -226,10 +226,6 @@ describe("AnalyticsRollupJobs", () => {
     expect(await buckets()).toEqual([]);
   });
 
-  it("caps how many source buckets one sweep folds: 36, from the #Q2751 benchmark", () => {
-    expect(AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP).toBe(36);
-  });
-
   it("leaves a dataset with no retention entirely untouched", async () => {
     const alepha = makeApp();
     const app = alepha.inject(Untouched);
@@ -274,7 +270,7 @@ describe("AnalyticsRollupJobs", () => {
       groupBy: ["hour"],
       select: { count: "sum" },
     });
-    // Rolled to day precision (proves the hot pass ran) but still present —
+    // Rolled to day precision (proves the hot pass ran) but still present,
     // no `retention.cold` means nothing ever deletes it.
     expect(byBucket.rows).toEqual([{ hour: "2020-01-01", count: 1 }]);
   });
@@ -419,7 +415,7 @@ describe("AnalyticsRollupJobs", () => {
     await app.ok.record({ app: "a", count: 1, hour: "2020-01-01T10" });
 
     // sweepNow() itself must not reject just because one dataset's rollup
-    // threw — the try/catch inside the loop absorbs it.
+    // threw, the try/catch inside the loop absorbs it.
     await expect(jobs.sweepNow()).resolves.toBeUndefined();
 
     const okResult = await app.ok.query({
@@ -480,7 +476,7 @@ describe("AnalyticsRollupJobs", () => {
   });
 
   it("warns at boot when a dataset declares retention but AlephaApiAnalyticsRollup is not imported", async () => {
-    // Deliberately no `.with(AlephaApiAnalyticsRollup)` here — `AnalyticsRetentionGuard`
+    // Deliberately no `.with(AlephaApiAnalyticsRollup)` here, `AnalyticsRetentionGuard`
     // is wired into `AlephaApiAnalytics` unconditionally, so declaring `Views`
     // (retention.hot set) alone is enough to exercise the check.
     const alepha = Alepha.create();

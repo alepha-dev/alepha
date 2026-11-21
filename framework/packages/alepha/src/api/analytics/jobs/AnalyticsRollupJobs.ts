@@ -15,14 +15,14 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  * Folds each tier's buckets past its `keep` into the next tier of the
  * retention chain, finest first, then deletes the last tier's rows past its
  * own `keep`. Folding **collapses rather than deletes**, so no total the UI
- * shows ever changes — only the resolution of the time axis does.
+ * shows ever changes, only the resolution of the time axis does.
  *
  * Modelled on Lore's `SigilJobs` (github.com/alepha-dev/lore), the
  * Worker-tested prior art for this
  * exact shape (hourly sweep, capped backlog, fold-not-delete). It cannot
  * reuse that class's mechanism directly, though: `SigilJobs` holds
  * `$repository` handles onto two known tables and scans them with SQL this
- * job has no equivalent for — datasets here are declared at arbitrary call
+ * job has no equivalent for, datasets here are declared at arbitrary call
  * sites, and the only surface this job is allowed to use is the abstract
  * {@link AnalyticsProvider} seam, which deliberately hides where a row
  * lives (see that class's own doc). Its resume point comes from
@@ -30,10 +30,10 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  * (relationally, an indexed `MIN`).
  *
  * The per-sweep cap ({@link MAX_BUCKETS_PER_SWEEP}) is not tuning. Neither
- * shipped provider's `rollup()` self-limits by how far back `before` reaches
- * — `OrmAnalyticsProvider.rollup()` is one `INSERT … SELECT … GROUP BY` over
+ * shipped provider's `rollup()` self-limits by how far back `before` reaches:
+ * `OrmAnalyticsProvider.rollup()` is one `INSERT … SELECT … GROUP BY` over
  * every row older than the boundary it is given, and
- * `MemoryAnalyticsProvider.rollup()` is one pass over its whole array — so a
+ * `MemoryAnalyticsProvider.rollup()` is one pass over its whole array, so a
  * table nobody has ever pruned could otherwise hand either implementation an
  * arbitrary backlog to fold in a single call. This runs on a Worker with a
  * wall-clock and a memory ceiling. (`WaeAnalyticsProvider` bounds its own
@@ -123,8 +123,8 @@ export class AnalyticsRollupJobs {
   /**
    * Sweeps every dataset declared anywhere in the container.
    *
-   * `this.alepha.primitives($analytics)` — the primitive **factory**, not
-   * the `AnalyticsPrimitive` class — is how every other module enumerates
+   * `this.alepha.primitives($analytics)`, the primitive **factory**, not
+   * the `AnalyticsPrimitive` class, is how every other module enumerates
    * its own declared primitives (`JobService` does the identical
    * `this.alepha.primitives($job)` for jobs, `ServerLinksProvider` the same
    * for `$action`/`$sse`). Passing the class instead silently returns
@@ -137,8 +137,8 @@ export class AnalyticsRollupJobs {
    * Each dataset's sweep is isolated in its own `try`/`catch`: a provider
    * failure for one dataset (a transient DB error, a bad row that trips a
    * provider-side assertion) must not starve every dataset that iterates
-   * after it. The sweep is self-healing regardless — a failed dataset simply
-   * gets retried next hour — so the only thing a failure here should cost is
+   * after it. The sweep is self-healing regardless, a failed dataset simply
+   * gets retried next hour, so the only thing a failure here should cost is
    * that one dataset's progress for this cycle, never anyone else's.
    */
   public async sweepNow(): Promise<void> {

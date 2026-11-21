@@ -146,7 +146,8 @@ const executionId = await this.welcome.push({ userId: "u1" });
 | `triggeredByName` | `string`       | Display name for `triggeredBy`                                                            |
 
 `pushMany()` takes an array of `{ payload, key?, delay?, scheduledAt? }`
-and writes them in a batched INSERT.
+and writes them in a batched INSERT. It returns the execution ids in the order
+of its items.
 
 `trigger()` runs a job now, outside its schedule: a cron job fires its handler
 once (see [Multi-replica deployments](#multi-replica-deployments) for how it
@@ -912,6 +913,11 @@ skipped); cancel it first.
 | `job:error`   | `{ name, error, executionId }` |
 | `job:cancel`  | `{ name, executionId }`        |
 | `job:end`     | `{ name, executionId }`        |
+
+A `job:begin` listener that throws fails the run before its handler starts,
+like a handler that throws: the retry policy applies. `job:success` is emitted
+by the run that recorded the outcome, so a run whose row was cancelled or taken
+over by a newer attempt in the meantime emits none.
 
 ## When not to use `$job`
 

@@ -39,7 +39,7 @@ export class AnalyticsWindow {
 
   /**
    * Refuses a query naming both forms, neither, a bound of the other form,
-   * or an instant without an offset.
+   * an instant without an offset, or an `until` whose day does not exist.
    */
   public static assertValid(query: AnalyticsQuery): void {
     const hasSince = query.since !== undefined;
@@ -57,6 +57,17 @@ export class AnalyticsWindow {
     if (hasFrom && query.until !== undefined) {
       throw new AlephaError(
         "'until' pairs with 'since', not with 'from'; use 'to' for an instant.",
+      );
+    }
+    // `until` is the one day bound that goes through date arithmetic (the
+    // day after it is the exclusive upper key), so a day that does not
+    // exist either throws there or is read as a later one.
+    if (
+      query.until !== undefined &&
+      !AnalyticsBuckets.isDay(AnalyticsBuckets.day(query.until))
+    ) {
+      throw new AlephaError(
+        `'until' must be a UTC day that exists, such as '2026-10-18'; received '${query.until}'.`,
       );
     }
     for (const [name, value] of [

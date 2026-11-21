@@ -27,7 +27,7 @@ class ConcurrencyProbe {
 
 /**
  * Substituting the whole `JobProvider` keeps this a unit test of the
- * dispatcher: no database, no outbox, no sweep — just "how many handlers did
+ * dispatcher: no database, no outbox, no sweep, just "how many handlers did
  * it start at once".
  */
 const dispatcherWith = (probe: ConcurrencyProbe, maxConcurrency: number) => {
@@ -85,7 +85,7 @@ describe("DirectJobDispatcher", () => {
     await alepha.start();
 
     await dispatcher.dispatch("notify", "first");
-    // Lands mid-drain — the window where a naive `draining` flag drops the
+    // Lands mid-drain, the window where a naive `draining` flag drops the
     // work until something else happens to arrive.
     await sleep(2);
     await dispatcher.dispatch("notify", "second");
@@ -93,6 +93,52 @@ describe("DirectJobDispatcher", () => {
     await drained(probe, 2);
 
     expect(probe.completed.sort()).toEqual(["first", "second"]);
+  });
+
+  it("starts no new run once stop began, and leaves the rest to the sweep", async () => {
+    const started: string[] = [];
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "silent", DATABASE_URL: "sqlite://:memory:" },
+    });
+    alepha.with({
+      provide: JobProvider,
+      use: class extends JobProvider {
+        processExecution = async (_jobName: string, executionId: string) => {
+          started.push(executionId);
+          await gate;
+        };
+      },
+    });
+    alepha.store.set(jobConfig, {
+      ...alepha.store.get(jobConfig),
+      directMaxConcurrency: 1,
+    });
+    const dispatcher = alepha.inject(DirectJobDispatcher);
+    await alepha.start();
+
+    for (let i = 0; i < 5; i++) {
+      await dispatcher.dispatch("notify", `exec-${i}`);
+    }
+    // The one worker holds the first run; four wait behind it.
+    for (let turn = 0; turn < 1000 && started.length === 0; turn++) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    expect(started).toEqual(["exec-0"]);
+
+    // Stop begins while the first run is in flight, then that run ends.
+    const stopped = alepha.stop();
+    expect(alepha.isStopping()).toBe(true);
+    release();
+    await stopped;
+    for (let turn = 0; turn < 20; turn++) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    expect(started).toEqual(["exec-0"]);
   });
 
   it("keeps draining after a handler throws", async () => {

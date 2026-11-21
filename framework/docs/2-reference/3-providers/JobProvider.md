@@ -19,13 +19,17 @@ abstracted behind `JobDispatcher`, substituted by DI:
   it up.
 
 Push flow:
-push() → INSERT row (pending) → dispatcher.dispatch(jobName, id)
+push() → INSERT row (pending) → dispatcher.dispatch(jobName, id), once
+the caller's outermost transaction has committed when the push
+ran inside one
 worker → claim → UPDATE running → handler → UPDATE ok (or DELETE when
 successes are not recorded)
 → UPDATE error (or DELETE) / scheduled (retry) on failure
 
 Cron flow:
-scheduler tick → claim the instant → acquire lock → executeInline (no retry)
+scheduler tick → claim the instant → stand down if a run of this job is
+already in progress in this process (`runningCrons`)
+→ acquire lock → executeInline (no retry)
 → enqueue + dispatch (retry declared)
 
 Sweep responsibilities (every `sweepCron`), one per status, declared in

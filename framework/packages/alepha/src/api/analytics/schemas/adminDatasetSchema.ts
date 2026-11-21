@@ -7,7 +7,7 @@ import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
  * What the admin surface publishes about one declared dataset.
  *
  * `dimensions` / `measures` are JSON Schema objects (the output of
- * `z.toJSONSchema` on the declared zod shapes), not zod schemas — this is a
+ * `z.toJSONSchema` on the declared zod shapes), not zod schemas, this is a
  * wire format. The admin UI rebuilds form schemas from them with
  * `jsonSchemaToZod`, the same round-trip `api/parameters` already uses.
  */

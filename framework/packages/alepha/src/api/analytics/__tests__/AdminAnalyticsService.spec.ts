@@ -139,7 +139,7 @@ describe("AdminAnalyticsService", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("refuses a query with both since and from, or an offset-less instant", async () => {
+  it("refuses a query with both since and from, with neither, or with an offset-less instant", async () => {
     const { service } = await setup();
     await expect(
       service.queryDataset("page_views", {
@@ -151,16 +151,56 @@ describe("AdminAnalyticsService", () => {
     await expect(
       service.queryDataset("page_views", { select: { count: "sum" } }),
     ).rejects.toThrow(BadRequestError);
+    await expect(
+      service.queryDataset("page_views", {
+        from: "2026-01-01T00:00:00",
+        select: { count: "sum" },
+      }),
+    ).rejects.toThrow(BadRequestError);
   });
 
-  it("answers a from/to query and reports coarsened", async () => {
+  it("refuses an until that is not a day of the calendar", async () => {
     const { service } = await setup();
-    const result = await service.queryDataset("page_views", {
+    for (const until of ["2026-02-32", "2026-13-45", "2026-02-31"]) {
+      await expect(
+        service.queryDataset("page_views", {
+          since: "2026-01-01",
+          until,
+          select: { count: "sum" },
+        }),
+      ).rejects.toThrow(BadRequestError);
+    }
+    await expect(
+      service.queryDataset("page_views", {
+        since: "2026-01-01",
+        until: "2026-02-28",
+        select: { count: "sum" },
+      }),
+    ).resolves.toMatchObject({ rows: [] });
+  });
+
+  it("answers a from/to query and reports coarsened when a bound cuts an hour", async () => {
+    const { datasets, service } = await setup();
+    // 20:00 UTC is midnight at +04:00: the hour the half-past bound cuts.
+    await datasets.views.record({
+      app: "lore",
+      path: "/",
+      count: 2,
+      hour: "2025-12-31T20",
+    });
+    const whole = await service.queryDataset("page_views", {
       from: "2026-01-01T00:00:00+04:00",
       to: "2026-01-02T00:00:00+04:00",
       select: { count: "sum" },
     });
-    expect(result.coarsened).toBe(false);
+    expect(whole.coarsened).toBe(false);
+
+    const cut = await service.queryDataset("page_views", {
+      from: "2026-01-01T00:30:00+04:00",
+      to: "2026-01-02T00:00:00+04:00",
+      select: { count: "sum" },
+    });
+    expect(cut.coarsened).toBe(true);
   });
 
   it("runs a valid query through the bound provider", async () => {

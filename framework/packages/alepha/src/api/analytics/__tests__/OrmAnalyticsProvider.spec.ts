@@ -88,7 +88,7 @@ describe("OrmAnalyticsProvider", () => {
   });
 
   it("throws a clear error when a dataset was never registered before use", async () => {
-    // This provider never invents a table at request time — see the class
+    // This provider never invents a table at request time, see the class
     // doc. A dataset reaching `record()`/`query()` without a prior
     // `register()` call is an app bug: it declared a dataset it never
     // registered, and the failure needs to be loud and specific rather than
@@ -138,10 +138,10 @@ describe("OrmAnalyticsProvider", () => {
   it("filters and groups on a multi-word dimension name, which the model builder stores snake_cased", async () => {
     // Regression guard: `readOne` used to splice the dataset's JS field name
     // (`sigilId`) straight into `sql.raw` for `where` and `groupBy`, instead
-    // of resolving it through the table the way `accumulateSet` already did
+    // of resolving it through the table the way `upsertSet` already did
     // for upserts. That works by accident for a single-word dimension like
     // `app` (its snake_case column name is identical), and throws `no such
-    // column` for any multi-word one — exactly what every Lore Insights read
+    // column` for any multi-word one, exactly what every Lore Insights read
     // hit via `{ sigilId: { inArray: [...] } }`, on every single query,
     // because a sigil-scoped analytics dataset has no other way to filter by
     // app.
@@ -188,7 +188,7 @@ describe("OrmAnalyticsProvider", () => {
 
   it("returns no rows rather than a null-valued row when nothing matches", async () => {
     // Without a `GROUP BY`, `SUM(...)` over zero matching rows still
-    // returns exactly one row with a NULL total in plain SQL — but the
+    // returns exactly one row with a NULL total in plain SQL, but the
     // interface contract (pinned by `MemoryAnalyticsProvider`) is that an
     // empty match stays an empty result, so "no data" and "measured zero"
     // remain distinguishable.
@@ -222,12 +222,12 @@ describe("OrmAnalyticsProvider", () => {
     // `WaeAnalyticsProvider.register()` called `registerPruneFloors()`.
     //
     // That made the set of tables an app declares a function of the runtime
-    // it booted under — and migrations are generated under one runtime and
+    // it booted under, and migrations are generated under one runtime and
     // applied under another. `alepha db migrations create` runs on Node,
     // where `OrmAnalyticsProvider` is the selected provider, so the floor
     // table never entered the snapshot and never got a migration. Production
     // runs workerd, where `WaeAnalyticsProvider` IS selected, and its
-    // `query()` reads the floor before every single read — against a table
+    // `query()` reads the floor before every single read, against a table
     // D1 had never been told to create. Every Insights read 500'd.
     //
     // The saving in the relational case was two columns. The cost was an
@@ -255,9 +255,9 @@ describe("OrmAnalyticsProvider", () => {
     // `AnalyticsProvider.prune`'s "on whichever tier it lives" contract when
     // the hot tier (Analytics Engine) has no delete API of its own. Tested
     // here directly, independent of any WAE plumbing, since this provider
-    // owns the storage and the monotonic guarantee — `registerPruneFloors()`
-    // called explicitly, the same way only `WaeAnalyticsProvider.register()`
-    // ever calls it in real use.
+    // owns the storage and the monotonic guarantee. `register()` brings the
+    // floor table in by itself; the explicit `registerPruneFloors()` below
+    // is idempotent.
     const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
@@ -273,7 +273,7 @@ describe("OrmAnalyticsProvider", () => {
       await provider.recordPruneFloor(dataset, "2026-08-09");
       expect(await provider.pruneFloor(dataset)).toBe("2026-08-09");
 
-      // Earlier than what is already recorded — must not regress, or a
+      // Earlier than what is already recorded, must not regress, or a
       // caller could resurrect a range that was already correctly hidden.
       await provider.recordPruneFloor(dataset, "2026-08-02");
       expect(await provider.pruneFloor(dataset)).toBe("2026-08-09");

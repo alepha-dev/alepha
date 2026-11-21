@@ -29,9 +29,9 @@ same rule every `$entity`/`$repository` in the framework already lives
 under (`Repository`'s constructor calls `DatabaseProvider.registerEntity`
 unconditionally, with no lazy path). `entities()` is then a plain lookup;
 a dataset that was never registered throws `AlephaError` at first use
-rather than trying to invent a table at request time. Task 7's `$analytics()`
-primitive is expected to call `register()` for every declared dataset at
-construction, which - like every other primitive's `$inject`/`$repository`
+rather than trying to invent a table at request time. The `$analytics()`
+primitive calls `register()` for every declared dataset at construction,
+which - like every other primitive's `$inject`/`$repository`
 field - runs before the app starts.
 
 ## Dimension and measure names are never trusted as SQL identifiers

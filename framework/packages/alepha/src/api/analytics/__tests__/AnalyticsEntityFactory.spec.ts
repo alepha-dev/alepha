@@ -128,7 +128,7 @@ describe("AnalyticsEntityFactory", () => {
     // This is the shape `analyticsConformance.ts` uses for every provider:
     // a histogram bucket index modelled as an ordinary dimension, alongside
     // a `samples` measure. It is the case the original reserved-column bug
-    // silently broke — `bucket` the dimension would have overwritten the
+    // silently broke, `bucket` the dimension would have overwritten the
     // reserved time column, and the unique index would have carried a
     // duplicate `bucket` entry.
     const conformanceDataset = {
@@ -154,7 +154,7 @@ describe("AnalyticsEntityFactory", () => {
         ["app", "bucket", "path", "samples", "time_bucket"].sort(),
       );
       // `bucket` is a genuine dimension column here, distinct from the
-      // reserved `time_bucket` time column — neither was overwritten.
+      // reserved `time_bucket` time column, neither was overwritten.
       expect(entity.options.schema.shape.bucket).toBeDefined();
       expect(entity.options.schema.shape.time_bucket).toBeDefined();
     }
@@ -177,7 +177,7 @@ describe("AnalyticsEntityFactory", () => {
       // `database.table()` only proves the entity is in the provider's
       // in-memory map. Running a real `SELECT` against each table proves the
       // dev-sync (`alepha.start()` -> `DrizzleKitProvider.synchronize()`)
-      // actually created them in the ephemeral test schema — the same push
+      // actually created them in the ephemeral test schema, the same push
       // that puts a table into a migration snapshot in non-test mode.
       const rawRows = await database.db
         .select()

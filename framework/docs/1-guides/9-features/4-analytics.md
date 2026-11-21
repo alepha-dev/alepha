@@ -175,7 +175,7 @@ const result = await this.views.query({
 ```
 
 A query gives exactly one of two windows. `since` and `until` (optional) are inclusive UTC days,
-`YYYY-MM-DD`. Omitting `until` reads up to the newest bucket; set it to compare complete days
+`YYYY-MM-DD`; an `until` that is not a day of the calendar is refused. Omitting `until` reads up to the newest bucket; set it to compare complete days
 (yesterday against the day before) rather than a window that ends mid-day.
 
 ### Instant windows: `from` and `to`

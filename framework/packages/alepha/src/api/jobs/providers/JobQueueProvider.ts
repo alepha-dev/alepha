@@ -13,7 +13,7 @@ import { JobProvider } from "./JobProvider.ts";
 /**
  * Name of the queue `$job` dispatches through.
  *
- * Kept stable — it is the backend key, so changing it strands any message
+ * Kept stable, it is the backend key, so changing it strands any message
  * still in flight across a deploy.
  */
 export const JOB_DISPATCH_QUEUE = "api:jobs:dispatch";
@@ -152,15 +152,6 @@ export class JobQueueProvider extends JobDispatcher {
       );
     }
     return true;
-  }
-
-  /**
-   * Backwards-compatible alias for {@link dispatch}. Older code paths called
-   * `JobQueueProvider.push(jobName, executionId)` directly; new code should
-   * go through the `JobDispatcher.dispatch` API.
-   */
-  public async push(jobName: string, executionId: string): Promise<void> {
-    return this.dispatch(jobName, executionId);
   }
 
   /**

@@ -145,7 +145,7 @@ export class ParameterProvider {
   protected readonly sharedLoadWaitMs: number = 3_000;
 
   /**
-   * Generation counter per parameter — incremented on each doLoad call.
+   * Generation counter per parameter, incremented on each doLoad call.
    * Used to discard results from superseded loads.
    */
   protected readonly loadGeneration = new Map<string, number>();
@@ -185,7 +185,7 @@ export class ParameterProvider {
 
   /**
    * Topic for cross-instance change notification.
-   * Payload is minimal — receivers call load() to fetch fresh data.
+   * Payload is minimal, receivers call load() to fetch fresh data.
    */
   public readonly syncTopic = $topic({
     name: "parameter:sync",
@@ -306,8 +306,9 @@ export class ParameterProvider {
   }
 
   /**
-   * Load current and next values from database.
-   * Deduplicates concurrent calls via shared promise.
+   * Load current and next values from database. Always starts a new load
+   * (a `get()` joins the one in flight; this one must read again), which
+   * supersedes any load still running.
    */
   public async load(name: string): Promise<void> {
     await this.startLoad(name, this.cacheKey(name));
@@ -338,6 +339,12 @@ export class ParameterProvider {
   protected async awaitSharedLoad(name: string, ck: string): Promise<void> {
     const shared = this.loadPromises.get(ck) ?? this.startLoad(name, ck);
     if (await this.settlesWithin(shared, this.sharedLoadWaitMs)) {
+      // A load superseded by a newer one settles without having written
+      // anything: the newer one holds the answer, so wait for that one.
+      const newer = this.loadPromises.get(ck);
+      if (newer && newer !== shared) {
+        await this.awaitSharedLoad(name, ck);
+      }
       return;
     }
     this.log.warn("Parameter load did not settle, starting a new one", {
@@ -480,6 +487,35 @@ export class ParameterProvider {
   }
 
   /**
+   * The statuses of `versions` among ALL the versions of `name`, in the order
+   * {@link calculateStatuses} returns them.
+   *
+   * `calculateStatuses` only knows the rows it is handed, so on one version
+   * or one page of the history it calls "current" whatever is latest in
+   * that slice. Here the current and the next version are read from the
+   * database first.
+   */
+  public async calculateStatusesOf<T extends Parameter>(
+    name: string,
+    versions: T[],
+  ): Promise<Array<T & { status: ParameterStatus }>> {
+    const { current, next, now } = await this.loadCurrentAndNext(name);
+    return this.calculateStatuses(versions, now).map((version) => {
+      let status: ParameterStatus;
+      if (current && version.id === current.id) {
+        status = "current";
+      } else if (next && version.id === next.id) {
+        status = "next";
+      } else if (new Date(version.activationDate) > now) {
+        status = "future";
+      } else {
+        status = "expired";
+      }
+      return { ...version, status };
+    });
+  }
+
+  /**
    * Save a new parameter version.
    *
    * @param name - Parameter name (e.g., "app.features.flags")
@@ -534,9 +570,11 @@ export class ParameterProvider {
         ? options.expectedVersion + 1
         : (latestVersion?.version ?? 0) + 1;
 
-    // Find previous content from the latest activated version
-    const currentVersion = versions.find(
-      (v) => new Date(v.activationDate) <= now,
+    // The content this save replaces is the current version's: the latest
+    // `activationDate` at or before now, which a back-dated save makes
+    // different from the highest version number.
+    const currentVersion = this.calculateStatuses(versions, now).find(
+      (v) => v.status === "current",
     );
     const previousContent = currentVersion?.content;
 
@@ -573,6 +611,13 @@ export class ParameterProvider {
     // publishing: this instance ignores its own change notifications.
     // An expired version must not displace the actual current value.
     const ck = this.cacheKey(name);
+    // A load that read the database before this insert must not settle on
+    // top of it: moving the generation makes it discard what it read. That
+    // load may as well have read a write newer than this one, so when one
+    // was in flight a fresh load runs below and the cache ends on the
+    // database's answer.
+    const loadInFlight = this.loadPromises.has(ck);
+    this.loadGeneration.set(ck, (this.loadGeneration.get(ck) ?? 0) + 1);
     const current = withStatuses.find(
       (version) => version.status === "current",
     );
@@ -597,9 +642,32 @@ export class ParameterProvider {
       this.notifySubscribers(name);
     }
 
-    // Publish change notification if activation is immediate
+    if (loadInFlight) {
+      try {
+        await this.startLoad(name, ck);
+      } catch (error) {
+        this.log.warn("Failed to reload a parameter after a save", {
+          name,
+          error,
+        });
+      }
+    }
+
     if (isImmediate) {
       await this.publishChange(name);
+    } else {
+      // A scheduled version is published too: the other instances reload
+      // and hold it as their next, which is what lets each switch on its
+      // own `get()` at the activation date. Nothing changes value yet, so a
+      // publish that fails is not worth failing a row already written.
+      try {
+        await this.publishChange(name);
+      } catch (error) {
+        this.log.warn(
+          "Scheduled parameter saved, but its change was not published: other instances hold it once they next reload",
+          { name, error },
+        );
+      }
     }
 
     this.log.info("Parameter saved", {
@@ -679,7 +747,7 @@ export class ParameterProvider {
     this.evictCaches(name);
     // Evicting locally is not enough: other instances keep serving the
     // deleted value indefinitely (the Node default TTL is 0, so nothing
-    // revalidates). `save()` already publishes — deletes must too.
+    // revalidates). `save()` already publishes, deletes must too.
     await this.publishChange(name);
     this.log.info("Parameter deleted", { name });
   }
@@ -690,8 +758,12 @@ export class ParameterProvider {
   public async deleteMany(names: string[]): Promise<string[]> {
     if (names.length === 0) return [];
     await this.repo.deleteMany({ name: { inArray: names } });
+    // Every local cache first: a publish that fails must not leave the
+    // names after it serving rows that are gone.
     for (const name of names) {
       this.evictCaches(name);
+    }
+    for (const name of names) {
       await this.publishChange(name);
     }
     this.log.info("Parameters deleted", { count: names.length });
@@ -699,7 +771,7 @@ export class ParameterProvider {
   }
 
   /**
-   * Drop every per-org value cache entry for `name` in the active org.
+   * Drop every cache entry of `name`.
    */
   protected evictCaches(name: string): void {
     const ck = this.cacheKey(name);
@@ -725,7 +797,7 @@ export class ParameterProvider {
   }
 
   /**
-   * Get the version that was IN FORCE at `at` — the latest one whose
+   * Get the version that was IN FORCE at `at`, the latest one whose
    * `activationDate` is at or before that instant.
    *
    * `get()` and {@link loadCurrentAndNext} are now-relative, which is wrong
@@ -857,8 +929,7 @@ export class ParameterProvider {
     // live `ZodObject` instance, not a plain record, so it fails the response's
     // `z.json()` validation ("expected record, received ZodObject") and the
     // admin UI (which round-trips via `jsonSchemaToZod`) can't rebuild a form
-    // from it. Typebox schemas were already JSON Schema, hence this step was
-    // implicit before the Zod migration.
+    // from it.
     const schema = param?.schema ? z.toJSONSchema(param.schema) : null;
 
     return {
@@ -917,8 +988,6 @@ export class ParameterProvider {
    * Fetches current and next from database, updates cache.
    */
   protected async doLoad(name: string): Promise<void> {
-    // Snapshot the org-scoped cache key at call time: the whole load runs in
-    // one request context, so the atom (hence `ck`) is stable here.
     const ck = this.cacheKey(name);
     const gen = (this.loadGeneration.get(ck) ?? 0) + 1;
     this.loadGeneration.set(ck, gen);
@@ -926,7 +995,7 @@ export class ParameterProvider {
     const { current, next } = await this.loadCurrentAndNext(name);
     const schemaHash = (await this.schemaHashes.get(name)) ?? "";
 
-    // Superseded by a newer load — discard results
+    // Superseded by a newer load, discard results
     if (this.loadGeneration.get(ck) !== gen) return;
 
     // Check if migration is needed
@@ -1015,8 +1084,11 @@ export class ParameterProvider {
   }
 
   /**
-   * Run migration with a distributed lock (Node.js only).
-   * Ensures only one instance performs the migration while others wait.
+   * Run the boot migration under the lock provider (Node.js only). With a
+   * shared `LockProvider` the instances booting together take turns; with
+   * the default in-memory one the lock is per process. Either way the unique
+   * `(name, version)` index is what refuses a second migration computed from
+   * the same row (see {@link doLoad}).
    */
   protected async migrateWithLock(name: string): Promise<void> {
     const lockKey = `parameter:migrate:${name}`;
@@ -1025,14 +1097,14 @@ export class ParameterProvider {
     const value = await this.lockProvider.set(lockKey, lockId, true, 30_000);
 
     if (value === lockId) {
-      // We got the lock — run migration
+      // We got the lock, run migration
       try {
         await this.doLoad(name);
       } finally {
         await this.lockProvider.del(lockKey);
       }
     } else {
-      // Another instance holds the lock — wait then load
+      // Another instance holds the lock, wait then load
       await this.waitForLock(lockKey);
       await this.doLoad(name);
     }
@@ -1269,8 +1341,7 @@ export class ParameterProvider {
 
   /**
    * Build tree structure from dot-notation names.
-   */
-  /**
+   *
    * `originOf` names each leaf's origin; a folder takes the origin its
    * descendants agree on, `both` when they do not. Absent, every node is
    * `both`, which is what a caller with one source means.

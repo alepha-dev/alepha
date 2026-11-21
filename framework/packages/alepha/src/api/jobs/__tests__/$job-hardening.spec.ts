@@ -37,10 +37,23 @@ class TestJobProvider extends JobProvider {
   public testTrimRingBuffers = this.trimRingBuffers.bind(this);
 }
 
+/**
+ * Records the length of every timeout armed on the clock.
+ */
+class RecordingClock extends DateTimeProvider {
+  public readonly armed: number[] = [];
+  public override createTimeout(
+    ...args: Parameters<DateTimeProvider["createTimeout"]>
+  ) {
+    this.armed.push(this.duration(args[1]).asMilliseconds());
+    return super.createTimeout(...args);
+  }
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Poll `fn` until `predicate` returns true, or throw on timeout — fixed
+ * Poll `fn` until `predicate` returns true, or throw on timeout, fixed
  * sleeps race the in-memory queue under CI load and produce flaky failures.
  */
 async function waitFor<T>(
@@ -61,37 +74,43 @@ async function waitFor<T>(
   );
 }
 
-describe("$job — long-delay hardening", () => {
-  it("keeps a row scheduled when the delay exceeds the optimistic-timer range", async ({
+describe("$job: long-delay hardening", () => {
+  it("arms no local timer when the delay exceeds the optimistic-timer range", async ({
     expect,
   }) => {
-    const alepha = Alepha.create()
-      .with(AlephaOrmTestPostgres)
-      .with(AlephaApiJobs)
-      .with(AlephaApiJobsQueue);
-    let calls = 0;
+    // Direct mode: the delay is a local promoting timer. (A queue that holds
+    // the delay itself never reaches `scheduleLocalPromotion`.)
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    })
+      .with({ provide: DateTimeProvider, use: RecordingClock })
+      .with(AlephaApiJobs);
     class LongDelayApp {
       executions = $repository(jobExecutionEntity);
       work = $job({
         name: "long-delay-app.work",
         description: "A job under test.",
         schema: z.object({ v: z.integer() }),
-        handler: async () => {
-          calls++;
-        },
+        handler: async () => {},
       });
     }
     const app = alepha.inject(LongDelayApp);
     await alepha.start();
+    const clock = alepha.inject(DateTimeProvider) as RecordingClock;
+    const hour = 60 * 60 * 1000;
 
     // 30 days is past setTimeout's 32-bit range (~24.85 days): an unclamped
-    // timer overflows and fires within milliseconds, running the job now.
+    // timer overflows and fires within milliseconds.
     const id = await app.work.push({ v: 1 }, { delay: [30, "day"] });
-    await sleep(200);
+    await app.work.push({ v: 2 }, { delay: [1, "hour"] });
 
-    const rows = await app.executions.findMany({ where: { id: { eq: id } } });
-    expect(calls).toBe(0);
-    expect(rows[0].status).toBe("scheduled");
+    // The one-hour delay is armed, the 30-day one is left to the sweep.
+    expect(
+      clock.armed.filter((ms) => ms > hour - 60_000 && ms <= hour),
+    ).toHaveLength(1);
+    expect(clock.armed.filter((ms) => ms > hour)).toEqual([]);
+    expect((await app.executions.findById(id))?.status).toBe("scheduled");
+    await alepha.stop();
   });
 
   it("dispatchScheduled refuses to promote a row scheduled in the future", async ({
@@ -130,7 +149,7 @@ describe("$job — long-delay hardening", () => {
   });
 });
 
-describe("$job — sweep guards", () => {
+describe("$job: sweep guards", () => {
   it("sweep promote does not resurrect a cancelled execution", async ({
     expect,
   }) => {
@@ -175,8 +194,10 @@ describe("$job — sweep guards", () => {
   });
 });
 
-describe("$job — lease heartbeat", () => {
-  it("keeps renewing through a transient DB error", async ({ expect }) => {
+describe("$job: lease heartbeat", () => {
+  it("shouldStopHeartbeat: false for a transient DB error, true once the row is gone", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
       .with(AlephaOrmTestPostgres)
@@ -187,7 +208,7 @@ describe("$job — lease heartbeat", () => {
 
     // A transient failure must not stop the heartbeat: the handler is still
     // running, so a stopped lease lets another instance's sweep declare it
-    // crashed and re-dispatch it — duplicate concurrent execution.
+    // crashed and re-dispatch it, duplicate concurrent execution.
     expect(jobs.testShouldStopHeartbeat(new Error("ECONNRESET"))).toBe(false);
     expect(
       jobs.testShouldStopHeartbeat(new DbError("connection terminated")),
@@ -203,7 +224,7 @@ describe("$job — lease heartbeat", () => {
   });
 });
 
-describe("$job — retention", () => {
+describe("$job: retention", () => {
   it("keeps the successes of a queue job that declares a rule for them", async ({
     expect,
   }) => {
@@ -241,7 +262,7 @@ describe("$job — retention", () => {
   });
 });
 
-describe("$job — key dedup under concurrency", () => {
+describe("$job: key dedup under concurrency", () => {
   it("concurrent pushes with the same key all resolve to one execution", async ({
     expect,
   }) => {
@@ -290,8 +311,8 @@ describe("$job — key dedup under concurrency", () => {
     const app = alepha.inject(RaceLoserApp);
     await alepha.start();
 
-    // The winner's row lands after the loser's dedup pre-check saw nothing
-    // — exactly the race window the unique index guards.
+    // The winner's row lands after the loser's dedup pre-check saw nothing:
+    // exactly the race window the unique index guards.
     const winner = await app.executions.create({
       jobName: "race-loser-app.work",
       key: "race-2",
@@ -311,7 +332,7 @@ describe("$job — key dedup under concurrency", () => {
   });
 });
 
-describe("$job — lease renewal for long-running jobs", () => {
+describe("$job: lease renewal for long-running jobs", () => {
   const makeLeaseApp = () => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
@@ -338,7 +359,7 @@ describe("$job — lease renewal for long-running jobs", () => {
 
     // Simulates the other instance's view: the job started on instance A
     // hours ago (no local abort controller here on B), but A's heartbeat
-    // keeps the row's updatedAt fresh — B's sweep must not re-dispatch it.
+    // keeps the row's updatedAt fresh, B's sweep must not re-dispatch it.
     const row = await app.executions.create({
       jobName: "lease-app.work",
       status: "running",
@@ -472,7 +493,7 @@ class SweepTableJobProvider extends JobProvider {
   }
 }
 
-describe("$job — the sweep table", () => {
+describe("$job: the sweep table", () => {
   it("claims each status at most once per tick, and never a terminal one", async ({
     expect,
   }) => {
@@ -569,7 +590,7 @@ class BlackHoleJobDispatcher extends DirectJobDispatcher {
   }
 }
 
-describe("$job — the sweep is bounded", () => {
+describe("$job: the sweep is bounded", () => {
   it("drains a backlog larger than one batch across ticks, running each row once", async ({
     expect,
   }) => {
@@ -722,7 +743,7 @@ describe("$job — the sweep is bounded", () => {
 
 // -----------------------------------------------------------------------------------------------------------------
 
-describe("$job — inline", () => {
+describe("$job: inline", () => {
   for (const queued of [false, true]) {
     const label = queued ? "with AlephaApiJobsQueue" : "in direct mode";
 
@@ -983,7 +1004,7 @@ class NoDelayQueueProvider extends MemoryQueueProvider {
   }
 }
 
-describe("$job — retries have real backoff", () => {
+describe("$job: retries have real backoff", () => {
   for (const queued of [false, true]) {
     const label = queued ? "in queue mode" : "in direct mode";
 
@@ -1106,7 +1127,7 @@ describe("$job — retries have real backoff", () => {
   });
 });
 
-describe("$job — delaySeconds on the dispatch interface", () => {
+describe("$job: delaySeconds on the dispatch interface", () => {
   it("a backend that declines a delay never enqueues immediately", async ({
     expect,
   }) => {
@@ -1302,7 +1323,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     const jobs = alepha.inject(JobProvider) as TestJobProvider;
     await alepha.start();
 
-    // A row already due, so both promotions are live at once — the shape two
+    // A row already due, so both promotions are live at once, the shape two
     // replicas holding the same timer produce.
     const id = await app.work.push({ v: 1 }, { delay: [10, "minute"] });
     const past = new Date(Date.now() - 1_000).toISOString();
@@ -1332,7 +1353,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
 
 // -----------------------------------------------------------------------------------------------------------------
 
-describe("$job — trim is proportional to the work done", () => {
+describe("$job: trim is proportional to the work done", () => {
   it("trims a job back even when it produced far more rows than the old cap", async ({
     expect,
   }) => {

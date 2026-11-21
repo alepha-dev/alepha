@@ -30,7 +30,7 @@ export interface AnalyticsConformanceOptions {
  * The index dimension is deliberately named `appId`, not `app`: a relational
  * provider stores it snake_cased (`app_id`), so a two-word dimension name is
  * what actually exercises name resolution in `where`/`groupBy`/`select` and
- * in `rollup()`'s fold — a single lowercase word like `app` happens to be
+ * in `rollup()`'s fold, a single lowercase word like `app` happens to be
  * identical in both cases and would silently pass even with no resolution at
  * all. Two real defects (in `readOne()` and in `rollup()`) shipped past this
  * suite specifically because every dimension here used to be one word.
@@ -388,13 +388,13 @@ export const analyticsConformance = (
       expect(Number(result.rows[0]?.samples)).toBe(5);
     });
 
-    it("a count declared as a measure (1 per event, summed) survives a rollup — the portable replacement for a 'count' aggregate", async () => {
-      // `AnalyticsAggregate` has no `count` — it is stored-row count on every
+    it("a count declared as a measure (1 per event, summed) survives a rollup: the portable replacement for a 'count' aggregate", async () => {
+      // `AnalyticsFold` has no `count`, it is stored-row count on every
       // backend (`COUNT(*)` relationally, `+1` per array entry in memory),
       // which is not the same number across backends on identical writes and
       // does not survive a rollup at all (folding rows collapses the very
       // thing being counted). The portable pattern is what this test pins:
-      // declare a measure that is `1` per event, and `sum` it — `sum` is
+      // declare a measure that is `1` per event, and `sum` it, `sum` is
       // mergeable across a rollup boundary and sample-correctable, so a
       // count modelled this way is exactly the same number before and after
       // folding, on every backend.
@@ -423,7 +423,7 @@ export const analyticsConformance = (
         select: { samples: "sum" },
       });
 
-      // Two events, each contributing 1 — the row count, reconstructed by
+      // Two events, each contributing 1, the row count, reconstructed by
       // summing after the fold rather than by counting rows.
       expect(Number(result.rows[0]?.samples)).toBe(2);
     });

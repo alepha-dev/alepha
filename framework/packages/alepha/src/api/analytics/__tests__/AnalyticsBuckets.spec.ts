@@ -75,4 +75,24 @@ describe("AnalyticsBuckets", () => {
     expect(AnalyticsBuckets.isBucket("2026-10-18T08:30", "15m")).toBe(true);
     expect(AnalyticsBuckets.isBucket("2026-10-18", "1m")).toBe(false);
   });
+
+  it("refuses a key with the right shape that names no instant", ({
+    expect,
+  }) => {
+    // No such hour, month or day: `truncate` threw on the first two when a
+    // rollup reached them, and the third folded into March on one backend
+    // and into "February 30" on another.
+    expect(AnalyticsBuckets.isBucket("2020-01-01T25", "1h")).toBe(false);
+    expect(AnalyticsBuckets.isBucket("2026-13-45T99", "1h")).toBe(false);
+    expect(AnalyticsBuckets.isBucket("2026-02-30T10", "1h")).toBe(false);
+    expect(AnalyticsBuckets.isBucket("2026-02-30T10:05", "5m")).toBe(false);
+    expect(AnalyticsBuckets.isBucket("2028-02-29T23", "1h")).toBe(true);
+  });
+
+  it("tells a day that exists from one that does not", ({ expect }) => {
+    expect(AnalyticsBuckets.isDay("2026-02-28")).toBe(true);
+    expect(AnalyticsBuckets.isDay("2026-02-31")).toBe(false);
+    expect(AnalyticsBuckets.isDay("2026-13-45")).toBe(false);
+    expect(AnalyticsBuckets.isDay("2026-02-28T10")).toBe(false);
+  });
 });

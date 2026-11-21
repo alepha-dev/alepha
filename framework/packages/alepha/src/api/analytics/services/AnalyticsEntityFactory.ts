@@ -22,14 +22,14 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  *
  * The time column is named {@link TIME_COLUMN} (`time_bucket`) rather than the
  * shorter `bucket`, because `bucket` is a name real datasets use for an
- * ordinary dimension — a histogram bucket index, with a `count`/`samples`
+ * ordinary dimension, a histogram bucket index, with a `count`/`samples`
  * measure alongside it, is this design's own recommended way to model a
  * histogram. A reserved `bucket` column would collide with exactly that
  * dimension: dimensions are spread into the column map after the literal, so
  * the time key would be silently overwritten by the dimension's value, and
  * the unique index would carry a duplicate column name. Workers Analytics
  * Engine is immune to this because its slots are positional rather than
- * named, so the same dataset shape never surfaces the problem there — only
+ * named, so the same dataset shape never surfaces the problem there, only
  * on a relational backend, and only once real rows are queried.
  */
 export class AnalyticsEntityFactory {
@@ -118,17 +118,17 @@ export class AnalyticsEntityFactory {
    * Refuses a dataset whose names would silently lose a column.
    *
    * Spreading dimensions and measures into one column map means a duplicate
-   * name does not error — it overwrites, and the loser vanishes from the table
+   * name does not error, it overwrites, and the loser vanishes from the table
    * with nothing to show for it. Three ways that can happen, all rejected here
    * rather than at the first confusing query.
    *
-   * **Public, and also called from `AnalyticsPrimitive.onInit`** — this used
+   * **Public, and also called from `AnalyticsPrimitive.onInit`**, this used
    * to be reachable only from {@link build}, i.e. only from
    * `OrmAnalyticsProvider.register()`. `MemoryAnalyticsProvider.register()`
    * and `WaeAnalyticsProvider.register()` never call `build()` at all (they
    * have no relational table to derive), so a dataset with, say, a `day`
-   * dimension used to pass every test — the bound provider under
-   * `alepha.isTest()` is Memory — and only throw once a relational or
+   * dimension used to pass every test, the bound provider under
+   * `alepha.isTest()` is Memory, and only throw once a relational or
    * Analytics Engine deployment actually registered it. Hoisting the call
    * into the primitive's own `onInit` (which runs regardless of which
    * provider ends up bound) closes that gap; this stays here too as defence
@@ -142,7 +142,7 @@ export class AnalyticsEntityFactory {
     for (const name of [...dimensions, ...measures]) {
       if (name === AnalyticsEntityFactory.TIME_COLUMN) {
         throw new AlephaError(
-          `Dataset '${dataset.name}' declares '${name}', which is reserved for the time bucket. Rename it — on a relational backend it would overwrite the bucket column.`,
+          `Dataset '${dataset.name}' declares '${name}', which is reserved for the time bucket. Rename it: on a relational backend it would overwrite the bucket column.`,
         );
       }
     }
@@ -187,7 +187,7 @@ export class AnalyticsEntityFactory {
 
     if (!/^[a-z][a-z0-9_]*$/.test(dataset.name)) {
       throw new AlephaError(
-        `Dataset name '${dataset.name}' is not a legal table-name fragment. Use lowercase letters, digits and underscores, starting with a letter — it is interpolated into 'analytics_<name>_raw'.`,
+        `Dataset name '${dataset.name}' is not a legal table-name fragment. Use lowercase letters, digits and underscores, starting with a letter: it is interpolated into 'analytics_<name>_raw'.`,
       );
     }
   }

@@ -5,8 +5,8 @@ import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
 
 /**
- * The wire form of `AnalyticsQuery`. Key membership — which dimensions and
- * measures actually exist on the target dataset — is validated by
+ * The wire form of `AnalyticsQuery`. Key membership, which dimensions and
+ * measures actually exist on the target dataset, is validated by
  * `AdminAnalyticsService` against the declaration; a static schema cannot
  * know it.
  */

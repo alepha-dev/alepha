@@ -121,7 +121,12 @@ export class JobService {
     ): string | undefined => {
       if (v === null || v === undefined) return undefined;
       if (typeof v === "number") return new Date(v).toISOString();
-      return v;
+      // Postgres hands a raw aggregate over a `timestamptz` back in its own
+      // text form (`2026-11-21 07:11:49.006+00`), which the response schema
+      // refuses. Spelled as ISO 8601 first, so every runtime parses it.
+      return new Date(
+        v.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00"),
+      ).toISOString();
     };
 
     const byJob = new Map<

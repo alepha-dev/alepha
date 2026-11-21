@@ -10,9 +10,9 @@ import { ParameterProvider } from "../services/ParameterProvider.ts";
 
 /**
  * `save()` validates content only when the supplied schema hash equals the
- * registered one — a deliberate escape hatch for migration seeds. The admin
+ * registered one, a deliberate escape hatch for migration seeds. The admin
  * create-version body accepted `schemaHash` from the client, so anyone with
- * `admin:parameter:write` could send a junk hash and store arbitrary JSON that
+ * `admin:parameter:create` could send a junk hash and store arbitrary JSON that
  * every typed `$parameter.get()` consumer then reads as `Infer<T>`.
  */
 class FeatureFlags {
@@ -72,7 +72,7 @@ describe("parameter schemaHash validation bypass", () => {
   it("still allows an explicit migration hash to skip validation", async () => {
     const { alepha, parameters } = await setup();
 
-    // The seed path stays open — it is how content written under an older
+    // The seed path stays open, it is how content written under an older
     // schema is restored without being judged by the current one.
     const saved = await parameters.save(
       "app.flags",

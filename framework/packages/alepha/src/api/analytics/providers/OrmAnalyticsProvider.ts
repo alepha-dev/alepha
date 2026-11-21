@@ -86,9 +86,9 @@ interface StoredColumn extends AnalyticsColumn {
  * under (`Repository`'s constructor calls `DatabaseProvider.registerEntity`
  * unconditionally, with no lazy path). `entities()` is then a plain lookup;
  * a dataset that was never registered throws `AlephaError` at first use
- * rather than trying to invent a table at request time. Task 7's `$analytics()`
- * primitive is expected to call `register()` for every declared dataset at
- * construction, which - like every other primitive's `$inject`/`$repository`
+ * rather than trying to invent a table at request time. The `$analytics()`
+ * primitive calls `register()` for every declared dataset at construction,
+ * which - like every other primitive's `$inject`/`$repository`
  * field - runs before the app starts.
  *
  * ## Dimension and measure names are never trusted as SQL identifiers
@@ -117,10 +117,10 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * The shared, package-owned prune-floor table (see
-   * `analyticsPruneFloorEntity`'s own doc) — one repository for every
+   * `analyticsPruneFloorEntity`'s own doc), one repository for every
    * dataset this provider ever registers, never one per dataset.
    *
-   * Built by {@link register}, unconditionally — see
+   * Built by {@link register}, unconditionally, see
    * {@link registerPruneFloors} for why "only when the deployment needs it"
    * was the wrong condition.
    */
@@ -131,12 +131,12 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * `DatabaseProvider`, so `migrate()` (run from the database provider's own
    * `start` hook) picks them up. **Must be called before `alepha.start()`.**
    *
-   * Idempotent per dataset name — a second call for an already-registered
+   * Idempotent per dataset name, a second call for an already-registered
    * dataset is a no-op, so callers do not need to track what they already
    * registered.
    *
    * Also registers the shared prune-floor table, for every deployment shape
-   * and not only the one that reads it — see {@link registerPruneFloors}.
+   * and not only the one that reads it, see {@link registerPruneFloors}.
    */
   public register(dataset: AnalyticsDataset): void {
     if (this.registered.has(dataset.name)) return;
@@ -154,8 +154,8 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * Registers the shared prune-floor table, idempotently. Callable more
-   * than once safely, and — like every other registration in this
-   * package — must run **before** `alepha.start()`.
+   * than once safely, and, like every other registration in this
+   * package, must run **before** `alepha.start()`.
    *
    * ⚠️ **Unconditional, and that is the fix for a production outage.** This
    * used to be called only from `WaeAnalyticsProvider.register()`, on the
@@ -163,14 +163,14 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * `prune()`, would never read a floor, and should not pay a migration for
    * a table it cannot use. The saving was two columns. The flaw was that it
    * made **the set of tables an app declares a function of the runtime it
-   * booted under** — and migrations are generated under one runtime and
+   * booted under**, and migrations are generated under one runtime and
    * applied under another.
    *
    * `alepha db migrations create` runs on Node, where `index.ts` selects
    * `OrmAnalyticsProvider` and nothing ever called this. So the table never
    * entered the snapshot and never got a migration. Production runs workerd,
    * where `index.workerd.ts` selects `WaeAnalyticsProvider`, whose `query()`
-   * reads the floor before *every* read — against a table the database had
+   * reads the floor before *every* read, against a table the database had
    * never been told to create. Every analytics read 500'd, and nothing
    * upstream could have gone red: unit tests, typecheck and
    * `check:migrations` all run on the runtime where the table is not
@@ -346,7 +346,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     const dimensionColumns = dimensions.map((name) =>
       this.columnName(source, name),
     );
-    // Resolved through `columnName`, same as `readOne` — see its class doc.
+    // Resolved through `columnName`, same as `readOne`, see its class doc.
     // Every tier is built from the one column map, so a name resolves the
     // same on either side.
     const targetColumns = [timeColumn, ...dimensionColumns];
@@ -521,21 +521,21 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Durably records `before` as `dataset`'s prune floor — the boundary below
+   * Durably records `before` as `dataset`'s prune floor, the boundary below
    * which nothing should ever be served again, on any tier of any provider
    * that reaches this `OrmAnalyticsProvider` as its `cold` store.
    *
-   * This provider's own `prune()`/`query()` never consult the floor — a real
+   * This provider's own `prune()`/`query()` never consult the floor, a real
    * `DELETE` already makes the data gone, full stop, so there is nothing for
    * a floor to paper over here. It exists for `WaeAnalyticsProvider`, whose
    * hot tier (Analytics Engine) has no delete API: `cold.prune()` alone
    * cannot make that data stop existing, only stop being *this provider's*
    * copy of it, so `WaeAnalyticsProvider.query()` has to clamp its own reads
-   * — of both tiers — to whatever floor is recorded here. See
+   * (of both tiers) to whatever floor is recorded here. See
    * `analyticsPruneFloorEntity`'s doc for why this is a dedicated table
    * rather than a row in `dataset`'s own raw/rolled table.
    *
-   * **Monotonic — never moves the floor backwards.** A floor that could
+   * **Monotonic, never moves the floor backwards.** A floor that could
    * regress would resurrect data a caller already asked to prune: if a
    * retry or an out-of-order call passed an earlier `before` than a prior
    * call already recorded, silently accepting it would make
@@ -545,25 +545,21 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * Read-then-write, not a single atomic upsert: the boundary comparison
    * (`GREATEST`/`MAX(a, b)` as a scalar expression) is not spelled the same
    * way on Postgres and SQLite/D1, and this table sees one write per dataset
-   * per sweep (hourly, from `AnalyticsRollupJobs`) — nowhere near enough
+   * per sweep (hourly, from `AnalyticsRollupJobs`), nowhere near enough
    * traffic to justify a driver-specific SQL expression for what a `findOne`
    * plus a conditional `upsertMany` already does correctly for the
    * overwhelmingly common case of one sweep at a time. A genuinely
    * concurrent pair of `prune()` calls for the same dataset could in theory
    * race between the read and the write; the failure mode is at worst
    * failing to advance the floor on one of the two calls, which the next
-   * sweep (an hour later) corrects — never a regression, since the guard
+   * sweep (an hour later) corrects, never a regression, since the guard
    * only ever skips a write, it never lets a smaller value through.
    *
-   * A silent no-op when {@link registerPruneFloors} was never called —
-   * deliberately, not a defensive afterthought. Unlike {@link entities}
-   * (which throws for an unregistered *dataset*, always a caller bug, every
-   * dataset must be registered), an absent floor table is the permanent,
-   * correct state of a plain relational deployment: it has no floor and
-   * never will, because its own `prune()` genuinely deletes. Only
-   * `WaeAnalyticsProvider.register()` ever calls
-   * {@link registerPruneFloors}, so this only no-ops for exactly the
-   * deployments that were never going to call it in the first place.
+   * A silent no-op when {@link registerPruneFloors} was never called, which
+   * no registered dataset can see: {@link register} calls it for every
+   * deployment shape. A plain relational deployment has the table and never
+   * writes to it, since its own `prune()` genuinely deletes and nothing
+   * calls this.
    */
   public async recordPruneFloor(
     dataset: AnalyticsDataset,
@@ -583,12 +579,10 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * `dataset`'s currently recorded prune floor, or `undefined` — either
-   * because `prune()` has never been called for it, or because this
-   * provider never had {@link registerPruneFloors} called on it at all
-   * (a plain relational deployment, which has no floor and never will —
-   * see that method's own doc). Both cases mean the same thing to a
-   * caller: nothing to clamp reads to.
+   * `dataset`'s currently recorded prune floor, or `undefined` when none
+   * was ever recorded for it (always, on a plain relational deployment,
+   * whose own `prune()` deletes and records no floor): nothing to clamp
+   * reads to.
    */
   public async pruneFloor(
     dataset: AnalyticsDataset,
@@ -597,7 +591,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * The raw `{ dataset, floor }` row, or `undefined` — the one place the
+   * The raw `{ dataset, floor }` row, or `undefined`, the one place the
    * loose `Repository<ZObject>` result is cast to this table's real shape,
    * so {@link recordPruneFloor}/{@link pruneFloor} both read through it
    * rather than each casting `findOne`'s result independently.
@@ -688,7 +682,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * Looks up `dataset`'s tier repositories, finest first.
    *
    * Throws if `dataset` was never passed to {@link register}. This provider
-   * never registers a table on the caller's behalf — see the class doc — so
+   * never registers a table on the caller's behalf, see the class doc, so
    * a missing dataset here means an app is querying a dataset it never
    * declared, which is a bug worth failing loudly on rather than attempting
    * runtime DDL.
@@ -698,7 +692,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     if (existing) return existing;
 
     throw new AlephaError(
-      `Dataset '${dataset.name}' was never registered with OrmAnalyticsProvider. Call register(dataset) before alepha.start() — this provider cannot create tables at request time.`,
+      `Dataset '${dataset.name}' was never registered with OrmAnalyticsProvider. Call register(dataset) before alepha.start(): this provider cannot create tables at request time.`,
     );
   }
 
@@ -708,7 +702,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * `Repository.of(entity)` is the framework's documented factory for an
    * entity that only exists as a runtime value (not a class-field
    * declaration), and `{ lifetime: "transient" }` means this call itself is
-   * never cached in the DI container — `register()` keeps the returned
+   * never cached in the DI container, `register()` keeps the returned
    * instance in {@link registered} instead, so each dataset still gets
    * exactly one `Repository` per tier for the life of this provider.
    */
@@ -922,15 +916,15 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * Resolves a dataset-declared JS field name (a dimension or a measure) to
-   * its real, possibly-renamed SQL column name — the same resolution
-   * {@link accumulateSet} already relies on for the `excluded.<name>` half of
+   * its real, possibly-renamed SQL column name, the same resolution
+   * {@link upsertSet} already relies on for the `excluded.<name>` half of
    * an upsert.
    *
    * Neither `readOne` nor `rollup` splices a JS field name into `sql.raw`
    * directly: the model builder snake-cases multi-word column names
    * (`sigilId` is stored as `sigil_id`), so a raw splice of the JS name
    * produces valid SQL only by accident, when a dimension or measure happens
-   * to be a single word. Every other name throws `no such column` — the
+   * to be a single word. Every other name throws `no such column`, the
    * `where` filter every project-scoped analytics read applies
    * (`{ sigilId: { inArray: [...] } }`) hit exactly this in `readOne`, and
    * `rollup`'s `SELECT`/`GROUP BY` over the exact same dimensions hit the
@@ -960,7 +954,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
         filter !== null &&
         "inArray" in filter
       ) {
-        // Empty inArray means match nothing, never unfiltered — an `IN ()`
+        // Empty inArray means match nothing, never unfiltered, an `IN ()`
         // clause is invalid SQL, and even if it weren't, matching everything
         // is exactly the wrong behaviour here. Short-circuit instead.
         if (filter.inArray.length === 0) return undefined;
@@ -1014,18 +1008,18 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       const column = this.columnName(repository, name);
       // The decoded row is looked up by the JS field name everywhere
       // downstream (`shape`, `query()`'s grouping key, the controller's
-      // `row.<dimension>` reads) — alias back to it whenever Drizzle's real
+      // `row.<dimension>` reads), alias back to it whenever Drizzle's real
       // column name differs, so a renamed column stays invisible past here.
       // The alias is double-quoted: Postgres folds an unquoted identifier to
       // lowercase, which would turn `AS appId` into a returned column named
-      // `appid` — a case mismatch the decode shape (keyed on the exact JS
+      // `appid`, a case mismatch the decode shape (keyed on the exact JS
       // name) would then reject as a missing field.
       return column === name ? column : `${column} AS "${name}"`;
     });
 
     // Each dimension decodes with its own declared type (a histogram bucket
     // dimension is a number, a path is a string) rather than a blanket
-    // `z.string()` — the column comes back from the driver in whatever type
+    // `z.string()`, the column comes back from the driver in whatever type
     // the dataset declared, and a mismatch throws during decode.
     const shape: Record<string, ZType> = {};
     for (const name of groupBy) {
@@ -1094,7 +1088,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     // With no `GROUP BY`, a bare `SUM(...)` over zero matching rows still
     // returns exactly one row with a NULL total in plain SQL. The interface
     // contract (pinned by `MemoryAnalyticsProvider`) is that an empty match
-    // stays an empty result, so `HAVING COUNT(*) > 0` suppresses that row —
+    // stays an empty result, so `HAVING COUNT(*) > 0` suppresses that row,
     // harmless with a `GROUP BY`, since a group only exists when at least
     // one row fed it.
     const rows = await this.database.run(

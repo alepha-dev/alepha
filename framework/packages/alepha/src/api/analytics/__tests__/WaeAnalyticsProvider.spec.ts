@@ -26,7 +26,7 @@ const dataset = {
 const BINDING_NAME = "ANALYTICS";
 /**
  * Deliberately DIFFERENT from BINDING_NAME. A wrangler entry has a fixed
- * `binding` and a derived `dataset`, and production never makes them equal —
+ * `binding` and a derived `dataset`, and production never makes them equal,
  * `ANALYTICS` vs `lore-production`. When this fixture set them to the same
  * string, a provider that looked the binding up by dataset name passed every
  * test and threw in production.
@@ -37,11 +37,11 @@ const API_TOKEN = "tok";
 
 /**
  * Overrides the single HTTP seam `WaeAnalyticsProvider` exposes for its SQL
- * reads — the same shape `CloudflareEmailProvider`'s REST tests use for
+ * reads, the same shape `CloudflareEmailProvider`'s REST tests use for
  * `httpPost` (see `CloudflareEmailRest.spec.ts`). Reusing
  * `FakeAnalyticsEngine.query` here (rather than duplicating its logic) means
  * `lastQuery` tracking, `answer()`, and the SQL interpreter all keep working
- * unmodified — only the transport changed, from "swap `sql.query`" (possible
+ * unmodified, only the transport changed, from "swap `sql.query`" (possible
  * when the caller held a reference to the `AnalyticsEngineSql` instance) to
  * "override the fetch this provider builds internally" (now that
  * `AnalyticsEngineSql` is constructed inside the provider, from env
@@ -67,7 +67,7 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
   /**
    * Exposes the otherwise-`protected` `cold` field for assertions. A getter
    * defined *inside* the subclass, not a change to `WaeAnalyticsProvider`
-   * itself — `protected` access is only legal from within the class or a
+   * itself, `protected` access is only legal from within the class or a
    * subclass, and test code calling `provider.cold` from outside either is
    * not.
    */
@@ -79,22 +79,22 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
 /**
  * `WaeAnalyticsProvider` is DI-injectable now (see its class doc), which
  * means every test constructs it through a real `Alepha` container rather
- * than `new WaeAnalyticsProvider({ ... })` — and because `cold` is a hard
+ * than `new WaeAnalyticsProvider({ ... })`, and because `cold` is a hard
  * `$inject(OrmAnalyticsProvider)` rather than a substitutable
  * `AnalyticsProvider`, that container needs `AlephaOrmTestPostgres` wired even
  * for tests that never touch `cold`, the same as every
  * `OrmAnalyticsProvider.spec.ts` test does. Docker/Postgres are already a
  * hard requirement of this repo's test suite for that reason.
  *
- * Always registers `dataset` before `start()` — required for `cold`'s tables
+ * Always registers `dataset` before `start()`, required for `cold`'s tables
  * to exist at all (registering after `start()` never gets migrated; see
- * `OrmAnalyticsProvider`'s own eager-registration rule) — which used to be a
+ * `OrmAnalyticsProvider`'s own eager-registration rule), which used to be a
  * separate `buildRegistered()` helper reserved for tests that touched `cold`
  * directly. `query()` now consults `cold` on every call whose window might
  * reach it (see `mightNeedCold`), so *every* test needs it registered, not
  * just the ones that used to opt in.
  *
- * Takes an optional `ds`, defaulting to the module-level `dataset` — tests
+ * Takes an optional `ds`, defaulting to the module-level `dataset`, tests
  * exercising a dataset with a differently-shaped dimension (a numeric one,
  * say) register that dataset instead, but still get the same wired-up
  * container.
@@ -121,7 +121,7 @@ const build = async (
 /**
  * Pins `alepha`'s `DateTimeProvider` to an exact instant, computing the
  * offset dynamically so this works regardless of the real wall-clock date
- * the suite happens to run on — required for `mightNeedCold`'s
+ * the suite happens to run on, required for `mightNeedCold`'s
  * `dataset.retention.hot`-relative "is this window still fully inside
  * Analytics Engine's live range" check, the one piece of `query()` that
  * reads the clock.
@@ -164,7 +164,7 @@ describe("WaeAnalyticsProvider", () => {
     }
   });
 
-  it("places dimensions in alphabetical slots", async () => {
+  it("places dimensions in their pinned slots", async () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
@@ -202,7 +202,7 @@ describe("WaeAnalyticsProvider", () => {
       },
     }).with(AlephaOrmTestPostgres);
     const provider = alepha.inject(TestWaeAnalyticsProvider);
-    // No `alepha.set("cloudflare.env", ...)` — the binding is never found.
+    // No `alepha.set("cloudflare.env", ...)`, the binding is never found.
     await alepha.start();
     try {
       await expect(
@@ -218,7 +218,8 @@ describe("WaeAnalyticsProvider", () => {
   it("corrects every count by _sample_interval and reports estimated", async () => {
     const { alepha, provider, engine } = await build();
     try {
-      engine.answer([{ count: "40", _sample_interval: "4" }]);
+      // `_si` is the alias the provider reads `max(_sample_interval)` under.
+      engine.answer([{ count: "40", _si: "4" }]);
 
       const result = await provider.query(dataset, {
         since: "2026-08-09",
@@ -227,6 +228,7 @@ describe("WaeAnalyticsProvider", () => {
 
       expect(engine.lastQuery).toMatch(/sum\(double\d+ \* _sample_interval\)/);
       expect(result.estimated).toBe(true);
+      expect(result.sampleInterval).toBe(4);
     } finally {
       await alepha.stop();
     }
@@ -417,7 +419,7 @@ describe("WaeAnalyticsProvider", () => {
       );
       expect(byPath).toEqual({ "/x": 5, "/y": 9 });
       // The ALIAS, not `blob4`. Analytics Engine rejects an expression in
-      // GROUP BY, and grouping by the projected name is what it accepts —
+      // GROUP BY, and grouping by the projected name is what it accepts,
       // this assertion pinned the pre-2026-08-11 form, which the real
       // endpoint answers with a 422.
       expect(engine.lastQuery).toContain("GROUP BY path");
@@ -430,13 +432,13 @@ describe("WaeAnalyticsProvider", () => {
    * Regression guard for a production 422.
    *
    * Dataset names are derived from the deployment prefix, so a hyphen is the
-   * common case rather than the exotic one — `lore-production`. Unquoted, the
+   * common case rather than the exotic one, `lore-production`. Unquoted, the
    * Analytics Engine parser reads the hyphen as subtraction and rejects the
    * whole statement, so every read fails. Backticks are rejected too; only
    * double quotes work.
    *
-   * The fake cannot catch this on its own — it does not implement the real
-   * dialect's parser — so this asserts the generated text directly.
+   * The fake cannot catch this on its own, it does not implement the real
+   * dialect's parser, so this asserts the generated text directly.
    */
   it("quotes the dataset name so a hyphen cannot break the FROM clause", async () => {
     const hyphenated = "lore-production";
@@ -449,7 +451,7 @@ describe("WaeAnalyticsProvider", () => {
     }).with(AlephaOrmTestPostgres);
 
     const provider = alepha.inject(TestWaeAnalyticsProvider);
-    alepha.set("cloudflare.env", { [hyphenated]: provider.fakeEngine });
+    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
     provider.register(dataset);
     await alepha.start();
 
@@ -485,7 +487,7 @@ describe("WaeAnalyticsProvider", () => {
         /WHERE([\s\S]*?)(?:GROUP BY|HAVING)/.exec(
           engine.lastQuery ?? "",
         )?.[1] ?? "";
-      // `_sample_interval` is a property of the *sample*, not of the event —
+      // `_sample_interval` is a property of the *sample*, not of the event,
       // filtering on it would bias the very correction it exists to enable.
       expect(whereClause).not.toContain("_sample_interval");
     } finally {
@@ -526,7 +528,7 @@ describe("WaeAnalyticsProvider", () => {
     try {
       // `query()` now runs the Analytics Engine side and the `cold` side
       // concurrently (`Promise.all`), and both independently validate
-      // `where`'s keys against `dataset`'s declared dimensions — this
+      // `where`'s keys against `dataset`'s declared dimensions, this
       // class's own `AnalyticsSlotMap.blobSlot` ("unknown dimension") and
       // `OrmAnalyticsProvider.assertKnownDimension` ("not a declared
       // dimension"). Either can be the one `Promise.all` surfaces first, so
@@ -582,7 +584,7 @@ describe("WaeAnalyticsProvider", () => {
     // to reach the exact `cold` instance `rollup()`/`prune()` also use, or
     // this would pass against an implementation that silently no-ops. Data
     // is seeded directly into `coldProvider` (bypassing Analytics Engine
-    // entirely) so this stays a test of delegation, not of forwarding —
+    // entirely) so this stays a test of delegation, not of forwarding,
     // {@link forwardToCold} is covered on its own below.
     const { alepha, provider } = await build();
     try {
@@ -591,7 +593,7 @@ describe("WaeAnalyticsProvider", () => {
       ]);
 
       // rollup()/prune() are asserted through `provider`, not
-      // `provider.coldProvider`, directly — that is the delegation under
+      // `provider.coldProvider`, directly, that is the delegation under
       // test.
       await provider.rollup(dataset, 0, "2026-08-02");
 
@@ -616,7 +618,7 @@ describe("WaeAnalyticsProvider", () => {
 
   it("forwards Analytics Engine rows into cold before folding them", async () => {
     // Unlike the delegation test above, data is written through
-    // `provider.record()` — i.e. it only ever exists in Analytics Engine —
+    // `provider.record()`, i.e. it only ever exists in Analytics Engine,
     // so this proves `rollup()` itself moves it into `cold`, not merely that
     // `cold.rollup()` gets called.
     const { alepha, provider } = await build();
@@ -689,7 +691,7 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, provider, engine } = await build();
     try {
       // `_sample_interval: 4` on a stored `count` of 10 means the corrected
-      // total is 40 — the fake never simulates real sampling (see its class
+      // total is 40, the fake never simulates real sampling (see its class
       // doc), so `answer()` is the only way to produce an interval other
       // than 1 and prove `forwardToCold` uses `query()`'s corrected output
       // rather than reading `points[].doubles` itself.
@@ -699,7 +701,7 @@ describe("WaeAnalyticsProvider", () => {
           appId: "a",
           path: "/x",
           count: "40",
-          _sample_interval: "4",
+          _si: "4",
         },
       ]);
 
@@ -716,9 +718,9 @@ describe("WaeAnalyticsProvider", () => {
   });
 });
 
-describe("WaeAnalyticsProvider — the read side merges with cold", () => {
+describe("WaeAnalyticsProvider: the read side merges with cold", () => {
   it("skips cold entirely for a window inside the declared hot retention", async () => {
-    // A call-counting substitute for `cold` — `.with({ provide, use })`
+    // A call-counting substitute for `cold`, `.with({ provide, use })`
     // works here because `CountingOrmAnalyticsProvider extends
     // OrmAnalyticsProvider` (inherits its protected DB-dependent internals
     // rather than reimplementing them), the same requirement that makes
@@ -784,7 +786,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       await provider.rollup(dataset, 0, "2026-08-02");
 
       // The fake, unlike real Analytics Engine, never drops a point on its
-      // own — so without this, the query below would pass even with `cold`
+      // own, so without this, the query below would pass even with `cold`
       // never consulted at all, simply because Analytics Engine still
       // happens to have the same point. `answer()` simulates the point
       // having genuinely aged out of Analytics Engine's own retention (it
@@ -800,12 +802,12 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       });
 
       expect(result.rows).toEqual([{ count: 4 }]);
-      // Every contributing row came from `cold` — but `cold` only has it
+      // Every contributing row came from `cold`, but `cold` only has it
       // because `forwardToCold` read it out of Analytics Engine as a
       // sample-corrected estimate. Landing in a relational table does not
       // retroactively make it a measurement, so this stays `estimated: true`
       // even though nothing in *this* query touched Analytics Engine
-      // directly — the same reasoning `mergeResults`'s class doc gives.
+      // directly, the same reasoning `mergeResults`'s class doc gives.
       expect(result.estimated).toBe(true);
     } finally {
       await alepha.stop();
@@ -820,13 +822,13 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       ]);
       await provider.rollup(dataset, 0, "2026-08-02");
 
-      // Recorded after the rollup — still only in Analytics Engine.
+      // Recorded after the rollup, still only in Analytics Engine.
       await provider.record(dataset, [
         { hour: "2026-08-09T10", appId: "a", path: "/x", count: 7 },
       ]);
 
       // Simulates the old point having genuinely aged out of Analytics
-      // Engine, the same as the test above — Analytics Engine now reports
+      // Engine, the same as the test above, Analytics Engine now reports
       // only the new point (7), so a correct total of 11 can only have come
       // from also reading `cold`.
       engine.answer([{ count: "7" }]);
@@ -873,7 +875,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
   it("orderBy + limit across a straddling window return the globally correct top-N, not a per-source top-N", async () => {
     const { alepha, provider } = await build();
     try {
-      // Old, forwarded to cold: "/a" and "/shared" each rank ABOVE nothing —
+      // Old, forwarded to cold: "/a" and "/shared" each rank ABOVE nothing,
       // there are only two cold groups, so a per-source limit of 1 would
       // keep "/a" (10 > 9) and drop "/shared".
       await provider.record(dataset, [
@@ -882,7 +884,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       ]);
       await provider.rollup(dataset, 0, "2026-08-02");
 
-      // New, still only in Analytics Engine: symmetric shape — a
+      // New, still only in Analytics Engine: symmetric shape, a
       // per-source limit of 1 there would keep "/b" (10 > 9) and drop
       // "/shared" too.
       await provider.record(dataset, [
@@ -892,8 +894,8 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
 
       // Per-source top-1 would therefore never see "/shared" at all in
       // either source and could only ever return "/a" or "/b" (each 10).
-      // The true global total for "/shared" is 9 + 9 = 18 — higher than
-      // either "/a" or "/b" alone — so only a merge-then-limit is correct.
+      // The true global total for "/shared" is 9 + 9 = 18, higher than
+      // either "/a" or "/b" alone, so only a merge-then-limit is correct.
       const result = await provider.query(dataset, {
         since: "2026-08-01",
         groupBy: ["path"],
@@ -909,7 +911,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
   });
 });
 
-describe("WaeAnalyticsProvider — numeric dimensions", () => {
+describe("WaeAnalyticsProvider: numeric dimensions", () => {
   // `queryHot()` used to return every dimension as a string
   // (`AnalyticsEngineSql.str`), whatever the dataset actually declared.
   // Every dimension IS stored as a String blob (`record()` always writes
@@ -941,7 +943,7 @@ describe("WaeAnalyticsProvider — numeric dimensions", () => {
 
       // Before the fix, `forwardToCold()` fed `bucket: "3"` (a string) into
       // `cold.record()`, which validates against the dataset's declared
-      // `z.number()` and throws — exactly the failure that made a
+      // `z.number()` and throws, exactly the failure that made a
       // Cloudflare deployment's cold-forward sweep fail every run for any
       // dataset with a numeric dimension (Lore's `sigil_vitals.bucket`).
       await expect(
@@ -962,14 +964,14 @@ describe("WaeAnalyticsProvider — numeric dimensions", () => {
   it("merges a window straddling the forwarded boundary into one row per bucket, not one per source type", async () => {
     const { alepha, provider } = await build(histogramDataset);
     try {
-      // Forwarded to cold — decoded there through the dataset's declared
+      // Forwarded to cold, decoded there through the dataset's declared
       // `z.number()`, so this side was always a real number.
       await provider.record(histogramDataset, [
         { hour: "2026-08-01T10", appId: "a", bucket: 3, samples: 4 },
       ]);
       await provider.rollup(histogramDataset, 0, "2026-08-02");
 
-      // Still only in Analytics Engine — read back through `queryHot()`,
+      // Still only in Analytics Engine, read back through `queryHot()`,
       // which used to decode every dimension as a string.
       await provider.record(histogramDataset, [
         { hour: "2026-08-09T10", appId: "a", bucket: 3, samples: 5 },
@@ -981,7 +983,7 @@ describe("WaeAnalyticsProvider — numeric dimensions", () => {
         select: { samples: "sum" },
       });
 
-      // One row (bucket 3, total 9) — before the fix, the merge key split
+      // One row (bucket 3, total 9), before the fix, the merge key split
       // `"3"` (from hot) from `3` (from cold) into two separate rows whose
       // totals never combined, silently halving a histogram bucket.
       expect(result.rows).toEqual([{ bucket: 3, samples: 9 }]);
@@ -1014,10 +1016,10 @@ describe("WaeAnalyticsProvider — numeric dimensions", () => {
   });
 });
 
-describe("WaeAnalyticsProvider — prune floor", () => {
+describe("WaeAnalyticsProvider: prune floor", () => {
   // `AnalyticsProvider.prune`'s own contract: "deletes every row older than
   // `before`, on whichever tier it lives." Analytics Engine has no delete
-  // API, so `cold.prune()` alone cannot honour that — the floor recorded by
+  // API, so `cold.prune()` alone cannot honour that, the floor recorded by
   // `prune()` and consulted by `query()`/`forwardToCold()` is what closes
   // the gap. The conformance suite's own "prunes rolled rows older than the
   // cold boundary" case (`AnalyticsProvider conformance: wae`, wired up
@@ -1025,7 +1027,7 @@ describe("WaeAnalyticsProvider — prune floor", () => {
   // with it, exercised through the exact same `AnalyticsProvider` seam every
   // other backend is held to.
 
-  it("a prune floor survives a subsequent rollup() — forwardToCold does not re-import pruned data", async () => {
+  it("a prune floor survives a subsequent rollup(): forwardToCold does not re-import pruned data", async () => {
     const { alepha, provider, engine } = await build();
     try {
       await provider.record(dataset, [
@@ -1034,7 +1036,7 @@ describe("WaeAnalyticsProvider — prune floor", () => {
       await provider.rollup(dataset, 0, "2026-08-02");
       await provider.prune(dataset, "2026-08-02");
 
-      // Analytics Engine has no delete API — the point rolled up and then
+      // Analytics Engine has no delete API, the point rolled up and then
       // pruned from `cold` is still sitting right here, exactly like real
       // Analytics Engine would still have it within its own retention.
       expect(engine.points).toHaveLength(1);
@@ -1050,6 +1052,48 @@ describe("WaeAnalyticsProvider — prune floor", () => {
         select: { count: "sum" },
       });
       expect(result.rows).toEqual([]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("serves nothing below the floor to a from/to query either, deleted yet or not", async () => {
+    const { alepha, provider } = await build();
+    try {
+      // 50 days of cold rows, one a day. One bounded `cold.prune()` deletes
+      // only part of what the floor covers.
+      const start = Date.parse("2026-01-01T10:00:00.000Z");
+      await provider.coldProvider.record(
+        dataset,
+        Array.from({ length: 50 }, (_, day) => ({
+          hour: new Date(start + day * 86_400_000).toISOString().slice(0, 13),
+          appId: "a",
+          path: "/x",
+          count: 1,
+        })),
+      );
+      await provider.coldProvider.rollup(dataset, 0, "2026-03-01");
+      await provider.prune(dataset, "2026-03-01");
+      const left = await provider.coldProvider.query(dataset, {
+        since: "2026-01-01",
+        until: "2026-02-28",
+        select: { count: "sum" },
+      });
+      // The premise: rows below the floor are still stored.
+      expect(left.rows).not.toEqual([]);
+
+      const since = await provider.query(dataset, {
+        since: "2026-01-01",
+        until: "2026-02-28",
+        select: { count: "sum" },
+      });
+      const from = await provider.query(dataset, {
+        from: "2026-01-01T00:00:00Z",
+        to: "2026-03-01T00:00:00Z",
+        select: { count: "sum" },
+      });
+      expect(since.rows).toEqual([]);
+      expect(from.rows).toEqual([]);
     } finally {
       await alepha.stop();
     }
@@ -1076,7 +1120,7 @@ describe("WaeAnalyticsProvider — prune floor", () => {
 
       // An EARLIER boundary than the floor already recorded. If this moved
       // the floor backwards, `query()` would start allowing Analytics
-      // Engine to answer for [2026-08-02, 2026-08-06) again — resurrecting
+      // Engine to answer for [2026-08-02, 2026-08-06) again, resurrecting
       // exactly what the first prune already hid, even though `cold` itself
       // has nothing left there to delete either way.
       await provider.prune(dataset, "2026-08-02");
@@ -1099,7 +1143,7 @@ describe("WaeAnalyticsProvider — prune floor", () => {
  * reasons this block pins: a row whose slot layout predates the dataset's
  * current one does not decode, and a first sweep can face weeks of backlog.
  */
-describe("WaeAnalyticsProvider — forwarding what cold can take", () => {
+describe("WaeAnalyticsProvider: forwarding what cold can take", () => {
   /**
    * Shaped like Lore's `sigil_views`: the index dimension is a uuid, and
    * `cold` validates it on every row it is handed.
@@ -1343,7 +1387,7 @@ describe("WaeAnalyticsProvider behind the admin explorer", () => {
 
 describe("WaeAnalyticsProvider selection", () => {
   // `alepha.isTest()` reads `NODE_ENV`, which vitest sets to `"test"` by
-  // default — so proving the non-test branches means overriding it, the
+  // default, so proving the non-test branches means overriding it, the
   // same technique `$sms.spec.ts` uses to test `AlephaSms`'s own selection.
   it("selects WaeAnalyticsProvider when CLOUDFLARE_ANALYTICS_DATASET is set", () => {
     const alepha = Alepha.create({

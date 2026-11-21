@@ -7,7 +7,7 @@ import { ParameterProvider } from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// Controller exports
+// Audit and controller exports
 export * from "./audits/ParameterAudits.ts";
 export * from "./controllers/AdminParameterController.ts";
 // Entity exports

@@ -97,6 +97,39 @@ const boot = async (options: { pause?: boolean } = {}) => {
   return { alepha, app, events, provider, dateTime, total };
 };
 
+/**
+ * Yields to the event loop until `done`, for a flush nobody awaits (the one
+ * `maxRows` or the timer starts). Bounded in turns, not in time.
+ */
+const settled = async (done: () => boolean) => {
+  for (let turn = 0; turn < 1000 && !done(); turn++) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+};
+
+/**
+ * Listeners that fail, as an app's metrics wiring might.
+ */
+class ThrowingFlushEvents {
+  public calls = 0;
+
+  protected readonly onSuccess = $hook({
+    on: "analytics:flush:success",
+    handler: () => {
+      this.calls++;
+      throw new AlephaError("metrics down");
+    },
+  });
+
+  protected readonly onError = $hook({
+    on: "analytics:flush:error",
+    handler: () => {
+      this.calls++;
+      throw new AlephaError("metrics down");
+    },
+  });
+}
+
 describe("AnalyticsBuffer", () => {
   it("resolves record() once buffered, and folds every reading of a key across calls", async () => {
     const { app, provider, dateTime, total } = await boot({ pause: true });
@@ -142,8 +175,10 @@ describe("AnalyticsBuffer", () => {
     }
     expect(provider.writes).toHaveLength(0);
 
+    // The third key starts the flush by itself: an explicit `flush()` here
+    // would write the same three keys whether or not `maxRows` did.
     await app.readings.record({ deviceId: "d3", validations: 1 });
-    await app.readings.flush();
+    await settled(() => provider.writes.length > 0);
     expect(provider.writes.map((rows) => rows.length)).toEqual([3]);
   });
 
@@ -156,8 +191,9 @@ describe("AnalyticsBuffer", () => {
     await dateTime.travel(500, "milliseconds");
     expect(provider.writes).toHaveLength(0);
 
+    // The timer's own flush, with no `flush()` call to write in its place.
     await dateTime.travel(500, "milliseconds");
-    await app.readings.flush();
+    await settled(() => provider.writes.length > 0);
     expect(provider.writes).toHaveLength(1);
   });
 
@@ -228,6 +264,57 @@ describe("AnalyticsBuffer", () => {
     expect(await total()).toEqual([
       expect.objectContaining({ validations: 2 }),
     ]);
+  });
+
+  it("writes a batch once when an analytics:flush:success listener throws", async () => {
+    const alepha = Alepha.create().with({
+      provide: AnalyticsProvider,
+      use: ProbeAnalyticsProvider,
+    });
+    const app = alepha.inject(Ingest);
+    const listeners = alepha.inject(ThrowingFlushEvents);
+    const events = alepha.inject(FlushEvents);
+    const provider = alepha.inject(ProbeAnalyticsProvider);
+    await alepha.start();
+
+    await app.readings.record({ deviceId: "d1", validations: 1 });
+    await app.readings.flush();
+
+    // The listener ran and threw; the stored batch is not written again.
+    expect(listeners.calls).toBe(1);
+    expect(provider.writes).toHaveLength(1);
+    const result = await app.readings.query({
+      since: "2000-01-01",
+      select: { validations: "sum" },
+    });
+    expect(result.rows).toEqual([{ validations: 1 }]);
+    // A listener that throws does not keep the others from hearing it.
+    expect(events.flushed).toEqual([{ rows: 1 }]);
+    expect(events.failed).toEqual([]);
+  });
+
+  it("keeps flushing after an analytics:flush:error listener throws", async () => {
+    const alepha = Alepha.create().with({
+      provide: AnalyticsProvider,
+      use: ProbeAnalyticsProvider,
+    });
+    const app = alepha.inject(Ingest);
+    const listeners = alepha.inject(ThrowingFlushEvents);
+    const provider = alepha.inject(ProbeAnalyticsProvider);
+    await alepha.start();
+    provider.failures = 3;
+
+    await app.readings.record({ deviceId: "d1", validations: 1 });
+    // "Never rejects": the batch is dropped, the listener's failure with it.
+    await expect(app.readings.flush()).resolves.toBeUndefined();
+    expect(listeners.calls).toBe(1);
+
+    // The provider is healthy again, and the dataset's flush chain with it.
+    await app.readings.record({ deviceId: "d1", validations: 2 });
+    await app.readings.flush();
+    expect(provider.writes).toHaveLength(1);
+    expect(app.readings.bufferDepth()).toBe(0);
+    await expect(alepha.stop()).resolves.toBeUndefined();
   });
 
   it("writes straight through, with an info log, on a backend that already batches", async () => {

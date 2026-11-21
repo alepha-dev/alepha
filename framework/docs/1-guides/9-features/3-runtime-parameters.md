@@ -173,8 +173,9 @@ each instance switches on its own `get()`.
 
 ## Reacting to a change
 
-Other processes do not poll. An immediate `set()` publishes on a topic
-(`parameter:sync`), and every other instance reloads the row:
+Other processes do not poll. A `set()`, immediate or scheduled, publishes on a
+topic (`parameter:sync`), and every other instance reloads the row (a scheduled
+version becomes the `next` it holds in memory):
 
 ```mermaid
 sequenceDiagram

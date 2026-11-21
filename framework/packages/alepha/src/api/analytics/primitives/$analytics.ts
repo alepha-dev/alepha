@@ -76,8 +76,8 @@ export interface AnalyticsPrimitiveOptions extends Omit<
    * Storage-facing dataset name. Defaults to the property key it is declared
    * on, the same way `$storage` names a bucket.
    *
-   * Must be snake_case — lowercase letters, digits and underscores, starting
-   * with a letter — because it becomes a relational table name fragment and
+   * Must be snake_case, lowercase letters, digits and underscores, starting
+   * with a letter, because it becomes a relational table name fragment and
    * the Analytics Engine `blob1` discriminator. A camelCase property key
    * (the convention every other class field in this codebase uses) is
    * rejected at `onInit`; pass an explicit snake_case `name` here to keep a
@@ -109,11 +109,11 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * letters, digits and underscores, starting with a letter.
    *
    * Identical to the pattern `AnalyticsEntityFactory` enforces for the
-   * relational backend — that check stays in place as defence in depth, but
+   * relational backend, that check stays in place as defence in depth, but
    * it is unreachable from `MemoryAnalyticsProvider.register()`, which is a
    * no-op. Tests run in test mode, where memory is the bound provider, so
-   * without this check here a camelCase property key — the convention every
-   * other class field in this codebase uses — would pass silently under
+   * without this check here a camelCase property key, the convention every
+   * other class field in this codebase uses, would pass silently under
    * every test and only fail once the app actually runs against a relational
    * or Analytics Engine backend.
    */
@@ -149,7 +149,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * - The name has to be legal on every backend before anything else runs,
    *   since a rejected name should never reach a provider's `register()`.
    * - No dimension/measure name may collide with a reserved word or with each
-   *   other — see {@link AnalyticsEntityFactory.assertNoCollisions}. That
+   *   other, see {@link AnalyticsEntityFactory.assertNoCollisions}. That
    *   check used to be reachable only from `OrmAnalyticsProvider.register()`
    *   (via its own `AnalyticsEntityFactory.build()`), so a dataset with a
    *   `day` dimension, say, passed every test under `MemoryAnalyticsProvider`
@@ -159,17 +159,16 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    *   every provider's own `register()`, makes the check backend-independent
    *   the same way {@link assertLegalName} already is.
    * - `retention` has to describe a chain that can actually be enforced
-   *   safely — see `AnalyticsTiers.assertValid` — before anything downstream
+   *   safely, see `AnalyticsTiers.assertValid`, before anything downstream
    *   (a provider's `register()`, `AnalyticsRollupJobs`) trusts it.
    * - The slot caps and the index check are cheap, and their failure mode is a
-   *   wire format that silently misreads stored rows — so they are asserted at
+   *   wire format that silently misreads stored rows, so they are asserted at
    *   boot rather than at the first write.
    * - Registration must precede `alepha.start()`. The container locks once
-   *   `started` flips (`Alepha.ts:1079`), and a relational provider's
-   *   `migrate()` runs from its own `"start"` hook
-   *   (`PostgresProvider.ts:91-106`), so a dataset registered any later has no
-   *   table and cannot get one. This is the same rule `Repository`'s own
-   *   constructor follows (`Repository.ts:123-127`).
+   *   it starts, and a relational provider's `migrate()` runs from its own
+   *   `"start"` hook, so a dataset registered any later has no table and
+   *   cannot get one. This is the same rule `Repository`'s own constructor
+   *   follows when it registers its entity.
    */
   protected onInit(): void {
     this.assertLegalName();
@@ -185,8 +184,8 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
   /**
    * Refuses a dataset name that is not legal snake_case.
    *
-   * The message names both ways out — rename the property, or pass an
-   * explicit `name` — rather than just describing what is wrong, because a
+   * The message names both ways out, rename the property, or pass an
+   * explicit `name`, rather than just describing what is wrong, because a
    * camelCase property key is normal Alepha style everywhere else in this
    * codebase; the fix is not obvious without being told.
    *
@@ -229,7 +228,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * camelCase to snake_case, for the rename {@link assertLegalName} suggests
    * in its error message.
    *
-   * A pure function, kept `static` rather than a free function — this
+   * A pure function, kept `static` rather than a free function, this
    * codebase never declares code outside a class.
    */
   public static toSnakeCase(value: string): string {
@@ -253,9 +252,9 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    *
    * A device clock is not trusted blindly. An `at` more than
    * {@link MAX_CLOCK_SKEW} ahead is clamped to now; one older than the
-   * finest tier's retention is dropped, since the next sweep would delete
-   * it anyway. Both are debug-logged. An explicit bucket is the caller's own
-   * decision and is never clamped.
+   * finest tier's retention is dropped, whatever `hour` it names. Both are
+   * debug-logged. An explicit bucket is otherwise the caller's own decision:
+   * it is checked for being a real key, and never moved.
    *
    * Rows sharing a bucket and every dimension are merged before they reach
    * the provider, so a batch carrying two readings of one device in one

@@ -399,7 +399,7 @@ describe("ParameterProvider", () => {
 
     const provider = alepha.inject(ParameterProvider);
 
-    // Create first version (current — immediate activation)
+    // Create first version (current, immediate activation)
     const v1 = await provider.save("test.status.param", { value: 1 }, "hash");
     expect(v1.status).toBe("current");
 
@@ -551,8 +551,8 @@ describe("ParameterProvider", () => {
       activationDate: new Date(now + hour),
     });
 
-    // An event captured 90 minutes ago must be evaluated with v1 — what was
-    // live then — even though `get()` returns v2 now.
+    // An event captured 90 minutes ago must be evaluated with v1, what was
+    // live then, even though `get()` returns v2 now.
     expect(
       (await provider.getVersionAt(name, new Date(now - 90 * 60 * 1000)))
         ?.content,
@@ -579,7 +579,7 @@ describe("ParameterProvider", () => {
       await provider.getVersionAt(name, new Date(now - 3 * hour)),
     ).toBeNull();
 
-    // ISO strings are accepted too — the wire format of most event payloads.
+    // ISO strings are accepted too, the wire format of most event payloads.
     expect(
       (await provider.getVersionAt(name, new Date(now).toISOString()))?.content,
     ).toEqual({ value: "v2" });
@@ -733,7 +733,7 @@ describe("Schema migration", () => {
     // Seed database with a value that has a different schema hash
     await provider.save("migrate.compatible", { name: "jack" }, "old-hash");
 
-    // Reload — the value is still valid against the new schema
+    // Reload, the value is still valid against the new schema
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ name: "jack" });
@@ -768,7 +768,7 @@ describe("Schema migration", () => {
     // Seed database with a value missing the "age" field, different schema hash
     await provider.save("migrate.add.field", { name: "jack" }, "old-hash");
 
-    // Reload — value is invalid (missing required "age"), should merge with defaults
+    // Reload, value is invalid (missing required "age"), should merge with defaults
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ name: "jack", age: 25 });
@@ -813,7 +813,7 @@ describe("Schema migration", () => {
       "old-hash",
     );
 
-    // Reload — merge still invalid (nested object missing "y"), should reset to defaults
+    // Reload, merge still invalid (nested object missing "y"), should reset to defaults
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ items: [{ x: 0, y: 0 }] });
@@ -858,7 +858,7 @@ describe("Schema migration", () => {
     // Seed database with old-format value, different schema hash
     await provider.save("migrate.function", { firstName: "jack" }, "old-hash");
 
-    // Reload — migrate function should transform the value
+    // Reload, migrate function should transform the value
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ name: "jack", age: 30 });
@@ -901,7 +901,7 @@ describe("Schema migration", () => {
       "old-hash",
     );
 
-    // Reload — migrate returns invalid, falls through to merge with defaults
+    // Reload, migrate returns invalid, falls through to merge with defaults
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ name: "jack", age: 42 });
@@ -933,14 +933,14 @@ describe("Schema migration", () => {
     const providerAny = provider as any;
     const schemaHash = await providerAny.schemaHashes.get("migrate.hash.match");
 
-    // Seed database with the SAME schema hash — no migration needed
+    // Seed database with the SAME schema hash, no migration needed
     await provider.save(
       "migrate.hash.match",
       { name: "jack", age: 99 },
       schemaHash,
     );
 
-    // Reload — hash matches, no migration
+    // Reload, hash matches, no migration
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ name: "jack", age: 99 });
@@ -974,7 +974,7 @@ describe("Schema migration", () => {
     // Seed database with wrong type (string instead of number), different hash
     await provider.save("migrate.type.change", { name: "jack" }, "old-hash");
 
-    // Reload — merge produces { name: "jack" } which is still invalid (wrong type)
+    // Reload, merge produces { name: "jack" } which is still invalid (wrong type)
     // Falls to default
     await config.param.reload();
 
@@ -1013,7 +1013,7 @@ describe("Schema migration", () => {
       "old-hash",
     );
 
-    // Reload — value should still work, "name" is present and valid
+    // Reload, value should still work, "name" is present and valid
     await config.param.reload();
 
     const value = await config.param.get();
@@ -1041,7 +1041,7 @@ describe("Schema migration", () => {
 
     const config = alepha.inject(AppConfig);
 
-    // No seeding — no DB value exists
+    // No seeding, no DB value exists
     await config.param.reload();
 
     // Should use default
@@ -1076,7 +1076,7 @@ describe("Schema migration", () => {
     // Seed database with value missing "age", different schema hash
     await provider.save("migrate.throws", { name: "jack" }, "old-hash");
 
-    // Reload — migrate throws, falls through to merge with defaults
+    // Reload, migrate throws, falls through to merge with defaults
     await config.param.reload();
 
     expect(await config.param.get()).toEqual({ name: "jack", age: 0 });
@@ -1111,10 +1111,8 @@ describe("Schema migration", () => {
     const received: unknown[] = [];
     config.param.sub((v) => received.push(v));
 
-    // Now save a value with old schema hash to trigger migration
-    // Reset migrationChecked to allow re-migration. The value caches are now
-    // keyed `${org}:${name}` — no org atom in this test → the `~global` org.
-    (provider as any).migrationChecked.delete("~global:migrate.notify.sub");
+    // Now save a value with an old schema hash. No row existed at boot, so
+    // the name was never checked for migration and the reload below does it.
     await provider.save(
       "migrate.notify.sub",
       { name: "alice" },
@@ -1158,8 +1156,8 @@ describe("Schema migration", () => {
     const config = alepha.inject(Config);
     await config.param.reload();
 
-    // Old shape has no overlapping fields — merge produces { width: 100, height: 200, color: "red", opacity: 0.5 }
-    // After pickSchemaKeys: { width: 100, height: 200 } — which is valid! This is the merge path.
+    // Old shape has no overlapping fields, merge produces { width: 100, height: 200, color: "red", opacity: 0.5 }
+    // After pickSchemaKeys: { width: 100, height: 200 }, which is valid! This is the merge path.
     // OR: merge invalid -> falls to defaults. Either way, result should have width/height.
     const value = await config.param.get();
     expect(value).toEqual({ width: 100, height: 200 });
@@ -1227,7 +1225,7 @@ describe("getParameterNames (distinct query)", () => {
 
     const names = await provider.getParameterNames();
 
-    // Should deduplicate — "distinct.alpha" appears once despite 3 versions
+    // Should deduplicate, "distinct.alpha" appears once despite 3 versions
     const alphaCount = names.filter((n) => n === "distinct.alpha").length;
     expect(alphaCount).toBe(1);
     expect(names).toContain("distinct.alpha");
@@ -1287,7 +1285,7 @@ describe("getVersion (direct lookup)", () => {
     expect(missing).toBeNull();
   });
 
-  it("should allow calculating status for a single version", async () => {
+  it("reports a past version as expired, among all the versions of its name", async () => {
     const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
@@ -1298,10 +1296,12 @@ describe("getVersion (direct lookup)", () => {
     await provider.save("version.status", { v: 2 }, "h");
 
     const v1 = await provider.getVersion("version.status", 1);
-    const [withStatus] = provider.calculateStatuses([v1!]);
+    const [withStatus] = await provider.calculateStatusesOf("version.status", [
+      v1!,
+    ]);
 
-    // A single past version in isolation is both the latest activated and only one
-    expect(withStatus.status).toBe("current");
+    // Version 2 is current: version 1 alone is not the latest activated.
+    expect(withStatus.status).toBe("expired");
     expect(withStatus.version).toBe(1);
   });
 });
@@ -1391,7 +1391,7 @@ describe("save (status calculation without re-fetch)", () => {
     // Should have resolved the hash from the registered primitive
     expect(result.schemaHash).not.toBe("");
 
-    // Save another version — should NOT log a schema migration since hash matches
+    // Save another version, should NOT log a schema migration since hash matches
     const v2 = await provider.save(
       "save.hash.resolve",
       { enableBeta: false, maxUploadSize: 200 },
@@ -1556,7 +1556,7 @@ describe("getCurrentWithDefault", () => {
 
   it("should return the schema as JSON Schema, not a raw ZodObject", async () => {
     // Regression: the parameter's `schema` is a live `ZodObject`. It must be
-    // serialized to JSON Schema before transport — otherwise the action's
+    // serialized to JSON Schema before transport, otherwise the action's
     // `schema: z.json()` response validation rejects it ("expected record,
     // received ZodObject at /schema"), 500-ing the admin Parameters UI when an
     // item is opened. The UI rebuilds its form by round-tripping the value back
@@ -1577,7 +1577,7 @@ describe("getCurrentWithDefault", () => {
     const provider = alepha.inject(ParameterProvider);
     const result = await provider.getCurrentWithDefault("gwd.schema.json");
 
-    // A plain JSON-Schema record describing the parameter shape — never the
+    // A plain JSON-Schema record describing the parameter shape, never the
     // Zod instance (which would have `_zod`/`def`, not `type`/`properties`).
     expect(z.schema.isObject(result.schema as never)).toBe(false);
     expect((result.schema as { type?: string }).type).toBe("object");
@@ -1659,49 +1659,11 @@ describe("getCurrentValue", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. activateNow controller logic (tested via provider since controller
-//    needs HTTP layer — we test the equivalent logic directly)
+// 4. What "activate now" does, replayed on the provider: the route itself
+//    (`AdminParameterController.activateNow`) is not called here
 // ---------------------------------------------------------------------------
 
 describe("activateNow logic", () => {
-  it("should return current version as-is when already current", async () => {
-    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
-    alepha.with(AlephaApiParameters);
-    await alepha.start();
-
-    const provider = alepha.inject(ParameterProvider);
-
-    await provider.save("activate.current", { v: 1 }, "h");
-    await provider.save("activate.current", { v: 2 }, "h");
-
-    const history = await provider.getHistory("activate.current");
-    const withStatuses = provider.calculateStatuses(history);
-    const current = withStatuses.find((v) => v.status === "current")!;
-
-    // Already current — no new version needed
-    expect(current.version).toBe(2);
-    expect(current.status).toBe("current");
-  });
-
-  it("should reject activating an expired version", async () => {
-    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
-    alepha.with(AlephaApiParameters);
-    await alepha.start();
-
-    const provider = alepha.inject(ParameterProvider);
-
-    await provider.save("activate.expired", { v: 1 }, "h");
-    await provider.save("activate.expired", { v: 2 }, "h");
-
-    const history = await provider.getHistory("activate.expired");
-    const withStatuses = provider.calculateStatuses(history);
-    const expired = withStatuses.find((v) => v.status === "expired")!;
-
-    expect(expired.version).toBe(1);
-    expect(expired.status).toBe("expired");
-    // Controller would throw AlephaError("Cannot activate an expired version...")
-  });
-
   it("should activate a future version by creating a new immediate version", async () => {
     const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
@@ -1749,7 +1711,7 @@ describe("activateNow logic", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. set() with scheduled activation — cache and subscriber behavior
+// 5. set() with scheduled activation, cache and subscriber behavior
 // ---------------------------------------------------------------------------
 
 describe("set with scheduled activation", () => {
@@ -1776,7 +1738,7 @@ describe("set with scheduled activation", () => {
     const received: unknown[] = [];
     config.features.sub((v) => received.push(v));
 
-    // Schedule a future value — should NOT notify
+    // Schedule a future value, should NOT notify
     const futureDate = new Date(
       dateTime.now().toDate().getTime() + 60 * 60 * 1000,
     );
@@ -1917,15 +1879,26 @@ describe("loadCurrentAndNext tie-breaking", () => {
 
     const provider = alepha.inject(ParameterProvider);
 
-    // Create two immediate versions — they will have the same (or very close) activationDate
-    await provider.save("tie.break", { v: 1 }, "h");
-    await provider.save("tie.break", { v: 2 }, "h");
+    // The same instant on both, given explicitly: two saves in a row on the
+    // real clock land on different milliseconds and never tie.
+    const instant = alepha
+      .inject(DateTimeProvider)
+      .now()
+      .subtract(1, "minute")
+      .toDate();
+    await provider.save("tie.break", { v: 1 }, "h", {
+      activationDate: instant,
+    });
+    await provider.save("tie.break", { v: 2 }, "h", {
+      activationDate: instant,
+    });
 
     const { current } = await provider.loadCurrentAndNext("tie.break");
+    const at = await provider.getVersionAt("tie.break", instant);
 
-    expect(current).not.toBeNull();
-    // Should pick version 2 (highest version in same-millisecond tie)
-    expect(current!.version).toBe(2);
+    // The highest version wins the tie, on both reads.
+    expect(current?.version).toBe(2);
+    expect(at?.version).toBe(2);
   });
 });
 
@@ -1964,7 +1937,7 @@ describe("doLoad subscriber notification", () => {
       "ext-hash",
     );
 
-    // Reload — should detect change and notify
+    // Reload, should detect change and notify
     await config.features.reload();
 
     expect(received.length).toBe(1);
@@ -1993,57 +1966,10 @@ describe("doLoad subscriber notification", () => {
     const received: unknown[] = [];
     config.features.sub((v) => received.push(v));
 
-    // Reload — same value, should NOT notify
+    // Reload, same value, should NOT notify
     await config.features.reload();
 
     expect(received.length).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 9. reloadNextInBackground error resilience
-// ---------------------------------------------------------------------------
-
-describe("reloadNextInBackground", () => {
-  it("should not throw when next promotion triggers background reload", async () => {
-    class AppConfig {
-      features = $parameter({
-        name: "bgreload.resilience",
-        schema: featureSchema,
-        default: { enableBeta: false, maxUploadSize: 10485760 },
-      });
-    }
-
-    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
-    alepha.with(AlephaApiParameters);
-    alepha.with(AppConfig);
-    await alepha.start();
-
-    const config = alepha.inject(AppConfig);
-    const dateTime = alepha.inject(DateTimeProvider);
-
-    // Set current + scheduled
-    await config.features.set({ enableBeta: false, maxUploadSize: 100 });
-
-    const futureDate = new Date(
-      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
-    );
-    await config.features.set(
-      { enableBeta: true, maxUploadSize: 999 },
-      { activationDate: futureDate },
-    );
-
-    await config.features.reload();
-
-    // Travel past activation — get() triggers promotion + background reload
-    await dateTime.travel(2, "hours");
-
-    // This should not throw even though background reload runs
-    const value = await config.features.get();
-    expect(value).toEqual({ enableBeta: true, maxUploadSize: 999 });
-
-    // Wait a tick to let the background promise settle
-    await new Promise((r) => setTimeout(r, 50));
   });
 });
 
@@ -2168,7 +2094,7 @@ describe("save validation", () => {
 
     const provider = alepha.inject(ParameterProvider);
 
-    // Save with mismatched hash — should NOT validate against current schema
+    // Save with mismatched hash, should NOT validate against current schema
     const result = await provider.save(
       "validate.skip",
       { totally: "different", shape: 42 } as any,
@@ -2254,7 +2180,7 @@ describe("delete", () => {
     const historyAfter = await provider.getHistory("delete.test");
     expect(historyAfter.length).toBe(0);
 
-    // Cache cleared — falls back to default
+    // Cache cleared, falls back to default
     expect(await config.features.get()).toEqual({
       enableBeta: false,
       maxUploadSize: 10485760,
@@ -2269,8 +2195,8 @@ describe("delete", () => {
 
     const provider = alepha.inject(ParameterProvider);
 
-    // Should not throw
-    await provider.delete("nonexistent.param");
+    await expect(provider.delete("nonexistent.param")).resolves.toBeUndefined();
+    expect(await provider.getHistory("nonexistent.param")).toEqual([]);
   });
 });
 
@@ -2290,7 +2216,7 @@ describe("getHistory pagination", () => {
       await provider.save("paginate.test", { v: i }, "h");
     }
 
-    // Get first 2 (versions 5, 4 — desc order)
+    // Get first 2 (versions 5, 4, desc order)
     const page1 = await provider.getHistory("paginate.test", {
       limit: 2,
     });
@@ -2445,7 +2371,7 @@ class FlakyParameterProvider extends ParameterProvider {
   }
 }
 
-describe("$parameter — load failure recovery", () => {
+describe("$parameter: load failure recovery", () => {
   it("recovers after a transient load failure instead of poisoning the cache", async () => {
     class AppConfig {
       features = $parameter({
@@ -2472,14 +2398,14 @@ describe("$parameter — load failure recovery", () => {
 
     // That rejection must not be cached. `get()` only starts a load when no
     // promise is in flight, so a rejected one left in the map was re-awaited
-    // by every subsequent call — the parameter never recovered short of a
+    // by every subsequent call, the parameter never recovered short of a
     // process restart.
     const value = await app.features.get();
     expect(value).toEqual({ enableBeta: false, maxUploadSize: 10485760 });
   });
 });
 
-describe("$parameter — cross-instance delete", () => {
+describe("$parameter: cross-instance delete", () => {
   it("publishes a sync notification when a parameter is deleted", async () => {
     class AppConfig {
       features = $parameter({

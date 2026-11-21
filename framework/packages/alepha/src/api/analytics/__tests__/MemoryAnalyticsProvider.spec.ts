@@ -73,7 +73,7 @@ describe("MemoryAnalyticsProvider", () => {
 
   it("rejects a where filter that is not a declared dimension", async () => {
     // Regression guard: this provider used to validate no query names at
-    // all — an undeclared `where`/`groupBy`/`select` key silently produced
+    // all, an undeclared `where`/`groupBy`/`select` key silently produced
     // empty rows or a folded `0` instead of an error. Since Memory is the
     // provider every test runs against, a typo'd dimension used to be green
     // in every test suite and only a 500 in production, against Orm or Wae.

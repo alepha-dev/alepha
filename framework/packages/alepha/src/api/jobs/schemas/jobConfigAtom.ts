@@ -16,7 +16,7 @@ export const jobConfig = $atom({
       .integer()
       .min(1)
       .describe(
-        "Max rows a single sweep phase reads and acts on per tick. Bounds the work one tick can take on, and with it the memory one tick can hold: an outage turns the whole retrying population into rows the sweep matches at once, and every row carries its payload and any captured logs. A phase that fills its batch logs that it did, and the remainder is picked up next tick.",
+        "Max rows a single sweep phase reads and acts on per tick. Bounds the work one tick can take on, and with it the memory one tick can hold: an outage turns the whole retrying population into rows the sweep matches at once, and a batch is that many rows in memory at once (the sweep reads the few columns it acts on, never a payload, steps or logs). A phase that fills its batch logs that it did, and the remainder is picked up next tick.",
       ),
     maxRedispatch: z
       .integer()
