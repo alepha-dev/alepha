@@ -154,9 +154,9 @@ export const projects = $entity({
      * When an owner archived the project (#Q2601), absent while it is live.
      *
      * An archived project leaves the quick surfaces (the switcher, Spotlight,
-     * Home) and stays in My projects with an Archived badge. Nothing else
-     * changes: it still accepts writes, and its members, ranks and sigils
-     * are untouched.
+     * Home) and stays in My projects with an Archived badge. It is read-only
+     * since #Q4051 (`ProjectArchiveGuard`): reads answer, writes are refused
+     * but unarchiving and deleting. Members, ranks and sigils are untouched.
      *
      * NB: `z.optional` with NO `db.default(...)`, like `tagColors` above: a
      * column DEFAULT triggers the `projects` table rebuild that

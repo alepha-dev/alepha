@@ -1,4 +1,4 @@
-import { cn, textLinkUnderlineClassName } from "@alepha/ui";
+import { Badge, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
   DataTable,
@@ -11,7 +11,7 @@ import { AlephaError, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Activity, Archive, Trash2 } from "lucide-react";
+import { Activity, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
 /**
@@ -83,6 +83,42 @@ export const AdminProjects = () => {
           archived: params.filters?.archived || undefined,
         },
       });
+    },
+    [client],
+  );
+
+  /**
+   * Archive or unarchive (#Q4051): an archived project stays, read-only for
+   * everyone, until unarchived. Both are confirmed: the operator acts on a
+   * project they may not belong to.
+   */
+  const archive = useConfirmedAction<
+    [AdminProjectResource, boolean, () => void]
+  >(
+    {
+      confirm: (project, archived) =>
+        archived
+          ? {
+              title: "Archive project",
+              description: `Archive "${project.title}" (#${project.id})? It becomes read-only for everyone: nothing in it can be changed until it is unarchived. Nothing is deleted.`,
+              confirmLabel: "Archive",
+            }
+          : {
+              title: "Unarchive project",
+              description: `Unarchive "${project.title}" (#${project.id})? Its members can change it again.`,
+              confirmLabel: "Unarchive",
+            },
+      handler: async (project, archived, refresh) => {
+        await client.adminSetProjectArchived({
+          params: { id: project.id },
+          body: { archived },
+        });
+        refresh();
+      },
+      success: (project, archived) =>
+        archived
+          ? `Archived "${project.title}"`
+          : `Unarchived "${project.title}"`,
     },
     [client],
   );
@@ -167,6 +203,15 @@ export const AdminProjects = () => {
         ]}
         rowActions={(project) => [
           {
+            // Read-only while archived (#Q4051); unarchiving brings it back.
+            label: project.archivedAt ? "Unarchive" : "Archive",
+            icon: project.archivedAt ? ArchiveRestore : Archive,
+            onClick: (
+              _project: AdminProjectResource,
+              { refresh }: { refresh: () => void },
+            ) => void archive.run(project, !project.archivedAt, refresh),
+          },
+          {
             label: "Delete project",
             icon: Trash2,
             destructive: true,
@@ -191,6 +236,28 @@ export const AdminProjects = () => {
                 #{project.id}
               </code>
             ),
+          },
+          status: {
+            label: "Status",
+            cell: (project) =>
+              project.archivedAt ? (
+                <Badge
+                  variant="tint"
+                  tone="neutral"
+                  title={`Archived ${l(project.archivedAt, { date: "lll" })}`}
+                  data-testid="project-status"
+                >
+                  archived
+                </Badge>
+              ) : (
+                <Badge
+                  variant="tint"
+                  tone="success"
+                  data-testid="project-status"
+                >
+                  active
+                </Badge>
+              ),
           },
           memberCount: {
             label: "Members",

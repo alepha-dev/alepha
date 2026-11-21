@@ -103,7 +103,10 @@ given that right in the **Ranks** tab ("Turn capabilities on and off").
   recorded on a quest become links.
 - **Export quests** downloads every quest as a CSV file.
 - **Archive project** hides it from the switcher, search and the home page
-  without deleting anything.
+  without deleting anything, and makes it read-only: everything in it can be
+  read, nothing can be changed, from the browser, the command line or an
+  agent, until it is unarchived. An instance administrator can archive and
+  unarchive any project from **Admin ▸ Projects**.
 
 ⚠️ **Delete this project** removes the project and everything in it, for good.
 Only the owner can do it.

@@ -1,15 +1,16 @@
-import { $inject, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, okSchema } from "alepha/server";
+import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { displayName } from "../../web/app/services/displayName.ts";
 import { projects } from "../entities/projects.ts";
 import { coreRelations } from "../relations/coreRelations.ts";
 import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchema.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectArchiveGuard } from "../services/ProjectArchiveGuard.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 
 /**
@@ -48,6 +49,7 @@ export class AdminProjectController {
   protected readonly projectDeletion = $inject(ProjectDeletionService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly alepha = $inject(Alepha);
 
   public readonly findProjects = $action({
     method: "GET",
@@ -169,6 +171,7 @@ export class AdminProjectController {
           memberCount: project.organizationId
             ? (memberCounts.get(project.organizationId) ?? 0)
             : 0,
+          ...(project.archivedAt ? { archivedAt: project.archivedAt } : {}),
         })),
       };
     },
@@ -181,6 +184,29 @@ export class AdminProjectController {
    * exists on the instance and being able to erase it are different levels of
    * trust, and this is the most destructive action in the application.
    */
+  public readonly adminSetProjectArchived = $action({
+    path: `${this.url}/:id/archive`,
+    method: "POST",
+    group: this.group,
+    // The soft half of deleting (#Q4051): the same trust, and undone by
+    // unarchiving.
+    use: [$secure({ permissions: ["admin:project:delete"] })],
+    description: "Archive a project: it stays, read-only",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({ archived: z.boolean() }),
+      response: okSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const project = await this.projects.findById(params.id);
+      if (!project) throw new NotFoundError("No such project");
+      await this.alepha
+        .inject(ProjectArchiveGuard)
+        .setArchived(project, body.archived, user);
+      return { ok: true };
+    },
+  });
+
   public readonly deleteProject = $action({
     path: `${this.url}/:id`,
     method: "DELETE",
