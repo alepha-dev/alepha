@@ -16,6 +16,7 @@ import { OtaBundleError } from "../errors/OtaBundleError.ts";
  * 2. the ciphertext decrypts, and the plain ZIP's SHA-256 equals the
  *    decrypted checksum (a modified file or checksum is refused here);
  * 3. the ZIP itself: `index.html` at its root, no absolute or `..` path, no
+ *    local header naming a file otherwise than the central directory, no
  *    symlink, no encrypted or unknown entry, no ZIP64, within the file count
  *    and expanded size limits, every entry inflating to exactly its declared
  *    size and CRC (a ZIP bomb is refused here, before any device unpacks it).
@@ -150,11 +151,10 @@ export class OtaBundleInspector {
       const commentLength = view.getUint16(cursor + 32, true);
       const attributes = view.getUint32(cursor + 38, true);
       const localOffset = view.getUint32(cursor + 42, true);
+      const nameBytes = archive.subarray(cursor + 46, cursor + 46 + nameLength);
       let name: string;
       try {
-        name = decoder.decode(
-          archive.subarray(cursor + 46, cursor + 46 + nameLength),
-        );
+        name = decoder.decode(nameBytes);
       } catch {
         throw new OtaBundleError("A ZIP entry name is not UTF-8.");
       }
@@ -189,21 +189,19 @@ export class OtaBundleInspector {
         throw new OtaBundleError(`'${name}' appears twice.`);
       }
       names.add(path);
-      if (directory) {
-        continue;
-      }
-
-      files++;
-      expandedSize += size;
-      if (files > limits.maxFiles) {
-        throw new OtaBundleError(
-          `The bundle holds more than ${limits.maxFiles} files.`,
-        );
-      }
-      if (expandedSize > limits.maxExpandedSize) {
-        throw new OtaBundleError(
-          `The bundle expands past ${limits.maxExpandedSize} bytes.`,
-        );
+      if (!directory) {
+        files++;
+        expandedSize += size;
+        if (files > limits.maxFiles) {
+          throw new OtaBundleError(
+            `The bundle holds more than ${limits.maxFiles} files.`,
+          );
+        }
+        if (expandedSize > limits.maxExpandedSize) {
+          throw new OtaBundleError(
+            `The bundle expands past ${limits.maxExpandedSize} bytes.`,
+          );
+        }
       }
 
       if (
@@ -216,10 +214,26 @@ export class OtaBundleInspector {
       if (view.getUint16(localOffset + 8, true) !== method) {
         throw new OtaBundleError(`'${name}' declares two compression methods.`);
       }
+      if (view.getUint16(localOffset + 6, true) & 0x1) {
+        throw new OtaBundleError(`'${name}' is an encrypted ZIP entry.`);
+      }
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      if (
+        localNameLength !== nameLength ||
+        localOffset + 30 + nameLength > directoryOffset ||
+        archive
+          .subarray(localOffset + 30, localOffset + 30 + nameLength)
+          .some((byte, at) => byte !== nameBytes[at])
+      ) {
+        throw new OtaBundleError(`'${name}' has two names.`);
+      }
+      if (directory) {
+        continue;
+      }
       const dataStart =
         localOffset +
         30 +
-        view.getUint16(localOffset + 26, true) +
+        localNameLength +
         view.getUint16(localOffset + 28, true);
       if (dataStart + compressedSize > directoryOffset) {
         throw new OtaBundleError(`'${name}' is out of bounds.`);

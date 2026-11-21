@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { AlephaError } from "alepha";
 import { ActorProvider, type ActorRequest } from "alepha/actor";
+import { FileService } from "alepha/api/files";
 import { describe, it } from "vitest";
 
 import { otaWireFixtures } from "../../ota/protocol/__fixtures__/otaWireFixtures.ts";
@@ -200,6 +201,34 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
       ).toMatchObject({ version: good.version });
     });
 
+    it("keeps the last good fallback when a release follows a killed one", async ({
+      expect,
+    }) => {
+      const ctx = await createOtaTestApp(dialect);
+      const app = await ctx.app();
+      const good = await ctx.publish(ctx.release(app.appId));
+      const bad = await ctx.publish(ctx.release(app.appId));
+      await ctx.admin.otaKillBundle(
+        { params: { id: bad.id }, body: {} },
+        { user: operator },
+      );
+      const next = await ctx.publish(ctx.release(app.appId, { rollout: 0 }));
+
+      const cohort = (
+        await ctx.admin.otaListChannels(
+          { params: { id: app.id } },
+          { user: operator },
+        )
+      )[0].cohorts[0];
+      expect(cohort).toMatchObject({ active: next.id, fallback: good.id });
+      // Outside the rollout, a device on the killed release goes back to
+      // the last good one, not to its built-in layer.
+      expect(
+        (await ctx.check(ctx.device(app.appId, { version_name: bad.version })))
+          .body,
+      ).toMatchObject({ version: good.version });
+    });
+
     it("lets an override win, and a kill win over the override", async ({
       expect,
     }) => {
@@ -384,6 +413,21 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
         version: release.manifest.version,
       });
       expect((await ctx.upload(twin, key.token)).status).toBe(409);
+    });
+
+    it("refuses a release versioned as the updater's built-in layer", async ({
+      expect,
+    }) => {
+      const ctx = await createOtaTestApp(dialect);
+      const key = await ctx.publisherKey();
+      const app = await ctx.app({ allowKey: key.id });
+      // The CLI never writes it, but the manifest is not signed: an edited
+      // one may, and every device served it would reset.
+      const release = ctx.release(app.appId, { version: "builtin" });
+      expect((await ctx.upload(release, key.token)).status).toBe(400);
+      expect(() =>
+        ctx.publisher.parseManifest(JSON.stringify(release.manifest)),
+      ).toThrow("version");
     });
 
     it("verifies the bundle against the app's key and its own manifest", async ({
@@ -632,6 +676,20 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
           { user: { id: randomUUID(), realm: "users", roles: [] } },
         ),
       ).rejects.toThrow("ota:read");
+
+      // The admin upload holds an API key to the same binding as the
+      // publisher route: a key listed on another app is refused.
+      const key = await ctx.publisherKey();
+      const unbound = await ctx.publisherKey();
+      const bound = await ctx.app({ allowKey: key.id });
+      await ctx.app({ allowKey: unbound.id });
+      const release = ctx.release(bound.appId);
+      expect(
+        (await ctx.upload(release, unbound.token, "/api/ota/bundles")).status,
+      ).toBe(403);
+      expect(
+        (await ctx.upload(release, key.token, "/api/ota/bundles")).status,
+      ).toBe(200);
     });
 
     it("bounds a rollout to 0-100", async ({ expect }) => {
@@ -711,6 +769,30 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
       ).rejects.toThrow("already exists");
     });
 
+    it("deletes every orphaned artifact in one run, past the first page", async ({
+      expect,
+    }) => {
+      const ctx = await createOtaTestApp(dialect);
+      for (let i = 0; i < 250; i++) {
+        await ctx.publisher.storage.upload(
+          ctx.publisher["file"](`orphan-${i}.zip`, new Uint8Array([i % 256])),
+        );
+      }
+      // Uploaded an hour and more ago, by their rows: travel() would fire
+      // the nightly retention job it crosses.
+      await ctx.alepha.inject(FileService).fileRepository.updateMany(
+        { bucket: { eq: "ota-bundles" } },
+        {
+          createdAt: ctx.dateTime.now().subtract(61, "minute").toISOString(),
+        },
+      );
+
+      expect((await ctx.retention.run()).orphans).toBe(250);
+      expect(
+        (await ctx.publisher.storage.list({ page: 0, size: 100 })).content,
+      ).toHaveLength(0);
+    });
+
     it("spares a bundle whose download link may still be live", async ({
       expect,
     }) => {
@@ -729,9 +811,16 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
       });
       expect((await ctx.retention.run()).deleted).toBe(0);
       // travel() fires every cron it crosses, the nightly retention job
-      // included, so this run may find the bundle already gone: assert the
-      // end state, not what this run counted.
-      await ctx.dateTime.travel(11, "minutes");
+      // included, so a run may find the bundle already gone: assert the end
+      // state, not what a run counted.
+      // Past the link's lifetime, but not past it plus the minute a link
+      // handed out after `lastLinkAt` may go unrecorded: still spared.
+      await ctx.dateTime.travel(630, "seconds");
+      await ctx.retention.run();
+      expect((await ctx.publisher["bundles"].findById(old.id))?.status).toBe(
+        "ready",
+      );
+      await ctx.dateTime.travel(90, "seconds");
       await ctx.retention.run();
       expect((await ctx.publisher["bundles"].findById(old.id))?.status).toBe(
         "deleted",
