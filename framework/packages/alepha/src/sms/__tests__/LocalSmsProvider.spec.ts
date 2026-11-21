@@ -81,9 +81,41 @@ describe("LocalSmsProvider", () => {
       });
 
       expect(memoryFs.joinCalls).toHaveLength(1);
-      expect(memoryFs.joinCalls[0]).toEqual([
-        "node_modules/.alepha/sms",
-        "+1__234__567_8900,2023-01-01T12-00-00-000Z.sms.json",
+      expect(memoryFs.joinCalls[0][0]).toBe("node_modules/.alepha/sms");
+      expect(memoryFs.joinCalls[0][1]).toMatch(
+        /^\+1__234__567_8900,2023-01-01T12-00-00-000Z,[0-9a-f-]{36}\.sms\.json$/,
+      );
+    });
+
+    it("keeps every message sent in the same millisecond, to the same number", async () => {
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
+
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      await provider.send({ to: "+331", message: "code 1" });
+      await provider.send({ to: "+331", message: "code 2" });
+      await provider.send({ to: ["+332", "+332"], message: "code 3" });
+
+      const files = [...memoryFs.files.keys()].filter((f) =>
+        f.endsWith(".sms.json"),
+      );
+      expect(files).toHaveLength(4);
+      const messages = files.map(
+        (f) =>
+          JSON.parse(new TextDecoder().decode(memoryFs.files.get(f))).message,
+      );
+      expect(messages.toSorted((a, b) => a.localeCompare(b))).toEqual([
+        "code 1",
+        "code 2",
+        "code 3",
+        "code 3",
       ]);
     });
 
