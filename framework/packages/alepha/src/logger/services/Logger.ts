@@ -21,7 +21,7 @@ export class Logger implements LoggerInterface {
   /**
    * Formatter chosen at register time (from `LOG_FORMAT`, honoring any
    * custom `LogFormatterProvider` substitution). Used unless a runtime
-   * `alepha.logger.format` override is set — see {@link formatter}.
+   * `alepha.logger.format` override is set, see {@link formatter}.
    */
   protected readonly defaultFormatter = $inject(LogFormatterProvider);
   protected readonly jsonFormatter = $inject(JsonFormatterProvider);
@@ -43,8 +43,14 @@ export class Logger implements LoggerInterface {
   protected readonly service: string;
   protected readonly module: string;
 
-  protected appLogLevel: string = "INFO";
   protected logLevel: LogLevel = "INFO";
+
+  /**
+   * What this container's loggers share about the level, and the
+   * {@link LoggerLevelState.epoch} this logger last resolved its level at.
+   */
+  protected levelState?: LoggerLevelState;
+  protected levelEpoch = -1;
 
   constructor(service: string, module: string) {
     this.service = service;
@@ -87,13 +93,130 @@ export class Logger implements LoggerInterface {
    */
   protected static readonly spanKey = "alepha.tracing.span";
 
+  /**
+   * The active level, resolved again only when `alepha.logger.level` changes.
+   *
+   * The change is recorded once for the container, in {@link levelStates},
+   * and each logger resolves its own level from that shared state: two
+   * loggers of one module always agree, whichever met the value first. See
+   * {@link applyLevel} for what an invalid value does.
+   */
   public get level(): string {
     const stateLogLevel = this.alepha.store.get("alepha.logger.level");
-    if (stateLogLevel && stateLogLevel !== this.appLogLevel) {
-      this.appLogLevel = stateLogLevel;
-      this.logLevel = this.parseLevel(this.appLogLevel, this.module);
+    if (!stateLogLevel) {
+      return this.logLevel;
+    }
+    const state = (this.levelState ??= this.sharedLevelState());
+    if (state.current !== stateLogLevel) {
+      this.recordLevel(state, stateLogLevel);
+    }
+    if (this.levelEpoch !== state.epoch) {
+      this.levelEpoch = state.epoch;
+      this.applyLevel(state);
     }
     return this.logLevel;
+  }
+
+  protected static readonly levelStates = new WeakMap<
+    Alepha,
+    LoggerLevelState
+  >();
+
+  protected sharedLevelState(): LoggerLevelState {
+    let state = Logger.levelStates.get(this.alepha);
+    if (!state) {
+      state = { epoch: 0, reported: new Set() };
+      Logger.levelStates.set(this.alepha, state);
+    }
+    return state;
+  }
+
+  /**
+   * Records a new store value for the whole container: whether its global
+   * level parses, and if so that it is now the last valid value.
+   */
+  protected recordLevel(state: LoggerLevelState, level: string): void {
+    state.current = level;
+    state.epoch++;
+    state.reported.clear();
+    try {
+      this.parseGlobalLevel(this.levelParts(level));
+      state.valid = level;
+      state.invalid = undefined;
+    } catch (error) {
+      state.invalid = (error as Error).message;
+    }
+  }
+
+  /**
+   * Resolves the container's store value into {@link logLevel}. It runs
+   * inside every log call, so an invalid value is reported and must not make
+   * the call fail:
+   * - a `pattern:level` part with an invalid level is ignored: the modules
+   *   it names follow the global level;
+   * - an invalid global level refuses the value for every module no valid
+   *   part of it names: their level comes from the last valid value of the
+   *   container, or is INFO when there has been none.
+   *
+   * Each refusal is logged once, as a warning, until the store value changes.
+   *
+   * The one value that throws is an invalid global level while the container
+   * has had no valid one and has not started: `LOG_LEVEL=verbose` fails the
+   * first log call of each logger with its reason, as it always did.
+   */
+  protected applyLevel(state: LoggerLevelState): void {
+    const reasons: string[] = [];
+    let resolved = this.moduleLevel(state.current, reasons);
+
+    if (!resolved && state.invalid) {
+      if (state.valid === undefined && !this.alepha.isStarted()) {
+        this.logLevel = "INFO";
+        throw new AlephaError(state.invalid);
+      }
+      reasons.push(
+        state.valid === undefined
+          ? `${state.invalid}: no valid level was set, the level is INFO`
+          : `${state.invalid}: the last valid level, "${state.valid}", applies`,
+      );
+      resolved = this.moduleLevel(state.valid, []);
+    }
+
+    const source = state.invalid ? state.valid : state.current;
+    this.logLevel =
+      resolved ??
+      (source === undefined
+        ? "INFO"
+        : (this.parseGlobalLevel(this.levelParts(source)) ?? "INFO"));
+
+    for (const reason of reasons) {
+      if (!state.reported.has(reason)) {
+        state.reported.add(reason);
+        this.warn(reason);
+      }
+    }
+  }
+
+  /**
+   * The level the first `pattern:level` part of `level` naming this logger's
+   * module gives it, if any. When the level of that part is invalid, the
+   * refusal is added to `reasons`, as the sentence to log, and there is no
+   * module level: a later part naming the module is not looked at.
+   */
+  protected moduleLevel(
+    level: string | undefined,
+    reasons: string[],
+  ): LogLevel | undefined {
+    if (level === undefined) {
+      return undefined;
+    }
+    try {
+      return this.parseModuleLevel(this.levelParts(level), this.module);
+    } catch (error) {
+      reasons.push(
+        `${(error as Error).message}: its modules follow the global level`,
+      );
+      return undefined;
+    }
   }
 
   /**
@@ -118,9 +241,25 @@ export class Logger implements LoggerInterface {
   }
 
   public parseLevel(level: string, app: string): LogLevel {
-    const parts = level.toLowerCase().split(/[,;]/);
+    const parts = this.levelParts(level);
+    return (
+      this.parseModuleLevel(parts, app) ??
+      this.parseGlobalLevel(parts) ??
+      "INFO"
+    );
+  }
 
-    // First pass: check for module-specific configurations
+  protected levelParts(level: string): string[] {
+    return level.toLowerCase().split(/[,;]/);
+  }
+
+  /**
+   * The level of the first `pattern:level` part matching `app`, if any.
+   */
+  protected parseModuleLevel(
+    parts: string[],
+    app: string,
+  ): LogLevel | undefined {
     for (const part of parts) {
       const trimmedPart = part.trim();
       if (!trimmedPart) continue; // Skip empty parts
@@ -143,8 +282,13 @@ export class Logger implements LoggerInterface {
         }
       }
     }
+    return undefined;
+  }
 
-    // Second pass: look for global level
+  /**
+   * The level of the first part naming no module, if any.
+   */
+  protected parseGlobalLevel(parts: string[]): LogLevel | undefined {
     for (const part of parts) {
       const trimmedPart = part.trim();
       if (!trimmedPart) continue; // Skip empty parts
@@ -157,19 +301,32 @@ export class Logger implements LoggerInterface {
         }
       }
     }
-
-    return "INFO";
+    return undefined;
   }
 
+  /**
+   * Whether `moduleName` starts with `pattern`, where each `*` stands for
+   * any run of characters.
+   *
+   * Matched segment by segment rather than through a regular expression: a
+   * pattern is user input (`LOG_LEVEL`), and one made of many `*` sent a
+   * backtracking engine into minutes of work each time a logger resolved its
+   * level.
+   */
   protected matchesPattern(moduleName: string, pattern: string): boolean {
-    if (pattern.includes("*")) {
-      // Convert wildcard pattern to regex
-      const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*");
-      return new RegExp(`^${regexPattern}`).test(moduleName);
+    const [prefix, ...segments] = pattern.split("*");
+    if (!moduleName.startsWith(prefix)) {
+      return false;
     }
-
-    // Exact prefix match (existing behavior)
-    return moduleName.startsWith(pattern);
+    let from = prefix.length;
+    for (const segment of segments) {
+      const at = moduleName.indexOf(segment, from);
+      if (at === -1) {
+        return false;
+      }
+      from = at + segment.length;
+    }
+    return true;
   }
 
   public asLogLevel(something: string): LogLevel {
@@ -270,7 +427,7 @@ export class Logger implements LoggerInterface {
     if (!enabled) {
       // Suppressed for the console, but still EMITTED. Review #3 proposed
       // early-returning before building the entry; that would starve the
-      // `log:entry` event, which is what feeds the devtools log viewer , a
+      // `log:entry` event, which is what feeds the devtools log viewer: a
       // `LOG_LEVEL=info` process would show no trace/debug there at all.
       // The expensive half (formatting) is already skipped.
       this.emit(logEntry);
@@ -287,7 +444,7 @@ export class Logger implements LoggerInterface {
   /**
    * Keys whose values are masked before the entry reaches any formatter,
    * destination, or devtools. Matched case-insensitively, ignoring `-`/`_`,
-   * as a substring — so `authorization`, `x-api-key`, `refreshToken` and
+   * as a substring, so `authorization`, `x-api-key`, `refreshToken` and
    * `set-cookie` are all covered.
    */
   protected readonly redactedKeys = [
@@ -305,6 +462,24 @@ export class Logger implements LoggerInterface {
   ];
 
   protected static readonly REDACTED = "[redacted]";
+
+  protected static readonly TRUNCATED = "[truncated]";
+
+  protected static readonly UNSERIALIZABLE = "[unserializable]";
+
+  /**
+   * How deep {@link redact} walks: an object or an array nested further is
+   * replaced by {@link TRUNCATED}, so no payload can exhaust the stack.
+   */
+  protected static readonly REDACT_MAX_DEPTH = 100;
+
+  /**
+   * How many values one {@link redact} call writes, an object reached by two
+   * paths counting twice. Once spent, each object or array still open ends
+   * on {@link TRUNCATED}: without it, objects that share their children cost
+   * and print one copy per path, which doubles at every level.
+   */
+  protected static readonly REDACT_MAX_VALUES = 10_000;
 
   /**
    * Verdicts of {@link isSecretKey}, by raw key.
@@ -342,8 +517,10 @@ export class Logger implements LoggerInterface {
    * viewer. Structure and non-secret fields are preserved so the entry stays
    * useful for debugging.
    *
-   * Errors are passed through untouched (formatters rely on the instance),
-   * and cycles are handled — logging must never throw.
+   * Errors and Dates are passed through untouched (formatters rely on the
+   * instance). Logging must never throw, and a failure here must never hand
+   * on what it was masking: data that cannot be read (a getter that throws)
+   * is replaced as a whole by `{ redaction: "[unserializable]" }`.
    */
   protected redact(
     data: object | Error | undefined,
@@ -352,39 +529,89 @@ export class Logger implements LoggerInterface {
       return data;
     }
 
-    if (this.isFlatAndClean(data)) {
-      return data;
+    try {
+      if (this.isFlatAndClean(data)) {
+        return data;
+      }
+      return this.redactValue(
+        data,
+        { ancestors: new Set(), budget: Logger.REDACT_MAX_VALUES },
+        0,
+      ) as object;
+    } catch {
+      return { redaction: Logger.UNSERIALIZABLE };
+    }
+  }
+
+  /**
+   * The masked copy of `value`: an array as an array, any other object as a
+   * plain object of its own enumerable fields.
+   *
+   * `walk.ancestors` holds the objects on the CURRENT path, as in
+   * `JsonFormatterProvider.expandErrors`: a revisit on the path is a cycle
+   * and writes `"[circular]"`, while an object shared by two branches is
+   * written in both. {@link REDACT_MAX_DEPTH} and {@link REDACT_MAX_VALUES}
+   * bound what that costs. The list of an object's own keys is still built
+   * once, as `Object.entries` built it before; what is bounded is the work
+   * past it: no value is read once the budget is spent. A typed array is
+   * read by index, so its key list is never built.
+   */
+  protected redactValue(
+    value: unknown,
+    walk: RedactWalk,
+    depth: number,
+  ): unknown {
+    walk.budget--;
+    if (value === null || typeof value !== "object") {
+      return value;
+    }
+    if (value instanceof Error || value instanceof Date) {
+      return value;
+    }
+    if (walk.ancestors.has(value)) {
+      return "[circular]";
+    }
+    if (depth >= Logger.REDACT_MAX_DEPTH) {
+      return Logger.TRUNCATED;
     }
 
-    const seen = new WeakSet<object>();
-    const walk = (value: unknown): unknown => {
-      if (value === null || typeof value !== "object") {
-        return value;
-      }
-      if (value instanceof Error || value instanceof Date) {
-        return value;
-      }
-      if (seen.has(value)) {
-        return "[circular]";
-      }
-      seen.add(value);
-
+    walk.ancestors.add(value);
+    try {
       if (Array.isArray(value)) {
-        return value.map(walk);
+        const items: unknown[] = [];
+        for (let index = 0; index < value.length; index++) {
+          if (walk.budget <= 0) {
+            items.push(Logger.TRUNCATED);
+            break;
+          }
+          items.push(this.redactValue(value[index], walk, depth + 1));
+        }
+        return items;
       }
 
+      const source = value as Record<string, unknown>;
       const out: Record<string, unknown> = {};
-      for (const [key, item] of Object.entries(value)) {
-        out[key] = this.isSecretKey(key) ? Logger.REDACTED : walk(item);
+      const indexed = ArrayBuffer.isView(value) && !(value instanceof DataView);
+      const keys = indexed ? undefined : Object.keys(source);
+      const length = keys
+        ? keys.length
+        : (value as unknown as ArrayLike<unknown>).length;
+      for (let index = 0; index < length; index++) {
+        const key = keys ? keys[index] : String(index);
+        if (walk.budget <= 0) {
+          out[Logger.TRUNCATED] = Logger.TRUNCATED;
+          break;
+        }
+        if (this.isSecretKey(key)) {
+          walk.budget--;
+          out[key] = Logger.REDACTED;
+        } else {
+          out[key] = this.redactValue(source[key], walk, depth + 1);
+        }
       }
       return out;
-    };
-
-    try {
-      return walk(data) as object;
-    } catch {
-      // Never let redaction break logging.
-      return data;
+    } finally {
+      walk.ancestors.delete(value);
     }
   }
 
@@ -392,12 +619,19 @@ export class Logger implements LoggerInterface {
    * Whether `data` is a plain object of primitives with no credential key:
    * the shape of most log lines (every request line is one), which the walk
    * in {@link redact} would copy key by key to change nothing.
+   *
+   * One with more keys than {@link REDACT_MAX_VALUES} is left to the walk,
+   * which cuts it there.
    */
   protected isFlatAndClean(data: object): boolean {
     if (Object.getPrototypeOf(data) !== Object.prototype) {
       return false;
     }
+    let keys = 0;
     for (const key in data) {
+      if (++keys > Logger.REDACT_MAX_VALUES) {
+        return false;
+      }
       const value = (data as Record<string, unknown>)[key];
       if (value !== null && typeof value === "object") {
         return false;
@@ -428,4 +662,37 @@ export class Logger implements LoggerInterface {
       )
       .catch(() => null);
   }
+}
+
+/**
+ * The state of one {@link Logger} redaction walk: the objects on the current
+ * path, and the values left to write.
+ */
+interface RedactWalk {
+  ancestors: Set<object>;
+  budget: number;
+}
+
+/**
+ * What the loggers of one container share about `alepha.logger.level`.
+ */
+interface LoggerLevelState {
+  /**
+   * The store value last met, and a counter that moves each time it changes:
+   * a logger resolves its level again when the counter is not the one it saw.
+   */
+  current?: string;
+  epoch: number;
+  /**
+   * The last value whose global level parsed.
+   */
+  valid?: string;
+  /**
+   * Why the global level of `current` does not parse, when it does not.
+   */
+  invalid?: string;
+  /**
+   * The refusals already logged for `current`.
+   */
+  reported: Set<string>;
 }

@@ -8,7 +8,7 @@ import type { LogEntry } from "../schemas/logEntrySchema.ts";
  * without reading any configuration on the hot path: whoever seeds the buffer
  * decides how much it retains.
  *
- * The **last** entries are kept, not the first — the lines adjacent to a
+ * The **last** entries are kept, not the first: the lines adjacent to a
  * failure are the ones that explain it.
  */
 export class LogBuffer {
@@ -43,10 +43,10 @@ export class LogBuffer {
 
   /**
    * A new array each time, so a consumer holding a snapshot is unaffected by
-   * entries arriving afterwards. The entries themselves are shared, not cloned
-   * , the same objects already reach every formatter, destination and `log:entry`
-   * event listener, and treating this one path as if it owned them would cost
-   * a deep copy per error report while protecting nothing.
+   * entries arriving afterwards. The entries themselves are shared, not
+   * cloned: the same objects already reach every formatter, destination and
+   * `log:entry` event listener, and treating this one path as if it owned them
+   * would cost a deep copy per error report while protecting nothing.
    *
    * A truncated buffer says so, in band. A silent cap reads as "this is
    * everything that happened", which is how you spend an afternoon looking for

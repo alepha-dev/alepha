@@ -1,6 +1,6 @@
 import { $inject, $store, Alepha } from "alepha";
 
-import { logBufferConfig } from "../schemas/logBufferConfig.ts";
+import { logBufferConfig } from "../atoms/logBufferConfig.ts";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { LogBuffer } from "../services/LogBuffer.ts";
 
@@ -42,7 +42,7 @@ export class LogBufferProvider {
    * Returns an empty object when buffering is disabled, so nothing is written
    * to the ALS store and the push in {@link Logger} stays a no-op.
    *
-   * @param max Overrides the configured size — used by callers that retain a
+   * @param max Overrides the configured size, used by callers that retain a
    *            different amount, such as the job runner.
    */
   public seed(max?: number): Record<string, LogBuffer> {
