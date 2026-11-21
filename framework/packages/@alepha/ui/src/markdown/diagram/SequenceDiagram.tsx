@@ -35,8 +35,9 @@ export interface SequenceDiagramProps {
  *
  * ## Theming is the point
  *
- * Colours come from `--primary`, `--border`, `--muted-foreground`, `--card`
- * and `--muted` through `var(...)`, so dark mode works with no second
+ * Colours come from `--border`, `--foreground`, `--muted-foreground`,
+ * `--card`, `--card-foreground`, `--muted` and `--background` through
+ * `var(...)`, so dark mode works with no second
  * palette and no theme prop. That is the thing mermaid can structurally
  * never give us, and the whole reason drawing is our own code.
  *

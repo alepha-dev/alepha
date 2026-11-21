@@ -28,8 +28,8 @@ import { SpoilerSpan } from "./SpoilerSpan.tsx";
  *
  * ⚠️ A lazy import a bundler decides to inline fails silently: the feature
  * still works and the cost moves into the entry chunk. After changing this,
- * build an app that renders a `MarkdownView` (Lore does, in
- * github.com/alepha-dev/lore) and confirm, from its directory, that the
+ * build an app that renders a `MarkdownView` (Lore does, in `lore/` in this
+ * repository) and confirm, from its directory, that the
  * diagram code is in a chunk of its own and the entry has none of it:
  *
  *     yarn alepha build
@@ -42,7 +42,7 @@ export interface MarkdownViewProps {
   /**
    * Extra classes for the prose root, merged after the defaults so a caller
    * can set its own reading face or measure. The defaults it overrides are
-   * `text-sm leading-relaxed` — a surface that sets prose in a display serif
+   * `text-sm leading-relaxed`: a surface that sets prose in a display serif
    * needs both, and no parent wrapper can supply them, since they sit on
    * this element rather than being inherited.
    */
@@ -113,7 +113,7 @@ export type MarkdownLinkRenderer = (link: {
  * No raw HTML is ever rendered as markup: react-markdown's default is to
  * escape a raw node to text, and this component deliberately mounts no
  * plugin that changes that. A narrow `rehypeSafeImg` plugin used to promote
- * a lone `<img …>` — the one thing MDXEditor emitted for a *resized* image —
+ * a lone `<img …>` (the one thing MDXEditor emitted for a *resized* image)
  * and was deleted along with the editor that produced it, since nothing
  * writes that markup anymore.
  *
@@ -214,9 +214,11 @@ export const MarkdownView = (props: MarkdownViewProps) => {
               </DiagramErrorBoundary>
             );
           },
-          // The only `<span>` this renderer ever produces is a spoiler's, and
-          // the only thing that marks one is the `data-spoiler` property
-          // `remarkSpoiler` puts there.
+          // A `<span>` is a spoiler's or a highlighted token's, and the only
+          // thing that marks a spoiler is the `data-spoiler` property
+          // `remarkSpoiler` puts there. `node` is react-markdown's hast node,
+          // never an attribute: spread, every token carried
+          // `node="[object Object]"`.
           //
           // ⚠️ The cast is not laziness: react-markdown types a span's props
           // as `HTMLAttributes<HTMLSpanElement>`, which PERMITS writing a
@@ -225,7 +227,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
           // needs a cast into `components`, whose type is keyed on intrinsic
           // elements, so it buys nothing (the same note `mermaidSource`
           // already carries).
-          span: ({ children, ...rest }) => {
+          span: ({ children, node: _node, ...rest }) => {
             const marked = (rest as { "data-spoiler"?: unknown })[
               "data-spoiler"
             ];

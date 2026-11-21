@@ -36,8 +36,8 @@
  * `folio_get` over MCP and in any search snippet. It hides a plot point from a
  * reader's eye and nothing more.
  *
- * No new dependency: the walk is a plain recursion, so `unist-util-visit`
- * never enters `package.json` and `check:deps` stays quiet.
+ * The walk is a plain recursion rather than `unist-util-visit`, which is a
+ * dependency (`rehypeHighlight.ts` uses it) but buys nothing here.
  */
 const MARKER = "||";
 

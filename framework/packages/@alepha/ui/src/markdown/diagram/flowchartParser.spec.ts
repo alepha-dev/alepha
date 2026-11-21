@@ -262,6 +262,16 @@ describe("parseFlowchart - subgraphs", () => {
     expect(model.nodes.map((n) => n.id)).not.toContain("s1");
   });
 
+  it("re-targets an edge that names a cluster before its block declares it", () => {
+    const model = parse(
+      "flowchart TD\n  A --> S1\n  subgraph S1\n    B\n  end",
+    );
+    expect(model.nodes.map((n) => n.id)).toEqual(["A", "B"]);
+    expect(model.edges).toEqual([
+      expect.objectContaining({ from: "A", to: "B", toCluster: "S1" }),
+    ]);
+  });
+
   it("drops an edge to a cluster that holds no node", () => {
     const model = parse(
       "flowchart TD\n  subgraph s1\n  end\n  s1 --> C\n  C --> D",
@@ -301,6 +311,36 @@ describe("parseFlowchart - degrading", () => {
   it("skips a statement it cannot read rather than failing", () => {
     const model = parse("flowchart TD\n  A@{ shape: circle }\n  A --> B");
     expect(model.edges).toHaveLength(1);
+    expect(model.nodes.map((n) => n.id)).toEqual(["A", "B"]);
+  });
+
+  it("reads an edge whose first node is named like a skipped keyword", () => {
+    const model = parse("flowchart TD\n  Click --> B\n  B --> C");
+    expect(model.edges.map((e) => [e.from, e.to])).toEqual([
+      ["Click", "B"],
+      ["B", "C"],
+    ]);
+  });
+
+  it("draws a diagram whose only edge starts with a keyword-like name", () => {
+    expect(parseFlowchart("flowchart TD\n  Style --> B")?.edges).toEqual([
+      expect.objectContaining({ from: "Style", to: "B" }),
+    ]);
+  });
+
+  it("reads an edge whose first node is named direction", () => {
+    expect(parse("flowchart TD\n  direction --> B").edges).toHaveLength(1);
+  });
+
+  it("reads a long statement of unclosed link labels in linear time", () => {
+    // Each `-.` or `--` with no closing operator used to rescan the rest of
+    // the statement: 100 kB took about 4 s, on every render of the fence.
+    for (const unit of ["-. a ", "-- "]) {
+      const source = `flowchart TD\n  A ${unit.repeat(100_000 / unit.length)}`;
+      const started = performance.now();
+      parseFlowchart(source);
+      expect(performance.now() - started).toBeLessThan(500);
+    }
   });
 
   it("never throws on garbage", () => {

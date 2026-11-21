@@ -346,6 +346,24 @@ describe("layoutSequence - autonumber", () => {
     ]);
   });
 
+  it("numbers only the messages between autonumber and autonumber off", () => {
+    const diagram = lay(
+      [
+        "sequenceDiagram",
+        "  autonumber",
+        "  A ->> B: one",
+        "  B ->> A: two",
+        "  autonumber off",
+        "  A ->> B: three",
+      ].join("\n"),
+    );
+    expect(diagram.messages.map((m) => m.label.lines[0])).toEqual([
+      "1. one",
+      "2. two",
+      "three",
+    ]);
+  });
+
   it("does not number notes", () => {
     const diagram = lay(
       "sequenceDiagram\n  autonumber\n  A ->> B: one\n  Note over B: think\n  B ->> A: two",
@@ -481,6 +499,34 @@ describe("layoutSequence - fragments", () => {
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(diagram.width);
     expect(box.y + box.height).toBeLessThanOrEqual(diagram.height);
+  });
+
+  it("widens the diagram to fit a long condition next to the tab", () => {
+    const condition =
+      "the user is authenticated and holds a valid session token";
+    const diagram = lay(
+      `sequenceDiagram\n  alt ${condition}\n    A ->> B: one\n  end`,
+    );
+    const [box] = diagram.fragments;
+    const label = measureLabel([`[${condition}]`], DIAGRAM_FONT_SIZE);
+    // The emitter draws the condition 8 px right of the tab.
+    expect(box.x + box.width).toBeGreaterThanOrEqual(
+      box.x + box.tabWidth + 8 + label.width,
+    );
+    expect(box.x + box.width).toBeLessThanOrEqual(diagram.width);
+  });
+
+  it("widens the diagram to fit a long else label", () => {
+    const branch =
+      "the session expired, the refresh token was revoked and the user signs in again";
+    const diagram = lay(
+      `sequenceDiagram\n  alt ok\n    A ->> B: one\n  else ${branch}\n    B ->> A: two\n  end`,
+    );
+    const [box] = diagram.fragments;
+    const label = measureLabel([`[${branch}]`], DIAGRAM_FONT_SIZE);
+    // The emitter draws a divider label 8 px in from the box's left edge.
+    expect(box.x + box.width).toBeGreaterThanOrEqual(box.x + 8 + label.width);
+    expect(box.x + box.width).toBeLessThanOrEqual(diagram.width);
   });
 
   it("carries a tab big enough for its own kind", () => {

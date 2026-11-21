@@ -3,7 +3,10 @@ import * as React from "react";
 void React;
 
 import { round } from "./DiagramLabel.tsx";
-import type { PositionedFragment } from "./layoutSequence.ts";
+import {
+  FRAGMENT_LABEL_GAP,
+  type PositionedFragment,
+} from "./layoutSequence.ts";
 
 export interface SequenceDiagramFragmentProps {
   fragment: PositionedFragment;
@@ -65,7 +68,7 @@ export const SequenceDiagramFragment = (
             // word of the branch that just ended - which is the opposite of
             // what the author wrote.
             <text
-              x={round(fragment.x + 8)}
+              x={round(fragment.x + FRAGMENT_LABEL_GAP)}
               y={round(divider.y + small + 2)}
               textAnchor="start"
               fontSize={small}
@@ -106,7 +109,7 @@ export const SequenceDiagramFragment = (
       </text>
       {fragment.label ? (
         <text
-          x={round(fragment.x + fragment.tabWidth + 8)}
+          x={round(fragment.x + fragment.tabWidth + FRAGMENT_LABEL_GAP)}
           y={round(fragment.y + fragment.tabHeight / 2 + props.fontSize * 0.36)}
           textAnchor="start"
           fontSize={small}

@@ -51,11 +51,17 @@ export interface SequenceMessage {
   /**
    * The label, split on `<br/>`. May be a single empty string.
    *
-   * The `autonumber` counter is NOT in here: it is applied at measure time,
-   * because the counter is part of the label's width and numbering after
-   * measuring makes every column too narrow.
+   * The `autonumber` counter is NOT in here, see `number`.
    */
   lines: string[];
+  /**
+   * The `autonumber` counter, set when numbering was on at this message.
+   * Per message rather than per diagram, since `autonumber off` stops it
+   * halfway. The layout prefixes it to the label before measuring, because
+   * the counter is part of the label's width and numbering after measuring
+   * makes every column too narrow.
+   */
+  number?: number;
   line: SequenceLineStyle;
   head: SequenceArrowHead;
   /**
@@ -115,11 +121,6 @@ export interface SequenceFragment {
   dividers: SequenceFragmentDivider[];
 }
 
-export interface SequenceAutonumber {
-  start: number;
-  step: number;
-}
-
 /**
  * A sequence diagram as data: what the parser produces and the layout
  * consumes. Nothing positional, nothing rendered, no DOM.
@@ -133,9 +134,4 @@ export interface SequenceModel {
   participants: SequenceParticipant[];
   steps: SequenceStep[];
   fragments: SequenceFragment[];
-  /**
-   * Set when the diagram declared `autonumber`. The layout prefixes each
-   * message label with the running counter before measuring it.
-   */
-  autonumber?: SequenceAutonumber;
 }

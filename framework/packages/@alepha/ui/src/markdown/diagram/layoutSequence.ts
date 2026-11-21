@@ -11,6 +11,7 @@ import {
   DIAGRAM_FONT_SIZE,
   DIAGRAM_LINE_HEIGHT,
   measureLabel,
+  measureLine,
 } from "./textMetrics.ts";
 
 /**
@@ -67,7 +68,11 @@ const PARTICIPANT_CLEARANCE = 26;
  * The stick figure an `actor` draws above its name.
  */
 const ACTOR_FIGURE_HEIGHT = 32;
-const ACTOR_LABEL_GAP = 4;
+/**
+ * The one number the layout and `SequenceDiagramParticipantActor` do share:
+ * how far the name sits below the feet.
+ */
+export const ACTOR_LABEL_GAP = 4;
 const ACTOR_MIN_WIDTH = 40;
 
 const LIFELINE_TOP_GAP = 14;
@@ -105,6 +110,11 @@ const FRAGMENT_INSET = 9;
 const FRAGMENT_MARGIN = 14;
 const FRAGMENT_TAB_PAD_X = 8;
 const FRAGMENT_TAB_PAD_Y = 3;
+/**
+ * How far a fragment's condition sits right of its tab, and a divider label
+ * in from the box's left edge.
+ */
+export const FRAGMENT_LABEL_GAP = 8;
 const FRAGMENT_TOP_PAD = 8;
 const FRAGMENT_BOTTOM_PAD = 10;
 const FRAGMENT_AFTER_GAP = 6;
@@ -268,7 +278,12 @@ export const layoutSequence = (
     bottomY: rows.bottom,
   }));
 
-  const content = contentBounds(participants, rows);
+  const content = fitFragmentLabels(
+    model,
+    rows,
+    contentBounds(participants, rows),
+    fontSize,
+  );
   const fragments = layoutFragments(model, rows, content, fontSize);
 
   const minX = fragments.length ? content.minX - FRAGMENT_MARGIN : content.minX;
@@ -333,9 +348,8 @@ const measureHead = (
  * A note's measurement is its BOX (label plus padding); a message's is its
  * bare label, because a message label is drawn straight onto the diagram.
  */
-const measureSteps = (model: SequenceModel, fontSize: number): Measured[] => {
-  let counter = model.autonumber?.start ?? 0;
-  return model.steps.map((step) => {
+const measureSteps = (model: SequenceModel, fontSize: number): Measured[] =>
+  model.steps.map((step) => {
     if (step.kind === "note") {
       const label = measureLabel(step.lines, fontSize);
       return {
@@ -344,17 +358,14 @@ const measureSteps = (model: SequenceModel, fontSize: number): Measured[] => {
         lines: label.lines,
       };
     }
-    if (!model.autonumber) return measureLabel(step.lines, fontSize);
+    if (step.number === undefined) return measureLabel(step.lines, fontSize);
 
-    const number = counter;
-    counter += model.autonumber.step;
     const [first, ...rest] = step.lines;
     return measureLabel(
-      [first ? `${number}. ${first}` : `${number}`, ...rest],
+      [first ? `${step.number}. ${first}` : `${step.number}`, ...rest],
       fontSize,
     );
   });
-};
 
 /**
  * Where each lifeline sits on the x axis, in two passes.
@@ -717,6 +728,46 @@ const contentBounds = (
     cover(message.label.x, message.label.x + message.label.width);
   }
   return { minX, maxX };
+};
+
+/**
+ * Widen the content until every fragment's condition and `else` labels fit
+ * inside its box. Nothing else measures them: a long condition ran past the
+ * box and was cut at the edge of the diagram.
+ *
+ * The offsets mirror `SequenceDiagramFragment`: the condition is drawn
+ * `FRAGMENT_LABEL_GAP` right of the tab, a divider label the same distance
+ * in from the box's left edge, both in brackets.
+ */
+const fitFragmentLabels = (
+  model: SequenceModel,
+  rows: Rows,
+  content: Bounds,
+  fontSize: number,
+): Bounds => {
+  let maxX = content.maxX;
+  model.fragments.forEach((fragment, at) => {
+    if (!rows.spans.has(at)) return;
+    const tab = measureLabel([fragment.kind], fontSize).width;
+    const widths = [
+      fragment.label
+        ? tab +
+          FRAGMENT_TAB_PAD_X * 2 +
+          FRAGMENT_LABEL_GAP +
+          measureLine(`[${fragment.label}]`, fontSize)
+        : 0,
+      ...fragment.dividers.map((divider) =>
+        divider.label
+          ? FRAGMENT_LABEL_GAP + measureLine(`[${divider.label}]`, fontSize)
+          : 0,
+      ),
+    ];
+    const needed = Math.max(...widths) + FRAGMENT_LABEL_GAP;
+    // The box spans `maxX - minX + 2 * MARGIN`, less its inset on each side.
+    const inset = FRAGMENT_MARGIN * 2 - fragment.depth * FRAGMENT_INSET * 2;
+    maxX = Math.max(maxX, content.minX + needed - inset);
+  });
+  return { minX: content.minX, maxX };
 };
 
 /**

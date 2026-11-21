@@ -85,7 +85,6 @@ const parseChecked = (source: string): SequenceModel | undefined => {
     participants: [...state.participants.values()],
     steps: state.steps,
     fragments: collectFragments(state),
-    ...(state.autonumber ? { autonumber: state.autonumber } : {}),
   };
 };
 
@@ -112,7 +111,10 @@ interface ParseState {
    * whole diagram has been read.
    */
   notes: SequenceNote[];
-  autonumber?: { start: number; step: number };
+  /**
+   * The number the next message takes, while `autonumber` is on.
+   */
+  autonumber?: { next: number; step: number };
 }
 
 /**
@@ -128,6 +130,9 @@ const REFUSED = /^(?:par|critical|break|create|destroy)\b/i;
  *
  * `rect` and `box` are NOT here: they open a block terminated by `end`, so
  * they are pushed onto the stack as transparent and skipped there.
+ *
+ * Only when no arrow precedes the colon: `Menu ->> App: open` is a message
+ * from a participant named `Menu`, not a `menu` directive.
  */
 const SKIPPED =
   /^(?:links?|menu|style|activate|deactivate|and|option|title|accTitle|accDescr|properties|details)\b/i;
@@ -140,7 +145,7 @@ const readStatement = (statement: string, state: ParseState): void => {
     return;
   }
   if (REFUSED.test(statement)) throw new Error("unsupported construct");
-  if (SKIPPED.test(statement)) return;
+  if (SKIPPED.test(statement) && !holdsArrow(statement)) return;
 
   // `rect rgb(0,0,0)` and `box Aqua Group` are both blocks: skipping the
   // opener alone would leave their `end` dangling.
@@ -299,7 +304,7 @@ const readAutonumber = (rest: string, state: ParseState): void => {
   const numbers = rest.split(/\s+/).filter(Boolean).map(Number);
   const start = Number.isFinite(numbers[0]) ? numbers[0] : 1;
   const step = Number.isFinite(numbers[1]) ? numbers[1] : 1;
-  state.autonumber = { start, step };
+  state.autonumber = { next: start, step };
 };
 
 /**
@@ -346,6 +351,11 @@ const readNote = (statement: string, state: ParseState): void => {
  */
 const ARROW = /(--?)(>>|>|x|\))([+-]?)/g;
 
+const holdsArrow = (statement: string): boolean => {
+  ARROW.lastIndex = 0;
+  return ARROW.test(statement.split(":")[0]);
+};
+
 const HEADS: Record<string, SequenceArrowHead> = {
   ">>": "arrow",
   ">": "none",
@@ -384,6 +394,8 @@ const readMessage = (statement: string, state: ParseState): void => {
 
     const sender = ensureParticipant(unquote(from), state);
     const receiver = ensureParticipant(unquote(to), state);
+    const number = state.autonumber?.next;
+    if (state.autonumber) state.autonumber.next += state.autonumber.step;
     state.steps.push({
       kind: "message",
       from: sender,
@@ -392,6 +404,7 @@ const readMessage = (statement: string, state: ParseState): void => {
       line: match[1] === "--" ? "dashed" : "solid",
       head: HEADS[match[2]],
       self: sender === receiver,
+      ...(number === undefined ? {} : { number }),
     });
     return;
   }
