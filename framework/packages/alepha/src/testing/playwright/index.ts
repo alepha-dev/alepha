@@ -209,10 +209,13 @@ export const createE2ePortAllocator = <S extends Record<string, number>>(
     // workers, 13 distinct ports, one instance failing to bind for no visible
     // reason). Taking every WORKER_SLOTS-th candidate makes that impossible
     // rather than unlikely.
-    const slot = workerIndex % WORKER_SLOTS;
-    const mine = candidates(checkoutRoot(), app).filter(
-      (_, i) => i % WORKER_SLOTS === slot,
-    );
+    // On a band holding fewer bases than WORKER_SLOTS, the slots are the
+    // bases: a slot past the last base selected no candidate, and the worker
+    // got `undefined` for a port.
+    const list = candidates(checkoutRoot(), app);
+    const slots = Math.min(WORKER_SLOTS, list.length);
+    const slot = workerIndex % slots;
+    const mine = list.filter((_, i) => i % slots === slot);
 
     return firstFreePort(mine) ?? mine[0];
   };

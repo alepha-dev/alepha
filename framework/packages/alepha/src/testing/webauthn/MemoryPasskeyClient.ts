@@ -100,17 +100,29 @@ export class MemoryPasskeyClient extends PasskeyClient {
     }
     if (init.mediation === "conditional") {
       this.calls.conditional++;
+      // A browser rejects a ceremony started on an aborted signal at once.
+      if (init.signal?.aborted) {
+        this.calls.aborted++;
+        return { ok: false, reason: "cancelled" };
+      }
       return new Promise((resolve) => {
         const entry = { options, resolve };
         this.pending.push(entry);
-        init.signal?.addEventListener("abort", () => {
-          const at = this.pending.indexOf(entry);
-          if (at >= 0) {
+        init.signal?.addEventListener(
+          "abort",
+          () => {
+            // Only a ceremony still waiting is cancelled: once the user
+            // picked a passkey, a later abort changes nothing.
+            const at = this.pending.indexOf(entry);
+            if (at < 0) {
+              return;
+            }
             this.pending.splice(at, 1);
-          }
-          this.calls.aborted++;
-          resolve({ ok: false, reason: "cancelled" });
-        });
+            this.calls.aborted++;
+            resolve({ ok: false, reason: "cancelled" });
+          },
+          { once: true },
+        );
       });
     }
     this.calls.get++;

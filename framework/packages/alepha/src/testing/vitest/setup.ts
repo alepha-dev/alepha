@@ -7,16 +7,6 @@
  * otherwise have to restate it.
  */
 
-/**
- * `window.matchMedia` is absent from jsdom entirely. Anything that asks the
- * platform a question about the viewport or the user's preferences reaches
- * for it on mount and throws — sonner's `<Toaster>` does, which is what makes
- * "did this action toast?" untestable without this.
- *
- * Everything reports as not matching: a test asserting on responsive or
- * reduced-motion behaviour should emulate it explicitly rather than inherit a
- * default from here.
- */
 import { afterAll } from "vitest";
 
 /**
@@ -107,6 +97,16 @@ afterAll(() => {
   pendingTimers.clear();
 });
 
+/**
+ * `window.matchMedia` is absent from jsdom entirely. Anything that asks the
+ * platform a question about the viewport or the user's preferences reaches
+ * for it on mount and throws: sonner's `<Toaster>` does, which is what makes
+ * "did this action toast?" untestable without this.
+ *
+ * Everything reports as not matching: a test asserting on responsive or
+ * reduced-motion behaviour should emulate it explicitly rather than inherit a
+ * default from here.
+ */
 if (typeof window !== "undefined" && !window.matchMedia) {
   window.matchMedia = (query: string): MediaQueryList =>
     ({

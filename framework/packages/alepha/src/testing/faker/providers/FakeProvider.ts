@@ -117,7 +117,7 @@ export class FakeProvider {
         : this.options.defaultRecordEntries,
     };
 
-    // Swap the faker instance when the locale changes — the option is
+    // Swap the faker instance when the locale changes: the option is
     // documented as "Faker locale to use for generating fake data", so it has
     // to actually drive the corpus. Falls back to `en` for keys the locale
     // doesn't define.
@@ -204,7 +204,7 @@ export class FakeProvider {
   protected generateValue(schema: ZType): unknown {
     const s = schema as any;
 
-    // Handle optional — peel one layer and recurse
+    // Handle optional: peel one layer and recurse
     if (this.guard.isOptional(schema)) {
       if (
         this.faker.datatype.boolean({
@@ -216,7 +216,7 @@ export class FakeProvider {
       return this.generateValue(s.unwrap());
     }
 
-    // Handle nullable (zod ZodNullable — distinct from a union-with-null)
+    // Handle nullable (zod ZodNullable, distinct from a union-with-null)
     if (this.guard.isNullable(schema)) {
       if (
         this.faker.datatype.boolean({
@@ -228,7 +228,7 @@ export class FakeProvider {
       return this.generateValue(s.unwrap());
     }
 
-    // Handle default — generate a value for the wrapped type
+    // Handle default: generate a value for the wrapped type
     if (z.schema.isDefault(s)) {
       return this.generateValue(s.unwrap() as ZType);
     }
@@ -280,7 +280,7 @@ export class FakeProvider {
       return s.value;
     }
 
-    // Handle bigint (a validated string) — must precede the plain-string check
+    // Handle bigint (a validated string): must precede the plain-string check
     if (this.guard.isBigInt(schema)) {
       return this.generateBigInt(schema as ZodString);
     }
@@ -290,7 +290,7 @@ export class FakeProvider {
       return this.generateString(schema as ZodString);
     }
 
-    // Handle integer — must precede the plain-number check
+    // Handle integer: must precede the plain-number check
     if (this.guard.isInteger(schema)) {
       return this.generateInteger(schema as ZodNumber);
     }
@@ -591,6 +591,22 @@ export class FakeProvider {
       return this.generateValueWithContext(wrapped.unwrap() as ZType, keyName);
     }
 
+    // A value from the key's name only when the schema accepts it: `price`
+    // on a `z.integer()`, `name` on a `.max(5)` or `age` on a `.max(10)` used
+    // to come out invalid against the very schema it was generated for.
+    const contextual = this.contextualValue(schema, keyName);
+    if (contextual !== undefined && schema.safeParse(contextual).success) {
+      return contextual;
+    }
+
+    return this.generateValue(schema);
+  }
+
+  /**
+   * A realistic value for a field, from its key name alone, or `undefined`
+   * when the name suggests nothing. Unchecked: the caller validates it.
+   */
+  protected contextualValue(schema: ZType, keyName: string): unknown {
     // Normalize key name: lowercase and remove underscores/hyphens
     // This allows matching "user_name", "user-name", "userName" etc.
     const normalizedKey = keyName.toLowerCase().replace(/[_-]/g, "");
@@ -604,12 +620,12 @@ export class FakeProvider {
         z.schema.format(stringSchema) &&
         z.schema.format(stringSchema) !== "string"
       ) {
-        return this.generateValue(schema);
+        return undefined;
       }
 
       // Skip if it has enum values
       if ((stringSchema as any).enum) {
-        return this.generateValue(schema);
+        return undefined;
       }
 
       // Generate based on common field name patterns
@@ -703,12 +719,13 @@ export class FakeProvider {
         normalizedKey.includes("amount") ||
         normalizedKey.includes("cost")
       ) {
-        return this.faker.number.float({ min: 1, max: 1000, multipleOf: 0.01 });
+        return this.guard.isInteger(schema)
+          ? this.faker.number.int({ min: 1, max: 1000 })
+          : this.faker.number.float({ min: 1, max: 1000, multipleOf: 0.01 });
       }
     }
 
-    // Fallback to regular generation
-    return this.generateValue(schema);
+    return undefined;
   }
 
   protected generateRecord(schema: ZodRecord): Record<string, unknown> {

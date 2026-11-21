@@ -267,19 +267,40 @@ describe("worker", () => {
     }
   });
 
+  it("gives every worker a port on a band narrower than the worker slots", ({
+    expect,
+  }) => {
+    delete process.env.E2E_PORT;
+    // Five bases, fewer than the sixteen worker slots: slot 5 used to select
+    // no candidate at all.
+    const narrow = createE2ePortAllocator(
+      { beta: 1 },
+      { start: 5000, end: 5099, stride: 20 },
+    );
+
+    for (let i = 0; i < 16; i++) {
+      const port = narrow.worker("beta", i);
+      expect(port).toBeTypeOf("number");
+      expect(port % 20).toBe(1);
+      expect(port).toBeGreaterThanOrEqual(5000);
+      expect(port).toBeLessThanOrEqual(5099);
+    }
+  });
+
   /**
    * ⚠️ The property the suite-wide allocation must NOT have here. It memoises
-   * through `E2E_PORT` so a config and its global setup agree; doing that per
-   * worker would hand the whole run one port.
+   * through `E2E_PORT_<APP>` so a config and its global setup agree; doing
+   * that per worker would hand the whole run one port.
    */
   it("does not memoise, so worker 1 is not handed worker 0's port", ({
     expect,
   }) => {
     delete process.env.E2E_PORT;
+    delete process.env.E2E_PORT_BETA;
 
     const first = allocator.worker("beta", 0);
 
-    expect(process.env.E2E_PORT).toBeUndefined();
+    expect(process.env.E2E_PORT_BETA).toBeUndefined();
     expect(allocator.worker("beta", 1)).not.toBe(first);
   });
 
