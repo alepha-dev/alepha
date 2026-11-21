@@ -213,11 +213,8 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
     // No heading of its own: the detail's `CollapsibleBlock` carries it. The
     // rows, the composer and the file tiles are the quest Discussion's own.
     <section className="flex flex-col">
-      {comments.length === 0 ? (
-        <p className="text-muted-foreground px-1 text-sm italic">
-          {tr("feedback.thread.empty")}
-        </p>
-      ) : (
+      {/* No comment yet: the composer alone, no "nothing said" line (#Q4064). */}
+      {comments.length > 0 && (
         <ol className="divide-border/40 flex flex-col divide-y px-1">
           {comments.map((comment) => (
             <DiscussionComment
