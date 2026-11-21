@@ -47,7 +47,7 @@ export const MAX_LABEL_LINES = 8;
  * `scripts/measure-font.ts` loads the real `@fontsource-variable/inter`
  * woff2 into Chromium via Playwright, waits for `document.fonts.ready` and
  * calls `canvas.measureText` on every character below, then buckets them by
- * rounded ratio. Run it from the repo root and paste the output back here:
+ * rounded ratio. Run it from `framework/` and paste the output back here:
  *
  *     node packages/@alepha/ui/scripts/measure-font.ts
  *
@@ -60,9 +60,9 @@ export const MAX_LABEL_LINES = 8;
  * from the label. Mermaid gets this by rendering into a hidden DOM node,
  * which is precisely why mermaid cannot run without a browser. Arithmetic
  * keeps the layout core a pure function. It is an approximation: 5% off on a
- * box width is invisible in a boxes-and-arrows diagram, and it is the
- * concrete reason v1 is flowcharts rather than sequence diagrams, whose
- * layout is far more sensitive to text metrics.
+ * box width is invisible in a boxes-and-arrows diagram. A sequence diagram
+ * is far more sensitive to text metrics, which is why its gap constraints
+ * carry `GAP_LABEL_MARGIN` (`layoutSequence.ts`).
  */
 const WIDTH_BUCKETS: Array<[ratio: number, chars: string]> = [
   [0.242, "ijl"],
@@ -135,7 +135,8 @@ const WIDTH_BUCKETS: Array<[ratio: number, chars: string]> = [
   [0.966, "@"],
   [0.982, "%"],
   [0.985, "W"],
-  [1, "→←—"],
+  // U+2014 is the em dash, escaped so the source carries none.
+  [1, "→←\u2014"],
 ];
 
 /**

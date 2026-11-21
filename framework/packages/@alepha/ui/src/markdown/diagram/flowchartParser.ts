@@ -57,6 +57,11 @@ const parseChecked = (source: string): GraphModel | undefined => {
     }
   }
 
+  // An edge naming a subgraph before its block opens declared a plain node
+  // with the cluster's id. The cluster is what it meant: drop the node, and
+  // the edge is re-targeted like any other edge to a cluster.
+  for (const id of state.clusters.keys()) state.nodes.delete(id);
+
   if (state.nodes.size === 0) return undefined;
 
   return {
@@ -81,16 +86,21 @@ interface ParseState {
 /**
  * Statements that carry styling or interaction rather than structure. Our
  * theme decides colours, so all of them are skipped in silence.
+ *
+ * Only when the statement holds no link operator: `Click --> B` is an edge
+ * from a node named `Click`, not a `click` directive.
  */
 const IGNORED =
   /^(?:classDef|class|style|linkStyle|click|accTitle|accDescr)\b/i;
 
 const readStatement = (statement: string, state: ParseState): void => {
   if (!statement) return;
-  if (IGNORED.test(statement)) return;
-  // A `direction` inside a subgraph is parsed and ignored in v1: graphre
-  // ranks the whole graph one way.
-  if (/^direction\s+/i.test(statement)) return;
+  if (!holdsLink(statement)) {
+    if (IGNORED.test(statement)) return;
+    // A `direction` inside a subgraph is parsed and ignored in v1: graphre
+    // ranks the whole graph one way.
+    if (/^direction\s+/i.test(statement)) return;
+  }
 
   if (/^end$/i.test(statement)) {
     state.stack.pop();
@@ -167,7 +177,9 @@ const declareNode = (item: string, state: ParseState): string | undefined => {
 
   const open = text.search(/[[({>]/);
   const id = (open === -1 ? text : text.slice(0, open)).trim();
-  if (!id || /\s/.test(id)) return undefined;
+  // `A@{ shape: circle }` is mermaid's shape syntax, outside the subset:
+  // read as an id, it would declare a second node `A@`.
+  if (!id || /\s/.test(id) || id.includes("@")) return undefined;
 
   const existing = state.nodes.get(id);
   if (existing) return id;
@@ -265,7 +277,15 @@ const splitLabelLines = (label: string): string[] => {
  * `<` is the only start marker supported. `o--o` / `x--x` are not, because
  * a leading `o` or `x` is indistinguishable from the last character of an
  * id - `box-->B` would lose its `x`.
+ *
+ * ⚠️ Every label is capped at `MAX_INLINE_LABEL` characters. Unbounded, each
+ * `-.` or `--` with no closing operator rescanned the rest of the statement,
+ * which is quadratic: a 100 kB statement held a reader's tab for 4 s on every
+ * render. A longer inline label no longer reads as one, and the statement
+ * degrades like any other it cannot read.
  */
+const MAX_INLINE_LABEL = 200;
+
 const LINK = new RegExp(
   [
     // plain: -.-> -.- -..->
@@ -275,14 +295,19 @@ const LINK = new RegExp(
     // plain: --> --- --o --x ---->
     String.raw`(?<s3><)?(?:-{3,}|-{2,}(?=[>ox]))(?<a3>[>ox])?`,
     // labelled: -. text .->
-    String.raw`(?<s4><)?(?<dash4>-\.)\s*(?<t4>[^\n<>|]*?[^\n<>|\s.])\s*\.-+(?<a4>[>ox])?`,
+    String.raw`(?<s4><)?(?<dash4>-\.)\s*(?<t4>[^\n<>|]{0,${MAX_INLINE_LABEL - 1}}?[^\n<>|\s.])\s*\.-+(?<a4>[>ox])?`,
     // labelled: == text ==>
-    String.raw`(?<s5><)?(?<thick5>={2,})\s*(?<t5>[^\n<>|=]*?[^\n<>|=\s])\s*={2,}(?<a5>[>ox])?`,
+    String.raw`(?<s5><)?(?<thick5>={2,})\s*(?<t5>[^\n<>|=]{0,${MAX_INLINE_LABEL - 1}}?[^\n<>|=\s])\s*={2,}(?<a5>[>ox])?`,
     // labelled: -- text -->
-    String.raw`(?<s6><)?-{2,}\s*(?<t6>[^\n<>|]*?[^\n<>|\s-])\s*-{2,}(?<a6>[>ox])?`,
+    String.raw`(?<s6><)?-{2,}\s*(?<t6>[^\n<>|]{0,${MAX_INLINE_LABEL - 1}}?[^\n<>|\s-])\s*-{2,}(?<a6>[>ox])?`,
   ].join("|"),
   "g",
 );
+
+const holdsLink = (statement: string): boolean => {
+  LINK.lastIndex = 0;
+  return LINK.test(statement);
+};
 
 interface LinkSpec {
   label?: string;

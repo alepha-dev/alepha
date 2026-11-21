@@ -17,9 +17,11 @@ export interface FlowchartDiagramEdgeProps {
 /**
  * One routed edge, its arrowheads and its label chip.
  *
- * `currentColor` on the path is what makes the arrowhead markers match: a
- * marker inherits `currentColor` from the element that references it, so
- * one pair of markers serves every edge colour without a marker per style.
+ * The path strokes in `currentColor`, and the arrowhead markers fill with
+ * `context-stroke`, so they take the stroke of the edge that references
+ * them: one pair of markers serves every edge colour without a marker per
+ * style. A marker does NOT inherit `currentColor` from that edge, see the
+ * markers in `FlowchartDiagram.tsx`.
  */
 export const FlowchartDiagramEdge = (props: FlowchartDiagramEdgeProps) => {
   const edge = props.edge;

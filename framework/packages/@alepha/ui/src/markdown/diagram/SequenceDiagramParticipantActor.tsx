@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { DiagramLabel, round } from "./DiagramLabel.tsx";
+import { ACTOR_LABEL_GAP } from "./layoutSequence.ts";
 import { DIAGRAM_LINE_HEIGHT } from "./textMetrics.ts";
 
 export interface SequenceDiagramParticipantActorProps {
@@ -66,9 +67,3 @@ export const SequenceDiagramParticipantActor = (
     </g>
   );
 };
-
-/**
- * The one number this component and the layout do share: how far the name
- * sits below the feet.
- */
-const ACTOR_LABEL_GAP = 4;

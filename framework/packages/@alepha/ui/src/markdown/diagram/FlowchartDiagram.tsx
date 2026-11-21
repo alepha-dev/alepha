@@ -33,8 +33,9 @@ export interface FlowchartDiagramProps {
  *
  * ## Theming is the point
  *
- * Colours come from `--primary`, `--border`, `--muted-foreground`, `--card`
- * and `--muted` through `var(...)`, so dark mode works with no second
+ * Colours come from `--border`, `--muted-foreground`, `--card`,
+ * `--card-foreground`, `--muted` and `--background` through `var(...)`, so
+ * dark mode works with no second
  * palette and no theme prop. That is the thing mermaid can structurally
  * never give us, and the whole reason drawing is our own code rather than a
  * cost.

@@ -26,11 +26,12 @@ import { visit } from "unist-util-visit";
  * until the plugin became this file.
  *
  * ⚠️ Twelve of these are a contract with Lore:
- * its `attachmentPreview.ts` (github.com/alepha-dev/lore) fences a
- * text attachment with a highlight.js name (json, xml, yaml, typescript,
- * javascript, css, bash, sql, python, go, rust, ini). Drop one here and that
- * preview loses its colour, silently. `dockerfile` and `markdown` are used by
- * fences in `docs/`, and `diff` covers a diff or patch pasted into a folio.
+ * its `attachmentPreview.ts` (under `lore/packages/@lore/core` in this
+ * repository) fences a text attachment with a highlight.js name (json, xml,
+ * yaml, typescript, javascript, css, bash, sql, python, go, rust, ini). Drop
+ * one here and that preview loses its colour, silently. `dockerfile` and
+ * `markdown` are used by fences in `docs/`, and `diff` covers a diff or patch
+ * pasted into a folio.
  *
  * Each grammar brings its aliases: `ts` and `tsx` (typescript), `sh` (bash),
  * `html` (xml), `yml` (yaml), `jsonc` (json), `patch` (diff), `toml` (ini),

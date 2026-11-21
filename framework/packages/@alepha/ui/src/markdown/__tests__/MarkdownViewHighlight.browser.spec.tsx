@@ -22,6 +22,15 @@ describe("MarkdownView code highlighting", () => {
     await expectAccessible();
   });
 
+  it("puts no react-markdown node attribute on a highlighted token", () => {
+    const { container } = render(
+      <MarkdownView content={"```ts\nconst answer: number = 42;\n```"} />,
+    );
+
+    expect(container.querySelector(".hljs-keyword")).not.toBeNull();
+    expect(container.querySelector("[node]")).toBeNull();
+  });
+
   it("renders a fence in any other language as its plain text", () => {
     const { container } = render(
       <MarkdownView content={"```cobol\nIDENTIFICATION DIVISION.\n```"} />,

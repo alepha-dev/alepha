@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { MarkdownView } from "../MarkdownView.tsx";
 
@@ -13,6 +13,22 @@ const fence = (language: string, body: string) =>
  * grey code block, and that no other fence changed.
  */
 describe("MarkdownView - mermaid fences", () => {
+  // ⚠️ The `Suspense` fallback IS the code block, so until the lazy chunk
+  // has landed every "falls back" assertion below holds whatever the fence
+  // would render. One diagram drawn up front settles `lazy()` for the whole
+  // file: from then on a fence renders `MermaidFence` on the first pass, and
+  // a `pre` is its own fallback, never the loading state.
+  beforeAll(async () => {
+    const { container, unmount } = render(
+      <MarkdownView content={fence("mermaid", "flowchart TD\n  A --> B")} />,
+    );
+    await waitFor(() => {
+      if (!container.querySelector("svg"))
+        throw new Error("the diagram chunk has not landed");
+    });
+    unmount();
+  });
+
   it("renders a flowchart fence as an svg", async () => {
     const { container } = render(
       <MarkdownView
@@ -139,13 +155,18 @@ describe("MarkdownView - mermaid fences", () => {
   });
 
   it("leaves the mermaid fence unhighlighted", () => {
+    // A fence that falls back, so the `code` is on screen: a drawn diagram
+    // has none, and asserting on it would pass whatever hljs did.
     const { container } = render(
-      <MarkdownView content={fence("mermaid", "flowchart TD\n  A --> B")} />,
+      <MarkdownView content={fence("mermaid", "gantt\n  title X")} />,
     );
 
     // `plainText: ["mermaid"]` - hljs must not tokenise the diagram source,
     // or the fallback is a soup of spans instead of the text the author wrote.
-    expect(container.querySelector("code.hljs")).toBeNull();
+    const code = container.querySelector("pre code");
+    expect(code).not.toBeNull();
+    expect(code?.className).not.toContain("hljs");
+    expect(code?.querySelector("span")).toBeNull();
   });
 
   it("still highlights an ordinary code fence", () => {

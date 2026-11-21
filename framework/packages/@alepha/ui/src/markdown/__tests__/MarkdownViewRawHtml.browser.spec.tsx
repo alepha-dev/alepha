@@ -7,14 +7,14 @@ import { MarkdownView } from "../MarkdownView.tsx";
  * `rehypeSafeImg` promoted a lone `<img …>` raw node to a real element, and
  * existed for exactly one reason: MDXEditor serialised a *resized* image as
  * `<img width="…" src="…" />`. With the resize handles gone nothing produces
- * that markup, so the plugin was deleted and react-markdown's default —
- * escape every raw node to text — is restored.
+ * that markup, so the plugin was deleted and react-markdown's default
+ * (escape every raw node to text) is restored.
  *
  * These pin that default. It is the entire raw-HTML posture of every
  * markdown surface in every app built on this package: content is authored
  * by one user and rendered to another, so a raw tag becoming live markup is
  * an injection point. A future change that reaches for `rehype-raw`, or
- * re-adds a promoting plugin, turns these red — which is the point.
+ * re-adds a promoting plugin, turns these red, which is the point.
  */
 describe("MarkdownView raw HTML", () => {
   it("escapes a raw img instead of promoting it to an element", () => {

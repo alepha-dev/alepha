@@ -262,33 +262,57 @@ describe("parseSequence - notes", () => {
 });
 
 describe("parseSequence - autonumber", () => {
-  it("is absent unless declared", () => {
-    expect(parse("sequenceDiagram\n  A ->> B: hi").autonumber).toBeUndefined();
+  const numbers = (source: string) => messages(source).map((m) => m.number);
+
+  it("numbers nothing unless declared", () => {
+    expect(numbers("sequenceDiagram\n  A ->> B: hi")).toEqual([undefined]);
   });
 
   it("defaults to 1, 1", () => {
     expect(
-      parse("sequenceDiagram\n  autonumber\n  A ->> B: hi").autonumber,
-    ).toEqual({ start: 1, step: 1 });
+      numbers("sequenceDiagram\n  autonumber\n  A ->> B: hi\n  B ->> A: ok"),
+    ).toEqual([1, 2]);
   });
 
   it("reads a start", () => {
     expect(
-      parse("sequenceDiagram\n  autonumber 10\n  A ->> B: hi").autonumber,
-    ).toEqual({ start: 10, step: 1 });
+      numbers("sequenceDiagram\n  autonumber 10\n  A ->> B: hi\n  B ->> A: ok"),
+    ).toEqual([10, 11]);
   });
 
   it("reads a start and a step", () => {
     expect(
-      parse("sequenceDiagram\n  autonumber 10 10\n  A ->> B: hi").autonumber,
-    ).toEqual({ start: 10, step: 10 });
+      numbers(
+        "sequenceDiagram\n  autonumber 10 10\n  A ->> B: hi\n  B ->> A: ok",
+      ),
+    ).toEqual([10, 20]);
   });
 
   it("turns off again", () => {
     expect(
-      parse("sequenceDiagram\n  autonumber\n  autonumber off\n  A ->> B: hi")
-        .autonumber,
-    ).toBeUndefined();
+      numbers("sequenceDiagram\n  autonumber\n  autonumber off\n  A ->> B: hi"),
+    ).toEqual([undefined]);
+  });
+
+  it("numbers only the messages under it, not the whole diagram", () => {
+    expect(
+      numbers(
+        [
+          "sequenceDiagram",
+          "  autonumber",
+          "  A ->> B: one",
+          "  B ->> A: two",
+          "  autonumber off",
+          "  A ->> B: three",
+        ].join("\n"),
+      ),
+    ).toEqual([1, 2, undefined]);
+  });
+
+  it("starts numbering at the message after it", () => {
+    expect(
+      numbers("sequenceDiagram\n  A ->> B: one\n  autonumber\n  B ->> A: two"),
+    ).toEqual([undefined, 1]);
   });
 });
 
@@ -419,6 +443,30 @@ describe("parseSequence - refuse vs skip", () => {
           `sequenceDiagram\n  A ->> B: hi\n  ${construct} x\n    A ->> B: two\n  end`,
         ),
       ).toBeUndefined();
+    });
+  }
+
+  for (const sender of [
+    "Link",
+    "Links",
+    "Menu",
+    "Style",
+    "Title",
+    "And",
+    "Option",
+    "Details",
+    "Properties",
+    "Activate",
+  ]) {
+    it(`reads a message whose sender is named ${sender}`, () => {
+      expect(
+        messages(
+          `sequenceDiagram\n  ${sender} ->> App: one\n  App ->> B: two`,
+        ).map((m) => [m.from, m.to]),
+      ).toEqual([
+        [sender, "App"],
+        ["App", "B"],
+      ]);
     });
   }
 
