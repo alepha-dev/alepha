@@ -90,10 +90,41 @@ describe("LocalEmailProvider", () => {
       });
 
       expect(memoryFs.joinCalls).toHaveLength(1);
-      expect(memoryFs.joinCalls[0]).toEqual([
-        DEFAULT_DIRECTORY,
-        "user_test@example.com,2023-01-01T12-00-00-000Z.eml.json",
-      ]);
+      expect(memoryFs.joinCalls[0][0]).toBe(DEFAULT_DIRECTORY);
+      expect(memoryFs.joinCalls[0][1]).toMatch(
+        /^user_test@example\.com,2023-01-01T12-00-00-000Z,[0-9a-f-]{36}\.eml\.json$/,
+      );
+    });
+
+    it("keeps every mail sent in the same millisecond, and one per listed recipient", async () => {
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      for (const subject of ["one", "two", "three"]) {
+        await provider.send({ to: "a@example.com", subject, body: "x" });
+      }
+      await provider.send({
+        to: ["b@example.com", "b@example.com"],
+        subject: "dup",
+        body: "x",
+      });
+
+      const subjects = [...memoryFs.files.keys()]
+        .filter((f) => f.endsWith(".eml.json"))
+        .map(
+          (f) =>
+            JSON.parse(new TextDecoder().decode(memoryFs.files.get(f))).subject,
+        )
+        .toSorted((x: string, y: string) => x.localeCompare(y));
+      expect(subjects).toEqual(["dup", "dup", "one", "three", "two"]);
     });
 
     it("should sanitize special characters in email address", async () => {

@@ -152,6 +152,33 @@ describe("$email refuses reserved headers", () => {
     ).rejects.toThrow(/not a valid header name/);
   });
 
+  it("refuses a name wrapped in a line break or whitespace", async ({
+    expect,
+  }) => {
+    // The check used to run on the trimmed name while the untrimmed one went
+    // on to the provider: a raw-MIME transport writing `${name}: ${value}`
+    // would turn "\r\nX-A" into an empty line that ends the header block.
+    const { mailer } = await boot();
+
+    for (const name of ["X-A\r\n", "\r\nX-A", "X-A\n", "\tX-A", " X-A"]) {
+      await expect(
+        mailer.channel.send({ ...base, headers: { [name]: "y" } }),
+      ).rejects.toThrow(/not a valid header name/);
+    }
+  });
+
+  it("still refuses a reserved name wrapped in whitespace as reserved", async ({
+    expect,
+  }) => {
+    const { mailer } = await boot();
+
+    for (const name of ["\r\nBcc", " bcc "]) {
+      await expect(
+        mailer.channel.send({ ...base, headers: { [name]: "y" } }),
+      ).rejects.toThrow(/part of the envelope/);
+    }
+  });
+
   it("still accepts an ordinary List-Unsubscribe", async ({ expect }) => {
     // The guard has to stay usable: this is the header the option exists for,
     // and its angle brackets and commas are all valid in a value.
