@@ -67,6 +67,7 @@ const badgeVariants = cva(
         blue: "",
         green: "",
         amber: "",
+        orange: "",
         red: "",
         violet: "",
         cyan: "",
@@ -118,6 +119,11 @@ const badgeVariants = cva(
         variant: "tint",
         tone: "amber",
         class: "border-amber-500/40 bg-amber-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "orange",
+        class: "border-orange-500/40 bg-orange-500/15",
       },
       {
         variant: "tint",
