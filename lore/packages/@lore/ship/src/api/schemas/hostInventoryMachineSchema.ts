@@ -34,6 +34,12 @@ export const hostInventoryMachineSchema = z.object({
    * must not make Lore refuse the whole inventory of that machine.
    */
   upgradeMode: z.string().max(20).optional(),
+  /**
+   * `monitor` for a Bay that only reports (`bay agent`, #Q4002): no listener,
+   * no Docker, and every command refused on the machine. Absent for a Bay
+   * that serves. Bounded, not an enum, for the reason `upgradeMode` gives.
+   */
+  mode: z.string().max(20).optional(),
 });
 
 export type HostInventoryMachine = Infer<typeof hostInventoryMachineSchema>;

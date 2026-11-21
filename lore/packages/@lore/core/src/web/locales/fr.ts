@@ -2785,6 +2785,9 @@ export default {
     "Enregistrement en cours, mais aucun jour n'est encore complet. Le premier point apparaît une fois une journée d'échantillons collectée.",
   "bay.chart.estimated": "échantillonné, puis extrapolé",
   "bay.chart.estimated.interval": "échantillonné 1 sur $1, puis extrapolé",
+  "bay.overview.monitorOnly": "Supervision seule",
+  "bay.overview.monitorOnly.description":
+    "Cet hôte exécute bay agent : il remonte son CPU, sa mémoire et son disque, et n'accepte aucune commande. Mettez-le à jour sur la machine.",
   "bay.overview.title": "Vue d'ensemble",
   "bay.overview.usedOf": "$1 sur $2",
   "bay.overview.notReported": "non communiqué",

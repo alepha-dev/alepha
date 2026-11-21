@@ -337,6 +337,9 @@ type Client struct {
 	// UpgradeMode says whether this Bay can take an `upgrade`: "handoff",
 	// "restart" or "manual". It enters here for the reason Version does.
 	UpgradeMode string
+	// Mode is stamped on the inventory's host block: ModeMonitor for `bay
+	// agent` (#Q4002), empty for `bay serve`.
+	Mode string
 	// MinStatsInterval floors whatever interval Lore names.
 	MinStatsInterval time.Duration
 	// MinInventoryInterval is the floor between two inventory pushes,

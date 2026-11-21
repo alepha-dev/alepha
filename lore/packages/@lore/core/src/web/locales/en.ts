@@ -2780,6 +2780,9 @@ export default {
     "Recording, but no day has completed yet. The first point appears once a day of samples is in.",
   "bay.chart.estimated": "sampled, then scaled back up",
   "bay.chart.estimated.interval": "sampled 1 in $1, then scaled back up",
+  "bay.overview.monitorOnly": "Monitor only",
+  "bay.overview.monitorOnly.description":
+    "This host runs bay agent: it reports its CPU, memory and disk, and takes no command. Upgrade it on the machine.",
   "bay.overview.title": "Overview",
   "bay.overview.usedOf": "$1 of $2",
   "bay.overview.notReported": "not reported",

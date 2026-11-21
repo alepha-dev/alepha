@@ -55,6 +55,13 @@
 #   BAY_UPDATE_UNIT
 #                 "yes" to write the handoff drop-in on a host that already
 #                 has a unit (default "no": an existing unit is left alone)
+#   BAY_MONITOR_ONLY
+#                 "1" installs `bay agent` instead (#Q4002): a monitor that
+#                 reports CPU, memory and disk to Lore and runs nothing. No
+#                 root, no Docker: it installs under the user's home
+#                 (BAY_PREFIX defaults to ~/.local/share/bay, the link to
+#                 ~/.local/bin/bay) with a systemd --user unit, and enrols
+#                 with LORE_URL and LORE_ESTATE_SECRET when both are set.
 #
 set -eu
 
@@ -65,6 +72,13 @@ set -eu
 # longer exists.
 REPO="alepha-dev/alepha"
 BAY_VERSION="${BAY_VERSION:-latest}"
+MONITOR_ONLY="${BAY_MONITOR_ONLY:-}"
+if [ "$MONITOR_ONLY" = "1" ]; then
+  # A support account's own files: nothing outside its home is touched.
+  BAY_PREFIX="${BAY_PREFIX:-$HOME/.local/share/bay}"
+  BAY_BIN_LINK="${BAY_BIN_LINK:-$HOME/.local/bin/bay}"
+  BAY_UNIT="${BAY_UNIT:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/bay-agent.service}"
+fi
 BAY_PREFIX="${BAY_PREFIX:-/opt/bay}"
 BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"
 BAY_UNIT="${BAY_UNIT:-/etc/systemd/system/bay.service}"
@@ -99,7 +113,7 @@ case "$(uname -m)" in
   *) die "unsupported architecture $(uname -m). Bay ships linux/amd64 and linux/arm64." ;;
 esac
 
-[ "$(id -u)" = "0" ] || die "this installer writes to $BAY_PREFIX and $BAY_BIN_LINK, so it needs root.
+[ "$MONITOR_ONLY" = "1" ] || [ "$(id -u)" = "0" ] || die "this installer writes to $BAY_PREFIX and $BAY_BIN_LINK, so it needs root.
 Re-run it as:  curl -sSL https://alepha.dev/bay/install.sh | sudo sh"
 
 if command -v curl >/dev/null 2>&1; then
@@ -132,6 +146,9 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 # something else.
 MIN_DOCKER_API="1.44"
 
+# A monitor runs no app, so it needs no Docker (#Q4002).
+if [ "$MONITOR_ONLY" != "1" ]; then
+
 if ! command -v docker >/dev/null 2>&1; then
   [ "${BAY_INSTALL_DOCKER:-yes}" != "no" ] || die "Docker is not installed, and BAY_INSTALL_DOCKER=no.
 Install Docker Engine 25 or newer with the compose plugin, then re-run this installer:
@@ -159,6 +176,8 @@ docker compose version >/dev/null 2>&1 || die "the Docker compose plugin is miss
 Install the docker-compose-plugin package, then re-run this installer."
 
 echo "==> Docker ready (Engine API $DOCKER_API)"
+
+fi
 
 # --- download --------------------------------------------------------------
 
@@ -209,7 +228,65 @@ chmod 0755 "$TMP/bay"
 mv "$TMP/bay" "$BAY_PREFIX/bin/bay.new"
 mv "$BAY_PREFIX/bin/bay.new" "$BAY_PREFIX/bin/bay"
 
+mkdir -p "$(dirname "$BAY_BIN_LINK")"
 ln -sf "$BAY_PREFIX/bin/bay" "$BAY_BIN_LINK"
+
+# --- monitor only ----------------------------------------------------------
+
+# `bay agent` under the user's own systemd (#Q4002): no listener, no Docker,
+# no root. Enrolled like a server, through `bay connector set`, which the
+# agent picks up at its next dial (it re-reads the file before each one).
+if [ "$MONITOR_ONLY" = "1" ]; then
+  DATA="$BAY_PREFIX/data"
+  echo "==> Writing the systemd user unit $BAY_UNIT"
+  mkdir -p "$(dirname "$BAY_UNIT")"
+  cat >"$BAY_UNIT" <<UNIT
+# Written by install.sh (BAY_MONITOR_ONLY=1): Bay as a monitor only. It
+# reports this machine to Lore, runs no command and opens no port.
+[Unit]
+Description=Bay agent, reports this host to Lore
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStart=$BAY_PREFIX/bin/bay agent --root $DATA
+
+[Install]
+WantedBy=default.target
+UNIT
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user daemon-reload
+    echo "==> Starting the bay-agent user service"
+    systemctl --user enable --now bay-agent \
+      || die "systemctl --user could not start bay-agent. Start it by hand:
+  $BAY_PREFIX/bin/bay agent --root $DATA"
+  else
+    echo "No systemd on this host: start the agent yourself with"
+    echo "  $BAY_PREFIX/bin/bay agent --root $DATA"
+  fi
+  # The root exists before the agent first writes it, so `connector set`
+  # accepts it whichever comes first.
+  [ -f "$DATA/state.json" ] || printf '{"version":1}\n' >"$DATA/state.json"
+  if [ -n "$LORE_URL" ]; then
+    echo "==> Enrolling with $LORE_URL"
+    BAY_ROOT="$DATA" "$BAY_PREFIX/bin/bay" connector set "$LORE_URL" "$LORE_ESTATE_SECRET" >/dev/null \
+      || die "bay connector set failed; see its message above."
+  fi
+  echo
+  echo "Installed: $("$BAY_PREFIX/bin/bay" version 2>/dev/null || echo "bay ($ARCH)"), monitor only"
+  echo "  binary   $BAY_PREFIX/bin/bay  (on PATH as $BAY_BIN_LINK)"
+  echo "  data     $DATA"
+  echo "  unit     $BAY_UNIT"
+  if [ -n "$LORE_URL" ]; then
+    echo "Enrolled with $LORE_URL: the host reports there, and takes no command."
+  else
+    echo "Enrol it with:  bay connector set --root $DATA <lore-url> <the host secret>"
+  fi
+  echo "Keep it running after logout with:  loginctl enable-linger $(id -un)"
+  exit 0
+fi
 
 # --- handoff drop-in -------------------------------------------------------
 

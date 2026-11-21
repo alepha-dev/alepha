@@ -231,6 +231,38 @@ there):
 Its apps table also answers what the host cannot answer alone: an instance Lore
 expects that the machine did not report is a failed deploy or a removed unit.
 
+## Monitor only
+
+`bay agent` runs the connector and nothing else, for a machine Bay does not run
+apps on: it reports the host's CPU, memory, disk and load to Lore, and Lore's
+host page shows them. It opens no port (no proxy, no TLS, no ACME, no control
+socket), needs no Docker, and runs as a plain user, with its data under the
+user's home (`~/.local/state/bay`, or `--root`).
+
+Every command Lore sends it is refused on the machine, whatever its kind: a
+deploy, a restart, a backup, an upgrade. Lore shows the host as **Monitor
+only** and queues no command for it.
+
+The installer sets it up for the user who runs it, with no `sudo`:
+
+```bash
+curl -sSL https://alepha.dev/bay/install.sh \
+  | BAY_MONITOR_ONLY=1 LORE_URL=https://lore.alepha.app LORE_ESTATE_SECRET=est_... sh
+```
+
+It installs Bay under `~/.local/share/bay`, writes a systemd user unit
+(`~/.config/systemd/user/bay-agent.service`) running `bay agent`, starts it and
+enrols it. To keep it running after the user logs out, an administrator runs
+`loginctl enable-linger <user>` once. By hand, without the installer:
+
+```bash
+bay agent --root ~/.local/state/bay &
+bay connector set --root ~/.local/state/bay <lore-url> <secret>
+```
+
+The agent reads the connector file before each dial, so it connects at its
+next attempt whichever runs first. Upgrade it by running the installer again.
+
 ## Rotating and revoking
 
 Rotating the secret in Lore refuses the machine on its next dial; run

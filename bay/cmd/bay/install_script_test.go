@@ -340,3 +340,80 @@ func TestInstallScriptWritesTheHandoffDropIn(t *testing.T) {
 		}
 	})
 }
+
+// BAY_MONITOR_ONLY=1 (#Q4002): a plain user, no Docker. The installer writes
+// a systemd --user unit running `bay agent`, never touches Docker or root
+// paths, enrols the agent's root, and never prints the secret.
+func TestInstallScriptMonitorOnlyNeedsNoRootNorDocker(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("install.sh is a POSIX shell script")
+	}
+	dir := t.TempDir()
+	home := filepath.Join(dir, "home")
+	release := filepath.Join(dir, "release")
+	stubs := filepath.Join(dir, "stubs")
+	for _, d := range []string{home, release, stubs} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	asset := "bay-linux-amd64"
+	if out, err := exec.Command("go", "build", "-o", filepath.Join(release, asset), ".").CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v\n%s", err, out)
+	}
+	bin, err := os.ReadFile(filepath.Join(release, asset))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(bin)
+	writeInstallFile(t, filepath.Join(release, "SHA256SUMS"), hex.EncodeToString(sum[:])+"  "+asset+"\n", 0o644)
+	stub := func(name, body string) {
+		writeInstallFile(t, filepath.Join(stubs, name), "#!/bin/sh\n"+body, 0o755)
+	}
+	stub("uname", `case "$1" in -m) echo x86_64 ;; *) echo Linux ;; esac`+"\n")
+	stub("id", `case "$1" in -un) echo support ;; *) echo 1000 ;; esac`+"\n")
+	stub("curl", `out=""; url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac; done
+cp "`+release+`/$(basename "$url")" "$out"
+`)
+	stub("docker", "echo docker was called >&2; exit 97\n")
+	stub("systemctl", `echo "$*" >>"`+dir+`/systemctl.log"; exit 0`+"\n")
+
+	cmd := exec.Command("sh", "../../install.sh")
+	cmd.Env = append(os.Environ(),
+		"PATH="+stubs+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"HOME="+home, "XDG_CONFIG_HOME=", "BAY_PREFIX=", "BAY_BIN_LINK=", "BAY_UNIT=", "BAY_ROOT=",
+		"BAY_VERSION=0.0.0", "BAY_MONITOR_ONLY=1",
+		"LORE_URL=https://lore.example.com", "LORE_ESTATE_SECRET="+installSecret,
+	)
+	raw, err := cmd.CombinedOutput()
+	out := string(raw)
+	if err != nil {
+		t.Fatalf("install.sh: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "docker was called") || strings.Contains(out, "Docker ready") {
+		t.Fatalf("a monitor-only install must not touch Docker:\n%s", out)
+	}
+	if strings.Contains(out, installSecret[4:]) {
+		t.Fatalf("the installer printed the secret:\n%s", out)
+	}
+	prefix := filepath.Join(home, ".local", "share", "bay")
+	unit, err := os.ReadFile(filepath.Join(home, ".config", "systemd", "user", "bay-agent.service"))
+	if err != nil {
+		t.Fatalf("no user unit: %v\n%s", err, out)
+	}
+	if want := "ExecStart=" + prefix + "/bin/bay agent --root " + prefix + "/data"; !strings.Contains(string(unit), want) {
+		t.Fatalf("unit lacks %q:\n%s", want, unit)
+	}
+	calls, _ := os.ReadFile(filepath.Join(dir, "systemctl.log"))
+	if !strings.Contains(string(calls), "--user enable --now bay-agent") {
+		t.Fatalf("the agent was not started as a user service: %s", calls)
+	}
+	cfg, ok, err := connector.NewStore(filepath.Join(prefix, "data")).Load()
+	if err != nil || !ok || cfg.Sink != "https://lore.example.com" {
+		t.Fatalf("the agent's root was not enrolled: %+v %v %v\n%s", cfg, ok, err, out)
+	}
+	if _, err := os.Lstat(filepath.Join(home, ".local", "bin", "bay")); err != nil {
+		t.Fatalf("no link on the user's PATH: %v", err)
+	}
+}

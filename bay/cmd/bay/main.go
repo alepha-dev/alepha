@@ -134,10 +134,12 @@ func main() {
 	var err error
 	// `serve` binds the socket; for every other command it is the one thing to
 	// resolve, and the few that are no client of the control API ignore it.
-	if os.Args[1] != "serve" {
+	if os.Args[1] != "serve" && os.Args[1] != "agent" {
 		readControlFlag(os.Args[2:])
 	}
 	switch os.Args[1] {
+	case "agent":
+		err = cmdAgent(os.Args[2:])
 	case "serve":
 		err = cmdServe(os.Args[2:])
 	case "deploy":
@@ -271,6 +273,11 @@ func usageText() string {
               [--control-socket PATH] [--control-group %s]
               [--backup-interval %s]   # 0 disables; needs "bay config s3"
               [--keep-releases %d]   # per app; min 2, the serving one is always kept
+  bay agent   [--root DIR]
+              # Monitor only: reports CPU, memory and disk to Lore and runs no
+              # command. No listener, no Docker, no root needed; the root
+              # defaults to ~/.local/state/bay for a plain user. Enrol it with
+              # "bay connector set --root DIR <lore-url> <secret>".
   bay deploy  (<app.tar.zst>|-) [--name NAME] [--env ENV] [--domain HOST]...
               [--secrets-file PATH]
               # --secrets-file names a 0600 file of KEY=VALUE lines holding the
@@ -439,7 +446,7 @@ func usageText() string {
   bay connector show              # sink, host, connection state; never the secret
   bay connector clear             # forget the sink and the secret: dials nobody
 
-Every command except "serve", "doctor", "version", "connector" and "stack exec"
+Every command except "serve", "agent", "doctor", "version", "connector" and "stack exec"
 is a thin client of the control API. There is no second code path.
 
 That API listens on a unix socket and nothing else. It deploys code, and a stack
