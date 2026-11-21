@@ -233,7 +233,9 @@ const Conversation = (props: ConversationProps) => {
   return (
     <section
       aria-label={room.name}
-      className="flex h-full min-h-0 flex-col"
+      // The room on the page's own background (#Q4057), where a message's
+      // hover tint shows; the composer is a band of its own below.
+      className="bg-background flex h-full min-h-0 flex-col"
       data-testid="chat-conversation"
     >
       <header className="flex h-[46px] shrink-0 items-center gap-2 border-b pr-2.5 pl-3">
@@ -302,40 +304,46 @@ const Conversation = (props: ConversationProps) => {
           <ul>{rows}</ul>
         </div>
       </div>
-      {room.archivedAt ? (
-        <p className="text-muted-foreground bg-muted border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
-          {tr("chat.room.archivedNotice")}
-        </p>
-      ) : props.canWrite ? (
-        <ChatComposer
-          room={room}
-          candidates={props.candidates}
-          onSend={props.onSend}
-          onUpload={props.onUpload}
-          onTyping={props.onTyping}
-        />
-      ) : (
-        <p className="text-muted-foreground bg-muted border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
-          {tr("chat.room.readOnly")}
-        </p>
-      )}
-      {/* Under the bar, as on Discord: who is typing, else how to talk. */}
-      <div className="text-muted-foreground flex h-6 items-center px-[18px] text-[11px]">
-        <span aria-live="polite" data-testid="chat-typing">
-          {props.typing.length === 1
-            ? tr("chat.room.typing.one", {
-                args: [displayName(userById.get(props.typing[0]!))],
-              })
-            : props.typing.length > 1
-              ? tr("chat.room.typing.many", {
-                  args: [String(props.typing.length)],
+      {/* The composer's band (#Q4057): the chrome tint, the box white on it. */}
+      <div
+        className="bg-muted shrink-0 border-t pt-3"
+        data-testid="chat-composer-band"
+      >
+        {room.archivedAt ? (
+          <p className="text-muted-foreground bg-background border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
+            {tr("chat.room.archivedNotice")}
+          </p>
+        ) : props.canWrite ? (
+          <ChatComposer
+            room={room}
+            candidates={props.candidates}
+            onSend={props.onSend}
+            onUpload={props.onUpload}
+            onTyping={props.onTyping}
+          />
+        ) : (
+          <p className="text-muted-foreground bg-background border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
+            {tr("chat.room.readOnly")}
+          </p>
+        )}
+        {/* Under the bar, as on Discord: who is typing, else how to talk. */}
+        <div className="text-muted-foreground flex h-6 items-center px-[18px] text-[11px]">
+          <span aria-live="polite" data-testid="chat-typing">
+            {props.typing.length === 1
+              ? tr("chat.room.typing.one", {
+                  args: [displayName(userById.get(props.typing[0]!))],
                 })
-              : ""}
-        </span>
-        {props.typing.length === 0 &&
-          !room.archivedAt &&
-          props.canWrite &&
-          tr("chat.composer.hint")}
+              : props.typing.length > 1
+                ? tr("chat.room.typing.many", {
+                    args: [String(props.typing.length)],
+                  })
+                : ""}
+          </span>
+          {props.typing.length === 0 &&
+            !room.archivedAt &&
+            props.canWrite &&
+            tr("chat.composer.hint")}
+        </div>
       </div>
     </section>
   );

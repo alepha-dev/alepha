@@ -36,7 +36,11 @@ const RoomListRow = (props: RoomListRowProps) => {
         onClick={() => props.onOpen(room)}
         className={cn(
           "flex w-full items-start gap-2 rounded-md p-2 text-left",
-          props.selected ? "bg-accent" : "hover:bg-accent/50",
+          // On the list's tint (#Q4057): the open room is a lifted card,
+          // a hovered one half of it, both readable on either theme.
+          props.selected
+            ? "bg-background ring-foreground/10 shadow-xs ring-1"
+            : "hover:bg-background/70",
         )}
       >
         <span className="flex size-5 shrink-0 items-center justify-center">

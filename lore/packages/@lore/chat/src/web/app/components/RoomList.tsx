@@ -56,7 +56,9 @@ const RoomList = (props: RoomListProps) => {
   return (
     <nav
       aria-label={tr("chat.rooms.label")}
-      className="flex h-full min-h-0 flex-col px-2 pt-2.5"
+      // Its own surface (#Q4057): the chrome tint, so the list reads apart
+      // from the conversation on the page's background.
+      className="bg-muted flex h-full min-h-0 flex-col px-2 pt-2.5"
       data-testid="chat-room-list"
     >
       <div className="flex items-center gap-1.5 px-1 pt-1 pb-2">
