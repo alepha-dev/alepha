@@ -16,10 +16,9 @@ class TestMemoryLockProvider extends MemoryLockProvider {
 
 /**
  * Same shape as the cache eviction leak: `$lock` arms an expiry timer for the
- * whole `maxDuration` (5 minutes by default) on acquisition, and `gracePeriod`
- * re-arms one for a period meant to outlive the run entirely. Both callbacks
- * only `delete` an in-memory key, so refed they held the process open long
- * after its work was done.
+ * whole `maxDuration` (5 minutes by default) on acquisition, and a key written
+ * again with a new expiry re-arms it. The callback only deletes an in-memory
+ * key, so refed it held the process open long after its work was done.
  */
 describe("MemoryLockProvider expiry timers", () => {
   const create = async () => {
@@ -39,7 +38,7 @@ describe("MemoryLockProvider expiry timers", () => {
     expect(lock.timerOf("job").hasRef()).toBe(false);
   });
 
-  it("should not hold the event loop open for a grace period", async ({
+  it("should not hold the event loop open for a key written again with a longer expiry", async ({
     expect,
   }) => {
     const lock = await create();

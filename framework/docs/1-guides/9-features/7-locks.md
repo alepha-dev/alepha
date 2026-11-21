@@ -106,5 +106,8 @@ effect on queue or direct jobs, which rely on claiming a row instead. See
 | Hook             | Fires when                                                     | Payload                       |
 | ---------------- | -------------------------------------------------------------- | ----------------------------- |
 | `lock:acquired`  | A caller takes the lock.                                       | `name`, `id`, `maxDurationMs` |
-| `lock:released`  | The handler finished or threw.                                 | `name`, `id`, `heldMs`        |
+| `lock:released`  | The lock is let go, after the handler or a failed listener.    | `name`, `id`, `heldMs`        |
 | `lock:contended` | A caller found it held, whether or not it gets the lock later. | `name`, `id`                  |
+
+A `lock:acquired` listener that throws fails the call: the handler does not run,
+and the lock is released, with `lock:released` fired as for any other failure.

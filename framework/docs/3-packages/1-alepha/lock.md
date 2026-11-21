@@ -22,8 +22,8 @@ Resource locking for distributed systems.
 
 Set `REDIS_URL` and a lock held on one instance is held for all of them:
 each `$job` cron tick runs on one instance. Leave it unset and locks only
-exclude callers inside this process. An app's own `LockProvider` or
-`LockTopicProvider` substitution wins over both.
+exclude callers inside this process. An app's own `LockProvider`
+substitution wins over both.
 
 ## API Reference
 
@@ -33,6 +33,6 @@ exclude callers inside this process. An app's own `LockProvider` or
 
 ### Providers
 
-- [`LockProvider`](/docs/reference-providers-lockprovider) - Store Provider Interface
-- [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) - A simple in-memory store provider.
+- [`LockProvider`](/docs/reference-providers-lockprovider) - The contract a lock backend implements.
+- [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) - Locks held in this process's memory.
 - [`RedisLockProvider`](/docs/reference-providers-redislockprovider) - Locks over Redis `SET NX PX`.

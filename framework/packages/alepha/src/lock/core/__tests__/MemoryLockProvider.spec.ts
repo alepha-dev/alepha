@@ -2,31 +2,31 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { AlephaLock, LockProvider, MemoryLockProvider } from "alepha/lock";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   SharedLockProvider,
   testDelIfOwner,
   testLockBasic,
   testLockWait,
-} from "../__tests__/shared.ts";
+} from "./shared.ts";
 
 describe("MemoryLockProvider", () => {
   const Provider = SharedLockProvider;
 
-  test("should lock without waiting", async () => {
+  it("should lock without waiting", async () => {
     await testLockBasic(Provider);
   });
 
-  test("should lock and wait", async () => {
+  it("should let one caller at a time in when waiting", async () => {
     await testLockWait(Provider);
   });
 
-  test("delIfOwner only deletes the caller's own lock", async () => {
+  it("delIfOwner only deletes the caller's own lock", async () => {
     await testDelIfOwner(Provider);
   });
 
-  test("delIfOwner does not yield between the compare and the delete", async () => {
+  it("delIfOwner does not yield between the compare and the delete", async () => {
     const alepha = Alepha.create()
       .with({ provide: LockProvider, use: MemoryLockProvider })
       .with(AlephaLock);

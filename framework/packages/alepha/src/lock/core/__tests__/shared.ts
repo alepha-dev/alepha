@@ -81,7 +81,7 @@ export const testDelIfOwner = async (
   const key = `del-if-owner-${randomUUID()}`;
   await lock.set(key, "owner-1,2026-01-01T00:00:00Z", true, 30_000);
 
-  // Wrong owner: must be a no-op — a holder whose lock already expired must
+  // Wrong owner: must be a no-op, since a holder whose lock already expired must
   // not delete the next holder's lock.
   await lock.delIfOwner(key, "owner-2");
   expect(await lock.get(key)).toContain("owner-1");
@@ -95,6 +95,8 @@ export const testLockWait = async (
   provider: Service<LockProvider>,
 ): Promise<void> => {
   let count = 0;
+  let inside = 0;
+  let maxInside = 0;
 
   // One key per invocation, shared by the three apps below, so a run killed
   // mid-handler cannot leave a lock behind in the shared redis container.
@@ -107,15 +109,14 @@ export const testLockWait = async (
       use: [$lock({ name: lockName, wait: true })],
       handler: async () => {
         count++;
-        await this.dt.wait([500, "milliseconds"]);
+        inside++;
+        maxInside = Math.max(maxInside, inside);
+        // Longer than the 500 ms poll of `$lock`, so a waiter polls while a
+        // holder is still inside.
+        await this.dt.wait([700, "milliseconds"]);
+        inside--;
       },
     });
-
-    async migrate() {
-      const now = Date.now();
-      await this.migrateLock();
-      return Date.now() - now;
-    }
   }
 
   const createApp = async () => {
@@ -131,16 +132,17 @@ export const testLockWait = async (
   const app2 = await createApp();
   const app3 = await createApp();
 
-  const result = await Promise.all([
-    app1.migrate(),
-    app2.migrate(),
-    app3.migrate(),
+  await Promise.all([
+    app1.migrateLock(),
+    app2.migrateLock(),
+    app3.migrateLock(),
   ]);
 
-  expect(result[0]).toBeGreaterThanOrEqual(500);
-  expect(result[1]).toBeGreaterThanOrEqual(500);
-  expect(result[2]).toBeGreaterThanOrEqual(500);
+  // Mutual exclusion: the three calls start together, and no two handlers
+  // are ever inside at once.
+  expect(maxInside).toBe(1);
 
-  // All 3 apps should eventually execute (wait: true means queue, not skip)
+  // And nobody is refused: with `wait: true` a contended caller polls until
+  // the holder releases, so all three run.
   expect(count).toBe(3);
 };
