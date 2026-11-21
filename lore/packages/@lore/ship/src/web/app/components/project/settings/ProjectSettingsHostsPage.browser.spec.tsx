@@ -54,6 +54,10 @@ class HostLinks extends LinkProvider {
    * More home hosts, after the two every test has.
    */
   extraHome: object[] = [];
+  /**
+   * Lent hosts that are Agent hosts (#Q4065).
+   */
+  agents: string[] = [];
 
   override client(): any {
     return new Proxy(
@@ -67,7 +71,11 @@ class HostLinks extends LinkProvider {
                   items: [
                     lent(HOME_ID, "ovh-home", true),
                     lent(BORROWED_ID, "ovh-infra", false),
-                  ],
+                  ].map((host) =>
+                    this.agents.includes(host.id)
+                      ? { ...host, agentHost: true }
+                      : host,
+                  ),
                 };
               }
               if (action === "listHomeHosts") {
@@ -209,5 +217,48 @@ describe("ProjectSettingsHostsPage", () => {
         ?.querySelector('[data-testid="host-last-seen"]')?.textContent;
     expect(lastSeen("cf")).toBe("N/A");
     expect(lastSeen("spare")).toBe("never connected");
+  });
+
+  it("marks Agent hosts and the default one in Capabilities, with no card above the table (#Q4065)", async ({
+    expect,
+  }) => {
+    cleanup();
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: HostLinks })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    (alepha.inject(LinkProvider) as HostLinks).agents = [HOME_ID, BORROWED_ID];
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ id: 7, title: "Acme", slug: "acme" }),
+      defaultAgentHostId: BORROWED_ID,
+    });
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectSettingsHostsPage />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("host-agent")).toHaveLength(2),
+    );
+    const pill = (slug: string) =>
+      [...document.querySelectorAll("tbody tr")]
+        .find((row) => row.textContent?.includes(slug))
+        ?.querySelector('[data-testid="host-agent"]');
+    expect(pill("ovh-infra")?.textContent).toBe("agent, default");
+    expect(pill("ovh-infra")?.getAttribute("data-default")).toBe("true");
+    expect(pill("ovh-home")?.textContent).toBe("agent");
+    expect(pill("spare")).toBeFalsy();
+    expect(screen.queryByTestId("project-agent-host")).toBeNull();
+    expect(screen.queryByText("Default Agent host")).toBeNull();
   });
 });

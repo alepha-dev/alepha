@@ -3105,14 +3105,6 @@ export default {
   "hosts.agent.check": "Check now",
   "hosts.agent.credential.oauth": "OAuth token",
   "hosts.agent.credential.api_key": "API key",
-  "hosts.agent.default": "Default Agent host",
-  "hosts.agent.default.description":
-    "The Agent host this project's agent jobs run on. Without one, the agent buttons are hidden.",
-  "hosts.agent.default.none":
-    "No Agent host is available to this project: make one of its hosts an Agent host, or borrow one.",
-  "hosts.agent.default.label": "Agent host",
-  "hosts.agent.default.empty": "None",
-  "hosts.agent.default.save": "Save",
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
     "Written by someone outside the project's team. No agent works on it while the Agent host runs jobs as a host process; on a container host an agent only reads it.",
@@ -3133,6 +3125,15 @@ export default {
   "quest.untrusted.confirm": "Confirm its text",
   "quest.untrusted.confirm.description":
     "This quest was born of feedback written outside the team. Read its text, then confirm it: an agent works it only after a member did.",
+  "hosts.agent.pill": "agent",
+  "hosts.agent.pill.default": "agent, default",
+  "hosts.agent.makeDefault": "Make default Agent host",
+  "hosts.agent.clearDefault": "Clear default Agent host",
+  "hosts.agent.egress.action": "Hosts a push job may reach",
+  "hosts.agent.egress.save": "Save",
+  "hosts.agent.toast.default": "Default Agent host set",
+  "hosts.agent.toast.cleared":
+    "No default Agent host: the agent buttons are hidden",
   "hosts.agent.egress.label": "Hosts a push job may reach",
   "hosts.agent.egress.description":
     "Beyond Anthropic and Lore, enforced on a container Agent host. Empty: the npm and Yarn registries and GitHub. A leading dot covers every subdomain.",
