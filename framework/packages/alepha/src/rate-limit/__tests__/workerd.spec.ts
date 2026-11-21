@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,9 +12,12 @@ describe("$rateLimit on workerd", () => {
     expect,
   }) => {
     const dir = await mkdtemp(join(tmpdir(), "alepha-rate-limit-"));
+    // Under the checkout so the build resolves `alepha`, and under a name of
+    // its own so two runs on one checkout do not overwrite or delete each
+    // other's entry.
     const entry = join(
       process.cwd(),
-      "node_modules/.alepha/rate-limit-runtime.ts",
+      `node_modules/.alepha/rate-limit-runtime-${randomUUID()}.ts`,
     );
     await mkdir(join(process.cwd(), "node_modules/.alepha"), {
       recursive: true,

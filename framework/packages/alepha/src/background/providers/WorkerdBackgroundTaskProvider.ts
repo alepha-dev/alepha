@@ -36,7 +36,7 @@ export class WorkerdBackgroundTaskProvider extends BackgroundTaskProvider {
       // The runtime rejects waitUntil if called outside a request scope; the
       // promise still runs, just without the isolate-alive guarantee.
       this.log.debug(
-        "waitUntil rejected — falling back to fire-and-track",
+        "waitUntil rejected, falling back to fire-and-track",
         error as Error,
       );
     }

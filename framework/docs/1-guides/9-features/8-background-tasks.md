@@ -75,8 +75,12 @@ without the guarantee that the isolate waits for it.
 
 Tasks in flight are tracked. On `stop` the app waits for them, within the 8 seconds
 it gives all its stop hooks, and past that it gives up. A task deferred by another
-task during shutdown is not waited for. `flush()` waits for what is running at any
-other time, and never rejects:
+task is waited for too. A task that defers itself again every time would never let
+the wait end, so it stops after ten rounds of new tasks, with a warning.
+
+`flush()` waits the same way at any other time, ten rounds per call, and never
+rejects. On a server that keeps deferring tasks while it waits, it can use up its
+rounds and return with the latest ones still running:
 
 ```typescript check
 import { Alepha } from "alepha";

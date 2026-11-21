@@ -24,7 +24,8 @@ tick without a database.
 **Features:**
 
 - Cron expression scheduling (e.g., `0 0 * * *`)
-- Serverless cron dispatch via the `serverless:cron:triggered` hook (Cloudflare, generic)
+- Serverless cron dispatch: `cloudflare:scheduled` on Cloudflare Workers,
+  `serverless:cron:triggered` for an app's own entry point elsewhere
 
 For distributed locking and retries around scheduled work, use `$job({ cron })`
 from `alepha/api/jobs` - it layers durability on top of this scheduler.

@@ -6,9 +6,9 @@ import { RateLimitWindows } from "./services/RateLimitWindows.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/rateLimitWindow.ts";
 export * from "./interfaces/RateLimitInterfaces.ts";
 export * from "./primitives/$rateLimit.ts";
-export * from "./rateLimitWindow.ts";
 export * from "./services/RateLimitWindows.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

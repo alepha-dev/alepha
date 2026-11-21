@@ -1,7 +1,7 @@
 import { AlephaError } from "alepha";
 import { $actor } from "alepha/actor";
 
-import { rateLimitWindow } from "../rateLimitWindow.ts";
+import { rateLimitWindow } from "../atoms/rateLimitWindow.ts";
 
 /**
  * The one fixed-window actor every `$rateLimit` counts through, keyed

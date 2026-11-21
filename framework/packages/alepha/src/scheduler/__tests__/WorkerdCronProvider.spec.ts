@@ -1,10 +1,11 @@
 import { Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
 
 import { WorkerdCronProvider } from "../providers/WorkerdCronProvider.ts";
 
 describe("WorkerdCronProvider", () => {
-  // 2026-01-01T10:37:00.000Z — a fixed instant on an exact minute boundary
+  // 2026-01-01T10:37:00.000Z: a fixed instant on an exact minute boundary
   // (cron-schedule's matchDate requires seconds === 0 for 5-field
   // expressions) whose minute-of-hour is non-zero in every whole-minute
   // timezone, keeping the no-match case deterministic.
@@ -83,18 +84,67 @@ describe("WorkerdCronProvider", () => {
     await alepha.stop();
   });
 
+  it("should run the other matching jobs when one fails", async ({
+    expect,
+  }) => {
+    const { alepha, cron } = create();
+
+    let okCalls = 0;
+    cron.createCronJob("ko", "0 * * * *", async () => {
+      throw new AlephaError("nope");
+    });
+    cron.createCronJob("ok", "0 * * * *", async () => {
+      okCalls++;
+    });
+
+    await alepha.start();
+    await expect(
+      alepha.events.emit("cloudflare:scheduled", {
+        cron: "0 * * * *",
+        scheduledTime,
+      }),
+    ).resolves.toBeUndefined();
+    expect(okCalls).toBe(1);
+
+    await alepha.stop();
+  });
+
   it("should register jobs without an AbortController or timer loop", async ({
     expect,
   }) => {
     // Cloudflare Workers forbids creating an AbortController during global
-    // scope initialization — the override exists to avoid it.
-    const { cron } = create();
+    // scope initialization, which is when jobs register. The controller
+    // belongs to the timer loop, and no loop runs on workerd, not even for a
+    // job registered after start with `start: true`.
+    const { alepha, cron } = create();
+    const dt = alepha.inject(DateTimeProvider);
 
-    cron.createCronJob("shape", "0 * * * *", async () => {});
+    let calls = 0;
+    cron.createCronJob("shape", "* * * * *", async () => {
+      calls++;
+    });
+    expect(cron.getCronJobs().find((j) => j.name === "shape")?.abort).toBe(
+      undefined,
+    );
 
-    const job = cron.getCronJobs().find((j) => j.name === "shape");
-    expect(job?.abort).toBeUndefined();
-    expect(job?.loop).toBe(false);
+    await alepha.start();
+    cron.createCronJob(
+      "late",
+      "* * * * *",
+      async () => {
+        calls++;
+      },
+      true,
+    );
+    await dt.travel([2, "minute"]);
+
+    for (const job of cron.getCronJobs()) {
+      expect(job.abort).toBeUndefined();
+      expect(job.running).toBeFalsy();
+    }
+    expect(calls).toBe(0);
+
+    await alepha.stop();
   });
 
   it("should enforce name and expression validation like the base provider", async ({

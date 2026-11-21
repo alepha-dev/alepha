@@ -72,10 +72,14 @@ export class WebVitalsCollector {
    */
   protected lcpNotified = false;
 
+  protected readonly sink: Sink;
+  protected readonly onLcp?: () => void;
+  protected readonly currentPath: PathResolver;
+
   /**
    * @param sink receives each finalized metric.
    * @param onLcp runs once, when the first LCP entry arrives. This is a
-   *   *timing* signal, not a measurement — the value still goes to `sink` at
+   *   *timing* signal, not a measurement: the value still goes to `sink` at
    *   hidden, where it is final. A caller uses it to decide when the page has
    *   settled enough to talk to a server.
    * @param currentPath answers "which page is on screen right now". Supplied
@@ -84,10 +88,6 @@ export class WebVitalsCollector {
    *   reading `location` inside a `buffered: true` observer callback can land
    *   after a navigation the entry predates.
    */
-  protected readonly sink: Sink;
-  protected readonly onLcp?: () => void;
-  protected readonly currentPath: PathResolver;
-
   constructor(
     sink: Sink,
     onLcp?: () => void,
@@ -116,7 +116,7 @@ export class WebVitalsCollector {
   /**
    * Emits a metric, at most once per metric AND path.
    *
-   * The guard is not defensive tidying — two of the three callers fired twice
+   * The guard is not defensive tidying: two of the three callers fired twice
    * in production. `ttfb` arrived on every page view as two identical samples
    * milliseconds apart: `safeObserve` registers with `buffered: true`, and the
    * navigation entry is delivered both from the buffer and again when the
@@ -126,7 +126,7 @@ export class WebVitalsCollector {
    *
    * Dropping the later report rather than replacing the earlier one is the
    * right way round for a sink that buckets samples into a histogram: a second
-   * sample is a second page, so a duplicate does not shift the percentile — it
+   * sample is a second page, so a duplicate does not shift the percentile, it
    * inflates the population that the percentile is computed over, and one
    * visitor starts counting as two. Reporting `cls` only at the first hidden
    * does forfeit shift that accrues after a return to the tab; that is the
@@ -151,7 +151,7 @@ export class WebVitalsCollector {
   /**
    * Wire PerformanceObserver entry types. Guarded: no-op outside the browser
    * or when PerformanceObserver is missing. CLS + INP accumulate and are
-   * finalized on visibilitychange→hidden.
+   * finalized when the page is hidden.
    */
   public observe() {
     if (
@@ -182,6 +182,10 @@ export class WebVitalsCollector {
     // running total across a visit would attribute one page's jumpiness to
     // every other page the visitor went on to read.
     const cls = new Map<string, number>();
+    // Whether this browser measures layout shift at all. Observing a type it
+    // does not have is ignored without a word, so asking is the only way to
+    // tell "nothing shifted" from "nothing can be seen".
+    const clsMeasured = this.supports("layout-shift");
     this.safeObserve<LayoutShiftEntry>("layout-shift", (entries) => {
       for (const e of entries) {
         if (e.hadRecentInput) continue;
@@ -202,8 +206,8 @@ export class WebVitalsCollector {
       }
     });
 
-    // TTFB: navigation entry responseStart. Delivered twice — once from the
-    // buffer, once on dispatch — so `report` deduplicates it.
+    // TTFB: navigation entry responseStart. Delivered twice (once from the
+    // buffer, once on dispatch), so `report` deduplicates it.
     this.safeObserve<PerformanceNavigationTiming>("navigation", (entries) => {
       const nav = entries[0];
       if (nav?.responseStart) this.report("ttfb", nav.responseStart);
@@ -216,14 +220,24 @@ export class WebVitalsCollector {
       if (this.lcp) this.report("lcp", this.lcp, this.lcpPath);
       // Zero shift is a result, so a path with no entries at all still reports
       // one - but only the current one: a page nothing shifted on and nobody
-      // is looking at any more has nothing to say.
-      if (!cls.has(this.currentPath())) cls.set(this.currentPath(), 0);
+      // is looking at any more has nothing to say. And only where shift is
+      // measured: elsewhere a zero would be a score nobody took.
+      if (clsMeasured && !cls.has(this.currentPath()))
+        cls.set(this.currentPath(), 0);
       for (const [path, value] of cls) this.report("cls", value, path);
       for (const [path, value] of inp) {
         if (value) this.report("inp", value, path);
       }
     };
     document.addEventListener("visibilitychange", finalize);
+  }
+
+  /**
+   * Whether the browser dispatches entries of `type`. A browser too old to
+   * say (no `supportedEntryTypes`) is taken as not supporting it.
+   */
+  protected supports(type: string): boolean {
+    return PerformanceObserver.supportedEntryTypes?.includes(type) ?? false;
   }
 
   protected safeObserve<T extends PerformanceEntry>(
@@ -246,7 +260,7 @@ export class WebVitalsCollector {
         ...(type === "event" ? { durationThreshold: 16 } : {}),
       } satisfies ObserverInit);
     } catch {
-      /* entry type unsupported in this browser — skip */
+      /* entry type unsupported in this browser: skip */
     }
   }
 }
