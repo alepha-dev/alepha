@@ -1,6 +1,6 @@
 import { $module } from "alepha";
 import { PasskeyClient } from "alepha/react/auth";
-import { AlephaReactI18n } from "alepha/react/i18n";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 
 import { AppRouter } from "./AppRouter.tsx";
@@ -25,4 +25,11 @@ export const UiWeb = $module({
    * render. Listing the class brings its module in at boot.
    */
   services: [AppRouter, ShowcaseSettings, UiI18n, UiThemes, PasskeyClient],
+  register: (alepha) => {
+    // The showcase is English for every visitor. Arabic is declared for its
+    // direction and formats (`UiI18n`), and must stay a language one asks
+    // for, by the `lang` cookie or the picker, never one a browser's
+    // `Accept-Language` is given.
+    alepha.inject(I18nProvider).options.autoDetect = false;
+  },
 });

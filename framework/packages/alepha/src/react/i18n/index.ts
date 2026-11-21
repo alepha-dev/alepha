@@ -42,7 +42,7 @@ export const AlephaReactI18n = $module({
   name: "alepha.react.i18n",
   primitives: [$dictionary],
   services: [I18nProvider],
-  // Registering the atom is what makes the resolved language reach the browser —
+  // Registering the atom is what makes the resolved language reach the browser:
   // see `langAtom` for why the server's choice was previously lost.
   atoms: [langAtom],
 });

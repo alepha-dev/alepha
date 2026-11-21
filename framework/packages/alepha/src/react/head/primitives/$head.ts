@@ -30,7 +30,7 @@ export class HeadPrimitive extends Primitive<HeadPrimitiveOptions> {
       this.provider.afterPages.push(this.options.afterPages);
       return;
     }
-    this.provider.global = [...(this.provider.global ?? []), this.options];
+    this.provider.global = [...this.provider.global, this.options];
   }
 }
 

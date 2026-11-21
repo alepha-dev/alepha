@@ -333,6 +333,12 @@ Switch the current language. On the browser, this:
 2. Sets a `lang` cookie (persists for 1 year)
 3. Updates the store, causing all `useI18n` consumers to re-render
 
+The last call wins: when two switches overlap, the language asked for last is the
+one that lands, whichever dictionary finishes loading last. A switch whose
+dictionary fails to load rejects and changes nothing. The page's `<title>`
+and meta tags are filled again in the new language, with the page's own head still
+over the global one.
+
 ```typescript
 setLang("fr");
 ```
@@ -420,9 +426,9 @@ SSR renders use the correct language. The priority is:
 flowchart TD
   A[Incoming request] --> B{Prefix routing on and the URL carries a language?}
   B -->|yes| L1[That language]
-  B -->|no| C{lang cookie set?}
+  B -->|no| C{lang cookie names a registered language?}
   C -->|yes| L2[The cookie's language]
-  C -->|no| D{autoDetect and Accept-Language registered?}
+  C -->|no| D{autoDetect and Accept-Language lists a registered language?}
   D -->|yes| L3[The detected language]
   D -->|no| L4[fallbackLang]
 ```
@@ -433,10 +439,33 @@ wins over everything else. Otherwise:
 1. The `lang` cookie value (set by `setLang`) - a manually-selected language
    always wins.
 2. The `Accept-Language` request header - used only for first-time visitors
-   (no cookie), and only when the detected language is actually registered. A
-   region-qualified header like `fr-FR` matches an exact registration first,
-   then its base language (`fr`).
+   (no cookie). The whole list is read, by descending `q` then in the order
+   sent, and the first entry naming a registered language wins: with `en` and
+   `fr` registered, `de-CH,fr-CH;q=0.9,en;q=0.8` gives `fr`. An entry matches
+   an exact registration first, then is cut one subtag at a time (`zh-Hant-TW`,
+   `zh-Hant`, `zh`). Case is ignored.
 3. The configured fallback language (`"en"` by default).
+
+The result is always a registered language, or the fallback. The cookie, the
+header and the URL are the visitor's to write, so a value that names no
+registered language is ignored: a `lang` cookie of `en_US`, or of a language the
+app has no dictionary for, counts as no cookie, on the server and when the
+browser boots. An app with no dictionary at all therefore always resolves a
+request to `fallbackLang`.
+
+A language is declared by a dictionary, and by nothing else. One you use only
+for its direction (`<html dir="rtl">`) and its date and number formats, with no
+translation yet, still needs one, which can be empty: every key then falls back
+to the fallback language.
+
+```typescript
+class AppI18n {
+  en = $dictionary({ lazy: () => import("./translations/en.ts") });
+  // Declared with no string of its own: Arabic direction and formats,
+  // English text.
+  ar = $dictionary({ lazy: async () => ({ default: {} }) });
+}
+```
 
 Because the cookie takes precedence, autodetection never overrides a choice the
 user made explicitly. To always start in the fallback language regardless of the

@@ -11,7 +11,7 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  * The language the server resolved has to reach the browser.
  *
  * It did not. `alepha.react.i18n.lang` was a plain `State` key, and hydration
- * serializes only `store.exportAtoms()` — so the server detected a language from
+ * serializes only `store.exportAtoms()`, so the server detected a language from
  * `Accept-Language`, rendered in it, and told the client nothing. The client then
  * looked for the `lang` cookie (absent on a first visit, because the cookie is
  * only written when somebody *chooses* a language), found none, and started from
@@ -21,7 +21,7 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  * language and repainting in another: `lang="en"` in the markup, French in the
  * DOM, React error #418 in the console. Every visitor arriving from a link or a
  * search engine got it, and nobody whose browser asked for the fallback language
- * ever saw it — which is why it survived a full e2e suite and was only caught by
+ * ever saw it, which is why it survived a full e2e suite and was only caught by
  * looking at the deployed site.
  *
  * These assertions are on the export, not on a browser: what hydration carries is
@@ -50,7 +50,7 @@ describe("i18n language hydration", () => {
 
   /**
    * Choosing a language writes the `lang` cookie from the BROWSER, and every
-   * later request resolves it on the SERVER — so the two sides have to agree on
+   * later request resolves it on the SERVER, so the two sides have to agree on
    * the cookie's name.
    *
    * They did not. The server namespaces cookie names with `alepha.name`, the
@@ -58,7 +58,7 @@ describe("i18n language hydration", () => {
    * hydrated), so the
    * browser wrote `lang` while the server looked for `myapp.lang`. An explicit
    * choice never survived a page load: SSR kept rendering in the
-   * `Accept-Language` language and the browser repainted to the chosen one —
+   * `Accept-Language` language and the browser repainted to the chosen one,
    * the same hydration mismatch the cookie exists to prevent. The cookie now
    * declares `prefix: false`, which is what that option is for.
    */

@@ -50,7 +50,7 @@ const getSystemDark = () => matchDark()?.matches ?? false;
 
 const useResolvedColorMode = (mode: ColorMode): ResolvedColorMode => {
   // The server snapshot is `false`, which React also uses for the client's
-  // hydration render — `window.matchMedia` is client-only, so reading it there
+  // hydration render: `window.matchMedia` is client-only, so reading it there
   // would make the first client render disagree with the server for
   // `mode === "system"` (server resolves "light", a dark-OS client resolves
   // "dark"), tripping a React hydration mismatch (#418) on any SSR'd page that

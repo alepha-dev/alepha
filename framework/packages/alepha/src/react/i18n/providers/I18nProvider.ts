@@ -51,9 +51,9 @@ export class I18nProvider<
 
   /**
    * `prefix: false` because this cookie is written by the BROWSER (`setLang`)
-   * and read by the SERVER (`onRender`). The server namespaces cookie names
-   * with `alepha.name`; the browser cannot — the server's runtime `APP_NAME`
-   * is neither baked into the client bundle nor hydrated — so a prefixed
+   * and read by the SERVER (`onRequest`). The server namespaces cookie names
+   * with `alepha.name`; the browser cannot (the server's runtime `APP_NAME`
+   * is neither baked into the client bundle nor hydrated), so a prefixed
    * declaration had the browser
    * write `lang` while the server looked for `myapp.lang` and never found it.
    * Choosing a language then persisted client-side only: every full page load
@@ -64,7 +64,7 @@ export class I18nProvider<
    * host, different ports) also share their language preference. That is the
    * trade `AtomCookiePersistence` already makes, and it is benign here: an
    * unsigned, unencrypted user preference that means the same thing in both
-   * apps. The namespace still guards what it was introduced for —
+   * apps. The namespace still guards what it was introduced for:
    * `APP_SECRET`-encrypted cookies like the auth tokens, which are server-only
    * and stay prefixed.
    */
@@ -85,7 +85,7 @@ export class I18nProvider<
     /**
      * Whether {@link loader} has already run for this entry.
      *
-     * Deliberately NOT derived from `Object.keys(translations).length` — a
+     * Deliberately NOT derived from `Object.keys(translations).length`: a
      * dictionary that legitimately resolves to `{}` (an empty or
      * not-yet-populated catalog) would then read as "never loaded" forever,
      * re-invoking the loader on every single switch to that language.
@@ -131,7 +131,7 @@ export class I18nProvider<
      * `["/admin", "/account"]` keeps those subtrees on one URL.
      *
      * Inside an excluded subtree, language behaves exactly as it does under
-     * `routing: "none"` — chosen through the cookie, not the URL — because
+     * `routing: "none"` (chosen through the cookie, not the URL), because
      * there is no prefix left to carry it.
      */
     routingExclude: [],
@@ -139,7 +139,7 @@ export class I18nProvider<
 
   /**
    * Lazily-resolved locale-prefix router integration. Present only when both
-   * the router module is registered AND `routing: "prefix"` was configured —
+   * the router module is registered AND `routing: "prefix"` was configured:
    * otherwise i18n stays fully standalone.
    */
   protected localeProviderResolved = false;
@@ -154,8 +154,41 @@ export class I18nProvider<
     return this.localeProviderRef;
   }
 
-  protected dateFormatRef?: Intl.DateTimeFormat;
-  protected numberFormatRef?: Intl.NumberFormat;
+  /**
+   * One formatter per language, for the same reason as {@link pluralRules}:
+   * one provider serves every request, and a single cached instance gave
+   * every later request the format of the first one's language.
+   */
+  protected dateFormats = new Map<string, Intl.DateTimeFormat>();
+  protected numberFormats = new Map<string, Intl.NumberFormat>();
+
+  /**
+   * The language `Intl` is given for a language value: the value itself when
+   * `Intl` accepts it, else the fallback language, else `en`. The active
+   * language can be anything `setLang` was handed, and a tag `Intl` refuses
+   * (`en_US`) throws a RangeError from every formatter: `l()` never throws
+   * on a language.
+   */
+  protected intlLangs = new Map<string, string>();
+
+  protected get intlLang(): string {
+    const lang = this.lang;
+    let supported = this.intlLangs.get(lang);
+    if (supported === undefined) {
+      supported = "en";
+      for (const candidate of [lang, this.fallbackLang]) {
+        try {
+          Intl.getCanonicalLocales(candidate);
+          supported = candidate;
+          break;
+        } catch {
+          // Not a language tag (a RangeError): the next candidate.
+        }
+      }
+      this.intlLangs.set(lang, supported);
+    }
+    return supported;
+  }
 
   /**
    * ⚠️ Built on first use, never at construction.
@@ -169,28 +202,36 @@ export class I18nProvider<
    * process it is paid once and invisible; on a Worker an isolate serves a
    * handful of requests, so it was being paid again and again.
    *
-   * `refreshLocale` drops both so a language switch rebuilds them, which is
-   * what the two assignments it used to make were for.
+   * Both answer for the active language: the request's on the server.
    */
   public get dateFormat(): { format: (value: Date) => string } {
-    this.dateFormatRef ??= new Intl.DateTimeFormat(this.lang);
-    return this.dateFormatRef;
+    const lang = this.intlLang;
+    let format = this.dateFormats.get(lang);
+    if (!format) {
+      format = new Intl.DateTimeFormat(lang);
+      this.dateFormats.set(lang, format);
+    }
+    return format;
   }
 
   public get numberFormat(): { format: (value: number) => string } {
-    this.numberFormatRef ??= new Intl.NumberFormat(this.lang);
-    return this.numberFormatRef;
+    const lang = this.intlLang;
+    let format = this.numberFormats.get(lang);
+    if (!format) {
+      format = new Intl.NumberFormat(lang);
+      this.numberFormats.set(lang, format);
+    }
+    return format;
   }
 
   /**
    * One `Intl.PluralRules` per language, built on first use.
    *
-   * A Map and not a single cached instance in the manner of `numberFormatRef`:
-   * this provider is one instance for every request while the language is per
+   * A Map and not a single cached instance: this provider is one instance for every request while the language is per
    * request, and the language here is the ENTRY's, not the active one, so one
    * render can need two. `null` records a language `Intl` refused, so a bad
    * tag is tried once. The keys are dictionary languages, which are the
-   * developer's, never a request's raw `lang` cookie.
+   * developer's.
    */
   protected pluralRules = new Map<string, Intl.PluralRules | null>();
 
@@ -246,7 +287,11 @@ export class I18nProvider<
     },
   });
 
-  protected readonly onRender = $hook({
+  /**
+   * Resolves the language of every request, rendered or not: an action
+   * formats and translates in it too.
+   */
+  protected readonly onRequest = $hook({
     on: "server:request:before",
     priority: "last",
     handler: async ({ request }) => {
@@ -254,7 +299,9 @@ export class I18nProvider<
         "alepha.react.i18n.lang",
         this.resolveRequestLang(
           this.cookie.get(request),
-          request.language,
+          // The whole header, not `request.language` (its first tag): the
+          // list is negotiated against the declared languages.
+          request.headers["accept-language"],
           this.detectUrlLocale(request.url?.pathname),
         ),
       );
@@ -272,7 +319,7 @@ export class I18nProvider<
       const { locale, pathname: canonical } = localeProvider.detect(pathname);
       // An excluded subtree has no prefix to read, and `detect` reports the
       // default locale for any unprefixed path. Returning that would make the
-      // URL "say" the default language and win over the cookie — pinning
+      // URL "say" the default language and win over the cookie, pinning
       // `/admin` to `fallbackLang` and making the language switch there look
       // dead. `undefined` hands the decision back to cookie /
       // `Accept-Language`, which is the whole point of excluding it.
@@ -286,7 +333,8 @@ export class I18nProvider<
 
   /**
    * Resolves the UI language for an incoming server request: the URL prefix,
-   * then the `lang` cookie, then `Accept-Language`, then `fallbackLang`. See
+   * then the `lang` cookie, then `Accept-Language` (`headerLang`, the header's
+   * value), then `fallbackLang`, and always a declared language. See
    * {@link RequestLangResolver.resolve}, which the generated Cloudflare
    * worker also runs before the app boots (#E78).
    */
@@ -298,7 +346,7 @@ export class I18nProvider<
     return RequestLangResolver.resolve({
       urlLocale,
       cookieLang,
-      headerLang,
+      headerLang: RequestLangResolver.fromHeader(headerLang),
       languages: this.languages,
       fallbackLang: this.fallbackLang,
       autoDetect: this.options.autoDetect,
@@ -358,8 +406,10 @@ export class I18nProvider<
           );
 
         if (!urlCarriesLang) {
+          // Only a declared language: the cookie is unprefixed, so another
+          // app on the host may have written it, with a value of its own.
           const cookieLang = this.cookie.get();
-          if (cookieLang) {
+          if (cookieLang && this.languages.includes(cookieLang)) {
             this.alepha.store.set("alepha.react.i18n.lang", cookieLang);
           }
         }
@@ -386,10 +436,6 @@ export class I18nProvider<
   });
 
   protected refreshLocale() {
-    // Dropped rather than rebuilt: the next read of either getter builds it
-    // for the new language, and a boot that formats nothing builds neither.
-    this.numberFormatRef = undefined;
-    this.dateFormatRef = undefined;
     this.dateTimeProvider.setLocale(this.lang);
 
     // Re-apply the global head so `<html lang>` follows the switch. Nothing
@@ -406,9 +452,14 @@ export class I18nProvider<
   /**
    * Activates a language: lazily loads its dictionaries (browser), updates the
    * lang state, and refreshes the locale-bound formatters. Does NOT persist a
-   * cookie or navigate — that is the caller's concern.
+   * cookie or navigate: that is the caller's concern. Resolves `false` when a
+   * later activation has already landed, in which case this one changes
+   * nothing. Rejects when its dictionary fails to load, and then counts for
+   * nothing: the language in force stays, and an earlier activation still
+   * loading may land.
    */
-  protected applyLang = async (lang: string) => {
+  protected applyLang = async (lang: string): Promise<boolean> => {
+    const turn = ++this.langTurn;
     if (this.alepha.isBrowser()) {
       for (const item of this.registry) {
         if (lang === item.lang && !item.loaded) {
@@ -418,9 +469,27 @@ export class I18nProvider<
       }
     }
 
+    // A later call landed while this one's dictionary loaded: it is the
+    // language asked for, and this one must not land over it. Compared with
+    // what LANDED, not with what was asked: a later call whose load failed
+    // took nothing from this one.
+    if (turn < this.langLanded) {
+      return false;
+    }
+    this.langLanded = turn;
+
     this.alepha.store.set("alepha.react.i18n.lang", lang);
     this.refreshLocale();
+    return true;
   };
+
+  /**
+   * Counts the language activations, and remembers the latest one that
+   * landed, so each can tell once its dictionary has loaded whether a later
+   * one is already in force.
+   */
+  protected langTurn = 0;
+  protected langLanded = 0;
 
   public setLang = async (lang: string) => {
     const localeProvider = this.localeProvider;
@@ -433,8 +502,8 @@ export class I18nProvider<
       const router = this.alepha.inject(ReactRouter);
       const canonical = localeProvider.detect(router.pathname).pathname;
       // Excluded subtrees fall through to the cookie branch below. Navigating
-      // would be a no-op here — `withPrefix` returns the path unchanged, so
-      // `push` would re-enter the same URL and nothing would change language —
+      // would be a no-op here (`withPrefix` returns the path unchanged, so
+      // `push` would re-enter the same URL and nothing would change language),
       // and the cookie is the only thing left that can carry the choice.
       if (!localeProvider.isExcluded(canonical)) {
         await router.push(localeProvider.withPrefix(canonical, lang));
@@ -442,8 +511,8 @@ export class I18nProvider<
       }
     }
 
-    await this.applyLang(lang);
-    if (this.alepha.isBrowser()) {
+    const applied = await this.applyLang(lang);
+    if (applied && this.alepha.isBrowser()) {
       this.cookie.set(lang);
     }
   };
@@ -478,7 +547,7 @@ export class I18nProvider<
         // No re-notify here. `EventManager.emit` awaits its handlers in
         // registration order and this provider registers during `start`, so
         // every React subscriber of the lang atom is notified *after* the
-        // loader above has resolved — they already render the loaded
+        // loader above has resolved: they already render the loaded
         // dictionary. The re-set that used to live here wrote back the same
         // lang value, which `StateManager.set` drops on its equality
         // short-circuit: it emitted nothing and was pure dead code.
@@ -543,9 +612,13 @@ export class I18nProvider<
         const entry = item.translations[key];
         // A plain object inherits `constructor` and friends: only a string or
         // a variant object is an entry, and an empty string is a missing one.
+        // So is an object with no `other` (a nested catalog loaded at
+        // runtime, which the type forbids and no loader checks).
         if (
           (typeof entry === "string" && entry) ||
-          (typeof entry === "object" && entry !== null)
+          (typeof entry === "object" &&
+            entry !== null &&
+            typeof entry.other === "string")
         ) {
           return { entry, lang };
         }
@@ -560,7 +633,7 @@ export class I18nProvider<
   ): string => {
     // Handle numbers
     if (typeof value === "number" && !options.date) {
-      return new Intl.NumberFormat(this.lang, options.number).format(value);
+      return new Intl.NumberFormat(this.intlLang, options.number).format(value);
     }
 
     // Handle dates
@@ -596,7 +669,7 @@ export class I18nProvider<
       // format using Intl.DateTimeFormatOptions
       if (options.date) {
         return new Intl.DateTimeFormat(
-          this.lang,
+          this.intlLang,
           options.timezone
             ? { ...options.date, timeZone: options.timezone }
             : options.date,
@@ -605,13 +678,13 @@ export class I18nProvider<
 
       // default formatting with timezone
       if (options.timezone) {
-        return new Intl.DateTimeFormat(this.lang, {
+        return new Intl.DateTimeFormat(this.intlLang, {
           timeZone: options.timezone,
         }).format(dt.toDate());
       }
 
       // default formatting
-      return new Intl.DateTimeFormat(this.lang).format(dt.toDate());
+      return new Intl.DateTimeFormat(this.intlLang).format(dt.toDate());
     }
 
     // handle Zod errors

@@ -11,10 +11,11 @@ import { expect, test } from "./fixtures.ts";
  * left-to-right run is the control group, so a position that is wrong in
  * both directions fails here rather than passing as "unchanged".
  *
- * No catalog of the showcase is right-to-left (they are English and French),
- * so the spec brings its own language: a `lang=ar` cookie. The server takes
- * the cookie as the request's language, writes `<html lang="ar" dir="rtl">`,
- * and the strings fall back to English, which is all a measurement needs.
+ * The showcase declares Arabic with an empty catalog (`UiI18n`), and the spec
+ * asks for it with a `lang=ar` cookie. The server takes the cookie as the
+ * request's language because the app declares it, writes
+ * `<html lang="ar" dir="rtl">`, and the strings fall back to English, which
+ * is all a measurement needs.
  */
 
 const box = async (locator: Locator) => {

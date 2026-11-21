@@ -340,7 +340,6 @@ describe("<Localize/>", () => {
       const formatted = render(
         <Localize value={date} timezone="Europe/Paris" date="LLL" />,
       );
-      console.log(formatted);
       expect(formatted).toContain("septembre");
       expect(formatted).toContain("2024");
       expect(formatted).toContain("14:00");

@@ -6,7 +6,9 @@
  * @module alepha.react.intro
  */
 export type {
+  GettingStartedProps,
   GettingStartedSlide,
   GettingStartedStep,
+  GettingStartedWelcome,
 } from "./components/GettingStarted.tsx";
 export { default as GettingStarted } from "./components/GettingStarted.tsx";

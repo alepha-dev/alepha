@@ -1,7 +1,7 @@
 import { $dictionary } from "alepha/react/i18n";
 
 /**
- * English only, and deliberately thin.
+ * English only for its strings, and deliberately thin.
  *
  * `AlephaReactI18n` is not optional for `@alepha/ui` - the components resolve
  * their built-in strings through the global `tr()` lookup, and without the
@@ -14,7 +14,18 @@ export class UiI18n {
     lazy: async () => ({
       default: {
         "language.en": "English",
+        "language.ar": "العربية",
       },
     }),
+  });
+
+  /**
+   * Arabic, declared with no string of its own: every key falls back to
+   * English. The showcase needs it for what a language brings besides text,
+   * `<html dir="rtl">` and its formats, and a request's language is only ever
+   * a declared one (`e2e/rtl.spec.ts` asks for it with a `lang` cookie).
+   */
+  ar = $dictionary({
+    lazy: async () => ({ default: {} }),
   });
 }

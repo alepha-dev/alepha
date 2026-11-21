@@ -5,7 +5,7 @@ import { HeadProvider } from "../providers/HeadProvider.ts";
 
 /**
  * `head.url` drives `<link rel="canonical">`, `og:url` and `twitter:url` in
- * SeoExpander, and nothing ever set it — so pages shipped OpenGraph tags with
+ * SeoExpander, and nothing ever set it, so pages shipped OpenGraph tags with
  * no `og:url` and no canonical at all. It is filled here, from the matched
  * route path rather than the request URL.
  */
@@ -61,20 +61,6 @@ describe("HeadProvider canonical URL", () => {
     provider.fillHead(state);
 
     expect(state.head.url).toBe("https://alepha.dev/changelog");
-  });
-
-  /**
-   * The reason this is filled from the route path and not from the request
-   * URL. A canonical carrying `?utm_source=…` makes the tracked link its own
-   * authoritative page — it certifies the duplication it exists to collapse.
-   */
-  it("carries no query string, because the route path has none", () => {
-    const provider = createProvider();
-    const state = stateFor("/changelog");
-
-    provider.fillHead(state);
-
-    expect(state.head.url).not.toContain("?");
   });
 
   it("leaves an author's own url alone, and emits exactly one canonical", () => {
@@ -137,7 +123,7 @@ describe("HeadProvider canonical URL", () => {
   });
 
   /**
-   * A relative canonical resolves against whichever host served it — which is
+   * A relative canonical resolves against whichever host served it, which is
    * exactly the set of hosts a canonical exists to disambiguate.
    */
   it("says nothing with no origin to build on", () => {

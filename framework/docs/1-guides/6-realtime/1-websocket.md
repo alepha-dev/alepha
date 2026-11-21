@@ -230,7 +230,7 @@ With no `roomId(s)`, `userId(s)` or `connectionId(s)` at all, `emit()` on Node b
 
 ## Client
 
-`useRoom` is the React hook for connecting to a room. Multiple `useRoom` calls on the same channel share a single underlying WebSocket connection.
+`useRoom` is the React hook for connecting to a room. Multiple `useRoom` calls on the same channel share a single underlying WebSocket connection, built from the options of the first one: `url` and the reconnect options of a later hook on that channel are ignored.
 
 ```tsx
 import { useInject } from "alepha/react";
@@ -263,7 +263,7 @@ function Chat() {
 }
 ```
 
-`useRoom` returns `{ send, isConnected, isConnecting, isError, error, reconnect, disconnect }`. On the server (SSR), it no-ops safely. `send` called while the socket is down does not throw: the message is queued, up to 1000 with the oldest dropped first, and flushed once the connection opens. A message that fails the schema throws either way.
+`useRoom` returns `{ send, isConnected, isConnecting, isError, error, reconnect, disconnect }`. On the server (SSR), it no-ops safely. `disconnect()` ends this hook's subscription (and closes the connection when it was the last one): `isConnected` turns false, and `send` then rejects until `reconnect()` subscribes again. `send` called while the socket is down does not throw: the message is queued, up to 1000 with the oldest dropped first, and flushed once the connection opens. A message that fails the schema throws either way.
 
 Besides `roomId`, `channel` and `handler`, `useRoom` takes `url`, `autoReconnect`, `reconnectInterval`, `maxReconnectAttempts`, `maxReconnectInterval` and the callbacks `onConnect`, `onDisconnect` and `onError`.
 

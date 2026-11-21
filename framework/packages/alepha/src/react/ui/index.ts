@@ -33,8 +33,10 @@ declare module "alepha" {
  * Persisted UI state: color mode, theme palette, vision mode (colour-blind
  * palette), sidebar collapsed state.
  *
- * Backed by an `alepha-ui` cookie so preferences survive reloads and are
- * available during SSR (no flash of wrong theme).
+ * Backed by an `alepha-ui` cookie so preferences survive reloads. The server
+ * renders the same markup for every visitor, and an inline boot script paints
+ * the preferences from the cookie before first paint (no flash of wrong
+ * theme).
  *
  * @module alepha.react.ui
  */

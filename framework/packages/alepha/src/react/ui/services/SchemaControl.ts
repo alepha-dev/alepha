@@ -6,12 +6,12 @@ import type { FormModel } from "alepha/react/form";
  *
  * Two forms:
  *
- * 1. **Object** — static configuration baked into the schema:
+ * 1. **Object**: static configuration baked into the schema:
  *    ```ts
  *    z.string({ $control: { password: true, icon: "key" } })
  *    ```
  *
- * 2. **Function** — dynamic, computed from current form state:
+ * 2. **Function**: dynamic, computed from current form state:
  *    ```ts
  *    z.string({
  *      $control: ({ form, value }) => {
@@ -122,7 +122,7 @@ export interface SchemaControl {
   // ── Slots ─────────────────────────────────────────────────────────
   /**
    * Render before/after the field. Both receive the resolved input.
-   * Typed loosely — UI layer narrows to `ReactNode`.
+   * Typed loosely: UI layer narrows to `ReactNode`.
    */
   top?: unknown;
   bottom?: unknown;

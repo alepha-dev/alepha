@@ -43,9 +43,15 @@ visitor requests, with its layouts in front of it.
 | A layout (a page with children)                | No.                                       |
 | A path with a wildcard                         | No.                                       |
 | `/404`                                         | No.                                       |
+| A page behind a guard                          | No.                                       |
 
-There is no option to leave out one page, and a `$secure` page with no parameter
-is listed like any other.
+A page is left out when it, or a layout above it, has a guard in `use`: `$secure()`,
+or any middleware that declares the `protected` flag as `$secure` does. The flag is
+what is read, never the middleware's name, so a guard that does not declare it is
+not seen: a page behind `$basicAuth()` or `$owns()` alone, or behind a
+`$middleware({ path })` at the server router, is still listed. A `can` predicate
+does not leave a page out either: it hides a page from navigation and guards
+nothing. There is no option to leave out one more page.
 
 ## Pages with parameters
 
@@ -94,7 +100,8 @@ class AppRouter {
 
 ## What it writes
 
-A standard `urlset`, one `<url>` per entry, each with a `<loc>` and a `<lastmod>`.
+A standard `urlset`, one `<url>` per URL (a URL reached twice is listed once), each
+with a `<loc>` and a `<lastmod>`.
 `<lastmod>` is the date the sitemap was generated, the same for every URL: it says
 nothing about when a page changed.
 
@@ -112,7 +119,7 @@ class AppRouter {
 }
 ```
 
-Any host other than the canonical one answers `Disallow: /`, so a staging deploy or a `workers.dev` preview stays out of search engines without anyone remembering to. Canonical is `host`, else `PUBLIC_URL`. With neither, there is no host to compare and `isProduction()` decides, which reads `NODE_ENV`, so set one of the two.
+Any host other than the canonical one answers `Disallow: /`, so a staging deploy or a `workers.dev` preview stays out of search engines without anyone remembering to. Canonical is `host`, else `PUBLIC_URL`, with or without its scheme. With neither, there is no host to compare and `isProduction()` decides, which reads `NODE_ENV`, so set one of the two.
 
 `Sitemap:` is added only when a `$sitemap` exists and its URL is absolute, since the directive refuses a relative one.
 

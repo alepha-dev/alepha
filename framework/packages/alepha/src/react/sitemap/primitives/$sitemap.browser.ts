@@ -9,7 +9,7 @@ export type { SitemapPrimitiveOptions } from "./$sitemap.ts";
 /**
  * Browser variant of {@link $sitemap}.
  *
- * The sitemap is a server-only route — there is nothing to register in the
+ * The sitemap is a server-only route: there is nothing to register in the
  * client bundle, so this is a no-op primitive. It exists only to keep
  * `$sitemap()` valid as an isomorphic router field; the real implementation
  * lives in `$sitemap.ts` (server entry).
