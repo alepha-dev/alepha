@@ -1,6 +1,11 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 
+import {
+  type GitRefCommand,
+  GitReceivePack,
+} from "../services/GitReceivePack.ts";
 import {
   GitBackend,
   type GitBackendToken,
@@ -34,12 +39,24 @@ import {
  * {@link ArtifactsGitBackend.TOKEN_REUSE_MS}, minted for
  * {@link ArtifactsGitBackend.TOKEN_TTL_S}, with the remote beside it. The
  * cache is per isolate; a cold isolate mints once.
+ *
+ * ## The default branch only moves forward
+ *
+ * Artifacts takes a force-push on any branch and has no setting against it
+ * (#Q3953), and the Worker cannot tell a fast-forward from the ref commands
+ * alone: the new commits arrive in the pack. So a push that moves the
+ * default branch lands on `refs/lore/incoming/<uuid>` first, the ancestry is
+ * read back through the binding, and only a fast-forward moves the branch,
+ * by a command-only receive-pack that Artifacts itself refuses when the
+ * branch moved meanwhile ("stale ref"). See {@link ArtifactsGitBackend.guardedPush}.
  */
 export class ArtifactsGitBackend extends GitBackend {
   public readonly kind = "artifacts";
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly tokens = new Map<string, GitBackendToken>();
+  protected readonly receivePack = $inject(GitReceivePack);
+  protected readonly log = $logger();
 
   /**
    * The binding's name in the Worker's env.
@@ -343,11 +360,323 @@ export class ArtifactsGitBackend extends GitBackend {
   }
 
   /**
+   * Proxy the request to Artifacts ({@link ArtifactsGitBackend.proxy}),
+   * through {@link ArtifactsGitBackend.guardedPush} for a push that may move
+   * the default branch.
+   */
+  public async serve(ref: string, rpc: GitRpcRequest): Promise<GitRpcResponse> {
+    if (
+      rpc.service === "git-receive-pack" &&
+      !rpc.advertise &&
+      rpc.body &&
+      rpc.defaultBranch
+    ) {
+      return this.guardedPush(ref, rpc, rpc.defaultBranch);
+    }
+    return this.proxy(ref, rpc);
+  }
+
+  /**
+   * Where a push's update of the default branch waits for its ancestry
+   * check. Outside `refs/heads` and `refs/tags`, so no clone fetches it.
+   */
+  public static readonly INCOMING_PREFIX = "refs/lore/incoming/";
+
+  /**
+   * The most commits read one by one (`readCommit`) to prove a fast-forward
+   * the first `log` page did not: past it the push is refused, as unproven.
+   */
+  public static readonly MAX_COMMIT_READS = 2000;
+
+  /**
+   * How much older than the old tip a commit may be dated and still be
+   * walked: committer clocks drift, and the walk stops below this.
+   */
+  public static readonly CLOCK_SLOP_S = 24 * 60 * 60;
+
+  /**
+   * A packfile of no object: `PACK`, version 2, a count of 0, then the
+   * SHA-1 of those 12 bytes.
+   */
+  public static readonly EMPTY_PACK = new Uint8Array([
+    0x50, 0x41, 0x43, 0x4b, 0, 0, 0, 2, 0, 0, 0, 0, 0x02, 0x9d, 0x08, 0x82,
+    0x3b, 0xd8, 0xa8, 0xea, 0xb5, 0x10, 0xad, 0x6a, 0xc7, 0x5c, 0x82, 0x3c,
+    0xfd, 0x3e, 0xd3, 0x1e,
+  ]);
+
+  /**
+   * A receive-pack that may move the default branch (#Q3953).
+   *
+   * 1. The command for the default branch (neither a creation nor a
+   *    deletion) is forwarded as the creation of a ref under
+   *    {@link ArtifactsGitBackend.INCOMING_PREFIX}; the pack streams
+   *    through unchanged, and the client's report capabilities are kept,
+   *    `report-status-v2` read as `report-status`, whose lines it accepts.
+   * 2. Once Artifacts reports it `ok`, {@link ArtifactsGitBackend.isAncestor}
+   *    tells whether the old tip is an ancestor of the new one.
+   * 3. A fast-forward moves the branch from the old id to the new one and
+   *    deletes the incoming ref, in one command-only receive-pack; anything
+   *    else only deletes the incoming ref.
+   * 4. The client gets Artifacts' report with the incoming ref's line
+   *    replaced by the default branch's own.
+   *
+   * An `atomic` push of several refs stays atomic up to step 1: its other
+   * refs have landed when the default branch is refused at step 2.
+   */
+  protected async guardedPush(
+    ref: string,
+    rpc: GitRpcRequest,
+    defaultBranch: string,
+  ): Promise<GitRpcResponse> {
+    const head = `refs/heads/${defaultBranch}`;
+    const incoming = `${ArtifactsGitBackend.INCOMING_PREFIX}${crypto.randomUUID()}`;
+    // Set by the rewrite, which `inspect` calls before it answers.
+    const seen: { guarded?: GitRefCommand; capabilities: string[] } = {
+      capabilities: [],
+    };
+    const inspected = await this.receivePack.inspect(
+      rpc.body!,
+      (commands, capabilities) => {
+        seen.capabilities = capabilities;
+        const guarded = commands.find(
+          (command) =>
+            command.ref === head &&
+            command.oldId !== GitReceivePack.ZERO &&
+            command.newId !== GitReceivePack.ZERO &&
+            command.oldId !== command.newId,
+        );
+        seen.guarded = guarded;
+        if (!guarded) return undefined;
+        return {
+          commands: commands.map((command) =>
+            command === guarded
+              ? {
+                  oldId: GitReceivePack.ZERO,
+                  newId: command.newId,
+                  ref: incoming,
+                }
+              : command,
+          ),
+          capabilities: [
+            ...capabilities.filter(
+              (it) => it !== "report-status" && it !== "report-status-v2",
+            ),
+            "report-status",
+          ],
+        };
+      },
+    );
+    const command = seen.guarded;
+    const clientCaps = seen.capabilities;
+    if (!command) {
+      return this.proxy(ref, { ...rpc, body: inspected.body });
+    }
+    const upstream = await this.proxy(ref, { ...rpc, body: inspected.body });
+    if (upstream.status !== 200 || typeof upstream.body === "string") {
+      return upstream;
+    }
+    const bytes = new Uint8Array(
+      await new Response(upstream.body).arrayBuffer(),
+    );
+    const forwardedCaps = clientCaps.filter((it) => it !== "report-status-v2");
+    const report = this.receivePack.decodeReport(bytes, [
+      ...forwardedCaps,
+      "report-status",
+    ]);
+    let verdict = `ng ${head} the push did not report the default branch`;
+    const landed = report.lines.find((line) =>
+      line.startsWith(`ok ${incoming}`),
+    );
+    const refused = report.lines.find((line) =>
+      line.startsWith(`ng ${incoming} `),
+    );
+    if (refused) {
+      verdict = `ng ${head} ${refused.slice(`ng ${incoming} `.length)}`;
+    } else if (landed) {
+      verdict = await this.settle(ref, command, incoming, defaultBranch);
+    }
+    const lines = report.lines.map((line) =>
+      line.startsWith(`ok ${incoming}`) || line.startsWith(`ng ${incoming} `)
+        ? verdict
+        : line,
+    );
+    const wantsReport =
+      clientCaps.includes("report-status") ||
+      clientCaps.includes("report-status-v2");
+    return {
+      status: 200,
+      contentType: upstream.contentType,
+      body: new Response(
+        this.receivePack.encodeReport(
+          wantsReport ? lines : undefined,
+          clientCaps,
+          report.progress,
+        ) as BodyInit,
+      ).body!,
+    };
+  }
+
+  /**
+   * Steps 2 and 3 of {@link ArtifactsGitBackend.guardedPush}: the
+   * default branch's report line once the incoming ref holds the new tip.
+   */
+  protected async settle(
+    ref: string,
+    command: GitRefCommand,
+    incoming: string,
+    defaultBranch: string,
+  ): Promise<string> {
+    const head = `refs/heads/${defaultBranch}`;
+    let forward: boolean | undefined;
+    try {
+      forward = await this.isAncestor(ref, command.oldId, command.newId);
+    } catch (error) {
+      this.log.warn("The fast-forward check failed", { ref, error });
+    }
+    const commands: GitRefCommand[] = [
+      { oldId: command.newId, newId: GitReceivePack.ZERO, ref: incoming },
+    ];
+    if (forward) commands.unshift({ ...command });
+    let lines: string[] = [];
+    try {
+      lines = await this.updateRefs(ref, commands);
+    } catch (error) {
+      this.log.warn("The incoming ref could not be settled", {
+        ref,
+        incoming,
+        error,
+      });
+    }
+    if (!lines.some((line) => line === `ok ${incoming}`)) {
+      this.log.warn("The incoming ref was left behind", { ref, incoming });
+    }
+    if (forward === false) {
+      return `ng ${head} the default branch ${defaultBranch} refuses a non-fast-forward push: pull, then push again`;
+    }
+    if (forward === undefined) {
+      return `ng ${head} Lore could not prove this push a fast-forward of ${defaultBranch}: pull, then push again`;
+    }
+    const moved = lines.find(
+      (line) => line === `ok ${head}` || line.startsWith(`ng ${head} `),
+    );
+    return moved ?? `ng ${head} the default branch could not be moved`;
+  }
+
+  /**
+   * A receive-pack of commands alone, every object being there already,
+   * answering its report lines. An update carries
+   * {@link ArtifactsGitBackend.EMPTY_PACK}, as a git client sends: git's
+   * receive-pack refuses one without, Artifacts takes both. Artifacts
+   * refuses a command whose old id is not the ref's current one ("stale
+   * ref").
+   */
+  protected async updateRefs(
+    ref: string,
+    commands: GitRefCommand[],
+  ): Promise<string[]> {
+    const caps = ["report-status", "delete-refs", "agent=lore"];
+    const body = new Blob([
+      ...commands.map((command, index) =>
+        this.receivePack.pkt(
+          `${command.oldId} ${command.newId} ${command.ref}${index === 0 ? `\0${caps.join(" ")}` : ""}\n`,
+        ),
+      ),
+      this.receivePack.flush(),
+      ...(commands.some((command) => command.newId !== GitReceivePack.ZERO)
+        ? [ArtifactsGitBackend.EMPTY_PACK]
+        : []),
+    ] as BlobPart[]);
+    const response = await this.proxy(ref, {
+      service: "git-receive-pack",
+      advertise: false,
+      body: body.stream(),
+      userAgent: "git/lore",
+    });
+    if (response.status !== 200 || typeof response.body === "string") {
+      throw new AlephaError(`The ref update answered ${response.status}`);
+    }
+    const bytes = new Uint8Array(
+      await new Response(response.body).arrayBuffer(),
+    );
+    return this.receivePack.decodeReport(bytes, caps).lines;
+  }
+
+  /**
+   * Whether `ancestor` is reachable from `tip`, through every parent: true,
+   * false, or undefined when {@link ArtifactsGitBackend.MAX_COMMIT_READS}
+   * ran out first.
+   *
+   * The first `log` page (1000 commits of the first-parent chain, parents
+   * included) answers the usual push alone. Past it the walk goes newest
+   * commit first, reading the commits the page did not hold, and drops any
+   * dated more than {@link ArtifactsGitBackend.CLOCK_SLOP_S} before the
+   * ancestor, which cannot lead to it unless a clock lied that much: such a
+   * push is refused, the safe side.
+   */
+  protected async isAncestor(
+    ref: string,
+    ancestor: string,
+    tip: string,
+  ): Promise<boolean | undefined> {
+    const repo = await this.repo(ref);
+    if (!repo?.readCommit) return undefined;
+    try {
+      const known = new Map<string, ArtifactsCommit>();
+      for (const entry of (await repo.log?.({ ref: tip, limit: 1000 })) ?? []) {
+        if (entry.hash === ancestor) return true;
+        if (entry.parents) known.set(entry.hash, entry as ArtifactsCommit);
+      }
+      let reads = 0;
+      const read = async (hash: string) => {
+        const cached = known.get(hash);
+        if (cached) return cached;
+        reads += 1;
+        const commit = await repo.readCommit!(hash);
+        if (commit) known.set(hash, commit);
+        return commit ?? undefined;
+      };
+      const base = await read(ancestor);
+      if (!base) return undefined;
+      const seconds = (at: number | undefined) =>
+        at === undefined ? 0 : at > 1e11 ? Math.floor(at / 1000) : at;
+      const floor =
+        seconds(base.committedAt) - ArtifactsGitBackend.CLOCK_SLOP_S;
+      const seen = new Set<string>([tip]);
+      let queue: ArtifactsCommit[] = [];
+      const first = await read(tip);
+      if (first) queue.push(first);
+      while (queue.length) {
+        if (reads > ArtifactsGitBackend.MAX_COMMIT_READS) return undefined;
+        queue.sort((a, b) => seconds(b.committedAt) - seconds(a.committedAt));
+        const batch = queue.slice(0, 25);
+        queue = queue.slice(25);
+        const parents = batch
+          .flatMap((commit) => commit.parents ?? [])
+          .filter((hash) => !seen.has(hash));
+        if (parents.includes(ancestor)) return true;
+        for (const hash of parents) seen.add(hash);
+        const commits = await Promise.all(parents.map(read));
+        for (const commit of commits) {
+          if (commit && seconds(commit.committedAt) >= floor) {
+            queue.push(commit);
+          }
+        }
+      }
+      return false;
+    } finally {
+      repo[Symbol.dispose]?.();
+    }
+  }
+
+  /**
    * Proxy the request to the repository's Artifacts remote with a cached
    * repo-scoped token, streaming both bodies: the Worker holds no pack in
    * memory and spends 0 to 4 ms of CPU per request (folio #F1527).
    */
-  public async serve(ref: string, rpc: GitRpcRequest): Promise<GitRpcResponse> {
+  protected async proxy(
+    ref: string,
+    rpc: GitRpcRequest,
+  ): Promise<GitRpcResponse> {
     const scope = rpc.service === "git-receive-pack" ? "write" : "read";
     const token = await this.token(ref, scope);
     if (!token) {
@@ -463,6 +792,23 @@ export interface ArtifactsRepoHandle {
     ref?: string;
     limit?: number;
     offset?: number;
-  }): Promise<Array<{ hash: string; message: string }>>;
+  }): Promise<Array<{ hash: string; message: string; parents?: string[] }>>;
+  /**
+   * One commit, its parents included; null when the repository holds none
+   * by that id.
+   */
+  readCommit?(hash: string): Promise<ArtifactsCommit | null>;
   [Symbol.dispose]?: () => void;
+}
+
+/**
+ * A commit as the binding answers it (`log`, `readCommit`): the fields Lore
+ * reads. `committedAt` is in seconds, as Artifacts answered on 2026-11-22;
+ * milliseconds are told apart by size.
+ */
+export interface ArtifactsCommit {
+  hash: string;
+  message: string;
+  parents: string[];
+  committedAt?: number;
 }

@@ -227,6 +227,7 @@ export class GitHttpController {
         ? protocol
         : undefined,
       userAgent: headers["user-agent"] || undefined,
+      defaultBranch: repository.defaultBranch,
       signal: request.signal,
     });
     reply.setStatus(response.status);
