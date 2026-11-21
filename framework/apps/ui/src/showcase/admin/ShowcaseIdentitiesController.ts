@@ -18,9 +18,10 @@ import { ShowcaseUsers } from "./ShowcaseUsers.ts";
  * the admin block. Without these its Security tab renders empty and its realm
  * query fails.
  *
- * ⚠️ `identityResourceSchema` OMITS `password`. That omission is the point of
- * having a resource schema separate from the entity, and borrowing it means the
- * showcase cannot invent a field the real API refuses to send.
+ * ⚠️ `identityResourceSchema` OMITS `password` and allow-lists the keys of
+ * `providerData`. That is the point of having a resource schema separate from
+ * the entity, and borrowing it means the showcase cannot invent a field the
+ * real API refuses to send.
  */
 export class ShowcaseIdentitiesController {
   protected readonly users = $inject(ShowcaseUsers);
@@ -56,7 +57,9 @@ export class ShowcaseIdentitiesController {
           userId,
           provider: "github",
           providerUserId: "1024",
-          providerData: { login: "ada" },
+          // What the provider handed back never leaves the server: the
+          // resource schema lists the keys `providerData` may carry.
+          providerData: undefined,
         },
       ];
       return {

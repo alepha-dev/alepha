@@ -23,8 +23,8 @@ const setup = async (username: string) => {
   await alepha.start();
 
   const realmProvider = alepha.inject(RealmProvider);
-  // Username sign-in: the realm this is most needed in has no email at all —
-  // an infrastructure panel, an internal tool — so that is what the tests
+  // Username sign-in: the realm this is most needed in has no email at all,
+  // an infrastructure panel, an internal tool, so that is what the tests
   // exercise.
   realmProvider.register("users", {
     settings: { username: "required" },
@@ -33,7 +33,7 @@ const setup = async (username: string) => {
   const crypto = alepha.inject(CryptoProvider);
 
   // Wiped between cases. The realm's Postgres is shared across runs, and a
-  // leftover user with the same name — from an earlier failed run — is found
+  // leftover user with the same name, from an earlier failed run, is found
   // by login before the one this test just created, which then looks like a
   // missing identity.
   await realmProvider.userRepository().deleteMany({});
@@ -137,7 +137,7 @@ describe("alepha/api/users - MyPasswordController", () => {
     /*
       The reason to change a password is usually the belief that somebody else
       has it. Leaving their session alive means the change accomplished
-      nothing — they keep the access they already had, and the person who just
+      nothing, they keep the access they already had, and the person who just
       changed it believes they are safe.
     */
     const ctx = await setup("pw-sessions");

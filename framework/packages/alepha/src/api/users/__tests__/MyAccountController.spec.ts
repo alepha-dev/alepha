@@ -13,7 +13,7 @@ import {
 const PASSWORD = "correct-horse-battery";
 
 /**
- * Refuses deletion the way a real application would — Lore's own hook is this
+ * Refuses deletion the way a real application would, Lore's own hook is this
  * shape, counting owned projects.
  */
 class RefusingHook {

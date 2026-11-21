@@ -71,8 +71,8 @@ describe("alepha/api/users - session filters", () => {
       country: "DE",
       lastUsedAt: dateTime.now().subtract(30, "days").toISOString(),
     });
-    // Never used: `lastUsedAt` stays null. It is what a session looks like
-    // between being minted and being used a second time.
+    // A row with no `lastUsedAt`: one written before the column existed.
+    // `createSession` sets it at sign-in.
     const fresh = await sessionService.sessions().create({
       userId: bob.id,
       refreshToken: crypto.randomUUID(),
@@ -135,8 +135,8 @@ describe("alepha/api/users - session filters", () => {
   });
 
   it("excludes a never-used session from a last-used window", async () => {
-    // `lastUsedAt` is null until a session is used a second time, and a
-    // never-used session is not "recently active" - so it is out, not in.
+    // A null `lastUsedAt` predates the column, and such a session is not
+    // "recently active": it is out, not in.
     expect(await ctx.ids({ lastUsedWithinHours: 24 })).toEqual([ctx.live.id]);
   });
 

@@ -5,12 +5,13 @@ import { $action, BadRequestError, NotFoundError } from "alepha/server";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { credentialsMustChangePassword } from "../schemas/credentialsIdentityDataSchema.ts";
 import { myIdentitySchema } from "../schemas/myIdentitySchema.ts";
+import { passkeyProofSchema } from "../schemas/passkeyProofSchema.ts";
 import { MfaService } from "../services/MfaService.ts";
 import { PasskeyService } from "../services/PasskeyService.ts";
 import { UserService } from "../services/UserService.ts";
 
 /**
- * Self-service sign-in methods — the "how do I get in" half of an account's
+ * Self-service sign-in methods, the "how do I get in" half of an account's
  * security page: list what is linked, add a first password, unlink one.
  *
  * Scoped to the caller throughout; see {@link MyProfileController} for why
@@ -18,7 +19,7 @@ import { UserService } from "../services/UserService.ts";
  *
  * **Linking a new OAuth provider is not here.** It needs a redirect out to
  * the provider and back with a return path, which is an authorization flow
- * rather than a CRUD action — it belongs with the OAuth module's own routes.
+ * rather than a CRUD action, it belongs with the OAuth module's own routes.
  * Unlinking is the half that is a plain mutation, so it lives here.
  *
  * **A TOTP enrollment is not a sign-in method.** It is stored as an identity
@@ -89,7 +90,7 @@ export class MyIdentityController {
   });
 
   /**
-   * Set a password on an account that has none — typically one created
+   * Set a password on an account that has none, typically one created
    * through OAuth whose owner now wants a way in that does not depend on
    * the provider.
    */
@@ -104,10 +105,11 @@ export class MyIdentityController {
         // of truth and `setPassword` applies it. Same reasoning as
         // `MyPasswordController`.
         password: z.text(),
+        proof: passkeyProofSchema.optional(),
       }),
       response: z.object({ ok: z.boolean() }),
     },
-    handler: async ({ body, user }) => {
+    handler: async ({ body, user, url, cookies }) => {
       const existing = await this.identities(user.realm).findOne({
         where: {
           userId: { eq: user.id },
@@ -116,14 +118,16 @@ export class MyIdentityController {
       });
 
       /*
-        This endpoint trusts the session and asks for no current password,
-        which is defensible only while there is nothing to prove knowledge
-        of. The moment a password exists, the same call would let anyone who
-        walks up to an unlocked, signed-in browser replace it — a full
-        account takeover with no credential needed.
+        This endpoint asks for no current password, which is defensible
+        only while there is none to prove knowledge of. The moment a
+        password exists, the same call would let anyone who walks up to an
+        unlocked, signed-in browser replace it: a full account takeover
+        with no credential needed.
 
         Changing a password therefore goes through `MyPasswordController`,
-        which verifies the old one and revokes every other session.
+        which verifies the old one and revokes every other session, and
+        removing one (`MyPasswordController.removeMyPassword`) asks for it
+        too, so the two calls cannot be chained into a replacement.
       */
       if (existing?.password) {
         throw new BadRequestError(
@@ -131,7 +135,22 @@ export class MyIdentityController {
         );
       }
 
+      // An account that has a usable passkey proves itself with it, as it
+      // does to add another passkey: a password is one more way in.
+      await this.passkeyService.assertAccountProof(
+        user,
+        body.proof,
+        url,
+        cookies,
+      );
+
       await this.userService.setPassword(user.id, body.password, user.realm);
+
+      // As a password change does: whoever else holds a session of this
+      // account stops at the next refresh, and only this one goes on.
+      await this.userService.revokeSessions(user.id, user.realm, {
+        except: user.sessionId,
+      });
       return { ok: true };
     },
   });
@@ -161,7 +180,7 @@ export class MyIdentityController {
       /*
         The last one never goes.
 
-        Removing it leaves an account with no way to authenticate — not
+        Removing it leaves an account with no way to authenticate, not
         locked, not disabled, simply unreachable forever, from a single
         click on a page that offers no undo. There is no recovery path
         either: password reset needs a credentials identity to reset.
@@ -180,6 +199,20 @@ export class MyIdentityController {
       if (ways.filter((it) => it.id !== target.id).length === 0) {
         throw new BadRequestError(
           "This is the only way to sign in to this account. Add another before removing it.",
+        );
+      }
+
+      /*
+        The password does not go through here. Removing it changes what the
+        account must prove from then on (`PasskeyService.proofKind` goes
+        from `password` to a passkey or to nothing) and leaves "set a first
+        password" open again, so it asks for the password itself:
+        `MyPasswordController.removeMyPassword`. A provider identity proves
+        nothing and unlinking it changes no proof, so it goes without.
+      */
+      if (target.provider === "credentials" && target.password) {
+        throw new BadRequestError(
+          "Removing the password asks for it. Use DELETE /users/me/password with the current password.",
         );
       }
 

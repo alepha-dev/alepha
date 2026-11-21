@@ -187,6 +187,10 @@ test("clears the TOTP step with the passkey, the code field beside it", async ()
     .first()
     .textContent())!.trim();
   await typeCode(totp(totpSecret));
+  // Turning the factor on asks an account with a password for it, in a
+  // dialog stacked over the setup.
+  await page.getByRole("textbox", { name: "Current password" }).fill(password);
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(dialog.getByText("Save your recovery codes")).toBeVisible();
   await page.keyboard.press("Escape");
 

@@ -2,7 +2,7 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 
 /**
- * Slim view of the session's owner — embedded by the admin listing so the
+ * Slim view of the session's owner, embedded by the admin listing so the
  * UI can render a human-readable identifier instead of just a UUID. Comes
  * back via a left join, so it's optional (a session whose user was deleted
  * still returns; `user` is undefined).

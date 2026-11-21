@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
-import { $action, okSchema } from "alepha/server";
+import { $secure, SecurityProvider } from "alepha/security";
+import { $action, ForbiddenError, okSchema } from "alepha/server";
 
 import { completePasswordResetRequestSchema } from "../schemas/completePasswordResetRequestSchema.ts";
 import { completeRegistrationRequestSchema } from "../schemas/completeRegistrationRequestSchema.ts";
@@ -20,6 +20,7 @@ export class UserController {
   protected readonly credentialService = $inject(CredentialService);
   protected readonly userService = $inject(UserService);
   protected readonly registrationService = $inject(RegistrationService);
+  protected readonly securityProvider = $inject(SecurityProvider);
 
   /**
    * Phase 1: Create a registration intent.
@@ -191,7 +192,11 @@ export class UserController {
   });
 
   /**
-   * Check if an email is verified.
+   * Whether the caller's own email address is verified.
+   *
+   * Scoped to the caller: their realm, and their address. Any other realm or
+   * address is refused, since the answer would tell whether somebody else
+   * holds a verified account.
    */
   public checkEmailVerification = $action({
     method: "GET",
@@ -208,10 +213,18 @@ export class UserController {
         verified: z.boolean(),
       }),
     },
-    handler: async ({ query }) => {
+    handler: async ({ query, user }) => {
+      const realmName = this.securityProvider.assertRealmScope(
+        user,
+        query.userRealmName,
+      );
+      const caller = await this.userService.getUserById(user.id, realmName);
+      if (caller.email !== query.email) {
+        throw new ForbiddenError("This is not your email address");
+      }
       const verified = await this.userService.isEmailVerified(
         query.email,
-        query.userRealmName,
+        realmName,
       );
 
       return {

@@ -23,6 +23,7 @@ import type { UserEntity } from "../entities/users.ts";
 import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { CurrentPasswordService } from "./CurrentPasswordService.ts";
 import { MfaService } from "./MfaService.ts";
 import { PasskeyService } from "./PasskeyService.ts";
 import { UsernameSlugger } from "./UsernameSlugger.ts";
@@ -51,16 +52,20 @@ export class SessionService {
     window: (input: AttemptBudget) => input.windowMs,
     key: (input: AttemptBudget) => input.key,
   });
-  protected readonly loginAccount = $rateLimit({
-    name: "login:account",
-    limit: (input: AttemptBudget) => input.max,
-    window: (input: AttemptBudget) => input.windowMs,
-    key: (input: AttemptBudget) => input.key,
-  });
+  protected readonly currentPassword = $inject(CurrentPasswordService);
   protected readonly usernameSlugger = $inject(UsernameSlugger);
   protected readonly passkeyService = $inject(PasskeyService);
   protected readonly mfaService = $inject(MfaService);
   protected readonly userService = $inject(UserService);
+
+  /**
+   * The `login:account` counter. It lives on `CurrentPasswordService`, which
+   * spends the same budget on every current-password check made outside the
+   * login.
+   */
+  protected get loginAccount() {
+    return this.currentPassword.attempts;
+  }
 
   protected userAudits(realmName?: string) {
     // Registered by every `$realm` whatever its features say; a realm
@@ -101,13 +106,23 @@ export class SessionService {
   }
 
   /**
-   * Check if user should be auto-promoted to admin based on adminEmails/adminUsernames settings.
-   * If user matches and doesn't have admin role, promote them.
+   * Promote the user to admin when the realm's `adminEmails` or
+   * `adminUsernames` names them and they do not hold the role yet.
+   *
+   * In a realm that verifies addresses (`verifyEmailRequired`), an address
+   * counts only once it is verified: `adminEmails` names a person by a
+   * mailbox, and an account that merely typed that address, or came from a
+   * provider that did not vouch for it, has not shown it reads that mailbox.
+   * A realm that does not verify addresses has no way to ask for that, so
+   * there the address alone promotes: whoever registers it first is the
+   * administrator, which the authentication guide states as the risk of
+   * running without verification.
    */
   protected async ensureAdminRole(
     user: {
       id: string;
       email?: string | null;
+      emailVerified?: boolean;
       username?: string | null;
       roles: string[];
     },
@@ -119,11 +134,16 @@ export class SessionService {
     const settings = await realm.getSettings();
     const { name } = realm;
     const adminEmails = settings.adminEmails ?? [];
-    const adminUsernames = settings.adminUsernames ?? [];
 
-    const isAdminByEmail = user.email && adminEmails.includes(user.email);
+    const isAdminByEmail =
+      user.email &&
+      adminEmails.includes(user.email) &&
+      (settings.verifyEmailRequired !== true || user.emailVerified === true);
+    // Case-insensitive, like the unique index on usernames: the slugger owns
+    // the comparison.
     const isAdminByUsername =
-      user.username && adminUsernames.includes(user.username);
+      !!user.username &&
+      (await this.usernameSlugger.isAdminName(userRealmName, user.username));
 
     if (!isAdminByEmail && !isAdminByUsername) return false;
 
@@ -156,10 +176,9 @@ export class SessionService {
    * Generate a unique username from an OAuth profile.
    *
    * Routes through {@link UsernameSlugger}, which is the same code path as
-   * `username: "email"` registration. The OAuth profile's email is the
-   * primary signal; if absent (rare — most IDPs return one), we fall back
-   * to `profile.name`, then to a random handle. The slugger applies the
-   * realm's `usernameBlocklist` and retries on collision.
+   * `username: "email"` registration. The seed is the profile's email:
+   * `link()` refuses a profile without one before it gets here. The slugger
+   * applies the realm's `usernameBlocklist` and retries on collision.
    */
   protected async generateUniqueUsername(
     profile: OAuth2Profile,
@@ -219,24 +238,6 @@ export class SessionService {
     });
   }
 
-  /**
-   * Validate user credentials and return the user if valid.
-   *
-   * Two counters, both taken before the password is compared (#Q2529), and
-   * given back only by a right password:
-   *
-   * 1. `login:ip`, first, before the anti-timing delay and any DB work. A
-   *    refusal throws and writes nothing. Every later failure keeps the slot,
-   *    so a failure before the compare (bad format, unknown user, disabled
-   *    account, no password) is bounded too.
-   * 2. `login:account`, immediately before the compare, once the identity is
-   *    known to have a password: an account that signs in through a provider
-   *    only never spends account slots on attempts that cannot succeed.
-   *
-   * Lock audits are written here, not by the limiter: the limit-th attempt
-   * fills the counter before its compare, and a right password on it must
-   * raise nothing.
-   */
   /**
    * Sign a user in with a passkey assertion, for `/_auth/passkey/verify`.
    *
@@ -423,6 +424,24 @@ export class SessionService {
     }
   }
 
+  /**
+   * Validate user credentials and return the user if valid.
+   *
+   * Two counters, both taken before the password is compared (#Q2529), and
+   * given back only by a right password:
+   *
+   * 1. `login:ip`, first, before the anti-timing delay and any DB work. A
+   *    refusal throws and writes nothing. Every later failure keeps the slot,
+   *    so a failure before the compare (bad format, unknown user, disabled
+   *    account, no password) is bounded too.
+   * 2. `login:account`, immediately before the compare, once the identity is
+   *    known to have a password: an account that signs in through a provider
+   *    only never spends account slots on attempts that cannot succeed.
+   *
+   * Lock audits are written here, not by the limiter: the limit-th attempt
+   * fills the counter before its compare, and a right password on it must
+   * raise nothing.
+   */
   public async login(
     provider: string,
     username: string,
@@ -453,7 +472,7 @@ export class SessionService {
         })
       : undefined;
     if (ip && !ip.allowed) {
-      this.log.warn("Login blocked — IP rate limit exceeded", {
+      this.log.warn("Login blocked, IP rate limit exceeded", {
         ip: request?.ip,
         reason: ip.reason,
       });
@@ -496,7 +515,7 @@ export class SessionService {
         }
         // Case-insensitive EQUALITY, not a LIKE pattern. `ilike` on the raw
         // identifier made `_` and `%` wildcards, so `admi_` matched `admin`
-        // and `findOne` picked one arbitrarily — wrong semantics on the auth
+        // and `findOne` picked one arbitrarily, wrong semantics on the auth
         // hot path. Mirrors the `(realm, username COLLATE NOCASE)` unique index.
         where.username = { eqInsensitive: username };
       } else if (settings.email !== "none" && isEmail) {
@@ -609,7 +628,7 @@ export class SessionService {
         windowMs: loginRateLimit.windowMs,
       });
       if (!account.allowed) {
-        this.log.warn("Login blocked — account rate limit exceeded", {
+        this.log.warn("Login blocked, account rate limit exceeded", {
           userId: user.id,
           realm: name,
           reason: account.reason,
@@ -786,7 +805,7 @@ export class SessionService {
       throw new UnauthorizedError("Session expired");
     }
 
-    // Idle timeout check — opt-in via realm settings.
+    // Idle timeout check, opt-in via realm settings.
     // Falls back to createdAt when lastUsedAt is null (pre-migration rows or
     // sessions that never refreshed since the column was introduced).
     const realm = this.realmProvider.getRealm(userRealmName);
@@ -838,7 +857,7 @@ export class SessionService {
     // Auto-promote to admin if configured (handles "I promote you admin" case)
     await this.ensureAdminRole(user, userRealmName);
 
-    // Update lastUsedAt — sliding-window for idle timeout enforcement.
+    // Update lastUsedAt, sliding-window for idle timeout enforcement.
     await this.sessions(userRealmName).updateById(session.id, {
       lastUsedAt: now.toISOString(),
     });
@@ -918,7 +937,28 @@ export class SessionService {
         userId: identity.userId,
       });
 
-      const user = await users.getById(identity.userId);
+      // The tables are shared between realms and an identity carries none:
+      // the owner must belong to the realm being signed into, as
+      // `refreshSession()` and `PasskeyService.authenticate()` require. A
+      // provider account already bound to another realm's user answers what
+      // a closed realm answers, and creates nothing.
+      const user = await users.findOne({
+        where: { id: { eq: identity.userId }, realm: { eq: realm.name } },
+      });
+      if (!user) {
+        this.log.warn("OAuth2 login across realms refused", {
+          provider,
+          identityId: identity.id,
+          realm: realm.name,
+        });
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userRealm: realm.name,
+          success: false,
+          description: `OAuth2 login refused: identity of another realm (${provider})`,
+          metadata: { provider },
+        });
+        throw new BadRequestError("Account doesn't exist");
+      }
 
       // `login()` and `refreshSession()` refuse a disabled account; this
       // path used to let one back in through its OAuth identity.
@@ -1024,7 +1064,14 @@ export class SessionService {
 
     const realmSettings = await realm.getSettings();
     const adminEmails = realmSettings?.adminEmails ?? [];
-    const isAdmin = profile.email && adminEmails.includes(profile.email);
+    // An `adminEmails` address opens a closed realm. Where the realm
+    // verifies addresses (`verifyEmailRequired`), only when the provider
+    // itself says the address is verified: a profile that says `false`, or
+    // says nothing, gets no bypass, whatever `trustProviderEmail` is.
+    const isAdmin =
+      adminEmails.includes(profile.email) &&
+      (realmSettings.verifyEmailRequired !== true ||
+        profile.email_verified === true);
 
     if (
       realmSettings?.registrationAllowed === false &&

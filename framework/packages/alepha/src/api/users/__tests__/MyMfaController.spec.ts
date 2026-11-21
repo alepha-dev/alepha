@@ -21,7 +21,7 @@ const setup = async (username: string) => {
   await alepha.start();
 
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("default", {
+  realmProvider.register("users", {
     settings: {
       username: "required",
       mfa: { totp: "optional" },
@@ -38,12 +38,24 @@ const setup = async (username: string) => {
   });
 
   alepha.inject(DateTimeProvider).pause();
+  const controller = alepha.inject(MyMfaController);
 
   return {
-    controller: alepha.inject(MyMfaController),
+    controller,
     totp: alepha.inject(TotpService),
     mfa: alepha.inject(MfaService),
-    caller: { id: user.id, realm: "default" },
+    caller: { id: user.id, realm: "users" },
+    enroll: () =>
+      controller.enrollTotp({}, { user: { id: user.id, realm: "users" } }),
+    // Activating asks an account with a password for it.
+    activate: (code: string) =>
+      controller.activateTotp(
+        { body: { code, proof: { currentPassword: "Secret-123" } } },
+        {
+          user: { id: user.id, realm: "users" },
+          url: new URL("https://app.example/"),
+        } as never,
+      ),
     user,
   };
 };
@@ -65,10 +77,7 @@ describe("alepha/api/users - MyMfaController", () => {
   }) => {
     const ctx = await setup("ctl-enroll");
 
-    const enrollment = await ctx.controller.enrollTotp(
-      {},
-      { user: ctx.caller },
-    );
+    const enrollment = await ctx.enroll();
 
     expect(enrollment.uri.startsWith("otpauth://totp/")).toBe(true);
     expect(enrollment.qrSvg.startsWith("<svg")).toBe(true);
@@ -83,21 +92,10 @@ describe("alepha/api/users - MyMfaController", () => {
     expect,
   }) => {
     const ctx = await setup("ctl-activate");
-    const enrollment = await ctx.controller.enrollTotp(
-      {},
-      { user: ctx.caller },
-    );
+    const enrollment = await ctx.enroll();
 
-    const result = await ctx.controller.activateTotp(
-      {
-        body: {
-          code: ctx.totp.codeForCounter(
-            enrollment.secret,
-            ctx.totp.currentStep(),
-          ),
-        },
-      },
-      { user: ctx.caller },
+    const result = await ctx.activate(
+      ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
     );
 
     expect(result.recoveryCodes).toHaveLength(10);
@@ -107,20 +105,9 @@ describe("alepha/api/users - MyMfaController", () => {
 
   it("should refuse to disable without a valid code", async ({ expect }) => {
     const ctx = await setup("ctl-disable-guard");
-    const enrollment = await ctx.controller.enrollTotp(
-      {},
-      { user: ctx.caller },
-    );
-    await ctx.controller.activateTotp(
-      {
-        body: {
-          code: ctx.totp.codeForCounter(
-            enrollment.secret,
-            ctx.totp.currentStep(),
-          ),
-        },
-      },
-      { user: ctx.caller },
+    const enrollment = await ctx.enroll();
+    await ctx.activate(
+      ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
     );
 
     await expect(
@@ -139,20 +126,9 @@ describe("alepha/api/users - MyMfaController", () => {
     expect,
   }) => {
     const ctx = await setup("ctl-disable");
-    const enrollment = await ctx.controller.enrollTotp(
-      {},
-      { user: ctx.caller },
-    );
-    await ctx.controller.activateTotp(
-      {
-        body: {
-          code: ctx.totp.codeForCounter(
-            enrollment.secret,
-            ctx.totp.currentStep(),
-          ),
-        },
-      },
-      { user: ctx.caller },
+    const enrollment = await ctx.enroll();
+    await ctx.activate(
+      ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
     );
 
     // A later step, because activation burned the one it used.
@@ -176,20 +152,9 @@ describe("alepha/api/users - MyMfaController", () => {
     expect,
   }) => {
     const ctx = await setup("ctl-recovery");
-    const enrollment = await ctx.controller.enrollTotp(
-      {},
-      { user: ctx.caller },
-    );
-    const first = await ctx.controller.activateTotp(
-      {
-        body: {
-          code: ctx.totp.codeForCounter(
-            enrollment.secret,
-            ctx.totp.currentStep(),
-          ),
-        },
-      },
-      { user: ctx.caller },
+    const enrollment = await ctx.enroll();
+    const first = await ctx.activate(
+      ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
     );
 
     // Proven with a recovery code of the old set, which is spent by it.
@@ -207,7 +172,7 @@ describe("alepha/api/users - MyMfaController", () => {
         ctx.user.id,
         "totp",
         first.recoveryCodes[0]!,
-        "default",
+        "users",
       ),
     ).toBe(false);
   });
@@ -216,20 +181,9 @@ describe("alepha/api/users - MyMfaController", () => {
     expect,
   }) => {
     const ctx = await setup("ctl-recovery-proof");
-    const enrollment = await ctx.controller.enrollTotp(
-      {},
-      { user: ctx.caller },
-    );
-    const first = await ctx.controller.activateTotp(
-      {
-        body: {
-          code: ctx.totp.codeForCounter(
-            enrollment.secret,
-            ctx.totp.currentStep(),
-          ),
-        },
-      },
-      { user: ctx.caller },
+    const enrollment = await ctx.enroll();
+    const first = await ctx.activate(
+      ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
     );
 
     await expect(
@@ -245,7 +199,7 @@ describe("alepha/api/users - MyMfaController", () => {
         ctx.user.id,
         "totp",
         first.recoveryCodes[0]!,
-        "default",
+        "users",
       ),
     ).toBe(true);
   });

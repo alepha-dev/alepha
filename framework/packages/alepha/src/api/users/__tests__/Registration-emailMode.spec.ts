@@ -48,7 +48,7 @@ const setup = async (
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("RegistrationService — username: 'email' mode", () => {
+describe("RegistrationService, username: 'email' mode", () => {
   it("derives the username from the email and ignores any client-sent value", async () => {
     const { registrationService, userService } = await setup("email-mode-1", {
       username: "email",
@@ -58,7 +58,7 @@ describe("RegistrationService — username: 'email' mode", () => {
       {
         email: "ni.foures+testkv@gmail.com",
         password: "SecurePassword123!",
-        // The client sneaks a custom username into the request — server
+        // The client sneaks a custom username into the request, server
         // must drop it on the floor and use the slugger.
         username: "i-am-the-admin",
       },
@@ -146,7 +146,7 @@ describe("RegistrationService — username: 'email' mode", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("RegistrationService — blocklist applies in 'required' mode too", () => {
+describe("RegistrationService: blocklist applies in 'required' mode too", () => {
   it("rejects a manual username that hits the blocklist", async () => {
     const { registrationService } = await setup("manual-mode", {
       username: "required",

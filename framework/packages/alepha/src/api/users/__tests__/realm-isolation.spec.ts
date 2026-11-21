@@ -152,8 +152,7 @@ describe("realm isolation", () => {
       // granted less, which is an accident of declaration order.
       const resolved = await resolve(alepha, access_token);
 
-      expect(resolved?.realm).not.toBe("citizens");
-      expect(resolved?.realm ?? "staff").toBe("staff");
+      expect(resolved?.realm).toBe("staff");
     });
 
     it("still accepts a token in the realm that minted it", async () => {

@@ -164,14 +164,14 @@ widget. Without the secret key every submission is refused.
 
 ### Overrides
 
-| Variable               | Default                   | Description                                       |
-| ---------------------- | ------------------------- | ------------------------------------------------- |
-| `APP_SECRET`           | generated into `/data`    | Signing secret. Set it to manage the key yourself |
-| `DATABASE_URL`         | `sqlite:///data/lore.db`  | Database location                                 |
-| `SERVER_PORT`          | `3000`                    | Port inside the container                         |
-| `ADMIN_EMAIL`          | -                         | An address always granted admin                   |
-| `REGISTRATION_ALLOWED` | `true`                    | Whether strangers may register                    |
-| `EMAIL_ENABLED`        | derived from `EMAIL_HOST` | Whether mail can leave this instance              |
+| Variable               | Default                   | Description                                            |
+| ---------------------- | ------------------------- | ------------------------------------------------------ |
+| `APP_SECRET`           | generated into `/data`    | Signing secret. Set it to manage the key yourself      |
+| `DATABASE_URL`         | `sqlite:///data/lore.db`  | Database location                                      |
+| `SERVER_PORT`          | `3000`                    | Port inside the container                              |
+| `ADMIN_EMAIL`          | -                         | An address granted admin, once verified if email is on |
+| `REGISTRATION_ALLOWED` | `true`                    | Whether strangers may register                         |
+| `EMAIL_ENABLED`        | derived from `EMAIL_HOST` | Whether mail can leave this instance                   |
 
 > ⚠️ **`REGISTRATION_ALLOWED=false` is honoured from first boot, except while
 > no account exists.**

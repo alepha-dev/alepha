@@ -38,6 +38,7 @@ import type { MyPasskeyList } from "../schemas/myPasskeyListSchema.ts";
 import type { PasskeyIdentityData } from "../schemas/passkeyIdentityDataSchema.ts";
 import type { PasskeyProofKind } from "../schemas/passkeyProofKindSchema.ts";
 import type { PasskeyProof } from "../schemas/passkeyProofSchema.ts";
+import { CurrentPasswordService } from "./CurrentPasswordService.ts";
 
 /**
  * Where a ceremony runs: the relying party, and the origin rule a response
@@ -98,6 +99,7 @@ export class PasskeyService {
   protected readonly base64url = $inject(Base64Url);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly currentPassword = $inject(CurrentPasswordService);
 
   /**
    * The enrolment challenge, set by the registration options and read by
@@ -668,7 +670,26 @@ export class PasskeyService {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   * Check the proof a write carries, by what the account holds.
+   * Check the proof a change to how the account signs in carries, for the
+   * writes that are not a passkey's: enrolling TOTP, unlinking the password.
+   * Same rule as adding or removing a passkey: the current password when the
+   * account has one, else a user-verified assertion from one of its usable
+   * passkeys, else nothing.
+   */
+  public async assertAccountProof(
+    caller: PasskeyCaller,
+    proof: PasskeyProof | undefined,
+    url: URL,
+    cookies?: Cookies,
+  ): Promise<void> {
+    const settings = await this.settings(caller.realm);
+    const rp = this.relyingParty(settings, this.realmName(caller.realm), url);
+    await this.assertProof(caller, proof, rp, cookies);
+  }
+
+  /**
+   * Check the proof a write carries, by what the account holds. A password
+   * guess spends the account's login budget.
    */
   protected async assertProof(
     caller: PasskeyCaller,
@@ -684,12 +705,10 @@ export class PasskeyService {
       if (!proof?.currentPassword) {
         throw new PasskeyPasswordProofError({ reason: "missing" });
       }
-      const credentials = await this.identities(caller.realm).findOne({
-        where: { userId: { eq: caller.id }, provider: { eq: "credentials" } },
-      });
-      const ok = await this.crypto.verifyPassword(
+      const ok = await this.currentPassword.verify(
+        caller.id,
         proof.currentPassword,
-        credentials!.password!,
+        caller.realm,
       );
       if (!ok) {
         throw new PasskeyPasswordProofError({ reason: "invalid" });

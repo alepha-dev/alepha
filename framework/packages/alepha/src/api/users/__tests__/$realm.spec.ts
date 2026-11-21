@@ -166,7 +166,7 @@ describe("alepha/api/users - $realm with parameters", () => {
       password: await cryptoProvider.hashPassword("SecurePassword123!"),
     });
 
-    // Login — user should NOT be admin
+    // Login, user should NOT be admin
     const loggedIn = await sessionService.login(
       "credentials",
       "admin-promo@example.com",
@@ -181,7 +181,7 @@ describe("alepha/api/users - $realm with parameters", () => {
       adminEmails: ["admin-promo@example.com"],
     });
 
-    // Login again — user should now be promoted to admin
+    // Login again, user should now be promoted to admin
     const loggedIn2 = await sessionService.login(
       "credentials",
       "admin-promo@example.com",

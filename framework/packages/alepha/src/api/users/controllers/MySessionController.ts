@@ -6,7 +6,7 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
 import { type MySession, mySessionSchema } from "../schemas/mySessionSchema.ts";
 
 /**
- * Self-service session management — the "where am I signed in?" page of an
+ * Self-service session management, the "where am I signed in?" page of an
  * account area. Counterpart of {@link AdminSessionController}, scoped to the
  * CALLER's own sessions: list them, revoke one (a stolen laptop), or revoke
  * everything except the current one.

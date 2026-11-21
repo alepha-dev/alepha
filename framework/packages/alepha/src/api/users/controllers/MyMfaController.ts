@@ -3,7 +3,9 @@ import { $secure } from "alepha/security";
 import { $action, BadRequestError } from "alepha/server";
 
 import { myMfaStatusSchema } from "../schemas/myMfaStatusSchema.ts";
+import { passkeyProofSchema } from "../schemas/passkeyProofSchema.ts";
 import { MfaService } from "../services/MfaService.ts";
+import { PasskeyService } from "../services/PasskeyService.ts";
 
 /**
  * Self-service two-factor authentication: enroll an authenticator app, prove
@@ -16,6 +18,7 @@ import { MfaService } from "../services/MfaService.ts";
  */
 export class MyMfaController {
   protected readonly mfaService = $inject(MfaService);
+  protected readonly passkeyService = $inject(PasskeyService);
 
   getMyMfa = $action({
     method: "GET",
@@ -61,6 +64,7 @@ export class MyMfaController {
     schema: {
       body: z.object({
         code: z.text(),
+        proof: passkeyProofSchema.optional(),
       }),
       response: z.object({
         recoveryCodes: z
@@ -70,7 +74,20 @@ export class MyMfaController {
           ),
       }),
     },
-    handler: async ({ body, user }) => {
+    handler: async ({ body, user, url, cookies }) => {
+      // The proof adding a passkey asks for, at the step that makes the
+      // factor real, as a passkey's is at its registration: starting an
+      // enrollment only writes a pending row, which gates nothing. A
+      // borrowed session could otherwise activate its own authenticator,
+      // keep the recovery codes, and lock the owner out at their next
+      // sign-in: turning the factor off again takes a code only the
+      // enroller can produce.
+      await this.passkeyService.assertAccountProof(
+        user,
+        body.proof,
+        url,
+        cookies,
+      );
       return this.mfaService.activateTotp(user.id, body.code, user.realm);
     },
   });

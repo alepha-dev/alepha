@@ -173,7 +173,7 @@ export class RealmProvider {
             );
           }
         } catch (error) {
-          // A warning is not worth failing a boot over — and the table may
+          // A warning is not worth failing a boot over, and the table may
           // not exist yet on a runtime that migrates elsewhere.
           this.log.debug("Could not check for existing accounts", error);
         }
@@ -184,7 +184,7 @@ export class RealmProvider {
   public register(realmName: string, realmOptions: RealmOptions = {}) {
     if (realmName.includes(".")) {
       throw new AlephaError(
-        `Realm name "${realmName}" must not contain dots — dots are reserved for parameter tree paths`,
+        `Realm name "${realmName}" must not contain dots: dots are reserved for parameter tree paths`,
       );
     }
 
@@ -334,8 +334,8 @@ export class RealmProvider {
    * holds no account at all.
    *
    * A second consult next to {@link preAuthorizeRegistration}, so both entry
-   * points get it from one place. It is not the main path — the self-hosted
-   * image ships with registration open — and exists so that an operator who
+   * points get it from one place. It is not the main path, the self-hosted
+   * image ships with registration open, and exists so that an operator who
    * sets `REGISTRATION_ALLOWED=false` on a fresh volume does not brick an
    * instance whose own setting has made the only account that could reopen
    * it unreachable.
@@ -433,7 +433,7 @@ export class RealmProvider {
    *
    * The behaviour is for a long-lived process an operator just started on
    * their own machine. On Workers it would cost a lookup over the users
-   * table per registration attempt, on every isolate, forever — and a
+   * table per registration attempt, on every isolate, forever, and a
    * freshly deployed Worker whose table happens to be empty would hand admin
    * to whoever registered first. Refused rather than ignored, the same way
    * `APP_SECRET_FILE` is.
@@ -469,7 +469,7 @@ export class RealmProvider {
    * password" link hidden, and nothing anywhere said so. Downgrading a
    * security setting is the one outcome that must never be quiet.
    *
-   * Settings left unset are not affected — the atom already defaults all
+   * Settings left unset are not affected, the atom already defaults all
    * three to `false`, so only an explicit `true` can contradict.
    */
   protected assertNotificationsCoverSettings(
@@ -561,6 +561,14 @@ export class RealmProvider {
     }
 
     return realm;
+  }
+
+  /**
+   * Every registered realm, for the work that goes over all of them (the
+   * session sweep).
+   */
+  public getRealms(): Realm[] {
+    return Array.from(this.realms.values());
   }
 
   /**

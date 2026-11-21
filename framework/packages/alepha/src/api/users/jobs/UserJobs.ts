@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, type PgQueryWhere } from "alepha/orm";
+import { $repository, type PgQueryWhere, type Repository } from "alepha/orm";
 
 import { sessions } from "../entities/sessions.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -13,8 +13,7 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
  * This service handles user-related scheduled jobs:
  * - Session purge (cleaning up expired sessions)
  *
- * Declared as a module variant — not auto-injected. It is instantiated
- * lazily the first time something calls `alepha.inject(UserJobs)`.
+ * A module variant: `$realm` registers it for every realm.
  */
 export class UserJobs {
   protected readonly log = $logger();
@@ -40,11 +39,11 @@ export class UserJobs {
    *
    * Runs hourly (at :00) and deletes:
    * - sessions whose absolute `expiresAt` has passed
-   * - sessions whose `lastUsedAt` exceeds the realm's `refreshToken.expirationIdle`
-   *   (when configured). Falls back to `createdAt` for sessions without a
-   *   recorded `lastUsedAt`.
+   * - for each realm that sets `refreshToken.expirationIdle`, the sessions of
+   *   its users whose `lastUsedAt` is older than that. Falls back to
+   *   `createdAt` for sessions without a recorded `lastUsedAt`.
    *
-   * The idle sweep is best-effort cleanup — runtime enforcement happens in
+   * The idle sweep is best-effort cleanup: runtime enforcement happens in
    * `SessionService.refreshSession()`.
    */
   public readonly purgeExpiredSessions = $job({
@@ -68,32 +67,43 @@ export class UserJobs {
         });
       }
 
-      // Idle sweep — only if the default realm has expirationIdle configured.
-      // Multi-realm setups with per-realm session tables should add their own
-      // job; this default job sweeps the default sessions table.
-      const realm = this.realmProvider.getRealm();
-      const settings = await realm.getSettings();
-      const idleMs = settings.refreshToken?.expirationIdle;
-      if (idleMs && idleMs > 0) {
+      // Idle sweep, realm by realm: each realm's own `expirationIdle`, on
+      // the sessions of that realm's users only. Realms share one sessions
+      // table unless they override `entities`, and a session row carries no
+      // realm, so the owner decides.
+      for (const realm of this.realmProvider.getRealms()) {
+        const settings = await realm.getSettings();
+        const idleMs = settings.refreshToken?.expirationIdle;
+        if (!idleMs || idleMs <= 0) {
+          continue;
+        }
         const cutoff = this.dateTimeProvider
           .now()
           .subtract(idleMs, "milliseconds")
           .toISOString();
+        const userId = {
+          inArray: realm.repositories.users.subquery(
+            { realm: { eq: realm.name } },
+            "id",
+          ),
+        };
 
-        // Two passes: rows with an explicit lastUsedAt, and pre-migration rows
-        // where lastUsedAt is null — those fall back to createdAt. Each is
-        // bounded on its own.
-        const lastUsedDeleted = await this.purgeInBatches({
-          lastUsedAt: { lt: cutoff },
-        });
-        const fallbackDeleted = await this.purgeInBatches({
-          lastUsedAt: { isNull: true },
-          createdAt: { lt: cutoff },
-        });
+        // Two passes: rows with an explicit lastUsedAt, and pre-migration
+        // rows where lastUsedAt is null, which fall back to createdAt. Each
+        // is bounded on its own.
+        const lastUsedDeleted = await this.purgeInBatches(
+          { userId, lastUsedAt: { lt: cutoff } },
+          realm.repositories.sessions,
+        );
+        const fallbackDeleted = await this.purgeInBatches(
+          { userId, lastUsedAt: { isNull: true }, createdAt: { lt: cutoff } },
+          realm.repositories.sessions,
+        );
 
         const idleTotal = lastUsedDeleted + fallbackDeleted;
         if (idleTotal > 0) {
           this.log.info("Expired sessions purged (idle)", {
+            realm: realm.name,
             deletedCount: idleTotal,
             thresholdMs: idleMs,
           });
@@ -125,12 +135,13 @@ export class UserJobs {
    */
   protected async purgeInBatches(
     where: PgQueryWhere<typeof sessions.schema>,
+    repository: Repository<typeof sessions.schema> = this.sessionRepository,
   ): Promise<number> {
     const size = this.batchSize();
     let deleted = 0;
 
     for (let batch = 0; batch < this.maxBatchesPerRun; batch++) {
-      const rows = await this.sessionRepository.findMany({
+      const rows = await repository.findMany({
         where,
         columns: ["id"],
         limit: size,
@@ -140,7 +151,7 @@ export class UserJobs {
         break;
       }
 
-      await this.sessionRepository.deleteMany({
+      await repository.deleteMany({
         id: { inArray: rows.map((row) => row.id) },
       });
       deleted += rows.length;

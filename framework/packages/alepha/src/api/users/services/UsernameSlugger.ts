@@ -10,14 +10,14 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
  * and reusable from any custom user-creation site (e.g. an OAuth-only flow
  * that wants the same handle convention).
  *
- * **Slug rule** — the local-part of the email is kept as-is (gmail
+ * **Slug rule**, the local-part of the email is kept as-is (gmail
  * `+suffix` retained for predictability). Everything outside `[a-z0-9]` is
  * replaced with `-`, runs of `-` are collapsed, leading/trailing `-` are
  * trimmed, lowercased. If the result is shorter than {@link MIN_LENGTH} it
  * is padded with random alphanumerics. Result is clamped to
  * {@link MAX_LENGTH}.
  *
- * **Collision retry** — `pickAvailable()` checks the realm's `users` table
+ * **Collision retry**, `pickAvailable()` checks the realm's `users` table
  * and the realm's `usernameBlocklist`. On hit, it appends `-<4 random>` and
  * retries up to {@link MAX_RETRIES} times. Best-effort against concurrent
  * registrations: the unique index on `(realm, username COLLATE NOCASE)` is the
@@ -45,7 +45,7 @@ export class UsernameSlugger {
 
   /**
    * Length of the random suffix appended on collision (e.g. `-3dp6`).
-   * 36⁴ ≈ 1.6M variants per base — plenty for a tiny number of retries.
+   * 36⁴ ≈ 1.6M variants per base, plenty for a tiny number of retries.
    */
   static readonly SUFFIX_LENGTH = 4;
 
@@ -68,7 +68,7 @@ export class UsernameSlugger {
   /**
    * Sanitize an email into a base username slug.
    *
-   * Pure function — no DB access. Always returns a string that satisfies
+   * Pure function, no DB access. Always returns a string that satisfies
    * `^[a-z0-9-]{MIN_LENGTH,MAX_LENGTH}$`.
    *
    * @example
@@ -111,7 +111,11 @@ export class UsernameSlugger {
     realmName: string | undefined,
     base: string,
   ): Promise<string> {
-    const blocklist = await this.getBlocklist(realmName);
+    // A derived name never lands on an admin name: see `getAdminNames`.
+    const blocklist = new Set([
+      ...(await this.getBlocklist(realmName)),
+      ...(await this.getAdminNames(realmName)),
+    ]);
     const repo = this.realmProvider.userRepository(realmName);
     const realm = this.realmProvider.getRealm(realmName);
 
@@ -173,6 +177,35 @@ export class UsernameSlugger {
     const settings = await realm.getSettings();
     const list = settings?.usernameBlocklist ?? [];
     return new Set(list.map((b) => b.toLowerCase()));
+  }
+
+  /**
+   * The realm's `adminUsernames`, lower-cased. Such a name grants the admin
+   * role to whoever holds it, so nobody comes by one without asking for it:
+   * a name derived from an email or a provider profile steps around it
+   * ({@link pickAvailable}), and a rename into one is refused
+   * ({@link isAdminName}). Registering it by name is how the role is taken,
+   * and is not refused. Never part of {@link isBlocked}, which an anonymous
+   * caller can read through the username availability check.
+   */
+  protected async getAdminNames(
+    realmName: string | undefined,
+  ): Promise<Set<string>> {
+    const realm = this.realmProvider.getRealm(realmName);
+    const settings = await realm.getSettings();
+    return new Set(
+      (settings?.adminUsernames ?? []).map((name) => name.toLowerCase()),
+    );
+  }
+
+  /**
+   * Whether a name is one of the realm's `adminUsernames`. Case-insensitive.
+   */
+  public async isAdminName(
+    realmName: string | undefined,
+    name: string,
+  ): Promise<boolean> {
+    return (await this.getAdminNames(realmName)).has(name.toLowerCase());
   }
 
   protected isBlockedAgainst(name: string, blocklist: Set<string>): boolean {

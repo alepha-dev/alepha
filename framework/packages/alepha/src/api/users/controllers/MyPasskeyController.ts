@@ -6,7 +6,7 @@ import {
   registrationResponseJsonSchema,
   WebAuthnError,
 } from "alepha/security";
-import { $action, NotFoundError } from "alepha/server";
+import { $action, NotFoundError, TooManyRequestsError } from "alepha/server";
 
 import {
   LastSignInMethodError,
@@ -71,6 +71,7 @@ export class MyPasskeyController {
       PasskeyChallengeError,
       PasskeyPasswordProofError,
       PasskeyAssertionProofError,
+      TooManyRequestsError,
       WebAuthnError,
     ],
     schema: {
@@ -121,6 +122,7 @@ export class MyPasskeyController {
       LastSignInMethodError,
       PasskeyPasswordProofError,
       PasskeyAssertionProofError,
+      TooManyRequestsError,
     ],
     schema: {
       params: z.object({ id: z.uuid() }),

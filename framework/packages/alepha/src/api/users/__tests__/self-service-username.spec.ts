@@ -19,7 +19,9 @@ const boot = async (settings: Record<string, unknown>) => {
   alepha.with(AlephaApiUsers);
   await alepha.start();
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("users", { settings: settings });
+  realmProvider.register("users", {
+    settings: { username: "optional", ...settings },
+  });
   return alepha;
 };
 
