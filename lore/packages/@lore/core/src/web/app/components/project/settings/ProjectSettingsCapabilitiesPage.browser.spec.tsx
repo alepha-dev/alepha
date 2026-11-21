@@ -89,7 +89,8 @@ describe("the Capabilities settings page", () => {
         .getByRole("switch", { name: "Reports" })
         .getAttribute("aria-checked"),
     ).toBe("true");
-    expect(view.container.textContent).toContain("General");
+    // No "General" heading above the card (#Q4046): the tab is under General.
+    expect(view.container.textContent).not.toContain("General");
   });
 
   it("turns Activity off with its own switch", async ({ expect }) => {

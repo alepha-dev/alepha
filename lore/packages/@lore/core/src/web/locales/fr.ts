@@ -1251,7 +1251,6 @@ export default {
   "project.capability.reports.label": "Rapports",
   "project.capability.reports.description":
     "Chiffres de flux, de livraison et d'équipe sur une période.",
-  "project.settings.capabilities.general": "Général",
   "project.create.group.general": "Général",
   "project.create.group.pillars": "Piliers",
   "project.capability.ship.label": "Livrer",

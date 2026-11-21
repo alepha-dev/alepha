@@ -1265,7 +1265,6 @@ export default {
   "project.capability.reports.label": "Reports",
   "project.capability.reports.description":
     "Flow, delivery and team figures over a period.",
-  "project.settings.capabilities.general": "General",
   "project.create.group.general": "General",
   "project.create.group.pillars": "Pillars",
   "project.capability.ship.label": "Ship",
