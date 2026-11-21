@@ -202,7 +202,7 @@ describe("$secure (browser)", () => {
   });
 
   /**
-   * Permissions were previously not checked here at all — only a comment stood
+   * Permissions were previously not checked here at all: only a comment stood
    * where the check belongs, on the grounds that the API registry had already
    * filtered actions by permission. That holds for a `$client` virtual action,
    * whose call site *is* the registry lookup, but not for `$secure` wrapping an
@@ -287,7 +287,7 @@ describe("$secure (browser)", () => {
      * resolves a user's roles into concrete permission names before sending
      * them (`SecurityProvider.getPermissions`, where a `*` role expands to the
      * full list), so the registry never carries a `*` for the browser to match
-     * against — but a guard may still ask "anything under this group?".
+     * against, but a guard may still ask "anything under this group?".
      */
     it("should match a wildcard requirement against concrete grants", async ({
       expect,
@@ -333,14 +333,16 @@ describe("$secure (browser)", () => {
       });
     });
 
-    it("should accept a Permission object, not only a string", async ({
+    it("should accept a Permission object, checked as group:name", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
 
       class App {
         fn = $pipeline({
-          use: [$secure({ permissions: [{ name: "orders:delete" }] })],
+          use: [
+            $secure({ permissions: [{ group: "orders", name: "delete" }] }),
+          ],
           handler: async () => "ok",
         });
       }
@@ -352,6 +354,14 @@ describe("$secure (browser)", () => {
         alepha.store.set(currentUserAtom, { id: "1", name: "Alice" });
         withRegistry(alepha, ["orders:delete"]);
         expect(await app.fn()).toBe("ok");
+      });
+
+      // The bare name is another permission, and so is the same name in
+      // another group.
+      await alepha.context.run(async () => {
+        alepha.store.set(currentUserAtom, { id: "1", name: "Alice" });
+        withRegistry(alepha, ["delete", "invoices:delete"]);
+        expect(await app.fn()).toBeUndefined();
       });
     });
 

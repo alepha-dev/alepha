@@ -122,14 +122,16 @@ declare module "alepha/server" {
  * Complete authentication and authorization system with JWT, RBAC, and multi-issuer support.
  *
  * **Features:**
- * - JWT token issuer with role definitions
- * - Role-based access control (RBAC)
- * - Fine-grained permissions
+ * - JWT token issuer with role definitions, access and refresh tokens
+ * - Multi-issuer support, JWKS and OIDC discovery for external issuers
+ * - `$secure`: issuers, roles, permissions and guards on any handler
+ * - `$owns`: resource-scoped authorization (owner, membership, grants)
+ * - Roles and permissions as primitives, wildcards, ownership and excludes
+ * - Permission scopes narrowing what a machine credential may do
  * - HTTP Basic Authentication
  * - Service-to-service authentication
- * - Multi-issuer support for federated auth
- * - JWKS (JSON Web Key Set) for external issuers
- * - Token refresh logic
+ * - Webhook signing and verification
+ * - WebAuthn (passkey) verification
  * - User profile extraction from JWT
  *
  * @module alepha.security

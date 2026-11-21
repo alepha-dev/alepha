@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCookies } from "alepha/server/cookies";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaSecurity } from "../index.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
@@ -40,17 +40,17 @@ class Api {
  * `ServerSecurityProvider.onServerRequest` runs `priority: "last"`, and that is
  * load-bearing: `ServerCookiesProvider` fills `request.cookies` from a hook in
  * the *normal* tier, and tiers resolve first → normal → last. Move security to
- * `first` and every cookie-borne session resolves to nobody — the request goes
+ * `first` and every cookie-borne session resolves to nobody: the request goes
  * anonymous and `$secure` refuses it.
  *
  * That is not hypothetical. It shipped, and it took two Playwright uploads
  * failing to find it, because a bearer token still worked and only the cookie
  * path broke. A docblock here once claimed resolution "takes only `url` and
- * `headers`, so it cannot want a body that has not been parsed yet" — true
+ * `headers`, so it cannot want a body that has not been parsed yet", true
  * about the body, wrong about what it does want.
  */
 describe("user resolution runs after the cookies are parsed", () => {
-  test("a cookie-borne session resolves to a user", async ({ expect }) => {
+  it("a cookie-borne session resolves to a user", async ({ expect }) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
       .with({ provide: SecurityProvider, use: CookieSecurityProvider })
       .with(AlephaServer)

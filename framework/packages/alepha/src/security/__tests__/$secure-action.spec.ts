@@ -9,12 +9,12 @@ import {
   ServerProvider,
   UnauthorizedError,
 } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 
 describe("$secure middleware", () => {
-  it("should protect action from unauthorized users", async () => {
+  it("should protect action from unauthorized users", async ({ expect }) => {
     class TestApp {
       ok = $action({
         path: "/ok",
@@ -64,7 +64,7 @@ describe("$secure middleware", () => {
     });
   });
 
-  it("should guard by explicit permission", async () => {
+  it("should guard by explicit permission", async ({ expect }) => {
     class TestApp {
       admin = $action({
         path: "/admin",
@@ -129,7 +129,9 @@ describe("$secure middleware", () => {
     ).toBe("ADMIN");
   });
 
-  it("should allow auth-only $secure() for any authenticated user", async () => {
+  it("should allow auth-only $secure() for any authenticated user", async ({
+    expect,
+  }) => {
     class TestApp {
       action = $action({
         path: "/action",
@@ -157,7 +159,9 @@ describe("$secure middleware", () => {
     expect(await app.action.run({}, { user })).toBe("OK");
   });
 
-  it("should allow public actions by default (no $secure middleware)", async () => {
+  it("should allow public actions by default (no $secure middleware)", async ({
+    expect,
+  }) => {
     class TestApp {
       public = $action({
         path: "/public",
@@ -186,70 +190,5 @@ describe("$secure middleware", () => {
     );
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("PUBLIC");
-  });
-
-  it("should require auth when $secure() middleware is present", async () => {
-    class TestApp {
-      secured = $action({
-        path: "/secured",
-        method: "GET",
-        use: [$secure()],
-        handler: () => "PROTECTED",
-      });
-      issuer = $issuer({
-        secret: "test",
-        roles: [{ name: "user", permissions: [{ name: "*" }] }],
-      });
-    }
-
-    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
-    const app = alepha.inject(TestApp);
-    await alepha.start();
-
-    // Should fail without user
-    await expect(app.secured.run({})).rejects.toThrow(UnauthorizedError);
-
-    // Should succeed with user
-    const user = { id: randomUUID(), roles: ["user"] };
-    expect(await app.secured.run({}, { user })).toBe("PROTECTED");
-  });
-
-  it("should enforce explicit permissions", async () => {
-    class TestApp {
-      action = $action({
-        path: "/action",
-        method: "GET",
-        use: [$secure({ permissions: ["orders:delete"] })],
-        handler: () => "DELETED",
-      });
-      issuer = $issuer({
-        secret: "test",
-        roles: [
-          {
-            name: "manager",
-            permissions: [{ name: "orders:delete" }],
-          },
-          {
-            name: "viewer",
-            permissions: [{ name: "orders:read" }],
-          },
-        ],
-      });
-    }
-
-    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
-    const app = alepha.inject(TestApp);
-    await alepha.start();
-
-    const manager = { id: randomUUID(), roles: ["manager"] };
-    const viewer = { id: randomUUID(), roles: ["viewer"] };
-
-    // manager can delete
-    expect(await app.action.run({}, { user: manager })).toBe("DELETED");
-
-    // viewer cannot delete
-    await expect(app.action.run({}, { user: viewer })).rejects.toThrow(
-      ForbiddenError,
-    );
   });
 });

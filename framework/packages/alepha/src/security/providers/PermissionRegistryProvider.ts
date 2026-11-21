@@ -32,7 +32,7 @@ export class PermissionRegistryProvider {
 
   /**
    * Concrete permission names granted to the current caller. Empty before the
-   * registry has arrived (pre-login, pre-`ping`), which denies by default —
+   * registry has arrived (pre-login, pre-`ping`), which denies by default:
    * the safe direction for a UI gate.
    */
   public get granted(): string[] {

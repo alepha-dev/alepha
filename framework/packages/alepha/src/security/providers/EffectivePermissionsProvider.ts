@@ -55,11 +55,18 @@ export class EffectivePermissionsProvider {
      * being offered a button the application would hide, because there is no
      * page to put one on.
      *
+     * Privileged means the identity itself carries `ownership: false`. On an
+     * identity a `$secure` gate published, that flag is the answer to the
+     * gate's own permissions and nothing more, so it is not read as one.
+     *
      * A credential's permission scope still applies. The bypass is about the
      * application's factors, and a scoped key must not read the full set back
      * through it.
      */
-    if (user.ownership === false) {
+    if (
+      user.ownership === false &&
+      this.security.identityOwnership(user) === false
+    ) {
       return catalogue.filter((id) =>
         this.security.isInPermissionScope(id, user.permissionScope),
       );
@@ -69,8 +76,31 @@ export class EffectivePermissionsProvider {
     const granted = new Set(this.ids(this.security.getPermissions(user)));
 
     return catalogue.filter(
-      (id) => granted.has(id) && narrow.every((factor) => factor(id)),
+      (id) =>
+        granted.has(id) &&
+        (this.isUnrestricted(user, id) || narrow.every((factor) => factor(id))),
     );
+  }
+
+  /**
+   * Whether the caller passed a permission check unrestricted AND its roles
+   * grant this permission unrestricted too: the per-permission form of the
+   * privileged bypass, for a caller whose `ownership: false` is a gate's
+   * decision. A role holding everything keeps the whole catalogue; a role
+   * holding one unrestricted permission keeps the bypass for that one only.
+   */
+  protected isUnrestricted(user: UserAccountToken, id: string): boolean {
+    if (user.ownership !== false) {
+      return false;
+    }
+
+    const check = this.security.checkPermissionInRealm(
+      user.realm,
+      id,
+      ...(user.roles ?? []),
+    );
+
+    return check.isAuthorized && check.ownership === false;
   }
 
   protected ids(permissions: { group?: string; name?: string }[]): string[] {
@@ -83,7 +113,9 @@ export class EffectivePermissionsProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface EffectivePermissionsOptions {
-  /** The caller, with its roles, ownership flag and permission scope. */
+  /**
+   * The caller, with its roles, ownership flag and permission scope.
+   */
   user: UserAccountToken;
 
   /**

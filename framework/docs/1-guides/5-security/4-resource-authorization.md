@@ -15,7 +15,7 @@ flowchart TD
   A[$secure checks<br/>auth, roles, permissions] --> B[Load the row named by param or resolve]
   B -->|missing| N[404 NotFoundError]
   B --> C[Follow through hops, if any]
-  C --> D{Privileged caller?<br/>ownership is false}
+  C --> D{Privileged caller?<br/>the gate's own ownership is false}
   D -->|yes| OK[Handler runs]
   D -->|no| E{owner column matches?}
   E -->|no| F{via membership row?}
@@ -288,7 +288,39 @@ Independently of `cache`, `$owns` memoizes its reads **for the lifetime of one r
 
 ## Privileged identities
 
-A caller with `ownership === false` bypasses the owner, membership and `requires` grant checks. That is the same `ownership` flag `$secure` sets from the permission registry (see [Ownership](/docs/guides-security-authentication#ownership)): `false` means an admin whose grant is _not_ narrowed to their own rows. The bypass happens after the row is loaded, so an unknown id is still a `404`, and the application-scope half of `requires` (folded into `secure.permissions`) still applies.
+A caller with `ownership === false` bypasses the owner, membership and `requires` grant checks. `false` means an admin whose grant is _not_ narrowed to their own rows (see [Ownership](/docs/guides-security-authentication#ownership)). The bypass happens after the row is loaded, so an unknown id is still a `404`, and the application-scope half of `requires` (folded into `secure.permissions`) still applies.
+
+An ownership decision belongs to the permission check that produced it. The gate reads the answer to **its own** permissions, the ones in `requires` and `secure.permissions`, and nothing else:
+
+```typescript
+// `docs:read` unrestricted for the caller's role: the owner check is skipped.
+$owns({
+  repository: () => this.docs,
+  param: "id",
+  owner: "createdBy",
+  requires: "docs:read",
+});
+
+// No permission of its own: the owner check always runs, whatever another
+// gate decided about another permission.
+$owns({ repository: () => this.docs, param: "id", owner: "createdBy" });
+```
+
+So a gate that names no permission is never opened by a permission checked somewhere else: not by a `$secure({ permissions })` beside it in the same `use` list, not by the action whose handler reached this one through `run()`, not by a pipeline that ran earlier in the same context. To let an administrator past an owner check, name the permission on the gate. The same holds for the handler: after a bare `$secure()`, `user.ownership` is never another gate's unrestricted answer. A restriction is the opposite case and is kept: after `[$secure({ permissions: ["docs:read"] }), $secure()]`, a caller whose `docs:read` is owner-scoped still reads `user.ownership === true`.
+
+It is not opened by a copy either. The unrestricted answer lives on the `user` object the gate gives its handler and is not an ordinary field: `{ ...user }`, a JSON round trip, `structuredClone` and `Object.assign` all produce a user without it, and `storeUserInContext(user)` stores the identity without it. Passing any of them (or `user` itself) to `run(..., { user })` reaches the inner gate as an ordinary caller. Read `user.ownership` on the object you were given, and pass that object along when a service needs the answer.
+
+What does carry it is code that reads the field and writes it back, because that is building an identity by hand: `{ ...user, ownership: user.ownership }`, a decode of the user through `userAccountInfoSchema`, and `alepha.store.set(currentUserAtom, user)`, which validates with that schema. Each yields `ownership: false` as a plain field, which the next gate reads as a privileged identity (see below). The same goes for assigning `user.ownership` on a gate's user: the object keeps being read through the gate's record, while a spread of it carries whatever was assigned as a plain field. Never write `ownership` on a user you were given in order to hand it on.
+
+A gate publishes its user only for as long as it runs, guard and handler. Once it returns, `currentUserAtom` reads what it held before, so a gated pipeline called from a handler never changes the answer that handler was given. A handler that replaces the current user itself (`alepha.store.set(currentUserAtom, other)`, to step down or act for someone) is obeyed for the rest of its gate: the next gate it reaches checks `other`.
+
+Three cases where that sentence needs care:
+
+- **Gates overlapping in one context.** Two pipelines under one `Promise.all` share `currentUserAtom`, and the `user` of the request they run inside. While both run, each can read the other's user there, and the last to settle restores what it found, which may be the other's user rather than the one from before. An owner gate reached afterwards still refuses a stranger, since it never takes another gate's unrestricted answer. The `user` a handler receives as an argument is the reliable one: read that, not the atom.
+- **Deferred work.** A timer, an unawaited promise or an in-process subscriber started in a gated handler runs after the gate: it reads whatever the atom holds then, not the gate's user. Pass it the user it needs.
+- **A request that carried no user.** When a gate resolves the user of a request that had none (a WebSocket upgrade, a request the security hook could not authenticate), that user stays on `request.user` after the gate, with the gate's answer. A later bare `$secure()` on that request authenticates from it; an owner gate still checks the row.
+
+The one flag a gate without permissions honors is the identity's own: a user **built** with `ownership: false` (`action.run(..., { user })`, `run(..., { user: "system" })`, a job that sets `currentUserAtom` to its operator) is privileged by declaration. A user resolved from a request never carries one, and neither does one built by `createUserFromToken` or `resolveUserFromServerRequest` with a `permission`: that answer is a permission check's, like a gate's.
 
 This is deliberately strict - `undefined` does **not** bypass. `undefined` only means no permission check ran, which is not the same as "this caller is privileged". If you are migrating hand-written authz that treated `!user.ownership` as the bypass, note that `undefined` used to pass and now does not.
 

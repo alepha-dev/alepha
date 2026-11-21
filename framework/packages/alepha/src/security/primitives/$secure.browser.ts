@@ -21,10 +21,10 @@ export type { SecureOptions };
  * Resolves the user from `currentUserAtom` only (no HTTP header resolution).
  * Checks issuers and roles from the user object, and permissions against the
  * registry the server sent down (`PermissionRegistryProvider`). The server
- * re-checks all of it on the real request — this side exists so the UI agrees
+ * re-checks all of it on the real request: this side exists so the UI agrees
  * with the answer the server would give, not to enforce anything.
  *
- * In the browser, an unauthenticated or unauthorized user is not an exception —
+ * In the browser, an unauthenticated or unauthorized user is not an exception:
  * the middleware short-circuits by returning `undefined` and the handler is not called.
  * Components should use `can()` on `$client` virtual actions to conditionally
  * render UI elements.
@@ -56,7 +56,7 @@ export function $secure(options?: SecureOptions): Middleware {
   // Resolved here, at `$secure()` call time, rather than inside the handler.
   //
   // A middleware handler first runs on the first *call*, which is after
-  // `alepha.start()` has locked the container — injecting there throws
+  // `alepha.start()` has locked the container: injecting there throws
   // `ContainerLockedError`.
   //
   // Only when permissions are actually declared: issuer/role/guard checks read
@@ -121,13 +121,13 @@ export function $secure(options?: SecureOptions): Middleware {
         // Permission check.
         //
         // Resolved against the permission set the server sent down with the API
-        // registry — the same source that backs `useAuth().has` and `$page.can`,
+        // registry: the same source that backs `useAuth().has` and `$page.can`,
         // so a guard and the UI affordance it gates can never disagree.
         // Wildcards (`admin:*`) are handled by the provider.
         //
         // This used to be skipped entirely on the grounds that the API registry
         // had already filtered actions by permission. That holds for a `$client`
-        // virtual action, whose call site *is* the registry lookup — but not for
+        // virtual action, whose call site *is* the registry lookup, but not for
         // `$secure` wrapping an arbitrary handler such as a `$page` loader,
         // where nothing had filtered anything and the guard silently admitted
         // every authenticated user.
@@ -135,8 +135,12 @@ export function $secure(options?: SecureOptions): Middleware {
         // Permissions remain an AND list, matching the server.
         if (registry && options?.permissions?.length) {
           const granted = options.permissions.every((permission) =>
+            // The full id, as the metadata above and the server build it: the
+            // granted list holds `group:name` strings.
             registry.can(
-              typeof permission === "string" ? permission : permission.name,
+              typeof permission === "string"
+                ? permission
+                : [permission.group, permission.name].filter(Boolean).join(":"),
             ),
           );
 
@@ -149,7 +153,7 @@ export function $secure(options?: SecureOptions): Middleware {
         //
         // The browser has no server request, so `params` / `query` / `body`
         // are empty here. A guard that reads them denies in the browser and is
-        // re-evaluated for real on the server — which is the safe direction:
+        // re-evaluated for real on the server, which is the safe direction:
         // the UI hides the action, the API is what actually enforces it.
         if (options?.guard) {
           const allowed = await options.guard({

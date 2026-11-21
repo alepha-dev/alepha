@@ -1,6 +1,6 @@
 import { createMiddleware } from "alepha";
 
-// Type-only on purpose — the server implementation imports `alepha/orm` and
+// Type-only on purpose: the server implementation imports `alepha/orm` and
 // `alepha/server`, neither of which belongs in a browser bundle. Erased at
 // compile time.
 import type { OwnsOptions } from "./$owns.ts";
@@ -11,7 +11,7 @@ export type { OwnsOptions };
 /**
  * Browser-side stand-in for the resource-scoped authorization gate.
  *
- * Ownership lives in database rows, and the browser cannot load them — so
+ * Ownership lives in database rows, and the browser cannot load them, so
  * this variant always short-circuits by returning `undefined` without calling
  * the handler, exactly like a `$secure` guard that reads request data. That
  * is the safe direction: the UI hides the action, and the server-side `$owns`

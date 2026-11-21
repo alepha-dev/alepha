@@ -6,7 +6,7 @@ import { $atom, z } from "alepha";
  * Request-scoped: `$owns` runs inside the host primitive's `$scope`, so
  * concurrent requests never observe each other's row.
  *
- * `serverOnly` because a resolved row is the raw database record — it may
+ * `serverOnly` because a resolved row is the raw database record: it may
  * carry columns the caller is not entitled to see, and this atom must never
  * be serialized into the SSR hydration payload.
  */

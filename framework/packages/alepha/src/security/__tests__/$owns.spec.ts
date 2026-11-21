@@ -1,7 +1,7 @@
 import { $inject, $pipeline, Alepha, z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { $owns } from "../primitives/$owns.ts";
@@ -70,7 +70,7 @@ const createApp = () => {
 };
 
 describe("$owns", () => {
-  test("allows the owner and exposes the loaded row", async ({ expect }) => {
+  it("allows the owner and exposes the loaded row", async ({ expect }) => {
     const { alepha, service } = createApp();
     await alepha.start();
     await service.projects.create({
@@ -89,7 +89,7 @@ describe("$owns", () => {
     });
   });
 
-  test("denies a stranger", async ({ expect }) => {
+  it("denies a stranger", async ({ expect }) => {
     const { alepha, service } = createApp();
     await alepha.start();
     await service.projects.create({
@@ -108,7 +108,7 @@ describe("$owns", () => {
     });
   });
 
-  test("allows a member via the join entity", async ({ expect }) => {
+  it("allows a member via the join entity", async ({ expect }) => {
     const { alepha, service } = createApp();
     await alepha.start();
     await service.projects.create({
@@ -128,7 +128,7 @@ describe("$owns", () => {
     });
   });
 
-  test("denies once the membership row is gone", async ({ expect }) => {
+  it("denies once the membership row is gone", async ({ expect }) => {
     const { alepha, service } = createApp();
     await alepha.start();
     await service.projects.create({
@@ -149,7 +149,7 @@ describe("$owns", () => {
     });
   });
 
-  test("lets a privileged identity through without a membership row", async ({
+  it("lets a privileged identity through without a membership row", async ({
     expect,
   }) => {
     const { alepha, service } = createApp();
@@ -162,7 +162,7 @@ describe("$owns", () => {
 
     await alepha.context.run(async () => {
       // `ownership: false` is the privileged-identity marker $secure already
-      // uses — an admin whose grant is not narrowed to rows they own.
+      // uses: an admin whose grant is not narrowed to rows they own.
       alepha.set("alepha.http.request", {
         params: { id: "p1" },
         user: { ...stranger, ownership: false },
