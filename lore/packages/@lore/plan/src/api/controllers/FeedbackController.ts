@@ -158,9 +158,15 @@ export class FeedbackController {
       // "outside-the-team feedback channel". A member whose rank reads the
       // inbox submits without limit; membership alone is not enough, since
       // anyone can join an open project as a viewer (#Q3648).
-      if (
-        !(await this.security.holds(params.projectId, user.id, "feedback:read"))
-      ) {
+      // The same line decides who is outside the team (#Q3987): a reporter
+      // whose rank does not read the inbox writes untrusted feedback, marked
+      // now and never cleared.
+      const insider = await this.security.holds(
+        params.projectId,
+        user.id,
+        "feedback:read",
+      );
+      if (!insider) {
         await this.rateLimiter.assertFeedbackAllowed(user.id);
       }
 
@@ -188,6 +194,7 @@ export class FeedbackController {
         attachments,
         tags: (body.tags ?? []).slice(0, 20),
         source: this.scrubSource(body.source),
+        untrusted: !insider,
       });
 
       await this.audits.feedback.logSuccess("create", {

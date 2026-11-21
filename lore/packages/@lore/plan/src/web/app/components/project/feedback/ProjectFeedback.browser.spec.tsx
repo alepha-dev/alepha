@@ -28,6 +28,7 @@ const feedbackOf = (id: number): FeedbackResource =>
     description: `body ${id}`,
     status: "pending",
     createdAt: "2026-09-02T10:00:00.000Z",
+    untrusted: false,
     attachments: [],
     tags: [],
   }) as FeedbackResource;

@@ -269,6 +269,19 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           })()}
           {tr(`feedback.filter.${feedback.status}`)}
         </Badge>
+        {/* Written outside the team (#Q3987): no agent works on it while
+            the Agent host runs jobs as a process. */}
+        {feedback.untrusted && (
+          <Badge
+            variant="tint"
+            tone="warning"
+            className="shrink-0 uppercase"
+            title={tr("feedback.untrusted.description")}
+            data-testid="feedback-untrusted"
+          >
+            {tr("feedback.untrusted")}
+          </Badge>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">

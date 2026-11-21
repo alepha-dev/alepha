@@ -78,12 +78,31 @@ export class AgentJobService {
     startedByJobId?: string;
     subjectType: string;
     subjectId: string;
+    /**
+     * The input was written outside the team (#Q3987): refused on a host
+     * that runs jobs as a process, and run with the `read` profile whatever
+     * was asked.
+     */
+    untrusted?: boolean;
   }): Promise<HostJobSummary> {
     const host = await this.port.agentHostFor(request.projectId);
     if (!host) {
       throw new ForbiddenError(
         "This project names no Agent host: pick one on its hosts settings page",
       );
+    }
+    if (request.untrusted) {
+      // The PoC gate: on a process runner the job has the jobs user's shell
+      // on the host and the Claude credential in reach, so attacker text
+      // never reaches one. A container runner lifts it.
+      if (host.runner !== "container") {
+        throw new ForbiddenError(
+          `Untrusted input never reaches an agent on ${host.slug}, which runs jobs as a host process: a member must handle it`,
+        );
+      }
+      // Whatever the caller or the agent decides: no push, no write but the
+      // tools the read profile's key holds.
+      request = { ...request, profile: "read", questNumber: undefined };
     }
     if (
       request.startedByJobId &&

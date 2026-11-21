@@ -4,6 +4,7 @@ import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
 
+import { feedback } from "../entities/feedback.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";
 import { QuestEventSources } from "./QuestEventSources.ts";
@@ -104,6 +105,7 @@ export class QuestService {
   protected readonly questEvents = $inject(QuestEventSources);
 
   protected readonly quests = $repository(quests);
+  protected readonly feedbackRows = $repository(feedback);
   protected readonly projects = $repository(projects);
   protected readonly areaService = $inject(AreaService);
   protected readonly limits = $inject(ProjectLimits);
@@ -239,6 +241,14 @@ export class QuestService {
       tags: normalizeQuestTags(input.tags ?? []),
       dependsOn: input.dependsOn ?? undefined,
       feedbackId: input.feedbackId,
+      // Born of untrusted feedback, it carries the marker (#Q3987).
+      untrusted: input.feedbackId
+        ? ((
+            await this.feedbackRows.findOne({
+              where: { id: { eq: input.feedbackId } },
+            })
+          )?.untrusted ?? false)
+        : false,
       releaseId: input.releaseId,
       source: input.source,
       createdBy: input.createdBy,

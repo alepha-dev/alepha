@@ -123,13 +123,22 @@ export interface HostJobQueue {
 }
 
 /**
+ * A project's Agent host as an agent kind sees it: `runner` is how it runs
+ * jobs (`process` or `container`), which the untrusted-input gate reads.
+ */
+export interface AgentHostRef {
+  id: string;
+  slug: string;
+  status?: string;
+  runner?: string;
+}
+
+/**
  * What Ship registers about Agent hosts (#Q3985): the one a project's agent
  * jobs run on, and the recheck an agent job's auth or limit failure asks for.
  */
 export interface AgentHostDirectory {
-  defaultFor(
-    projectId: number,
-  ): Promise<{ id: string; slug: string; status?: string } | undefined>;
+  defaultFor(projectId: number): Promise<AgentHostRef | undefined>;
   recheck(hostId: string): Promise<void>;
 }
 
@@ -160,7 +169,7 @@ export class HostJobs {
    */
   public async agentHostFor(
     projectId: number,
-  ): Promise<{ id: string; slug: string; status?: string } | undefined> {
+  ): Promise<AgentHostRef | undefined> {
     return this.agents?.defaultFor(projectId);
   }
 
