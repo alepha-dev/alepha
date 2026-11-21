@@ -7,16 +7,34 @@ import {
 import {
   SubscriptionBell,
   currentProjectAtom,
+  setCurrentProject,
   useRank,
   type I18n,
   TokenReveal,
 } from "@lore/core/web";
 import { z } from "alepha";
-import { useAction, useClient, useQuery, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Flag, Link2, Plus, Server, Unlink } from "lucide-react";
+import {
+  Bot,
+  Flag,
+  Globe,
+  Link2,
+  Plus,
+  Server,
+  Star,
+  StarOff,
+  Unlink,
+} from "lucide-react";
 import { useState } from "react";
 
+import type { AgentHostController } from "../../../../../api/controllers/AgentHostController.ts";
 import type {
   LentHostResource,
   ProjectHostController,
@@ -25,7 +43,7 @@ import type { OwnedHostResource } from "../../../../../api/schemas/ownedHostReso
 import HostCapabilityBadges from "../../hosts/HostCapabilityBadges.tsx";
 import HostDrawer from "../../hosts/HostDrawer.tsx";
 import HostTypeBadge from "../../hosts/HostTypeBadge.tsx";
-import ProjectAgentHostPicker from "./ProjectAgentHostPicker.tsx";
+import ProjectAgentEgressDialog from "./ProjectAgentEgressDialog.tsx";
 import type { ProjectHostTableRow } from "./projectHostTableRow.ts";
 import ProjectSettingsHostNameCell from "./ProjectSettingsHostNameCell.tsx";
 import ProjectSettingsHostsAddDialog from "./ProjectSettingsHostsAddDialog.tsx";
@@ -49,6 +67,11 @@ import ProjectSettingsHostStatusCell from "./ProjectSettingsHostStatusCell.tsx";
  * server-side; the button is disabled here for a rank without it, with a
  * tooltip, a UX hint rather than a second authorization boundary.
  *
+ * The default Agent host (#Q3985) is picked here too, since #Q4065 removed
+ * its card: an Agent host carries an `agent` pill in Capabilities, marked
+ * when it is the default, and a row action makes it the default or clears
+ * it. The push egress list the card held opens from the default's row.
+ *
  * Detaching is offered to a rank with `host:lend` and to the host's own
  * owner, because both are legitimate: one gives up a capability, the other
  * withdraws a loan. Neither undeploys anything, and the confirmation says so,
@@ -60,8 +83,11 @@ const ProjectSettingsHostsPage = () => {
   const toaster = useToast();
   const dialog = useDialog();
   const api = useClient<ProjectHostController>();
+  const agentApi = useClient<AgentHostController>();
+  const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
   const canLend = can("host:lend");
+  const [egressOpen, setEgressOpen] = useState(false);
 
   const [items, setItems] = useState<LentHostResource[] | undefined>();
   const [adding, setAdding] = useState(false);
@@ -164,9 +190,34 @@ const ProjectSettingsHostsPage = () => {
     [api, project, dialog, toaster, tr],
   );
 
+  // The default Agent host (#Q4065), set or cleared from its row.
+  const agentAction = useAction<[hostId: string | null], void>(
+    {
+      handler: async (_ctx, hostId) => {
+        if (!project) return;
+        await agentApi.setProjectAgentHost({
+          params: { projectId: project.id },
+          body: { hostId },
+        });
+        setCurrentProject(alepha, {
+          ...project,
+          defaultAgentHostId: hostId ?? undefined,
+        });
+        toaster.success(
+          tr(
+            hostId ? "hosts.agent.toast.default" : "hosts.agent.toast.cleared",
+          ),
+        );
+      },
+    },
+    [agentApi, alepha, project, toaster, tr],
+  );
+
   if (!project) return null;
 
-  const busy = lendAction.loading || detachAction.loading;
+  const busy =
+    lendAction.loading || detachAction.loading || agentAction.loading;
+  const canAgent = can("host:update");
 
   const rowActions = (
     row: ProjectHostTableRow,
@@ -180,6 +231,32 @@ const ProjectSettingsHostsPage = () => {
         disabled: () => busy,
         onClick: () => void lendAction.run(owned),
       });
+    }
+    // An Agent host this project may use (#Q4065): make it the default, or
+    // clear it; the default's row also opens the push egress list.
+    if (row.loan?.agentHost && canAgent) {
+      const hostId = row.loan.id;
+      if (project.defaultAgentHostId === hostId) {
+        actions.push({
+          icon: StarOff,
+          label: tr("hosts.agent.clearDefault"),
+          disabled: () => busy,
+          onClick: () => void agentAction.run(null),
+        });
+        actions.push({
+          icon: Globe,
+          label: tr("hosts.agent.egress.action"),
+          disabled: () => busy,
+          onClick: () => setEgressOpen(true),
+        });
+      } else {
+        actions.push({
+          icon: Star,
+          label: tr("hosts.agent.makeDefault"),
+          disabled: () => busy,
+          onClick: () => void agentAction.run(hostId),
+        });
+      }
     }
     // Either side of the loan may end it: `host:lend` here, or in the
     // host's home project, which the server sends in `can`.
@@ -229,8 +306,6 @@ const ProjectSettingsHostsPage = () => {
           onDismiss={() => setFreshSecret(undefined)}
         />
       )}
-
-      {items !== undefined && <ProjectAgentHostPicker hosts={items} />}
 
       {/* Drawn once both reads land: a static table handed `[]` would say
           "no host" for the moment it takes them to answer. */}
@@ -339,7 +414,31 @@ const ProjectSettingsHostsPage = () => {
                         !(row.origin === "home" && !row.loan) &&
                         host.deployAllowed
                       }
-                    />
+                    >
+                      {/* The Agent role (#Q4065), marked when it is the
+                          project's default Agent host. */}
+                      {row.loan?.agentHost && (
+                        <Badge
+                          variant="tint"
+                          tone={
+                            project.defaultAgentHostId === row.loan.id
+                              ? "violet"
+                              : "neutral"
+                          }
+                          data-testid="host-agent"
+                          data-default={
+                            project.defaultAgentHostId === row.loan.id
+                              ? "true"
+                              : undefined
+                          }
+                        >
+                          <Bot className="size-3" aria-hidden="true" />
+                          {project.defaultAgentHostId === row.loan.id
+                            ? tr("hosts.agent.pill.default")
+                            : tr("hosts.agent.pill")}
+                        </Badge>
+                      )}
+                    </HostCapabilityBadges>
                     {row.origin === "home" && !row.loan && (
                       <span className="text-muted-foreground text-xs">
                         {tr("hosts.home.notLentHere")}
@@ -403,6 +502,12 @@ const ProjectSettingsHostsPage = () => {
           void home.refetch();
         }}
         onSecret={setFreshSecret}
+      />
+
+      <ProjectAgentEgressDialog
+        key={egressOpen ? "egress-open" : "egress-closed"}
+        open={egressOpen}
+        onOpenChange={setEgressOpen}
       />
 
       <ProjectSettingsHostsAddDialog

@@ -58,7 +58,10 @@ CLI's own message. The check runs again once a day, on **Check now**, and
 whenever a job fails on a sign-in or usage-limit message.
 
 **4. Name the project's Agent host.** In the project's **Settings ▸ Hosts**,
-pick **Default Agent host**: a host of the project, or one lent to it. Until a
+an Agent host carries an **agent** pill under **Capabilities**. Open its row's
+menu and choose **Make default Agent host**: a host of the project, or one
+lent to it. The default's pill reads **agent, default**, and its menu holds
+**Hosts a push job may reach**. Until a
 project names one, its agent buttons are hidden.
 
 From the CLI:

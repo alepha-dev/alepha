@@ -3113,14 +3113,6 @@ export default {
   "hosts.agent.check": "Vérifier",
   "hosts.agent.credential.oauth": "Jeton OAuth",
   "hosts.agent.credential.api_key": "Clé d'API",
-  "hosts.agent.default": "Hôte d'agent par défaut",
-  "hosts.agent.default.description":
-    "L'hôte d'agent sur lequel tournent les tâches d'agent de ce projet. Sans lui, les boutons d'agent sont masqués.",
-  "hosts.agent.default.none":
-    "Aucun hôte d'agent n'est disponible pour ce projet : faites de l'un de ses hôtes un hôte d'agent, ou empruntez-en un.",
-  "hosts.agent.default.label": "Hôte d'agent",
-  "hosts.agent.default.empty": "Aucun",
-  "hosts.agent.default.save": "Enregistrer",
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":
     "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne la traite tant que l'hôte d'agent exécute les tâches comme un processus de l'hôte ; sur un hôte à conteneurs, un agent ne fait que la lire.",
@@ -3141,6 +3133,15 @@ export default {
   "quest.untrusted.confirm": "Confirmer son texte",
   "quest.untrusted.confirm.description":
     "Cette quête est née d'un retour écrit hors de l'équipe. Lisez son texte, puis confirmez-le : un agent ne la traite qu'après la confirmation d'un membre.",
+  "hosts.agent.pill": "agent",
+  "hosts.agent.pill.default": "agent, par défaut",
+  "hosts.agent.makeDefault": "Définir comme hôte Agent par défaut",
+  "hosts.agent.clearDefault": "Retirer l’hôte Agent par défaut",
+  "hosts.agent.egress.action": "Hôtes qu’un job de push peut joindre",
+  "hosts.agent.egress.save": "Enregistrer",
+  "hosts.agent.toast.default": "Hôte Agent par défaut défini",
+  "hosts.agent.toast.cleared":
+    "Aucun hôte Agent par défaut : les boutons d’agent sont masqués",
   "hosts.agent.egress.label": "Hôtes qu'une tâche de push peut joindre",
   "hosts.agent.egress.description":
     "En plus d'Anthropic et de Lore, imposé sur un hôte d'agent à conteneurs. Vide : les registres npm et Yarn et GitHub. Un point initial couvre tous les sous-domaines.",
