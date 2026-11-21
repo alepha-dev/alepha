@@ -1,4 +1,4 @@
-import { Badge, cn, textLinkUnderlineClassName, TimeAgo } from "@alepha/ui";
+import { cn, textLinkUnderlineClassName, TimeAgo } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
   DataTable,
@@ -7,18 +7,20 @@ import {
 } from "@alepha/ui/table";
 import type { AdminHostController } from "@lore/ship/api";
 import type { AdminHostResource } from "@lore/ship/schemas";
+import {
+  HostCapabilityBadges,
+  HostStateBadge,
+  HostTypeBadge,
+} from "@lore/ship/web";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import {
-  BarChart3,
   CircleDot,
-  Cloud,
   FolderInput,
   KeyRound,
   Pencil,
-  Rocket,
   Server,
   Trash2,
 } from "lucide-react";
@@ -181,22 +183,10 @@ export const AdminHosts = () => {
               </span>
             ),
           },
-          // The tag pill of the quests pages (#Q3941): every tag chip is
-          // `<Badge variant="tint">` in its tone (`tagTone` in @lore/plan),
-          // and a type has no colour of its own, so `neutral`, as an
-          // uncoloured tag is. Every pill on this page is that tag, with a
-          // leading icon (#Q4010).
+          // The cells the project's Hosts tab draws too (#Q4047).
           type: {
             label: "Type",
-            cell: (host) => {
-              const Icon = host.type === "cloudflare" ? Cloud : Server;
-              return (
-                <Badge variant="tint" tone="neutral" data-testid="host-type">
-                  <Icon className="size-3" aria-hidden="true" />
-                  {host.type}
-                </Badge>
-              );
-            },
+            cell: (host) => <HostTypeBadge type={host.type} />,
           },
           project: {
             label: "Project",
@@ -227,55 +217,22 @@ export const AdminHosts = () => {
           },
           online: {
             label: "State",
-            cell: (host) => {
-              // Online or offline, nothing else (#Q4010). A cloudflare account
-              // never connects, so `online` says nothing about one: whether
-              // its credential still works does (#1630), and a valid one
-              // reads online.
-              const online =
-                host.type === "cloudflare"
-                  ? host.credentialStatus === "valid"
-                  : host.online;
-              return (
-                <Badge
-                  variant="tint"
-                  tone={online ? "success" : "neutral"}
-                  data-testid="host-state"
-                >
-                  <CircleDot className="size-3" aria-hidden="true" />
-                  {online ? "online" : "offline"}
-                </Badge>
-              );
-            },
+            cell: (host) => (
+              <HostStateBadge
+                type={host.type}
+                online={host.online}
+                credentialStatus={host.credentialStatus}
+              />
+            ),
           },
           capabilities: {
             label: "Capabilities",
-            cell: (host) => {
-              // What the host does, as a list so a capability to come (the
-              // agent) is one more entry. Stats come from Bay's connector:
-              // a cloudflare account reports none, so it carries no pill.
-              const capabilities = [
-                ...(host.type === "bay"
-                  ? [{ label: "stats", icon: BarChart3 }]
-                  : []),
-                ...(host.deployAllowed
-                  ? [{ label: "deploy", icon: Rocket }]
-                  : []),
-              ];
-              return (
-                <span
-                  className="flex flex-wrap items-center gap-1"
-                  data-testid="host-capabilities"
-                >
-                  {capabilities.map((capability) => (
-                    <Badge key={capability.label} variant="tint" tone="neutral">
-                      <capability.icon className="size-3" aria-hidden="true" />
-                      {capability.label}
-                    </Badge>
-                  ))}
-                </span>
-              );
-            },
+            cell: (host) => (
+              <HostCapabilityBadges
+                type={host.type}
+                deployAllowed={host.deployAllowed}
+              />
+            ),
           },
           loans: {
             label: "Lent to",

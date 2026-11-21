@@ -1,4 +1,5 @@
 import { DialogProvider } from "@alepha/ui";
+import { I18n } from "@lore/core/web";
 import type { AdminHostResource } from "@lore/ship/schemas";
 import {
   cleanup,
@@ -11,7 +12,7 @@ import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
-import { AlephaReactI18n } from "alepha/react/i18n";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
@@ -114,8 +115,12 @@ describe("AdminHosts", () => {
       .with({ provide: LinkProvider, use: AdminLinks })
       .with(AlephaReact)
       .with(AlephaReactI18n)
-      .with(AlephaReactRouter);
+      .with(AlephaReactRouter)
+      // Lore's catalogue: the state pill is the project Hosts tab's, which
+      // reads it (#Q4047).
+      .with(I18n);
     await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
     return alepha.inject(LinkProvider) as AdminLinks;
   };
 

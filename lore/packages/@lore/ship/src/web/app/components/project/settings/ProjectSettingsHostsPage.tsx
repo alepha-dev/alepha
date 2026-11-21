@@ -22,7 +22,9 @@ import type {
   ProjectHostController,
 } from "../../../../../api/controllers/ProjectHostController.ts";
 import type { OwnedHostResource } from "../../../../../api/schemas/ownedHostResourceSchema.ts";
+import HostCapabilityBadges from "../../hosts/HostCapabilityBadges.tsx";
 import HostDrawer from "../../hosts/HostDrawer.tsx";
+import HostTypeBadge from "../../hosts/HostTypeBadge.tsx";
 import ProjectAgentHostPicker from "./ProjectAgentHostPicker.tsx";
 import type { ProjectHostTableRow } from "./projectHostTableRow.ts";
 import ProjectSettingsHostNameCell from "./ProjectSettingsHostNameCell.tsx";
@@ -285,6 +287,15 @@ const ProjectSettingsHostsPage = () => {
                 />
               ),
             },
+            // Type, State and Capabilities are Admin > Hosts' own cells,
+            // in its order (#Q4047).
+            type: {
+              label: tr("hosts.table.type"),
+              cell: (row) => {
+                const host = row.owned ?? row.loan;
+                return host ? <HostTypeBadge type={host.type} /> : null;
+              },
+            },
             origin: {
               label: tr("hosts.table.origin"),
               sortable: true,
@@ -308,28 +319,32 @@ const ProjectSettingsHostsPage = () => {
                   </span>
                 ),
             },
-            status: {
-              label: tr("hosts.table.status"),
+            state: {
+              label: tr("hosts.table.state"),
               cell: (row) => <ProjectSettingsHostStatusCell row={row} />,
             },
-            deploys: {
-              label: tr("hosts.table.deploys"),
+            capabilities: {
+              label: tr("hosts.table.capabilities"),
               cell: (row) => {
-                // A home host its home does not lend to itself cannot take a
-                // deploy from here: the one case the lending is worth naming.
-                if (row.origin === "home" && !row.loan) {
-                  return (
-                    <span className="text-muted-foreground text-xs">
-                      {tr("hosts.home.notLentHere")}
-                    </span>
-                  );
-                }
                 const host = row.loan ?? row.owned;
+                if (!host) return null;
                 return (
-                  <span className="text-muted-foreground text-xs">
-                    {host?.deployAllowed
-                      ? tr("hosts.deploys.allowed")
-                      : tr("hosts.deploys.statsOnly")}
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <HostCapabilityBadges
+                      type={host.type}
+                      // A home host its home does not lend to itself cannot
+                      // take a deploy from here: the one case the lending
+                      // is worth naming.
+                      deployAllowed={
+                        !(row.origin === "home" && !row.loan) &&
+                        host.deployAllowed
+                      }
+                    />
+                    {row.origin === "home" && !row.loan && (
+                      <span className="text-muted-foreground text-xs">
+                        {tr("hosts.home.notLentHere")}
+                      </span>
+                    )}
                   </span>
                 );
               },

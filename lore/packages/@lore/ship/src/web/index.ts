@@ -47,6 +47,9 @@ export { currentErrorCountAtom } from "./app/atoms/currentErrorCountAtom.ts";
 export { currentHostAtom } from "./app/atoms/currentHostAtom.ts";
 export { currentInstancesAtom } from "./app/atoms/currentInstancesAtom.ts";
 export { DeployShell } from "./app/shell/DeployShell.ts";
+export { default as HostCapabilityBadges } from "./app/components/hosts/HostCapabilityBadges.tsx";
+export { default as HostStateBadge } from "./app/components/hosts/HostStateBadge.tsx";
+export { default as HostTypeBadge } from "./app/components/hosts/HostTypeBadge.tsx";
 
 /**
  * Deploy's routers in the app's router registry (#Q3187).
