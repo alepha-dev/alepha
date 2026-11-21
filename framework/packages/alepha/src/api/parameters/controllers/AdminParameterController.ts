@@ -92,7 +92,12 @@ export class AdminParameterController {
         limit: query.limit,
         offset: query.offset,
       });
-      const versions = this.provider.calculateStatuses(rawVersions);
+      // Among all the versions, not the page alone: a page that does not
+      // hold the current version has no "current" row.
+      const versions = await this.provider.calculateStatusesOf(
+        params.name,
+        rawVersions,
+      );
       return { versions };
     },
   });
@@ -146,7 +151,10 @@ export class AdminParameterController {
       if (!version) {
         return { parameter: undefined };
       }
-      const [withStatus] = this.provider.calculateStatuses([version]);
+      const [withStatus] = await this.provider.calculateStatusesOf(
+        params.name,
+        [version],
+      );
       return { parameter: withStatus };
     },
   });
@@ -323,10 +331,11 @@ export class AdminParameterController {
   /**
    * Derive a human-readable creator name from the authenticated session token.
    *
-   * The name is snapshotted onto the version at write time rather than joined
-   * from the users table on read: this keeps the parameters module free of any
-   * dependency on the users module (no import, no circular-import risk). The
-   * trade-off is that the stored name does not follow later user renames.
+   * The name is snapshotted onto the version at write time, so a version
+   * keeps a creator name when the users module is not loaded or the user is
+   * gone; it does not follow later renames. The history also embeds the live
+   * user when the users module is registered (see
+   * `ParameterProvider.resolveCreatorJoin`).
    *
    * Precedence: `username` → `email`. The token's `name` is intentionally
    * skipped: the security layer fills it with a placeholder ("Anonymous User")
@@ -340,7 +349,7 @@ export class AdminParameterController {
   }
 
   /**
-   * Record a parameter mutation via the `ParameterAudits` holder — best-effort.
+   * Record a parameter mutation via the `ParameterAudits` holder, best-effort.
    *
    * `ParameterAudits` is resolved lazily from the container; when it is not
    * registered, auditing is silently skipped. Actor (userId / email / realm),

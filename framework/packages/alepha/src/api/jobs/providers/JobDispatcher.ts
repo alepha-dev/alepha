@@ -8,10 +8,11 @@
  * publishes the executionId to `AlephaQueue` so a worker pool can consume
  * the work asynchronously.
  *
- * Substitute via DI:
+ * `JobProvider` resolves one of those two classes by name, so a custom
+ * dispatcher takes the place of the one in use, ahead of the module:
  * ```ts
  * Alepha.create()
- *   .with({ provide: JobDispatcher, use: MyCustomDispatcher })
+ *   .with({ provide: DirectJobDispatcher, use: MyCustomDispatcher })
  *   .with(AlephaApiJobs);
  * ```
  *
@@ -29,7 +30,7 @@ export abstract class JobDispatcher {
   /**
    * Hand off a single execution. The caller's `push()` awaits this so the
    * caller can be sure the dispatch has at least been initiated. Long-running
-   * work must NOT be awaited here (use background scheduling instead) — this
+   * work must NOT be awaited here (use background scheduling instead), this
    * call should return as quickly as possible.
    */
   public abstract dispatch(
@@ -43,8 +44,8 @@ export abstract class JobDispatcher {
    * dispatchers backed by a real queue should override this to use the
    * provider's batch send (e.g. Cloudflare Queues `sendBatch`).
    *
-   * `options` applies to the whole batch. `pushMany` groups by delay before
-   * calling, so a batch is never a mix.
+   * `options` applies to the whole batch. `pushMany` passes none: its batch
+   * is the rows to run now, and each delayed row is dispatched on its own.
    */
   public async dispatchMany(
     items: Array<{ jobName: string; executionId: string }>,

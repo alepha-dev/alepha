@@ -27,7 +27,7 @@ import type { AnalyticsResult } from "../schemas/analyticsQuerySchema.ts";
  * vocabulary restriction: naming a pinned key in `where` or `groupBy` is a
  * `BadRequestError`, never a silent overwrite. Silently overwriting would
  * answer a question nobody asked, and it is the shape in which a scoped
- * surface leaks — the caller believes it filtered and it did not.
+ * surface leaks, the caller believes it filtered and it did not.
  */
 export interface AdminAnalyticsScope {
   /**
@@ -39,8 +39,8 @@ export interface AdminAnalyticsScope {
 /**
  * Read-only admin surface over every `$analytics()` dataset in the container.
  *
- * Enumeration goes through `alepha.primitives($analytics)` — the same call
- * `AnalyticsRollupJobs` uses — so a dataset declared anywhere is visible here
+ * Enumeration goes through `alepha.primitives($analytics)`, the same call
+ * `AnalyticsRollupJobs` uses, so a dataset declared anywhere is visible here
  * with no registration step. Key membership is validated against the
  * declaration before a query reaches the provider: the closed query language
  * is what makes a generic admin UI safe, and this service is where "closed"
@@ -112,7 +112,7 @@ export class AdminAnalyticsService {
       return primitive.query(query);
     }
     // The pin goes on last, but nothing it could overwrite survived
-    // `assertKeysDeclared` — a caller that named a pinned key was already
+    // `assertKeysDeclared`, a caller that named a pinned key was already
     // refused, so this spread can only ever add.
     return primitive.query({ ...query, where: { ...query.where, ...pin } });
   }
@@ -161,8 +161,8 @@ export class AdminAnalyticsService {
   }
 
   /**
-   * Refuses keys the dataset never declared. `hour` and `day` are the two
-   * pseudo-dimensions every dataset can group by.
+   * Refuses keys the dataset never declared. `minute`, `hour` and `day` are
+   * the pseudo-dimensions every dataset can group by.
    *
    * A pinned key is treated as undeclared, which is what collapses the whole
    * scope check into one filter: the caller's vocabulary is exactly what the

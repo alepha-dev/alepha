@@ -60,7 +60,7 @@ const stageSchema = z.object({ id: z.text(), stage: z.integer().optional() });
 
 // ---------------------------------------------------------------------------
 
-describe("$job — reschedule", () => {
+describe("$job: reschedule", () => {
   it("re-parks the same execution on the next stage, keeping its key and id", async ({
     expect,
   }) => {
@@ -320,7 +320,7 @@ describe("$job — reschedule", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — cancelByKey", () => {
+describe("$job: cancelByKey", () => {
   it("cancels a parked execution and returns its id; nothing to cancel is null", async ({
     expect,
   }) => {
@@ -441,7 +441,7 @@ class HalfJitterJobProvider extends JobProvider {
   }
 }
 
-describe("$job — per-job retry backoff", () => {
+describe("$job: per-job retry backoff", () => {
   it("computes the job's own curve, capped by its max or the global one", async ({
     expect,
   }) => {

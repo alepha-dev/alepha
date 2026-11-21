@@ -45,8 +45,8 @@ constructed.
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable                       | Type | Default | Description                                                                                                                                                                                                |
-| ------------------------------ | ---- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLOUDFLARE_ACCOUNT_ID`        | text | -       | Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding - see AnalyticsEngineSql).                                                                                          |
-| `CLOUDFLARE_ANALYTICS_DATASET` | text | -       | Analytics Engine dataset name - used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts. |
-| `CLOUDFLARE_ANALYTICS_TOKEN`   | text | -       | API token scoped to Account Analytics Read, for the Analytics Engine SQL read API. Never a deploy credential.                                                                                              |
+| Variable                       | Type | Default | Description                                                                                                                                                                 |
+| ------------------------------ | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`        | text | -       | Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding - see AnalyticsEngineSql).                                                           |
+| `CLOUDFLARE_ANALYTICS_DATASET` | text | -       | Analytics Engine dataset name, the SQL FROM table for reads (writes go through the `ANALYTICS` binding). Unset means this provider is never selected; see index.workerd.ts. |
+| `CLOUDFLARE_ANALYTICS_TOKEN`   | text | -       | API token scoped to Account Analytics Read, for the Analytics Engine SQL read API. Never a deploy credential.                                                               |

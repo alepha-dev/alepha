@@ -54,8 +54,8 @@ Writing aggregates back as new data points would give them a fresh retention
 clock, re-sample already-sampled data, and require a discriminator to keep
 rolled rows from being counted alongside the raw ones they summarise. So a
 Cloudflare deployment needs a relational store for anything older than the
-hot window - the same compromise unique visitors already forced on
-`WaeAnalyticsStore` in `@alepha/lore`.
+hot window - the same compromise unique visitors force on any store built
+on Analytics Engine.
 
 `record()` never writes to `cold` - only to Analytics Engine - so `cold`'s
 raw tier starts every dataset's life with zero rows for it. Left alone,

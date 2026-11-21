@@ -96,16 +96,34 @@ export class AnalyticsBuckets {
 
   /**
    * Whether `key` is a well-formed bucket at `resolution`: the right shape,
-   * and on a sub-hour resolution a minute that is a multiple of the step.
+   * on a sub-hour resolution a minute that is a multiple of the step, and an
+   * instant that exists. `2020-01-01T25` and `2026-02-30T10` have the shape
+   * and name no bucket: the first has no start at all, the second starts in
+   * March.
    */
   public static isBucket(
     key: string,
     resolution: AnalyticsResolution,
   ): boolean {
     const step = AnalyticsBuckets.minutesOf(resolution);
-    if (step === 60) return /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(key);
-    const match = /^\d{4}-\d{2}-\d{2}T\d{2}:(\d{2})$/.exec(key);
-    return !!match && Number(match[1]) < 60 && Number(match[1]) % step === 0;
+    const shape =
+      step === 60
+        ? /^\d{4}-\d{2}-\d{2}T\d{2}$/
+        : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+    if (!shape.test(key)) return false;
+    const start = AnalyticsBuckets.startOf(key);
+    return (
+      !Number.isNaN(start) && AnalyticsBuckets.bucket(start, resolution) === key
+    );
+  }
+
+  /**
+   * Whether `day` is a `YYYY-MM-DD` key of a day that exists.
+   */
+  public static isDay(day: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+    const start = AnalyticsBuckets.startOf(day);
+    return !Number.isNaN(start) && AnalyticsBuckets.bucket(start, "1d") === day;
   }
 
   public static day(bucket: string): string {

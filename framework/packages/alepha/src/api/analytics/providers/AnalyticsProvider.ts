@@ -58,8 +58,8 @@ export abstract class AnalyticsProvider {
    *
    * Synchronous and eager by requirement, not by preference: a relational
    * backend has to have its tables registered before `migrate()` runs, and the
-   * container is locked by then. Backends with nothing to declare — memory,
-   * and Analytics Engine's hot tier — implement this as a no-op.
+   * container is locked by then. Backends with nothing to declare, memory,
+   * and Analytics Engine's hot tier, implement this as a no-op.
    */
   abstract register(dataset: AnalyticsDataset): void;
 
@@ -94,7 +94,7 @@ export abstract class AnalyticsProvider {
    *
    * Deliberately not scoped to the last tier. Pruning only ever runs past the
    * last tier's window, which is the longest of the chain, so in practice
-   * every row it removes has already been folded into the last tier — but a
+   * every row it removes has already been folded into the last tier, but a
    * provider that reaches every tier cannot strand an orphan if a rollup was
    * ever missed, and no caller can construct a case where the two scopings
    * differ.

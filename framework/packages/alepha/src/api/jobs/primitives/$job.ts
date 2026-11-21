@@ -262,9 +262,10 @@ export interface JobPrimitiveOptions<
    * declare `retry` enqueue a synthetic execution row so failures retry
    * through the outbox sweep; without `retry`, the next tick simply re-runs.
    *
-   * Retries are picked up by the reconciliation sweep, so retry granularity
-   * is bounded by `sweepCron` (default 15 minutes). The first retry may run
-   * earlier than 15 minutes if the sweep tick happens sooner.
+   * A failed attempt is scheduled again after an exponential backoff with
+   * jitter, and the dispatcher is handed that delay. Where no timer or
+   * transport can hold it, the reconciliation sweep delivers the retry, so
+   * the wait is then bounded by `sweepCron` (default 15 minutes).
    */
   retry?: JobRetryOptions;
 
@@ -272,7 +273,7 @@ export interface JobPrimitiveOptions<
    * **Cron-mode only.** Whether to claim each cron tick so that only one
    * instance of a multi-replica deployment runs the handler per tick.
    *
-   * Has **no effect** on queue-mode and direct-mode jobs — those rely on
+   * Has **no effect** on queue-mode and direct-mode jobs, those rely on
    * the outbox `claim()` UPDATE-guard to serialize work instead, which is
    * always on.
    *

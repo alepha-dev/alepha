@@ -26,7 +26,7 @@ import { OrmAnalyticsProvider } from "./OrmAnalyticsProvider.ts";
  * The write half of a Workers Analytics Engine dataset binding.
  *
  * Declared here rather than imported from `@cloudflare/workers-types` so this
- * module compiles and tests anywhere — the whole surface is one method, and
+ * module compiles and tests anywhere, the whole surface is one method, and
  * depending on the Workers type package to describe it would make a provider
  * that needs no workerd API only buildable under workerd.
  */
@@ -39,22 +39,20 @@ export interface AnalyticsEngineDataset {
 }
 
 /**
- * `CLOUDFLARE_ANALYTICS_DATASET` does double duty, mirroring
- * `R2FileStorageProvider`'s `R2_BUCKET_NAME`: it is both the property key
- * this provider looks up on `cloudflareEnv` for the write binding, and the
- * table name spliced into `FROM` for reads — i.e. `alepha build` is expected
- * to emit a `wrangler.toml` entry whose `binding` and `dataset` are the same
- * string. All three variables are `.optional()` so the provider can be
- * registered (and constructed) in non-Workers contexts — Node `yarn start`,
- * build-time introspection, under `alepha.isTest()` where it is never
- * selected — without forcing every dev to set them.
+ * `CLOUDFLARE_ANALYTICS_DATASET` is the dataset name: the table spliced into
+ * `FROM` for reads, and what selects this provider. The write binding is not
+ * looked up under it: that is the fixed `BINDING` below. All three variables
+ * are `.optional()` so the provider can be registered (and constructed) in
+ * non-Workers contexts, Node `yarn start`, build-time introspection, under
+ * `alepha.isTest()` where it is never selected, without forcing every dev to
+ * set them.
  */
 const envSchema = z.object({
   CLOUDFLARE_ANALYTICS_DATASET: z
     .text({
       secret: false,
       description:
-        "Analytics Engine dataset name - used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts.",
+        "Analytics Engine dataset name, the SQL FROM table for reads (writes go through the `ANALYTICS` binding). Unset means this provider is never selected; see index.workerd.ts.",
     })
     .optional(),
   CLOUDFLARE_ACCOUNT_ID: z
@@ -122,8 +120,8 @@ const envSchema = z.object({
  * clock, re-sample already-sampled data, and require a discriminator to keep
  * rolled rows from being counted alongside the raw ones they summarise. So a
  * Cloudflare deployment needs a relational store for anything older than the
- * hot window - the same compromise unique visitors already forced on
- * `WaeAnalyticsStore` in `@alepha/lore`.
+ * hot window - the same compromise unique visitors force on any store built
+ * on Analytics Engine.
  *
  * `record()` never writes to `cold` - only to Analytics Engine - so `cold`'s
  * raw tier starts every dataset's life with zero rows for it. Left alone,
@@ -222,7 +220,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *
    * That mistake is worse than a miss, and it cost a production 500. Datasets
    * and R2 buckets are both named from the same prefix, so
-   * `env["lore-production"]` resolved to the **R2 bucket** — truthy, past the
+   * `env["lore-production"]` resolved to the **R2 bucket**, truthy, past the
    * not-found guard, and straight into `n.writeDataPoint is not a function`.
    *
    * Must stay in sync with `BuildCloudflareTask.ANALYTICS_ENGINE_BINDING`.
@@ -237,7 +235,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * A `since` boundary older than any real bucket, for the one query in this
-   * class that means "from the beginning" — {@link forwardToCold}'s first
+   * class that means "from the beginning", {@link forwardToCold}'s first
    * sweep, before `cold` has a watermark of its own.
    */
   protected static readonly EPOCH_DAY = "1970-01-01";
@@ -269,7 +267,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   protected readonly maxForwardRows: number = 2000;
 
   /**
-   * The durable store for `rollup`/`prune`/`query`. The concrete class — see
+   * The durable store for `rollup`/`prune`/`query`. The concrete class, see
    * the class doc for why the abstract `AnalyticsProvider` seam would be
    * circular here.
    */
@@ -281,7 +279,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   /**
    * Tolerates booting off-Workers, the same as `CloudflareEmailProvider`'s
    * `onStart`: the provider has to be constructible (and startable) under
-   * Node — `yarn start`, build-time introspection — without a binding
+   * Node, `yarn start`, build-time introspection, without a binding
    * present, so this warns rather than throws. `record()`/`query()` throw
    * their own clear errors if actually called with no binding wired.
    */
@@ -322,7 +320,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   });
 
   /**
-   * The hot tier has nothing to declare — Analytics Engine has no schema to
+   * The hot tier has nothing to declare, Analytics Engine has no schema to
    * create ahead of time, the same as `MemoryAnalyticsProvider`. Three
    * things still have to happen here rather than at first write:
    *
@@ -330,11 +328,11 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *   Engine silently discards data past ~90 days regardless of what a
    *   dataset declares, so a longer window has to fail loud at declaration
    *   time, not once a report quietly comes up short months later.
-   * - `cold` is registered, so its own tables exist before `alepha.start()`
-   *   — the same eager-registration rule `OrmAnalyticsProvider` follows.
+   * - `cold` is registered, so its own tables exist before `alepha.start()`:
+   *   the same eager-registration rule `OrmAnalyticsProvider` follows.
    *   That call brings the shared prune-floor table with it, which this
    *   provider is the only one to actually read (Analytics Engine has no
-   *   delete API — see {@link prune}). It used to be requested from here
+   *   delete API, see {@link prune}). It used to be requested from here
    *   instead, so that a relational deployment would not carry it; that made
    *   the schema depend on the runtime, and the table was consequently
    *   missing from every migration ever generated. See
@@ -435,7 +433,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Queries Analytics Engine and `cold` and merges the two — see the class
+   * Queries Analytics Engine and `cold` and merges the two, see the class
    * doc's "The read side has to merge too" section for why both the skip and
    * the watermark exclusion are necessary, not optional polish.
    *
@@ -443,7 +441,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * Engine has no delete API, so a window `prune()` was already asked to
    * remove could otherwise still be answered from Analytics Engine even
    * after `cold` has genuinely forgotten it. Raising the effective `since`
-   * to the floor — before either leg runs, never after — is what makes
+   * to the floor, before either leg runs, never after, is what makes
    * `prune()` mean the same thing here as it does on `OrmAnalyticsProvider`:
    * once pruned, gone from every read, not just from `cold`'s own copy.
    */
@@ -472,25 +470,33 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     const watermark = await this.coldWatermark(dataset);
 
     // `orderBy`/`limit` are deliberately left out of what each source
-    // receives. `mergeResults` is the only place they may be applied — once,
-    // to the merged set — because applying a `limit` to each source
+    // receives. `mergeResults` is the only place they may be applied, once,
+    // to the merged set, because applying a `limit` to each source
     // separately can drop a row that only belongs in the true top-N once
     // both sources are combined (see the class doc).
-    // Everything EXCEPT `orderBy`/`limit` has to be carried through — this is
+    // Everything EXCEPT `orderBy`/`limit` has to be carried through, this is
     // a list rather than a spread only so the two exclusions are visible, and
     // a field forgotten here is a filter that silently stops applying on the
     // merge path while still working on the hot-only one.
     //
-    // `cold` gets the window as asked, in either form: it is an exact
-    // backend and answers instants itself. Only a `since` is raised to the
-    // prune floor, as it always was.
+    // `cold` gets the window in the form asked: it is an exact backend and
+    // answers instants itself. Its lower bound is raised to the prune floor
+    // in either form, a `since` as a key and a `from` as the instant the
+    // floor starts at: `cold.prune()` is bounded per call, so rows below the
+    // floor may still be there, and they are never served.
+    const floorStart = floor ? AnalyticsBuckets.startOf(floor) : undefined;
     const unordered: AnalyticsQuery = {
       since:
         query.since !== undefined && floor
           ? this.laterBound(query.since, floor)
           : query.since,
       until: query.until,
-      from: query.from,
+      from:
+        query.from !== undefined &&
+        floorStart !== undefined &&
+        Date.parse(query.from) < floorStart
+          ? new Date(floorStart).toISOString()
+          : query.from,
       to: query.to,
       where: query.where,
       groupBy: query.groupBy,
@@ -517,7 +523,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   /**
    * Whether a query starting at `since` could possibly need `cold` at all,
    * decided from `dataset`'s own declared retention rather than `cold`'s
-   * actual state — computable with zero calls to `cold`, which is what lets
+   * actual state, computable with zero calls to `cold`, which is what lets
    * {@link query} skip it entirely for a window that is clearly still within
    * Analytics Engine's live range.
    *
@@ -525,13 +531,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * wasted round trip) and provably safe in the "skip" direction too: a
    * correctly-running {@link forwardToCold} never forwards a row newer than
    * `dataset`'s declared hot floor, and Analytics Engine never deletes
-   * anything on its own — so if the whole window is at or after that floor,
+   * anything on its own, so if the whole window is at or after that floor,
    * every row it could contain is still in Analytics Engine regardless of
    * whether `cold` also happens to have a copy.
    *
    * Conservative when retention is undeclared: with no declared hot window,
    * Cloudflare's own ~90-day platform limit is the only bound this class
-   * knows, and it is not narrow enough to skip `cold` safely — so this
+   * knows, and it is not narrow enough to skip `cold` safely, so this
    * returns `true` (always check) rather than guess.
    */
   protected mightNeedCold(dataset: AnalyticsDataset, since: string): boolean {
@@ -546,7 +552,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * The Analytics Engine half of `query()` — everything this class did
+   * The Analytics Engine half of `query()`, everything this class did
    * before it had a `cold` to merge with, unchanged. {@link forwardToCold}
    * also calls this directly (never the public `query()`) specifically to
    * avoid the merge: forwarding needs Analytics Engine's own rows, not an
@@ -582,7 +588,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       // `map.blobSlot` throws `AlephaError` for a name that is not one of
-      // `dataset`'s declared dimensions — the same guard
+      // `dataset`'s declared dimensions, the same guard
       // `OrmAnalyticsProvider` gives an explicit name to
       // (`assertKnownDimension`). `query.where`'s keys are far more likely to
       // carry client-supplied input than `dataset` itself, and this call has
@@ -597,13 +603,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       ) {
         // An empty list means "match nothing". Emitting `IN ()` would be a
         // syntax error, and omitting the clause would silently widen the
-        // query to every row — the failure that matters.
+        // query to every row, the failure that matters.
         if (filter.inArray.length === 0) {
           return { rows: [], estimated: true };
         }
         conditions.push(
           // Every dimension, whatever its declared type, is stored as a
-          // String blob (`record()` always writes `String(row[name])`) — so
+          // String blob (`record()` always writes `String(row[name])`), so
           // a numeric dimension's filter value has to be quoted as the
           // string Analytics Engine actually stores, not left as a bare
           // numeric literal. `String(...)` first, unconditionally: a blob
@@ -629,7 +635,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
             ? `blob${AnalyticsSlotMap.HOUR_SLOT}`
             : `blob${map.blobSlot(name)}`;
       projections.push(`${expression} AS ${name}`);
-      // ⚠️ The ALIAS, not the expression — `GROUP BY substring(blob2, 1, 10)`
+      // ⚠️ The ALIAS, not the expression, `GROUP BY substring(blob2, 1, 10)`
       // is a 422 here ("in the GROUP BY clause you may only provide column
       // names"), while every relational backend accepts it. Only the `day`
       // pseudo-dimension is affected in practice, since it is the one
@@ -637,9 +643,9 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       // alias is correct for all of them and keeps the two clauses from
       // drifting apart.
       //
-      // No new injection surface: `name` is either the `day`/`hour` literal
-      // or a dimension `map.blobSlot(name)` has already accepted, and it is
-      // spliced into the projection as `AS ${name}` on the line above
+      // No new injection surface: `name` is either the `day`/`hour`/`minute`
+      // literal or a dimension `map.blobSlot(name)` has already accepted, and
+      // it is spliced into the projection as `AS ${name}` on the line above
       // regardless.
       grouping.push(name);
     }
@@ -656,7 +662,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     projections.push("max(_sample_interval) AS _si");
 
-    // ⚠️ `count()`, with NO arguments — not `COUNT(*)`, which is what every
+    // ⚠️ `count()`, with NO arguments, not `COUNT(*)`, which is what every
     // relational sibling of this provider writes and what this line said
     // until it took production down on 2026-08-11:
     //
@@ -664,7 +670,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     //   HAVING count()  > 0 → 200
     //
     // `OrmAnalyticsProvider` keeps `COUNT(*)`, which is correct there and
-    // invalid here — the two clauses look like a copy-paste divergence and
+    // invalid here, the two clauses look like a copy-paste divergence and
     // are not. The clause itself earns its place on both: with no `GROUP BY`,
     // an aggregate over zero rows still returns one all-NULL row, and this is
     // what suppresses it.
@@ -693,7 +699,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         // index, say) otherwise comes back as `"3"` instead of `3`, which
         // throws downstream in `cold.record()` (validated against the same
         // declared type) and splits one group into two in `mergeResults`'s
-        // `JSON.stringify`-keyed merge with `cold` — `cold` decodes the
+        // `JSON.stringify`-keyed merge with `cold`, `cold` decodes the
         // identical dimension through its own typed column and
         // never stringifies it.
         const isDayOrHour =
@@ -711,7 +717,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     });
 
     // Sorted and limited client-side, never in the SQL text. `orderBy.key` is
-    // caller-supplied — most plausibly an HTTP endpoint's query params — and
+    // caller-supplied, most plausibly an HTTP endpoint's query params, and
     // splicing it into an `ORDER BY` clause would let it name an arbitrary
     // expression rather than one of the columns this query actually
     // projected. Every sibling provider already sorts here, for the same
@@ -741,7 +747,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Records `before` as the prune floor, **then** deletes from `cold` —
+   * Records `before` as the prune floor, **then** deletes from `cold`,
    * order matters. Analytics Engine has no delete API, so `cold.prune()`
    * alone cannot make the data stop existing; it only stops being *this
    * provider's* copy of it. `query()`/`forwardToCold()` are what actually
@@ -752,7 +758,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * The floor-first ordering is deliberate, not incidental: if this crashes
    * between the two steps, the floor is already recorded, so a query
    * immediately after under-reports (some rows `cold.prune()` never actually
-   * got to delete are simply not served, even though they still exist) —
+   * got to delete are simply not served, even though they still exist),
    * never over-reports. The reverse order would mean a crash after deleting
    * but before recording the floor leaves `query()` free to resurrect the
    * just-deleted range from Analytics Engine, which is exactly the bug this
@@ -814,7 +820,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * Writes Analytics Engine rows older than `before` into `cold`'s raw tier,
    * so the `cold.rollup()` call right after this one has something to fold.
    *
-   * Grouped by **hour** (plus every declared dimension) — not day.
+   * Grouped by **hour** (plus every declared dimension), not day.
    * `OrmAnalyticsProvider` already owns the hour→day boundary inside its own
    * `rollup()`, immediately following; routing around it by pre-folding to
    * day here would duplicate that logic for no reason.
@@ -825,25 +831,25 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * received (there is no delete API), so a naive "forward everything before
    * `before`" on every sweep would re-add the same corrected totals on top of
    * themselves via `cold.record()`'s accumulate-upsert. Instead, a watermark
-   * is derived from `cold`'s own state — no new schema, no new API on
-   * `OrmAnalyticsProvider` — via {@link coldWatermark}, and only rows after
+   * is derived from `cold`'s own state, no new schema, no new API on
+   * `OrmAnalyticsProvider`, via {@link coldWatermark}, and only rows after
    * it are forwarded.
    *
    * This is also what makes the sequence safe across a crash between this
    * method and the `cold.rollup()` call that follows it: a row that landed in
    * `cold`'s raw tier but was never folded still moves the watermark (it is
    * still the newest row `cold` holds), so the next sweep will not forward it
-   * again — it will just re-run `cold.rollup()`, which is already idempotent.
+   * again, it will just re-run `cold.rollup()`, which is already idempotent.
    *
    * ## Never re-imports what `prune()` already removed
    *
    * `prune()`'s effect on `cold` (a real `DELETE`) is easy to undo by
    * accident here: without a check, the very next sweep would re-query
-   * Analytics Engine for that same range (it never forgot it — no delete
+   * Analytics Engine for that same range (it never forgot it, no delete
    * API) and forward it right back into `cold`, quietly resurrecting data a
    * caller already asked to prune. {@link OrmAnalyticsProvider.pruneFloor}
-   * is consulted the same way the watermark is — both narrow `since` and
-   * both filter `result.rows` — so a pruned range is excluded going in
+   * is consulted the same way the watermark is, both narrow `since` and
+   * both filter `result.rows`, so a pruned range is excluded going in
    * (cheaper) and would still be excluded even if it were not (correct).
    *
    * ## Never forwards a row `cold` would refuse
@@ -903,7 +909,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     // (`aggregateExpression`) and the dimension/measure name validation both
     // live there, and forwarded rows have to carry the same corrected totals
     // a caller querying Analytics Engine directly would see, not a raw
-    // stored double — but this must stay scoped to Analytics Engine's own
+    // stored double, but this must stay scoped to Analytics Engine's own
     // rows. Calling the public `query()` here would merge in `cold`'s rows
     // too, which is exactly what must NOT be forwarded back into `cold`.
     const result = await this.queryHot(dataset, {
@@ -1028,14 +1034,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * The newest bucket `cold` already holds for `dataset`, across both its
-   * raw and rolled tiers — `OrmAnalyticsProvider.query()` merges them, so
+   * raw and rolled tiers, `OrmAnalyticsProvider.query()` merges them, so
    * this sees a row whichever tier it currently lives in. `undefined` means
    * `cold` has nothing yet for this dataset, i.e. forward from the beginning.
    *
-   * The `select` measure is arbitrary — any declared one — and the
+   * The `select` measure is arbitrary, any declared one, and the
    * aggregate is `"sum"` only because `AnalyticsQuery.select` cannot be
    * empty; the value itself is discarded. Only `row.hour` (really
-   * whichever bucket is newest, day- or hour-precision — see
+   * whichever bucket is newest, day- or hour-precision, see
    * {@link isForwarded}) is used.
    */
   protected async coldWatermark(
@@ -1061,13 +1067,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * `watermark`.
    *
    * `watermark` comes from {@link coldWatermark}, which reads the same
-   * `time_bucket` column `OrmAnalyticsProvider` uses for both of its tiers —
+   * `time_bucket` column `OrmAnalyticsProvider` uses for both of its tiers,
    * so its precision tells you which tier it came from. A **day**-precision
    * watermark (`YYYY-MM-DD`) can only have come from an already-rolled row,
    * which folds a whole day atomically, so it covers every hour of that day.
    * An **hour**-precision watermark (`YYYY-MM-DDTHH`) means a row survived a
    * crash between {@link forwardToCold}'s write and the `cold.rollup()` fold
-   * that was supposed to follow it — still in the raw tier, still exactly
+   * that was supposed to follow it, still in the raw tier, still exactly
    * one bucket, so a plain string comparison against another hour-precision
    * value is correct as-is.
    *
@@ -1091,11 +1097,11 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * `since` lower bound: excludes exactly what {@link isForwarded} already
    * treats as covered, and nothing more.
    *
-   * Day-precision in, day-precision out — `AnalyticsBuckets.shiftDays`
+   * Day-precision in, day-precision out, `AnalyticsBuckets.shiftDays`
    * already does that arithmetic. Hour-precision needs real millisecond
    * arithmetic, since `AnalyticsBuckets` has no `nextHour`: this is `query()`
    * narrowing the Analytics Engine side away from an hour `cold` picked up
-   * mid-crash (see {@link isForwarded}'s hour-precision case) — a real but
+   * mid-crash (see {@link isForwarded}'s hour-precision case), a real but
    * rare path, not the everyday one.
    */
   protected nextBucket(watermark: string): string {
@@ -1108,7 +1114,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * The chronologically later of two bucket-prefixed strings, comparable
-   * directly even when one is day-precision and the other hour-precision —
+   * directly even when one is day-precision and the other hour-precision,
    * the same property `isForwarded`/`nextBucket` already rely on: a bare day
    * is a prefix of every hour within it, and a prefix sorts before anything
    * it is a prefix of.
@@ -1121,16 +1127,16 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * Merges Analytics Engine's and `cold`'s results the same way
    * `OrmAnalyticsProvider.query()` merges its own raw and rolled tiers: one
    * `JSON.stringify`-keyed pass to combine matching groups (never a
-   * delimiter join — an unsanitised dimension value could collide), ordering
+   * delimiter join, an unsanitised dimension value could collide), ordering
    * and `limit` applied exactly once, to the merged set, never per source
    * (a per-source `limit` would drop rows that belong in the true top-N).
    *
-   * `estimated` is unconditionally `true` — see the class doc's "The read
+   * `estimated` is unconditionally `true`, see the class doc's "The read
    * side has to merge too" section for why every row this provider can ever
    * return, `cold`'s included, traces back to a sample. `sampleInterval`
    * still follows `hot` alone: `cold` never stores what interval a forwarded
    * row was corrected with, so the only sample-interval `mergeResults` can
-   * ever report is the one `hot` itself just measured — `undefined` when
+   * ever report is the one `hot` itself just measured, `undefined` when
    * `hot` contributed nothing to this merge, which is honest (unknown)
    * rather than the false confidence of an assumed `1`.
    */
@@ -1165,7 +1171,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     return {
       rows,
-      // Always `true` on this provider — see the class doc and this
+      // Always `true` on this provider, see the class doc and this
       // method's own doc. There is no merge outcome that earns
       // `estimated: false` here; only `OrmAnalyticsProvider` running on its
       // own, never touched by Analytics Engine at all, can report that.
@@ -1192,7 +1198,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   /**
    * The write binding, or a clear error naming exactly what is missing.
    * There is no REST fallback for writes the way `CloudflareEmailProvider`
-   * has one for sending — Analytics Engine's SQL API is read-only.
+   * has one for sending, Analytics Engine's SQL API is read-only.
    */
   protected requireBinding(): AnalyticsEngineDataset {
     if (this.binding) return this.binding;
@@ -1216,7 +1222,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * Lazily builds (and caches) the read-side client from
-   * `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ANALYTICS_TOKEN` — the same "construct on
+   * `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ANALYTICS_TOKEN`, the same "construct on
    * first real use, from env, with a clear error if the credentials are
    * missing" shape as `CloudflareEmailProvider.sendViaRest`'s account
    * id/token check.
@@ -1234,8 +1240,8 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       accountId,
       token,
       // Cast needed because `AnalyticsEngineSqlOptions.fetch` is typed as
-      // `typeof globalThis.fetch` — the whole global function object,
-      // `preconnect` static and all — while a bound instance method can only
+      // `typeof globalThis.fetch`, the whole global function object,
+      // `preconnect` static and all, while a bound instance method can only
       // ever satisfy the call signature. `httpFetch` itself keeps the plain,
       // overridable call signature, which is what test subclasses replace.
       fetch: ((input, init) => this.httpFetch(input, init)) as typeof fetch,
@@ -1245,7 +1251,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * The single HTTP seam for reads, isolated so tests can substitute it
-   * without patching global fetch — the same shape as
+   * without patching global fetch, the same shape as
    * `CloudflareEmailProvider.httpPost`.
    */
   protected async httpFetch(

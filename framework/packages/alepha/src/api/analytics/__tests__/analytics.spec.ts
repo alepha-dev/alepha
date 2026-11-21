@@ -85,7 +85,7 @@ describe("$analytics", () => {
     expect(result.rows[0]?.hour).toBe("2026-08-09T05");
   });
 
-  it("rejects a hot window longer than the provider can honour", async () => {
+  it("accepts a hot window of any length on a provider with no ceiling", async () => {
     class TooLong {
       public readonly views = $analytics({
         index: "app",
@@ -100,14 +100,14 @@ describe("$analytics", () => {
     const app = alepha.inject(TooLong);
     await alepha.start();
 
-    // The relational provider has no ceiling, so this must be accepted here.
+    // The memory provider bound here has no ceiling, so this is accepted.
     expect(AnalyticsTiers.finestKeep(app.views.dataset)).toBe("120d");
   });
 
   it("rejects a cold window shorter than the hot window", () => {
     // A shorter `cold` would let `prune()` delete rows in
     // `[coldCutoff, hotCutoff)` that the same sweep's `rollup()` never
-    // touched — still hour-precision, still inside the hot window. That is
+    // touched, still hour-precision, still inside the hot window. That is
     // data loss, not a resolution change, so it has to fail at declaration
     // time rather than the first time the sweep actually runs.
     class ShortCold {
@@ -135,7 +135,7 @@ describe("$analytics", () => {
 
   it("accepts a cold window equal to the hot window", async () => {
     // The boundary case: `cold === hot` prunes exactly what this sweep would
-    // have just rolled up, nothing more — not a violation of the invariant.
+    // have just rolled up, nothing more, not a violation of the invariant.
     class EqualWindows {
       public readonly views = $analytics({
         index: "app",
@@ -154,8 +154,8 @@ describe("$analytics", () => {
   });
 
   it("rejects a camelCase property key, since it becomes a table name", () => {
-    // `MemoryAnalyticsProvider.register()` is a no-op, so under test — where
-    // memory is always the bound provider — a bad name would otherwise pass
+    // `MemoryAnalyticsProvider.register()` is a no-op, so under test, where
+    // memory is always the bound provider, a bad name would otherwise pass
     // silently and only fail once the app runs against a relational or
     // Analytics Engine backend. `pageViews` is deliberately the exact style
     // every other class field in this codebase uses.
@@ -188,8 +188,8 @@ describe("$analytics", () => {
     // `AnalyticsEntityFactory.assertNoCollisions` used to be reachable only
     // from `OrmAnalyticsProvider.register()` (via its own
     // `AnalyticsEntityFactory.build()`). `MemoryAnalyticsProvider.register()`
-    // is a no-op and never calls it, so under test — where memory is always
-    // the bound provider — this dataset used to pass every test and only
+    // is a no-op and never calls it, so under test, where memory is always
+    // the bound provider, this dataset used to pass every test and only
     // throw once a relational or Analytics Engine deployment registered it
     // in production. Hoisting the check into `AnalyticsPrimitive.onInit`
     // (this test's whole point) makes it backend-independent.
@@ -232,7 +232,7 @@ describe("$analytics", () => {
   });
 
   it("registers the dataset with the provider before alepha.start(), not after", () => {
-    // Service substitution, not `vi.mock`/`vi.spyOn` — this codebase's house
+    // Service substitution, not `vi.mock`/`vi.spyOn`, this codebase's house
     // style. `RecordingAnalyticsProvider` wraps the real (memory) provider so
     // the recorded call is a faithful `register()`, not a bare stub.
     class RecordingAnalyticsProvider extends MemoryAnalyticsProvider {
@@ -252,7 +252,7 @@ describe("$analytics", () => {
     alepha.inject(PageViews);
     const provider = alepha.inject(RecordingAnalyticsProvider);
 
-    // No `alepha.start()` anywhere in this test — the assertion has to hold
+    // No `alepha.start()` anywhere in this test, the assertion has to hold
     // with the container still unstarted, which is what pins the ordering
     // rather than merely the fact that registration happens at some point.
     expect(provider.registered).toEqual(["views"]);
@@ -503,6 +503,18 @@ describe("$analytics sub-hour resolution", () => {
     await expect(
       app.views.record({ app: "a", path: "/x", count: 1, hour: "2026-08-09" }),
     ).rejects.toThrow("not an hour key");
+  });
+
+  it("refuses an hour that does not exist, before it reaches a provider", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(PageViews);
+    await alepha.start();
+
+    for (const hour of ["2020-01-01T25", "2026-02-30T10"]) {
+      await expect(
+        app.views.record({ app: "a", path: "/x", count: 1, hour }),
+      ).rejects.toThrow("not an hour key");
+    }
   });
 
   it("reserves `minute` as a time pseudo-dimension", () => {

@@ -17,11 +17,11 @@ import { jobStepSchema } from "../schemas/jobStepSchema.ts";
  * - worker claim          → running
  * - success               → ok (or row deleted, when the job does not record successes)
  * - terminal failure      → error (or row deleted, when the job does not record failures)
- * - retryable failure     → scheduled (with scheduledAt = now; sweep picks it up)
+ * - retryable failure     → scheduled (with scheduledAt = now + the retry backoff)
  * - delay                 → scheduled (with scheduledAt = now + delay)
  * - handler reschedule()  → scheduled (next scheduledAt and payload, attempt reset, same id and key, steps cleared)
  * - handler step.sleep()  → scheduled (scheduledAt = the wake instant, attempt reset, same id, key, payload and steps, plus the sleep's entry)
- * - sweep picks due ones  → pending
+ * - a due scheduled row   → pending (the dispatcher's delay, else the sweep)
  * - cancel                → cancelled
  */
 export const jobExecutionEntity = $entity({

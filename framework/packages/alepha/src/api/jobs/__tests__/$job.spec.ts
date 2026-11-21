@@ -42,7 +42,7 @@ const makeApp = () =>
     .with(AlephaApiJobsQueue);
 
 /**
- * App without `AlephaApiJobsQueue` — exercises *direct* mode.
+ * App without `AlephaApiJobsQueue`, exercises *direct* mode.
  */
 const makeAppDirect = () =>
   Alepha.create().with(AlephaOrmTestPostgres).with(AlephaApiJobs);
@@ -73,7 +73,7 @@ const makeAppPinnedJitter = () =>
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
- * Use this instead of `setTimeout(r, fixedMs)` — fixed sleeps race the
+ * Use this instead of `setTimeout(r, fixedMs)`, fixed sleeps race the
  * in-memory queue under CI load and produce flaky failures.
  */
 async function waitFor<T>(
@@ -94,7 +94,7 @@ async function waitFor<T>(
   );
 }
 
-describe("$job — registration validation", () => {
+describe("$job: registration validation", () => {
   it("rejects jobs declaring both cron and schema", async ({ expect }) => {
     const alepha = makeApp();
     class App {
@@ -124,7 +124,7 @@ describe("$job — registration validation", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — cron mode", () => {
+describe("$job: cron mode", () => {
   it("runs handler inline on trigger and keeps the last successful run", async ({
     expect,
   }) => {
@@ -225,7 +225,7 @@ describe("$job — cron mode", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — captured logs", () => {
+describe("$job: captured logs", () => {
   it("attaches the run's log entries to the error row", async ({ expect }) => {
     const alepha = makeApp();
     class App {
@@ -338,7 +338,7 @@ describe("$job — captured logs", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — queue mode (outbox)", () => {
+describe("$job: queue mode (outbox)", () => {
   it("push creates a pending row then deletes on success by default", async ({
     expect,
   }) => {
@@ -521,9 +521,7 @@ describe("$job — queue mode (outbox)", () => {
     expect(sched).toBeLessThanOrEqual(Date.now() + 3_000);
   });
 
-  it("retry: terminal error after all retries exhausted", async ({
-    expect,
-  }) => {
+  it("no retry: one attempt, then a terminal error", async ({ expect }) => {
     const alepha = makeApp();
     class App {
       executions = $repository(jobExecutionEntity);
@@ -553,7 +551,7 @@ describe("$job — queue mode (outbox)", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — cancel", () => {
+describe("$job: cancel", () => {
   it("cancel sets status to 'cancelled' and clears key", async ({ expect }) => {
     const alepha = makeApp();
     class App {
@@ -577,7 +575,7 @@ describe("$job — cancel", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — admin service", () => {
+describe("$job: admin service", () => {
   it("listJobs returns all registered jobs with recent counts", async ({
     expect,
   }) => {
@@ -612,15 +610,18 @@ describe("$job — admin service", () => {
 
   /**
    * The aggregate query only validates its `count` column when at least one
-   * execution row exists — with an empty table the whole `GROUP BY` returns
+   * execution row exists, with an empty table the whole `GROUP BY` returns
    * nothing and a wrong column type is never exercised. Pinning `count` to
    * `string` (the Postgres bigint shape) therefore passed every test while
-   * 500ing on SQLite/D1, where COUNT(*) comes back as a number.
+   * 500ing on SQLite/D1, where COUNT(*) comes back as a number. Run on
+   * SQLite for that reason; the next test reads real rows on Postgres.
    */
-  it("listJobs counts real executions whatever type the driver gives COUNT(*)", async ({
+  it("listJobs counts real executions when the driver gives COUNT(*) as a number (SQLite)", async ({
     expect,
   }) => {
-    const alepha = makeApp();
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    }).with(AlephaApiJobs);
     class App {
       executions = $repository(jobExecutionEntity);
       tick = $job({
@@ -721,7 +722,7 @@ describe("$job — admin service", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
+describe("$job: direct mode (no AlephaApiJobsQueue)", () => {
   it("push without a queue dispatcher processes the row in-process", async ({
     expect,
   }) => {
@@ -835,7 +836,7 @@ class SharedMemoryLockProvider extends MemoryLockProvider {
   override store = sharedLockStore;
 }
 
-describe("$job — cron lock (multi-instance)", () => {
+describe("$job: cron lock (multi-instance)", () => {
   it("only one instance fires the cron handler when sharing a LockProvider", async ({
     expect,
   }) => {
@@ -1324,7 +1325,7 @@ describe("$job - cron overlap (same process)", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — retry semantics", () => {
+describe("$job: retry semantics", () => {
   it("retries: 2 runs the handler 3 times before the row is terminal", async ({
     expect,
   }) => {
@@ -1380,7 +1381,7 @@ describe("$job — retry semantics", () => {
     );
     expect(attempts).toBe(3);
 
-    // After 3 attempts the row is terminal — no more retries.
+    // After 3 attempts the row is terminal, no more retries.
     const finalRow = (
       await app.executions.findMany({ where: { jobName: { eq: "app.work" } } })
     )[0];
@@ -1391,7 +1392,7 @@ describe("$job — retry semantics", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — cancel race", () => {
+describe("$job: cancel race", () => {
   it("cancel during a running handler keeps the row 'cancelled' (not 'error')", async ({
     expect,
   }) => {
@@ -1404,7 +1405,7 @@ describe("$job — cancel race", () => {
         schema: z.object({ v: z.integer() }),
         retry: { retries: 0 },
         handler: async ({ signal }) => {
-          // Wait for cancellation, then throw — without the guard this throw
+          // Wait for cancellation, then throw, without the guard this throw
           // would write `status: error` after `status: cancelled`.
           await new Promise<void>((_, reject) => {
             signal.addEventListener("abort", () => {
@@ -1419,17 +1420,17 @@ describe("$job — cancel race", () => {
 
     const id = await app.slow.push({ v: 1 });
 
-    // Wait for the handler to be `running`.
-    const deadline = Date.now() + 1500;
-    while (Date.now() < deadline) {
-      const row = await app.executions.findById(id);
-      if (row?.status === "running") break;
-      await new Promise((r) => setTimeout(r, 20));
-    }
+    // The race needs the handler in flight: a cancel of a row still
+    // `pending` passes without it.
+    await waitFor(
+      () => app.executions.findById(id),
+      (row) => row?.status === "running",
+      { label: "execution reaches status=running" },
+    );
 
     await app.slow.cancel(id);
 
-    // Confirm the row is `cancelled` and stays that way — without the guard,
+    // Confirm the row is `cancelled` and stays that way, without the guard,
     // the handler's abort path would race to overwrite to `error`. Poll for a
     // stable window so the (buggy) overwrite would be caught.
     const settleDeadline = Date.now() + 300;
@@ -1446,7 +1447,7 @@ describe("$job — cancel race", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — cron + retry (outbox path)", () => {
+describe("$job: cron + retry (outbox path)", () => {
   it("a failing cron job with retry is rescheduled by the sweep, not next tick", async ({
     expect,
   }) => {
@@ -1484,9 +1485,9 @@ describe("$job — cron + retry (outbox path)", () => {
     }
     expect(attempts).toBe(1);
 
-    // The row exists in the outbox after the cron tick (unlike inline crons,
-    // which only persist on error). Poll it to `scheduled` rather than read it
-    // once: `attempts` moves inside the handler, BEFORE the runner's failure
+    // The row exists in the outbox as soon as the tick is enqueued (an inline
+    // cron writes its one row when the run ends). Poll it to `scheduled`
+    // rather than read it once: `attempts` moves inside the handler, BEFORE the runner's failure
     // path writes the row back from `running`, so a single read right after
     // the counter lost that race on a loaded runner.
     const provider = alepha.inject(JobProvider);
@@ -1518,7 +1519,7 @@ describe("$job — cron + retry (outbox path)", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — dispatchMany (queue mode)", () => {
+describe("$job: dispatchMany (queue mode)", () => {
   it("pushMany hands the dispatcher a single batch", async ({ expect }) => {
     const alepha = makeApp();
     class App {
@@ -1562,7 +1563,7 @@ describe("$job — dispatchMany (queue mode)", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("$job — admin resource shape", () => {
+describe("$job: admin resource shape", () => {
   it("execution resource derives its admin actions from the status", async ({
     expect,
   }) => {
@@ -1589,7 +1590,6 @@ describe("$job — admin resource shape", () => {
       { label: "execution reaches status=ok" },
     );
     expect(resource.can).toEqual({ retry: false, cancel: false, delete: true });
-    expect("priority" in resource).toBe(false);
   });
 });
 

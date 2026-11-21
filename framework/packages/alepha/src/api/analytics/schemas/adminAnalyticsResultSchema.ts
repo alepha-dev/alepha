@@ -3,7 +3,7 @@ import { z } from "alepha";
 
 /**
  * `AnalyticsResult` on the wire. `estimated` / `sampleInterval` are the
- * sampling-honesty fields — declaring them on the response schema is what
+ * sampling-honesty fields, declaring them on the response schema is what
  * keeps serialization from silently dropping them, so a UI ignoring them
  * stays a visible choice.
  */

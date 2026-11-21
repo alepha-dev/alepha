@@ -26,7 +26,7 @@
 export type AnalyticsFold = "sum" | "min" | "max" | "last";
 
 /**
- * Dimension filters. Only equality and set membership — no ranges.
+ * Dimension filters. Only equality and set membership, no ranges.
  */
 export type AnalyticsFilter = Record<
   string,
@@ -51,7 +51,7 @@ export interface AnalyticsQuery {
    *
    * Its reason for existing is comparison. A window that ends "now" ends
    * mid-day, so measuring it against a complete one reads as a collapse every
-   * morning and recovers by evening — the number moves because the clock
+   * morning and recovers by evening, the number moves because the clock
    * moved, not because anything happened. Bounding the top end is what makes
    * "yesterday against the day before" a statement about traffic.
    */
@@ -70,7 +70,8 @@ export interface AnalyticsQuery {
    */
   to?: string;
   /**
-   * Declared dimension names, plus the pseudo-dimensions `hour` and `day`.
+   * Declared dimension names, plus the pseudo-dimensions `minute`, `hour`
+   * and `day`.
    */
   groupBy?: string[];
   /**
@@ -116,7 +117,7 @@ export interface AnalyticsResult {
   /**
    * The largest `_sample_interval` seen in the window, when the backend
    * samples. `1` means no sampling occurred and the numbers are exact despite
-   * `estimated` being `true` — the common case at low traffic, and worth
+   * `estimated` being `true`, the common case at low traffic, and worth
    * telling a UI so it can drop the qualifier.
    */
   sampleInterval?: number;

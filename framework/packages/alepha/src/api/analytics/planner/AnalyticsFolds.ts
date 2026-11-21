@@ -109,20 +109,6 @@ export class AnalyticsFolds {
   }
 
   /**
-   * Every stored name the measures produce, `last_at` companions included.
-   * What the collision check compares the declared names against.
-   */
-  public static storedNames(dataset: AnalyticsDataset): string[] {
-    const names: string[] = [];
-    for (const column of AnalyticsFolds.columns(dataset)) {
-      names.push(column.name);
-      if (column.fold === "last")
-        names.push(AnalyticsFolds.lastAt(column.measure));
-    }
-    return names;
-  }
-
-  /**
    * Refuses a `folds` declaration naming an undeclared measure, an unknown
    * fold, no fold at all, or the same fold twice.
    */

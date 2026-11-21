@@ -41,12 +41,12 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
    * write, so there is nothing to declare ahead of time.
    *
    * Takes `dataset` (unused) rather than dropping the parameter, so the
-   * signature matches {@link AnalyticsProvider.register} exactly — a narrower
+   * signature matches {@link AnalyticsProvider.register} exactly, a narrower
    * override here would make it unsound for a subclass (e.g. a test's
    * recording provider) to override with the full signature.
    */
   public register(dataset: AnalyticsDataset): void {
-    // Nothing to declare — see the class doc.
+    // Nothing to declare, see the class doc.
   }
 
   public async record(
@@ -180,7 +180,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       }
     }
 
-    // With no groupBy the result is one total row — but only when something
+    // With no groupBy the result is one total row, but only when something
     // matched. An empty match stays empty rather than reporting zero, so that
     // "no data" and "measured zero" remain distinguishable. This falls out of
     // the grouping loop above: no matching rows means no group was ever
@@ -272,7 +272,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
    * dataset's own declared dimensions.
    *
    * `OrmAnalyticsProvider` and `WaeAnalyticsProvider` both throw `AlephaError`
-   * for an unknown name — the former because it is about to splice the name
+   * for an unknown name, the former because it is about to splice the name
    * into SQL text, the latter because it resolves the name to a slot. This
    * provider had no equivalent guard: an undeclared name silently fell
    * through to `matches`/`dimensionOf`, which read `row[name]` as

@@ -63,18 +63,18 @@ export const AlephaApiAnalytics = $module({
   primitives: [$analytics],
   // AnalyticsProvider is the abstract seam and is always auto-injected; the
   // concrete implementations are `variants` (module-tagged, not auto-injected)
-  // so only the one `register()` selects below is ever instantiated — the
+  // so only the one `register()` selects below is ever instantiated, the
   // same shape as `AlephaBucket`'s `FileStorageProvider` seam.
   //
   // No `imports: [AlephaOrm]` here, deliberately. `OrmAnalyticsProvider`
   // itself is tagged with `AlephaOrm`'s module metadata through the
   // `DatabaseProvider`/`Repository` it injects (`alepha/orm`'s own
   // `variants`), so `AlephaOrm` auto-wires the moment `OrmAnalyticsProvider`
-  // is actually constructed — never in test mode, where `MemoryAnalyticsProvider`
+  // is actually constructed, never in test mode, where `MemoryAnalyticsProvider`
   // is the substitution and `OrmAnalyticsProvider` is never touched. An
   // eager `imports: [AlephaOrm]` here would wire the SQLite/D1 driver
   // unconditionally, even under `MemoryAnalyticsProvider`, and it would do so
-  // using whatever `DATABASE_URL` happens to be set — which in this repo's
+  // using whatever `DATABASE_URL` happens to be set, which in this repo's
   // test environment is a Postgres URL that the default SQLite driver cannot
   // parse.
   services: [AnalyticsProvider, AnalyticsRetentionGuard],
@@ -103,19 +103,19 @@ export const AlephaApiAnalytics = $module({
  * into `AlephaApiAnalytics` was tried first, and it broke `analytics.spec.ts`
  * outright: `$module.register()` wires `imports[]` and auto-injects every
  * `services[]` entry unconditionally, so merely declaring one `$analytics()`
- * field anywhere — the one thing this package promises works with no
- * database at all — started requiring a live Postgres connection to boot.
+ * field anywhere, the one thing this package promises works with no
+ * database at all, started requiring a live Postgres connection to boot.
  * Nine tests failed with "Postgres URL is not supported for SQLite
  * provider" before this was caught.
  *
  * Splitting it out preserves the invariant `AlephaApiAnalytics`'s own doc
  * already states for `AlephaOrm`: nothing here is real infrastructure until
  * something asks for it. An app that wants the scheduled sweep imports this
- * module explicitly, alongside `AlephaApiAnalytics` — the same relationship
+ * module explicitly, alongside `AlephaApiAnalytics`, the same relationship
  * `AlephaApiJobsQueue` already has to `AlephaApiJobs`.
  *
  * That relationship is not quite as safe as it sounds, though.
- * `AlephaApiJobsQueue` is additive — omit it and `$job` still runs, just in
+ * `AlephaApiJobsQueue` is additive, omit it and `$job` still runs, just in
  * direct mode instead of through a real queue. Omitting *this* module is not
  * additive: `retention` simply does nothing, forever, with no fallback and
  * no error. `AnalyticsRetentionGuard` (wired unconditionally into

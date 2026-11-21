@@ -6,7 +6,7 @@ export interface AnalyticsEngineSqlOptions {
    * An API token scoped **Account · Account Analytics · Read**.
    *
    * Read `AnalyticsEngineSql`'s docstring before putting one in a Worker that
-   * also serves public endpoints — this credential is account-wide and cannot
+   * also serves public endpoints, this credential is account-wide and cannot
    * be scoped to a single dataset.
    */
   token: string;
@@ -42,7 +42,7 @@ interface SqlApiResponse {
  *
  * ## It is HTTP, not a binding
  *
- * The `analytics_engine_datasets` binding is **write-only** —
+ * The `analytics_engine_datasets` binding is **write-only**,
  * `writeDataPoint()` and nothing else. Reading goes to
  * `POST /accounts/{account_id}/analytics_engine/sql` with a bearer token, so
  * the two halves of one dataset are reached by two entirely different
@@ -63,7 +63,7 @@ interface SqlApiResponse {
  *    authenticated dashboard, so it can live behind a separate Worker (or a
  *    scheduled job) that no anonymous request ever reaches.
  * 2. If it must share a Worker, keep the blast radius small by giving the
- *    account nothing else worth reading — which is not a control, only an
+ *    account nothing else worth reading, which is not a control, only an
  *    accident of how the account is used, and stops being true the moment a
  *    second product lands there.
  *
@@ -72,16 +72,16 @@ interface SqlApiResponse {
  * ## Every count read back is an estimate
  *
  * Analytics Engine samples. `_sample_interval` is how many real events each
- * stored row stands for, and it **varies per row** — a constant multiplier is
+ * stored row stands for, and it **varies per row**, a constant multiplier is
  * wrong. Corrections are not optional:
  *
  * - counts: `sum(_sample_interval)`, never `count()`
  * - sums: `sum(x * _sample_interval)`
  * - quantiles: `quantileExactWeighted(0.75)(double1, _sample_interval)`
  *
- * `count(DISTINCT …)` **cannot be corrected at all** — no weighting recovers
+ * `count(DISTINCT …)` **cannot be corrected at all**, no weighting recovers
  * a distinct count from a sample. That is why unique visitors stay in a
- * relational store; see `AnalyticsStore`.
+ * relational store.
  */
 export class AnalyticsEngineSql {
   protected readonly options: AnalyticsEngineSqlOptions;
@@ -93,7 +93,7 @@ export class AnalyticsEngineSql {
   /**
    * Run one query and return its rows.
    *
-   * The API speaks SQL as a plain text body — there is no parameter binding,
+   * The API speaks SQL as a plain text body, there is no parameter binding,
    * so anything interpolated has to be quoted by the caller. {@link quote} is
    * the only sanctioned way to do that.
    */
@@ -136,7 +136,7 @@ export class AnalyticsEngineSql {
    * Quote a value for interpolation into a query.
    *
    * There is no bind-parameter protocol on this endpoint, so every literal is
-   * concatenated into the statement — which makes this the one place injection
+   * concatenated into the statement, which makes this the one place injection
    * can be prevented. Numbers are emitted bare after a finiteness check;
    * strings are single-quoted with backslashes and quotes escaped.
    */
@@ -153,14 +153,14 @@ export class AnalyticsEngineSql {
   }
 
   /**
-   * Quote an identifier — a dataset name in a `FROM` clause.
+   * Quote an identifier, a dataset name in a `FROM` clause.
    *
    * Distinct from {@link quote}, which quotes *values*. Identifiers use double
    * quotes; single quotes would make the name a string literal, and backticks
    * are rejected outright by this dialect.
    *
    * Not optional, and this cost a production 422 to learn. Dataset names are
-   * derived from the deployment prefix, so `lore-production` is typical — and
+   * derived from the deployment prefix, so `lore-production` is typical, and
    * a bare hyphen parses as subtraction:
    *
    * ```
@@ -176,7 +176,7 @@ export class AnalyticsEngineSql {
   }
 
   /**
-   * `IN (…)` list, each element quoted. Empty stays empty — see the caller.
+   * `IN (…)` list, each element quoted. Empty stays empty, see the caller.
    */
   static quoteList(values: Array<string | number>): string {
     return values.map((value) => AnalyticsEngineSql.quote(value)).join(", ");

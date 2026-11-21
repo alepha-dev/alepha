@@ -11,7 +11,7 @@ import { parameters } from "../entities/parameters.ts";
  *
  * `schemaHash` is omitted for the same reason, and it matters more. `save()`
  * skips content validation when the supplied hash differs from the registered
- * one — the escape hatch that lets a migration seed restore content written
+ * one, the escape hatch that lets a migration seed restore content written
  * under an older schema. Accepting that hash from the client turned the escape
  * hatch into a bypass: any junk hash stored arbitrary JSON that typed
  * `$parameter.get()` consumers then read as `Infer<T>`. The server always

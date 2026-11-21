@@ -11,15 +11,13 @@ interface Point {
 
 /**
  * An in-process stand-in for a Workers Analytics Engine dataset **and** its
- * SQL API, shaped for `WaeAnalyticsProvider` — not a reuse of
- * `@alepha/lore`'s `FakeAnalyticsEngine`, which hard-codes the older
- * `WaeAnalyticsStore`'s SQL text, a different slot map and a different
- * discriminator.
+ * SQL API, shaped for `WaeAnalyticsProvider`: its SQL text, its slot map and
+ * its discriminator.
  *
  * ## Why this has to exist
  *
  * `vitest` cannot bind a real Analytics Engine dataset, and `wrangler dev`
- * treats `writeDataPoint` as a no-op — so under the only local runtime that
+ * treats `writeDataPoint` as a no-op, so under the only local runtime that
  * has the binding, every write silently disappears and every read comes back
  * empty. This fake is the entire safety net for `WaeAnalyticsProvider`.
  *
@@ -35,18 +33,18 @@ interface Point {
  * ## What it does NOT simulate
  *
  * Every point recorded through {@link writeDataPoint} carries an interval of
- * 1 — this fake never invents sampling. The design accepts that Analytics
+ * 1, this fake never invents sampling. The design accepts that Analytics
  * Engine returns estimates, so a fake that fabricated a sampling rate would
  * make assertions about numbers production will not reproduce.
- * {@link answer} is the escape hatch for the one behaviour — the
- * `_sample_interval` correction math — that an interval of 1 can never
+ * {@link answer} is the escape hatch for the one behaviour, the
+ * `_sample_interval` correction math, that an interval of 1 can never
  * exercise on its own.
  *
  * ## Not a SQL parser
  *
  * {@link execute} understands exactly the expression shapes
  * `WaeAnalyticsProvider` emits (`blobN`, `substring(blobN, 1, 10)`,
- * `sum(_sample_interval)`, `sum(doubleN * _sample_interval)`,
+ * `sum(doubleN * _sample_interval)`,
  * `max(_sample_interval)`, `blobN = '…'` / `>= '…'` / `< '…'` / `IN (…)`)
  * and nothing else. That is the intended friction: a further expression shape
  * means this fake has to learn it too, the same closed-question design the
@@ -56,7 +54,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
   readonly points: Point[] = [];
 
   /**
-   * The most recent SQL statement executed — asserted on directly.
+   * The most recent SQL statement executed, asserted on directly.
    */
   lastQuery: string | undefined;
 
@@ -82,7 +80,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
   }
 
   /**
-   * Drop-in for `AnalyticsEngineSql`'s own `query` method — assign
+   * Drop-in for `AnalyticsEngineSql`'s own `query` method, assign
    * `sql.query = engine.query` so a real `AnalyticsEngineSql` instance
    * (whose `quote` / `num` / `str` statics stay in play) routes its reads
    * through this fake instead of `fetch`.
@@ -104,7 +102,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
    * wrong is a 422 from the real endpoint and nothing else catches it.
    *
    * ⚠️ Added after a production outage (2026-08-11) in which the provider
-   * emitted `HAVING COUNT(*) > 0` — valid on every relational database,
+   * emitted `HAVING COUNT(*) > 0`, valid on every relational database,
    * rejected by Analytics Engine with *"COUNT() function must have 0
    * arguments: 1"*. This fake previously modelled that clause explicitly and
    * so agreed with the bug: every test passed against SQL the real parser
@@ -125,7 +123,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
       );
     }
 
-    // GROUP BY takes column names — or a SELECT alias — and nothing else. An
+    // GROUP BY takes column names, or a SELECT alias, and nothing else. An
     // expression there is a 422, which is how `GROUP BY substring(blob2, 1,
     // 10)` (the `day` pseudo-dimension) reached production and broke every
     // grouped read. Found only after the `count()` fix above unblocked the
@@ -157,7 +155,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
 
     const projections = this.splitTopLevel(select, ", ").map((p) => p.trim());
 
-    // GROUP BY names SELECT aliases (the dialect allows nothing else — see
+    // GROUP BY names SELECT aliases (the dialect allows nothing else, see
     // `assertDialect`), so each term has to be resolved back to the
     // expression it aliases before it can be evaluated against a point.
     const aliased = new Map<string, string>();
@@ -188,7 +186,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
       else groups.set(key, [point]);
     }
 
-    // No GROUP BY at all: the whole match is one implicit group — but only
+    // No GROUP BY at all: the whole match is one implicit group, but only
     // when something matched. Plain aggregate SQL over zero matching rows
     // still returns one row with a NULL/0 total; `WaeAnalyticsProvider`
     // guards against that with `HAVING count() > 0`, which this fake
@@ -277,10 +275,6 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
    * is representative).
    */
   protected aggregate(expr: string, points: Point[]): number | string {
-    if (expr === "sum(_sample_interval)") {
-      return points.reduce((sum, p) => sum + this.sampleInterval(p), 0);
-    }
-
     const sumDouble = /^sum\(double(\d+) \* _sample_interval\)$/.exec(expr);
     if (sumDouble) {
       const slot = Number(sumDouble[1]) - 1;
@@ -301,7 +295,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
   }
 
   /**
-   * This fake never simulates sampling — see the class doc. Every point
+   * This fake never simulates sampling, see the class doc. Every point
    * written through {@link writeDataPoint} stands for exactly one real
    * event.
    */
@@ -315,7 +309,7 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
 
   /**
    * Splits `text` on `separator`, ignoring any separator that occurs inside
-   * parentheses — so `substring(blob2, 1, 10) AS day, blob3 AS app` splits
+   * parentheses, so `substring(blob2, 1, 10) AS day, blob3 AS app` splits
    * into two projections rather than four, the commas inside `substring(...)`
    * left alone.
    */

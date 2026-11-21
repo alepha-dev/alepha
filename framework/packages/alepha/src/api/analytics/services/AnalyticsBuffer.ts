@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider, type Timeout } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
@@ -175,11 +175,18 @@ export class AnalyticsBuffer {
     for (let attempt = 1; ; attempt++) {
       try {
         await this.provider.record(dataset, rows);
-        await this.alepha.events.emit("analytics:flush:success", {
-          dataset: dataset.name,
-          rows: rows.length,
-          durationMs: this.dateTime.nowMillis() - started,
-        });
+        // `catch`: a listener that throws must not read as a failed write
+        // (the batch is stored, a retry would store it again), nor reject
+        // the flush chain every later flush of this dataset waits on.
+        await this.alepha.events.emit(
+          "analytics:flush:success",
+          {
+            dataset: dataset.name,
+            rows: rows.length,
+            durationMs: this.dateTime.nowMillis() - started,
+          },
+          { catch: true },
+        );
         return;
       } catch (error) {
         if (attempt < AnalyticsBuffer.MAX_ATTEMPTS) {
@@ -192,12 +199,17 @@ export class AnalyticsBuffer {
           `Dropped ${rows.length} buffered row(s) of '${dataset.name}' after ${attempt} failed flushes`,
           error,
         );
-        await this.alepha.events.emit("analytics:flush:error", {
-          dataset: dataset.name,
-          rows: rows.length,
-          durationMs: this.dateTime.nowMillis() - started,
-          error: error instanceof Error ? error : new Error(String(error)),
-        });
+        await this.alepha.events.emit(
+          "analytics:flush:error",
+          {
+            dataset: dataset.name,
+            rows: rows.length,
+            durationMs: this.dateTime.nowMillis() - started,
+            error:
+              error instanceof Error ? error : new AlephaError(String(error)),
+          },
+          { catch: true },
+        );
         return;
       }
     }

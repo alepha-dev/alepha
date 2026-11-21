@@ -12,39 +12,8 @@ import type { UserAccount } from "alepha/security";
 import { ParameterProvider } from "../services/ParameterProvider.ts";
 
 /**
- * Creates a versioned parameter primitive for managing application settings.
- *
- * Provides type-safe, versioned configuration with:
- * - Schema validation with auto-migration detection
- * - Default values for initial state
- * - Status derived from activationDate (no stored status)
- * - Database persistence with full version history
- * - Cross-instance notification via topic
- * - Tree view support via dot-notation naming (e.g., "app.features.flags")
- * - Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
- *
- * @example
- * ```ts
- * class AppConfig {
- *   features = $parameter({
- *     name: "app.features.flags",
- *     schema: z.object({
- *       enableBeta: z.boolean(),
- *       maxUploadSize: z.number()
- *     }),
- *     default: { enableBeta: false, maxUploadSize: 10485760 }
- *   });
- *
- *   async checkBeta() {
- *     const config = await this.features.get();
- *     return config.enableBeta;
- *   }
- *
- *   async enableBeta() {
- *     await this.features.set({ enableBeta: true, maxUploadSize: 20971520 });
- *   }
- * }
- * ```
+ * The options of a `$parameter`: its name, schema, default value and
+ * optional migration.
  */
 export interface ParameterPrimitiveOptions<T extends ZObject> {
   /**
@@ -71,7 +40,7 @@ export interface ParameterPrimitiveOptions<T extends ZObject> {
   /**
    * Optional migration function for schema changes.
    * Receives the raw DB value and returns a transformed value matching the new schema.
-   * Runs before validation — if the result is valid, it's used directly.
+   * Runs before validation, if the result is valid, it's used directly.
    * If not provided or returns an invalid value, falls through to merge/default cascade.
    */
   migrate?: (old: unknown) => Infer<T>;
@@ -163,8 +132,8 @@ export class ParameterPrimitive<T extends ZObject> extends Primitive<
   }
 
   /**
-   * Reload parameter from database.
-   * Called when sync notification received or for manual refresh.
+   * Reload parameter from database, for a manual refresh. Same as
+   * {@link load}.
    */
   public async reload(): Promise<void> {
     await this.provider.load(this.name);
@@ -185,7 +154,7 @@ export class ParameterPrimitive<T extends ZObject> extends Primitive<
   }
 
   /**
-   * Get the version of this parameter that was in force at `at` — use it when
+   * Get the version of this parameter that was in force at `at`, use it when
    * a decision belongs to the time of an EVENT rather than the time of the
    * read (an offline capture uploaded later must be evaluated with the values
    * that were live when it happened). `null` when `at` predates version 1.
@@ -211,6 +180,8 @@ export class ParameterPrimitive<T extends ZObject> extends Primitive<
     options?: SetParameterOptions,
   ): Promise<void> {
     await this.provider.rollback(this.name, version, {
+      activationDate: options?.activationDate,
+      tags: options?.tags,
       changeDescription: options?.changeDescription,
       creatorId: options?.user?.id,
       creatorName: options?.user?.name ?? options?.user?.email,

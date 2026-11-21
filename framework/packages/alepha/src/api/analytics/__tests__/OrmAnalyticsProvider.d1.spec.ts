@@ -15,11 +15,11 @@ import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
  * SQLite that refuses a statement binding more than 100 values, which is
  * what Cloudflare D1 does (`too many SQL variables`).
  *
- * Every other spec of this provider runs on Postgres, whose ceiling is
- * 65535, so none of them could see the failure Lore's hourly rollup hit on
- * D1 for a week (#Q2404): `sigil_vitals` forwarded its backlog through one
- * multi-row upsert and was refused on every run. This is also the only place
- * the fold's SQL runs on SQLite at all.
+ * No other spec of this provider has that ceiling (Postgres allows 65535
+ * values, and the SQLite runs of the conformance suite use the stock
+ * driver), so none of them could see the failure Lore's hourly rollup hit
+ * on D1 for a week (#Q2404): `sigil_vitals` forwarded its backlog through
+ * one multi-row upsert and was refused on every run.
  */
 class D1CeilingProvider extends NodeSqliteProvider {
   public override readonly maxBoundParameters = 100;

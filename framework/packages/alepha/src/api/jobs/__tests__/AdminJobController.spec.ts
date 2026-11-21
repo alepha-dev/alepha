@@ -21,6 +21,11 @@ class Roles {
     permissions: [{ name: "admin:job:read" }],
   });
 
+  outsider = $role({
+    name: "job-outsider",
+    permissions: [{ name: "admin:parameter:read" }],
+  });
+
   cleaner = $role({
     name: "job-cleaner",
     permissions: [{ name: "admin:job:read" }, { name: "admin:job:delete" }],
@@ -404,6 +409,42 @@ describe("AdminJobController: deleting executions", () => {
         { user: user("job-cleaner") },
       ),
     ).resolves.toEqual({ deleted: 1, skipped: 0 });
+  });
+
+  it("gates the reads on admin:job:read, trigger and retry on admin:job:trigger, cancel on admin:job:cancel", async ({
+    expect,
+  }) => {
+    const { controller, ids } = await boot();
+    const outsider = { user: user("job-outsider") };
+    const reader = { user: user("job-reader") };
+
+    const refused = [
+      () => controller.listJobs.run({}, outsider),
+      () => controller.getJobStats.run({}, outsider),
+      () =>
+        controller.listExecutions.run(
+          { params: { name: "ops-app.work" }, query: {} },
+          outsider,
+        ),
+      () => controller.getExecution.run({ params: { id: ids.a } }, outsider),
+      () =>
+        controller.triggerJob.run(
+          { params: { name: "ops-app.work" }, body: { payload: { v: 1 } } },
+          reader,
+        ),
+      () => controller.retryExecution.run({ params: { id: ids.b } }, reader),
+      () => controller.cancelExecution.run({ params: { id: ids.c } }, reader),
+    ];
+    for (const call of refused) {
+      await expect(call()).rejects.toThrow(ForbiddenError);
+    }
+
+    // The reader's own permission still opens the reads, and the listing
+    // passes its response schema with kept runs behind it: `lastRun` is an
+    // ISO instant whatever shape the driver gives MAX(completedAt).
+    const listed = await controller.listJobs.run({}, reader);
+    const work = listed.find((job) => job.name === "ops-app.work");
+    expect(work?.recent.lastRun).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
   });
 
   it("returns a run's steps as an ordered timeline with capped previews, and never in a list row", async ({

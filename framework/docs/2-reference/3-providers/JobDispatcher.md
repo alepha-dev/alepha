@@ -17,11 +17,12 @@ in-process after the caller's `push()` returns - fast and dependency-free.
 publishes the executionId to `AlephaQueue` so a worker pool can consume
 the work asynchronously.
 
-Substitute via DI:
+`JobProvider` resolves one of those two classes by name, so a custom
+dispatcher takes the place of the one in use, ahead of the module:
 
 ```ts
 Alepha.create()
-  .with({ provide: JobDispatcher, use: MyCustomDispatcher })
+  .with({ provide: DirectJobDispatcher, use: MyCustomDispatcher })
   .with(AlephaApiJobs);
 ```
 

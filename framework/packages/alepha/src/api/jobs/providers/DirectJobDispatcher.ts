@@ -45,7 +45,7 @@ export class DirectJobDispatcher extends JobDispatcher {
    * Unbounded on purpose: an entry is two strings, and dropping one would lose
    * a dispatch the caller was told had been accepted. The bound that matters is
    * on *concurrency*, below. If the process dies with items still queued, the
-   * outbox rows are untouched and the next sweep re-dispatches them — which is
+   * outbox rows are untouched and the next sweep re-dispatches them, which is
    * the same guarantee that already covered a handler dying mid-run.
    */
   protected readonly pending: Array<[jobName: string, executionId: string]> =
@@ -93,7 +93,7 @@ export class DirectJobDispatcher extends JobDispatcher {
    *
    * Called on every dispatch rather than once per drain cycle: a `pushMany`
    * enqueues one at a time, so a pool sized from the queue length at the first
-   * dispatch would be a pool of one, and the whole blast would run serially —
+   * dispatch would be a pool of one, and the whole blast would run serially,
    * bounded, but pointlessly slow.
    */
   protected ensureWorkers(): void {
@@ -103,7 +103,7 @@ export class DirectJobDispatcher extends JobDispatcher {
     );
     while (this.active < Math.min(limit, this.pending.length)) {
       this.active++;
-      // One deferred task per worker, so at most `limit` of them — not one per
+      // One deferred task per worker, so at most `limit` of them, not one per
       // execution. On Cloudflare the isolate is held open by `waitUntil`, and
       // handing it thousands of separate promises is its own problem.
       this.background.defer(() => this.worker());
@@ -111,11 +111,17 @@ export class DirectJobDispatcher extends JobDispatcher {
   }
 
   /**
-   * Pulls until the queue is empty. Never rejects — a failed run is logged.
+   * Pulls until the queue is empty. Never rejects, a failed run is logged.
    */
   protected async worker(): Promise<void> {
     try {
       for (;;) {
+        // Not once stop began: the drain awaits the runs already in flight,
+        // so a run started now would be cut by the database closing. What
+        // is left here is still `pending` in the outbox, for the sweep.
+        if (this.alepha.isStopping()) {
+          return;
+        }
         const next = this.pending.shift();
         if (!next) {
           return;
@@ -135,7 +141,7 @@ export class DirectJobDispatcher extends JobDispatcher {
       // A dispatch that landed between this worker's last empty `shift()` and
       // here would otherwise wait for the next unrelated dispatch to revive
       // the pool.
-      if (this.pending.length > 0) {
+      if (this.pending.length > 0 && !this.alepha.isStopping()) {
         this.ensureWorkers();
       }
     }
