@@ -4,7 +4,7 @@ import {
   SharedQueueProvider,
   testQueueBasic,
   testQueueHasConsumer,
-  testQueueKillWorkerSleep,
+  testQueueWakeUpOnPush,
 } from "../__tests__/shared.ts";
 
 describe("MemoryQueueProvider", () => {
@@ -19,6 +19,6 @@ describe("MemoryQueueProvider", () => {
   });
 
   test("should wake up workers on push", async () => {
-    await testQueueKillWorkerSleep(Provider);
+    await testQueueWakeUpOnPush(Provider);
   });
 });

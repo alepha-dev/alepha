@@ -185,7 +185,7 @@ export const testQueueHasConsumer = async (
     interval: 10,
   }));
 
-  // Inject before start — the container locks once started.
+  // Inject before start: the container locks once started.
   const producer = app.inject(TestProducer);
 
   await app.start();
@@ -195,15 +195,26 @@ export const testQueueHasConsumer = async (
   await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
 };
 
-export const testQueueKillWorkerSleep = async (
+/**
+ * A push reaches a worker that is asleep for 10 s: only `wakeUp()` cutting
+ * that sleep short can deliver it inside the poll's deadline.
+ *
+ * The push waits until the worker IS asleep. Sent earlier, the worker's
+ * first poll would find the message and the test would pass with no wake-up
+ * at all.
+ *
+ * The stop at the end finds the worker asleep again, for 10 s more, and must
+ * cut that sleep short too, or the test times out.
+ */
+export const testQueueWakeUpOnPush = async (
   provider: Service<QueueProvider>,
 ) => {
   let count = 0;
-  // ⚠️ This one is a THIEF, not a victim. It pushes nothing and asserts only
-  // that `stopWorkers` ran, so a shared name costs it nothing - but while it
-  // is alive it holds a consumer on that queue, and it used to hold one on
-  // the very name `testQueueHasConsumer` pushes to. So it stole messages it
-  // never read. Unique here for the other test's sake.
+  let asleep = () => {};
+  const firstSleep = new Promise<void>((resolve) => {
+    asleep = resolve;
+  });
+  const schema = z.object({ n: z.integer() });
   const queue = uniqueQueueName("q");
 
   class A {
@@ -215,9 +226,11 @@ export const testQueueKillWorkerSleep = async (
       handler: () => {
         this.workerProvider.register({
           name: queue,
-          schema: z.object({}),
+          schema,
           provider: this.queueProvider,
-          handler: async () => {},
+          handler: async ({ payload }) => {
+            count += payload.n;
+          },
         });
       },
     });
@@ -230,10 +243,13 @@ export const testQueueKillWorkerSleep = async (
     })
     .with({
       provide: WorkerProvider,
-      use: class FakeQueueDescriptorProvider extends WorkerProvider {
-        async stopWorkers() {
-          await super.stopWorkers();
-          count += 123;
+      use: class SleepObservingWorkerProvider extends WorkerProvider {
+        protected override waitForNextMessage(n: number): Promise<void> {
+          // `super` reaches its wait before this call returns, so the
+          // worker is asleep by the time anything awaiting `firstSleep` runs.
+          const wait = super.waitForNextMessage(n);
+          asleep();
+          return wait;
         }
       },
     })
@@ -244,10 +260,15 @@ export const testQueueKillWorkerSleep = async (
     interval: 10000,
   }));
 
-  expect(count).toBe(0);
+  // Inject before start: the container locks once started.
+  const producer = app.inject(TestProducer);
+
   await app.start();
+  await firstSleep;
   expect(count).toBe(0);
 
+  await producer.push(queue, schema, { n: 123 });
+  await expect.poll(() => count, { timeout: 2000 }).toBe(123);
+
   await app.stop();
-  expect(count).toBe(123);
 };

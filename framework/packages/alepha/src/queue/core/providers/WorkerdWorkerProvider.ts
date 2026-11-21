@@ -1,5 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
-import { $logger } from "alepha/logger";
+import { $hook } from "alepha";
 
 import { WorkerProvider } from "./WorkerProvider.ts";
 
@@ -15,11 +14,8 @@ import { WorkerProvider } from "./WorkerProvider.ts";
  * @see https://developers.cloudflare.com/queues/
  */
 export class WorkerdWorkerProvider extends WorkerProvider {
-  protected override readonly alepha = $inject(Alepha);
-  protected override readonly log = $logger();
-
   /**
-   * Override the start hook — consumers register themselves via
+   * Override the start hook: consumers register themselves via
    * `WorkerProvider.register`; here we must only make sure the polling
    * workers never start. Cloudflare delivers messages push-based through
    * the `cloudflare:queue:received` event instead.
@@ -37,7 +33,7 @@ export class WorkerdWorkerProvider extends WorkerProvider {
   });
 
   /**
-   * Override stop hook — no workers to stop on Cloudflare.
+   * Override stop hook: no workers to stop on Cloudflare.
    */
   protected override readonly stop = $hook({
     on: "stop",
@@ -93,7 +89,7 @@ export class WorkerdWorkerProvider extends WorkerProvider {
   });
 
   /**
-   * No-op on Cloudflare — no workers to wake.
+   * No-op on Cloudflare: no workers to wake.
    */
   public override wakeUp(): void {}
 }
