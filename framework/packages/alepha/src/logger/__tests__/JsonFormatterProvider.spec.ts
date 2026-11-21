@@ -81,3 +81,20 @@ describe("JsonFormatterProvider", () => {
     expect(json.data.big).toBe("12345678901234567890");
   });
 });
+
+describe("JsonFormatterProvider with trace ids", () => {
+  it("prints traceId and spanId when present, nothing otherwise", () => {
+    const json = Alepha.create().inject(JsonFormatterProvider);
+    const base = {
+      level: "INFO" as const,
+      message: "hi",
+      service: "S",
+      module: "m",
+      timestamp: 0,
+    };
+    expect(JSON.parse(json.format(base))).not.toHaveProperty("traceId");
+    expect(
+      JSON.parse(json.format({ ...base, traceId: "t", spanId: "s" })),
+    ).toMatchObject({ traceId: "t", spanId: "s" });
+  });
+});

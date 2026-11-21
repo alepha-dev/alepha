@@ -10,9 +10,11 @@ import type {
  * One timed unit of work in a trace.
  *
  * Opened by `Tracer.span()` or `Tracer.startRoot()`, never constructed by app
- * code. A span that is not `recording` (tracing off, or an unsampled trace)
- * still carries its ids, so an outgoing `traceparent` keeps the caller's
- * trace whole, but every setter on it is a no-op.
+ * code. A span that is not `recording` has every setter a no-op. A root keeps
+ * real ids when it records or continues an incoming `traceparent` (an
+ * unsampled trace included), so an outgoing `traceparent` keeps the caller's
+ * trace whole. A root with tracing off and no incoming header, and any child
+ * of an unsampled parent, is {@link Span.noop}, whose ids are all zeros.
  */
 export class Span {
   /**
