@@ -53,6 +53,8 @@ class FakeLinkProvider extends LinkProvider {
                 ...(input.body.filter ? { filter: input.body.filter } : {}),
                 memberId: ME,
                 channels: input.body.channels,
+                ...(input.body.notMine ? { notMine: true } : {}),
+                ...(input.body.notMembers ? { notMembers: true } : {}),
                 createdAt: "2026-11-18T00:00:00.000Z",
               });
             return this.rows.at(-1);
@@ -89,6 +91,7 @@ describe("SubscriptionBell", () => {
     events: string[],
     filter?: string,
     rows: Array<Record<string, unknown>> = [],
+    authors?: { mineLabel: string; membersLabel: string },
   ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -112,6 +115,7 @@ describe("SubscriptionBell", () => {
             label="Notify me"
             description="You are notified of it."
             offDescription="You are no longer notified."
+            {...(authors ? { authors } : {})}
             testId="bell"
           />
         </DialogProvider>
@@ -142,6 +146,34 @@ describe("SubscriptionBell", () => {
     await waitFor(() =>
       expect(bell().getAttribute("aria-pressed")).toBe("true"),
     );
+  });
+
+  it("asks whose events through a dialog, and keeps out the members' (#Q4055)", async ({
+    expect,
+  }) => {
+    const server = await show(["feedback.created"], undefined, [], {
+      mineLabel: "Feedback I submit",
+      membersLabel: "Feedback from project members",
+    });
+    await waitFor(() => expect(bell().hasAttribute("disabled")).toBe(false));
+
+    // The first click opens the dialog rather than subscribing.
+    fireEvent.click(bell());
+    const dialog = await screen.findByRole("dialog");
+    expect(server.calls).not.toContain("setSubscription");
+
+    fireEvent.click(within(dialog).getByTestId("subscription-bell-members"));
+    fireEvent.click(within(dialog).getByTestId("subscription-bell-confirm"));
+
+    await waitFor(() => expect(server.rows).toHaveLength(1));
+    expect(server.rows[0]).toEqual(
+      expect.objectContaining({
+        event: "feedback.created",
+        channels: ["inapp"],
+        notMembers: true,
+      }),
+    );
+    expect(server.rows[0]?.notMine).toBeUndefined();
   });
 
   it("shows partly on, and stops from its dialog", async ({ expect }) => {

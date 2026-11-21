@@ -116,6 +116,7 @@ export class SubscriptionService {
         await this.rows.updateById(existing.id, {
           channels,
           notMine: body.notMine === true,
+          notMembers: body.notMembers === true,
           mutedAt: null as never,
         }),
       );
@@ -130,6 +131,7 @@ export class SubscriptionService {
           channelId: body.channelId,
           channels,
           notMine: body.notMine === true,
+          notMembers: body.notMembers === true,
           createdBy: user.id,
         }),
       );
@@ -193,6 +195,7 @@ export class SubscriptionService {
       ...(row.channelId ? { channelId: row.channelId } : {}),
       channels: row.channels,
       ...(row.notMine ? { notMine: true } : {}),
+      ...(row.notMembers ? { notMembers: true } : {}),
       ...(row.createdBy ? { createdBy: row.createdBy } : {}),
       ...(row.mutedAt ? { mutedAt: row.mutedAt } : {}),
       createdAt: row.createdAt,

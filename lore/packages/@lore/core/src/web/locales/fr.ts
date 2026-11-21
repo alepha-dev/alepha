@@ -99,6 +99,7 @@ export default {
   "notifications.bell.offConfirm": "Ne plus me notifier",
   "notifications.bell.channel": "Comment",
   "notifications.bell.events": "De quoi",
+  "notifications.bell.authors": "De qui",
   "notifications.bell.confirm": "Me notifier",
   "notifications.event.feedback.created": "Nouveau retour",
   "notifications.event.release.published": "Version publiée",
@@ -3201,6 +3202,8 @@ export default {
   "feedback.subscription.label": "Me notifier des nouveaux retours",
   "feedback.subscription.description":
     "Vous serez notifié dans l'application de chaque nouveau retour dans ce projet.",
+  "feedback.subscription.mine": "Les retours que je soumets",
+  "feedback.subscription.members": "Les retours des membres du projet",
   "feedback.subscription.offDescription":
     "Vous ne serez plus notifié des nouveaux retours dans ce projet.",
   "feedback.filter.pending": "En attente",

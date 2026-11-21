@@ -43,6 +43,13 @@ export interface SubscriptionBellProps {
   description: string;
   /** The confirmation's sentence on what turning it off stops. */
   offDescription: string;
+  /**
+   * Who caused the event, as two choices in the dialog (#Q4055): the
+   * feedback bell's "feedback I submit" and "feedback from project
+   * members". Given, the bell opens its dialog on the first click too,
+   * since the choice is the point; off, an event is told whoever caused it.
+   */
+  authors?: { mineLabel: string; membersLabel: string };
   testId?: string;
 }
 
@@ -69,6 +76,8 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   const [open, setOpen] = useState(false);
   const [channels, setChannels] = useState<SubscriptionChannel[]>(["inapp"]);
   const [events, setEvents] = useState<string[]>(props.events);
+  const [includeMine, setIncludeMine] = useState(true);
+  const [includeMembers, setIncludeMembers] = useState(true);
   const projectId = project?.id ?? 0;
   const me = auth.user?.id;
   const key = ["subscriptions", projectId];
@@ -112,13 +121,23 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   const save = useAction<
     [
       on: boolean,
-      picked?: { channels: SubscriptionChannel[]; events: string[] },
+      picked?: {
+        channels: SubscriptionChannel[];
+        events: string[];
+        notMine?: boolean;
+        notMembers?: boolean;
+      },
     ],
     void
   >(
     {
       handler: async (_ctx, on, picked) => {
-        const wanted = picked ?? { channels, events };
+        const wanted = picked ?? {
+          channels,
+          events,
+          notMine: props.authors ? !includeMine : undefined,
+          notMembers: props.authors ? !includeMembers : undefined,
+        };
         for (const event of props.events) {
           const row = mine.find((it) => it.event === event);
           if (on && wanted.events.includes(event))
@@ -128,6 +147,8 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
                 event,
                 ...(props.filter ? { filter: props.filter } : {}),
                 channels: wanted.channels,
+                ...(wanted.notMine ? { notMine: true } : {}),
+                ...(wanted.notMembers ? { notMembers: true } : {}),
               },
             });
           else if (row)
@@ -139,7 +160,18 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
       },
       invalidates: [key],
     },
-    [api, projectId, props.events, props.filter, channels, events, mine],
+    [
+      api,
+      projectId,
+      props.events,
+      props.filter,
+      props.authors,
+      channels,
+      events,
+      includeMine,
+      includeMembers,
+      mine,
+    ],
   );
   if (!project || !me) return null;
 
@@ -151,13 +183,16 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   // Off, one click turns it on, in the app, for every event of the bell;
   // on, the click opens the dialog that changes or stops it.
   const toggle = () => {
-    if (!subscribed && !partial) {
+    // With author choices the first click opens the dialog too (#Q4055).
+    if (!subscribed && !partial && !props.authors) {
       void save.run(true, { channels: ["inapp"], events: [...props.events] });
       return;
     }
     const current = live[0]?.channels ?? [];
     setChannels(current.length ? current : ["inapp"]);
     setEvents(live.length ? live.map((row) => row.event) : [...props.events]);
+    setIncludeMine(!live[0]?.notMine);
+    setIncludeMembers(!live[0]?.notMembers);
     setOpen(true);
   };
   const off = async () => {
@@ -268,6 +303,38 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
                     {title(event)}
                   </Label>
                 ))}
+              </div>
+            </div>
+          )}
+          {props.authors && (
+            <div className="flex flex-col gap-1.5">
+              <span
+                id="subscription-bell-authors"
+                className="text-sm font-medium"
+              >
+                {tr("notifications.bell.authors")}
+              </span>
+              <div
+                role="group"
+                aria-labelledby="subscription-bell-authors"
+                className="flex flex-col gap-2"
+              >
+                <Label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={includeMine}
+                    onCheckedChange={(checked) => setIncludeMine(checked)}
+                    data-testid="subscription-bell-mine"
+                  />
+                  {props.authors.mineLabel}
+                </Label>
+                <Label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={includeMembers}
+                    onCheckedChange={(checked) => setIncludeMembers(checked)}
+                    data-testid="subscription-bell-members"
+                  />
+                  {props.authors.membersLabel}
+                </Label>
               </div>
             </div>
           )}

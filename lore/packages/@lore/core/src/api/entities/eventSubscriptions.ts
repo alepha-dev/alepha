@@ -53,6 +53,11 @@ export const eventSubscriptions = $entity({
      * report they filed themselves. Meaningless on a channel's row.
      */
     notMine: db.default(z.boolean(), false),
+    /**
+     * Skip the events a project member caused (#Q4055): a feedback bell
+     * told only of outside reporters. A member's row or a channel's.
+     */
+    notMembers: db.default(z.boolean(), false),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),

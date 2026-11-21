@@ -133,8 +133,22 @@ export class ProjectEventDelivery {
     const project = await this.projects.findById(event.projectId);
     if (!project) return 0;
     let sent = 0;
+    // Whether the event's actor is a member, read once for the rows whose
+    // `notMembers` asks (#Q4055).
+    let actorIsMember: boolean | undefined;
+    const isMemberActor = async () => {
+      if (!event.actorId) return false;
+      actorIsMember ??= await this.recipients.isMember(
+        event.projectId,
+        event.actorId,
+      );
+      return actorIsMember;
+    };
     for (const row of rows) {
       if (!this.matches(row.filter, definition.filter?.field, event)) continue;
+      // Outside reporters only, on request: a member's own report is skipped
+      // for every row that asks (#Q4055), a channel's included.
+      if (row.notMembers && (await isMemberActor())) continue;
       // A channel: posted as the project, with no member to check (#Q3891).
       if (row.channelId) {
         const channelId = row.channelId;

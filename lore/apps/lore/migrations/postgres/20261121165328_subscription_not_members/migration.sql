@@ -1,0 +1,1 @@
+ALTER TABLE "event_subscriptions" ADD COLUMN "not_members" boolean DEFAULT false NOT NULL;

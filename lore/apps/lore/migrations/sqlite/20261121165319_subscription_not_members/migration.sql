@@ -1,0 +1,1 @@
+ALTER TABLE `event_subscriptions` ADD `not_members` integer DEFAULT false NOT NULL;
