@@ -19,7 +19,7 @@ export * from "./services/StaticSiteServer.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Infer file serving.
+ * Static file serving.
  *
  * **Features:**
  * - Serve static files from directory

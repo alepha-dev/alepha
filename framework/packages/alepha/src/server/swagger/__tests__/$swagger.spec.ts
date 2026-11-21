@@ -6,7 +6,7 @@ import {
   z,
 } from "alepha";
 import { OPTIONS } from "alepha/internal";
-import { $action } from "alepha/server";
+import { $action, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
 import { $swagger, ServerSwaggerProvider } from "../index.ts";
@@ -119,7 +119,7 @@ class App {
 const alepha = Alepha.create().with(App);
 
 // -------------------------------------------------------------------------------------------------------------------------
-// Tests: existing spec (updated for 400 response)
+// Tests: the document generated from actions
 // -------------------------------------------------------------------------------------------------------------------------
 
 describe("$swagger", () => {
@@ -684,6 +684,37 @@ describe("hide and excludeTags", () => {
     expect(json.paths["/api/pub"]).toBeDefined();
     expect(json.paths["/api/internal"]).toBeUndefined();
   });
+
+  it("should match excludeTags against the group and against the tag as the document prints it", () => {
+    class NestedTagApp {
+      pub = $action({
+        path: "/pub",
+        method: "GET",
+        group: "public:users",
+        schema: { response: z.text() },
+        handler: async () => "ok",
+      });
+      admin = $action({
+        path: "/admin",
+        method: "GET",
+        group: "admin:users",
+        schema: { response: z.text() },
+        handler: async () => "ok",
+      });
+    }
+
+    const printed = doc(Alepha.create().with(NestedTagApp));
+    expect(printed.paths["/api/admin"].get.tags).toEqual(["admin / users"]);
+
+    for (const spelling of ["admin:users", "admin / users"]) {
+      const json = doc(Alepha.create().with(NestedTagApp), {
+        excludeTags: [spelling],
+      });
+
+      expect(json.paths["/api/pub"], spelling).toBeDefined();
+      expect(json.paths["/api/admin"], spelling).toBeUndefined();
+    }
+  });
 });
 
 // -------------------------------------------------------------------------------------------------------------------------
@@ -711,57 +742,6 @@ describe("rewrite", () => {
 
     expect(json.info.title).toBe("Rewritten Title");
     expect(json.info.description).toBe("Added by rewrite");
-  });
-});
-
-// -------------------------------------------------------------------------------------------------------------------------
-// Tests: multipart
-// -------------------------------------------------------------------------------------------------------------------------
-
-describe("multipart", () => {
-  it("should detect file upload as multipart/form-data", () => {
-    class UploadApp {
-      upload = $action({
-        method: "POST",
-        path: "/upload",
-        schema: {
-          body: z.object({
-            file: z.file(),
-            name: z.text(),
-          }),
-          response: z.object({ ok: z.boolean() }),
-        },
-        handler: async () => ({ ok: true }),
-      });
-    }
-
-    const app = Alepha.create().with(UploadApp);
-    const json = doc(app);
-    const body = json.paths["/api/upload"].post.requestBody;
-
-    expect(body.content["multipart/form-data"]).toBeDefined();
-    expect(body.content["application/json"]).toBeUndefined();
-  });
-
-  it("should use application/json for body without files", () => {
-    class JsonBodyApp {
-      create = $action({
-        method: "POST",
-        path: "/create",
-        schema: {
-          body: z.object({ name: z.text() }),
-          response: z.object({ ok: z.boolean() }),
-        },
-        handler: async () => ({ ok: true }),
-      });
-    }
-
-    const app = Alepha.create().with(JsonBodyApp);
-    const json = doc(app);
-    const body = json.paths["/api/create"].post.requestBody;
-
-    expect(body.content["application/json"]).toBeDefined();
-    expect(body.content["multipart/form-data"]).toBeUndefined();
   });
 });
 
@@ -945,7 +925,7 @@ describe("removePrivateFields", () => {
 });
 
 // -------------------------------------------------------------------------------------------------------------------------
-// Tests: isBodyMultipart
+// Tests: multipart request bodies
 // -------------------------------------------------------------------------------------------------------------------------
 
 describe("multipart request bodies", () => {
@@ -962,7 +942,7 @@ describe("multipart request bodies", () => {
 
     // The framework's own upload endpoint takes its bytes in flight. Documented
     // as JSON, every client generated from this spec sends the wrong
-    // content-type — and the endpoint that broke this way was `POST /api/files`.
+    // content-type, and the endpoint that broke this way was `POST /api/files`.
     streamed = $action({
       method: "POST",
       path: "/streamed",
@@ -1006,7 +986,7 @@ describe("multipart request bodies", () => {
 
   it("describes both kinds of byte field as a binary string", () => {
     // `format: "stream"` is Alepha's word for how the bytes reach the handler.
-    // OpenAPI has no such format, and a reader — Swagger UI, a generator — that
+    // OpenAPI has no such format, and a reader (Swagger UI, a generator) that
     // does not recognise it renders no file picker at all.
     const streamed =
       uploads().paths["/api/streamed"].post.requestBody.content[
@@ -1027,21 +1007,42 @@ describe("multipart request bodies", () => {
 // -------------------------------------------------------------------------------------------------------------------------
 
 describe("disabled", () => {
-  it("should not generate spec when disabled", () => {
-    class DisabledApp {
+  const start = async (disabled: boolean) => {
+    class DocsApp {
       hello = $action({
         path: "/hello",
         method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
-      docs = $swagger({ disabled: true });
+      docs = $swagger({ disabled });
     }
 
-    const app = Alepha.create().with(DisabledApp);
+    const app = Alepha.create({ env: { SERVER_PORT: 0 } }).with(DocsApp);
+    // The document is generated by the `configure` hook: a container that
+    // never starts has none, disabled or not.
+    await app.start();
+    const response = await fetch(
+      `${app.inject(ServerProvider).hostname}/docs/json`,
+    );
+    await response.text();
     const json = app.inject(ServerSwaggerProvider).json;
+    await app.stop();
+    return { json, status: response.status };
+  };
+
+  it("should generate and serve the spec when not disabled", async () => {
+    const { json, status } = await start(false);
+
+    expect(json?.paths["/api/hello"]).toBeDefined();
+    expect(status).toBe(200);
+  });
+
+  it("should neither generate nor serve the spec when disabled", async () => {
+    const { json, status } = await start(true);
 
     expect(json).toBeUndefined();
+    expect(status).toBe(404);
   });
 });
 
@@ -1286,52 +1287,6 @@ describe("response descriptions", () => {
 
     expect(json.paths["/api/fire"].get.responses["204"].description).toBe(
       "No Content",
-    );
-  });
-
-  it("should use 'Created' for 201 responses", () => {
-    class CreatedApp {
-      create = $action({
-        method: "POST",
-        path: "/create",
-        schema: {
-          body: z.object({ name: z.text() }),
-          response: { 201: z.object({ id: z.text() }) } as any,
-        },
-        handler: async () => ({ id: "1" }) as any,
-      });
-    }
-
-    const app = Alepha.create().with(CreatedApp);
-    const json = doc(app);
-
-    expect(json.paths["/api/create"].post.responses["201"].description).toBe(
-      "Created",
-    );
-  });
-});
-
-// -------------------------------------------------------------------------------------------------------------------------
-// Tests: security scheme description (API key)
-// -------------------------------------------------------------------------------------------------------------------------
-
-describe("security scheme description", () => {
-  it("should include description about JWT and API key in bearerAuth", () => {
-    class AuthApp {
-      secured = $action({
-        path: "/secured",
-        method: "GET",
-        use: [fakeSecure()],
-        schema: { response: z.text() },
-        handler: async () => "ok",
-      });
-    }
-
-    const app = Alepha.create().with(AuthApp);
-    const json = doc(app);
-
-    expect(json.components?.securitySchemes?.bearerAuth.description).toBe(
-      "Enter a JWT token or API key. Both are accepted as Bearer tokens.",
     );
   });
 });

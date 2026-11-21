@@ -67,7 +67,7 @@ export class StaticSiteServer {
             request.reply.headers["content-type"] =
               "text/javascript; charset=utf-8";
             request.reply.headers["cache-control"] =
-              "public, max-age=0, must-revalidate";
+              ServerStaticProvider.DEFAULT_CACHE_CONTROL;
             return this.configScript(keys);
           },
         });

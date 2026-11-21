@@ -13,7 +13,6 @@ import { KIND } from "alepha/internal";
  * ```ts
  * class App {
  *   docs = $swagger({
- *     prefix: "/api-docs",
  *     info: {
  *       title: "My API",
  *       version: "1.0.0",
@@ -35,7 +34,9 @@ export interface SwaggerPrimitiveOptions {
   info?: OpenApiDocument["info"];
 
   /**
-   * @default: "/docs"
+   * URL prefix the document is served under, at `<prefix>/json`.
+   *
+   * @default "/docs"
    */
   prefix?: string;
 
@@ -45,7 +46,9 @@ export interface SwaggerPrimitiveOptions {
   disabled?: boolean;
 
   /**
-   * Tags to exclude from the documentation.
+   * Tags to exclude from the documentation. A tag is an action's group,
+   * written as declared (`admin:users`) or as the document prints it
+   * (`admin / users`).
    */
   excludeTags?: string[];
 

@@ -371,7 +371,7 @@ Serves metrics in Prometheus text format at `/metrics`.
 
 Opt-in, unlike `/health`: it pulls in `@prometheus-io/client`, and an app that nothing scrapes should not carry it.
 
-Set `METRICS_TOKEN` if the app itself is reachable from the network: the scraper then sends `Authorization: Bearer <token>`, and anything else answers 401. Alepha warns at startup when it is - production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
+Set `METRICS_TOKEN` if the app itself is reachable from the network: the scraper then sends `Authorization: Bearer <token>`, and anything else answers 401. Alepha warns at startup when it is - production, no token, and the server bound to something other than loopback (`SERVER_HOST` left unset binds `localhost`, which is loopback). An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
 
 ### ETag and Conditional Responses
 

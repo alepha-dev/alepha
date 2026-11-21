@@ -42,9 +42,10 @@ interface MultipartPart {
 }
 ```
 
-A part's `data` must be consumed - fully or not at all - before advancing to the
-next one. The parser drains whatever is left behind, because the delimiter of
-the next part can only be found by walking past this one's content.
+A part's `data` must be read before advancing to the next one: after that its
+bytes are gone. The parser drains whatever is left behind, a part never read
+or the rest of one whose read stopped early, because the delimiter of the next
+part can only be found by walking past this one's content.
 
 Driving it by hand takes a boundary, read off the `Content-Type` with
 `boundaryOf()` (`undefined` when the header is not multipart at all, a
@@ -65,8 +66,11 @@ if (boundary && request.body) {
 }
 ```
 
-The constructor takes `maxHeaderBytes` (16 KB), `maxFileBytes` (5 MiB),
-`maxParts` (10) and `maxTotalBytes` (10 MiB). A malformed body throws
+The constructor takes `maxHeaderBytes` (16 KB, a part's headers with the blank
+line that ends them), `maxFileBytes` (5 MiB), `maxParts` (10) and
+`maxTotalBytes` (10 MiB). Spaces and tabs between a boundary and its line break
+count against `maxTotalBytes`, and more than 256 bytes of them is a malformed
+body. A malformed body throws
 `MultipartParseError`; a blown limit throws `MultipartLimitError` (see
 [Refusals](#refusals)).
 

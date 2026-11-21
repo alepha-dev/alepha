@@ -88,6 +88,19 @@ const collect = async (
   return out;
 };
 
+/**
+ * Exposes what the parser holds, so a test can assert on retention directly.
+ */
+class ProbeParser extends MultipartStreamParser {
+  public get buffered(): number {
+    return this.buffer.length;
+  }
+
+  public get billed(): number {
+    return this.totalSize;
+  }
+}
+
 describe("MultipartStreamParser", () => {
   it("reads a single file part", async ({ expect }) => {
     const body = bodyOf([filePart("file", "a.txt", "hello")]);
@@ -250,7 +263,7 @@ describe("MultipartStreamParser", () => {
     it("reads the field name when filename comes first", async ({ expect }) => {
       // `name=` is a substring of `filename=`, so an unanchored search finds the
       // filename's value and calls it the field name. Nothing mandates the
-      // order, so the only thing keeping this from firing is client habit —
+      // order, so the only thing keeping this from firing is client habit,
       // and the field a part lands in is not something the sender should pick.
       const body = bodyOf([
         {
@@ -320,7 +333,9 @@ describe("MultipartStreamParser", () => {
       );
     });
 
-    it("refuses headers larger than maxHeaderBytes", async ({ expect }) => {
+    it("refuses headers larger than maxHeaderBytes, however the stream is cut", async ({
+      expect,
+    }) => {
       const body = bodyOf([
         {
           headers: `Content-Disposition: form-data; name="f"\r\nX-Padding: ${"p".repeat(5000)}`,
@@ -328,13 +343,35 @@ describe("MultipartStreamParser", () => {
         },
       ]);
 
-      await expect(collect(body, 128, { maxHeaderBytes: 512 })).rejects.toThrow(
-        MultipartLimitError,
-      );
+      // 64 KiB is what a socket delivers: the whole header block and its blank
+      // line land in one chunk.
+      for (const chunkSize of [128, 64 * 1024]) {
+        await expect(
+          collect(body, chunkSize, { maxHeaderBytes: 512 }),
+          `chunk size ${chunkSize}`,
+        ).rejects.toThrow(MultipartLimitError);
+      }
+    });
+
+    it("accepts headers of exactly maxHeaderBytes, blank line included, however the stream is cut", async ({
+      expect,
+    }) => {
+      const headers = `Content-Disposition: form-data; name="f"\r\nX-Padding: ${"p".repeat(100)}`;
+      const body = bodyOf([{ headers, content: "x" }]);
+      const exact = headers.length + 4;
+
+      for (const chunkSize of [1, 128, 64 * 1024]) {
+        const parts = await collect(body, chunkSize, { maxHeaderBytes: exact });
+        expect(parts, `chunk size ${chunkSize}`).toHaveLength(1);
+        await expect(
+          collect(body, chunkSize, { maxHeaderBytes: exact - 1 }),
+          `chunk size ${chunkSize}`,
+        ).rejects.toThrow(MultipartLimitError);
+      }
     });
 
     it("charges the preamble to maxTotalBytes", async ({ expect }) => {
-      // A preamble is discarded, not delivered — but it is still bytes the
+      // A preamble is discarded, not delivered, but it is still bytes the
       // sender made this process read. Left unbilled, a body that never
       // reaches a boundary spins forever under any budget, and `chunked`
       // carries no Content-Length for the cheap pre-check to catch.
@@ -361,6 +398,94 @@ describe("MultipartStreamParser", () => {
       await expect(
         collect(body, 512, { maxTotalBytes: 1000, maxHeaderBytes: 4096 }),
       ).rejects.toThrow(MultipartLimitError);
+    });
+  });
+
+  describe("padding after a boundary", () => {
+    /**
+     * A body that is one delimiter followed by spaces, 64 KiB at a time.
+     */
+    const paddedStream = (chunks: number, parser: ProbeParser) => {
+      const state = { sent: 0, peak: 0, bytes: 0 };
+      const head = new TextEncoder().encode(`--${BOUNDARY}`);
+      const spaces = new Uint8Array(64 * 1024).fill(0x20);
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          state.peak = Math.max(state.peak, parser.buffered);
+          if (state.sent === 0) {
+            controller.enqueue(head);
+            state.bytes += head.length;
+          } else if (state.sent <= chunks) {
+            controller.enqueue(spaces);
+            state.bytes += spaces.length;
+          } else {
+            controller.close();
+          }
+          state.sent++;
+        },
+      });
+      return { body, state };
+    };
+
+    it("stops reading whitespace after a boundary instead of buffering it", async ({
+      expect,
+    }) => {
+      const parser = new ProbeParser({ maxTotalBytes: 1024 });
+      // 10 MiB of spaces.
+      const { body, state } = paddedStream(160, parser);
+
+      await expect(async () => {
+        for await (const _ of parser.parse(body, BOUNDARY)) {
+          // no part can come out of this body
+        }
+      }).rejects.toThrow(MultipartParseError);
+
+      // What the parser pulled from its source before refusing: the
+      // delimiter and the chunk that carried the padding past its cap, plus
+      // what the stream's own queue asked for ahead of it.
+      const delimiter = BOUNDARY.length + 2;
+      expect(state.bytes).toBeLessThanOrEqual(delimiter + 3 * 64 * 1024);
+      expect(state.peak).toBeLessThanOrEqual(delimiter + 2 * 64 * 1024);
+    });
+
+    it("charges the padding to maxTotalBytes", async ({ expect }) => {
+      const raw =
+        `--${BOUNDARY}${" ".repeat(200)}\r\n` +
+        `Content-Disposition: form-data; name="f"\r\n\r\n` +
+        `x\r\n` +
+        `--${BOUNDARY}--\r\n`;
+      const bytes = new TextEncoder().encode(raw);
+
+      for (const chunkSize of [16, 64 * 1024]) {
+        const parts = await collect(bytes, chunkSize, { maxTotalBytes: 300 });
+        expect(parts, `chunk size ${chunkSize}`).toHaveLength(1);
+
+        const refusal = await collect(bytes, chunkSize, {
+          maxTotalBytes: 150,
+        }).catch((error) => error);
+        expect(refusal, `chunk size ${chunkSize}`).toBeInstanceOf(
+          MultipartLimitError,
+        );
+        expect(refusal.data.kind).toBe("total");
+      }
+    });
+
+    it("refuses more padding than a sender has a use for, whatever the budget", async ({
+      expect,
+    }) => {
+      const raw =
+        `--${BOUNDARY}${" ".repeat(5000)}\r\n` +
+        `Content-Disposition: form-data; name="f"\r\n\r\n` +
+        `x\r\n` +
+        `--${BOUNDARY}--\r\n`;
+      const bytes = new TextEncoder().encode(raw);
+
+      for (const chunkSize of [16, 64 * 1024]) {
+        await expect(
+          collect(bytes, chunkSize),
+          `chunk size ${chunkSize}`,
+        ).rejects.toThrow(MultipartParseError);
+      }
     });
   });
 
@@ -392,7 +517,7 @@ describe("MultipartStreamParser", () => {
     }) => {
       // RFC 2046 tolerates spaces and tabs between a delimiter and its CRLF.
       // `want(2)` runs *before* those are consumed, so once they are, the CRLF
-      // test can read past the buffer and call a well-formed body malformed —
+      // test can read past the buffer and call a well-formed body malformed:
       // an upload that fails or not depending on where TCP split it.
       const raw =
         `--${BOUNDARY} \t\r\n` +
@@ -457,6 +582,105 @@ describe("MultipartStreamParser", () => {
     });
   });
 
+  describe("partial reads", () => {
+    it("drains what a consumer left of a part it stopped reading", async ({
+      expect,
+    }) => {
+      const body = bodyOf([
+        filePart("a", "a.bin", "x".repeat(3000)),
+        filePart("b", "b.bin", "second"),
+      ]);
+
+      for (const chunkSize of [100, 64 * 1024]) {
+        const parser = new MultipartStreamParser();
+        const seen: Array<[string | undefined, string]> = [];
+        for await (const part of parser.parse(
+          streamOf(body, chunkSize),
+          BOUNDARY,
+        )) {
+          if (part.name === "a") {
+            for await (const _ of part.data) {
+              break;
+            }
+            seen.push([part.name, ""]);
+            continue;
+          }
+          let text = "";
+          const decoder = new TextDecoder();
+          for await (const chunk of part.data) {
+            text += decoder.decode(chunk, { stream: true });
+          }
+          seen.push([part.name, text + decoder.decode()]);
+        }
+
+        expect(seen, `chunk size ${chunkSize}`).toEqual([
+          ["a", ""],
+          ["b", "second"],
+        ]);
+      }
+    });
+
+    it("does not end the message when the unread remainder starts with two hyphens", async ({
+      expect,
+    }) => {
+      // Fed in one chunk the first read hands out everything but the hold-back,
+      // which is the delimiter's length minus one: the remainder then starts
+      // exactly where this content puts its hyphens.
+      const delimiterLength = `\r\n--${BOUNDARY}`.length;
+      const tail = `--${"y".repeat(delimiterLength - 3)}`;
+      const first = new TextEncoder().encode(
+        `--${BOUNDARY}\r\nContent-Disposition: form-data; name="a"\r\n\r\n${"x".repeat(500)}${tail}`,
+      );
+      const rest = new TextEncoder().encode(
+        `\r\n--${BOUNDARY}\r\nContent-Disposition: form-data; name="b"\r\n\r\nsecond\r\n--${BOUNDARY}--\r\n`,
+      );
+      let sent = 0;
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (sent === 0) {
+            controller.enqueue(first);
+          } else if (sent === 1) {
+            controller.enqueue(rest);
+          } else {
+            controller.close();
+          }
+          sent++;
+        },
+      });
+
+      const names: Array<string | undefined> = [];
+      for await (const part of new MultipartStreamParser().parse(
+        body,
+        BOUNDARY,
+      )) {
+        names.push(part.name);
+        for await (const _ of part.data) {
+          break;
+        }
+      }
+
+      expect(names).toEqual(["a", "b"]);
+    });
+
+    it("keeps counting a part against maxFileBytes after the consumer stopped reading it", async ({
+      expect,
+    }) => {
+      const body = bodyOf([
+        filePart("a", "a.bin", "x".repeat(3000)),
+        filePart("b", "b.bin", "second"),
+      ]);
+
+      await expect(async () => {
+        const parser = new MultipartStreamParser({ maxFileBytes: 2000 });
+        for await (const part of parser.parse(streamOf(body, 100), BOUNDARY)) {
+          for await (const _ of part.data) {
+            break;
+          }
+        }
+      }).rejects.toThrow(MultipartLimitError);
+    });
+  });
+
   describe("boundaryOf", () => {
     it("reads an unquoted boundary", ({ expect }) => {
       const parser = new MultipartStreamParser();
@@ -503,12 +727,12 @@ describe("MultipartStreamParser", () => {
   /**
    * The regression guard for the whole point of this parser.
    *
-   * Memory has to stay flat as the payload grows — if someone reintroduces an
-   * accumulation, the slope shows up here rather than on a production host.
-   * Asserted against the heap, not RSS: RSS does not shrink after a
-   * collection, so it reports garbage as if it were retention.
+   * What the parser holds has to stay flat as the payload grows. Asserted on
+   * the buffer itself: the bytes of a `Uint8Array` live outside the V8 heap, so
+   * `heapUsed` does not move when they are retained, and the process-wide
+   * counters that do see them also count garbage not yet collected.
    */
-  it("holds a constant amount of memory whatever the payload size", async ({
+  it("holds one chunk plus a delimiter whatever the payload size", async ({
     expect,
   }) => {
     const chunk = new Uint8Array(64 * 1024).fill(120);
@@ -517,14 +741,16 @@ describe("MultipartStreamParser", () => {
     );
     const tail = new TextEncoder().encode(`\r\n--${BOUNDARY}--\r\n`);
 
-    const measure = async (megabytes: number): Promise<number> => {
-      const parser = new MultipartStreamParser({
+    const measure = async (megabytes: number) => {
+      const parser = new ProbeParser({
         maxFileBytes: 512 * 1024 * 1024,
         maxTotalBytes: 512 * 1024 * 1024,
       });
       let emitted = 0;
+      let peak = 0;
       const body = new ReadableStream<Uint8Array>({
         pull(controller) {
+          peak = Math.max(peak, parser.buffered);
           if (emitted === 0) {
             controller.enqueue(head);
           } else if (emitted <= megabytes * 16) {
@@ -537,25 +763,22 @@ describe("MultipartStreamParser", () => {
         },
       });
 
-      const before = process.memoryUsage().heapUsed;
-      let peak = before;
+      let delivered = 0;
       for await (const part of parser.parse(body, BOUNDARY)) {
-        for await (const _ of part.data) {
-          const used = process.memoryUsage().heapUsed;
-          if (used > peak) {
-            peak = used;
-          }
+        for await (const piece of part.data) {
+          peak = Math.max(peak, parser.buffered);
+          delivered += piece.length;
         }
       }
-      return peak - before;
+      return { peak, delivered };
     };
 
     const small = await measure(8);
     const large = await measure(64);
 
-    // Eight times the payload must not cost meaningfully more memory. The
-    // allowance is generous on purpose: this test is here to catch a slope,
-    // not to police allocator noise.
-    expect(large).toBeLessThan(small + 8 * 1024 * 1024);
+    expect(small.delivered).toBe(8 * 1024 * 1024);
+    expect(large.delivered).toBe(64 * 1024 * 1024);
+    expect(large.peak).toBeLessThanOrEqual(chunk.length + 2 * BOUNDARY.length);
+    expect(large.peak).toBe(small.peak);
   });
 });

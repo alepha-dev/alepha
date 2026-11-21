@@ -40,8 +40,8 @@ right place already does something useful.
 | `ignoreDotEnvFiles`  | `true`          | Skip dot files and dot directories              |
 | `cacheControl`       | off             | `Cache-Control` headers, see below              |
 | `headersFile`        | `false`         | Apply the root `_headers` file, see below       |
-| `disabled`           | `false`         | Declared, but not read yet: it has no effect    |
-| `name`               | the field name  | Name for logging and debugging                  |
+| `disabled`           | `false`         | Mount nothing: the declaration is ignored       |
+| `name`               | none            | Accepted, and not read by the static server     |
 | `silent`             | `false`         | Leave its requests out of the request log       |
 
 ### What a served file gets
@@ -53,13 +53,15 @@ next start; this is a server for build output, not for uploads (see
 
 Each file answers with:
 
-- `Content-Type` from its extension, `Last-Modified`, `Accept-Ranges` and an
-  `ETag`; a matching `If-None-Match` (or, without one, `If-Modified-Since`)
-  gets a `304`.
+- `Content-Type` from its extension, `Last-Modified` and an `ETag`; a matching
+  `If-None-Match` (or, without one, `If-Modified-Since`) gets a `304`. There
+  is no `Accept-Ranges`: a `Range` request gets the whole file.
 - The precompressed sibling when one exists and the client accepts it:
   `app.js.br` for `br`, else `app.js.gz` for `gzip`, with `Vary:
-  accept-encoding` and an `ETag` per encoding.
-- Under `indexFallback`, `/docs/index.html` also answers `/docs/`; and a
+  accept-encoding` and an `ETag` per encoding. An encoding refused with
+  `q=0` (`Accept-Encoding: gzip, br;q=0`) is not served.
+- Under `indexFallback`, `/docs/index.html` also answers `/docs/` (a file
+  named exactly `index.html`, so `blogindex.html` gives `/blog` nothing); and a
   request for the prefix itself without its trailing slash (`/static`) is
   redirected with a `301` to `/static/`.
 
@@ -197,8 +199,17 @@ sequenceDiagram
 ```
 
 - Every incoming header is forwarded as is, except the caller's credentials
-  (see [Credentials stay home](#credentials-stay-home)) and `Accept-Encoding`,
-  forced to `identity` so the body comes back uncompressed.
+  (see [Credentials stay home](#credentials-stay-home)), the hop-by-hop
+  headers of the client's own connection (`Connection` and the headers it
+  names, `Keep-Alive`, `Transfer-Encoding`, `Upgrade`, `TE`, `Trailer`,
+  `Proxy-Authorization`), `Expect`, and `Accept-Encoding`, forced to
+  `identity` so the body comes back uncompressed. A header the client names
+  in `Connection` stops here even when `forward` names it.
+- An upstream that compresses anyway is answered decoded, without its
+  `Content-Encoding` and `Content-Length`, when every coding it used is one
+  the runtime's `fetch` decodes: gzip, deflate, brotli and zstd on Node and
+  Bun, gzip and brotli on Cloudflare Workers. Any other response is passed
+  through as received. A `HEAD` carries the headers its `GET` does.
 - The request body is streamed upstream for every method but `GET`, `HEAD`
   and `OPTIONS`, and the response body is streamed back without buffering.
 - The upstream call carries the request's abort signal: a client that

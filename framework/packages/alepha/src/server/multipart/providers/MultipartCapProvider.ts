@@ -28,8 +28,8 @@ export interface MultipartCap {
 /**
  * Answers for the requests it recognises, or defers.
  *
- * Called before a single byte of the body is read — the URL, the route and the
- * headers are all known by then — which is what makes a per-destination budget
+ * Called before a single byte of the body is read (the URL, the route and the
+ * headers are all known by then), which is what makes a per-destination budget
  * possible at all.
  */
 export type MultipartCapResolver = (
@@ -72,7 +72,7 @@ export class MultipartCapProvider {
    * Adds a resolver. The last one added answers first.
    *
    * Last-wins rather than first-wins so an application can overrule a module it
-   * imports without having to load before it — the ordering trap this registry
+   * imports without having to load before it: the ordering trap this registry
    * exists to avoid.
    */
   public use(resolver: MultipartCapResolver): void {
@@ -84,7 +84,7 @@ export class MultipartCapProvider {
    *
    * An answer means at least one number. `{}` is not one: testing truthiness
    * let an empty object end the search, so a resolver that recognised a route
-   * but had nothing to say about it vetoed every resolver behind it — and
+   * but had nothing to say about it vetoed every resolver behind it, and
    * `undefined` and `{}` are the same intent written two ways.
    */
   public resolve(

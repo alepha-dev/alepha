@@ -11,6 +11,7 @@ import { ServerSwaggerProvider } from "./providers/ServerSwaggerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/swaggerOptionsAtom.ts";
 export * from "./primitives/$swagger.ts";
 export * from "./providers/ServerSwaggerProvider.ts";
 
