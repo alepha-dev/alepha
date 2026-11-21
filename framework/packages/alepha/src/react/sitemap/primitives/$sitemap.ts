@@ -1,15 +1,22 @@
 import type { PrimitiveSide } from "alepha";
-import { $inject, createPrimitive, Primitive } from "alepha";
+import {
+  $inject,
+  createPrimitive,
+  MIDDLEWARE_PROTECTED,
+  Primitive,
+} from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { KIND } from "alepha/internal";
-import { ReactPageProvider } from "alepha/react/router";
+import { KIND, OPTIONS } from "alepha/internal";
+import { type PageRoute, ReactPageProvider } from "alepha/react/router";
 import { type ServerRequest, ServerRouterProvider } from "alepha/server";
 
 /**
  * Expose a `sitemap.xml` generated from the application's `$page` primitives.
  *
  * Registers a `GET /sitemap.xml` route that reads every registered page and
- * emits a standard XML sitemap. Marked `static` by default, so the build
+ * emits a standard XML sitemap. A page behind a guard (`use: [$secure()]`,
+ * on the page or on a layout above it) is left out. Marked `static` by
+ * default, so the build
  * prerenders it to `dist/public/sitemap.xml`. That file is what a built server
  * answers with too, because static files mount over the route, so its
  * `hostname` and `<lastmod>` are the build's. `alepha dev` answers live, and so
@@ -127,7 +134,8 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
    * answer depending on which of the two it is asked about: a parameter can sit
    * anywhere in the chain, and so can a wildcard.
    *
-   * Excludes layout pages (those with children), wildcard paths, and `/404`.
+   * Excludes layout pages (those with children), wildcard paths, `/404`, and
+   * every page that is not open to all (see {@link isGuarded}).
    * Parameterized pages are included only when they declare `static.entries`.
    */
   protected getSitemapPages(): any[] {
@@ -140,6 +148,9 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
         return false;
       }
       if (path === "/404") {
+        return false;
+      }
+      if (this.isGuarded(route)) {
         return false;
       }
       if (!this.hasParams(route)) {
@@ -156,6 +167,32 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
     }) as any[];
   }
 
+  /**
+   * Whether a page turns some visitors away, itself or through a layout above
+   * it: the sitemap is an invitation to crawl, and listing such a page also
+   * publishes the map of the back office.
+   *
+   * A level is guarded when its `use` holds a middleware declaring
+   * {@link MIDDLEWARE_PROTECTED}: what `$secure` does, and what any gate
+   * that refuses a visitor for who they are should. The flag is the one
+   * thing read, never a middleware's name (as `ReactPageProvider.isSSR`),
+   * so a guard that does not declare it is not seen. Neither is `can`, which
+   * is a navigation affordance and no guard: a login page hidden from
+   * signed-in visitors is a public page.
+   */
+  protected isGuarded(route: PageRoute): boolean {
+    let current: PageRoute | undefined = route;
+    while (current) {
+      for (const middleware of current.use ?? []) {
+        if (middleware[OPTIONS]?.meta?.[MIDDLEWARE_PROTECTED] === "true") {
+          return true;
+        }
+      }
+      current = current.parent;
+    }
+    return false;
+  }
+
   protected generateSitemapFromPages(pages: any[], baseUrl: string): string {
     const urls: string[] = [];
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
@@ -165,12 +202,9 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
         const path = route.match || "";
         const url = `${normalizedBaseUrl}${path === "" ? "/" : path}`;
         urls.push(url);
-      } else if (
-        route.static &&
-        typeof route.static === "object" &&
-        route.static.entries
-      ) {
-        for (const entry of route.static.entries) {
+      } else {
+        // `getSitemapPages` keeps a parameterized page only for its entries.
+        for (const entry of route.static?.entries ?? []) {
           const path = this.buildPathFromParams(
             route.match || "",
             entry.params || {},
@@ -195,7 +229,8 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
       );
     }
 
-    return this.buildSitemapXml(urls);
+    // Once each: two entries differing only by their query share a `<loc>`.
+    return this.buildSitemapXml([...new Set(urls)]);
   }
 
   /**
@@ -232,7 +267,7 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
   }
 
   /**
-   * Same substitution rules as `ReactPageProvider.compile` — whole-token
+   * Same substitution rules as `ReactPageProvider.compile`: whole-token
    * match, `$&` kept literal, values percent-encoded. A sitemap `<loc>` has to
    * be a valid URL, and a slug with a space or a slash produced neither.
    */

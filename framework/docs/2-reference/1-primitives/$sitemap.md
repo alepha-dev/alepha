@@ -11,7 +11,9 @@ import { $sitemap } from "alepha/react/sitemap";
 Expose a `sitemap.xml` generated from the application's `$page` primitives.
 
 Registers a `GET /sitemap.xml` route that reads every registered page and
-emits a standard XML sitemap. Marked `static` by default, so the build
+emits a standard XML sitemap. A page behind a guard (`use: [$secure()]`,
+on the page or on a layout above it) is left out. Marked `static` by
+default, so the build
 prerenders it to `dist/public/sitemap.xml`. That file is what a built server
 answers with too, because static files mount over the route, so its
 `hostname` and `<lastmod>` are the build's. `alepha dev` answers live, and so

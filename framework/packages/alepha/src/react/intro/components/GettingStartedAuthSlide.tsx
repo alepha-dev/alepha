@@ -57,8 +57,10 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
     };
   }
 
-  // User is not logged in - show signup instructions
-  const authAnchorProps = router.anchor(router.path("login"));
+  // User is not logged in - show signup instructions. The registration page
+  // when the app has one, and the link says the path it leads to.
+  const hasRegister = router.pages.find((it) => it.name === "register");
+  const signUpPath = router.path(hasRegister ? "register" : "login");
 
   return {
     text: "Who are you?",
@@ -68,7 +70,7 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
         num: "1",
         text: (
           <>
-            Sign up at <a {...authAnchorProps}>/auth/login</a>
+            Sign up at <a {...router.anchor(signUpPath)}>{signUpPath}</a>
           </>
         ),
       },
@@ -76,7 +78,7 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
         num: "2",
         text: (
           <>
-            Customize in <code>src/api/AppSecurity.ts</code>
+            Customize in <code>src/api/Realm.ts</code>
           </>
         ),
       },

@@ -5,8 +5,7 @@
  * A fixed list and not `Intl.Locale.prototype.getTextInfo()`: the server and
  * the browser must give the same answer or hydration breaks, browser support
  * for `getTextInfo` was not established, and it throws on a tag that is not
- * one, which a request's `lang` cookie can be (it reaches the provider
- * unvalidated). The list is matched on the base language of the tag, so
+ * one, which the language `setLang` is handed can be. The list is matched on the base language of the tag, so
  * `ar-EG` and `he_IL` are right-to-left.
  */
 export class LangDirection {

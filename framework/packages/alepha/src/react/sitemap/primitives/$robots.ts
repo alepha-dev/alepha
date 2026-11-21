@@ -115,9 +115,15 @@ export class RobotsPrimitive extends Primitive<RobotsPrimitiveOptions> {
     return this.hostOf(host) === this.hostOf(String(canonical));
   }
 
+  /**
+   * The host of a `Host` header, a forwarded list or a canonical URL, with or
+   * without its scheme: `example.com/` names the host `example.com`.
+   */
   protected hostOf(value: string): string {
     const first = value.split(",")[0].trim().toLowerCase();
-    return /^https?:\/\//.test(first) ? new URL(first).host : first;
+    return /^https?:\/\//.test(first)
+      ? new URL(first).host
+      : first.split("/")[0];
   }
 
   protected build(): string {

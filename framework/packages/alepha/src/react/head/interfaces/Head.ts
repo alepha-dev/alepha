@@ -162,16 +162,16 @@ export interface HeadLink {
   as?: string;
   crossorigin?: HeadLinkCrossOrigin;
   /**
-   * Media query — used for theme-aware icons and responsive stylesheets.
+   * Media query: used for theme-aware icons and responsive stylesheets.
    * e.g. `(prefers-color-scheme: dark)` to ship a dark-mode favicon.
    */
   media?: string;
   /**
-   * Sizes attribute — used for icon link tags (e.g. `"32x32"`, `"any"`).
+   * Sizes attribute: used for icon link tags (e.g. `"32x32"`, `"any"`).
    */
   sizes?: string;
   /**
-   * Hreflang attribute — used for `rel="alternate"` localized variants.
+   * Hreflang attribute: used for `rel="alternate"` localized variants.
    */
   hreflang?: string;
   /**

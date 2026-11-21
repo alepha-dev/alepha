@@ -6,7 +6,7 @@ import {
   RouterLocaleProvider,
 } from "alepha/react/router";
 import { ServerRouterProvider } from "alepha/server";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
@@ -18,6 +18,11 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  * URL-as-source-of-truth language resolution.
  */
 describe("locale-prefix routing", () => {
+  class TestI18nProvider extends I18nProvider<object, never> {
+    public testResolveRequestLang = this.resolveRequestLang.bind(this);
+    public testDetectUrlLocale = this.detectUrlLocale.bind(this);
+  }
+
   class App {
     en = $dictionary({
       lazy: async () => ({ default: { hi: "Hi" } }),
@@ -32,22 +37,23 @@ describe("locale-prefix routing", () => {
     });
   }
 
-  // Everything is injected BEFORE start() — the DI container locks once started.
+  // Everything is injected BEFORE start(): the DI container locks once started.
   const start = async (routing: "none" | "prefix") => {
     const alepha = Alepha.create()
+      .with({ provide: I18nProvider, use: TestI18nProvider })
       .with(AlephaReactRouter)
       .with(AlephaReactI18n);
     alepha.inject(App);
-    const i18n = alepha.inject(I18nProvider);
+    const i18n = alepha.inject(TestI18nProvider);
     const locale = alepha.inject(RouterLocaleProvider);
     const pages = alepha.inject(ReactPageProvider);
     const server = alepha.inject(ServerRouterProvider);
     i18n.options.routing = routing;
     await alepha.start();
-    return { alepha, i18n: i18n as any, locale, pages, server };
+    return { alepha, i18n, locale, pages, server };
   };
 
-  test("i18n configures the router locale provider from its dictionaries", async ({
+  it("i18n configures the router locale provider from its dictionaries", async ({
     expect,
   }) => {
     const { locale } = await start("prefix");
@@ -57,7 +63,7 @@ describe("locale-prefix routing", () => {
     expect(locale.prefixedLocales).toEqual(["fr"]);
   });
 
-  test("generated URLs carry the active locale prefix (default stays bare)", async ({
+  it("generated URLs carry the active locale prefix (default stays bare)", async ({
     expect,
   }) => {
     const { pages, locale } = await start("prefix");
@@ -70,19 +76,19 @@ describe("locale-prefix routing", () => {
     expect(pages.pathname("about")).toBe("/fr/about");
   });
 
-  test("the URL locale wins over cookie and Accept-Language", async ({
+  it("the URL locale wins over cookie and Accept-Language", async ({
     expect,
   }) => {
     const { i18n } = await start("prefix");
 
     // url prefix beats a conflicting cookie + header
-    expect(i18n.resolveRequestLang("en", "en", "fr")).toBe("fr");
+    expect(i18n.testResolveRequestLang("en", "en", "fr")).toBe("fr");
     // an unprefixed path resolves to the default locale (no redirect)
-    expect(i18n.detectUrlLocale("/about")).toBe("en");
-    expect(i18n.detectUrlLocale("/fr/about")).toBe("fr");
+    expect(i18n.testDetectUrlLocale("/about")).toBe("en");
+    expect(i18n.testDetectUrlLocale("/fr/about")).toBe("fr");
   });
 
-  test("registers prefixed server route variants for non-default locales", async ({
+  it("registers prefixed server route variants for non-default locales", async ({
     expect,
   }) => {
     const { server } = await start("prefix");
@@ -94,12 +100,12 @@ describe("locale-prefix routing", () => {
     expect(paths).not.toContain("/en/about");
   });
 
-  test("stays inert when routing is left as 'none'", async ({ expect }) => {
+  it("stays inert when routing is left as 'none'", async ({ expect }) => {
     const { i18n, pages, locale, server } = await start("none");
 
     expect(locale.enabled).toBe(false);
     expect(pages.pathname("about")).toBe("/about");
-    expect(i18n.detectUrlLocale("/fr/about")).toBeUndefined();
+    expect(i18n.testDetectUrlLocale("/fr/about")).toBeUndefined();
 
     const paths = server.getRoutes().map((route) => route.path);
     expect(paths).toContain("/about");

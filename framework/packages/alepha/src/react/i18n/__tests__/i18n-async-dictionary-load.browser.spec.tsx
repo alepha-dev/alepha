@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { act } from "react";
@@ -14,10 +14,9 @@ describe("i18n async dictionary load", () => {
     // In the browser only the active + fallback dictionaries are loaded at
     // start. Setting the lang atom directly (what the locale router and any
     // app code that writes the atom does) loads the missing dictionary
-    // asynchronously and then re-notifies subscribers — but the re-notify
-    // wrote the SAME lang value, and `StateManager.set` short-circuits on
-    // equality, so no `state:mutated` ever fired and consumers kept rendering
-    // the raw key.
+    // asynchronously, and the provider's handler finishes before any React
+    // subscriber of the atom is notified: consumers render the loaded
+    // dictionary, never the raw key.
     const Greeting = () => {
       const { tr } = useI18n();
       return <div data-testid="greeting">{tr("hello")}</div>;
@@ -45,17 +44,18 @@ describe("i18n async dictionary load", () => {
 
     expect(ui.getByTestId("greeting").textContent).toBe("Hello");
 
-    await act(async () => {
+    act(() => {
       alepha.store.set("alepha.react.i18n.lang", "fr");
-      await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    expect(ui.getByTestId("greeting").textContent).toBe("Bonjour");
+    await waitFor(() =>
+      expect(ui.getByTestId("greeting").textContent).toBe("Bonjour"),
+    );
   });
 
   it("should load a dictionary that resolves to an empty catalog exactly once", async () => {
     // "Already loaded" used to be inferred from
-    // `Object.keys(translations).length` — so a catalog that legitimately
+    // `Object.keys(translations).length`, so a catalog that legitimately
     // resolves to `{}` read as never-loaded and its loader re-ran on every
     // single switch to that language, forever.
     let frLoads = 0;
@@ -78,6 +78,8 @@ describe("i18n async dictionary load", () => {
     await alepha.start();
 
     const i18n = alepha.inject(I18nProvider);
+    // A real wait, on purpose: what is asserted is that nothing more happens
+    // (no second load), and there is no event for that.
     const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
 
     for (const lang of ["fr", "en", "fr"]) {

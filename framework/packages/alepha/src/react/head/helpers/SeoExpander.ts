@@ -5,21 +5,56 @@ import type { Head, HeadMeta } from "../interfaces/Head.ts";
  *
  * Generates:
  * - `<meta name="description">` from head.description
+ * - `<link rel="canonical">`, `og:url` and `twitter:url` from head.url
  * - `<meta property="og:*">` OpenGraph tags
  * - `<meta name="twitter:*">` Twitter Card tags
  *
+ * A head that sets nothing but `title` expands to nothing. A social title
+ * written from `title` is remembered as derived (see `isDerivedTitle`), so a
+ * later head's title can replace it; one set through `og.title` or
+ * `twitter.title` is the author's and stays.
+ *
  * @example
  * ```ts
- * const helper = new SeoExpander();
- * const { meta, link } = helper.expand({
- *   title: "My App",
- *   description: "Build amazing apps",
- *   image: "https://example.com/og.png",
- *   url: "https://example.com/",
- * });
+ * class Preview {
+ *   seo = $inject(SeoExpander);
+ *
+ *   tags() {
+ *     return this.seo.expand({
+ *       title: "My App",
+ *       description: "Build amazing apps",
+ *       image: "https://example.com/og.png",
+ *       url: "https://example.com/",
+ *     });
+ *   }
+ * }
  * ```
  */
 export class SeoExpander {
+  /**
+   * The `og:title` and `twitter:title` tags this expander wrote from a head's
+   * `title`, for want of an `og.title` or a `twitter.title`. Kept beside the
+   * tags, never on them, so nothing renders or serializes it.
+   */
+  protected readonly derivedTitles = new WeakSet<HeadMeta>();
+
+  /**
+   * Whether a social title tag follows the page title: it was written from a
+   * `title`, not set through `og.title`, `twitter.title` or a `meta` entry.
+   */
+  public isDerivedTitle(meta: HeadMeta): boolean {
+    return this.derivedTitles.has(meta);
+  }
+
+  /**
+   * The same tag with another title, still one that follows the page title.
+   */
+  public retitle(meta: HeadMeta, title: string): HeadMeta {
+    const next = { ...meta, content: title };
+    this.derivedTitles.add(next);
+    return next;
+  }
+
   public expand(head: Head): {
     meta: HeadMeta[];
     link: Array<{ rel: string; href: string }>;
@@ -73,7 +108,11 @@ export class SeoExpander {
       meta.push({ property: "og:url", content: head.url });
     }
     if (ogTitle) {
-      meta.push({ property: "og:title", content: ogTitle });
+      const tag: HeadMeta = { property: "og:title", content: ogTitle };
+      if (head.og?.title === undefined) {
+        this.derivedTitles.add(tag);
+      }
+      meta.push(tag);
     }
     if (ogDescription) {
       meta.push({ property: "og:description", content: ogDescription });
@@ -121,7 +160,11 @@ export class SeoExpander {
       meta.push({ name: "twitter:url", content: head.url });
     }
     if (twitterTitle) {
-      meta.push({ name: "twitter:title", content: twitterTitle });
+      const tag: HeadMeta = { name: "twitter:title", content: twitterTitle };
+      if (head.twitter?.title === undefined) {
+        this.derivedTitles.add(tag);
+      }
+      meta.push(tag);
     }
     if (twitterDescription) {
       meta.push({ name: "twitter:description", content: twitterDescription });

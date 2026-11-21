@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { Alepha, createMiddleware, MIDDLEWARE_PROTECTED, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { ServerRouterProvider } from "alepha/server";
@@ -133,14 +133,19 @@ describe("$sitemap", () => {
       sitemap = $sitemap();
       home = $page({ path: "/", static: true, component: () => "home" });
     }
-    const alepha = Alepha.create()
-      .with(AlephaReactRouter)
-      .with(AlephaReactSitemap);
-    alepha.inject(RelApp);
-    await alepha.start();
+    const bodyWith = async (env: Record<string, string>) => {
+      const alepha = Alepha.create({ env })
+        .with(AlephaReactRouter)
+        .with(AlephaReactSitemap);
+      alepha.inject(RelApp);
+      await alepha.start();
+      return sitemapOf(alepha).prerender().body;
+    };
 
-    const { body } = sitemapOf(alepha).prerender();
-    expect(body).toContain("<loc>/</loc>");
+    expect(
+      await bodyWith({ PUBLIC_URL: "https://public.example.com/" }),
+    ).toContain("<loc>https://public.example.com/</loc>");
+    expect(await bodyWith({})).toContain("<loc>/</loc>");
   });
 
   it("lists extra urls after the pages", async ({ expect }) => {
@@ -170,12 +175,124 @@ describe("$sitemap", () => {
     ]);
   });
 
-  it("uses DateTimeProvider for lastmod (travel-able)", async ({ expect }) => {
+  it("dates lastmod from DateTimeProvider, so it follows a travelled clock", async ({
+    expect,
+  }) => {
     const { alepha } = await start();
     const dateTime = alepha.inject(DateTimeProvider);
-    const expected = dateTime.now().format("YYYY-MM-DD");
+    const today = dateTime.now().format("YYYY-MM-DD");
+
+    await dateTime.travel(40, "days");
+
+    const later = dateTime.now().format("YYYY-MM-DD");
     const { body } = sitemapOf(alepha).prerender();
-    expect(body).toContain(`<lastmod>${expected}</lastmod>`);
+    expect(later).not.toBe(today);
+    expect(body).toContain(`<lastmod>${later}</lastmod>`);
+    expect(body).not.toContain(`<lastmod>${today}</lastmod>`);
+  });
+
+  it("escapes a URL for XML, and lists each URL once", async ({ expect }) => {
+    class OddApp {
+      sitemap = $sitemap({
+        hostname: "https://example.com",
+        urls: ["/a&b", "/feed.xml?x=<1>"],
+      });
+      odd = $page({ path: "/a&b", component: () => "odd" });
+    }
+    const alepha = Alepha.create()
+      .with(AlephaReactRouter)
+      .with(AlephaReactSitemap);
+    alepha.inject(OddApp);
+    await alepha.start();
+
+    const locs = [
+      ...sitemapOf(alepha)
+        .prerender()
+        .body.matchAll(/<loc>(.*?)<\/loc>/g),
+    ].map((it) => it[1]);
+    expect(locs).toEqual([
+      "https://example.com/a&amp;b",
+      "https://example.com/feed.xml?x=&lt;1&gt;",
+    ]);
+  });
+
+  /**
+   * A sitemap is an invitation to crawl. A page that turns a visitor away
+   * for who they are has no place in it, and listing it also publishes the
+   * map of the back office.
+   */
+  describe("guarded pages", () => {
+    const middleware = (name: string, meta?: Record<string, string>) =>
+      createMiddleware({
+        name,
+        meta,
+        handler:
+          ({ next }: any) =>
+          async (...args: any[]) =>
+            next(...args),
+      });
+    const guard = () =>
+      middleware("$session", { [MIDDLEWARE_PROTECTED]: "true" });
+
+    class GuardedApp {
+      sitemap = $sitemap({ hostname: "https://example.com" });
+
+      home = $page({ path: "/", component: () => "home" });
+
+      admin = $page({
+        path: "/admin/users",
+        use: [guard()],
+        component: () => "admin",
+      });
+
+      account = $page({
+        path: "/account",
+        use: [guard()],
+        children: () => [this.profile],
+      });
+
+      profile = $page({ path: "/profile", component: () => "profile" });
+
+      /**
+       * `can` is a navigation affordance, not a guard: a login page hidden
+       * from signed-in visitors is still a public page.
+       */
+      login = $page({
+        path: "/login",
+        can: () => false,
+        component: () => "login",
+      });
+
+      /**
+       * A middleware is a guard by the flag it declares, never by its name.
+       */
+      named = $page({
+        path: "/named",
+        use: [middleware("$secure"), middleware("$etag")],
+        component: () => "named",
+      });
+    }
+
+    it("leaves out a page behind a middleware that declares itself a guard, on it or above it", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create()
+        .with(AlephaReactRouter)
+        .with(AlephaReactSitemap);
+      alepha.inject(GuardedApp);
+      await alepha.start();
+
+      const locs = [
+        ...sitemapOf(alepha)
+          .prerender()
+          .body.matchAll(/<loc>(.*?)<\/loc>/g),
+      ].map((it) => it[1]);
+      expect(locs.sort()).toEqual([
+        "https://example.com/",
+        "https://example.com/login",
+        "https://example.com/named",
+      ]);
+    });
   });
 
   describe("nested pages", () => {

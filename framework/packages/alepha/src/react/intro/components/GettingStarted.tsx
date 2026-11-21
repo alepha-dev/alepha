@@ -4,25 +4,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminSlide } from "./GettingStartedAdminSlide.tsx";
 import { useAuthSlide } from "./GettingStartedAuthSlide.tsx";
 
-export type GettingStartedStep = {
+export interface GettingStartedStep {
   num: string;
   text: ReactNode;
-};
+}
 
-export type GettingStartedSlide = {
+export interface GettingStartedSlide {
   text: string;
   sub: string;
   detail?: string;
   steps?: GettingStartedStep[];
   links?: { label: string; href: string }[];
-};
+}
 
-export type GettingStartedWelcome = {
+export interface GettingStartedWelcome {
   appName: string;
   serverTime: string;
-};
+}
 
-export type GettingStartedProps = {
+export interface GettingStartedProps {
   /**
    * Welcome data loaded from the server via SSR.
    *
@@ -30,39 +30,7 @@ export type GettingStartedProps = {
    * demonstrating the full SSR → hydration data flow.
    */
   welcome?: GettingStartedWelcome;
-};
-
-const defaultFirstSlide: GettingStartedSlide = {
-  text: "Let's begin.",
-  sub: "Every story starts with a blank page.",
-  detail: "This one is yours.",
-};
-
-const helpSlide: GettingStartedSlide = {
-  text: "Need help?",
-  sub: "We've got you covered.",
-  detail: "Even our AI friends can read the docs.",
-  links: [
-    { label: "alepha.dev", href: "https://alepha.dev" },
-    { label: "llms.txt", href: "https://alepha.dev/llms.txt" },
-  ],
-};
-
-/**
- * The server's clock as `HH:MM:SS UTC`, the same string wherever it runs.
- *
- * This is rendered on the server and again in the browser to hydrate, so it
- * must not depend on either one's time zone or locale: `toLocaleTimeString`
- * printed the server's zone (UTC on a VPS) and then the visitor's, and every
- * first visit of a new app failed hydration with React error #418.
- */
-export const formatServerTime = (isoString: string): string => {
-  try {
-    return `${new Date(isoString).toISOString().slice(11, 19)} UTC`;
-  } catch {
-    return isoString;
-  }
-};
+}
 
 /**
  * A welcome component displayed when creating a new Alepha application.
@@ -208,6 +176,7 @@ const GettingStarted = (props: GettingStartedProps) => {
 
           <div className="alepha-blank-slider">
             <button
+              type="button"
               className="alepha-blank-nav-btn"
               onClick={prev}
               aria-label="Previous"
@@ -225,6 +194,7 @@ const GettingStarted = (props: GettingStartedProps) => {
             <div className="alepha-blank-dots">
               {filteredMessages.map((_, i) => (
                 <button
+                  type="button"
                   key={i}
                   className={`alepha-blank-dot ${i === index ? "active" : ""}`}
                   onClick={() => goTo(i)}
@@ -233,6 +203,7 @@ const GettingStarted = (props: GettingStartedProps) => {
               ))}
             </div>
             <button
+              type="button"
               className="alepha-blank-nav-btn"
               onClick={next}
               aria-label="Next"
@@ -259,6 +230,38 @@ const GettingStarted = (props: GettingStartedProps) => {
 };
 
 export default GettingStarted;
+
+const defaultFirstSlide: GettingStartedSlide = {
+  text: "Let's begin.",
+  sub: "Every story starts with a blank page.",
+  detail: "This one is yours.",
+};
+
+const helpSlide: GettingStartedSlide = {
+  text: "Need help?",
+  sub: "We've got you covered.",
+  detail: "Even our AI friends can read the docs.",
+  links: [
+    { label: "alepha.dev", href: "https://alepha.dev" },
+    { label: "llms.txt", href: "https://alepha.dev/llms.txt" },
+  ],
+};
+
+/**
+ * The server's clock as `HH:MM:SS UTC`, the same string wherever it runs.
+ *
+ * This is rendered on the server and again in the browser to hydrate, so it
+ * must not depend on either one's time zone or locale: `toLocaleTimeString`
+ * printed the server's zone (UTC on a VPS) and then the visitor's, and every
+ * first visit of a new app failed hydration with React error #418.
+ */
+export const formatServerTime = (isoString: string): string => {
+  try {
+    return `${new Date(isoString).toISOString().slice(11, 19)} UTC`;
+  } catch {
+    return isoString;
+  }
+};
 
 const styles = `
 .alepha-blank {

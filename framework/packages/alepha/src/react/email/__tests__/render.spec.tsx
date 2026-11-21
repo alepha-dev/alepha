@@ -35,6 +35,16 @@ describe("alepha/react/email render()", () => {
     expect(html).toContain("Alice");
   });
 
+  it("escapes markup that arrives through a prop", async ({ expect }) => {
+    const html = await render(Greeting)({
+      name: '<script>alert("x")</script> & co',
+    });
+
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
+    expect(html).toContain("&amp; co");
+  });
+
   it("prepends the doctype email clients expect", async ({ expect }) => {
     const html = await render(Greeting)({ name: "Alice" });
 

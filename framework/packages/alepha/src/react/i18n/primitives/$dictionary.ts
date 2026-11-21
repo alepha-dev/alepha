@@ -11,12 +11,14 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  * Entry can be lazy-loaded, which is useful for large dictionaries or when translations are not needed immediately.
  *
  * @example
- * ```ts
- * import { $dictionary } from "alepha/react/i18n";
+ * ```tsx
+ * import { run } from "alepha";
+ * import { $dictionary, useI18n } from "alepha/react/i18n";
+ * import { $page } from "alepha/react/router";
  *
  * const Example = () => {
  *   const { tr } = useI18n<App, "en">();
- *   return <div>{tr("hello")}</div>; //
+ *   return <div>{tr("hello")}</div>; // "Hey"
  * }
  *
  * class App {

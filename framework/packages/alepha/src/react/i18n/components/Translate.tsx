@@ -6,7 +6,7 @@ export type TranslateProps = TranslateBaseProps & I18nSelector;
 
 export interface TranslateBaseProps {
   /**
-   * Dictionary key to look up — the same key you would pass to `tr(...)`.
+   * Dictionary key to look up: the same key you would pass to `tr(...)`.
    */
   k: string;
   /**
@@ -23,9 +23,9 @@ export interface TranslateBaseProps {
 /**
  * Renders a translated dictionary entry as a reactive text node.
  *
- * `tr(...)` is a hook, so it can only be called inside a component body. Use
- * `<Translate>` wherever a *node* is expected instead — a prop, a `children`
- * slot, or route metadata such as a nav-shell `label`. Because it subscribes to
+ * `tr(...)` comes from the `useI18n()` hook, which can only be called inside a
+ * component body. Use `<Translate>` wherever a *node* is expected instead: a
+ * prop, a `children` slot, or route metadata such as a nav-shell `label`. Because it subscribes to
  * {@link useI18n} it re-renders on a language switch, unlike a string resolved
  * once at module/initialisation time.
  *
@@ -54,7 +54,7 @@ export const Translate = (props: TranslateProps) => {
 };
 
 /**
- * Terse alias for {@link Translate} — handy in dense JSX such as nav labels.
+ * Terse alias for {@link Translate}, handy in dense JSX such as nav labels.
  */
 export const Tr = Translate;
 

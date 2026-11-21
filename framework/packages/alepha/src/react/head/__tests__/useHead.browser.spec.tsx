@@ -7,10 +7,6 @@ import { beforeEach, describe, it, vi } from "vitest";
 import type { Head } from "../index.ts";
 import { useHead } from "../index.ts";
 
-/**
- * @vitest-environment jsdom
- */
-
 describe("useHead", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
     return render(
@@ -42,25 +38,6 @@ describe("useHead", () => {
     expect(document.title).toBe("Test Title");
   });
 
-  it("should return current head state and setter function", ({ expect }) => {
-    const alepha = Alepha.create();
-    let headState: Head;
-    let setHeadFn: (head?: Head | ((previous?: Head) => Head)) => void;
-
-    const TestComponent = () => {
-      const [head, setHead] = useHead();
-      headState = head;
-      setHeadFn = setHead;
-      return <div>Test</div>;
-    };
-
-    renderWithAlepha(alepha, <TestComponent />);
-
-    expect(headState!).toBeDefined();
-    expect(setHeadFn!).toBeDefined();
-    expect(typeof setHeadFn!).toBe("function");
-  });
-
   it("should update document title when setHead is called", ({ expect }) => {
     const alepha = Alepha.create();
     let setHeadFn: (head?: Head | ((previous?: Head) => Head)) => void;
@@ -80,82 +57,30 @@ describe("useHead", () => {
     expect(document.title).toBe("Updated Title");
   });
 
-  it("should update meta tags when setHead is called", ({ expect }) => {
+  it("expands SEO fields into their tags, like a page head", ({ expect }) => {
     const alepha = Alepha.create();
-    let setHeadFn: (head?: Head | ((previous?: Head) => Head)) => void;
-
     const TestComponent = () => {
-      const [, setHead] = useHead();
-      setHeadFn = setHead;
+      useHead({
+        title: "Article",
+        description: "What it says",
+        url: "https://example.com/article",
+        meta: [{ name: "robots", content: "noindex" }],
+      });
       return <div>Test</div>;
     };
 
     renderWithAlepha(alepha, <TestComponent />);
 
-    act(() => {
-      setHeadFn({
-        meta: [
-          { name: "description", content: "Test Description" },
-          { name: "keywords", content: "test, keywords" },
-        ],
-      });
-    });
-
-    const descriptionMeta = document.querySelector('meta[name="description"]');
-    const keywordsMeta = document.querySelector('meta[name="keywords"]');
-
-    expect(descriptionMeta?.getAttribute("content")).toBe("Test Description");
-    expect(keywordsMeta?.getAttribute("content")).toBe("test, keywords");
-  });
-
-  it("should update body attributes when setHead is called", ({ expect }) => {
-    const alepha = Alepha.create();
-    let setHeadFn: (head?: Head | ((previous?: Head) => Head)) => void;
-
-    const TestComponent = () => {
-      const [, setHead] = useHead();
-      setHeadFn = setHead;
-      return <div>Test</div>;
-    };
-
-    renderWithAlepha(alepha, <TestComponent />);
-
-    act(() => {
-      setHeadFn({
-        bodyAttributes: {
-          class: "dark-theme",
-          style: "background: black;",
-        },
-      });
-    });
-
-    expect(document.body.getAttribute("class")).toBe("dark-theme");
-    expect(document.body.getAttribute("style")).toBe("background: black;");
-  });
-
-  it("should update html attributes when setHead is called", ({ expect }) => {
-    const alepha = Alepha.create();
-    let setHeadFn: (head?: Head | ((previous?: Head) => Head)) => void;
-
-    const TestComponent = () => {
-      const [, setHead] = useHead();
-      setHeadFn = setHead;
-      return <div>Test</div>;
-    };
-
-    renderWithAlepha(alepha, <TestComponent />);
-
-    act(() => {
-      setHeadFn({
-        htmlAttributes: {
-          lang: "en",
-          class: "no-js",
-        },
-      });
-    });
-
-    expect(document.documentElement.getAttribute("lang")).toBe("en");
-    expect(document.documentElement.getAttribute("class")).toBe("no-js");
+    const content = (selector: string) =>
+      document.querySelector(selector)?.getAttribute("content");
+    expect(content('meta[name="description"]')).toBe("What it says");
+    expect(content('meta[property="og:title"]')).toBe("Article");
+    expect(content('meta[property="og:description"]')).toBe("What it says");
+    expect(content('meta[name="twitter:description"]')).toBe("What it says");
+    expect(content('meta[name="robots"]')).toBe("noindex");
+    expect(
+      document.querySelector('link[rel="canonical"]')?.getAttribute("href"),
+    ).toBe("https://example.com/article");
   });
 
   it("should support functional updates", ({ expect }) => {

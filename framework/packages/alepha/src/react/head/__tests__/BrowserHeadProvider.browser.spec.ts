@@ -121,7 +121,7 @@ describe("BrowserHeadProvider", () => {
     it("renders links outside reconcile mode too", () => {
       // `rendered?.add(this.renderLinkTag(…))` short-circuits the WHOLE
       // chain when `rendered` is undefined, arguments included, so no tag
-      // was built at all — which is every link set through `useHead` or
+      // was built at all, which is every link set through `useHead` or
       // `refreshGlobalHead`, the two callers that do not reconcile.
       provider.renderHead(document, {
         link: [{ rel: "canonical", href: "/plain" }],
@@ -298,7 +298,7 @@ describe("BrowserHeadProvider", () => {
       it("should drop a meta tag the next page does not declare", () => {
         // renderHead only ever added or updated. Navigating from a page with a
         // description to one without left the previous page's description in
-        // the DOM — the client diverged from what a hard load would produce.
+        // the DOM: the client diverged from what a hard load would produce.
         provider.renderHead(
           document,
           { meta: [{ name: "description", content: "About us" }] },
