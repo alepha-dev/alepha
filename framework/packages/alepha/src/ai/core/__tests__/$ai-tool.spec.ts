@@ -227,6 +227,98 @@ describe("$ai({ tools }) with a $tool", () => {
     });
   });
 
+  it("runs a turn with no user anonymous, even inside a signed-in request", async ({
+    expect,
+  }) => {
+    // Both slots `$secure` reads: the current-user atom, and the HTTP
+    // request's user it falls back to when the atom is empty. A turn without
+    // `user` used to run its action and its `$tool` as this admin.
+    const admin = { id: "adm", realm: "default", roles: ["admin"] };
+
+    class AdminApi {
+      count = $action({
+        method: "GET",
+        path: "/admin/count",
+        description: "Count everything (admin only)",
+        use: [$secure({ roles: ["admin"] })],
+        schema: { response: z.object({ count: z.integer() }) },
+        handler: () => ({ count: 42 }),
+      });
+    }
+    const alepha = Alepha.create()
+      .with(AlephaSecurity)
+      .with(AlephaMcp)
+      .with(AlephaAi);
+    const tools = alepha.inject(QuestTools);
+    const api = alepha.inject(AdminApi);
+    class Assistant {
+      support = $ai({
+        system: "x",
+        tools: [tools.quest_purge, api.count],
+      });
+    }
+    const { support } = alepha.inject(Assistant);
+    await alepha.start();
+    const ai = alepha.inject(AiProvider) as MemoryAiProvider;
+
+    ai.script([
+      { type: "tool_call", id: "c1", name: "quest_purge", input: {} },
+      { type: "tool_call", id: "c2", name: "count", input: {} },
+    ]);
+    ai.script([{ type: "text", text: "Sign in." }]);
+
+    const result = await alepha.context.run(() => {
+      alepha.store.set("alepha.security.user", admin as never);
+      alepha.store.set("alepha.http.request", { user: admin } as never);
+      return support.run({ messages: ask("purge and count") });
+    });
+
+    const toolMessages = result.messages.filter((m) => m.role === "tool");
+    expect(toolMessages).toHaveLength(2);
+    for (const message of toolMessages) {
+      expect(message).toMatchObject({
+        isError: true,
+        content: expect.stringMatching(/Unauthorized/i),
+      });
+    }
+  });
+
+  it("returns a tool input that is not an object to the model as a tool error", async ({
+    expect,
+  }) => {
+    // An OpenAI-compatible model may stream `arguments: "null"`. Reading
+    // `input.body` off it used to throw out of the whole turn.
+    class NoteApi {
+      add = $action({
+        method: "POST",
+        path: "/notes",
+        description: "Add a note",
+        schema: { body: z.object({ text: z.text() }) },
+        handler: () => undefined,
+      });
+    }
+    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaAi);
+    const api = alepha.inject(NoteApi);
+    class Assistant {
+      notes = $ai({ system: "x", tools: [api.add], confirm: () => false });
+    }
+    const { notes } = alepha.inject(Assistant);
+    await alepha.start();
+    const ai = alepha.inject(AiProvider) as MemoryAiProvider;
+    ai.script([
+      { type: "tool_call", id: "c1", name: "add", input: null as never },
+    ]);
+    ai.script([{ type: "text", text: "Retrying." }]);
+
+    const result = await notes.run({ messages: ask("x"), user: member });
+
+    expect(result.messages[1]).toMatchObject({
+      role: "tool",
+      isError: true,
+      content: expect.stringMatching(/object/i),
+    });
+  });
+
   it("returns invalid arguments to the model as a tool error", async ({
     expect,
   }) => {
@@ -243,7 +335,13 @@ describe("$ai({ tools }) with a $tool", () => {
 
     const result = await support.run({ messages: ask("x"), user: member });
 
-    expect(result.messages[1]).toMatchObject({ isError: true });
+    // The INPUT's validation failure, naming the argument. An output error
+    // (the result schema refusing what an unvalidated handler returned) is a
+    // tool error too, so `isError` alone held with input validation removed.
+    expect(result.messages[1]).toMatchObject({
+      isError: true,
+      content: expect.stringMatching(/expected number.*\/shortId/),
+    });
   });
 
   it("waits for confirmation on a $tool without readOnlyHint, with method TOOL", async ({
