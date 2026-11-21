@@ -2,6 +2,7 @@ import { Badge } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
+import HostStateBadge from "../../hosts/HostStateBadge.tsx";
 import type { ProjectHostTableRow } from "./projectHostTableRow.ts";
 
 export interface ProjectSettingsHostStatusCellProps {
@@ -9,11 +10,10 @@ export interface ProjectSettingsHostStatusCellProps {
 }
 
 /**
- * Whether the host can take a deploy now. A member deciding whether to
- * deploy needs "invalid" more than "offline", and "offline" is false for a
- * `cloudflare` host, which never connects (#1630): that kind shows its
- * credential instead. A provisioned host says so (#Q3168), and one past
- * the TTL it was given says it is still billing (#Q3138).
+ * Whether the host can take a deploy now: the state pill Admin > Hosts
+ * draws (#Q4047), which reads a `cloudflare` host through its credential
+ * (#1630). A provisioned host says so (#Q3168), and one past the TTL it was
+ * given says it is still billing (#Q3138).
  */
 const ProjectSettingsHostStatusCell = (
   props: ProjectSettingsHostStatusCellProps,
@@ -24,25 +24,13 @@ const ProjectSettingsHostStatusCell = (
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {host.type === "cloudflare" ? (
-        host.credentialStatus ? (
-          <Badge
-            variant={
-              host.credentialStatus === "valid" ? "default" : "destructive"
-            }
-          >
-            {host.credentialStatus === "valid"
-              ? tr("hosts.credential.valid")
-              : tr("hosts.credential.invalid")}
-          </Badge>
-        ) : (
-          <Badge variant="outline">{tr("hosts.type.cloudflare")}</Badge>
-        )
-      ) : (
-        <Badge variant={host.online ? "default" : "outline"}>
-          {host.online ? tr("hosts.online") : tr("hosts.offline")}
-        </Badge>
-      )}
+      {/* The pill Admin > Hosts draws (#Q4047): online or offline, a
+          cloudflare account read through its credential. */}
+      <HostStateBadge
+        type={host.type}
+        online={host.online}
+        credentialStatus={host.credentialStatus}
+      />
       {props.row.owned?.providerServerId ? (
         <Badge variant="outline" data-testid="home-host-provisioned">
           {tr("hosts.provisioned", {
