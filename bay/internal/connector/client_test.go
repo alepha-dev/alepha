@@ -305,11 +305,18 @@ func TestClientSpeaksFirstAndCachesTheWelcome(t *testing.T) {
 	cfg := welcomeFrame()
 	cfg["type"] = "config"
 	cfg["deployAllowed"] = true
+	cfg["jobsAllowed"] = true
 	cfg["statsIntervalSeconds"] = 300
 	s.send(t, cfg)
 	eventually(t, "the config to replace the welcome", func() bool {
 		w, ok, _ := f.store.LoadWelcome()
-		return ok && w.DeployAllowed && w.StatsIntervalSeconds == 300
+		return ok && w.DeployAllowed && w.JobsAllowed && w.StatsIntervalSeconds == 300
+	})
+	// The executor sees the job switch too, not only the cache (#Q3983).
+	eventually(t, "the handler to see jobsAllowed", func() bool {
+		f.handler.mu.Lock()
+		defer f.handler.mu.Unlock()
+		return len(f.handler.welcomes) == 2 && f.handler.welcomes[1].JobsAllowed
 	})
 }
 

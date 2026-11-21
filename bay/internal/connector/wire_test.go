@@ -53,7 +53,7 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.Type != "config" || !config.DeployAllowed || config.StatsIntervalSeconds != 300 {
+	if config.Type != "config" || !config.DeployAllowed || !config.JobsAllowed || config.StatsIntervalSeconds != 300 {
 		t.Fatalf("config decoded wrong: %+v", config)
 	}
 
@@ -142,6 +142,23 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if query.Type != "query" || query.ID != "" || query.Kind != "" || query.Artifact != nil {
 		t.Fatalf("query decoded wrong: %+v", query)
 	}
+
+	// A job-run carries its id and nothing else: the spec is pulled by that
+	// id. A job-cancel names the run it stops, and nothing else (#Q3983).
+	run, err := decodeFrame(fixture(t, "command-job-run.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.Kind != "job-run" || run.App != "" || run.Environment != "" || run.Artifact != nil || run.JobCommand != "" {
+		t.Fatalf("job-run decoded wrong: %+v", run)
+	}
+	cancel, err := decodeFrame(fixture(t, "command-job-cancel.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cancel.Kind != "job-cancel" || cancel.JobCommand != run.ID {
+		t.Fatalf("job-cancel decoded wrong: %+v", cancel)
+	}
 }
 
 func TestWireClientFramesEncode(t *testing.T) {
@@ -161,6 +178,14 @@ func TestWireClientFramesEncode(t *testing.T) {
 		}()},
 		{"ack-failed.json", NewAck("3e9a1c7b-5d2f-4b8a-9c6e-7f1d2a3b4c5d", "failed", "verifying",
 			"artifact digest mismatch: got 0123456789ab…, expected 9f86d081884c…")},
+		{"ack-job-timed-out.json", NewAck("5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e", AckTimedOut, "",
+			"the job ran past its 900 s timeout; the process group was killed")},
+		{"ack-job-failed.json", func() Ack {
+			ack := NewAck("5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e", "failed", "", "claude exited with status 1")
+			ack.ExitCode = ptr(1)
+			return ack
+		}()},
+		{"log.json", NewLogFrame("5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e", "stdout", 0, "{\"type\":\"system\",\"subtype\":\"init\"}\n")},
 		{"stats.json", Stats{Type: "stats", CPUPercent: 34.5, MemoryPercent: 61, At: "2026-09-05T12:00:00Z"}},
 		{"inventory.json", sampleInventoryFrame()},
 		{"event.json", Event{
@@ -299,6 +324,8 @@ func sampleInventoryFrame() Inventory {
 				},
 			},
 		},
+		Jobs: &InventoryJobs{Runner: "process", User: "bay-agent", ClaudeVersion: "2.0.14",
+			Running: "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e"},
 	}
 }
 

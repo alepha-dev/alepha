@@ -1,0 +1,8 @@
+{
+  "type": "command",
+  "id": "6b8d0f2c-4e3a-4b7c-9d2f-0a1b3c4d5e6f",
+  "kind": "job-cancel",
+  "app": "",
+  "environment": "",
+  "jobCommandId": "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e"
+}

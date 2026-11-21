@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { hostInventoryAppSchema } from "./hostInventoryAppSchema.ts";
+import { hostInventoryJobsSchema } from "./hostInventoryJobsSchema.ts";
 import { hostInventoryMachineSchema } from "./hostInventoryMachineSchema.ts";
 import { hostInventoryStackSchema } from "./hostInventoryStackSchema.ts";
 
@@ -30,6 +31,7 @@ export const hostInventoryFrameSchema = z.object({
   host: hostInventoryMachineSchema,
   apps: z.array(hostInventoryAppSchema).max(200),
   stacks: z.array(hostInventoryStackSchema).max(100).optional(),
+  jobs: hostInventoryJobsSchema.optional(),
 });
 
 export type HostInventoryFrame = Infer<typeof hostInventoryFrameSchema>;

@@ -23,6 +23,28 @@ type Inventory struct {
 	// carrying `stack` and `service`. Additive: a Lore that does not know
 	// stacks strips it.
 	Stacks []InventoryStack `json:"stacks,omitempty"`
+	// Jobs says whether and how this machine runs one-shot jobs. Absent when
+	// no jobs user is configured, which Lore reads as a host that cannot run
+	// one, whatever its switch says.
+	Jobs *InventoryJobs `json:"jobs,omitempty"`
+}
+
+/*
+InventoryJobs is the job runner as the machine reports it.
+
+`runner` is what Lore's trust rule reads: `process` runs a job as a Unix user
+on this host, with the user's own shell and credentials in reach, so Lore
+refuses untrusted input on it; `container` (a later runner) is the one that
+lifts the refusal. `running` is the job-run command id in progress, if any.
+*/
+type InventoryJobs struct {
+	Runner        string `json:"runner"`
+	User          string `json:"user,omitempty"`
+	ClaudeVersion string `json:"claudeVersion,omitempty"`
+	// ClaudeError says why the version could not be read (no claude on the
+	// user's PATH, most often), so the console can say it before a job fails.
+	ClaudeError string `json:"claudeError,omitempty"`
+	Running     string `json:"running,omitempty"`
 }
 
 // InventoryStack is one stack environment as the machine sees it.

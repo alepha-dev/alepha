@@ -22,7 +22,7 @@ and that is the point.
 The host block is left empty here. It comes from the gauge, which the client
 owns, so the client fills it on its way out; this side knows about apps.
 */
-func (a *actions) Inventory(context.Context) (connector.Inventory, bool) {
+func (a *actions) Inventory(ctx context.Context) (connector.Inventory, bool) {
 	now := time.Now()
 	interval := a.s.backupInterval
 	apps := a.s.listApps()
@@ -51,6 +51,7 @@ func (a *actions) Inventory(context.Context) (connector.Inventory, bool) {
 		At:     now.UTC().Format(time.RFC3339),
 		Apps:   rows,
 		Stacks: stacks,
+		Jobs:   a.jobs.inventory(ctx),
 	}, true
 }
 

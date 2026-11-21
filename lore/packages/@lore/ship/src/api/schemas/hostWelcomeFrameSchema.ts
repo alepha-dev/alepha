@@ -33,6 +33,13 @@ export const hostWelcomeFrameSchema = z.object({
    */
   estate: z.object({ id: z.uuid(), slug: z.string() }),
   deployAllowed: z.boolean(),
+  /**
+   * The host's switch for one-shot jobs, agent jobs and CI alike (#Q3983).
+   * Bay refuses a `job-run` while it is off, as it refuses a deploy without
+   * `deployAllowed`. Optional so an older Lore's frame still parses: absent
+   * reads as off.
+   */
+  jobsAllowed: z.boolean().optional(),
   statsIntervalSeconds: z.integer(),
   /** Absent from an older Lore, which a machine reads as "none". */
   features: z.array(z.enum(HOST_FEATURES)).optional(),

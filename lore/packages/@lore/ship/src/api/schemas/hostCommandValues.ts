@@ -61,6 +61,16 @@ export const HOST_COMMAND_KINDS = [
   // switch on both sides; and a host that cannot hand its sockets over
   // refuses it. Bay's `actionUpgrade` is its other half.
   "upgrade",
+  // One-shot jobs (#Q3983, folio #F1500 decision 9): `job-run` carries
+  // nothing but its id, and the machine PULLS the job's structured spec by
+  // that id and validates it; Bay builds the command line itself, so no
+  // shell command or argument list ever travels. `job-cancel` names the run
+  // it stops (`jobCommandId`). Held to the host's own `jobsAllowed` switch,
+  // never to `deployAllowed`, and never under the machine mutex deploys
+  // serialise on. Bay's `actionJobRun` and `actionJobCancel` are their other
+  // half.
+  "job-run",
+  "job-cancel",
 ] as const;
 
 export type HostCommandKind = (typeof HOST_COMMAND_KINDS)[number];

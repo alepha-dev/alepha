@@ -62,6 +62,7 @@ See [Deploying](/bay/docs/guides-deploying) and [Operating](/bay/docs/guides-ope
 | `bay runtimes set <name/env> <image>`     | this app's own image, from its next start                           |
 | `bay runtimes clear <name/env>`           | back to the image Bay picks                                         |
 | `bay config registry-mirror (HOST\|--clear)` | pull Docker Hub images through a mirror                          |
+| `bay config jobs (--user NAME\|--clear)` | the Unix user Lore's one-shot jobs run as; never root nor Bay's own user. See [Jobs](/bay/docs/guides-lore-connector#jobs) |
 
 ## Backups and storage
 
