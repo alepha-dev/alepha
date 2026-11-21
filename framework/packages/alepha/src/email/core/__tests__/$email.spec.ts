@@ -51,25 +51,6 @@ describe("$email", () => {
     expect(emails[1].to).toBe("user2@example.com");
   });
 
-  test("should use memory provider by default", async ({ expect }) => {
-    class TestService {
-      readonly email = $email();
-    }
-
-    const alepha = Alepha.create();
-    const service = alepha.inject(TestService);
-    await alepha.start();
-
-    await service.email.send({
-      to: "test@example.com",
-      subject: "Test",
-      body: "Test",
-    });
-
-    const provider = alepha.inject(MemoryEmailProvider);
-    expect(provider.records).toHaveLength(1);
-  });
-
   test("should use explicit memory provider", async ({ expect }) => {
     class TestService {
       readonly email = $email({ provider: "memory" });

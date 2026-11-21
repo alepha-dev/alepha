@@ -90,7 +90,11 @@ export class EmailHeaderPolicy {
         );
       }
 
-      if (!this.nameToken.test(name.trim())) {
+      // The raw name, untrimmed: it is what reaches the provider, and a
+      // leading or trailing line break is what would end a raw MIME header
+      // block. Only the reserved lookup above trims, so " bcc " is still
+      // refused as reserved.
+      if (!this.nameToken.test(name)) {
         throw new EmailError(
           `Header name '${name}' is not a valid header name. A name carrying ':' or a line break is how a reserved header gets set without being named.`,
         );

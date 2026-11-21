@@ -83,7 +83,7 @@ export interface CloudflareEmailSendMessage {
  * What the binding's `send()` resolves to: one id for the whole message
  * (`EmailSendResult` in `@cloudflare/workers-types`), and nothing else.
  *
- * ⚠️ It was declared `{ id, status }` until #Q2560, a shape the binding never
+ * ⚠️ It was once declared `{ id, status }`, a shape the binding never
  * returned: the provider read `result.id`, got `undefined`, and every
  * delivery receipt was written with no `messageId`, so no delivery,
  * bounce or complaint event could ever be matched back to its row.

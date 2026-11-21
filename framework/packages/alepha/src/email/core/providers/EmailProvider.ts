@@ -69,8 +69,8 @@ export type EmailAttachment = {
  * exactly what the notification layer does, which is why its receipts line up
  * one-to-one with contacts.
  *
- * It is optional because a transport may not report one; every provider in
- * the tree does, minting a uuid where there is no upstream id to forward.
+ * It is optional because a transport may not report one: the Cloudflare REST
+ * path returns none, and Brevo none when its success body is unreadable.
  */
 export type EmailSendResult = {
   messageId?: string;

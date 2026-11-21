@@ -84,7 +84,12 @@ export class LocalEmailProvider implements EmailProvider {
       const timestamp = this.dateTime.nowISOString().replace(/[:.]/g, "-");
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedEmail = recipient.replace(/[^a-zA-Z0-9@.-]/g, "_");
-        const filename = `${sanitizedEmail},${timestamp}.eml.json`;
+        // A fresh id per FILE: the timestamp is per millisecond and the
+        // messageId is shared by every recipient of one call, so two mails in
+        // one millisecond, or a recipient listed twice, used to share a name
+        // and overwrite each other. The recipient stays the prefix, which is
+        // how a reader finds someone's mail.
+        const filename = `${sanitizedEmail},${timestamp},${crypto.randomUUID()}.eml.json`;
         const filepath = this.fs.join(this.directory, filename);
 
         const content = this.createEmailJson({
