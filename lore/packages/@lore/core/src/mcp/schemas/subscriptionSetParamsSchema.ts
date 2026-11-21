@@ -52,4 +52,10 @@ export const subscriptionSetParamsSchema = projectParamsSchema.extend({
       "For set with a member: skip the events that member caused, such as a report they filed. Not on a channel.",
     )
     .optional(),
+  not_members: z
+    .boolean()
+    .describe(
+      "For set: skip the events a project member caused, so only outside reporters' feedback is told.",
+    )
+    .optional(),
 });

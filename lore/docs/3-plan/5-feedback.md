@@ -179,9 +179,11 @@ stored, because every member of the project can read it.
 
 ## Getting help with triage
 
-The bell above the inbox's status filter notifies you of every new report: one
-click subscribes you to **New feedback**, in the app. Clicked again, it adds
-email, or stops it after a confirmation.
+The bell above the inbox's status filter notifies you of new reports. It opens
+a dialog: the channels, **In the app** and **By email**, and **From whom**:
+**Feedback I submit** and **Feedback from project members**. Untick the second
+to hear only of outside reporters. Clicked again, the same dialog changes these
+or stops it after a confirmation.
 
 To have someone else told, or a Discord or webhook channel, add **New
 feedback** on **Settings ▸ Notifications**: see

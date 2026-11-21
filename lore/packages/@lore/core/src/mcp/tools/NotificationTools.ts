@@ -152,6 +152,7 @@ export class NotificationTools {
             ? {}
             : { channels: params.channels ?? ["inapp"] }),
           ...(params.not_mine ? { notMine: true } : {}),
+          ...(params.not_members ? { notMembers: true } : {}),
         }),
       };
     },

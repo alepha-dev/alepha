@@ -76,6 +76,7 @@ describe("Subscriptions", () => {
       memberId?: string;
       channels: ("inapp" | "email")[];
       notMine?: boolean;
+      notMembers?: boolean;
     },
   ) =>
     controller().setSubscription.fetch(
@@ -438,5 +439,48 @@ describe("Subscriptions", () => {
       )
     ).data.items.find((it) => it.memberId === owner.id);
     expect(row?.notMine).toBe(true);
+  });
+
+  it("skips, with notMembers, the reports of project members and tells those of outsiders (#Q4055)", async ({
+    expect,
+  }) => {
+    await subscribe(member, {
+      event: "feedback.created",
+      channels: ["inapp"],
+      notMembers: true,
+    });
+    // The owner, a member, files one: kept out.
+    await submit();
+    await drain();
+    expect(await inboxOf(member.id)).toHaveLength(0);
+
+    // Someone outside the project files one: told.
+    const outsider = await rows.users.create({
+      email: "outsider@example.test",
+      roles: ["user"],
+    });
+    await alepha.inject(FeedbackController).submitFeedback.fetch(
+      {
+        params: { projectId: project.id },
+        body: { title: "From outside", description: "Steps" },
+      },
+      {
+        user: {
+          id: outsider.id,
+          email: outsider.email,
+          roles: ["user"],
+        } as UserAccountToken,
+      },
+    );
+    await drain();
+    expect(await inboxOf(member.id)).toHaveLength(1);
+
+    const row = (
+      await controller().listSubscriptions.fetch(
+        { params: { projectId: project.id } },
+        { user: member },
+      )
+    ).data.items.find((it) => it.memberId === member.id);
+    expect(row?.notMembers).toBe(true);
   });
 });

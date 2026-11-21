@@ -15,6 +15,7 @@ export const subscriptionResourceSchema = z.object({
   channelId: z.string().optional(),
   channels: z.array(subscriptionChannelSchema),
   notMine: z.boolean().optional(),
+  notMembers: z.boolean().optional(),
   createdBy: z.uuid().optional(),
   mutedAt: z.datetime().optional(),
   createdAt: z.datetime(),

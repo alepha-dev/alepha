@@ -44,6 +44,18 @@ export class ProjectRecipients {
   }
 
   /**
+   * Whether `userId` is a member of the project now (#Q4055): what a
+   * subscription's `notMembers` reads of an event's actor.
+   */
+  public async isMember(projectId: number, userId: string): Promise<boolean> {
+    const organizationId = await this.security.organizationIdOf(projectId);
+    const member = await this.security.members.findOne({
+      where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
+    });
+    return !!member;
+  }
+
+  /**
    * The caller's permissions in a project, or none when they hold no
    * membership.
    */

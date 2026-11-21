@@ -20,6 +20,11 @@ export const subscriptionSetBodySchema = z.object({
    * row only; setting again without it turns it off.
    */
   notMine: z.boolean().optional(),
+  /**
+   * Skip the events a project member caused (#Q4055), so only outside
+   * reporters' feedback is told. Setting again without it turns it off.
+   */
+  notMembers: z.boolean().optional(),
 });
 
 export type SubscriptionSetBody = Infer<typeof subscriptionSetBodySchema>;

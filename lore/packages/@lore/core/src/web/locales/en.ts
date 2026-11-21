@@ -90,6 +90,7 @@ export default {
   "notifications.bell.offConfirm": "Stop notifying me",
   "notifications.bell.channel": "How",
   "notifications.bell.events": "Of what",
+  "notifications.bell.authors": "From whom",
   "notifications.bell.confirm": "Notify me",
   "notifications.event.feedback.created": "New feedback",
   "notifications.event.release.published": "Release published",
@@ -3192,6 +3193,8 @@ export default {
   "feedback.subscription.label": "Notify me of new feedback",
   "feedback.subscription.description":
     "You will be notified in the app of every new feedback in this project.",
+  "feedback.subscription.mine": "Feedback I submit",
+  "feedback.subscription.members": "Feedback from project members",
   "feedback.subscription.offDescription":
     "You will no longer be notified of new feedback in this project.",
   "feedback.filter.pending": "Pending",

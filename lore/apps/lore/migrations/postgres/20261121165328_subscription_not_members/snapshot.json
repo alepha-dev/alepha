@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "cf611e26-4a54-482d-9645-cf05765f3068",
+  "prevIds": ["a71cf87a-2eaa-4a4f-b5cc-bce3242bb134"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "event_subscriptions",
+        "not_members"
+      ],
+      "writes": [
+        "s|col|public.event_subscriptions.not_members",
+        "n|col|public.event_subscriptions.not_members",
+        "e|col|public.event_subscriptions.not_members"
+      ],
+      "reads": ["n|tbl|public.event_subscriptions", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "not_members",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
