@@ -168,7 +168,12 @@ export class NoWindowDialogRule extends ConventionRule {
    * Whether the nearest `package.json` above the file lists `@alepha/ui`.
    */
   protected hasUi(path: string): Promise<boolean> {
-    const directory = path.slice(0, path.lastIndexOf("/")) || "/";
+    // Either separator: the runner joins with node's `join`, which writes
+    // backslashes on Windows, where a dirname by "/" never reached the
+    // manifest (and never reached a root to stop at either).
+    const directory =
+      path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))) ||
+      "/";
     let cached = this.uiInstalled.get(directory);
     if (!cached) {
       cached = this.readUi(directory);
@@ -193,7 +198,7 @@ export class NoWindowDialogRule extends ConventionRule {
         return false;
       }
     }
-    if (directory === "/" || !directory.includes("/")) {
+    if (directory === "/" || !/[/\\]/.test(directory)) {
       return false;
     }
     return this.hasUi(directory);

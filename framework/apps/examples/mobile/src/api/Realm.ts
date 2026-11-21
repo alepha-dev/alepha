@@ -46,8 +46,8 @@ export class Realm {
 
       /**
        * All three need to send a code, so they stay off until
-       * `features.notifications` is on and a mail provider is configured —
-       * $realm forces them to false otherwise.
+       * `features.notifications` is on and a mail provider is configured:
+       * a realm that sets one without it refuses to boot.
        */
       verifyEmailRequired: false,
       verifyPhoneRequired: false,

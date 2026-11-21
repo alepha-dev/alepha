@@ -141,6 +141,54 @@ describe("DirectJobDispatcher", () => {
     expect(started).toEqual(["exec-0"]);
   });
 
+  it("starts no new run after a stop that timed out", async () => {
+    // `Alepha.stop()` resets `isStopping()` in its `finally`, timed out or
+    // not, and its timeout (8 s) is shorter than the job drain (30 s): a long
+    // run outlived the stop, and the worker then started the next one on a
+    // stopped app.
+    const started: string[] = [];
+    const statics = Alepha as unknown as { STOP_TIMEOUT: number };
+    const previous = statics.STOP_TIMEOUT;
+    statics.STOP_TIMEOUT = 100;
+    try {
+      const alepha = Alepha.create({
+        env: { LOG_LEVEL: "silent", DATABASE_URL: "sqlite://:memory:" },
+      });
+      alepha.with({
+        provide: JobProvider,
+        use: class extends JobProvider {
+          processExecution = async (_jobName: string, executionId: string) => {
+            started.push(executionId);
+            // Tracked like a real run, so the stop hook's drain waits on it.
+            const run: Promise<void> = sleep(400).then(() => undefined);
+            this.inFlight.add(run);
+            await run;
+            this.inFlight.delete(run);
+          };
+        },
+      });
+      alepha.store.set(jobConfig, {
+        ...alepha.store.get(jobConfig),
+        directMaxConcurrency: 1,
+      });
+      const dispatcher = alepha.inject(DirectJobDispatcher);
+      await alepha.start();
+
+      await dispatcher.dispatch("notify", "a");
+      await dispatcher.dispatch("notify", "b");
+      for (let turn = 0; turn < 1000 && started.length === 0; turn++) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+
+      await expect(alepha.stop()).rejects.toThrow(/timed out/);
+      await sleep(500);
+
+      expect(started).toEqual(["a"]);
+    } finally {
+      statics.STOP_TIMEOUT = previous;
+    }
+  });
+
   it("keeps draining after a handler throws", async () => {
     const probe = new ConcurrencyProbe();
     const alepha = Alepha.create({

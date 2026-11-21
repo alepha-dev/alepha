@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import { BackgroundTaskProvider } from "alepha/background";
 import { $logger } from "alepha/logger";
 
@@ -55,6 +55,33 @@ export class DirectJobDispatcher extends JobDispatcher {
    * Workers currently pulling from {@link pending}.
    */
   protected active = 0;
+
+  /**
+   * Set once the app starts stopping, cleared when it starts again.
+   *
+   * Owned here, not read off `alepha.isStopping()`: `Alepha.stop()` resets
+   * that in its `finally`, timed out or not, and its timeout is shorter than
+   * the job drain, so a long run outlived the stop and the worker then
+   * started the next run on a stopped app. Not `!isStarted()` either, which
+   * would strand what the start sweep dispatches before `started` is set.
+   */
+  protected stopping = false;
+
+  protected readonly onStart = $hook({
+    on: "start",
+    priority: "first",
+    handler: () => {
+      this.stopping = false;
+    },
+  });
+
+  protected readonly onStop = $hook({
+    on: "stop",
+    priority: "first",
+    handler: () => {
+      this.stopping = true;
+    },
+  });
 
   /**
    * Accept an execution and return immediately.
@@ -119,7 +146,7 @@ export class DirectJobDispatcher extends JobDispatcher {
         // Not once stop began: the drain awaits the runs already in flight,
         // so a run started now would be cut by the database closing. What
         // is left here is still `pending` in the outbox, for the sweep.
-        if (this.alepha.isStopping()) {
+        if (this.stopping) {
           return;
         }
         const next = this.pending.shift();
@@ -141,7 +168,7 @@ export class DirectJobDispatcher extends JobDispatcher {
       // A dispatch that landed between this worker's last empty `shift()` and
       // here would otherwise wait for the next unrelated dispatch to revive
       // the pool.
-      if (this.pending.length > 0 && !this.alepha.isStopping()) {
+      if (this.pending.length > 0 && !this.stopping) {
         this.ensureWorkers();
       }
     }

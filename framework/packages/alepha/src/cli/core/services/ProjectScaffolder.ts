@@ -263,8 +263,9 @@ export class ProjectScaffolder {
   /**
    * Write `.env.example`.
    *
-   * Not tied to `ensureGitRepo` like `.gitignore` is: a project that already
-   * has a `.git` still needs to be told that `APP_SECRET` exists.
+   * Written whether or not a repository exists, as `.gitignore` is: a
+   * project that already has a `.git` still needs to be told that
+   * `APP_SECRET` exists.
    */
   public async ensureEnvExample(
     root: string,

@@ -134,17 +134,25 @@ describe("BayAdapter  -  the host it deploys to", () => {
         socket: "/var/lib/bay/control.sock",
       },
     });
-    process.env.BAY_HOST = "";
-    process.env.BAY_STACK = "";
-    process.env.BAY_SOCKET = "";
+    // Restored, not deleted: a developer shell that exports one of these
+    // would otherwise lose it for the rest of the worker.
+    const names = ["BAY_HOST", "BAY_STACK", "BAY_SOCKET"] as const;
+    const exported = names.map((name) => process.env[name]);
+    for (const name of names) {
+      process.env[name] = "";
+    }
     try {
       expect(adapter.testHost(ctx)).toBe("deploy@bay.example.com");
       expect(adapter.testStack(ctx)).toBe("crm");
       expect(adapter.testSocket(ctx)).toBe("/var/lib/bay/control.sock");
     } finally {
-      delete process.env.BAY_HOST;
-      delete process.env.BAY_STACK;
-      delete process.env.BAY_SOCKET;
+      names.forEach((name, i) => {
+        if (exported[i] === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = exported[i];
+        }
+      });
     }
   });
 

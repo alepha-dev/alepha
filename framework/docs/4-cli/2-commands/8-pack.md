@@ -52,12 +52,13 @@ Source maps are excluded from the artifact: no runtime reads them from it.
 
 The project name comes from `package.json` `name`, slugified for the filename (`@acme/app` → `acme-app`).
 
-`--name` is what a deploy passes when the app is known by another name: `infra({ name })` sets the identity the deploy side uses, and it is free to differ from the package name. The Bay adapter of `alepha deploy` passes it for you (`alepha pack --name <project>`), so `pack` writes the file the deploy then looks for. Unlike the `package.json` default it is used verbatim, so it has to be a plain filename: letters, digits, `.`, `_` and `-`.
+`--name` is what a deploy passes when the app is known by another name: `infra({ name })` sets the identity the deploy side uses, and it is free to differ from the package name. The Bay adapter of `alepha deploy` passes it for you (`alepha pack --name <project>`), so `pack` writes the file the deploy then looks for. Unlike the `package.json` default it is used verbatim, so it has to be a plain filename: letters, digits, `.`, `_` and `-`. `--tag` follows the same rule, since the filename is built from it too: `1.2.3+build.5` is refused.
 
 ## Refusals
 
 `pack` checks what it is about to archive and stops, rather than produce an artifact that fails later on the deploy side:
 
+- **A `--name` or `--tag` that is not a plain filename** (letters, digits, `.`, `_` and `-`, starting with a letter or a digit).
 - **No `dist/`**: run `alepha build` first.
 - **No `dist/manifest.json`**: the build predates the manifest. Rebuild with the current `alepha`.
 - **A database but no `migrations/`**: the manifest says the app has a database and there is no `migrations/` next to `dist/`, so the deploy would boot with no schema. Generate them with `alepha db migrations create`, or make them reachable from this workspace when they live in another one.
