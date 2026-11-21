@@ -3,8 +3,8 @@ import { AlephaError } from "alepha";
 /**
  * Parses and manipulates templated paths with `{param}` placeholders.
  *
- * Used by both RouterProvider (HTTP routes) and TopicProvider (pub/sub topics)
- * to handle parameterized path templates in a unified way.
+ * Used by TopicProvider (pub/sub topics) to handle parameterized topic
+ * templates.
  *
  * @example
  * ```ts
