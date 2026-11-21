@@ -104,6 +104,20 @@ const suite = (create: () => Alepha) => {
     expect(owners).toHaveLength(1);
     expect([ctx.b.id, ctx.c.id]).toContain(owners[0]);
   });
+
+  it("refuses an outgoing rank the organization does not define", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+
+    await expect(
+      ctx.members.transfer(ctx.organization.id, ctx.b.id, "no-such-rank", {
+        id: ctx.owner.id,
+      }),
+    ).rejects.toThrow('No rank "no-such-rank" in this organization');
+
+    expect(await ctx.owners()).toEqual([ctx.owner.id]);
+  });
 };
 
 describe("MemberService.transfer", () => {

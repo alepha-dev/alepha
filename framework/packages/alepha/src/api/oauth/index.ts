@@ -7,10 +7,8 @@ import { OAuthChallengeService } from "./services/OAuthChallengeService.ts";
 import { OAuthClientService } from "./services/OAuthClientService.ts";
 import { OAuthScopeResolver } from "./services/OAuthScopeResolver.ts";
 
-export {
-  OAuthController,
-  oauthOptions,
-} from "./controllers/OAuthController.ts";
+export { oauthOptions } from "./atoms/oauthOptions.ts";
+export { OAuthController } from "./controllers/OAuthController.ts";
 export type { OAuthClientEntity } from "./entities/oauthClientEntity.ts";
 export { oauthClientEntity } from "./entities/oauthClientEntity.ts";
 export { OAuthClientMetadataError } from "./errors/OAuthClientMetadataError.ts";
@@ -32,7 +30,7 @@ export { OAuthJobs } from "./jobs/OAuthJobs.ts";
  * - Dynamic Client Registration (RFC 7591), deduplicated
  * - Authorization server metadata discovery (RFC 8414)
  * - Stateless authorization codes (short-lived signed JWTs)
- * - Single-use code enforcement
+ * - Single-use code enforcement, across every instance sharing a cache
  * - Refresh tokens bound to the client they were issued to
  * - Device authorization grant (RFC 8628), with the page a human approves a
  *   device on
@@ -42,17 +40,17 @@ export { OAuthJobs } from "./jobs/OAuthJobs.ts";
  * human's, and it is the `verification_uri` a device is told to print. It is
  * server-rendered HTML like the consent screen, sends a signed-out visitor to
  * `loginPath?redirect_uri=` and back, and refuses an answer posted from
- * another origin - see `OAuthController.deviceDecision` for why that check
- * matters more here than on the consent POST.
+ * another origin, as the consent POST does (`RequestOriginPolicy`).
  *
  * **Registration is deduplicated, and that is what makes a "connected app"
  * a thing.** A client that registers again with the same name, the same
- * redirect_uris and no secret is handed the row it already has instead of a
+ * redirect_uris, the same scopes and no secret is handed the row it already has instead of a
  * new one. Some clients - claude.ai among them - run DCR on every connect
  * and never reuse an id, which grew a table of near-identical rows and, worse,
  * made one application look like four to anything grouping by `client_id`.
  * Reuse is refused for a confidential client, a revoked one, another realm,
- * a different redirect_uri set, and for any registration that named its own
+ * a different redirect_uri set, other scopes or another `application_type`,
+ * and for any registration that named its own
  * `client_id` - see `OAuthClientService.register`.
  *
  * `oauth_clients.lastUsedAt` is written on every successful grant, and

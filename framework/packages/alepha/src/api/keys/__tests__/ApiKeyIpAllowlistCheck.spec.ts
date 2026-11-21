@@ -5,7 +5,7 @@ import { BackgroundTaskProvider } from "alepha/background";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
@@ -56,7 +56,9 @@ const setup = async () => {
 
 describe("an API key's IP allowlist", () => {
   describe("at creation", () => {
-    it("refuses a malformed entry, naming it, and stores nothing", async () => {
+    it("refuses a malformed entry, naming it, and stores nothing", async ({
+      expect,
+    }) => {
       const { service, userId } = await setup();
 
       await expect(
@@ -73,7 +75,9 @@ describe("an API key's IP allowlist", () => {
       expect(await service.list(userId)).toHaveLength(0);
     });
 
-    it("refuses it through the endpoint too, before anything is minted", async () => {
+    it("refuses it through the endpoint too, before anything is minted", async ({
+      expect,
+    }) => {
       const { alepha, service, userId } = await setup();
       const controller = alepha.inject(ApiKeyController);
 
@@ -86,7 +90,9 @@ describe("an API key's IP allowlist", () => {
       expect(await service.list(userId)).toHaveLength(0);
     });
 
-    it("stores entries trimmed and once, and publishes them on every read", async () => {
+    it("stores entries trimmed and once, and publishes them on every read", async ({
+      expect,
+    }) => {
       const { alepha, userId } = await setup();
       const controller = alepha.inject(ApiKeyController);
       const user = { id: userId, roles: ["admin"] };
@@ -119,7 +125,9 @@ describe("an API key's IP allowlist", () => {
   });
 
   describe("in validate()", () => {
-    it("admits an address the allowlist names and refuses any other", async () => {
+    it("admits an address the allowlist names and refuses any other", async ({
+      expect,
+    }) => {
       const { service, userId } = await setup();
       const { token } = await service.create({
         userId,
@@ -136,7 +144,9 @@ describe("an API key's IP allowlist", () => {
       ).toBeNull();
     });
 
-    it("refuses a restricted key when no address is known, rather than skipping the check", async () => {
+    it("refuses a restricted key when no address is known, rather than skipping the check", async ({
+      expect,
+    }) => {
       // A direct call with no request: no `ip` argument and nothing stored.
       // Written as "no IP, no check" this would admit every caller that
       // forgot to pass one.
@@ -151,7 +161,9 @@ describe("an API key's IP allowlist", () => {
       expect(await service.validate(token)).toBeNull();
     });
 
-    it("leaves a key without an allowlist usable from an unknown address", async () => {
+    it("leaves a key without an allowlist usable from an unknown address", async ({
+      expect,
+    }) => {
       const { service, userId } = await setup();
       const { token } = await service.create({
         userId,
@@ -164,7 +176,9 @@ describe("an API key's IP allowlist", () => {
   });
 
   describe("over HTTP", () => {
-    it("authenticates from an allowed address and answers 401 from any other", async () => {
+    it("authenticates from an allowed address and answers 401 from any other", async ({
+      expect,
+    }) => {
       const { service, userId, call } = await setup();
       const { token } = await service.create({
         userId,
@@ -181,7 +195,9 @@ describe("an API key's IP allowlist", () => {
       expect((await call(token, "203.0.113.5")).status).toBe(401);
     });
 
-    it("answers 401, not 500, to a malformed or oversized client address", async () => {
+    it("answers 401, not 500, to a malformed or oversized client address", async ({
+      expect,
+    }) => {
       const { service, userId, call } = await setup();
       const { token } = await service.create({
         userId,
@@ -194,7 +210,7 @@ describe("an API key's IP allowlist", () => {
       expect((await call(token, "203.0.113.4, 10.0.0.1")).status).toBe(401);
     });
 
-    it("records no usage for a refused request", async () => {
+    it("records no usage for a refused request", async ({ expect }) => {
       const { service, background, userId, call } = await setup();
       const { apiKey, token } = await service.create({
         userId,
@@ -213,7 +229,9 @@ describe("an API key's IP allowlist", () => {
   });
 
   describe("through a rotation", () => {
-    it("keeps the allowlist, and checks the new secret against it", async () => {
+    it("keeps the allowlist, and checks the new secret against it", async ({
+      expect,
+    }) => {
       const { service, userId, call } = await setup();
       const { apiKey } = await service.create({
         userId,

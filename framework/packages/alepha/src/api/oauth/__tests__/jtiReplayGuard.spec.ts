@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
 
 describe("JtiReplayGuard", () => {
-  it("accepts a jti once, rejects the replay", () => {
+  it("accepts a jti once, rejects the replay", ({ expect }) => {
     const g = new JtiReplayGuard();
     const now = 1_000;
     expect(g.check("a", now)).toBe(true);
@@ -11,14 +11,14 @@ describe("JtiReplayGuard", () => {
     expect(g.check("b", now)).toBe(true);
   });
 
-  it("accepts the same jti again once its TTL has elapsed", () => {
+  it("accepts the same jti again once its TTL has elapsed", ({ expect }) => {
     const g = new JtiReplayGuard(100); // 100ms TTL
     expect(g.check("a", 1_000)).toBe(true);
     expect(g.check("a", 1_050)).toBe(false); // still within TTL
     expect(g.check("a", 2_000)).toBe(true); // expired → fresh again
   });
 
-  it("stays bounded under churn (hard cap evicts oldest)", () => {
+  it("stays bounded under churn (hard cap evicts oldest)", ({ expect }) => {
     const g = new JtiReplayGuard(60_000, 5) as unknown as {
       check: (j: string, n?: number) => boolean;
       seen: Map<string, number>;
@@ -27,7 +27,7 @@ describe("JtiReplayGuard", () => {
     expect(g.seen.size).toBeLessThanOrEqual(5);
   });
 
-  it("reports a used jti without spending an unused one", () => {
+  it("reports a used jti without spending an unused one", ({ expect }) => {
     const g = new JtiReplayGuard();
 
     // `wasUsed` is the read a caller does before it has finished validating:

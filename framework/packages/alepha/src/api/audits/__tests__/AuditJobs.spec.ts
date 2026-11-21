@@ -39,8 +39,6 @@ describe("AuditJobs", () => {
     alepha.inject(ShortAudits);
 
     const defaultType = "av-job-default";
-    await db.audits.deleteMany({ type: { eq: defaultType } });
-    await db.audits.deleteMany({ type: { eq: "av-job-short" } });
 
     // Default-retention type (90d global default): one old, one recent.
     await db.audits.create({

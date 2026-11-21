@@ -1,4 +1,4 @@
-import { $atom, $inject, $store, Alepha, AlephaError, z } from "alepha";
+import { $inject, $store, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { $rateLimit } from "alepha/rate-limit";
 import {
@@ -8,6 +8,7 @@ import {
 } from "alepha/security";
 import { $route, HttpError, RequestOriginPolicy } from "alepha/server";
 
+import { oauthOptions } from "../atoms/oauthOptions.ts";
 import type { OAuthClientEntity } from "../entities/oauthClientEntity.ts";
 import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
 import {
@@ -26,7 +27,6 @@ import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
 import { deviceAuthorizationBodySchema } from "../schemas/deviceAuthorizationBodySchema.ts";
 import { deviceDecisionBodySchema } from "../schemas/deviceDecisionBodySchema.ts";
 import { deviceVerificationQuerySchema } from "../schemas/deviceVerificationQuerySchema.ts";
-import { oauthScopeSchema } from "../schemas/oauthScopeSchema.ts";
 import { registerClientBodySchema } from "../schemas/registerClientBodySchema.ts";
 import { tokenRequestBodySchema } from "../schemas/tokenRequestBodySchema.ts";
 import {
@@ -35,89 +35,6 @@ import {
   DeviceCodeService,
 } from "../services/DeviceCodeService.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
-
-/**
- * Configuration for the OAuth authorization server.
- * `realm` is the issuer realm whose JWTs are minted as access tokens;
- * `resource` is the path of the protected MCP endpoint;
- * `loginPath` is the app-level login page unauthenticated users are
- * redirected to from the authorize endpoint.
- */
-export const oauthOptions = $atom({
-  name: "alepha.api.oauth.options",
-  description: "Configuration for the OAuth authorization server.",
-  schema: z.object({
-    realm: z.text({ default: "users" }),
-    resource: z.text({ default: "/mcp" }),
-    loginPath: z.text({ default: "/login" }),
-    /**
-     * Page where a human approves a device authorization (RFC 8628). Handed to
-     * the device as `verification_uri` so it can print it.
-     *
-     * Defaults to `/oauth/device`, which this controller serves. Point it
-     * elsewhere only to hand the step to a page of the app's own; the built-in
-     * one stays mounted either way.
-     *
-     * ⚠️ It defaulted to `/device` until #Q2217, a page nothing served: every
-     * code a device printed led to a 404 and could never be approved. The
-     * built-in page lives under `/oauth/` rather than at `/device` because a
-     * root segment claimed by a module is claimed in every app that mounts
-     * it - in Lore, a root segment is also a project slug.
-     *
-     * Optional so adding it does not break every existing caller of
-     * `alepha.set(oauthOptions, …)` — the sibling fields are required, and any
-     * app already configuring them would stop compiling.
-     */
-    devicePath: z.text({ default: "/oauth/device" }).optional(),
-    /**
-     * The app's own name, shown on the consent screen as the party being
-     * connected to ("Claude wants access to your Lore account").
-     *
-     * ⚠️ Deliberately NOT defaulted to `APP_NAME`. That variable is a log
-     * prefix - Lore sets it to `RDM` - so falling back to it would put an
-     * initialism where a product name goes, on the one page a third party
-     * sees. Unset means the screen omits the identity rather than inventing
-     * one.
-     */
-    productName: z.text().optional(),
-    /**
-     * Where a user revokes a granted connection, linked from the consent
-     * screen.
-     *
-     * Defaults to `/?account=connections`, which opens the Connected apps
-     * section of `@alepha/ui`'s account dialog over the home page. An app
-     * that lists connections elsewhere names its own path; one that offers no
-     * such page sets an empty string, and the screen omits the link.
-     */
-    connectionsPath: z.text().optional(),
-    /**
-     * What each scope MEANS, keyed by scope identifier: its consent copy, and
-     * the `permissions` a token granted it may use (see `oauthScopeSchema`).
-     *
-     * A scope id is a wire token, and printing it at somebody about to grant
-     * it tells them nothing - Lore's screen listed one bullet reading `mcp`.
-     * Only the app knows what its own scopes reach, so the copy is declared
-     * here rather than shipped with the framework. An undeclared scope falls
-     * back to its raw identifier, which is what the screen did for all of
-     * them before, and leaves any grant containing it unrestricted.
-     */
-    scopes: z.record(z.string(), oauthScopeSchema).optional(),
-    /**
-     * Accept Client ID Metadata Documents: a `client_id` that is an https
-     * URL is fetched and its document registers the client, as MCP
-     * 2026-07-28 prefers over dynamic registration. On by default, since
-     * DCR is already open to anyone; `false` turns it off.
-     */
-    clientIdMetadataDocuments: z.boolean().optional(),
-  }),
-  default: {
-    realm: "users",
-    resource: "/mcp",
-    loginPath: "/login",
-    devicePath: "/oauth/device",
-  },
-  serverOnly: true,
-});
 
 /**
  * OAuth 2.1 authorization server endpoints: discovery metadata, RFC 7591
@@ -169,6 +86,16 @@ export class OAuthController {
       return [];
     }
     return scopes.filter((scope) => !(scope in declared));
+  }
+
+  /**
+   * What a client that names no scope is registered for: `mcp`, when the
+   * application declares it or declares no scope at all. An application
+   * that declares scopes and not `mcp` has no default, and a registration
+   * has to name what it wants.
+   */
+  protected defaultScopes(): string[] {
+    return this.undeclaredScopes(["mcp"]).length === 0 ? ["mcp"] : [];
   }
 
   /**
@@ -265,7 +192,7 @@ export class OAuthController {
     return this.clients.resolveClient(clientId, {
       realm: this.options.realm,
       enabled: this.options.clientIdMetadataDocuments !== false,
-      defaultScopes: ["mcp"],
+      defaultScopes: this.defaultScopes(),
       acceptScopes: (scopes) => {
         const undeclared = this.undeclaredScopes(scopes);
         return scopes.filter((scope) => !undeclared.includes(scope));
@@ -444,7 +371,7 @@ export class OAuthController {
    *
    * No address is not a reason to skip the budget. `getRequestIp` answers
    * `undefined` without `TRUST_PROXY` on any runtime with no socket to fall
-   * back to, and this used to skip the limiter ENTIRELY — leaving an
+   * back to, and this used to skip the limiter ENTIRELY, leaving an
    * unauthenticated write path with nothing in front of it, and no log to say
    * so.
    *
@@ -474,14 +401,6 @@ export class OAuthController {
       // reaches the address: a `$route` handler's context does not carry it.
       const ip = this.alepha.store.get("alepha.http.request")?.ip;
 
-      // No address is not a reason to skip the budget. `getRequestIp` answers
-      // `undefined` without `TRUST_PROXY` on any runtime with no socket to
-      // fall back to, and this used to skip the limiter ENTIRELY — leaving an
-      // unauthenticated write path with nothing in front of it, and no log to
-      // say so. One shared bucket keeps the unattributable registrations
-      // bounded, and costs nothing real: a genuine client registers once and
-      // keeps its id, so a budget of ten between them is not a constraint
-      // anybody meets by accident.
       const bucket = this.registrationBucket(ip);
 
       const attempt = await this.registerRateLimit.consume(`ip:${bucket}`);
@@ -505,9 +424,17 @@ export class OAuthController {
         );
       }
 
-      const requestedScopes = body.scope
-        ? body.scope.split(" ").filter(Boolean)
-        : ["mcp"];
+      const named = body.scope?.split(" ").filter(Boolean) ?? [];
+      const requestedScopes = named.length > 0 ? named : this.defaultScopes();
+      if (requestedScopes.length === 0) {
+        reply.status = 400;
+        reply.headers["content-type"] = "application/json";
+        reply.body = JSON.stringify({
+          error: "invalid_client_metadata",
+          error_description: `No scope named, and this server declares no default one. Declared: ${Object.keys(this.options.scopes ?? {}).join(" ")}`,
+        });
+        return;
+      }
       const undeclared = this.undeclaredScopes(requestedScopes);
       if (undeclared.length > 0) {
         // Registered, a scope nobody declared would sit on the client and be
@@ -560,6 +487,9 @@ export class OAuthController {
         ),
         client_name: client.clientName,
         redirect_uris: client.redirectUris,
+        // What the client is registered for, so it can tell a default it
+        // did not name from what it asked.
+        scope: client.scopes.join(" "),
         // RFC 7591 §3.2.1: the grants this client may use, and a client may
         // take the response at its word. The token endpoint has always
         // refreshed for a DCR client, but answering `authorization_code`
@@ -575,7 +505,7 @@ export class OAuthController {
   });
 
   /**
-   * GET /oauth/authorize — OAuth 2.1 authorization request. If the user
+   * GET /oauth/authorize: OAuth 2.1 authorization request. If the user
    * has no session, redirect to the realm login page with a return URL.
    * If authenticated, render the consent screen.
    */
@@ -631,13 +561,13 @@ export class OAuthController {
       }
       const silent = query.prompt === "none";
       // Consent is skipped ONLY for trusted first-party clients (the AS's own
-      // product — consent is for third-party apps). A non-silent trusted client
+      // product; consent is for third-party apps). A non-silent trusted client
       // still sends an unauthenticated user through login first; it just never
       // shows the "wants to connect" page.
       //
       // `prompt` is attacker-controlled and must never widen this. OIDC Core
       // §3.1.2.1 defines `prompt=none` as "display no UI", and requires
-      // `consent_required` when the client has no pre-configured consent — it
+      // `consent_required` when the client has no pre-configured consent: it
       // does not mean "consent is granted". Letting it skip consent turned any
       // self-registered DCR client plus one link into a silent account takeover.
       const skipConsent = client.trusted === true;
@@ -722,7 +652,7 @@ export class OAuthController {
   });
 
   /**
-   * POST /oauth/authorize — consent decision. On "allow", mint an
+   * POST /oauth/authorize: consent decision. On "allow", mint an
    * authorization code and redirect back to the client's redirect_uri.
    *
    * CSRF: the post must come from a page on this host ({@link isSameOrigin}),
@@ -1005,7 +935,7 @@ export class OAuthController {
   });
 
   /**
-   * POST /oauth/token — supports the `authorization_code` grant (verifies
+   * POST /oauth/token: supports the `authorization_code` grant (verifies
    * PKCE, mints an access token via the realm issuer) and the
    * `refresh_token` grant (exchanges a refresh token for a fresh access
    * token, so a client stays connected without re-running the flow).
@@ -1177,7 +1107,7 @@ export class OAuthController {
         }
 
         if (body.grant_type === "refresh_token") {
-          // Authenticate the client BEFORE spending the refresh token — the
+          // Authenticate the client BEFORE spending the refresh token: the
           // same checks the authorization_code branch runs. Without them any
           // refresh-token holder could name any client_id, and that id became
           // the id_token `aud` unvalidated: a relying party that forwards
@@ -1258,12 +1188,12 @@ export class OAuthController {
           await this.clients.markClientUsed(client.clientId);
           // Re-mint an OIDC `id_token` so id_token-based relying parties (e.g. a
           // stateless OIDC RP that forwards the id_token as the request Bearer)
-          // actually renew their identity on refresh — without it the RP keeps
+          // actually renew their identity on refresh: without it the RP keeps
           // forwarding the now-expired id_token and every call 401s. Per OIDC
           // Core §12.2 the refreshed id_token carries no `nonce`; `sub` is
           // unchanged.
           //
-          // `aud` is the AUTHENTICATED client, not the raw `body.client_id` —
+          // `aud` is the AUTHENTICATED client, not the raw `body.client_id`:
           // the two are equal by the check above, and naming the validated one
           // keeps them from drifting apart again.
           response.id_token = await this.clients.issueIdToken(

@@ -1,7 +1,7 @@
 import { $inject, $store } from "alepha";
 import { SecurityProvider, type UserAccount } from "alepha/security";
 
-import { oauthOptions } from "../controllers/OAuthController.ts";
+import { oauthOptions } from "../atoms/oauthOptions.ts";
 
 /**
  * What an MCP endpoint's authorization challenge says, from the scopes the

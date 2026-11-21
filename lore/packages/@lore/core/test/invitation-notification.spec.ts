@@ -98,12 +98,17 @@ describe("a project invitation's notifications", () => {
 
   const createUser = async (username: string) => {
     const fake = alepha.inject(FakeProvider).generate(userDataSchema);
-    const res = await alepha
-      .inject(AdminUserController)
-      .createUser.fetch(
-        { body: { ...fake, username, roles: ["user"] } },
-        { user: adminUser },
-      );
+    const res = await alepha.inject(AdminUserController).createUser.fetch(
+      {
+        body: {
+          ...fake,
+          username,
+          roles: ["user"],
+          emailVerified: true,
+        },
+      },
+      { user: adminUser },
+    );
     return { id: res.data.id, roles: res.data.roles, email: fake.email };
   };
 

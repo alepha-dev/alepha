@@ -2,7 +2,7 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 
-import { auditSeveritySchema } from "../entities/audits.ts";
+import { auditSeveritySchema } from "./auditSeveritySchema.ts";
 
 /**
  * Query schema for searching and filtering audit logs.

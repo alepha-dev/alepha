@@ -73,6 +73,11 @@ During a request, the event fills in what it can by itself, unless you pass it:
 | `userId`, `userEmail`, `userRealm`    | The signed-in user. |
 | `ipAddress`, `userAgent`, `requestId` | The request.        |
 
+The user is one identity, never a mix of two. An event that names a user
+(`userId`, `userEmail` or `userRealm`) is about that user: the request's user
+completes it only when `userId` is the same account. An event that names nobody
+takes the request's user, whole.
+
 `options` also takes `resourceType`, `resourceId`, `description` and `metadata`
 (a JSON object). `description`, `errorMessage`, `ipAddress`, `userAgent` and `requestId`
 are cut to fit their columns rather than failing the write.
@@ -119,6 +124,9 @@ class DocumentAudits {
 - Events merge when their scope, type, action, user and resource are the same.
 - Failures never merge.
 - The row keeps `eventCount`, and `updatedAt` holds when the last event landed.
+  Every event counts, concurrent ones included. Their `metadata` is merged from
+  the row each one read, so of two events landing together the later write's
+  keys win.
 - The window runs from the row's `createdAt`, not from its last event, so a long
   burst becomes several rows.
 

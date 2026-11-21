@@ -1,7 +1,12 @@
 import { $inject, Alepha, z } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "alepha/server";
 
 import {
   type OrganizationMember,
@@ -171,6 +176,13 @@ export class MemberService {
     if (keptRank === MemberService.OWNER) {
       throw new BadRequestError("An organization has exactly one owner");
     }
+    // ⚠️ Resolved here, not with `$inject`: see `remove`.
+    const defined = await this.alepha
+      .inject(RankService)
+      .ranksOf(organizationId);
+    if (!defined.some((rank) => rank.key === keptRank)) {
+      throw new NotFoundError(`No rank "${keptRank}" in this organization`);
+    }
 
     await this.database.transactional(async () => {
       const updated = await this.swapRanks(
@@ -247,14 +259,5 @@ export class MemberService {
       where: { userId: { eq: userId }, rank: { eq: MemberService.OWNER } },
     });
     return rows.map((row) => row.organizationId);
-  }
-
-  protected async member(
-    organizationId: string,
-    userId: string,
-  ): Promise<OrganizationMember> {
-    return this.members.getOne({
-      where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
-    });
   }
 }

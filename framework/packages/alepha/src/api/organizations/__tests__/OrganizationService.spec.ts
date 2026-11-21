@@ -216,7 +216,7 @@ describe("alepha/api/organizations - organization and member services", () => {
     ]);
   });
 
-  it("emits removal and leave hooks after deleting a member", async ({
+  it("emits the removal hook when a member leaves and when one is removed", async ({
     expect,
   }) => {
     const ctx = await setup();
@@ -229,6 +229,12 @@ describe("alepha/api/organizations - organization and member services", () => {
     });
 
     await ctx.members.leave(organization.id, { id: ctx.other.id });
+    await ctx.members.add(organization.id, ctx.other.id, undefined, {
+      id: ctx.owner.id,
+    });
+    await ctx.members.remove(organization.id, ctx.other.id, {
+      id: ctx.owner.id,
+    });
 
     expect(ctx.hooks.removed).toEqual([
       {
@@ -236,6 +242,12 @@ describe("alepha/api/organizations - organization and member services", () => {
         userId: ctx.other.id,
         actor: { id: ctx.other.id },
         leave: true,
+      },
+      {
+        organizationId: organization.id,
+        userId: ctx.other.id,
+        actor: { id: ctx.owner.id },
+        leave: false,
       },
     ]);
   });

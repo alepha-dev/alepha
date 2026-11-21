@@ -1,7 +1,7 @@
 import { $hook, $store } from "alepha";
 import { $logger } from "alepha/logger";
 
-import { oauthOptions } from "../controllers/OAuthController.ts";
+import { oauthOptions } from "../atoms/oauthOptions.ts";
 
 /**
  * Turns an OAuth grant's scope ids into the permissions its tokens may use.

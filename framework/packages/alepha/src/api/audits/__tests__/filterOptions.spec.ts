@@ -1,14 +1,14 @@
 import { Alepha } from "alepha";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaApiAudits } from "../index.ts";
 import { AuditService } from "../services/AuditService.ts";
 
 /**
- * `getFilterOptions` returned `resourceTypes` and `userRealms` as literals —
- * `["user","session","file","order","payment"]` and `["default"]` — so the
+ * `getFilterOptions` returned `resourceTypes` and `userRealms` as literals
+ * (`["user","session","file","order","payment"]` and `["default"]`), so the
  * admin filter dropdown advertised values no row had and hid the ones that
  * existed.
  */
@@ -24,7 +24,9 @@ const setup = async () => {
 };
 
 describe("audit filter options", () => {
-  it("reports the resource types and realms actually present", async () => {
+  it("reports the resource types and realms actually present", async ({
+    expect,
+  }) => {
     const { alepha, audits } = await setup();
 
     await audits.create({
@@ -61,7 +63,9 @@ describe("audit filter options", () => {
     await alepha.stop();
   });
 
-  it("returns empty lists when nothing has been audited", async () => {
+  it("returns empty lists when nothing has been audited", async ({
+    expect,
+  }) => {
     const { alepha, audits } = await setup();
 
     const options = await audits.getDistinctFilterValues();
@@ -72,7 +76,7 @@ describe("audit filter options", () => {
     await alepha.stop();
   });
 
-  it("omits rows where the column is null", async () => {
+  it("omits rows where the column is null", async ({ expect }) => {
     const { alepha, audits } = await setup();
 
     await audits.create({

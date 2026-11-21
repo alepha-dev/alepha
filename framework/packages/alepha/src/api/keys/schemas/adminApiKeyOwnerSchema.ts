@@ -6,7 +6,7 @@ import { type Infer, z } from "alepha";
  * render a human-readable identifier instead of a bare UUID.
  *
  * Optional end-to-end: the join only runs when the `users` entity is
- * registered in the running app (see `ApiKeyService.resolveOwnerJoin` — the
+ * registered in the running app (see `ApiKeyService.resolveOwnerJoin`: the
  * users module depends on this one, so the entity is looked up at runtime
  * rather than imported), and a key whose owner was deleted comes back with
  * `user` undefined. Callers fall back to the raw `userId`.

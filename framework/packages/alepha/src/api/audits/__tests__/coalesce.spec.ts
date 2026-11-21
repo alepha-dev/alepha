@@ -71,6 +71,23 @@ describe("alepha/api/audits - coalescing", () => {
     expect(page.content[0].updatedAt).toBeTruthy();
   });
 
+  it("counts every event of a concurrent burst", async ({ expect }) => {
+    const { audits, folio } = await setup();
+    await write(folio);
+
+    await Promise.all([
+      write(folio, { metadata: { fields: ["title"] } }),
+      write(folio, { metadata: { fields: ["body"] } }),
+      write(folio),
+      write(folio),
+      write(folio),
+    ]);
+
+    const page = await audits.find({ type: "folio" });
+    expect(page.content).toHaveLength(1);
+    expect(page.content[0].eventCount).toBe(6);
+  });
+
   /**
    * ⚠️ The window is measured from `createdAt`, never from the row's last
    * event. That bounds a row's span to the window, so its position in a feed

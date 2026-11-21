@@ -75,7 +75,7 @@ const createTestUser = async (
 ): Promise<{ id: string; roles: string[]; email: string }> => {
   const fakeUser = ctx.fakeProvider.generate(userDataSchema);
   const response = await ctx.adminUserController.createUser.fetch(
-    { body: { ...fakeUser, roles: ["user"] } },
+    { body: { ...fakeUser, roles: ["user"], emailVerified: true } },
     { user: adminUser },
   );
   return {

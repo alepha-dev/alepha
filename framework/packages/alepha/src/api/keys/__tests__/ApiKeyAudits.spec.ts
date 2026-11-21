@@ -6,7 +6,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
 import { apiKeyEntity } from "../entities/apiKeyEntity.ts";
@@ -59,7 +59,9 @@ const setup = async () => {
 };
 
 describe("the api-key audit trail", () => {
-  it("records create, rotate and revoke with the actor, as the owner", async () => {
+  it("records create, rotate and revoke with the actor, as the owner", async ({
+    expect,
+  }) => {
     const { service, time, ownerId, rowsFor } = await setup();
 
     const { apiKey, token } = await service.create({
@@ -95,7 +97,9 @@ describe("the api-key audit trail", () => {
     expect(everything).not.toContain("tokenHash");
   });
 
-  it("records an admin revocation as the admin, for one key and for many", async () => {
+  it("records an admin revocation as the admin, for one key and for many", async ({
+    expect,
+  }) => {
     const { alepha, service, ownerId, rowsFor } = await setup();
     const admin = { id: randomUUID(), roles: ["admin"] };
     const controller = alepha.inject(AdminApiKeyController);
@@ -127,7 +131,9 @@ describe("the api-key audit trail", () => {
     }
   });
 
-  it("does not audit usage: validating a key writes no audit row", async () => {
+  it("does not audit usage: validating a key writes no audit row", async ({
+    expect,
+  }) => {
     const { service, ownerId, rowsFor } = await setup();
 
     const { apiKey, token } = await service.create({
@@ -143,7 +149,9 @@ describe("the api-key audit trail", () => {
     ]);
   });
 
-  it("records a purge run as one row with its counts, and nothing when it deletes nothing", async () => {
+  it("records a purge run as one row with its counts, and nothing when it deletes nothing", async ({
+    expect,
+  }) => {
     // No `travel()` here: it would fire the daily purge on the way and log
     // rows of its own. The dead keys are dated in the past instead.
     const { alepha, service, audits, time, ownerId } = await setup();
@@ -155,16 +163,8 @@ describe("the api-key audit trail", () => {
 
     await service.purgeDeadKeys();
     expect(await service.purgeDeadKeys()).toEqual({ expired: 0, revoked: 0 });
-    // A run that deleted nothing logs nothing: no purge row anywhere says so.
-    // (Counted by content rather than by length, since other suites share
-    // the table and purge in parallel.)
-    expect(
-      (await purges()).filter(
-        (row) =>
-          JSON.stringify(row.metadata) ===
-          JSON.stringify({ expired: 0, revoked: 0 }),
-      ),
-    ).toHaveLength(0);
+    // A run that deleted nothing logs nothing.
+    expect(await purges()).toEqual([]);
 
     const expired = await service.create({
       userId: ownerId,
