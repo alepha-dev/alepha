@@ -70,6 +70,12 @@ Once Bay has connected, the host shows as **online**. See
 [Lore connector](/bay/docs/guides-lore-connector) in the Bay documentation for
 the server's side.
 
+A machine you only want to watch, with no app on it and no root access, runs
+Bay as a monitor: add `BAY_MONITOR_ONLY=1` to the installer line and drop
+`sudo`. It reports the host's CPU, memory and disk, opens no port and takes no
+command, and its console shows **Monitor only**. See
+[Monitor only](/bay/docs/guides-lore-connector#monitor-only).
+
 ### A Cloudflare host
 
 Pick **Cloudflare**, then paste the **Cloudflare account id** (32 characters)

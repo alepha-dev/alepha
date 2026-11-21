@@ -24,6 +24,7 @@ import {
   HostController,
 } from "../src/api/index.ts";
 import {
+  hostInventories,
   hostProjects,
   type Host,
   hosts,
@@ -41,6 +42,7 @@ import { MemoryCloudflareProbeService } from "../src/testing/index.ts";
  */
 class HostRepositories {
   hosts = $repository(hosts);
+  inventories = $repository(hostInventories);
   grants = $repository(hostProjects);
 }
 
@@ -396,6 +398,32 @@ describe("HostController, the credential", () => {
         payload: { app: "acme", environment: "production" },
       }),
     ).rejects.toThrow(/Cloudflare/);
+  });
+
+  it("refuses to queue a command for a monitor-only host (#Q4002)", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const created = await createHost(ctx, user, "watch-1");
+    const row = (await ctx.repos.hosts.findOne({
+      where: { id: { eq: created.id } },
+    })) as Host;
+    // What `bay agent` reports: the host block with `mode: monitor`, no app.
+    await ctx.repos.inventories.create({
+      hostId: row.id,
+      at: "2026-11-21T00:00:00Z",
+      reportedAt: "2026-11-21T00:00:00Z",
+      machine: { cores: 2, mode: "monitor" },
+      apps: [],
+      appCount: 0,
+    });
+
+    await expect(
+      ctx.commands.enqueue(row, {
+        kind: "restart",
+        payload: { app: "acme", environment: "production" },
+      }),
+    ).rejects.toThrow(/monitor-only/);
   });
 });
 

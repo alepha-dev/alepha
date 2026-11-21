@@ -47,7 +47,13 @@ type Host struct {
 	UptimeSeconds  *uint64  `json:"uptimeSeconds,omitempty"`
 	BayVersion     string   `json:"bayVersion,omitempty"`
 	UpgradeMode    string   `json:"upgradeMode,omitempty"`
+	// Mode is `monitor` for a Bay that only reports (`bay agent`, #Q4002),
+	// absent for one that serves: Lore offers no action on a monitor.
+	Mode string `json:"mode,omitempty"`
 }
+
+// ModeMonitor is the host mode of a Bay that only reports (`bay agent`).
+const ModeMonitor = "monitor"
 
 // Empty reports a Host that carries no reading at all, which is what a
 // machine without /proc answers.

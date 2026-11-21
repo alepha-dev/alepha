@@ -256,6 +256,7 @@ export class HostCommandService {
     requestedBy?: string,
   ): Promise<HostCommand> {
     this.assertAccepts(host, input.kind, input.payload);
+    await this.assertNotMonitor(host);
     const created = await this.commands.create({
       hostId: host.id,
       kind: input.kind,
@@ -264,6 +265,22 @@ export class HostCommandService {
       timeoutSeconds: HostCommandService.RUN_TIMEOUT_SECONDS[input.kind],
     });
     return this.dispatch(host, created);
+  }
+
+  /**
+   * Refuse every command to a monitor-only host (`bay agent`, #Q4002), which
+   * its last inventory says it is. The machine refuses too, whatever it is
+   * sent: this keeps a refused command out of the queue and says why at once.
+   */
+  protected async assertNotMonitor(host: Host): Promise<void> {
+    const inventory = await this.inventories.findOne({
+      where: { hostId: { eq: host.id } },
+    });
+    if (inventory?.machine.mode === "monitor") {
+      throw new BadRequestError(
+        `Host "${host.slug}" is monitor-only (bay agent): it reports and takes no command`,
+      );
+    }
   }
 
   /**

@@ -26,6 +26,7 @@ stack's service is the instance `stack.service/env`, as in
 |             | `--acme-http-port N`, `--acme-tls-port N` challenge ports, default 80 and 443                               |
 |             | `--control-socket PATH`, `--control-group bay-control`                                                      |
 |             | `--backup-interval 24h` (`0` disables), `--keep-releases 2` (minimum 2; per app, and stack revisions too)   |
+| `bay agent` | `--root DIR` data directory, default `~/.local/state/bay` for a plain user. A monitor only: it reports CPU, memory and disk to Lore and runs no command. No listener, no Docker, no root. See [Monitor only](/bay/docs/guides-lore-connector#monitor-only) |
 | `bay doctor [--root /opt/bay/data] [--control-socket PATH] [--probe-keys]` | can this host run Bay; exits 1 on a failed check, not on a `WARN`. On a live host it needs the socket (found as above), or ports 80 and 443 fail. Read-only on S3 unless `--probe-keys`, which writes probe objects to re-prove each app key. One `key <name/env>` line per app: whether the latest snapshot carries the `APP_SECRET` it runs on (`WARN` when it holds another), and whether Lore held the same key at the last deploy |
 | `bay version`              | the binary's version (`dev` for a local build)                                               |
 
@@ -128,7 +129,7 @@ See [Lore connector](/bay/docs/guides-lore-connector).
 | Variable                                          | Read by                          |
 | ------------------------------------------------- | -------------------------------- |
 | `BAY_SOCKET`                                      | client commands: control socket  |
-| `BAY_ROOT`                                        | `bay connector`: data directory  |
+| `BAY_ROOT`                                        | `bay connector`, `bay agent`: data directory |
 | `BAY_S3_ACCESS_KEY`, `BAY_S3_SECRET_KEY`          | `bay config s3:backups`, `s3`    |
 | `BAY_S3_ENDPOINT`, `BAY_S3_BUCKET`                | `bay config s3:backups`, when the flags are omitted |
 | `BAY_STORAGE_ACCESS_KEY`, `BAY_STORAGE_SECRET_KEY` | `bay config s3:apps`            |

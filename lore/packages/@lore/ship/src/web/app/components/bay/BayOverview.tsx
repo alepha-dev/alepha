@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@alepha/ui";
+import { Badge, Card, CardContent } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
@@ -41,6 +41,8 @@ const BayOverview = () => {
   }
   const inventory = data?.inventory ?? undefined;
   const machine = inventory?.machine;
+  // A monitor reports and runs nothing (#Q4002): no upgrade, no action.
+  const monitorOnly = machine?.mode === "monitor";
   const spent = HostCost.soFar(host, dt.nowMillis());
 
   return (
@@ -48,8 +50,18 @@ const BayOverview = () => {
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
               {tr("bay.overview.title")}
+              {monitorOnly && (
+                <Badge
+                  variant="tint"
+                  tone="info"
+                  data-testid="bay-monitor-only"
+                  title={tr("bay.overview.monitorOnly.description")}
+                >
+                  {tr("bay.overview.monitorOnly")}
+                </Badge>
+              )}
             </h2>
             {/* Said separately from "online" on purpose: see the class doc. */}
             <span className="text-muted-foreground text-xs">
@@ -222,8 +234,15 @@ const BayOverview = () => {
               empty=""
             />
           </dl>
-          {/* Which Bay it runs, and the upgrade when one is due (#E152). */}
-          <BayVersion />
+          {/* Which Bay it runs, and the upgrade when one is due (#E152). A
+              monitor is upgraded on the machine, never from here. */}
+          {monitorOnly ? (
+            <p className="text-muted-foreground text-sm">
+              {tr("bay.overview.monitorOnly.description")}
+            </p>
+          ) : (
+            <BayVersion />
+          )}
         </CardContent>
       </Card>
 
