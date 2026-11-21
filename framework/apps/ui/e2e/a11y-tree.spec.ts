@@ -59,19 +59,19 @@ test.describe("accessibility tree", () => {
 
     await expect(form).toMatchAriaSnapshot(`
       - textbox "Email" [invalid]
-      - alert: "'email' is required"
+      - alert: "This field is required"
       - textbox "Password" [invalid]
       - button "Show password"
-      - alert: "'password' is required"
+      - alert: "This field is required"
       - button "Create account"
     `);
 
     await expect(
       form.getByRole("textbox", { name: "Email" }),
-    ).toHaveAccessibleDescription("'email' is required");
+    ).toHaveAccessibleDescription("This field is required");
     await expect(
       form.getByRole("textbox", { name: "Password" }),
-    ).toHaveAccessibleDescription(/'password' is required/);
+    ).toHaveAccessibleDescription(/This field is required/);
   });
 
   test("an open confirm dialog: its role, title, description and buttons", async ({
