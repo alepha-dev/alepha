@@ -15,7 +15,7 @@ flowchart TD
   A[$secure checks<br/>auth, roles, permissions] --> B[Load the row named by param or resolve]
   B -->|missing| N[404 NotFoundError]
   B --> C[Follow through hops, if any]
-  C --> D{Privileged caller?<br/>ownership is false}
+  C --> D{Privileged caller?<br/>the gate's own ownership is false}
   D -->|yes| OK[Handler runs]
   D -->|no| E{owner column matches?}
   E -->|no| F{via membership row?}
@@ -288,7 +288,31 @@ Independently of `cache`, `$owns` memoizes its reads **for the lifetime of one r
 
 ## Privileged identities
 
-A caller with `ownership === false` bypasses the owner, membership and `requires` grant checks. That is the same `ownership` flag `$secure` sets from the permission registry (see [Ownership](/docs/guides-security-authentication#ownership)): `false` means an admin whose grant is _not_ narrowed to their own rows. The bypass happens after the row is loaded, so an unknown id is still a `404`, and the application-scope half of `requires` (folded into `secure.permissions`) still applies.
+A caller with `ownership === false` bypasses the owner, membership and `requires` grant checks. `false` means an admin whose grant is _not_ narrowed to their own rows (see [Ownership](/docs/guides-security-authentication#ownership)). The bypass happens after the row is loaded, so an unknown id is still a `404`, and the application-scope half of `requires` (folded into `secure.permissions`) still applies.
+
+An ownership decision belongs to the permission check that produced it. The gate reads the answer to **its own** permissions, the ones in `requires` and `secure.permissions`, and nothing else:
+
+```typescript
+// `docs:read` unrestricted for the caller's role: the owner check is skipped.
+$owns({
+  repository: () => this.docs,
+  param: "id",
+  owner: "createdBy",
+  requires: "docs:read",
+});
+
+// No permission of its own: the owner check always runs, whatever another
+// gate decided about another permission.
+$owns({ repository: () => this.docs, param: "id", owner: "createdBy" });
+```
+
+So a gate that names no permission is never opened by a permission checked somewhere else: not by a `$secure({ permissions })` beside it in the same `use` list, not by the action whose handler reached this one through `run()`, not by a pipeline that ran earlier in the same context. To let an administrator past an owner check, name the permission on the gate. The same holds for the handler: after a bare `$secure()`, `user.ownership` is never another gate's unrestricted answer. A restriction is the opposite case and is kept: after `[$secure({ permissions: ["docs:read"] }), $secure()]`, a caller whose `docs:read` is owner-scoped still reads `user.ownership === true`.
+
+It is not opened by a copy either. The unrestricted answer lives on the `user` object the gate gives its handler and is not an ordinary field: `{ ...user }`, a JSON round trip, `structuredClone` and `Object.assign` all produce a user without it, and the user schema drops `ownership: false` when it decodes one. Passing any of them (or `user` itself) to `run(..., { user })` reaches the inner gate as an ordinary caller. Read `user.ownership` on the object you were given, and pass that object along when a service needs the answer. Code that writes the field by hand (`{ ...user, ownership: false }`) is not copying: it is declaring an identity privileged, as described below.
+
+A gate publishes its user only for as long as it runs, guard and handler. Once it returns, `currentUserAtom` reads what it held before, so a gated pipeline called from a handler never changes the answer that handler was given. A handler that replaces the current user itself (`alepha.store.set(currentUserAtom, other)`, to step down or act for someone) is obeyed for the rest of its gate: the next gate it reaches checks `other`. Gates started in parallel in one context (two pipelines under a `Promise.all`) share that atom while they run: each handler should read the `user` it receives rather than the atom.
+
+The one flag a gate without permissions honors is the identity's own: a user **built** with `ownership: false` and handed in as that object (`action.run(..., { user })`, `run(..., { user: "system" })`) is privileged by declaration. A user resolved from a request never carries one, and neither does one built by `createUserFromToken` or `resolveUserFromServerRequest` with a `permission`: that answer is a permission check's, like a gate's. `ownership: false` does not go through `currentUserAtom` or `storeUserInContext` either, which keep the schema's view of the user: to run something as a privileged identity, pass the user to `run()`.
 
 This is deliberately strict - `undefined` does **not** bypass. `undefined` only means no permission check ran, which is not the same as "this caller is privileged". If you are migrating hand-written authz that treated `!user.ownership` as the bypass, note that `undefined` used to pass and now does not.
 

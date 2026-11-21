@@ -1,17 +1,17 @@
 import { $pipeline, Alepha, z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { $owns, $secure } from "../index.ts";
 
 /**
- * A `$secure` guard runs real code — `$owns` loads a row through a repository.
+ * A `$secure` guard runs real code: `$owns` loads a row through a repository.
  * Anything it calls must see the authenticated identity so authorization
  * helpers can evaluate the caller before the guarded handler runs.
  *
  * The user therefore has to be published to the store BEFORE the guard runs,
- * not after — and the behaviour must not differ between transports.
+ * not after, and the behaviour must not differ between transports.
  */
 
 const docs = $entity({
@@ -54,7 +54,9 @@ const boot = async () => {
 };
 
 describe("$secure publishes the user before running the guard", () => {
-  it("should expose the user to the guard when it arrived on the HTTP request", async () => {
+  it("should expose the user to the guard when it arrived on the HTTP request", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
     const seen: Array<string> = [];
 
@@ -90,7 +92,7 @@ describe("$secure publishes the user before running the guard", () => {
     expect(seen).toEqual(["present"]);
   });
 
-  it("should let $owns read the entity over HTTP", async () => {
+  it("should let $owns read the entity over HTTP", async ({ expect }) => {
     const { alepha, svc } = await boot();
 
     const result = await alepha.context.run(async () => {
@@ -106,7 +108,9 @@ describe("$secure publishes the user before running the guard", () => {
     expect(result).toBe("ok");
   });
 
-  it("should behave identically when the user arrives through the atom", async () => {
+  it("should behave identically when the user arrives through the atom", async ({
+    expect,
+  }) => {
     const { alepha, svc } = await boot();
 
     const result = await alepha.context.run(async () => {

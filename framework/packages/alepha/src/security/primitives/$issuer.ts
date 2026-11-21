@@ -14,9 +14,9 @@ import {
 } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
-import type { ServerRequest } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 
+import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
 import type { OidcIssuerSource } from "../interfaces/OidcIssuerSource.ts";
@@ -111,7 +111,7 @@ export interface IssuerSettings {
      * Idle invalidation is enforced by session-backed realms via
      * `realmAuthSettings.refreshToken.expirationIdle` (in `alepha/api/users`).
      * Token-only refresh (no `onRefreshSession`) does not support idle
-     * invalidation — it has no stateful row to track `lastUsedAt`.
+     * invalidation: it has no stateful row to track `lastUsedAt`.
      */
   };
 
@@ -153,7 +153,7 @@ export interface IssuerSettings {
    * expires (30 days by default). Token-only mode also cannot support idle
    * invalidation, since there is no row to track `lastUsedAt` on.
    *
-   * Provide this whenever roles can change during a session — i.e. almost
+   * Provide this whenever roles can change during a session, i.e. almost
    * always. `alepha/api/users` wires it for you via `$realm`.
    */
   onRefreshSession?: (refreshToken: string) => Promise<{
@@ -353,45 +353,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
    * Creates the default JWT resolver.
    */
   protected createJwtResolver(): IssuerResolver {
-    return {
-      priority: 100,
-      onRequest: async (req: ServerRequest) => {
-        const auth = req.headers.authorization;
-        if (!auth?.startsWith("Bearer ")) {
-          return null;
-        }
-
-        const token = auth.slice(7);
-
-        // Check if it looks like a JWT (has dots)
-        if (!token.includes(".")) {
-          return null;
-        }
-
-        // Parse and validate JWT
-        const { result } = await this.jwt.parse(token, this.name);
-
-        // Only an access token authenticates. Authorization codes, refresh
-        // tokens and id_tokens are signed with this same key and would
-        // otherwise pass straight through.
-        if (!this.jwt.isAccessToken(this.name, result.protectedHeader)) {
-          return null;
-        }
-
-        // Anti-replay: a token minted by realm B must not authenticate on
-        // realm A. Every realm signs with the same key by default, so the
-        // signature alone decides nothing.
-        if (!this.jwt.matchesRealmAudience(this.name, result.payload)) {
-          return null;
-        }
-
-        // Extract user info from JWT payload
-        return this.securityProvider.createUserFromPayload(
-          result.payload,
-          this.name,
-        );
-      },
-    };
+    return this.securityProvider.createDefaultJwtResolver(this.name);
   }
 
   /**
@@ -561,7 +523,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
 
     // Resilient display name: compose from first/last when the caller didn't
     // provide one (credentials users register with first+last but no `name`),
-    // and carry the OIDC given/family claims so consumers can re-derive it —
+    // and carry the OIDC given/family claims so consumers can re-derive it:
     // otherwise such users surface as "Anonymous User".
     const composedName =
       user.name ??
@@ -654,7 +616,8 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       throw new AlephaError("An access token is required for refreshing");
     }
 
-    // Extract user from an expired token.
+    // Extract user from an expired token: an access token of this realm, as
+    // the request it once authenticated required (`createUserFromToken`).
     // WARNING: Roles from the expired token are reused without re-validation.
     // If roles were revoked, the new access token will still contain old roles
     // until the refresh token expires. Use session-based refresh (onRefreshSession)
@@ -674,6 +637,17 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       audience: this.name,
       subject: user.id,
     });
+
+    // Nothing bounds how long ago the access token expired, so the session
+    // does: the two tokens are minted with one `sid`, and an access token of
+    // an earlier sign-in, with the roles of that day, is not the one this
+    // refresh token renews. A refresh token minted before it carried a `sid`
+    // names no session to compare.
+    if (payload.sid !== undefined && payload.sid !== user.sessionId) {
+      throw new InvalidTokenError(
+        "Access token and refresh token belong to different sessions",
+      );
+    }
 
     const iat = this.dateTimeProvider.now().unix();
     const expiresIn = payload.exp

@@ -1,6 +1,6 @@
 import { $pipeline, Alepha } from "alepha";
 import { ForbiddenError, UnauthorizedError } from "alepha/server";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
@@ -30,25 +30,14 @@ class TestSecurityProvider extends SecurityProvider {
   > {
     return this.nextUser;
   }
-
-  public override checkPermission(
-    _permissionLike: any,
-    ..._roleEntries: string[]
-  ) {
-    // Simple: "admin" role has all permissions, others don't
-    if (_roleEntries.includes("admin")) {
-      return { isAuthorized: true, ownership: undefined };
-    }
-    return { isAuthorized: false, ownership: undefined };
-  }
 }
 
 // -----------------------------------------------------------------------------------------------------------------
-// $secure — core behavior
+// $secure: core behavior
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure", () => {
-  test("allows authenticated request", async ({ expect }) => {
+  it("allows authenticated request", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -73,7 +62,7 @@ describe("$secure", () => {
     });
   });
 
-  test("throws UnauthorizedError when no user resolved", async ({ expect }) => {
+  it("throws UnauthorizedError when no user resolved", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -100,7 +89,7 @@ describe("$secure", () => {
     });
   });
 
-  test("throws UnauthorizedError when no request context and no atom", async ({
+  it("throws UnauthorizedError when no request context and no atom", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with({
@@ -121,7 +110,7 @@ describe("$secure", () => {
     await expect(svc.fn()).rejects.toThrow(UnauthorizedError);
   });
 
-  test("sets request.user on success", async ({ expect }) => {
+  it("sets request.user on success", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -149,7 +138,7 @@ describe("$secure", () => {
     });
   });
 
-  test("handler arguments are passed through", async ({ expect }) => {
+  it("handler arguments are passed through", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -175,11 +164,11 @@ describe("$secure", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $secure — permissions
+// $secure: permissions
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure permissions", () => {
-  test("allows when user has required permission", async ({ expect }) => {
+  it("allows when user has required permission", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -199,23 +188,23 @@ describe("$secure permissions", () => {
         headers: { authorization: "Bearer token" },
       } as any);
 
-      // fakeUser has "admin" role → TestSecurityProvider grants all
+      // fakeUser holds `admin`, the test realm's `*` role
       expect(await svc.fn()).toBe("deleted");
     });
   });
 
-  test("throws ForbiddenError when user lacks permission", async ({
-    expect,
-  }) => {
+  it("throws ForbiddenError when user lacks permission", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
     });
 
     const security = alepha.inject(TestSecurityProvider);
+    // A role of the realm that grants nothing, next to its `admin` (`*`).
+    security.createRole({ name: "viewer", permissions: [] });
     security.nextUser = {
       ...fakeUser,
-      roles: ["viewer"], // Not "admin" → TestSecurityProvider denies
+      roles: ["viewer"],
     };
 
     class TestService {
@@ -238,11 +227,11 @@ describe("$secure permissions", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $secure — roles
+// $secure: roles
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure roles", () => {
-  test("allows when user has required role", async ({ expect }) => {
+  it("allows when user has required role", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -266,7 +255,7 @@ describe("$secure roles", () => {
     });
   });
 
-  test("throws ForbiddenError when user lacks required role", async ({
+  it("throws ForbiddenError when user lacks required role", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with({
@@ -293,7 +282,7 @@ describe("$secure roles", () => {
     });
   });
 
-  test("allows when user has one of multiple required roles", async ({
+  it("allows when user has one of multiple required roles", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with({
@@ -322,11 +311,11 @@ describe("$secure roles", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $secure — guard
+// $secure: guard
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure guard", () => {
-  test("allows when guard returns true", async ({ expect }) => {
+  it("allows when guard returns true", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -350,7 +339,7 @@ describe("$secure guard", () => {
     });
   });
 
-  test("throws ForbiddenError when guard returns false", async ({ expect }) => {
+  it("throws ForbiddenError when guard returns false", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -376,11 +365,11 @@ describe("$secure guard", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $secure — metadata
+// $secure: metadata
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure metadata", () => {
-  test("has middleware metadata", ({ expect }) => {
+  it("has middleware metadata", ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -399,7 +388,7 @@ describe("$secure metadata", () => {
     expect(meta[0].name).toBe("$secure");
   });
 
-  test("metadata without options", ({ expect }) => {
+  it("metadata without options", ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -416,7 +405,7 @@ describe("$secure metadata", () => {
     expect(svc.fn.middlewares[0].name).toBe("$secure");
   });
 
-  test("permissions are stored in metadata", ({ expect }) => {
+  it("permissions are stored in metadata", ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -437,11 +426,11 @@ describe("$secure metadata", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $secure — atom resolution
+// $secure: atom resolution
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure atom resolution", () => {
-  test("reads user from currentUserAtom when set", async ({ expect }) => {
+  it("reads user from currentUserAtom when set", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -463,7 +452,7 @@ describe("$secure atom resolution", () => {
     });
   });
 
-  test("atom user is checked for permissions", async ({ expect }) => {
+  it("atom user is checked for permissions", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -477,6 +466,9 @@ describe("$secure atom resolution", () => {
     }
 
     const svc = alepha.inject(TestService);
+    alepha
+      .inject(TestSecurityProvider)
+      .createRole({ name: "viewer", permissions: [] });
 
     // Set user with "viewer" role via atom → should be denied
     await alepha.context.run(async () => {
@@ -485,7 +477,7 @@ describe("$secure atom resolution", () => {
     });
   });
 
-  test("guard receives request params", async ({ expect }) => {
+  it("guard receives request params", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -519,7 +511,7 @@ describe("$secure atom resolution", () => {
     expect(seen[seen.length - 1]).toEqual({ id: "denied" });
   });
 
-  test("guard may be async and allow", async ({ expect }) => {
+  it("guard may be async and allow", async ({ expect }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,

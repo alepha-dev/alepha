@@ -1,7 +1,6 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
-import type { ServerRequest } from "alepha/server";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
@@ -28,7 +27,7 @@ export class ServerSecurityProvider {
      *
      * This is not theoretical. A previous docblock here argued the hook should
      * run before the body is read, on the grounds that resolution "takes only
-     * `url` and `headers`". It does not — it takes cookies too. Acting on that
+     * `url` and `headers`". It does not: it takes cookies too. Acting on that
      * comment moved the hook to `first` and broke every cookie-authenticated
      * upload, which only surfaced in Playwright because bearer tokens kept
      * working and no unit test covered the cookie path. There is one now.
@@ -37,7 +36,7 @@ export class ServerSecurityProvider {
      * available to `server:request:before` consumers that run before this, so a
      * `MultipartCapProvider` resolver cannot key a size budget on the caller.
      * Fixing that means ordering against the cookie hook explicitly rather than
-     * hoisting this one blindly — see the `before`/`after` constraints the hook
+     * hoisting this one blindly: see the `before`/`after` constraints the hook
      * system supports.
      *
      * ⚠️ Either way this resolves *who* is calling; it does not authorise.
@@ -46,7 +45,7 @@ export class ServerSecurityProvider {
      */
     priority: "last",
     handler: async ({ request }) => {
-      // Resolve the user from any supported credential channel — not just the
+      // Resolve the user from any supported credential channel: not just the
       // `Authorization` header, but also resolver-specific ones such as an
       // `api_key` query parameter. This makes `currentUserAtom` available on
       // ALL routes (not just `$secure` ones); `$secure()` is then purely an
@@ -63,13 +62,13 @@ export class ServerSecurityProvider {
         }
       } catch (error) {
         this.log.debug("Failed to resolve user from request", error);
-        // Invalid/expired credential — request continues as unauthenticated
+        // Invalid/expired credential: request continues as unauthenticated
       }
     },
   });
 
   // ---------------------------------------------------------------------------------------------------------------
-  // action:request:before , resolve user from options, request fork for ALS isolation
+  // action:request:before: the user named by `run()`'s options, set on the action's context
   // ---------------------------------------------------------------------------------------------------------------
 
   protected readonly onActionRequest = $hook({
@@ -95,7 +94,7 @@ export class ServerSecurityProvider {
   });
 
   // ---------------------------------------------------------------------------------------------------------------
-  // client:request:before , automatic test token creation for .fetch()
+  // client:request:before: in tests, a token minted for .fetch() calls that carry none
   // ---------------------------------------------------------------------------------------------------------------
 
   protected createTestUser(): UserAccountToken {
@@ -134,7 +133,7 @@ export class ServerSecurityProvider {
             sub,
             roles,
             // Stands in for a real access token, so it carries the same
-            // audience `createToken` sets — otherwise the helper mints a
+            // audience `createToken` sets: otherwise the helper mints a
             // token no realm will claim (see JwtProvider.matchesRealmAudience).
             aud: realm,
           },
@@ -149,7 +148,3 @@ export class ServerSecurityProvider {
     },
   });
 }
-
-export type ServerSecurityUserResolver = (
-  request: ServerRequest,
-) => Promise<UserAccountToken | undefined>;

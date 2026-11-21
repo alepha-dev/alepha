@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $route, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";
@@ -37,7 +37,9 @@ describe("token failure status", () => {
   // `$secure` middleware happens to swallow these and answer 401 itself, but
   // every direct `jwt.parse` caller (issuer refresh, OAuth code exchange)
   // propagates the error as-is.
-  it("should carry status 401 when a token is malformed", async () => {
+  it("should carry status 401 when a token is malformed", async ({
+    expect,
+  }) => {
     const { alepha, jwt } = createApp();
     await alepha.start();
 
@@ -47,7 +49,7 @@ describe("token failure status", () => {
     expect((error as { status?: number }).status).toBe(401);
   });
 
-  it("should carry status 401 when a token is expired", async () => {
+  it("should carry status 401 when a token is expired", async ({ expect }) => {
     const { alepha, app, jwt, time } = createApp();
     await alepha.start();
 
@@ -64,9 +66,11 @@ describe("token failure status", () => {
     expect((error as { status?: number }).status).toBe(401);
   });
 
-  it("should still answer 403 when an authenticated user is not allowed", async () => {
+  it("should still answer 403 when an authenticated user is not allowed", async ({
+    expect,
+  }) => {
     // A valid token from the wrong realm is an authorization denial, not an
-    // authentication failure — that distinction is the point.
+    // authentication failure: that distinction is the point.
     class RealmApp {
       realmA = $issuer({
         name: "realmA",

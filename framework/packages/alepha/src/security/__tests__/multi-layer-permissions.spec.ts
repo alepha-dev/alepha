@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   InvalidPermissionError,
@@ -9,7 +9,7 @@ import {
 
 describe("SecurityProvider - Multi-layer Permissions", () => {
   describe("Permission Creation", () => {
-    it("should create permissions with multi-layer groups", () => {
+    it("should create permissions with multi-layer groups", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -36,7 +36,9 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.getPermissions().length).toEqual(4);
     });
 
-    it("should convert multi-layer permissions to strings correctly", () => {
+    it("should convert multi-layer permissions to strings correctly", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -47,7 +49,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.permissionToString(p2)).toEqual("admin:api:users:read");
     });
 
-    it("should reject invalid multi-layer permissions", () => {
+    it("should reject invalid multi-layer permissions", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -72,7 +74,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
   });
 
   describe("Wildcard Matching", () => {
-    it("should match permissions with two-layer wildcards", () => {
+    it("should match permissions with two-layer wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -92,7 +94,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.can("user-manager", "posts:read")).toEqual(false);
     });
 
-    it("should match permissions with three-layer wildcards", () => {
+    it("should match permissions with three-layer wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -113,7 +115,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.can("user-manager", "public:posts:read")).toEqual(false);
     });
 
-    it("should match permissions with four-layer wildcards", () => {
+    it("should match permissions with four-layer wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -133,7 +135,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.can("api-admin", "admin:web:users:read")).toEqual(false);
     });
 
-    it("should match permissions with nested wildcards", () => {
+    it("should match permissions with nested wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -184,7 +186,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
   });
 
   describe("Exclude with Multi-layer Permissions", () => {
-    it("should exclude specific multi-layer permissions", () => {
+    it("should exclude specific multi-layer permissions", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -206,7 +208,9 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       );
     });
 
-    it("should exclude with wildcard patterns in multi-layer permissions", () => {
+    it("should exclude with wildcard patterns in multi-layer permissions", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -230,7 +234,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.can("admin-no-users", "admin:api:posts:write")).toEqual(true);
     });
 
-    it("should exclude with nested wildcard patterns", () => {
+    it("should exclude with nested wildcard patterns", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -251,7 +255,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
   });
 
   describe("getPermissions with Multi-layer", () => {
-    it("should get permissions with multi-layer wildcards", () => {
+    it("should get permissions with multi-layer wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -286,7 +290,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       });
     });
 
-    it("should get permissions with nested wildcard levels", () => {
+    it("should get permissions with nested wildcard levels", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -316,7 +320,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       });
     });
 
-    it("should get permissions with exclude patterns", () => {
+    it("should get permissions with exclude patterns", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -350,7 +354,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
   });
 
   describe("Ownership with Multi-layer Permissions", () => {
-    it("should handle ownership with multi-layer permissions", () => {
+    it("should handle ownership with multi-layer permissions", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -395,7 +399,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
   });
 
   describe("Complex Scenarios", () => {
-    it("should handle mixed permission depths", () => {
+    it("should handle mixed permission depths", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -421,7 +425,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       expect(sec.can("mixed-role", "admin:api:v1:execute")).toEqual(true);
     });
 
-    it("should handle overlapping wildcards", () => {
+    it("should handle overlapping wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -444,7 +448,9 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       });
     });
 
-    it("should handle role with multiple levels of exclusions", () => {
+    it("should handle role with multiple levels of exclusions", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -477,7 +483,7 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       );
     });
 
-    it("should not match exact group as wildcard", () => {
+    it("should not match exact group as wildcard", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -495,7 +501,9 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error for non-existent role with multi-layer permissions", () => {
+    it("should throw error for non-existent role with multi-layer permissions", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -506,7 +514,9 @@ describe("SecurityProvider - Multi-layer Permissions", () => {
       );
     });
 
-    it("should throw error when creating role with invalid multi-layer permission", async () => {
+    it("should throw error when creating role with invalid multi-layer permission", async ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 

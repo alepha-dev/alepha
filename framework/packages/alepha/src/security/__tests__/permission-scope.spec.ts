@@ -1,5 +1,5 @@
 import { $pipeline, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { $role, $secure, SecurityProvider } from "../index.ts";
@@ -58,7 +58,9 @@ const names = (security: SecurityProvider, user: Partial<UserAccountToken>) =>
 
 describe("permissionScope", () => {
   describe("SecurityProvider.checkUserPermission", () => {
-    it("allows what the roles grant when the scope is undefined", async () => {
+    it("allows what the roles grant when the scope is undefined", async ({
+      expect,
+    }) => {
       const { security } = await setup();
       const user = { id: "u", realm: "default", roles: ["editor"] };
 
@@ -67,7 +69,9 @@ describe("permissionScope", () => {
       ).toBe(true);
     });
 
-    it("denies everything when the scope is empty, even with a '*' role", async () => {
+    it("denies everything when the scope is empty, even with a '*' role", async ({
+      expect,
+    }) => {
       const { security } = await setup();
 
       const editor = {
@@ -85,7 +89,7 @@ describe("permissionScope", () => {
       ).toBe(false);
     });
 
-    it("allows only what a non-empty scope matches", async () => {
+    it("allows only what a non-empty scope matches", async ({ expect }) => {
       const { security } = await setup();
       const user = {
         roles: ["editor"],
@@ -101,7 +105,9 @@ describe("permissionScope", () => {
       expect(refused.deniedBy).toBe("scope");
     });
 
-    it("never widens: a scope entry the roles do not grant is still refused, by the roles", async () => {
+    it("never widens: a scope entry the roles do not grant is still refused, by the roles", async ({
+      expect,
+    }) => {
       const { security } = await setup();
       const user = {
         roles: ["editor"],
@@ -114,7 +120,9 @@ describe("permissionScope", () => {
       expect(refused.deniedBy).toBe("roles");
     });
 
-    it("matches a wildcard scope entry against a permission in a sub-group", async () => {
+    it("matches a wildcard scope entry against a permission in a sub-group", async ({
+      expect,
+    }) => {
       const { security } = await setup();
       const user = {
         roles: ["admin"],
@@ -130,7 +138,9 @@ describe("permissionScope", () => {
       );
     });
 
-    it("keeps the roles' ownership answer when the scope admits the permission", async () => {
+    it("keeps the roles' ownership answer when the scope admits the permission", async ({
+      expect,
+    }) => {
       const { security } = await setup();
       const scoped = {
         roles: ["editor"],
@@ -148,7 +158,9 @@ describe("permissionScope", () => {
   });
 
   describe("SecurityProvider.createUser", () => {
-    it("carries the scope onto the token, and checks a requested permission against it", async () => {
+    it("carries the scope onto the token, and checks a requested permission against it", async ({
+      expect,
+    }) => {
       const { alepha, security } = await setup();
 
       const user = security.createUser(
@@ -173,7 +185,9 @@ describe("permissionScope", () => {
   });
 
   describe("SecurityProvider.getPermissions", () => {
-    it("returns the roles' permissions unchanged when the scope is undefined", async () => {
+    it("returns the roles' permissions unchanged when the scope is undefined", async ({
+      expect,
+    }) => {
       const { security } = await setup();
 
       expect(names(security, { roles: ["editor"], realm: "default" })).toEqual([
@@ -185,7 +199,7 @@ describe("permissionScope", () => {
       ]);
     });
 
-    it("returns the intersection for a scoped user", async () => {
+    it("returns the intersection for a scoped user", async ({ expect }) => {
       const { security } = await setup();
 
       expect(
@@ -197,7 +211,9 @@ describe("permissionScope", () => {
       ).toEqual(["admin:api:keys:read", "admin:api:users:read", "docs:list"]);
     });
 
-    it("intersects a '*' role too, and an empty scope leaves nothing", async () => {
+    it("intersects a '*' role too, and an empty scope leaves nothing", async ({
+      expect,
+    }) => {
       const { security } = await setup();
 
       expect(
@@ -252,19 +268,23 @@ describe("permissionScope", () => {
       permissionScope: ["docs:read"],
     };
 
-    it("refuses a permission the roles grant when the scope excludes it, saying so", async () => {
+    it("refuses a permission the roles grant when the scope excludes it, saying so", async ({
+      expect,
+    }) => {
       await expect(
         run(scoped, { permissions: ["docs:write"] }),
       ).rejects.toThrow("outside this credential's permission scope");
     });
 
-    it("keeps the role message when the roles refuse", async () => {
+    it("keeps the role message when the roles refuse", async ({ expect }) => {
       await expect(
         run(scoped, { permissions: ["billing:read"] }),
       ).rejects.toThrow("Permission 'billing:read' required");
     });
 
-    it("admits a scoped caller on a route that declares no permission (D8)", async () => {
+    it("admits a scoped caller on a route that declares no permission (D8)", async ({
+      expect,
+    }) => {
       // Pinned on purpose: a scope narrows what a credential may DO, not what
       // it may SEE. Tightening this is a decision, not a fix.
       const empty: UserAccountToken = { ...scoped, permissionScope: [] };
@@ -273,7 +293,9 @@ describe("permissionScope", () => {
       await expect(run(empty, { roles: ["editor"] })).resolves.toBeUndefined();
     });
 
-    it("resolves ownership exactly as without a scope, in either order", async () => {
+    it("resolves ownership exactly as without a scope, in either order", async ({
+      expect,
+    }) => {
       const both: UserAccountToken = {
         ...scoped,
         permissionScope: ["docs:read", "docs:list"],

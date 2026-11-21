@@ -1,20 +1,23 @@
-import { Alepha } from "alepha";
-import { describe, expect, it, vi } from "vitest";
+import { Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { afterEach, describe, it, vi } from "vitest";
 
 import { $serviceAccount } from "../index.ts";
 
 /**
- * Bug #4: Missing HTTP Response Validation in OAuth2 Service Account
- *
- * Issue: The OAuth2 token fetching code didn't:
- * 1. Check HTTP response.ok or status codes
- * 2. Handle JSON parsing errors
- * 3. Handle network errors properly
- * 4. Provide meaningful error messages
- *
- * Expected: All failure modes should throw clear errors instead of crashing.
+ * `$serviceAccount` over the OAuth2 client credentials grant: what it sends,
+ * what it caches and for how long, and the error each failure of the token
+ * endpoint ends in.
  */
-describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
+describe("$serviceAccount over OAuth2", () => {
+  // The token endpoint is reached through the global `fetch`, which every
+  // test below replaces: put back so nothing leaks into the next spec file
+  // of this worker.
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
   // Helper to create a service account within Alepha context
   const createServiceAccount = (
     url: string,
@@ -62,7 +65,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
                 : "Error",
       json: async () => {
         if (throwOnJson) {
-          throw new Error("Invalid JSON");
+          throw new AlephaError("Invalid JSON");
         }
         return isJson ? body : Promise.reject(new Error("Not JSON"));
       },
@@ -71,7 +74,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     } as Response;
   };
 
-  it("should successfully fetch and cache token", async () => {
+  it("should successfully fetch and cache token", async ({ expect }) => {
     const mockToken = "mock-access-token";
     const mockResponse = {
       access_token: mockToken,
@@ -105,7 +108,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error on network failure", async () => {
+  it("should throw error on network failure", async ({ expect }) => {
     (global as any).fetch = vi
       .fn()
       .mockRejectedValue(new Error("Network error"));
@@ -121,7 +124,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error on HTTP 400 Bad Request", async () => {
+  it("should throw error on HTTP 400 Bad Request", async ({ expect }) => {
     const errorBody = {
       error: "invalid_request",
       error_description: "Missing parameter",
@@ -142,7 +145,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error on HTTP 401 Unauthorized", async () => {
+  it("should throw error on HTTP 401 Unauthorized", async ({ expect }) => {
     const errorBody = { error: "invalid_client" };
 
     (global as any).fetch = vi
@@ -160,7 +163,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error on HTTP 500 Internal Server Error", async () => {
+  it("should throw error on HTTP 500 Internal Server Error", async ({
+    expect,
+  }) => {
     (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(500, "Internal Server Error"));
@@ -176,7 +181,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error when response is not JSON", async () => {
+  it("should throw error when response is not JSON", async ({ expect }) => {
     (global as any).fetch = vi
       .fn()
       .mockResolvedValue(
@@ -194,7 +199,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error when response is missing access_token", async () => {
+  it("should throw error when response is missing access_token", async ({
+    expect,
+  }) => {
     const invalidResponse = {
       // Missing access_token
       expires_in: 3600,
@@ -216,7 +223,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error when response is missing expires_in", async () => {
+  it("should throw error when response is missing expires_in", async ({
+    expect,
+  }) => {
     const invalidResponse = {
       access_token: "token123",
       // Missing expires_in
@@ -238,7 +247,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error when response has null access_token", async () => {
+  it("should throw error when response has null access_token", async ({
+    expect,
+  }) => {
     const invalidResponse = {
       access_token: null,
       expires_in: 3600,
@@ -259,7 +270,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should throw error when response has empty string access_token", async () => {
+  it("should throw error when response has empty string access_token", async ({
+    expect,
+  }) => {
     const invalidResponse = {
       access_token: "",
       expires_in: 3600,
@@ -280,7 +293,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should use cached token instead of fetching again", async () => {
+  it("should use cached token instead of fetching again", async ({
+    expect,
+  }) => {
     const mockToken = "cached-token";
     const mockResponse = {
       access_token: mockToken,
@@ -311,7 +326,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1); // Still 1, not called again
   });
 
-  it("should include error body in error message for non-200 responses", async () => {
+  it("should include error body in error message for non-200 responses", async ({
+    expect,
+  }) => {
     const errorBody = {
       error: "invalid_scope",
       error_description: "The requested scope is invalid",
@@ -337,7 +354,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     }
   });
 
-  it("should handle HTML error responses gracefully", async () => {
+  it("should handle HTML error responses gracefully", async ({ expect }) => {
     const htmlError =
       "<html><body><h1>500 Internal Server Error</h1></body></html>";
 
@@ -356,7 +373,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     await expect(serviceAccount.token()).rejects.toThrow(/HTTP 500/);
   });
 
-  it("should handle fetch timeout or abort", async () => {
+  it("should handle fetch timeout or abort", async ({ expect }) => {
     (global as any).fetch = vi
       .fn()
       .mockRejectedValue(new Error("The operation was aborted"));
@@ -372,7 +389,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should handle DNS resolution failure", async () => {
+  it("should handle DNS resolution failure", async ({ expect }) => {
     (global as any).fetch = vi
       .fn()
       .mockRejectedValue(
@@ -388,7 +405,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     await expect(serviceAccount.token()).rejects.toThrow(/ENOTFOUND/);
   });
 
-  it("should handle response with unexpected structure", async () => {
+  it("should handle response with unexpected structure", async ({ expect }) => {
     const weirdResponse = {
       data: {
         token: "nested-token",
@@ -411,7 +428,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     );
   });
 
-  it("should properly format URLSearchParams in request body", async () => {
+  it("should properly format URLSearchParams in request body", async ({
+    expect,
+  }) => {
     const mockResponse = {
       access_token: "token",
       expires_in: 3600,
@@ -436,5 +455,75 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     expect(body.get("grant_type")).toBe("client_credentials");
     expect(body.get("client_id")).toBe("my-client-id");
     expect(body.get("client_secret")).toBe("my-secret");
+  });
+
+  describe("expires_in as the provider sends it", () => {
+    const setup = (expiresIn: unknown) => {
+      let calls = 0;
+      (global as any).fetch = vi.fn().mockImplementation(async () => {
+        calls += 1;
+        return createMockResponse(200, {
+          access_token: `token-${calls}`,
+          expires_in: expiresIn,
+          // Some providers send one, in their own unit. Ours is the clock.
+          issued_at: "1700000000000",
+        });
+      });
+
+      const alepha = Alepha.create();
+
+      class TestService {
+        serviceAccount = $serviceAccount({
+          oauth2: {
+            url: "https://auth.example.com/token",
+            clientId: "test-client",
+            clientSecret: "test-secret",
+          },
+        });
+      }
+
+      return {
+        serviceAccount: alepha.inject(TestService).serviceAccount,
+        time: alepha.inject(DateTimeProvider),
+        calls: () => calls,
+      };
+    };
+
+    it("expires a token whose lifetime is a numeric string", async ({
+      expect,
+    }) => {
+      const { serviceAccount, time, calls } = setup("3600");
+
+      expect(await serviceAccount.token()).toBe("token-1");
+      await time.travel([30, "minutes"]);
+      expect(await serviceAccount.token()).toBe("token-1");
+      expect(calls()).toBe(1);
+
+      await time.travel([2, "days"]);
+      expect(await serviceAccount.token()).toBe("token-2");
+      expect(calls()).toBe(2);
+    });
+
+    it("expires a token whose lifetime is a number, whatever issue time the provider sent", async ({
+      expect,
+    }) => {
+      const { serviceAccount, time } = setup(3600);
+
+      expect(await serviceAccount.token()).toBe("token-1");
+      await time.travel([2, "hours"]);
+      expect(await serviceAccount.token()).toBe("token-2");
+    });
+
+    for (const expiresIn of ["soon", -60, "-60", true]) {
+      it(`returns a token whose lifetime is ${JSON.stringify(expiresIn)} without caching it`, async ({
+        expect,
+      }) => {
+        const { serviceAccount, calls } = setup(expiresIn);
+
+        expect(await serviceAccount.token()).toBe("token-1");
+        expect(await serviceAccount.token()).toBe("token-2");
+        expect(calls()).toBe(2);
+      });
+    }
   });
 });

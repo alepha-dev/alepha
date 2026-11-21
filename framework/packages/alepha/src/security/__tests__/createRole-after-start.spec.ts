@@ -1,20 +1,17 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { SecurityError, SecurityProvider } from "../index.ts";
 
 /**
- * Bug #1: Multi-layer Wildcard Permission Validation Fails After App Start
- *
- * Issue: When creating roles with multi-layer wildcard permissions (e.g., "admin:api:*")
- * after app.start(), the validation logic only checked if parts[1] === "*", which fails
- * for deeper wildcards.
- *
- * Expected: Multi-layer wildcards should be validated correctly by checking if any
- * permission exists with the matching group prefix.
+ * `createRole` after the application started: every permission a role names
+ * must exist in the registry, and a wildcard (`admin:api:*`, at any depth)
+ * must cover at least one registered permission.
  */
-describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", () => {
-  it("should allow creating role with 2-layer wildcard after app start", async () => {
+describe("createRole after app start", () => {
+  it("should allow creating role with 2-layer wildcard after app start", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -35,7 +32,9 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("superuser", "hello:ho")).toEqual(true);
   });
 
-  it("should allow creating role with 3-layer wildcard after app start", async () => {
+  it("should allow creating role with 3-layer wildcard after app start", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -56,7 +55,9 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("api-admin", "admin:api:posts")).toEqual(true);
   });
 
-  it("should allow creating role with 4-layer wildcard after app start", async () => {
+  it("should allow creating role with 4-layer wildcard after app start", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -77,7 +78,7 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("api-v1-admin", "admin:api:v1:posts")).toEqual(true);
   });
 
-  it("should allow wildcard that matches nested groups", async () => {
+  it("should allow wildcard that matches nested groups", async ({ expect }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -101,7 +102,9 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("api-manager", "admin:api:posts:delete")).toEqual(true);
   });
 
-  it("should reject wildcard when no matching permissions exist", async () => {
+  it("should reject wildcard when no matching permissions exist", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -125,7 +128,7 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     ).toThrow(SecurityError);
   });
 
-  it("should allow global wildcard after app start", async () => {
+  it("should allow global wildcard after app start", async ({ expect }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -144,7 +147,9 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("admin", "anything")).toEqual(true);
   });
 
-  it("should allow exact permission match after app start", async () => {
+  it("should allow exact permission match after app start", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -163,7 +168,9 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("reader", "admin:api:users:read")).toEqual(true);
   });
 
-  it("should reject exact permission when it doesn't exist", async () => {
+  it("should reject exact permission when it doesn't exist", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -180,7 +187,9 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     ).toThrow(SecurityError);
   });
 
-  it("should handle mixed wildcards and exact permissions", async () => {
+  it("should handle mixed wildcards and exact permissions", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -205,7 +214,7 @@ describe("Bug #1: Multi-layer Wildcard Permission Validation After App Start", (
     expect(sec.can("mixed", "public:read")).toEqual(true);
   });
 
-  it("should handle wildcard at exact group level", async () => {
+  it("should handle wildcard at exact group level", async ({ expect }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 

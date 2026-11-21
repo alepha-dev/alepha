@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, type ExpectStatic, it } from "vitest";
 
-import { $issuer, $role, SecurityProvider } from "../index.ts";
+import { $issuer, $role, $secure, SecurityProvider } from "../index.ts";
 
 /**
  * `$role` and `$issuer` are class fields, so which one runs first is decided
@@ -24,7 +24,10 @@ describe("$role / $issuer declaration order", () => {
    * wrapped by the event manager, so the message that names the offending
    * declaration is on `cause`.
    */
-  const bootError = async (alepha: Alepha): Promise<string> => {
+  const bootError = async (
+    alepha: Alepha,
+    expect: ExpectStatic,
+  ): Promise<string> => {
     const error: any = await alepha.start().then(
       () => undefined,
       (e) => e,
@@ -33,7 +36,7 @@ describe("$role / $issuer declaration order", () => {
     return `${error.message} ${error.cause?.message ?? ""}`;
   };
 
-  it("attaches a role declared BEFORE its issuer", async () => {
+  it("attaches a role declared BEFORE its issuer", async ({ expect }) => {
     class Roles {
       editor = $role({ permissions: ["doc:read"] });
     }
@@ -50,7 +53,7 @@ describe("$role / $issuer declaration order", () => {
     expect(sec.getRoles("main").map((it) => it.name)).toContain("editor");
   });
 
-  it("attaches a role declared AFTER its issuer", async () => {
+  it("attaches a role declared AFTER its issuer", async ({ expect }) => {
     class Issuers {
       main = $issuer({ secret: "s" });
     }
@@ -67,15 +70,17 @@ describe("$role / $issuer declaration order", () => {
     expect(sec.getRoles("main").map((it) => it.name)).toContain("editor");
   });
 
-  it("fails the boot when a role names a realm nobody declared", async () => {
+  it("fails the boot when a role names a realm nobody declared", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
     const sec = alepha.inject(SecurityProvider);
     sec.createRole({ name: "operator", permissions: [] }, "noop");
 
-    expect(await bootError(alepha)).toMatch(/'noop'/);
+    expect(await bootError(alepha, expect)).toMatch(/'noop'/);
   });
 
-  it("resolves an issuer's string role reference", async () => {
+  it("resolves an issuer's string role reference", async ({ expect }) => {
     class Issuers {
       main = $issuer({ secret: "s", roles: ["editor"] });
     }
@@ -93,7 +98,9 @@ describe("$role / $issuer declaration order", () => {
     expect(sec.getRoles("main").map((it) => it.name)).toContain("editor");
   });
 
-  it("fails the boot when an issuer names a role nobody declared", async () => {
+  it("fails the boot when an issuer names a role nobody declared", async ({
+    expect,
+  }) => {
     class Issuers {
       main = $issuer({ secret: "s", roles: ["ghost"] });
     }
@@ -101,6 +108,78 @@ describe("$role / $issuer declaration order", () => {
     const alepha = Alepha.create();
     alepha.inject(Issuers);
 
-    expect(await bootError(alepha)).toMatch(/'ghost'/);
+    expect(await bootError(alepha, expect)).toMatch(/'ghost'/);
+  });
+
+  it("applies a role reference to the realm that replaces the placeholder of the same name", ({
+    expect,
+  }) => {
+    // A test container starts with a placeholder realm named `default`.
+    const alepha = Alepha.create();
+    const sec = alepha.inject(SecurityProvider);
+
+    sec.createRole({ name: "editor", permissions: [] }, "nowhere");
+    sec.referenceRole("default", "editor");
+    sec.createRealm({ name: "default", roles: [] });
+
+    expect(sec.getRoles("default").map((it) => it.name)).toEqual(["editor"]);
+  });
+
+  describe("roles replaced at runtime", () => {
+    const setup = async () => {
+      class App {
+        declared = $secure({ permissions: ["a:read"] });
+        realm = $issuer({ name: "app", secret: "s", roles: ["named"] });
+        admin = $role({ name: "admin", permissions: ["*"] });
+        viewer = $role({ name: "viewer", permissions: ["a:read"] });
+        named = $role({ name: "named", permissions: ["a:read"] });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      return { app, sec: alepha.inject(SecurityProvider) };
+    };
+
+    it("keeps a removed role removed when another role is declared later", async ({
+      expect,
+    }) => {
+      const { app, sec } = await setup();
+      expect(
+        sec
+          .getRoles("app")
+          .map((it) => it.name)
+          .sort(),
+      ).toEqual(["admin", "named", "viewer"]);
+
+      await app.realm.setRoles([
+        { name: "viewer", permissions: [{ name: "a:read" }] },
+      ]);
+      sec.createRole(
+        { name: "extra", permissions: [{ name: "a:read" }] },
+        "app",
+      );
+
+      // Neither `admin` nor `named` comes back, and `viewer` is listed once.
+      expect(sec.getRoles("app").map((it) => it.name)).toEqual([
+        "viewer",
+        "extra",
+      ]);
+      expect(() =>
+        sec.checkPermissionInRealm("app", "a:read", "admin"),
+      ).toThrow("Role 'admin' not found");
+    });
+
+    it("keeps a removed role removed when a role reference is recorded later", async ({
+      expect,
+    }) => {
+      const { sec } = await setup();
+
+      await sec.updateRealm("app", []);
+      sec.referenceRole("app", "viewer");
+
+      expect(sec.getRoles("app")).toEqual([]);
+    });
   });
 });
