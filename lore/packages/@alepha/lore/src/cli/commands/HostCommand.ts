@@ -1,5 +1,6 @@
 import type {
   AdminHostController,
+  AgentHostController,
   HostCommandController,
   HostController,
   ProjectHostController,
@@ -75,6 +76,7 @@ export class HostCommand {
   protected readonly commands = $client<HostCommandController>(
     this.client.scope(),
   );
+  protected readonly agents = $client<AgentHostController>(this.client.scope());
 
   protected readonly projectFlag = z
     .text({
@@ -746,6 +748,18 @@ export class HostCommand {
             "How often the machine reports CPU and memory (5m, 30m, 1h, up to 1d)",
         })
         .optional(),
+      "allow-jobs": z
+        .boolean()
+        .describe(
+          "Let Lore run one-shot jobs on it, agent jobs first; --no-allow-jobs turns jobs off, and the Agent host with them",
+        )
+        .optional(),
+      "agent-host": z
+        .boolean()
+        .describe(
+          "Make it an Agent host, which runs Claude Code jobs and is checked with a one-turn prompt; needs jobs allowed",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -755,6 +769,12 @@ export class HostCommand {
           ...(flags["allow-deploys"] === undefined
             ? {}
             : { deployAllowed: flags["allow-deploys"] }),
+          ...(flags["allow-jobs"] === undefined
+            ? {}
+            : { jobsAllowed: flags["allow-jobs"] }),
+          ...(flags["agent-host"] === undefined
+            ? {}
+            : { agentHost: flags["agent-host"] }),
           ...(flags.label === undefined ? {} : { label: flags.label }),
           ...(flags.ttl === undefined
             ? {}
@@ -763,7 +783,7 @@ export class HostCommand {
         };
         if (Object.keys(body).length === 0) {
           throw new UsageError(
-            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --label, --ttl, --stats-history, --no-stats-history or --stats-interval.",
+            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --allow-jobs, --agent-host, --label, --ttl, --stats-history, --no-stats-history or --stats-interval.",
           );
         }
         const { project, projectId } = await this.projects.named(
@@ -779,7 +799,7 @@ export class HostCommand {
           print,
           flags.output,
           updated,
-          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}${updated.statsIntervalSeconds ? `, stats every ${this.intervalLabel(updated.statsIntervalSeconds)}${updated.collectSeries ? " with history" : ""}` : ""}`,
+          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}, jobs ${updated.jobsAllowed ? "allowed" : "off"}${updated.agentHost ? ", Agent host" : ""}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}${updated.statsIntervalSeconds ? `, stats every ${this.intervalLabel(updated.statsIntervalSeconds)}${updated.collectSeries ? " with history" : ""}` : ""}`,
         );
       });
     },
@@ -1151,6 +1171,100 @@ export class HostCommand {
     },
   });
 
+  /**
+   * `lore host check <slug>`: checks an Agent host now (#Q3985), the
+   * one-turn prompt the daily pass sends.
+   */
+  public readonly check = $command({
+    name: "check",
+    description:
+      "Check an Agent host now: Claude Code is asked to reply OK, and the host says available or not, with the CLI's message",
+    args: z.text({
+      title: "host",
+      description:
+        "The host's slug, among the hosts the project is the home of",
+    }),
+    flags: z.object({ project: this.projectFlag, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        const { id } = await this.owned.managed(args, projectId, project);
+        const started = await this.agents.checkAgentHost({
+          params: { hostId: id },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          started,
+          started.jobId
+            ? `Checking ${args}: job ${started.jobId} (lore job get ${started.jobId})`
+            : `A check of ${args} is already queued or running`,
+        );
+      });
+    },
+  });
+
+  /**
+   * `lore host agent [<slug>] [--clear]`: the project's default Agent host
+   * (#Q3985), its own or a lent one.
+   */
+  public readonly agent = $command({
+    name: "agent",
+    description:
+      "Name the project's default Agent host, the one its agent jobs run on; --clear names none",
+    args: z
+      .text({
+        title: "host",
+        description:
+          "The Agent host's slug, among the project's own hosts and the ones lent to it",
+      })
+      .optional(),
+    flags: z.object({
+      project: this.projectFlag,
+      clear: z
+        .boolean()
+        .describe("Name no default Agent host, which hides the agent buttons")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        if (!args && !flags.clear) {
+          throw new UsageError("Name an Agent host, or pass --clear.");
+        }
+        const { projectId } = await this.projects.named(flags.project, context);
+        let hostId: string | null = null;
+        if (args) {
+          const { items } = await this.lending.listProjectHosts({
+            params: { projectId },
+          });
+          const host = items.find((item) => item.slug === args);
+          if (!host) {
+            throw new UsageError(
+              `No host named ${args} among the project's own and lent hosts.`,
+            );
+          }
+          hostId = host.id;
+        }
+        const set = await this.agents.setProjectAgentHost({
+          params: { projectId },
+          body: { hostId },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          set,
+          hostId ? `Agent jobs run on ${args}` : "No default Agent host",
+        );
+      });
+    },
+  });
+
   public readonly host = $command({
     name: "host",
     description:
@@ -1165,6 +1279,8 @@ export class HostCommand {
       this.lend,
       this.unlend,
       this.update,
+      this.check,
+      this.agent,
       this.upgrade,
       this.rotate,
       this.move,

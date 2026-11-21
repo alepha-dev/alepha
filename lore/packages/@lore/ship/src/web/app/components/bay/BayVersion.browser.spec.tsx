@@ -66,6 +66,7 @@ const host = (overrides: Partial<OwnedHostResource> = {}): OwnedHostResource =>
     overdue: false,
     deployAllowed: true,
     jobsAllowed: false,
+    agentHost: false,
     collectSeries: false,
     statsIntervalSeconds: 1800,
     acceptedRuntimes: ["node"],

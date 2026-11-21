@@ -241,6 +241,8 @@ describe("the Lore CLI command surface", () => {
         "lend",
         "unlend",
         "update",
+        "check",
+        "agent",
         "upgrade",
         "rotate",
         "move",

@@ -3053,6 +3053,26 @@ export default {
   "jobs.log.empty": "Nothing printed yet.",
   "jobs.log.truncated":
     "The host stopped keeping this job's output at its size cap.",
+  "hosts.agent.switch": "Agent host",
+  "hosts.agent.switch.description":
+    "Runs Claude Code jobs for its projects, with a credential set up by hand for Bay's jobs user. Lore never sees it, and checks the host daily with a one-turn prompt.",
+  "hosts.agent.switch.needsJobs":
+    "Allow jobs on this host first: an Agent host runs Claude Code as one.",
+  "hosts.agent.status.unknown": "Not checked yet",
+  "hosts.agent.status.checking": "Checking",
+  "hosts.agent.status.available": "Available",
+  "hosts.agent.status.unavailable": "Unavailable",
+  "hosts.agent.check": "Check now",
+  "hosts.agent.credential.oauth": "OAuth token",
+  "hosts.agent.credential.api_key": "API key",
+  "hosts.agent.default": "Default Agent host",
+  "hosts.agent.default.description":
+    "The Agent host this project's agent jobs run on. Without one, the agent buttons are hidden.",
+  "hosts.agent.default.none":
+    "No Agent host is available to this project: make one of its hosts an Agent host, or borrow one.",
+  "hosts.agent.default.label": "Agent host",
+  "hosts.agent.default.empty": "None",
+  "hosts.agent.default.save": "Save",
   "account.hosts.switch.jobs": "Allow jobs",
   "account.hosts.switch.jobs.description":
     "One-shot jobs Lore starts on this machine, such as agent jobs. A job runs a repository's code here, under the jobs user Bay is configured with.",

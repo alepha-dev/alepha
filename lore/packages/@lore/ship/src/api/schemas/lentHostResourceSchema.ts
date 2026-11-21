@@ -22,6 +22,13 @@ export const lentHostResourceSchema = z.object({
   type: z.enum(HOST_TYPES),
   online: z.boolean(),
   deployAllowed: z.boolean(),
+  /**
+   * Whether it runs Claude Code jobs, and its last capability check
+   * (#Q3985): what a borrowing project picks its default Agent host from.
+   * Optional so an older reader's fixture still parses.
+   */
+  agentHost: z.boolean().optional(),
+  agentStatus: z.enum(["checking", "available", "unavailable"]).optional(),
   acceptedRuntimes: z.array(z.string()),
   /**
    * Cloudflare only, and the one thing a member deciding whether to deploy

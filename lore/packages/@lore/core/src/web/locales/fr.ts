@@ -3061,6 +3061,26 @@ export default {
   "jobs.log.empty": "Rien d'affiché pour l'instant.",
   "jobs.log.truncated":
     "L'hôte a cessé de garder la sortie de cette tâche à sa taille maximale.",
+  "hosts.agent.switch": "Hôte d'agent",
+  "hosts.agent.switch.description":
+    "Exécute des tâches Claude Code pour ses projets, avec un identifiant configuré à la main pour l'utilisateur de tâches de Bay. Lore ne le voit jamais, et vérifie l'hôte chaque jour avec une requête en un tour.",
+  "hosts.agent.switch.needsJobs":
+    "Autorisez d'abord les tâches sur cet hôte : un hôte d'agent exécute Claude Code comme une tâche.",
+  "hosts.agent.status.unknown": "Pas encore vérifié",
+  "hosts.agent.status.checking": "Vérification",
+  "hosts.agent.status.available": "Disponible",
+  "hosts.agent.status.unavailable": "Indisponible",
+  "hosts.agent.check": "Vérifier",
+  "hosts.agent.credential.oauth": "Jeton OAuth",
+  "hosts.agent.credential.api_key": "Clé d'API",
+  "hosts.agent.default": "Hôte d'agent par défaut",
+  "hosts.agent.default.description":
+    "L'hôte d'agent sur lequel tournent les tâches d'agent de ce projet. Sans lui, les boutons d'agent sont masqués.",
+  "hosts.agent.default.none":
+    "Aucun hôte d'agent n'est disponible pour ce projet : faites de l'un de ses hôtes un hôte d'agent, ou empruntez-en un.",
+  "hosts.agent.default.label": "Hôte d'agent",
+  "hosts.agent.default.empty": "Aucun",
+  "hosts.agent.default.save": "Enregistrer",
   "account.hosts.switch.jobs": "Autoriser les tâches",
   "account.hosts.switch.jobs.description":
     "Les tâches ponctuelles que Lore lance sur cette machine, comme les tâches d'agent. Une tâche exécute ici le code d'un dépôt, sous l'utilisateur de tâches configuré dans Bay.",

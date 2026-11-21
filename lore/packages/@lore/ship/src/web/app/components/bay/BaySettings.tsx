@@ -24,6 +24,7 @@ import type { ProjectHostController } from "../../../../api/controllers/ProjectH
 import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
+import BayAgentHost from "./BayAgentHost.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
@@ -216,6 +217,7 @@ const BaySettings = () => {
           projectTitle={host.project?.title ?? tr("hosts.project.noHome")}
         />
       )}
+      <BayAgentHost canUpdate={canUpdate} />
       {canUpdate && (
         <Card>
           <CardContent className="flex flex-col gap-4">
