@@ -96,7 +96,7 @@ describe("CookieParser", () => {
     }) => {
       // A browser only drops a cookie when the deletion matches its Path and
       // Domain. Emitting a bare `Path=/` meant a `$cookie({ path: "/admin" })`
-      // — or any domain-scoped cookie — could never be deleted.
+      // (or any domain-scoped cookie) could never be deleted.
       const cookies: Record<string, Cookie | null> = {
         session: {
           value: "",

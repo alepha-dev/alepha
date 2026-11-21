@@ -15,8 +15,12 @@ import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
 class LegacyCookiesProvider extends ServerCookiesProvider {
   public legacyValue(data: { data: string }): string {
     const compressed = deflateRawSync(JSON.stringify(data)).toString("base64");
-    const iv = randomBytes(this.IV_LENGTH);
-    const cipher = createCipheriv(this.ALGORITHM, this.deriveKey(), iv);
+    const iv = randomBytes(ServerCookiesProvider.IV_LENGTH);
+    const cipher = createCipheriv(
+      ServerCookiesProvider.ALGORITHM,
+      this.deriveKey(),
+      iv,
+    );
     const encrypted = Buffer.concat([
       cipher.update(compressed, "utf8"),
       cipher.final(),

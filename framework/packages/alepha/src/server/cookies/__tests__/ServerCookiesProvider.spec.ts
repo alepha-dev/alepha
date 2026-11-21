@@ -1,11 +1,10 @@
+import { randomBytes } from "node:crypto";
+
 import { Alepha, z } from "alepha";
-import { $action, AlephaServer } from "alepha/server";
-import { describe, expect, test } from "vitest";
+import { $action, $route, AlephaServer, ServerProvider } from "alepha/server";
+import { describe, it } from "vitest";
 
 import { $cookie, AlephaServerCookies } from "../index.ts";
-
-// A strong, 32-character secret for testing purposes
-const TEST_COOKIE_SECRET = "DCf6DvpLAfwy8XdPRucMO4tPS6dVCHob";
 
 // --- Test Application Setup ---
 
@@ -40,6 +39,13 @@ class CookieTestApp {
     ttl: [1, "hour"],
   });
 
+  // 5. A value over one cookie's worth, written as chunks
+  large = $cookie({
+    name: "large",
+    schema: z.object({ data: z.text({ size: "rich" }) }),
+    encrypt: true,
+  });
+
   // An action to test the cookie functionality in a request cycle
   cookie_test = $action({
     path: "/cookie_test",
@@ -54,32 +60,75 @@ class CookieTestApp {
       }),
     },
     handler: ({ cookies }) => {
+      // Read a cookie from the request, before anything is written: a read
+      // sees what the response has set since.
+      const incomingSession = this.session.get({ cookies });
+      // The request's cookies alone, for a spec to read them back.
+      const reqCookies = { req: { ...cookies.req }, res: {} };
+
       // Set some cookies
       this.session.set({ userId: 123, role: "admin" });
       this.signed.set("i-am-signed");
       this.encrypted.set({ apiKey: "secret-key" });
       this.secure_all.set({ data: "super sensitive data" });
 
-      // Read a cookie from the request
-      const incomingSession = this.session.get({ cookies });
-
       // Delete a cookie
       if (incomingSession?.role === "guest") {
         this.signed.del();
       }
 
-      return { incomingSession, reqCookies: cookies };
+      return { incomingSession, reqCookies };
+    },
+  });
+
+  // What a read answers after a write or a delete in the same request.
+  read_your_writes = $action({
+    path: "/read_your_writes",
+    method: "GET",
+    schema: {
+      response: z.object({
+        before: z.text().optional(),
+        afterSet: z.text().optional(),
+        afterDel: z.text().optional(),
+        afterSetAgain: z.text().optional(),
+        afterExpiredSet: z.text().optional(),
+        large: z.number().optional(),
+        largeAfterDel: z.number().optional(),
+      }),
+    },
+    handler: () => {
+      const before = this.signed.get();
+      this.signed.set("second");
+      const afterSet = this.signed.get();
+      this.signed.del();
+      const afterDel = this.signed.get();
+      this.signed.set("third");
+      const afterSetAgain = this.signed.get();
+
+      // A lifetime already over: a browser drops the cookie on arrival.
+      this.signed.set("fourth", { ttl: [-1, "seconds"] });
+      const afterExpiredSet = this.signed.get();
+
+      // Over one cookie's worth: written and read back as chunks.
+      this.large.set({ data: randomBytes(6000).toString("base64url") });
+      const large = this.large.get()?.data.length;
+      this.large.del();
+      const largeAfterDel = this.large.get()?.data.length;
+
+      return {
+        before,
+        afterSet,
+        afterDel,
+        afterSetAgain,
+        afterExpiredSet,
+        large,
+        largeAfterDel,
+      };
     },
   });
 }
 
-const alepha = Alepha.create({
-  env: {
-    COOKIE_SECRET: TEST_COOKIE_SECRET,
-  },
-})
-  .with(AlephaServer)
-  .with(AlephaServerCookies);
+const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCookies);
 
 const app = alepha.inject(CookieTestApp);
 
@@ -100,21 +149,21 @@ const makeRequest = async (incomingCookieHeader = "") => {
 };
 
 describe("ServerCookiesProvider", () => {
-  test("should set and get a basic cookie", async () => {
+  it("should set and get a basic cookie", async ({ expect }) => {
     const { data, setCookieHeader } = await makeRequest();
 
     // The handler receives no initial cookie
     expect(data.incomingSession).toBeUndefined();
 
     // Check if the response sets the cookie correctly
-    expect(setCookieHeader).toBeDefined();
+    expect(setCookieHeader).not.toBeNull();
     const decodedValue = JSON.parse(
       decodeURIComponent(setCookieHeader!.match(/session=([^;]*)/)![1]),
     );
     expect(decodedValue).toEqual({ userId: 123, role: "admin" });
   });
 
-  test("should correctly read an incoming cookie", async () => {
+  it("should correctly read an incoming cookie", async ({ expect }) => {
     const sessionData = { userId: 456, role: "user" };
     const cookieHeader = `app.session=${encodeURIComponent(JSON.stringify(sessionData))}`;
 
@@ -124,7 +173,7 @@ describe("ServerCookiesProvider", () => {
     expect(data.incomingSession).toEqual(sessionData);
   });
 
-  test("should set and get a signed cookie", async () => {
+  it("should set and get a signed cookie", async ({ expect }) => {
     const { setCookieHeader } = await makeRequest();
     const signedCookie = setCookieHeader!.match(/signed_session=([^;]*)/)![1];
 
@@ -135,7 +184,7 @@ describe("ServerCookiesProvider", () => {
     expect(app.signed.get({ cookies: data.reqCookies })).toBe("i-am-signed");
   });
 
-  test("should reject a tampered signed cookie", async () => {
+  it("should reject a tampered signed cookie", async ({ expect }) => {
     const { setCookieHeader } = await makeRequest();
     let tamperedCookie = setCookieHeader!.match(/signed_session=([^;]*)/)![1];
     tamperedCookie += "tampered"; // alter the cookie value
@@ -146,7 +195,7 @@ describe("ServerCookiesProvider", () => {
     expect(app.signed.get({ cookies: data.reqCookies })).toBeUndefined();
   });
 
-  test("should set and get an encrypted cookie", async () => {
+  it("should set and get an encrypted cookie", async ({ expect }) => {
     const { setCookieHeader } = await makeRequest();
     const encryptedCookie = setCookieHeader!.match(
       /encrypted_secret=([^;]*)/,
@@ -164,7 +213,7 @@ describe("ServerCookiesProvider", () => {
     });
   });
 
-  test("should reject a tampered encrypted cookie", async () => {
+  it("should reject a tampered encrypted cookie", async ({ expect }) => {
     const { setCookieHeader } = await makeRequest();
     const tamperedCookie = setCookieHeader!.match(
       /encrypted_secret=([^;]*)/,
@@ -178,7 +227,9 @@ describe("ServerCookiesProvider", () => {
     expect(app.encrypted.get({ cookies: data.reqCookies })).toBeUndefined();
   });
 
-  test("should handle a combination of compress, sign, and encrypt", async () => {
+  it("should handle a combination of compress, sign, and encrypt", async ({
+    expect,
+  }) => {
     const { setCookieHeader } = await makeRequest();
     const secureCookie = setCookieHeader!.match(/ultra_secure=([^;]*)/)![1];
 
@@ -189,7 +240,7 @@ describe("ServerCookiesProvider", () => {
     });
   });
 
-  test("should delete a cookie", async () => {
+  it("should delete a cookie", async ({ expect }) => {
     const sessionData = { userId: 789, role: "guest" };
     const cookieHeader = `app.session=${encodeURIComponent(JSON.stringify(sessionData))}`;
 
@@ -199,7 +250,33 @@ describe("ServerCookiesProvider", () => {
     expect(setCookieHeader).toContain("signed_session=; Path=/; Max-Age=0");
   });
 
-  test("should serialize all cookie attributes correctly", async () => {
+  it("reads a cookie as the request left it: set, deleted, set again", async ({
+    expect,
+  }) => {
+    const { setCookieHeader } = await makeRequest();
+    const signedCookie = setCookieHeader!.match(/signed_session=([^;]*)/)![1];
+
+    const response = await app.read_your_writes.fetch(
+      {},
+      {
+        request: {
+          headers: { cookie: `app.signed_session=${signedCookie}` },
+        },
+      },
+    );
+
+    expect(response.data).toEqual({
+      before: "i-am-signed",
+      afterSet: "second",
+      afterDel: undefined,
+      afterSetAgain: "third",
+      afterExpiredSet: undefined,
+      large: 8000,
+      largeAfterDel: undefined,
+    });
+  });
+
+  it("should serialize all cookie attributes correctly", async ({ expect }) => {
     class AttrApp {
       advanced = $cookie({
         name: "advanced",
@@ -220,9 +297,7 @@ describe("ServerCookiesProvider", () => {
       });
     }
 
-    const attrAlepha = Alepha.create({
-      env: { COOKIE_SECRET: TEST_COOKIE_SECRET },
-    })
+    const attrAlepha = Alepha.create()
       .with(AlephaServer)
       .with(AlephaServerCookies)
       .with(AttrApp);
@@ -265,14 +340,14 @@ describe("ServerCookiesProvider", () => {
     }
 
     const makeApp = (appName: string) =>
-      Alepha.create({
-        env: { COOKIE_SECRET: TEST_COOKIE_SECRET, APP_NAME: appName },
-      })
+      Alepha.create({ env: { APP_NAME: appName } })
         .with(AlephaServer)
         .with(AlephaServerCookies)
         .with(TokenApp);
 
-    test("prefixes the cookie name with the lowercased APP_NAME", async () => {
+    it("prefixes the cookie name with the lowercased APP_NAME", async ({
+      expect,
+    }) => {
       const appA = makeApp("AppA");
       await appA.start();
 
@@ -284,8 +359,10 @@ describe("ServerCookiesProvider", () => {
       expect(setCookieHeader).not.toMatch(/(^|; )tokens=/);
     });
 
-    test("prefixes with alepha.name when APP_NAME is unset: never the bare name", async () => {
-      const app = Alepha.create({ env: { COOKIE_SECRET: TEST_COOKIE_SECRET } })
+    it("prefixes with alepha.name when APP_NAME is unset: never the bare name", async ({
+      expect,
+    }) => {
+      const app = Alepha.create()
         .with(AlephaServer)
         .with(AlephaServerCookies)
         .with(TokenApp);
@@ -299,7 +376,7 @@ describe("ServerCookiesProvider", () => {
       expect(setCookieHeader).not.toMatch(/(^|; )tokens=/);
     });
 
-    test("two apps sharing a cookie jar do not collide", async () => {
+    it("two apps sharing a cookie jar do not collide", async ({ expect }) => {
       const appA = makeApp("AppA");
       const appB = makeApp("AppB");
       await appA.start();
@@ -311,7 +388,7 @@ describe("ServerCookiesProvider", () => {
         .get("set-cookie")!
         .match(/appa\.tokens=([^;]*)/)![1];
 
-      // App A reads its own cookie back from the shared jar — works.
+      // App A reads its own cookie back from the shared jar: works.
       const incoming = `appa.tokens=${cookieA}`;
       const readA = await appA
         .inject(TokenApp)
@@ -319,7 +396,7 @@ describe("ServerCookiesProvider", () => {
       expect(readA.data.value).toBe("from-app");
 
       // App B sees the SAME jar (same host:localhost), but reads under
-      // "appb.tokens" — so App A's cookie is invisible to it. No collision,
+      // "appb.tokens", so App A's cookie is invisible to it. No collision,
       // no failed-decrypt-then-delete logout.
       const readB = await appB
         .inject(TokenApp)
@@ -328,8 +405,8 @@ describe("ServerCookiesProvider", () => {
     });
 
     /**
-     * The browser `$cookie` variant cannot see `APP_NAME` — it is neither
-     * bundled nor hydrated — so it always reads and writes the bare name. A
+     * The browser `$cookie` variant cannot see `APP_NAME` (it is neither
+     * bundled nor hydrated), so it always reads and writes the bare name. A
      * cookie shared between the two sides (i18n's `lang`, the UI theme) must
      * therefore opt out of the namespace: left prefixed, the server writes and
      * looks for `appa.lang` while the browser writes `lang`, and neither side
@@ -360,14 +437,12 @@ describe("ServerCookiesProvider", () => {
       }
 
       const makePrefApp = () =>
-        Alepha.create({
-          env: { COOKIE_SECRET: TEST_COOKIE_SECRET, APP_NAME: "AppA" },
-        })
+        Alepha.create({ env: { APP_NAME: "AppA" } })
           .with(AlephaServer)
           .with(AlephaServerCookies)
           .with(PrefApp);
 
-      test("the server writes it under the bare name", async () => {
+      it("the server writes it under the bare name", async ({ expect }) => {
         const app = makePrefApp();
         await app.start();
 
@@ -378,7 +453,7 @@ describe("ServerCookiesProvider", () => {
         expect(setCookieHeader).not.toContain("appa.lang=");
       });
 
-      test("the server reads back what the browser wrote", async () => {
+      it("the server reads back what the browser wrote", async ({ expect }) => {
         const app = makePrefApp();
         await app.start();
 
@@ -396,7 +471,41 @@ describe("ServerCookiesProvider", () => {
     });
   });
 
-  test("should delete a scoped cookie with its own path and domain", async () => {
+  it("keeps a Set-Cookie the handler wrote on the reply itself", async ({
+    expect,
+  }) => {
+    class RawApp {
+      session = $cookie({ name: "session", schema: z.text() });
+
+      mixed = $route({
+        path: "/mixed",
+        handler: ({ reply }) => {
+          reply.headers["set-cookie"] = ["raw=1; Path=/"];
+          this.session.set("value");
+          return "ok";
+        },
+      });
+    }
+
+    const rawAlepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
+      .with(AlephaServer)
+      .with(AlephaServerCookies)
+      .with(RawApp);
+    await rawAlepha.start();
+
+    const response = await fetch(
+      `${rawAlepha.inject(ServerProvider).hostname}/mixed`,
+    );
+
+    expect(response.headers.getSetCookie()).toEqual([
+      "raw=1; Path=/",
+      "app.session=%22value%22; Path=/; SameSite=lax",
+    ]);
+  });
+
+  it("should delete a scoped cookie with its own path and domain", async ({
+    expect,
+  }) => {
     // The deletion must carry the same Path and Domain the cookie was written
     // with, or the browser keeps it.
     class ScopedApp {
@@ -431,23 +540,4 @@ describe("ServerCookiesProvider", () => {
     expect(header).toContain("Domain=.example.com");
     expect(header).toContain("Max-Age=0");
   });
-
-  // test("should throw if secret is missing for secure cookies", async () => {
-  // 	class AppWithMissingSecret {
-  // 		badCookie = $cookie({
-  // 			name: "bad",
-  // 			schema: z.text(),
-  // 			sign: true,
-  // 		});
-  // 	}
-  //
-  // 	const alephaWithoutSecret = Alepha.create()
-  // 		.with(AlephaServer)
-  // 		.with(AlephaServerCookies)
-  // 		.with(AppWithMissingSecret);
-  //
-  // 	await expect(() => alephaWithoutSecret.start()).rejects.toThrow(
-  // 		/COOKIE_SECRET environment variable is not set/,
-  // 	);
-  // });
 });

@@ -2,7 +2,7 @@ import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { SecurityError, type UserAccount } from "alepha/security";
 import { $route, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -26,6 +26,20 @@ class TestServerAuthProvider extends ServerAuthProvider {
 
   public testTokenCookieTtl(tokens: any) {
     return this.tokenCookieTtl(tokens);
+  }
+
+  /**
+   * What the login route kept for the callback, read from the response's
+   * `Set-Cookie` as the browser would send it back.
+   */
+  public testAuthorizationCode(response: Response) {
+    const req: Record<string, string> = {};
+    for (const line of response.headers.getSetCookie()) {
+      const pair = line.split(";")[0]!;
+      const index = pair.indexOf("=");
+      req[pair.slice(0, index)] = pair.slice(index + 1);
+    }
+    return this.authorizationCode.get({ cookies: { req, res: {} } });
   }
 }
 
@@ -116,7 +130,7 @@ describe("alepha.server.ServerAuthProvider", () => {
   };
 
   describe("getAuthenticationProviders", () => {
-    it("should return enabled providers with their types", () => {
+    it("should return enabled providers with their types", ({ expect }) => {
       const { auth } = createApp();
 
       const providers = auth.testGetAuthenticationProviders();
@@ -131,7 +145,7 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(githubProv?.type).toBe("OAUTH2");
     });
 
-    it("should filter by realm", () => {
+    it("should filter by realm", ({ expect }) => {
       const { auth } = createApp();
 
       const providers = auth.testGetAuthenticationProviders({
@@ -145,7 +159,7 @@ describe("alepha.server.ServerAuthProvider", () => {
       }
     });
 
-    it("should return empty for unknown realm", () => {
+    it("should return empty for unknown realm", ({ expect }) => {
       const { auth } = createApp();
 
       const providers = auth.testGetAuthenticationProviders({
@@ -156,14 +170,14 @@ describe("alepha.server.ServerAuthProvider", () => {
   });
 
   describe("provider lookup", () => {
-    it("should find provider by name", () => {
+    it("should find provider by name", ({ expect }) => {
       const { auth } = createApp();
 
       const provider = auth.testProvider("credentials");
       expect(provider.name).toBe("credentials");
     });
 
-    it("should find provider by name and realm", () => {
+    it("should find provider by name and realm", ({ expect }) => {
       const { auth } = createApp();
 
       const provider = auth.testProvider({
@@ -173,13 +187,15 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(provider.name).toBe("credentials");
     });
 
-    it("should throw SecurityError for unknown provider", () => {
+    it("should throw SecurityError for unknown provider", ({ expect }) => {
       const { auth } = createApp();
 
       expect(() => auth.testProvider("unknown")).toThrow(SecurityError);
     });
 
-    it("should throw SecurityError for provider with wrong realm", () => {
+    it("should throw SecurityError for provider with wrong realm", ({
+      expect,
+    }) => {
       const { auth } = createApp();
 
       expect(() =>
@@ -187,7 +203,7 @@ describe("alepha.server.ServerAuthProvider", () => {
       ).toThrow(SecurityError);
     });
 
-    it("should not find disabled providers", () => {
+    it("should not find disabled providers", ({ expect }) => {
       const { auth } = createApp();
 
       expect(() => auth.testProvider("google")).toThrow(SecurityError);
@@ -195,7 +211,7 @@ describe("alepha.server.ServerAuthProvider", () => {
   });
 
   describe("refreshTokens", () => {
-    it("should return tokens when not expired", async () => {
+    it("should return tokens when not expired", async ({ expect }) => {
       const { auth, time } = createApp();
       const now = time.now().unix();
 
@@ -211,7 +227,9 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(result).toEqual(tokens);
     });
 
-    it("should refresh expired tokens with refresh_token", async () => {
+    it("should refresh expired tokens with refresh_token", async ({
+      expect,
+    }) => {
       const { auth, time } = createApp();
       const now = time.now().unix();
 
@@ -227,7 +245,9 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(result?.access_token).toBe("new-access-token");
     });
 
-    it("should return undefined for expired tokens without refresh_token", async () => {
+    it("should return undefined for expired tokens without refresh_token", async ({
+      expect,
+    }) => {
       const { auth, time } = createApp();
       const now = time.now().unix();
 
@@ -242,7 +262,9 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(result).toBeUndefined();
     });
 
-    it("should return undefined when no issued_at and has access_token", async () => {
+    it("should return undefined when no issued_at and has access_token", async ({
+      expect,
+    }) => {
       const { auth } = createApp();
 
       const tokens = {
@@ -276,7 +298,7 @@ describe("alepha.server.ServerAuthProvider", () => {
       return Alepha.create().with(FallbackApp).with(ServerAuthProvider);
     };
 
-    it("should use a string fallback token", async () => {
+    it("should use a string fallback token", async ({ expect }) => {
       const alepha = createFallbackApp(() => "static-token");
       await alepha.start();
 
@@ -286,10 +308,10 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(body).toBe("Bearer static-token");
     });
 
-    it("should resolve the object fallback form", async () => {
+    it("should resolve the object fallback form", async ({ expect }) => {
       // `AccessToken` allows `{ token: () => Async<string> }` and the JSDoc
       // example passes a `$serviceAccount`, but the value was interpolated
-      // straight into the header — the documented form produced
+      // straight into the header: the documented form produced
       // `Bearer [object Object]`.
       const alepha = createFallbackApp(() => ({
         token: async () => "service-account-token",
@@ -341,7 +363,7 @@ describe("alepha.server.ServerAuthProvider", () => {
         .with({ provide: ServerAuthProvider, use: CookieTokenProvider });
     };
 
-    it("should keep an explicit Authorization header", async () => {
+    it("should keep an explicit Authorization header", async ({ expect }) => {
       const alepha = createApp();
       await alepha.start();
 
@@ -358,7 +380,9 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(body).toBe("Bearer service-account-token");
     });
 
-    it("should fall back to the cookie when no header is sent", async () => {
+    it("should fall back to the cookie when no header is sent", async ({
+      expect,
+    }) => {
       const alepha = createApp();
       await alepha.start();
 
@@ -374,7 +398,7 @@ describe("alepha.server.ServerAuthProvider", () => {
   });
 
   describe("token cookie ttl", () => {
-    it("should use the reported refresh token expiry", () => {
+    it("should use the reported refresh token expiry", ({ expect }) => {
       const { auth } = createApp();
 
       const ttl = auth.testTokenCookieTtl({
@@ -387,9 +411,11 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(ttl?.asSeconds()).toBe(60 * 60 * 24 * 30);
     });
 
-    it("should defer to the cookie default when only expires_in is reported", () => {
+    it("should defer to the cookie default when only expires_in is reported", ({
+      expect,
+    }) => {
       // Google returns `expires_in: 3600` and no refresh expiry alongside a
-      // long-lived refresh token — using it as the cookie Max-Age signed
+      // long-lived refresh token: using it as the cookie Max-Age signed
       // users out after an hour.
       const { auth } = createApp();
 
@@ -402,7 +428,7 @@ describe("alepha.server.ServerAuthProvider", () => {
       expect(ttl).toBeUndefined();
     });
 
-    it("should use expires_in when there is no refresh token", () => {
+    it("should use expires_in when there is no refresh token", ({ expect }) => {
       // Without a refresh token the session really does end with the access
       // token, so its lifetime is the right cookie lifetime.
       const { auth } = createApp();
@@ -417,10 +443,10 @@ describe("alepha.server.ServerAuthProvider", () => {
   });
 
   describe("login route", () => {
-    it("should not fail on a malformed Referer header", async () => {
+    it("should not fail on a malformed Referer header", async ({ expect }) => {
       // Browsers legitimately send a non-URL Referer from sandboxed origins,
-      // and `new URL(referer)` threw — turning the whole login into a 500.
-      const { alepha } = createApp();
+      // and `new URL(referer)` threw, turning the whole login into a 500.
+      const { alepha, auth } = createApp();
       await alepha.start();
 
       const hostname = alepha.inject(ServerProvider).hostname;
@@ -430,11 +456,16 @@ describe("alepha.server.ServerAuthProvider", () => {
         redirect: "manual",
       });
 
-      expect(res.status).toBeLessThan(500);
+      expect(res.status).toBe(302);
+      const kept = auth.testAuthorizationCode(res);
+      expect(kept?.provider).toBe("github");
+      expect(kept?.loginUri).toBeUndefined();
     });
 
-    it("should still capture the login uri from a valid Referer", async () => {
-      const { alepha } = createApp();
+    it("should still capture the login uri from a valid Referer", async ({
+      expect,
+    }) => {
+      const { alepha, auth } = createApp();
       await alepha.start();
 
       const hostname = alepha.inject(ServerProvider).hostname;
@@ -444,12 +475,15 @@ describe("alepha.server.ServerAuthProvider", () => {
         redirect: "manual",
       });
 
-      expect(res.status).toBeLessThan(500);
+      expect(res.status).toBe(302);
+      expect(auth.testAuthorizationCode(res)?.loginUri).toBe(
+        "/dashboard?tab=1",
+      );
     });
   });
 
   describe("identities", () => {
-    it("should return only enabled auth primitives", () => {
+    it("should return only enabled auth primitives", ({ expect }) => {
       const { auth } = createApp();
 
       const identities = auth.identities;

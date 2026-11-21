@@ -1,5 +1,5 @@
 import { $atom, Alepha, z } from "alepha";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 
 import { AtomCookiePersistence } from "../providers/AtomCookiePersistence.browser.ts";
 
@@ -35,7 +35,7 @@ describe("AtomCookiePersistence (browser)", () => {
     clearAllCookies();
   });
 
-  it("hydrates from an existing document.cookie on register", () => {
+  it("hydrates from an existing document.cookie on register", ({ expect }) => {
     document.cookie = `test.cookie.browser.read=${encodeURIComponent(
       JSON.stringify({ theme: "dark" }),
     )}; Path=/`;
@@ -53,7 +53,9 @@ describe("AtomCookiePersistence (browser)", () => {
     expect(alepha.store.get(prefs)).toEqual({ theme: "dark" });
   });
 
-  it("reads and writes an atom that registered BEFORE the adapter existed", async () => {
+  it("reads and writes an atom that registered BEFORE the adapter existed", async ({
+    expect,
+  }) => {
     // The `$module({ atoms, imports, services })` shape: `atoms[]` register
     // before `services[]` are injected, so the adapter never sees the
     // atom's one-shot `state:registered` event. Discovering atoms from the
@@ -85,7 +87,7 @@ describe("AtomCookiePersistence (browser)", () => {
     });
   });
 
-  it("falls back to the default when there is no cookie", () => {
+  it("falls back to the default when there is no cookie", ({ expect }) => {
     const prefs = $atom({
       name: "test.cookie.browser.none",
       schema,
@@ -99,7 +101,9 @@ describe("AtomCookiePersistence (browser)", () => {
     expect(alepha.store.get(prefs)).toEqual({ theme: "light" });
   });
 
-  it("writes document.cookie back on mutation, using the bare (unprefixed) atom key", () => {
+  it("writes document.cookie back on mutation, using the bare (unprefixed) atom key", ({
+    expect,
+  }) => {
     const prefs = $atom({
       name: "test.cookie.browser.write",
       schema,
@@ -117,13 +121,15 @@ describe("AtomCookiePersistence (browser)", () => {
 
     // No APP_NAME namespace: the browser cannot see APP_NAME (see this
     // class's JSDoc), and the server side (AtomCookiePersistence.ts)
-    // matches by passing `prefix: false` for atom cookies specifically —
+    // matches by passing `prefix: false` for atom cookies specifically:
     // see AtomCookiePersistence.spec.ts's "cookie-name symmetry with
     // APP_NAME set" suite for the server-side half of this proof.
     expect(readRawCookie("rdm.test.cookie.browser.write")).toBeUndefined();
   });
 
-  it("clears the cookie instead of writing the literal 'undefined' when the atom's value is cleared", () => {
+  it("clears the cookie instead of writing the literal 'undefined' when the atom's value is cleared", ({
+    expect,
+  }) => {
     const prefs = $atom({
       name: "test.cookie.browser.delete",
       schema,
@@ -142,12 +148,14 @@ describe("AtomCookiePersistence (browser)", () => {
     // `value === undefined` branch under test.
     alepha.store.set(prefs.key, undefined);
 
-    // Must be gone entirely — never the literal string "undefined", which
+    // Must be gone entirely, never the literal string "undefined", which
     // would make the next register()'s `JSON.parse("undefined")` throw.
     expect(readRawCookie("test.cookie.browser.delete")).toBeUndefined();
   });
 
-  it("clears a corrupted cookie instead of leaving it to throw on every future read", () => {
+  it("clears a corrupted cookie instead of leaving it to throw on every future read", ({
+    expect,
+  }) => {
     document.cookie = "test.cookie.browser.corrupt=not-json-at-all; Path=/";
 
     const prefs = $atom({

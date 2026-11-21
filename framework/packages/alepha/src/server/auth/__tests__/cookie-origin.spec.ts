@@ -1,8 +1,8 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccount } from "alepha/security";
 import { $route, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -25,7 +25,7 @@ const issuer = (now: () => number) =>
     }),
     refreshToken: async (refreshToken: string) => {
       if (refreshToken !== "refresh-agent") {
-        throw new Error("unknown refresh token");
+        throw new AlephaError("unknown refresh token");
       }
       return {
         tokens: {
@@ -91,7 +91,9 @@ const boot = async (corsOrigin?: string) => {
         body: JSON.stringify({ username: "agent", password: "secret" }),
       },
     );
-    expect(response.status).toBe(200);
+    if (response.status !== 200) {
+      throw new AlephaError(`Sign-in answered ${response.status}`);
+    }
     return tokensCookie(response)!;
   };
 
@@ -114,7 +116,9 @@ const boot = async (corsOrigin?: string) => {
 };
 
 describe("cookie credentials on a write need the app's own origin", () => {
-  it("refuses a same-site request, the sibling-subdomain hole", async () => {
+  it("refuses a same-site request, the sibling-subdomain hole", async ({
+    expect,
+  }) => {
     const { signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -126,7 +130,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(result.authorization).toBe("");
   });
 
-  it("refuses a cross-site request", async () => {
+  it("refuses a cross-site request", async ({ expect }) => {
     const { signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -138,7 +142,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(result.authorization).toBe("");
   });
 
-  it("accepts a same-origin request", async () => {
+  it("accepts a same-origin request", async ({ expect }) => {
     const { hostname, signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -150,7 +154,9 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(result.authorization).toBe("Bearer access-agent");
   });
 
-  it("checks Origin when Sec-Fetch-Site is absent: this host passes, another does not", async () => {
+  it("checks Origin when Sec-Fetch-Site is absent: this host passes, another does not", async ({
+    expect,
+  }) => {
     const { hostname, signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -165,7 +171,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(other.authorization).toBe("");
   });
 
-  it("accepts an origin CORS lists explicitly", async () => {
+  it("accepts an origin CORS lists explicitly", async ({ expect }) => {
     const { signIn, echo } = await boot("https://studio.example.com");
     const cookie = await signIn();
 
@@ -181,7 +187,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(withFetchMetadata.authorization).toBe("Bearer access-agent");
   });
 
-  it("does not trust the default wildcard CORS origin", async () => {
+  it("does not trust the default wildcard CORS origin", async ({ expect }) => {
     const { signIn, echo } = await boot("*");
     const cookie = await signIn();
 
@@ -192,7 +198,9 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(result.authorization).toBe("");
   });
 
-  it("converts the cookie as before when neither header is present", async () => {
+  it("converts the cookie as before when neither header is present", async ({
+    expect,
+  }) => {
     const { signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -201,7 +209,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(result.authorization).toBe("Bearer access-agent");
   });
 
-  it("never gates a safe method", async () => {
+  it("never gates a safe method", async ({ expect }) => {
     const { signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -213,7 +221,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
     expect(result.authorization).toBe("Bearer access-agent");
   });
 
-  it("leaves an explicit Authorization untouched", async () => {
+  it("leaves an explicit Authorization untouched", async ({ expect }) => {
     const { signIn, echo } = await boot();
     const cookie = await signIn();
 
@@ -227,7 +235,7 @@ describe("cookie credentials on a write need the app's own origin", () => {
 });
 
 describe("a refresh that omits refresh_token keeps the previous one", () => {
-  it("survives a second expiry on the cookie path", async () => {
+  it("survives a second expiry on the cookie path", async ({ expect }) => {
     const { clock, signIn, echo } = await boot();
     let cookie = await signIn();
 
@@ -244,7 +252,9 @@ describe("a refresh that omits refresh_token keeps the previous one", () => {
     expect(second.authorization).not.toBe(first.authorization);
   });
 
-  it("keeps refresh_token and id_token on /_auth/refresh", async () => {
+  it("keeps refresh_token and id_token on /_auth/refresh", async ({
+    expect,
+  }) => {
     const { hostname, signIn } = await boot();
     const cookie = await signIn();
 

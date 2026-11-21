@@ -2,7 +2,7 @@ import { Alepha } from "alepha";
 import type { UserAccount } from "alepha/security";
 import { ServerProvider } from "alepha/server";
 import { MockOidcServer } from "alepha/testing/oidc";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -86,7 +86,9 @@ const boot = async (idp: MockOidcServer) => {
 };
 
 describe("auth cookies over https", () => {
-  it("names the session __Host-Http-, with Secure and HttpOnly", async () => {
+  it("names the session __Host-Http-, with Secure and HttpOnly", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { signIn } = await boot(idp);
 
@@ -102,7 +104,9 @@ describe("auth cookies over https", () => {
     expect(tokens).not.toContain("Domain=");
   });
 
-  it("names the authorization-code cookie __Host-Http- too", async () => {
+  it("names the authorization-code cookie __Host-Http- too", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { login } = await boot(idp);
 
@@ -114,7 +118,7 @@ describe("auth cookies over https", () => {
     );
   });
 
-  it("keeps the bare name over plain http", async () => {
+  it("keeps the bare name over plain http", async ({ expect }) => {
     const idp = await MockOidcServer.start();
     const { signIn } = await boot(idp);
 
@@ -123,7 +127,9 @@ describe("auth cookies over https", () => {
     expect(response.headers.getSetCookie()[0]).toMatch(/^app\.tokens=/);
   });
 
-  it("expires the unprefixed session a browser still holds from before", async () => {
+  it("expires the unprefixed session a browser still holds from before", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { signIn } = await boot(idp);
 

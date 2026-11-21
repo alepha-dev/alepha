@@ -4,12 +4,14 @@ import {
   exportPKCS8,
   generateKeyPair,
 } from "jose";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { signAppleClientSecret } from "../helpers/appleClientSecret.ts";
 
 describe("apple client secret", () => {
-  it("signs an ES256 JWT with the Apple-required claims + kid header", async () => {
+  it("signs an ES256 JWT with the Apple-required claims + kid header", async ({
+    expect,
+  }) => {
     const { privateKey } = await generateKeyPair("ES256", {
       crv: "P-256",
       extractable: true,

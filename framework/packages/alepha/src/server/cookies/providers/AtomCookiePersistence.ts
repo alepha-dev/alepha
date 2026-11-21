@@ -41,7 +41,7 @@ export class AtomCookiePersistence {
     // `AlephaServerCookies`: this hook needs `request.cookies`, which is
     // only populated by `ServerCookiesProvider.onRequest`. If that ever ran
     // second, `getCookiesFromContext` would throw, get caught, and log at
-    // debug — cookies silently ignored in production with no visible error.
+    // debug: cookies silently ignored in production with no visible error.
     after: [this.serverCookies],
     handler: ({ request }) => {
       // `alepha.http.request` is not set in the store yet at this point in
@@ -61,7 +61,7 @@ export class AtomCookiePersistence {
         return;
       }
 
-      // Only the lazy, mid-request case is handled here — every atom already
+      // Only the lazy, mid-request case is handled here: every atom already
       // registered when the request started was swept by `onRequest` above.
       // Untracked (#E78): "is there a request" is not a read of it.
       if (this.alepha.store.getUntracked("alepha.http.request")) {
@@ -77,8 +77,16 @@ export class AtomCookiePersistence {
       if (!atom || atom.options.persist !== "cookie") {
         return;
       }
+      const options = this.cookieOptions(atom);
       try {
-        this.serverCookies.setCookie(atom.key, this.cookieOptions(atom), value);
+        if (value === undefined) {
+          // The atom was cleared (`store.del(atom)`): expire the cookie, or
+          // the next request seeds the old value back from it. The browser
+          // variant does the same.
+          this.serverCookies.deleteCookie(atom.key, undefined, false, options);
+          return;
+        }
+        this.serverCookies.setCookie(atom.key, options, value);
       } catch (error) {
         // Outside a request cycle there is no response to attach the
         // Set-Cookie header to; browser-side writes are handled by the
@@ -109,7 +117,7 @@ export class AtomCookiePersistence {
     // runs inside its own fork. But `store.set(..., { skipEvents: true })`
     // below has no `skipContext`, so if no fork were active,
     // `StateManager.set()` would fall through to writing the APP-LEVEL
-    // store — turning one user's cookie value into what every subsequent
+    // store, turning one user's cookie value into what every subsequent
     // cookieless request reads. Degrade to "cookie ignored" instead.
     if (!this.alepha.context.exists()) {
       this.log.debug(
@@ -142,9 +150,9 @@ export class AtomCookiePersistence {
       ttl: [365, "days"] as DurationLike,
       // The browser variant of this adapter cannot know the server's
       // alepha.name (the runtime APP_NAME is not bundled, not part of SSR
-      // hydration — see AtomCookiePersistence.browser.ts), so it always
-      // reads/writes the bare atom key. Skip the prefix here too — specifically for
-      // atom-persisted cookies — so both sides agree on the same cookie
+      // hydration, see AtomCookiePersistence.browser.ts), so it always
+      // reads/writes the bare atom key. Skip the prefix here too, specifically for
+      // atom-persisted cookies, so both sides agree on the same cookie
       // name. Every other server cookie ($cookie primitive) still gets the
       // namespace; see ServerCookiesProvider.prefixName.
       prefix: false,

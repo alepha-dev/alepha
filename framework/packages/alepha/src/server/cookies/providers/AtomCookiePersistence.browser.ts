@@ -10,7 +10,7 @@ import { CookieParser } from "../services/CookieParser.ts";
  *
  * Like the server variant, atoms are resolved from the `StateManager`
  * registry (`alepha.store.listAtoms()`) rather than from a map fed by
- * `state:registered` , that event fires once, is never replayed, and
+ * `state:registered`: that event fires once, is never replayed, and
  * `$module.register()` registers `atoms[]` before the module's `services[]`
  * exist, so an event-sourced map would miss every atom declared the
  * documented way. The `configure` hook sweeps everything registered up to
@@ -22,7 +22,7 @@ import { CookieParser } from "../services/CookieParser.ts";
  * server's runtime `APP_NAME` (a deploy's `<name>-<env>`) is neither bundled
  * nor part of the SSR hydration payload. The server variant
  * (`AtomCookiePersistence.ts`) matches this by passing `prefix: false` to
- * `ServerCookiesProvider`, specifically for atom-cookie traffic — every
+ * `ServerCookiesProvider`, specifically for atom-cookie traffic: every
  * other server cookie ($cookie primitive) still gets the namespace. See
  * `ServerCookiesProvider.prefixName`.
  */
@@ -108,7 +108,7 @@ export class AtomCookiePersistence {
       );
     } catch {
       // Corrupted cookie (invalid JSON/encoding, or a value that no longer
-      // matches the atom's schema — `store.set` validates against it) —
+      // matches the atom's schema, which `store.set` validates against):
       // clear it instead of leaving it to keep throwing on every future
       // read. Mirrors the web-storage adapter's parity
       // (StateManager.bindWebStorage removes the bad entry too).

@@ -36,19 +36,19 @@ export class ServerCookiesProvider {
   protected readonly secretProvider = $inject(SecretProvider);
 
   // crypto constants
-  protected readonly ALGORITHM = "aes-256-gcm";
-  protected readonly IV_LENGTH = 16; // For GCM
-  protected readonly AUTH_TAG_LENGTH = 16;
-  protected readonly SIGNATURE_LENGTH = 32; // For SHA256
+  protected static readonly ALGORITHM = "aes-256-gcm";
+  protected static readonly IV_LENGTH = 16; // For GCM
+  protected static readonly AUTH_TAG_LENGTH = 16;
+  protected static readonly SIGNATURE_LENGTH = 32; // For SHA256
 
   // A browser silently drops a cookie past 4096 bytes of name and value. The
   // difference with this budget leaves room for the prefixed chunk name.
-  protected readonly CHUNK_LENGTH = 3800;
+  protected static readonly CHUNK_LENGTH = 3800;
 
   // Every cookie goes back on every request, and request headers are capped:
   // 16 KB in total on Node, 8 KB for the Cookie header on a default nginx. Past
   // that a request fails with 431 or 400, so warn while there is still room.
-  protected readonly COOKIE_BUDGET = 6000;
+  protected static readonly COOKIE_BUDGET = 6000;
 
   protected readonly warnedCookies = new Set<string>();
 
@@ -87,7 +87,14 @@ export class ServerCookiesProvider {
           request.url.protocol === "https:",
         );
         if (setCookieHeaders.length > 0) {
-          request.reply.headers["set-cookie"] = setCookieHeaders;
+          // Added to what the handler wrote on the reply itself, which
+          // `setHeader` stores as a string.
+          const written: string[] | string | undefined =
+            request.reply.headers["set-cookie"];
+          request.reply.headers["set-cookie"] = [
+            ...(written === undefined ? [] : [written].flat()),
+            ...setCookieHeaders,
+          ];
         }
         this.warnOverBudget(request.cookies);
       }
@@ -111,7 +118,7 @@ export class ServerCookiesProvider {
    * Namespaces a cookie name with `alepha.name` (lowercased) so that two
    * Alepha apps sharing a cookie jar do not collide.
    *
-   * Cookies are scoped by host + path only — never by port — so two apps on
+   * Cookies are scoped by host + path only, never by port, so two apps on
    * `localhost:3000` and `localhost:4000` would otherwise both read/write a
    * cookie literally named `tokens` and silently clobber each other (and,
    * because each encrypts with its own `APP_SECRET`, the foreign cookie fails
@@ -120,7 +127,7 @@ export class ServerCookiesProvider {
    * `alepha.name` is `APP_NAME`, else the build's app name, else `"app"`, so
    * every server cookie is namespaced, whether `APP_NAME` is set or not.
    *
-   * Pass `prefix = false` to skip the namespace entirely — used for every
+   * Pass `prefix = false` to skip the namespace entirely: used for every
    * cookie the browser also reads or writes (`persist: "cookie"` atoms, the
    * i18n `lang` cookie, the UI preferences): the browser only knows the baked
    * build name, which can differ from the server's runtime `APP_NAME`, so
@@ -197,6 +204,31 @@ export class ServerCookiesProvider {
     }
   }
 
+  /**
+   * The cookies as they stand at this point of the request: what the request
+   * carried, under what this response has set or expired since. A read goes
+   * through here, so a cookie deleted earlier in the request is gone for the
+   * rest of it, and one rewritten reads as its new value. Reading the
+   * request's copy alone let a route bring back a session the request hook
+   * had just refused, and revoke a refresh token the hook had just replaced.
+   */
+  protected currentCookies(cookies: Cookies): Record<string, string> {
+    const written = Object.entries(cookies.res);
+    if (written.length === 0) {
+      return cookies.req;
+    }
+    const jar = { ...cookies.req };
+    for (const [name, cookie] of written) {
+      // `Max-Age` of zero or less: a browser drops the cookie on arrival.
+      if (!cookie || (cookie.maxAge != null && cookie.maxAge <= 0)) {
+        delete jar[name];
+      } else {
+        jar[name] = cookie.value;
+      }
+    }
+    return jar;
+  }
+
   public getCookie<T extends ZType>(
     name: string,
     options: CookiePrimitiveOptions<T>,
@@ -216,19 +248,25 @@ export class ServerCookiesProvider {
       secure: options.secure,
     };
     this.expireBare(bare, cookies, scope);
-    const chunks = prefixed ? this.chunkNames(cookieName, cookies.req) : [];
-    let rawValue = cookies.req[cookieName];
+    const jar = this.currentCookies(cookies);
+    const chunks = prefixed ? this.chunkNames(cookieName, jar) : [];
+    let rawValue = jar[cookieName];
 
     if (!rawValue && chunks.length === 0) return undefined;
 
     try {
       rawValue = decodeURIComponent(
-        rawValue || this.joinChunks(cookieName, cookies),
+        rawValue || this.joinChunks(cookieName, jar),
       );
 
       if (options.sign) {
-        const signature = rawValue.substring(0, this.SIGNATURE_LENGTH * 2);
-        const value = rawValue.substring(this.SIGNATURE_LENGTH * 2);
+        const signature = rawValue.substring(
+          0,
+          ServerCookiesProvider.SIGNATURE_LENGTH * 2,
+        );
+        const value = rawValue.substring(
+          ServerCookiesProvider.SIGNATURE_LENGTH * 2,
+        );
         const expectedSignature = this.sign(value);
 
         if (
@@ -290,16 +328,16 @@ export class ServerCookiesProvider {
     const { name: cookieName, bare } = this.resolveName(name, options, cookies);
     const encoded = encodeURIComponent(value);
 
-    if (!prefixed && encoded.length > this.CHUNK_LENGTH) {
+    if (!prefixed && encoded.length > ServerCookiesProvider.CHUNK_LENGTH) {
       throw new AlephaError(
-        `Cookie "${name}" encodes to ${encoded.length} bytes, over the ${this.CHUNK_LENGTH} one cookie can hold. It sets \`prefix: false\`, so the browser reads it and it cannot be chunked: store less in it.`,
+        `Cookie "${name}" encodes to ${encoded.length} bytes, over the ${ServerCookiesProvider.CHUNK_LENGTH} one cookie can hold. It sets \`prefix: false\`, so the browser reads it and it cannot be chunked: store less in it.`,
       );
     }
 
     const cookie: Cookie = {
       value: encoded,
       path: options.path ?? "/",
-      // "lax" is correct here — "strict" would break OAuth flows because OAuth callbacks
+      // "lax" is correct here: "strict" would break OAuth flows because OAuth callbacks
       // are top-level redirects from the IdP, and strict cookies are not sent on cross-site
       // top-level navigations. "lax" is Chrome's own default and the industry standard.
       sameSite: options.sameSite ?? "lax",
@@ -313,11 +351,16 @@ export class ServerCookiesProvider {
     }
 
     const written = new Map<string, string>();
-    if (encoded.length > this.CHUNK_LENGTH) {
-      const count = Math.ceil(encoded.length / this.CHUNK_LENGTH);
+    if (encoded.length > ServerCookiesProvider.CHUNK_LENGTH) {
+      const count = Math.ceil(
+        encoded.length / ServerCookiesProvider.CHUNK_LENGTH,
+      );
       for (let i = 0; i < count; i++) {
-        const start = i * this.CHUNK_LENGTH;
-        const chunk = encoded.slice(start, start + this.CHUNK_LENGTH);
+        const start = i * ServerCookiesProvider.CHUNK_LENGTH;
+        const chunk = encoded.slice(
+          start,
+          start + ServerCookiesProvider.CHUNK_LENGTH,
+        );
         written.set(
           `${cookieName}.${i}`,
           i === 0 ? `${count}~${chunk}` : chunk,
@@ -393,7 +436,7 @@ export class ServerCookiesProvider {
     const written: Record<string, number> = {};
 
     for (const [name, cookie] of Object.entries(cookies.res)) {
-      if (!cookie || cookie.maxAge === 0) {
+      if (!cookie || (cookie.maxAge != null && cookie.maxAge <= 0)) {
         delete sent[name];
         continue;
       }
@@ -406,7 +449,7 @@ export class ServerCookiesProvider {
       (sum, [name, value]) => sum + name.length + value.length + 3,
       0,
     );
-    if (total <= this.COOKIE_BUDGET) return;
+    if (total <= ServerCookiesProvider.COOKIE_BUDGET) return;
 
     for (const [name, size] of Object.entries(written)) {
       if (this.warnedCookies.has(name)) continue;
@@ -465,16 +508,19 @@ export class ServerCookiesProvider {
    *
    * A missing chunk or count throws, since the value cannot be whole.
    */
-  protected joinChunks(cookieName: string, cookies: Cookies): string {
+  protected joinChunks(
+    cookieName: string,
+    jar: Record<string, string>,
+  ): string {
     const [, count, first] =
-      /^(\d+)~(.*)$/.exec(cookies.req[`${cookieName}.0`] ?? "") ?? [];
+      /^(\d+)~(.*)$/.exec(jar[`${cookieName}.0`] ?? "") ?? [];
     if (!count) {
       throw new AlephaError(`Cookie "${cookieName}" has no chunk count.`);
     }
 
     let value = first;
     for (let i = 1; i < Number(count); i++) {
-      const chunk = cookies.req[`${cookieName}.${i}`];
+      const chunk = jar[`${cookieName}.${i}`];
       if (chunk === undefined) {
         throw new AlephaError(`Cookie "${cookieName}" lost its chunk ${i}.`);
       }
@@ -503,8 +549,12 @@ export class ServerCookiesProvider {
   }
 
   protected encrypt(text: string): string {
-    const iv = randomBytes(this.IV_LENGTH);
-    const cipher = createCipheriv(this.ALGORITHM, this.deriveKey(), iv);
+    const iv = randomBytes(ServerCookiesProvider.IV_LENGTH);
+    const cipher = createCipheriv(
+      ServerCookiesProvider.ALGORITHM,
+      this.deriveKey(),
+      iv,
+    );
     const encrypted = Buffer.concat([
       cipher.update(text, "utf8"),
       cipher.final(),
@@ -515,14 +565,20 @@ export class ServerCookiesProvider {
 
   protected decrypt(encryptedText: string): string {
     const data = Buffer.from(encryptedText, "base64url");
-    const iv = data.subarray(0, this.IV_LENGTH);
+    const iv = data.subarray(0, ServerCookiesProvider.IV_LENGTH);
     const authTag = data.subarray(
-      this.IV_LENGTH,
-      this.IV_LENGTH + this.AUTH_TAG_LENGTH,
+      ServerCookiesProvider.IV_LENGTH,
+      ServerCookiesProvider.IV_LENGTH + ServerCookiesProvider.AUTH_TAG_LENGTH,
     );
 
-    const encrypted = data.subarray(this.IV_LENGTH + this.AUTH_TAG_LENGTH);
-    const decipher = createDecipheriv(this.ALGORITHM, this.deriveKey(), iv);
+    const encrypted = data.subarray(
+      ServerCookiesProvider.IV_LENGTH + ServerCookiesProvider.AUTH_TAG_LENGTH,
+    );
+    const decipher = createDecipheriv(
+      ServerCookiesProvider.ALGORITHM,
+      this.deriveKey(),
+      iv,
+    );
 
     decipher.setAuthTag(authTag);
 
@@ -536,7 +592,7 @@ export class ServerCookiesProvider {
 
   /**
    * Derives a 32-byte key from APP_SECRET via SHA-256.
-   * Accepts any string length — no padding or truncation needed.
+   * Accepts any string length: no padding or truncation needed.
    */
   protected deriveKey(): Buffer {
     return createHash("sha256").update(this.secretProvider.secretKey).digest();

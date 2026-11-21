@@ -28,7 +28,8 @@ Client secret:
 Apple requires the client secret to be a signed ES256 JWT generated from
 your Apple private key, team ID, and key ID. This JWT is valid for up to 6
 months; you must rotate it before expiration. Generate it out of band and
-set it via `APPLE_CLIENT_SECRET`.
+set it via `APPLE_CLIENT_SECRET`. `signAppleClientSecret`, exported by
+`alepha/server/auth`, signs one from the private key.
 
 See: https://developer.apple.com/documentation/accountorganizationaldatasharing/creating-a-client-secret
 

@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 
 import { Alepha } from "alepha";
 import type { ServerRawRequest } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaServerAuth } from "../index.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -12,7 +12,7 @@ import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
  * existed. The Node adapter carries an `IncomingMessage` and no web `Request`,
  * so on plain Node the authorization code was never read out of the body and
  * Apple Sign In (the one provider that uses `response_mode=form_post`) failed
- * outright — while working fine on workerd/Bun.
+ * outright, while working fine on workerd/Bun.
  */
 class ProviderProbe extends ServerAuthProvider {
   public probe(url: URL, raw?: ServerRawRequest) {
@@ -44,7 +44,7 @@ const nodeRequest = (body: string, headers: Record<string, string> = {}) => {
 const url = new URL("https://app.example.com/auth/callback");
 
 describe("form_post callback on the Node adapter", () => {
-  it("builds a web Request carrying the POST body", async () => {
+  it("builds a web Request carrying the POST body", async ({ expect }) => {
     const provider = await setup();
 
     const request = await provider.probe(url, {
@@ -56,7 +56,7 @@ describe("form_post callback on the Node adapter", () => {
     expect(await request?.text()).toBe("code=abc123&state=xyz");
   });
 
-  it("preserves the request headers", async () => {
+  it("preserves the request headers", async ({ expect }) => {
     const provider = await setup();
 
     const request = await provider.probe(url, {
@@ -72,7 +72,9 @@ describe("form_post callback on the Node adapter", () => {
     expect(request?.headers.get("x-forwarded-proto")).toBe("https");
   });
 
-  it("exposes the body as form data, so the Apple `user` field is readable", async () => {
+  it("exposes the body as form data, so the Apple `user` field is readable", async ({
+    expect,
+  }) => {
     const provider = await setup();
 
     const body = new URLSearchParams({
@@ -94,7 +96,9 @@ describe("form_post callback on the Node adapter", () => {
     expect(String(form?.get("user"))).toContain("Ada");
   });
 
-  it("still prefers the web Request when the runtime provides one", async () => {
+  it("still prefers the web Request when the runtime provides one", async ({
+    expect,
+  }) => {
     const provider = await setup();
     const web = new Request(url, { method: "POST", body: "code=web" });
 
@@ -103,7 +107,9 @@ describe("form_post callback on the Node adapter", () => {
     expect(request).toBe(web);
   });
 
-  it("returns undefined for a GET callback so the query URL is used", async () => {
+  it("returns undefined for a GET callback so the query URL is used", async ({
+    expect,
+  }) => {
     const provider = await setup();
 
     const get = Readable.from([]) as any;

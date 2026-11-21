@@ -1,15 +1,37 @@
 import { importPKCS8, SignJWT } from "jose";
 
 export interface AppleClientSecretOptions {
-  privateKeyPem: string; // ES256 .p8 contents (PKCS#8 PEM)
-  teamId: string; // Apple Team ID  -> iss
-  serviceId: string; // Apple Service ID -> sub (the OAuth client_id)
-  keyId: string; // Apple Key ID -> header kid
-  ttlSeconds?: number; // default 300 (5 min)
+  /**
+   * The contents of the ES256 `.p8` key (PKCS#8 PEM).
+   */
+  privateKeyPem: string;
+
+  /**
+   * Apple Team ID: the token's `iss`.
+   */
+  teamId: string;
+
+  /**
+   * Apple Service ID, which is the OAuth `client_id`: the token's `sub`.
+   */
+  serviceId: string;
+
+  /**
+   * Apple Key ID: the `kid` of the token's header.
+   */
+  keyId: string;
+
+  /**
+   * Lifetime of the token in seconds.
+   * @default 300
+   */
+  ttlSeconds?: number;
 }
 
 /**
- * Signs Apple's short-lived ES256 client_secret JWT on demand (no rotation job).
+ * Signs Apple's short-lived ES256 client_secret JWT on demand (no rotation
+ * job). `$authApple` does not call it: it reads a secret generated ahead of
+ * time from `APPLE_CLIENT_SECRET`.
  */
 export async function signAppleClientSecret(
   opts: AppleClientSecretOptions,

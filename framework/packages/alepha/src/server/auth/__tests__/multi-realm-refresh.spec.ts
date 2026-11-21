@@ -1,8 +1,8 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccount } from "alepha/security";
 import { $route, ServerProvider, UnauthorizedError } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -102,10 +102,13 @@ describe("token refresh across realms", () => {
         },
       );
       const body = await response.json();
-      expect(response.status, JSON.stringify(body)).toBe(200);
       const cookie = tokensCookie(response);
-      expect(cookie).toBeDefined();
-      return { body, cookie: cookie! };
+      if (response.status !== 200 || !cookie) {
+        throw new AlephaError(
+          `Sign-in answered ${response.status}: ${JSON.stringify(body)}`,
+        );
+      }
+      return { body, cookie };
     };
 
     const echoWith = async (cookie: string) => {
@@ -124,7 +127,9 @@ describe("token refresh across realms", () => {
     return { alepha, hostname, clock, signIn, echoWith, pastAccessToken };
   };
 
-  it("keeps a session on the second realm alive past its access token", async () => {
+  it("keeps a session on the second realm alive past its access token", async ({
+    expect,
+  }) => {
     const { signIn, echoWith, pastAccessToken } = await boot();
 
     const login = await signIn("staff");
@@ -139,7 +144,9 @@ describe("token refresh across realms", () => {
     expect(first.cookie).toBeDefined();
   });
 
-  it("keeps the realm in the refreshed cookie, so the second refresh lands on the same issuer", async () => {
+  it("keeps the realm in the refreshed cookie, so the second refresh lands on the same issuer", async ({
+    expect,
+  }) => {
     const { signIn, echoWith, pastAccessToken } = await boot();
 
     const login = await signIn("staff");
@@ -153,7 +160,7 @@ describe("token refresh across realms", () => {
     expect(second.authorization).toBe("Bearer refreshed-staff");
   });
 
-  it("still refreshes a session on the first realm", async () => {
+  it("still refreshes a session on the first realm", async ({ expect }) => {
     const { signIn, echoWith, pastAccessToken } = await boot();
 
     const login = await signIn("citizens");
@@ -165,7 +172,9 @@ describe("token refresh across realms", () => {
     expect(authorization).toBe("Bearer refreshed-citizens");
   });
 
-  it("resolves the realm on the refresh route and writes it into the tokens", async () => {
+  it("resolves the realm on the refresh route and writes it into the tokens", async ({
+    expect,
+  }) => {
     const { hostname, signIn } = await boot();
 
     const login = await signIn("staff");
@@ -185,7 +194,9 @@ describe("token refresh across realms", () => {
     expect(body.access_token).toBe("refreshed-staff");
   });
 
-  it("refuses the second realm's refresh token on the refresh route without a realm", async () => {
+  it("refuses the second realm's refresh token on the refresh route without a realm", async ({
+    expect,
+  }) => {
     const { hostname, signIn } = await boot();
 
     const login = await signIn("staff");

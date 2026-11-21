@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -15,12 +15,14 @@ class TestServerAuthProvider extends ServerAuthProvider {
 }
 
 describe("safeRedirectPath", () => {
-  it("keeps a simple absolute path", () => {
+  it("keeps a simple absolute path", ({ expect }) => {
     expect(safeRedirectPath("/me")).toBe("/me");
     expect(safeRedirectPath("/admin/pages?x=1")).toBe("/admin/pages?x=1");
   });
 
-  it("rejects protocol-relative, absolute, backslash, and empty → fallback", () => {
+  it("rejects protocol-relative, absolute, backslash, and empty → fallback", ({
+    expect,
+  }) => {
     expect(safeRedirectPath("//evil.com")).toBe("/");
     expect(safeRedirectPath("https://evil.com")).toBe("/");
     expect(safeRedirectPath("/\\evil.com")).toBe("/");
@@ -29,7 +31,9 @@ describe("safeRedirectPath", () => {
     expect(safeRedirectPath(undefined, "/home")).toBe("/home");
   });
 
-  it("rejects a control character a browser would strip into //host", () => {
+  it("rejects a control character a browser would strip into //host", ({
+    expect,
+  }) => {
     for (const uri of [
       "/\t/evil.example",
       "/\r/evil.example",
@@ -43,7 +47,9 @@ describe("safeRedirectPath", () => {
     }
   });
 
-  it("rejects the decoded form of a percent-encoded control character", () => {
+  it("rejects the decoded form of a percent-encoded control character", ({
+    expect,
+  }) => {
     // What a query string like `?redirect_uri=%2F%09%2Fevil.example` becomes
     // once the server has decoded it.
     expect(safeRedirectPath(decodeURIComponent("%2F%09%2Fevil.example"))).toBe(
@@ -52,7 +58,9 @@ describe("safeRedirectPath", () => {
     expect(safeRedirectPath(decodeURIComponent("%2F%0D%0A%2Fevil"))).toBe("/");
   });
 
-  it("keeps a still-encoded control character, which stays on the origin", () => {
+  it("keeps a still-encoded control character, which stays on the origin", ({
+    expect,
+  }) => {
     // A browser does not decode `%09` in a Location before resolving it, so
     // this is a same-origin path with an odd segment, not a way off-site.
     expect(safeRedirectPath("/%09/evil.example")).toBe("/%09/evil.example");
@@ -73,7 +81,9 @@ describe("the logout route's post_logout_redirect_uri", () => {
     return response.headers.get("location");
   };
 
-  it("sends a tab, CR or LF variant home instead of off-site", async () => {
+  it("sends a tab, CR or LF variant home instead of off-site", async ({
+    expect,
+  }) => {
     for (const target of [
       "/\t/evil.example",
       "/\r/evil.example",
@@ -83,7 +93,7 @@ describe("the logout route's post_logout_redirect_uri", () => {
     }
   });
 
-  it("keeps a plain in-app path", async () => {
+  it("keeps a plain in-app path", async ({ expect }) => {
     expect(await logout("/projects")).toBe("/projects");
   });
 });
@@ -96,7 +106,9 @@ describe("ServerAuthProvider.validateRedirectUri", () => {
     return provider;
   };
 
-  it("applies the same relative rule as safeRedirectPath", async () => {
+  it("applies the same relative rule as safeRedirectPath", async ({
+    expect,
+  }) => {
     const provider = await boot();
 
     for (const uri of ["/me", "/admin/pages?x=1"]) {
@@ -115,8 +127,14 @@ describe("ServerAuthProvider.validateRedirectUri", () => {
     }
   });
 
-  it("still allows a parent-domain https URL when one is configured", async () => {
+  it("still allows a parent-domain https URL when one is configured", async ({
+    expect,
+  }) => {
     const provider = await boot({ COOKIE_PARENT_DOMAIN: ".example.com" });
+
+    // The relative rule holds with a parent domain configured.
+    expect(provider.validate("/admin")).toBe("/admin");
+    expect(provider.validate("//evil.com")).toBe("/");
 
     expect(provider.validate("https://tenant.example.com/app")).toBe(
       "https://tenant.example.com/app",
@@ -129,6 +147,10 @@ describe("ServerAuthProvider.validateRedirectUri", () => {
     expect(provider.validate("https://evil.com/app")).toBe("/");
     expect(provider.validate("http://tenant.example.com/app")).toBe("/");
     expect(provider.validate("https://notexample.com/app")).toBe("/");
+    // The parent domain as a label of someone else's host.
+    expect(provider.validate("https://example.com.attacker.test/app")).toBe(
+      "/",
+    );
 
     // The login route stores what this returns: a control character is
     // refused on both branches, relative and parent-domain.

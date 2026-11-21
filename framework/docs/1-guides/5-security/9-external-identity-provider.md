@@ -202,6 +202,10 @@ cookie and ends the session at the provider in two ways:
 - **RP-initiated logout.** The browser is redirected to the provider's
   end-session endpoint with `id_token_hint`, and comes back to the app.
 
+Both apply to a live session only. A session that is already over (expired
+past its refresh, or ended by a back-channel logout) is logged out locally:
+the cookie is deleted and nothing of it is sent to the provider.
+
 Against Keycloak the revocation already ends the provider's session, so the
 end-session redirect that follows logs a `LOGOUT_ERROR` event with
 `session_expired` there. The browser still comes back to the app.
