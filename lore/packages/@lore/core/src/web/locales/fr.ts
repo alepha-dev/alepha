@@ -3253,7 +3253,6 @@ export default {
   "inbox.markAllRead": "Tout marquer comme lu",
   "inbox.seeAll": "Tout voir",
   "feedback.thread.title": "Discussion",
-  "feedback.thread.empty": "Rien n'a encore été dit à ce sujet.",
   "feedback.thread.placeholder": "Posez une question ou notez un constat.",
   "feedback.thread.submit": "Commenter",
   "feedback.thread.noNotification":

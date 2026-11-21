@@ -39,11 +39,12 @@ const aComment = (): FeedbackCommentResource =>
  */
 class FakeLinkProvider extends LinkProvider {
   calls: string[] = [];
+  static comments: () => FeedbackCommentResource[] = () => [aComment()];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
-      listFeedbackComments: async () => [aComment()],
+      listFeedbackComments: async () => FakeLinkProvider.comments(),
       createFeedbackComment: async () => {
         this.calls.push("createFeedbackComment");
         throw new Error("This feedback is closed to comments (spec)");
@@ -73,9 +74,10 @@ describe("FeedbackThread", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
+    FakeLinkProvider.comments = () => [aComment()];
   });
 
-  const mount = async () => {
+  const mount = async (wait = "Seen on staging too.") => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -94,7 +96,7 @@ describe("FeedbackThread", () => {
         </DialogProvider>
       </AlephaContext.Provider>,
     );
-    await screen.findByText("Seen on staging too.");
+    if (wait) await screen.findByText(wait);
     return alepha.inject(FakeLinkProvider);
   };
 
@@ -128,5 +130,17 @@ describe("FeedbackThread", () => {
     await expectOneToast("Only the author may delete this comment (spec)");
     expect(fake.calls).toEqual(["deleteFeedbackComment"]);
     expect(screen.getByText("Seen on staging too.")).toBeTruthy();
+  });
+
+  it("shows the composer alone when nothing has been said (#Q4064)", async () => {
+    FakeLinkProvider.comments = () => [];
+    await mount("");
+
+    await screen.findByPlaceholderText("Ask a question or record a finding.");
+    // Toasts left by the cases above are list items too: count the thread's.
+    expect(
+      document.querySelectorAll("li:not([data-sonner-toast])"),
+    ).toHaveLength(0);
+    expect(screen.queryByText(/Nothing has been said/)).toBe(null);
   });
 });

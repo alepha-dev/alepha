@@ -3246,7 +3246,6 @@ export default {
   "inbox.markAllRead": "Mark all read",
   "inbox.seeAll": "See all",
   "feedback.thread.title": "Discussion",
-  "feedback.thread.empty": "Nothing has been said about this yet.",
   "feedback.thread.placeholder": "Ask a question or record a finding.",
   "feedback.thread.submit": "Comment",
   "feedback.thread.noNotification":
