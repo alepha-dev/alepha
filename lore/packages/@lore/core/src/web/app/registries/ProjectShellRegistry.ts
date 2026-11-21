@@ -49,9 +49,13 @@ export class ProjectShellRegistry {
     CapabilityKey,
     CapabilityNavEntry[]
   >();
-  protected readonly sections: SettingsSectionDef[] = [
-    ...CORE_SETTINGS_SECTIONS,
-  ];
+  // Copies, tabs included: `registerSettingsTab` appends to a section, and
+  // core's are module constants every container shares (#Q4059).
+  protected readonly sections: SettingsSectionDef[] =
+    CORE_SETTINGS_SECTIONS.map((section) => ({
+      ...section,
+      tabs: [...section.tabs],
+    }));
   protected readonly creates: ProjectCreateItem[] = [];
   protected readonly crumbs: ProjectCrumbContribution[] = [];
   protected readonly asides: ProjectAsideContribution[] = [];

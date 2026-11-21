@@ -1205,6 +1205,7 @@ export default {
   "project.settings.tab.board": "Board",
   "project.settings.tab.tagColors": "Tag colours",
   "project.settings.tab.roadmap": "Roadmap",
+  "project.settings.tab.quality": "Quality",
   "project.settings.tab.prompts": "Prompts",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",

@@ -36,7 +36,7 @@ Until a run arrives, the report says how to push one.
 
 ## A coverage target
 
-Set the target on **Settings ▸ Apps**, under **Coverage target (%)**. The
+Set the target on **Settings ▸ General ▸ Quality**, under **Coverage target (%)**. The
 report draws it, and Lore tells you once when a push on `main` reports
 coverage under it, then again only after coverage has come back above it.
 Who is told is set on **Settings ▸ Notifications**. See

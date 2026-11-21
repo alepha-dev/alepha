@@ -50,7 +50,7 @@ describe("settings tabs fullWidth", () => {
     for (const route of [
       "projectSettingsBanner",
       "projectSettingsCapabilities",
-      "projectSettingsApps",
+      "projectSettingsQuality",
     ]) {
       const found = shell.findSettingsTab(route);
       expect(found, route).toBeDefined();

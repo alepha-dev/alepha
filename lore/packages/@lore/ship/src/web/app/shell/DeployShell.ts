@@ -142,10 +142,6 @@ export class DeployShell {
       capability: "ship",
       tabs: [
         {
-          route: "projectSettingsApps",
-          labelKey: "project.settings.tab.features",
-        },
-        {
           // ⚠️ Under Apps since #Q2565. It used to sit outside the capability
           // pages so a project lent a host with no sigils would still see
           // it; that was the `track` option, and this section is listed

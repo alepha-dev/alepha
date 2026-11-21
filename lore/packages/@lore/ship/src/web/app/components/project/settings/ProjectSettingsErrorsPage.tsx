@@ -1,13 +1,17 @@
 import { Button } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
-import { currentProjectAtom, hasCapability, type I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  hasCapability,
+  type I18n,
+  ProjectSettingsThreshold,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban } from "lucide-react";
 import { useState } from "react";
 
 import ProjectErrorRulesDialog from "../errors/ProjectErrorRulesDialog.tsx";
-import ProjectSettingsThreshold from "./ProjectSettingsThreshold.tsx";
 
 /**
  * Plan > Errors (#Q3703): the error Ignore rules, where the Errors inbox's
