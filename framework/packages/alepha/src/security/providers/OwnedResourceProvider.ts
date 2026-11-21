@@ -38,7 +38,7 @@ export class OwnedResourceProvider {
   /**
    * The resolved resource.
    *
-   * Throws when the handler has no `$owns` in its `use` array — that is a
+   * Throws when the handler has no `$owns` in its `use` array: that is a
    * wiring mistake, not a runtime condition, so it fails loudly rather than
    * handing back `undefined` for the caller to trip over downstream.
    */

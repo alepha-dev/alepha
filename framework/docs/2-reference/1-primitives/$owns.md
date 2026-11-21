@@ -42,6 +42,19 @@ not narrowed to rows they own. Note this is deliberately strict - an
 `undefined` ownership does **not** bypass, because `undefined` only means
 "no permission check ran", not "this caller is privileged".
 
+The ownership read here is the answer to THIS gate's permissions (`requires`
+and `secure.permissions`). A gate that names none is never opened by a
+permission another gate checked, in the same `use` list, in the action that
+ran this one or earlier in the same context, and not by a copy of that
+gate's user either. Name the permission in `requires` to let an
+unrestricted grant skip the owner check.
+
+What does pass a gate with no permission is an identity BUILT with
+`ownership: false` (a hand-made operator, the system user) and handed in as
+that object: `run(..., { user })`, `user: "system"`. The user schema does
+not keep `ownership: false`, so a user decoded with it, or written to
+`currentUserAtom`, is not one.
+
 ```typescript
 class CampaignController {
   read = $action({

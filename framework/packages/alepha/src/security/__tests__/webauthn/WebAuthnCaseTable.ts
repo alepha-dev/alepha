@@ -52,19 +52,6 @@ export class WebAuthnCaseTable {
     this.cases.push(...extra);
   }
 
-  /**
-   * Run every case and report its outcome, by name.
-   */
-  public async runAll(
-    alepha: Alepha,
-  ): Promise<Array<{ name: string; outcome: WebAuthnCaseOutcome }>> {
-    const out: Array<{ name: string; outcome: WebAuthnCaseOutcome }> = [];
-    for (const it of this.cases) {
-      out.push({ name: it.name, outcome: await this.runOne(alepha, it) });
-    }
-    return out;
-  }
-
   public async runOne(
     alepha: Alepha,
     it: WebAuthnCase,

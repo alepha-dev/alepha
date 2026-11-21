@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { $basicAuth, AlephaSecurity } from "../index.ts";
 
@@ -36,7 +36,7 @@ describe("Basic Authentication", () => {
   });
 
   describe("$basicAuth middleware", () => {
-    it("should allow requests with valid credentials", async () => {
+    it("should allow requests with valid credentials", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       const result = await app.protectedAction.fetch({
@@ -48,7 +48,7 @@ describe("Basic Authentication", () => {
       expect(result.data).toBe("protected success");
     });
 
-    it("should block requests without credentials", async () => {
+    it("should block requests without credentials", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       await expect(app.protectedAction.fetch({})).rejects.toThrow(
@@ -56,7 +56,7 @@ describe("Basic Authentication", () => {
       );
     });
 
-    it("should block requests with invalid credentials", async () => {
+    it("should block requests with invalid credentials", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -68,7 +68,7 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Invalid credentials");
     });
 
-    it("should block requests with invalid username", async () => {
+    it("should block requests with invalid username", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -80,14 +80,16 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Invalid credentials");
     });
 
-    it("should allow public actions without authentication", async () => {
+    it("should allow public actions without authentication", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       const result = await app.publicAction.fetch({});
       expect(result.data).toBe("public success");
     });
 
-    it("should handle malformed authorization header", async () => {
+    it("should handle malformed authorization header", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -101,7 +103,9 @@ describe("Basic Authentication", () => {
   });
 
   describe("Integration", () => {
-    it("should integrate basic auth with action middleware pipeline", async () => {
+    it("should integrate basic auth with action middleware pipeline", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       // Should work with valid credentials
@@ -118,7 +122,7 @@ describe("Basic Authentication", () => {
       );
     });
 
-    it("should work with case-sensitive credentials", async () => {
+    it("should work with case-sensitive credentials", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       // Correct case should work
@@ -141,7 +145,9 @@ describe("Basic Authentication", () => {
   });
 
   describe("Edge cases", () => {
-    it("should handle credentials with colon in password", async () => {
+    it("should handle credentials with colon in password", async ({
+      expect,
+    }) => {
       class EdgeCaseApp {
         colonPasswordAction = $action({
           path: "/colonPasswordAction",
@@ -170,7 +176,7 @@ describe("Basic Authentication", () => {
       await edgeAlepha.stop();
     });
 
-    it("should refuse an empty password when it is declared", () => {
+    it("should refuse an empty password when it is declared", ({ expect }) => {
       // An empty password admitted `user:` with no password at all: an unset
       // variable read as `?? ""` turned the gate into an open door (#Q2281).
       expect(() => $basicAuth({ username: "user", password: "" })).toThrow(
@@ -178,7 +184,9 @@ describe("Basic Authentication", () => {
       );
     });
 
-    it("should refuse to build an app whose basic auth has an empty password", () => {
+    it("should refuse to build an app whose basic auth has an empty password", ({
+      expect,
+    }) => {
       const env: { SECRET?: string } = {};
       class UnsetSecretApp {
         protectedAction = $action({
@@ -198,7 +206,9 @@ describe("Basic Authentication", () => {
       ).toThrow(/non-empty password/);
     });
 
-    it("should handle special characters in credentials", async () => {
+    it("should handle special characters in credentials", async ({
+      expect,
+    }) => {
       class SpecialCharsApp {
         specialCharsAction = $action({
           path: "/specialCharsAction",
@@ -232,7 +242,9 @@ describe("Basic Authentication", () => {
       await specialAlepha.stop();
     });
 
-    it("should handle unicode characters (UTF-8) in credentials - valid", async () => {
+    it("should handle unicode characters (UTF-8) in credentials - valid", async ({
+      expect,
+    }) => {
       class UnicodeApp {
         unicodeAction = $action({
           path: "/unicodeAction",
@@ -261,7 +273,9 @@ describe("Basic Authentication", () => {
       await unicodeAlepha.stop();
     });
 
-    it("should handle unicode characters (UTF-8) in credentials - invalid", async () => {
+    it("should handle unicode characters (UTF-8) in credentials - invalid", async ({
+      expect,
+    }) => {
       class UnicodeApp {
         unicodeAction = $action({
           path: "/unicodeAction",
@@ -291,7 +305,7 @@ describe("Basic Authentication", () => {
       await unicodeAlepha.stop();
     });
 
-    it("should handle very long credentials", async () => {
+    it("should handle very long credentials", async ({ expect }) => {
       const longUsername = "a".repeat(1000);
       const longPassword = "b".repeat(5000);
 
@@ -328,7 +342,7 @@ describe("Basic Authentication", () => {
       await longAlepha.stop();
     });
 
-    it("should handle empty username", async () => {
+    it("should handle empty username", async ({ expect }) => {
       class EmptyUsernameApp {
         emptyUsernameAction = $action({
           path: "/emptyUsernameAction",
@@ -357,7 +371,9 @@ describe("Basic Authentication", () => {
       await emptyUserAlepha.stop();
     });
 
-    it("should reject invalid base64 encoding gracefully", async () => {
+    it("should reject invalid base64 encoding gracefully", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       // Invalid base64 (not valid base64 characters)
@@ -370,7 +386,7 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Invalid credentials");
     });
 
-    it("should reject Bearer token (wrong auth type)", async () => {
+    it("should reject Bearer token (wrong auth type)", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -382,7 +398,7 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Authentication required");
     });
 
-    it("should reject lowercase 'basic' auth type", async () => {
+    it("should reject lowercase 'basic' auth type", async ({ expect }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -394,7 +410,9 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Authentication required");
     });
 
-    it("should handle credentials without colon (malformed)", async () => {
+    it("should handle credentials without colon (malformed)", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -406,7 +424,9 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Invalid credentials");
     });
 
-    it("should handle whitespace in credentials - valid", async () => {
+    it("should handle whitespace in credentials - valid", async ({
+      expect,
+    }) => {
       class WhitespaceApp {
         whitespaceAction = $action({
           path: "/whitespaceAction",
@@ -435,7 +455,9 @@ describe("Basic Authentication", () => {
       await wsAlepha.stop();
     });
 
-    it("should handle whitespace in credentials - invalid", async () => {
+    it("should handle whitespace in credentials - invalid", async ({
+      expect,
+    }) => {
       class WhitespaceApp {
         whitespaceAction = $action({
           path: "/whitespaceAction",
@@ -465,7 +487,9 @@ describe("Basic Authentication", () => {
       await wsAlepha.stop();
     });
 
-    it("should give same error for wrong username vs wrong password (no info leakage)", async () => {
+    it("should give same error for wrong username vs wrong password (no info leakage)", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       const wrongUserError = await app.protectedAction
@@ -497,7 +521,9 @@ describe("Basic Authentication", () => {
       expect(bothWrongError.message).toBe("Invalid credentials");
     });
 
-    it("should handle different length usernames correctly", async () => {
+    it("should handle different length usernames correctly", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       await expect(
@@ -517,7 +543,9 @@ describe("Basic Authentication", () => {
       ).rejects.toThrow("Invalid credentials");
     });
 
-    it("should handle different length passwords correctly", async () => {
+    it("should handle different length passwords correctly", async ({
+      expect,
+    }) => {
       const app = alepha.inject(TestApp);
 
       await expect(

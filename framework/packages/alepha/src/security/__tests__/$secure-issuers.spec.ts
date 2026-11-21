@@ -8,12 +8,14 @@ import {
   ForbiddenError,
   ServerProvider,
 } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 
 describe("$secure issuer protection", () => {
-  it("should allow access when user belongs to the required issuer", async () => {
+  it("should allow access when user belongs to the required issuer", async ({
+    expect,
+  }) => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -92,7 +94,9 @@ describe("$secure issuer protection", () => {
     expect(await responseB.text()).toBe("REALM_B");
   });
 
-  it("should deny access when user does not belong to the required issuer", async () => {
+  it("should deny access when user does not belong to the required issuer", async ({
+    expect,
+  }) => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -180,7 +184,9 @@ describe("$secure issuer protection", () => {
     });
   });
 
-  it("should work with actions when user has no issuer attribute", async () => {
+  it("should work with actions when user has no issuer attribute", async ({
+    expect,
+  }) => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -225,7 +231,7 @@ describe("$secure issuer protection", () => {
     ).toBe("REALM_A");
   });
 
-  it("should combine issuer and permission checks", async () => {
+  it("should combine issuer and permission checks", async ({ expect }) => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -342,7 +348,9 @@ describe("$secure issuer protection", () => {
     );
   });
 
-  it("should work with fetch requests when issuer is valid", async () => {
+  it("should work with fetch requests when issuer is valid", async ({
+    expect,
+  }) => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",

@@ -3,19 +3,19 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
-import { $issuer, JwtProvider, SecurityProvider } from "../index.ts";
+import { $issuer, SecurityProvider } from "../index.ts";
 
 describe("$issuer federated tokens", () => {
   /**
    * The `typ: "access"` requirement (see `JwtProvider.isAccessToken`) must
-   * apply ONLY to realms we sign for. An external IdP picks its own `typ` —
-   * Keycloak sends `Bearer`, most OIDC providers send `JWT` — so enforcing
+   * apply ONLY to realms we sign for. An external IdP picks its own `typ`:
+   * Keycloak sends `Bearer`, most OIDC providers send `JWT`, so enforcing
    * ours here would reject every federated token, which is how relying
    * parties that forward an id_token as their Bearer authenticate.
    */
-  test("accepts an external IdP token whose typ is not ours", async ({
+  it("accepts an external IdP token whose typ is not ours", async ({
     expect,
   }) => {
     const { privateKey, publicKey } = await generateKeyPair("RS256", {
@@ -59,7 +59,7 @@ describe("$issuer", () => {
     },
   ];
 
-  test("should create token (access & refresh)", async ({ expect }) => {
+  it("should create token (access & refresh)", async ({ expect }) => {
     class App {
       issuer = $issuer({
         secret: "test",
@@ -141,45 +141,5 @@ describe("$issuer", () => {
       refresh_token_expires_in: dt.duration(30, "days").asSeconds(),
       token_type: "Bearer",
     });
-  });
-
-  test("accepts legacy tenant claims without publishing an organization", async ({
-    expect,
-  }) => {
-    class App {
-      issuer = $issuer({
-        secret: "test",
-        roles,
-      });
-    }
-
-    const alepha = Alepha.create();
-    const app = alepha.inject(App);
-    const securityProvider = alepha.inject(SecurityProvider);
-    const jwt = alepha.inject(JwtProvider);
-    await alepha.start();
-
-    const id = randomUUID();
-    const token = await jwt.create(
-      {
-        sub: id,
-        aud: app.issuer.name,
-        organization: "11111111-1111-1111-1111-111111111111",
-        tenant: "legacy-tenant",
-        roles: ["user"],
-      },
-      app.issuer.name,
-      { header: { typ: jwt.accessTokenTyp } },
-    );
-
-    const accepted = await securityProvider.resolveUserFromServerRequest({
-      url: "http://localhost/",
-      headers: { authorization: `Bearer ${token}` },
-    });
-
-    expect(accepted?.id).toBe(id);
-    expect(
-      (accepted as unknown as Record<string, unknown>)?.organization,
-    ).toBeUndefined();
   });
 });

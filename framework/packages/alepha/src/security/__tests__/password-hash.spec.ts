@@ -1,21 +1,15 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { CryptoProvider } from "../index.ts";
 
 /**
- * Bug #2: Password Verification Missing Input Validation
- *
- * Issue: The verifyPassword method didn't validate input format before processing,
- * leading to crashes when:
- * - stored hash is malformed (missing colon, wrong format)
- * - stored hash has incorrect length
- * - timingSafeEqual throws when buffer lengths differ
- *
- * Expected: All invalid inputs should return false gracefully instead of throwing.
+ * `CryptoProvider.verifyPassword` on a stored value that is not a hash it
+ * produced: anything but a well-formed PHC scrypt string answers `false`
+ * and never throws.
  */
-describe("Bug #2: Password Verification Missing Input Validation", () => {
-  it("should verify valid password correctly", async () => {
+describe("password hash verification", () => {
+  it("should verify valid password correctly", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -29,7 +23,9 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(isInvalid).toBe(false);
   });
 
-  it("should return false for malformed hash with no colon", async () => {
+  it("should return false for malformed hash with no colon", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -40,7 +36,9 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for hash with multiple colons", async () => {
+  it("should return false for hash with multiple colons", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -50,7 +48,7 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for empty string", async () => {
+  it("should return false for empty string", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -58,7 +56,7 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for hash with empty salt", async () => {
+  it("should return false for hash with empty salt", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -68,7 +66,9 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for hash with empty hash value", async () => {
+  it("should return false for hash with empty hash value", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -78,7 +78,7 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for just a colon", async () => {
+  it("should return false for just a colon", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -88,7 +88,9 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for invalid hex in hash portion", async () => {
+  it("should return false for invalid hex in hash portion", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -99,7 +101,7 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for odd-length hex string", async () => {
+  it("should return false for odd-length hex string", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -110,18 +112,20 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for hash with wrong length", async () => {
+  it("should return false for hash with wrong length", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
-    // Valid hex, but wrong length (scrypt produces 64 bytes = 128 hex chars)
-    const malformed = "salt:abcd"; // Only 4 hex chars = 2 bytes
+    // Not a PHC string, and far shorter than a 64-byte hash in any encoding
+    const malformed = "salt:abcd";
 
     const result = await crypto.verifyPassword("password", malformed);
     expect(result).toBe(false);
   });
 
-  it("should return false for corrupted but well-formed hash", async () => {
+  it("should return false for corrupted but well-formed hash", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -136,7 +140,7 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(result).toBe(false);
   });
 
-  it("should return false for null or undefined input", async () => {
+  it("should return false for null or undefined input", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -149,7 +153,7 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(resultUndefined).toBe(false);
   });
 
-  it("should return false for non-string input", async () => {
+  it("should return false for non-string input", async ({ expect }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -164,42 +168,24 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     expect(resultObject).toBe(false);
   });
 
-  it("should handle special characters in salt gracefully", async () => {
+  it("should handle special characters in salt gracefully", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
-    // If somehow a salt with special chars got stored
+    // The `salt:hex` shape of an older format, with control characters
     const malformed =
       "salt\nwith\nnewlines:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-    // Should not crash, should return false (likely during scrypt or comparison)
+    // Should not crash, should return false
     const result = await crypto.verifyPassword("password", malformed);
     expect(result).toBe(false);
   });
 
-  it("should validate format before attempting expensive scrypt operation", async () => {
-    const app = Alepha.create();
-    const crypto = app.inject(CryptoProvider);
-
-    // These should fail fast without calling scrypt
-    const invalidFormats = [
-      "no-colon-at-all",
-      "too:many:colons:here",
-      ":no-salt",
-      "no-hash:",
-      ":",
-      "",
-      "salt:invalidhex!",
-      "salt:abc", // odd length
-    ];
-
-    for (const invalid of invalidFormats) {
-      const result = await crypto.verifyPassword("password", invalid);
-      expect(result).toBe(false);
-    }
-  });
-
-  it("should properly handle valid hash format with correct verification", async () => {
+  it("should properly handle valid hash format with correct verification", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const crypto = app.inject(CryptoProvider);
 
@@ -228,21 +214,5 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
         false,
       );
     }
-  });
-
-  it("should prevent timing attacks with constant-time comparison", async () => {
-    const app = Alepha.create();
-    const crypto = app.inject(CryptoProvider);
-
-    const password = "testPassword";
-    const hashed = await crypto.hashPassword(password);
-
-    // Both wrong passwords should take similar time (constant-time comparison)
-    // This is a behavioral test - we're just checking they both return false
-    const wrongPassword1 = "x";
-    const wrongPassword2 = "x".repeat(100);
-
-    expect(await crypto.verifyPassword(wrongPassword1, hashed)).toBe(false);
-    expect(await crypto.verifyPassword(wrongPassword2, hashed)).toBe(false);
   });
 });

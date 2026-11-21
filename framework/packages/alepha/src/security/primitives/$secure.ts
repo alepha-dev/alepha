@@ -76,7 +76,7 @@ export interface SecureOptions {
 
   /**
    * Custom guard. Runs after all other checks, and is the only check that can
-   * see the request — use it for resource-scoped rules such as "does this
+   * see the request: use it for resource-scoped rules such as "does this
    * user own the row named by `params.id`?". Return `false` to deny.
    *
    * May be async. Prefer {@link $owns} for the common owner/membership shape;
@@ -86,19 +86,19 @@ export interface SecureOptions {
 }
 
 /**
- * Everything a guard can see.
- *
- * `params` / `query` / `body` are resolved from the action request when there
- * is one, falling back to the raw HTTP request — so the same guard works over
- * HTTP, over `action.run()`, and over the MCP transport.
- */
-/**
  * What `$secure` returns: a middleware that guarantees an authenticated user
  * to the handler it wraps, so a `$action` behind it gets a non-optional
  * `user`. `$owns` and `$ownsOrganization` return the same type.
  */
 export type SecureMiddleware = ProvidingMiddleware<{ user: UserAccountToken }>;
 
+/**
+ * Everything a guard can see.
+ *
+ * `params` / `query` / `body` are resolved from the action request when there
+ * is one, falling back to the raw HTTP request, so the same guard works over
+ * HTTP, over `action.run()`, and over the MCP transport.
+ */
 export interface SecureGuardContext {
   /**
    * The authenticated caller, after issuer/role/permission checks have passed.
@@ -137,7 +137,7 @@ export interface SecureGuardContext {
  *
  * Resolves the user from the request context, `currentUserAtom`, or authorization headers.
  * Throws `UnauthorizedError` if no user is resolved, `ForbiddenError` if checks fail.
- * Stores the resolved user in `currentUserAtom` and `request.user` for downstream access.
+ * Publishes the resolved user in `currentUserAtom` and on `request.user`, for the guard and the handler it wraps.
  *
  * Works across all transports (atom-first resolution):
  * 1. `currentUserAtom`: set by the global `server:request:before` hook
@@ -162,6 +162,29 @@ export interface SecureGuardContext {
  * Because `permissions` is an AND list, the resulting `ownership` is the most
  * restrictive of the matched grants - one owner-scoped permission narrows the
  * whole call, whatever order the list was written in.
+ *
+ * That `ownership` is the answer to the permissions THIS `$secure` declares.
+ * A `$secure` declaring none makes no decision: it keeps a restriction it
+ * finds (`true`, a scope), and drops an unrestricted answer (`false`) another
+ * gate published, back to what the identity itself carries, `undefined` for
+ * a user resolved from a request. An unrestricted answer also stays on the
+ * user object the gate hands its handler: a copy of that object (a spread, a
+ * JSON round trip) does not carry it.
+ *
+ * The user is published for as long as the gate runs, guard and handler:
+ * once it returns, `currentUserAtom` reads the user it held before, and so
+ * does `request.user` on a request the gate was merely running inside (a
+ * pipeline called by an action's handler, a tool). What stays is
+ * `request.user` on the request the gate itself guards, and on a request
+ * that carried no user before the gate resolved one (a WebSocket upgrade
+ * reads it there). A write the
+ * handler makes to `currentUserAtom` takes effect for the rest of the gate
+ * and goes with it.
+ *
+ * ⚠️ Gates running in parallel in ONE context (two pipelines under a
+ * `Promise.all`) share that atom and that request: while both run each can
+ * read the other's user there, and the last to return restores what it
+ * found. The `user` a handler receives as an argument is never shared.
  *
  * The resolved user is published to `currentUserAtom` and to the request
  * **before** the guard runs, so anything the guard calls (a repository read in
@@ -299,7 +322,7 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
           }
         }
 
-        // 6. Explicit permission checks (all must pass) — role names are
+        // 6. Explicit permission checks (all must pass): role names are
         // resolved within the user's own realm, never across realms.
         //
         // `permissions` is an AND list, so the resulting `ownership` must be
@@ -316,7 +339,7 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
             // the grant and never widens it.
             const result = securityProvider.checkUserPermission(user, perm);
             if (!result.isAuthorized) {
-              const name = typeof perm === "string" ? perm : perm.name;
+              const name = securityProvider.permissionToString(perm);
               throw new ForbiddenError(
                 result.deniedBy === "scope"
                   ? `Permission '${name}' is outside this credential's permission scope`
@@ -334,10 +357,21 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
             }
           }
 
-          user = { ...user, ownership };
+          user = securityProvider.withOwnershipDecision(user, ownership);
+        } else {
+          // No permission declared, so no decision is made here. An
+          // unrestricted one another gate published answered for that gate's
+          // permissions and is dropped, back to what the identity itself
+          // carries; a restriction is kept, so this gate never leaves the
+          // caller less restricted than it found them.
+          user = securityProvider.withOwnershipDecision(
+            user,
+            securityProvider.inheritedOwnership(user),
+          );
         }
 
-        // 7. Publish the resolved user BEFORE the guard runs.
+        // 7. Publish the resolved user BEFORE the guard runs, and only for
+        // as long as this gate runs.
         //
         // A guard runs real code. `$owns`, for example, loads a row and reads
         // `currentUserAtom` to decide whether the caller owns it. Publishing
@@ -345,52 +379,82 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
         // `action.run()` and MCP already populated the atom. The transports
         // therefore disagreed on the same route.
         //
-        // Denial still aborts before `next()`, so a published-then-rejected
-        // user is never observable by the handler.
-        securityProvider.storeUserInContext(user);
-
+        // For as long as it runs only: left behind, the user outlived the
+        // gate, and a gate hosted inside another request (a pipeline called
+        // by an action's handler, a tool) replaced that request's user with
+        // its own decision for whatever ran next.
+        //
         // `"fork"`, not `"current"`: a layer `$transactional()` nests between
         // the action and this middleware is the same unit of work, while an
         // enclosing action's fork is not (#Q2538).
-        const httpRequest = alepha.store.get("alepha.http.request", "fork");
-        if (httpRequest) {
-          httpRequest.user = user;
-        }
-
-        const actionRequest = alepha.store.get("alepha.action.request", "fork");
-        if (actionRequest) {
-          actionRequest.user = user;
-        }
-
-        // 8. Custom guard — the only check with request visibility.
-        //
-        // Awaited: before this was async, returning a promise from a guard
-        // made the truthiness check always pass, so an async guard silently
-        // allowed everyone through.
-        if (options?.guard) {
-          // The HTTP request is resolved without a scope: `$secure` may run
-          // inside a nested fork, and the HTTP request lives on an ancestor
-          // layer. The action's own request is `"fork"`: through a layer
-          // `$transactional()` nested, never up into an enclosing action's.
-          const request = alepha.store.get("alepha.http.request");
-          const source: any =
-            alepha.store.get("alepha.action.request", "fork") ?? request;
-
-          const allowed = await options.guard({
-            user,
-            params: source?.params ?? {},
-            query: source?.query ?? {},
-            body: source?.body,
-            request,
-            alepha,
-          });
-
-          if (!allowed) {
-            throw new ForbiddenError("Access denied");
+        const restore: Array<() => void> = [];
+        for (const key of [
+          "alepha.http.request",
+          "alepha.action.request",
+        ] as const) {
+          const request = alepha.store.get(key, "fork");
+          if (!request) {
+            continue;
           }
+
+          // The request this gate guards keeps the user: its handler
+          // receives it, and the router reads it back afterwards. So does a
+          // request that carried no user until this gate resolved one: that
+          // is how a WebSocket upgrade learns who connected. A request this
+          // gate is merely running inside, with a user of its own, gets that
+          // user back.
+          const previous = request.user;
+          if (request !== args[0] && previous !== undefined) {
+            restore.push(() => {
+              request.user = previous;
+            });
+          }
+
+          request.user = user;
         }
 
-        return next(...args);
+        const authorized = user;
+
+        return securityProvider.runAs(authorized, async () => {
+          try {
+            // 8. Custom guard: the only check with request visibility.
+            //
+            // Awaited: before this was async, returning a promise from a guard
+            // made the truthiness check always pass, so an async guard silently
+            // allowed everyone through.
+            //
+            // Denial aborts before `next()`, so a published-then-rejected user
+            // is never observable by the handler.
+            if (options?.guard) {
+              // The HTTP request is resolved without a scope: `$secure` may run
+              // inside a nested fork, and the HTTP request lives on an ancestor
+              // layer. The action's own request is `"fork"`: through a layer
+              // `$transactional()` nested, never up into an enclosing action's.
+              const request = alepha.store.get("alepha.http.request");
+              const source: any =
+                alepha.store.get("alepha.action.request", "fork") ?? request;
+
+              const allowed = await options.guard({
+                user: authorized,
+                params: source?.params ?? {},
+                query: source?.query ?? {},
+                body: source?.body,
+                request,
+                alepha,
+              });
+
+              if (!allowed) {
+                throw new ForbiddenError("Access denied");
+              }
+            }
+
+            return await next(...args);
+          } finally {
+            for (const undo of restore) {
+              undo();
+            }
+          }
+        });
       };
     },
   }) as SecureMiddleware;

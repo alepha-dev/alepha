@@ -139,6 +139,8 @@ issuer = $issuer({
 });
 ```
 
+An issuer without sessions (no `onRefreshSession`) refreshes from the two tokens alone: the refresh token, and the access token it renews, expired or not. That access token must be one this issuer minted as an access token, for this realm, in the same session as the refresh token (the `sid` both carry); anything else, another realm's token or the refresh token itself included, is refused with `401`. Its roles are signed into the new token as they are, so use sessions when roles can change.
+
 `POST /_auth/refresh` answers `401` when the refresh token is expired, revoked or unknown, which tells the client to sign in again. Any other failure (the database, an OAuth provider that is down) is not wrapped: it answers with its own status, `500` for an outage, so a client never discards a good session because a dependency hiccuped.
 
 A browser never has to call that route. The server reads the `tokens` cookie on
@@ -928,7 +930,9 @@ The `ownership` flag restricts a permission to resources owned by the user:
 }
 ```
 
-This grants access to all actions, but only for the user's own resources. The `exclude` array removes specific permission patterns - here, all admin-namespaced actions are excluded entirely.
+This grants access to all actions, but only for the user's own resources. The `exclude` array removes specific permission patterns - here, all admin-namespaced actions are excluded entirely. An exclude is matched like a grant, so the check and the listing of a role's permissions (`getPermissions`) always agree: `exclude: ["*"]` removes everything.
+
+`$secure({ permissions })` puts the answer on the user its handler receives: `user.ownership` is `false` for an unrestricted grant and the grant's `ownership` value for a narrowed one, the most restrictive of the list. That answer is about the permissions this `$secure` declares and no others. A `$secure()` with no permissions makes no decision: it keeps a restriction it finds and never hands on an unrestricted answer another gate made in the same request. An unrestricted answer stays on the `user` object the handler receives, and a copy of that object does not carry it: see [Privileged identities](/docs/guides-security-resource-authorization#privileged-identities).
 
 ### Declaring roles and permissions as primitives
 
@@ -1336,6 +1340,8 @@ class Workers {
   }
 }
 ```
+
+A token is kept until its `expires_in`, counted from the moment it was received, less a 30-second grace period (`gracePeriod`). `expires_in` may arrive as a number or as a numeric string. A response with no `expires_in`, or with `0` or an empty string, is refused: `token()` throws. Any other value that gives no lifetime (a negative number, `"0"`, a string that is not a number) is tolerated but not cached: the token is returned and the next call asks for a new one.
 
 Stored tokens use `refresh_token_expires_in` for the refresh lifetime. Keycloak
 responses may use `refresh_expires_in`; Alepha normalizes that field at the

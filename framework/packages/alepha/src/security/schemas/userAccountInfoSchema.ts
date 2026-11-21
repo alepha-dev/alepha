@@ -3,6 +3,23 @@ import { z } from "alepha";
 
 import { userCredentialSchema } from "./userCredentialSchema.ts";
 
+/**
+ * The `ownership` field as it is read. A decode reads it wherever it sits,
+ * the non-enumerable property a permission check writes included, so the
+ * field below does not let `false` through: it would turn any decoded copy
+ * of a checked user into a privileged identity.
+ */
+const ownershipSchema = z
+  .union([z.text(), z.boolean()])
+  .describe(
+    "Whether the caller is scoped to their own resources for the checked " +
+      "permission. `false` is a privileged identity (admin); `true` or a " +
+      "scope string narrows access to owned rows; `undefined` means no " +
+      "permission check determined a scope. `false` does not survive this " +
+      "schema: it is read on the user object a permission check produced, " +
+      "or on an identity built by hand, never on a decoded copy.",
+  );
+
 export const userAccountInfoSchema = z.object({
   id: z.text({
     description: "Unique identifier for the user.",
@@ -85,15 +102,12 @@ export const userAccountInfoSchema = z.object({
     )
     .optional(),
 
-  ownership: z
-    .union([z.text(), z.boolean()])
-    .describe(
-      "Whether the caller is scoped to their own resources for the checked " +
-        "permission. `false` is a privileged identity (admin); `true` or a " +
-        "scope string narrows access to owned rows; `undefined` means no " +
-        "permission check determined a scope.",
-    )
-    .optional(),
+  // Typed as the union it reads. The transform only ever removes `false`.
+  ownership: (
+    ownershipSchema.transform((ownership) =>
+      ownership === false ? undefined : ownership,
+    ) as unknown as typeof ownershipSchema
+  ).optional(),
 });
 
 export type UserAccount = Infer<typeof userAccountInfoSchema>;

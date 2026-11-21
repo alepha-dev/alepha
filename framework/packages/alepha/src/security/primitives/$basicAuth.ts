@@ -1,7 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { AlephaError, createMiddleware, type Middleware } from "alepha";
-import { HttpError, type ServerRequest } from "alepha/server";
+import { type ServerRequest, UnauthorizedError } from "alepha/server";
+
+import { InvalidCredentialsError } from "../errors/InvalidCredentialsError.ts";
 
 export interface BasicAuthOptions {
   username: string;
@@ -51,20 +53,14 @@ export function $basicAuth(options: BasicAuthOptions): Middleware {
         const request = alepha.store.get("alepha.http.request");
 
         if (!request?.headers) {
-          throw new HttpError(
-            { status: 401 },
-            { message: "Authentication required" },
-          );
+          throw new UnauthorizedError("Authentication required");
         }
 
         const authHeader = request.headers.authorization;
 
         if (!authHeader?.startsWith("Basic ")) {
           sendAuthRequired(request);
-          throw new HttpError(
-            { status: 401 },
-            { message: "Authentication required" },
-          );
+          throw new UnauthorizedError("Authentication required");
         }
 
         // Decode base64 credentials
@@ -90,10 +86,7 @@ export function $basicAuth(options: BasicAuthOptions): Middleware {
 
         if (!isValid) {
           sendAuthRequired(request);
-          throw new HttpError(
-            { status: 401 },
-            { message: "Invalid credentials" },
-          );
+          throw new InvalidCredentialsError();
         }
 
         return next(...args);
@@ -122,7 +115,7 @@ function timingSafeCredentialCheck(
   const userMatch = safeCompare(inputUserBuf, expectedUserBuf);
   const passMatch = safeCompare(inputPassBuf, expectedPassBuf);
 
-  // Both must match — bitwise AND avoids short-circuit evaluation
+  // Both must match: bitwise AND avoids short-circuit evaluation
   return (userMatch & passMatch) === 1;
 }
 

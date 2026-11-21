@@ -30,7 +30,11 @@ import {
   type UserAccount,
   userAccountInfoSchema,
 } from "../schemas/userAccountInfoSchema.ts";
-import { JwtProvider, type SigningConfig } from "./JwtProvider.ts";
+import {
+  type JwtParseResult,
+  JwtProvider,
+  type SigningConfig,
+} from "./JwtProvider.ts";
 
 export class SecurityProvider {
   public static readonly id: string = "alepha.security.SecurityProvider";
@@ -149,6 +153,19 @@ export class SecurityProvider {
    */
   protected readonly roleReferences: RoleReference[] = [];
 
+  /**
+   * The key under which a user published by a permission check keeps the
+   * ownership the identity carried before that check.
+   *
+   * It is what tells a check's answer from a flag the identity was given.
+   * Non-enumerable wherever it is written, so a spread, a JSON round trip,
+   * `structuredClone` or `Object.assign` of the user drops it, and a plain
+   * `Symbol()`, not a registered one: no other code can name it.
+   */
+  protected static readonly identityOwnershipKey = Symbol(
+    "alepha.security.identityOwnership",
+  );
+
   protected start = $hook({
     on: "start",
     handler: async () => {
@@ -175,9 +192,10 @@ export class SecurityProvider {
   });
 
   /**
-   * Creates a default JWT resolver for a realm.
+   * Creates the default JWT resolver of a realm: a Bearer JWT that verifies
+   * against the realm's key, is an access token and was minted for it.
    */
-  protected createDefaultJwtResolver(realmName: string): IssuerResolver {
+  public createDefaultJwtResolver(realmName: string): IssuerResolver {
     return {
       priority: 100,
       onRequest: async (req) => {
@@ -316,6 +334,10 @@ export class SecurityProvider {
    * Idempotent, and cheap enough to run on every declaration: both lists are
    * the size of an application's security declarations, and running it eagerly
    * is what makes declaration order stop mattering.
+   *
+   * A declaration is attached to a realm ONCE. What {@link updateRealm} then
+   * removes stays removed: without the record, the next declaration anywhere
+   * pushed every removed role back, with its grants.
    */
   protected reconcileRoles(): void {
     for (const declared of this.declaredRoles) {
@@ -323,9 +345,7 @@ export class SecurityProvider {
         if (declared.realms && !declared.realms.includes(realm.name)) {
           continue;
         }
-        if (!realm.roles.includes(declared.role)) {
-          realm.roles.push(declared.role);
-        }
+        this.attachRole(declared, realm);
       }
     }
 
@@ -339,10 +359,27 @@ export class SecurityProvider {
         continue;
       }
 
-      if (!realm.roles.includes(declared.role)) {
-        realm.roles.push(declared.role);
-      }
+      this.attachRole(declared, realm);
       reference.resolved = true;
+    }
+  }
+
+  /**
+   * Push a declared role into a realm, unless it was already attached there.
+   *
+   * The realm is remembered by identity, like the placeholder realm: an
+   * application realm that takes the placeholder's name is another realm,
+   * and still gets the role.
+   */
+  protected attachRole(declared: DeclaredRole, realm: Realm): void {
+    declared.attachedTo ??= new WeakSet();
+    if (declared.attachedTo.has(realm)) {
+      return;
+    }
+
+    declared.attachedTo.add(realm);
+    if (!realm.roles.includes(declared.role)) {
+      realm.roles.push(declared.role);
     }
   }
 
@@ -642,12 +679,13 @@ export class SecurityProvider {
   }
 
   /**
-   * Updates the roles for a realm then synchronizes the user account provider if available.
+   * Replaces the roles of a realm.
    *
-   * Only available when the app is started.
+   * Only available when the app is started. A role left out stays out: a
+   * later `createRole` or `referenceRole` does not bring a declared one back.
    *
    * @param realm - The realm to update the roles for.
-   * @param roles - The roles to update.
+   * @param roles - The roles the realm holds from now on.
    */
   public async updateRealm(realm: string, roles: Role[]): Promise<void> {
     if (!this.alepha.isStarted()) {
@@ -699,13 +737,13 @@ export class SecurityProvider {
       ? this.getPermissionScopeFromPayload(payload)
       : undefined;
     const rolesFromSystem = this.getRoles(realmName);
-    const roles = rolesFromPayload
-      .reduce<Role[]>(
-        (arr, roleName) =>
-          arr.concat(rolesFromSystem.filter((it) => it.name === roleName)),
-        [],
-      )
-      .map((it) => it.name);
+    // A name, once: without a realm the roles of every realm are searched,
+    // and a name two realms declare is still one role of this user.
+    const roles = rolesFromPayload.filter(
+      (roleName, index) =>
+        rolesFromPayload.indexOf(roleName) === index &&
+        rolesFromSystem.some((it) => it.name === roleName),
+    );
 
     const realm = this.realms.find((it) => it.name === realmName);
     if (realm?.profile) {
@@ -822,7 +860,7 @@ export class SecurityProvider {
 
     let ownership: string | boolean | undefined;
 
-    // Permission check — resolved within the user's realm so a homonymous
+    // Permission check: resolved within the user's realm so a homonymous
     // role from another realm can't leak its permission set, then narrowed by
     // the credential's own scope.
     if (options.permission) {
@@ -842,12 +880,19 @@ export class SecurityProvider {
       ownership = check.ownership;
     }
 
-    return {
+    const user: UserAccountToken = {
       ...userInfo,
       roles,
-      ownership,
+      ownership: undefined,
       realm: options.realm,
     };
+
+    // The answer to `options.permission` is a check's decision like a gate's,
+    // and is published like one: on a user built here it must not read as an
+    // ownership the identity carries by itself.
+    return options.permission
+      ? this.withOwnershipDecision(user, ownership)
+      : user;
   }
 
   /**
@@ -967,7 +1012,7 @@ export class SecurityProvider {
       try {
         userInfo = await resolver.onRequest(req as any);
       } catch (error) {
-        // Trying the next resolver is deliberate — with several realms
+        // Trying the next resolver is deliberate: with several realms
         // registered, "this one cannot read the token" is the normal case.
         // But swallowing it silently meant a malformed
         // bearer ended as a bare `undefined` (i.e. "unauthenticated") with
@@ -1055,7 +1100,7 @@ export class SecurityProvider {
   /**
    * Like {@link checkPermission}, but resolves role names within the given
    * realm only. In multi-realm apps every realm defines roles literally named
-   * "admin"/"user" — resolving across ALL realms would grant a user whichever
+   * "admin"/"user": resolving across ALL realms would grant a user whichever
    * realm's homonymous role happens to be registered first. Always pass the
    * authenticated user's realm when it is known.
    *
@@ -1087,7 +1132,8 @@ export class SecurityProvider {
 
   /**
    * Whether an identity was authenticated by a machine credential (an API
-   * key) rather than a signed-in session.
+   * key, or the access token of a connected app) rather than a signed-in
+   * session.
    *
    * Any `credential` marker counts, whatever its type: a new kind of machine
    * credential is refused wherever this is asked the moment it sets the
@@ -1259,7 +1305,17 @@ export class SecurityProvider {
   }
 
   /**
-   * Creates a user account from the provided payload.
+   * Verifies an access token, or the `Authorization` header carrying one, and
+   * answers the identity it names.
+   *
+   * The token must be what a request could have presented: an access token
+   * (`typ`), minted for the realm it is verified against (`aud`). These are
+   * the two checks the JWT resolvers apply, and for the same reason: a realm
+   * signs its refresh tokens and authorization codes with the same key, and
+   * every realm of an application signs with one key by default.
+   *
+   * With `permission`, refuses an identity that does not hold it, permission
+   * scope included, as {@link createUser} does.
    */
   public async createUserFromToken(
     headerOrToken?: string,
@@ -1276,67 +1332,90 @@ export class SecurityProvider {
       );
     }
 
-    const { result, keyName: realm } = await this.jwt.parse(
+    const { result, keyName: realm } = await this.parseAccessToken(
       token,
       options.realm,
       options.verify,
     );
 
-    const info = this.createUserFromPayload(result.payload, realm);
-    const realmRoles = this.getRoles(realm).filter((it) => it.default);
-    const roles = info.roles ?? [];
-
-    for (const role of realmRoles) {
-      if (!roles.includes(role.name)) {
-        roles.push(role.name);
-      }
-    }
-
-    info.roles = roles;
+    // Set on the user `createUser` answers, never on a copy of it: a copy
+    // would lose the ownership decision of `options.permission`.
+    const user = this.createUser(
+      this.createUserFromPayload(result.payload, realm),
+      { realm, permission: options.permission },
+    );
+    user.token = token;
 
     await this.alepha.events.emit("security:user:created", {
       realm,
-      user: info,
+      user,
     });
 
-    let ownership: string | boolean | undefined;
-
-    if (options.permission) {
-      const check = this.checkPermissionInRealm(
-        realm,
-        options.permission,
-        ...roles,
-      );
-      if (!check.isAuthorized) {
-        throw new SecurityError(
-          `User is not allowed to access '${this.permissionToString(options.permission)}'`,
-        );
-      }
-
-      ownership = check.ownership;
-    }
-
-    return {
-      ...info,
-      ownership,
-      token,
-      realm,
-    };
+    return user;
   }
 
   /**
-   * Checks if a user has a specific role.
+   * Verifies a token and requires it to be an access token of the realm that
+   * verified it.
    *
-   * @param roleName - The role to check for.
+   * Without a realm, the first key that verifies the signature is not
+   * necessarily the realm the token was minted for, since realms share a key
+   * by default: the others are tried before refusing.
+   */
+  protected async parseAccessToken(
+    token: string,
+    realm?: string,
+    verify?: JWTVerifyOptions,
+  ): Promise<JwtParseResult> {
+    const isAccessTokenOf = (parsed: JwtParseResult) =>
+      this.jwt.isAccessToken(parsed.keyName, parsed.result.protectedHeader) &&
+      this.jwt.matchesRealmAudience(parsed.keyName, parsed.result.payload);
+
+    const first = await this.jwt.parse(token, realm, verify);
+    if (isAccessTokenOf(first)) {
+      return first;
+    }
+
+    if (!realm) {
+      for (const other of this.realms) {
+        if (other.name === first.keyName) {
+          continue;
+        }
+
+        try {
+          const parsed = await this.jwt.parse(token, other.name, verify);
+          if (isAccessTokenOf(parsed)) {
+            return parsed;
+          }
+        } catch (error) {
+          // The same refusal the first key would have given: this realm does
+          // not verify the token either.
+          this.log.trace(
+            `Realm '${other.name}' does not verify the token`,
+            error,
+          );
+        }
+      }
+    }
+
+    throw new InvalidTokenError("Invalid token");
+  }
+
+  /**
+   * Checks if a role grants a permission.
+   *
+   * @param roleName - The role to check.
    * @param permission - The permission to check for.
-   * @returns True if the user has the role, false otherwise.
+   * @returns True if the role grants the permission, false otherwise.
    */
   public can(roleName: string, permission: string | Permission): boolean {
     return this.checkPermission(permission, roleName).isAuthorized;
   }
 
   /**
-   * Checks if a user has ownership of a specific permission.
+   * The ownership a role's grant of a permission carries: `false` for an
+   * unrestricted grant, the grant's own `ownership` value for one narrowed to
+   * the caller's rows, `undefined` when the role does not grant it.
    */
   public ownership(
     roleName: string,
@@ -1380,10 +1459,150 @@ export class SecurityProvider {
 
   /**
    * Store the resolved user in the atom for downstream access (useAuth, audit trail, etc.).
+   *
+   * What is stored is the schema's view of the user, and the schema does not
+   * keep `ownership: false`: neither the answer a permission check attached
+   * to the user nor a hand-built one is stored. A restriction (`true`, a
+   * scope) is.
    */
   public storeUserInContext(user: UserAccountToken) {
     const decoded = this.alepha.codec.decode(userAccountInfoSchema, user);
     this.alepha.store.set(currentUserAtom, decoded);
+  }
+
+  /**
+   * The ownership an identity carried before any permission check answered
+   * for it: what whoever built the identity gave it, `undefined` for one
+   * resolved from a request.
+   *
+   * On a user a permission check published it is the value recorded at that
+   * time. On any other object it is the plain, enumerable `ownership` field,
+   * which a check never writes `false` into and which the user schema never
+   * lets `false` through: a copy of a published user therefore reads as
+   * unprivileged, whether a spread or a decode made it.
+   */
+  public identityOwnership(
+    user: UserAccountToken,
+  ): string | boolean | undefined {
+    if (Object.hasOwn(user, SecurityProvider.identityOwnershipKey)) {
+      return Reflect.get(user, SecurityProvider.identityOwnershipKey) as
+        | string
+        | boolean
+        | undefined;
+    }
+
+    return Object.prototype.propertyIsEnumerable.call(user, "ownership")
+      ? user.ownership
+      : undefined;
+  }
+
+  /**
+   * The identity a permission check publishes: a fresh object carrying the
+   * same user and the check's ownership decision.
+   *
+   * `user.ownership` reads the decision, which is what a handler asks. An
+   * UNRESTRICTED decision (`false`) is written non-enumerable, next to the
+   * record of what the identity carried before ({@link identityOwnership}),
+   * so a spread, a JSON round trip, `structuredClone` or `Object.assign` of
+   * the user copies neither: the privilege belongs to this object, for the
+   * check that produced it. A restriction (`true`, a scope) is an ordinary
+   * field: copying it can only keep a caller narrowed.
+   *
+   * The decision stays writable. A handler that assigns `user.ownership`
+   * replaces the decision on that object; what the identity itself carries
+   * is not changed by it.
+   */
+  public withOwnershipDecision(
+    user: UserAccountToken,
+    ownership: string | boolean | undefined,
+  ): UserAccountToken {
+    return this.markOwnership(user, ownership, this.identityOwnership(user));
+  }
+
+  protected markOwnership(
+    user: UserAccountToken,
+    ownership: string | boolean | undefined,
+    identityOwnership: string | boolean | undefined,
+  ): UserAccountToken {
+    // The spread leaves behind what a previous check wrote non-enumerable.
+    const { ownership: _found, ...identity } = user;
+    const marked: UserAccountToken = identity;
+
+    if (ownership === false) {
+      Object.defineProperty(marked, "ownership", {
+        value: false,
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
+    } else if (ownership !== undefined) {
+      marked.ownership = ownership;
+    }
+
+    Object.defineProperty(marked, SecurityProvider.identityOwnershipKey, {
+      value: identityOwnership,
+      enumerable: false,
+    });
+
+    return marked;
+  }
+
+  /**
+   * The ownership a gate that declares no permission leaves the user with.
+   *
+   * It makes no decision, so an unrestricted one it finds is another gate's
+   * and is dropped, back to what the identity itself carries. A restriction
+   * it finds is kept: a gate with nothing to check never makes a caller less
+   * restricted than it found them.
+   */
+  public inheritedOwnership(
+    user: UserAccountToken,
+  ): string | boolean | undefined {
+    return user.ownership || this.identityOwnership(user);
+  }
+
+  /**
+   * Run `callback` as `user`: the user is `currentUserAtom`'s value while the
+   * callback runs, and the atom reads what it held before once it settles.
+   *
+   * A gate publishes here, not with {@link storeUserInContext}: left in the
+   * context, the user outlived the gate and handed its decision to whatever
+   * the request ran next. A write the callback makes to the atom takes
+   * effect for the rest of the callback, and goes with it.
+   *
+   * The atom is written in the context the gate runs in, not in a layer of
+   * its own (a layer would also take every other write of the handler with
+   * it). So two gates running in parallel in one context, two pipelines
+   * under one `Promise.all`, can each read the other's user in the atom
+   * while both run, and the last to settle restores what it found, which
+   * may be the other's.
+   */
+  public async runAs<R>(
+    user: UserAccountToken,
+    callback: () => Promise<R>,
+  ): Promise<R> {
+    const previous = this.alepha.store.get(currentUserAtom);
+
+    // The schema's view of the user, like every other write to the atom,
+    // carrying the same decision as the user the handler receives. Stored as
+    // it is: validating it again would read the decision into a plain field.
+    const published = this.markOwnership(
+      this.alepha.codec.decode(userAccountInfoSchema, user),
+      user.ownership,
+      this.identityOwnership(user),
+    );
+
+    this.alepha.store.set(currentUserAtom, published, {
+      skipValidation: true,
+    });
+
+    try {
+      return await callback();
+    } finally {
+      this.alepha.store.set(currentUserAtom, previous, {
+        skipValidation: true,
+      });
+    }
   }
 
   // accessors
@@ -1397,7 +1616,7 @@ export class SecurityProvider {
    *
    * Admin endpoints accept a client-supplied target realm (e.g. a
    * `userRealmName` query param). Without scoping, a realm-A admin could act on
-   * realm-B resources by simply naming realm B — a cross-tenant escalation
+   * realm-B resources by simply naming realm B: a cross-tenant escalation
    * whenever realms are used as tenant boundaries. This binds the target realm
    * to the caller's own realm: omitting the target means "my realm"; naming a
    * *different* realm than the caller's is refused.
@@ -1419,7 +1638,7 @@ export class SecurityProvider {
   }
 
   /**
-   * Retrieves the user account from the provided user ID.
+   * The roles of a realm, or of every realm when none is named.
    *
    * @param realm
    */
@@ -1534,14 +1753,9 @@ export class SecurityProvider {
             // exclude permissions with multi-layer wildcard support
             ref = ref.filter((it) => {
               const permString = this.permissionToString(it);
-              return !exclude.some((excludePattern) => {
-                if (excludePattern === permString) return true;
-                if (excludePattern.endsWith(":*")) {
-                  const excludePrefix = excludePattern.slice(0, -2);
-                  return permString.startsWith(`${excludePrefix}:`);
-                }
-                return false;
-              });
+              return !exclude.some((excludePattern) =>
+                this.matchesPattern(permString, excludePattern),
+              );
             });
           }
           permissions.push(...ref);
@@ -1652,7 +1866,7 @@ export class SecurityProvider {
    * Returns the name from the given payload.
    *
    * @param payload - The payload object.
-   * @returns The name extracted from the payload, or an empty string if the payload is falsy or no name is found.
+   * @returns The name extracted from the payload, or "Anonymous User" if the payload is falsy or no name is found.
    */
   public getNameFromPayload(payload: Record<string, any>): string {
     if (!payload) {
@@ -1685,9 +1899,9 @@ export interface Realm {
   roles: Role[];
 
   /**
-   * The secret key for the realm.
-   *
-   * Can be also a JWKS URL.
+   * What verifies the realm's tokens: a secret key (which signs them too), a
+   * JWKS URL, a JWKS object, or a function returning the secret or the URL,
+   * read at start.
    */
   secret?: string | JSONWebKeySet | (() => string);
 
@@ -1746,12 +1960,17 @@ export interface SecurityCheckResult {
  *
  * @see SecurityProvider.declaredRoles
  */
-interface DeclaredRole {
+export interface DeclaredRole {
   role: Role;
   /**
    * The realms named at declaration, or `undefined` for every realm.
    */
   realms?: string[];
+  /**
+   * The realms this role was already pushed into, so a realm whose roles
+   * were replaced since is not handed it a second time.
+   */
+  attachedTo?: WeakSet<Realm>;
 }
 
 /**
@@ -1759,7 +1978,7 @@ interface DeclaredRole {
  *
  * @see SecurityProvider.roleReferences
  */
-interface RoleReference {
+export interface RoleReference {
   realm: string;
   role: string;
   resolved?: boolean;

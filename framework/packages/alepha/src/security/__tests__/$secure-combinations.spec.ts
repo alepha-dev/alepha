@@ -7,7 +7,7 @@ import {
   ForbiddenError,
   UnauthorizedError,
 } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 
@@ -335,7 +335,7 @@ function setup() {
 
 describe("$secure combinations", () => {
   describe("issuers + roles", () => {
-    it("should allow when both issuer and role match", async () => {
+    it("should allow when both issuer and role match", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -344,7 +344,9 @@ describe("$secure combinations", () => {
       );
     });
 
-    it("should deny when issuer matches but role does not", async () => {
+    it("should deny when issuer matches but role does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -353,7 +355,9 @@ describe("$secure combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when role matches but issuer does not", async () => {
+    it("should deny when role matches but issuer does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -369,7 +373,9 @@ describe("$secure combinations", () => {
   });
 
   describe("issuers + permissions", () => {
-    it("should allow when both issuer and permission match", async () => {
+    it("should allow when both issuer and permission match", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -378,7 +384,9 @@ describe("$secure combinations", () => {
       ).toBe("issuer+permission");
     });
 
-    it("should deny when issuer matches but permission does not", async () => {
+    it("should deny when issuer matches but permission does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -387,7 +395,9 @@ describe("$secure combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when permission would match but issuer does not", async () => {
+    it("should deny when permission would match but issuer does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -403,7 +413,7 @@ describe("$secure combinations", () => {
   });
 
   describe("issuers + guard", () => {
-    it("should allow when both issuer and guard pass", async () => {
+    it("should allow when both issuer and guard pass", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -412,7 +422,9 @@ describe("$secure combinations", () => {
       );
     });
 
-    it("should deny when issuer matches but guard fails", async () => {
+    it("should deny when issuer matches but guard fails", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -421,7 +433,9 @@ describe("$secure combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when guard would pass but issuer does not", async () => {
+    it("should deny when guard would pass but issuer does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -437,7 +451,9 @@ describe("$secure combinations", () => {
   });
 
   describe("roles + permissions", () => {
-    it("should allow when both role and permission match", async () => {
+    it("should allow when both role and permission match", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -446,7 +462,9 @@ describe("$secure combinations", () => {
       );
     });
 
-    it("should deny when role matches but permission does not", async () => {
+    it("should deny when role matches but permission does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -465,7 +483,7 @@ describe("$secure combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when user has no roles", async () => {
+    it("should deny when user has no roles", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -476,7 +494,7 @@ describe("$secure combinations", () => {
   });
 
   describe("roles + guard", () => {
-    it("should allow when both role and guard pass", async () => {
+    it("should allow when both role and guard pass", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -485,7 +503,7 @@ describe("$secure combinations", () => {
       );
     });
 
-    it("should deny when role matches but guard fails", async () => {
+    it("should deny when role matches but guard fails", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -494,11 +512,13 @@ describe("$secure combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when guard would pass but role does not", async () => {
+    it("should deny when guard would pass but role does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
-      // viewer with the "allowed" email — guard would pass, but role check fails
+      // viewer with the "allowed" email: guard would pass, but role check fails
       const viewerAllowed = { ...users.viewer, email: "allowed@test.com" };
       await expect(
         app.roleAndGuard.run({}, { user: viewerAllowed }),
@@ -507,7 +527,9 @@ describe("$secure combinations", () => {
   });
 
   describe("permissions + guard", () => {
-    it("should allow when both permission and guard pass", async () => {
+    it("should allow when both permission and guard pass", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -516,7 +538,9 @@ describe("$secure combinations", () => {
       );
     });
 
-    it("should deny when permission matches but guard fails", async () => {
+    it("should deny when permission matches but guard fails", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -526,7 +550,9 @@ describe("$secure combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when guard would pass but permission does not", async () => {
+    it("should deny when guard would pass but permission does not", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -545,7 +571,7 @@ describe("$secure combinations", () => {
 
 describe("$secure three-option combinations", () => {
   describe("issuers + roles + permissions", () => {
-    it("should allow when all three match", async () => {
+    it("should allow when all three match", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -554,7 +580,7 @@ describe("$secure three-option combinations", () => {
       ).toBe("issuer+role+permission");
     });
 
-    it("should deny when issuer fails", async () => {
+    it("should deny when issuer fails", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -568,7 +594,7 @@ describe("$secure three-option combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when role fails", async () => {
+    it("should deny when role fails", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -577,7 +603,7 @@ describe("$secure three-option combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when permission fails", async () => {
+    it("should deny when permission fails", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -589,7 +615,7 @@ describe("$secure three-option combinations", () => {
   });
 
   describe("issuers + roles + guard", () => {
-    it("should allow when all three match", async () => {
+    it("should allow when all three match", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -598,7 +624,9 @@ describe("$secure three-option combinations", () => {
       );
     });
 
-    it("should deny when guard fails (issuer and role pass)", async () => {
+    it("should deny when guard fails (issuer and role pass)", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -609,7 +637,7 @@ describe("$secure three-option combinations", () => {
   });
 
   describe("issuers + permissions + guard", () => {
-    it("should allow when all three match", async () => {
+    it("should allow when all three match", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -618,7 +646,9 @@ describe("$secure three-option combinations", () => {
       ).toBe("issuer+permission+guard");
     });
 
-    it("should deny when permission fails (issuer and guard would pass)", async () => {
+    it("should deny when permission fails (issuer and guard would pass)", async ({
+      expect,
+    }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -631,7 +661,7 @@ describe("$secure three-option combinations", () => {
   });
 
   describe("roles + permissions + guard", () => {
-    it("should allow when all three match", async () => {
+    it("should allow when all three match", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -640,7 +670,7 @@ describe("$secure three-option combinations", () => {
       ).toBe("role+permission+guard");
     });
 
-    it("should deny when only guard fails", async () => {
+    it("should deny when only guard fails", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -649,7 +679,7 @@ describe("$secure three-option combinations", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("should deny when only role fails", async () => {
+    it("should deny when only role fails", async ({ expect }) => {
       const { alepha, app, users } = setup();
       await alepha.start();
 
@@ -667,14 +697,16 @@ describe("$secure three-option combinations", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure all options combined", () => {
-  it("should allow when issuer + role + permission + guard all pass", async () => {
+  it("should allow when issuer + role + permission + guard all pass", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
     expect(await app.allOptions.run({}, { user: users.editor })).toBe("all");
   });
 
-  it("should deny when only issuer fails", async () => {
+  it("should deny when only issuer fails", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -688,7 +720,7 @@ describe("$secure all options combined", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny when only role fails", async () => {
+  it("should deny when only role fails", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -698,7 +730,7 @@ describe("$secure all options combined", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny when only permission fails", async () => {
+  it("should deny when only permission fails", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -713,7 +745,7 @@ describe("$secure all options combined", () => {
     );
   });
 
-  it("should deny when only guard fails", async () => {
+  it("should deny when only guard fails", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -722,7 +754,7 @@ describe("$secure all options combined", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny unauthenticated user", async () => {
+  it("should deny unauthenticated user", async ({ expect }) => {
     const { alepha, app } = setup();
     await alepha.start();
 
@@ -735,7 +767,9 @@ describe("$secure all options combined", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure multiple permissions (AND)", () => {
-  it("should allow when user has all required permissions", async () => {
+  it("should allow when user has all required permissions", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -745,7 +779,9 @@ describe("$secure multiple permissions (AND)", () => {
     ).toBe("multi-perm");
   });
 
-  it("should deny when user has only some of the required permissions", async () => {
+  it("should deny when user has only some of the required permissions", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -755,7 +791,9 @@ describe("$secure multiple permissions (AND)", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny when user has none of the required permissions", async () => {
+  it("should deny when user has none of the required permissions", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -764,7 +802,7 @@ describe("$secure multiple permissions (AND)", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should allow admin with wildcard permission", async () => {
+  it("should allow admin with wildcard permission", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -779,7 +817,7 @@ describe("$secure multiple permissions (AND)", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure multiple issuers (OR)", () => {
-  it("should allow user from first issuer", async () => {
+  it("should allow user from first issuer", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -788,7 +826,7 @@ describe("$secure multiple issuers (OR)", () => {
     );
   });
 
-  it("should allow user from second issuer", async () => {
+  it("should allow user from second issuer", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -797,7 +835,7 @@ describe("$secure multiple issuers (OR)", () => {
     );
   });
 
-  it("should deny user from unknown issuer", async () => {
+  it("should deny user from unknown issuer", async ({ expect }) => {
     const { alepha, app } = setup();
     await alepha.start();
 
@@ -818,7 +856,7 @@ describe("$secure multiple issuers (OR)", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure multiple roles (OR)", () => {
-  it("should allow user with first matching role", async () => {
+  it("should allow user with first matching role", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -827,7 +865,7 @@ describe("$secure multiple roles (OR)", () => {
     );
   });
 
-  it("should allow user with second matching role", async () => {
+  it("should allow user with second matching role", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -836,7 +874,7 @@ describe("$secure multiple roles (OR)", () => {
     );
   });
 
-  it("should allow user with both roles", async () => {
+  it("should allow user with both roles", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -845,7 +883,7 @@ describe("$secure multiple roles (OR)", () => {
     ).toBe("multi-role");
   });
 
-  it("should deny user with none of the required roles", async () => {
+  it("should deny user with none of the required roles", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -860,11 +898,11 @@ describe("$secure multiple roles (OR)", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure check order", () => {
-  it("should check issuer before role", async () => {
+  it("should check issuer before role", async ({ expect }) => {
     const { alepha, app } = setup();
     await alepha.start();
 
-    // User from wrong issuer with wrong role — error message should be about issuer, not role
+    // User from wrong issuer with wrong role: error message should be about issuer, not role
     const wrongBoth = {
       id: randomUUID(),
       roles: ["viewer"],
@@ -876,17 +914,17 @@ describe("$secure check order", () => {
     ).rejects.toThrow(/issuer/i);
   });
 
-  it("should check role before permission", async () => {
+  it("should check role before permission", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
-    // User with wrong role and wrong permission — error should be about role
+    // User with wrong role and wrong permission: error should be about role
     await expect(
       app.roleAndPermission.run({}, { user: users.viewer }),
     ).rejects.toThrow(/role.*required/i);
   });
 
-  it("should check permission before guard", async () => {
+  it("should check permission before guard", async ({ expect }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -897,11 +935,13 @@ describe("$secure check order", () => {
     ).rejects.toThrow(/permission.*required/i);
   });
 
-  it("should reach guard only after all other checks pass", async () => {
+  it("should reach guard only after all other checks pass", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
-    // Editor with wrong email — issuer/role/permission all pass, only guard fails
+    // Editor with wrong email: issuer/role/permission all pass, only guard fails
     await expect(
       app.allOptions.run({}, { user: users.editorWrongEmail }),
     ).rejects.toThrow(/access denied/i);
@@ -913,7 +953,9 @@ describe("$secure check order", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$secure edge cases", () => {
-  it("should deny user with empty roles array against role check", async () => {
+  it("should deny user with empty roles array against role check", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -922,7 +964,9 @@ describe("$secure edge cases", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny user with undefined roles against role check", async () => {
+  it("should deny user with undefined roles against role check", async ({
+    expect,
+  }) => {
     const { alepha, app } = setup();
     await alepha.start();
 
@@ -936,7 +980,9 @@ describe("$secure edge cases", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny user with no realm against issuer check", async () => {
+  it("should deny user with no realm against issuer check", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -945,7 +991,9 @@ describe("$secure edge cases", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should deny user with empty roles array against permission check", async () => {
+  it("should deny user with empty roles array against permission check", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -954,7 +1002,9 @@ describe("$secure edge cases", () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should allow auth-only action for user with no roles", async () => {
+  it("should allow auth-only action for user with no roles", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -963,7 +1013,9 @@ describe("$secure edge cases", () => {
     );
   });
 
-  it("should allow auth-only action for user with no realm", async () => {
+  it("should allow auth-only action for user with no realm", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
@@ -972,10 +1024,50 @@ describe("$secure edge cases", () => {
     );
   });
 
-  it("should allow admin wildcard through any permission check", async () => {
+  it("should allow admin wildcard through any permission check", async ({
+    expect,
+  }) => {
     const { alepha, app, users } = setup();
     await alepha.start();
 
     expect(await app.requireRead.run({}, { user: users.admin })).toBe("read");
+  });
+});
+
+describe("$secure with a Permission object", () => {
+  it("names the whole permission, group included, when it refuses", async ({
+    expect,
+  }) => {
+    class TestApp {
+      main = $issuer({
+        secret: "test-main",
+        roles: [{ name: "viewer", permissions: [{ name: "posts:read" }] }],
+      });
+
+      remove = $action({
+        path: "/remove",
+        method: "GET",
+        use: [$secure({ permissions: [{ group: "posts", name: "delete" }] })],
+        handler: () => "removed",
+      });
+
+      read = $action({
+        path: "/read",
+        method: "GET",
+        use: [$secure({ permissions: [{ group: "posts", name: "read" }] })],
+        handler: () => "read",
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
+    const app = alepha.inject(TestApp);
+    await alepha.start();
+
+    const viewer = { id: "u1", realm: "main", roles: ["viewer"] };
+
+    expect(await app.read.run({}, { user: viewer })).toBe("read");
+    await expect(app.remove.run({}, { user: viewer })).rejects.toThrow(
+      "Permission 'posts:delete' required",
+    );
   });
 });

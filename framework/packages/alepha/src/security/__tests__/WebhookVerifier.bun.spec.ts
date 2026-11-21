@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import { $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $route, ServerProvider } from "alepha/server";
 
 import { WebhookSigner } from "../providers/WebhookSigner.ts";
@@ -35,7 +36,7 @@ describe("WebhookVerifier.verifyRequest on Bun", () => {
     const body = '{ "id": "e1",  "type": "order.paid", "data": {} }';
     const headers = await alepha.inject(WebhookSigner).headers({
       id: "e1",
-      timestamp: Math.floor(Date.now() / 1000),
+      timestamp: alepha.inject(DateTimeProvider).now().unix(),
       body,
       secrets: [secret],
     });

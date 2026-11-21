@@ -1,5 +1,5 @@
 import { $pipeline, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { $role, $secure } from "../index.ts";
@@ -8,7 +8,7 @@ import { $role, $secure } from "../index.ts";
  * `permissions` is an AND list. Each entry can narrow the grant to rows the
  * caller owns (`ownership: true`), and `$owns` treats `ownership === false` as
  * a full bypass of its row check. Combining them must therefore take the MOST
- * RESTRICTIVE answer — and must not depend on the order they were listed in.
+ * RESTRICTIVE answer, and must not depend on the order they were listed in.
  */
 
 class Roles {
@@ -49,23 +49,31 @@ const ownershipFor = async (permissions: string[]) => {
 };
 
 describe("$secure permission ownership", () => {
-  it("should not depend on the order permissions are listed in", async () => {
+  it("should not depend on the order permissions are listed in", async ({
+    expect,
+  }) => {
     const readFirst = await ownershipFor(["docs:read", "docs:list"]);
     const listFirst = await ownershipFor(["docs:list", "docs:read"]);
 
     expect(readFirst).toEqual(listFirst);
   });
 
-  it("should keep the owner-scoped restriction when any permission requires it", async () => {
+  it("should keep the owner-scoped restriction when any permission requires it", async ({
+    expect,
+  }) => {
     expect(await ownershipFor(["docs:read", "docs:list"])).toBe(true);
     expect(await ownershipFor(["docs:list", "docs:read"])).toBe(true);
   });
 
-  it("should stay unrestricted when no permission requires ownership", async () => {
+  it("should stay unrestricted when no permission requires ownership", async ({
+    expect,
+  }) => {
     expect(await ownershipFor(["docs:list"])).toBe(false);
   });
 
-  it("should stay owner-scoped for a single owner-scoped permission", async () => {
+  it("should stay owner-scoped for a single owner-scoped permission", async ({
+    expect,
+  }) => {
     expect(await ownershipFor(["docs:read"])).toBe(true);
   });
 });

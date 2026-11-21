@@ -1,10 +1,10 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $permission, $role } from "../index.ts";
 
 describe("$role", () => {
-  it("should accept permissions", async () => {
+  it("should accept permissions", async ({ expect }) => {
     class Roles {
       admin = $role({
         name: "admin",
