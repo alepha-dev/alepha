@@ -182,16 +182,17 @@ const ProjectSettingsNotificationsPage = () => {
   );
 
   // The grouping, outside the table's filters: it arranges the rows and
-  // narrows none of them.
+  // narrows none of them. Empty is "No grouping", the select's placeholder
+  // (#Q4054): clearing the selected value returns to it.
   const grouping = useForm({
     id: "notifications-grouping",
     schema: z.object({
-      group: z.enum(["resource", "recipient", "none"]).optional(),
+      group: z.enum(["resource", "recipient"]).optional(),
     }),
     initialValues: { group: "resource" as const },
     handler: async () => {},
   });
-  const group = useFormValues(grouping).group ?? "resource";
+  const group = useFormValues(grouping).group;
 
   const nameOf = (id: string) => {
     const user = users.find((it) => it.id === id);
@@ -494,7 +495,7 @@ const ProjectSettingsNotificationsPage = () => {
           filter={(row, values) => matches(row, values)}
           summary={{ cards }}
           groupBy={
-            group === "none"
+            group === undefined
               ? undefined
               : group === "resource"
                 ? {
@@ -536,6 +537,7 @@ const ProjectSettingsNotificationsPage = () => {
                 select
                 icon={Layers}
                 aria-label={tr("notifications.group.by")}
+                placeholder={tr("notifications.group.none")}
                 items={[
                   {
                     value: "resource",
@@ -545,7 +547,6 @@ const ProjectSettingsNotificationsPage = () => {
                     value: "recipient",
                     label: tr("notifications.group.recipient"),
                   },
-                  { value: "none", label: tr("notifications.group.none") },
                 ]}
               />
             </div>
