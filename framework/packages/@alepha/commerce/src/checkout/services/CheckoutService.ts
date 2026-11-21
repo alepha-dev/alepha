@@ -834,7 +834,7 @@ export class CheckoutService {
    */
   protected parcelOf(priced: PricedCart): ShippingQuoteContext {
     return {
-      currency: priced.cart.currency,
+      currency: priced.currency,
       weightGrams: priced.weightGrams,
     };
   }

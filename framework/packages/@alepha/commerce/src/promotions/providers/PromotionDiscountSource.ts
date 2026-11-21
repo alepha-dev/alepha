@@ -22,7 +22,7 @@ export class PromotionDiscountSource implements CartDiscountSource {
     const judged = {
       itemsTotal: context.itemsTotal,
       userId: context.cart.userId,
-      currency: context.cart.currency,
+      currency: context.currency,
     };
 
     if (context.code) {

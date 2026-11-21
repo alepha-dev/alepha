@@ -403,10 +403,11 @@ export class CartService {
    */
   public async applyCode(cartId: string, code: string): Promise<CartEntity> {
     const normalised = code.trim().toUpperCase();
-    const { cart, itemsTotal } = await this.price(cartId);
+    const { cart, itemsTotal, currency } = await this.price(cartId);
     const discount = await this.discounts.evaluate({
       cart,
       itemsTotal,
+      currency,
       code: normalised,
     });
     if (!discount) {
@@ -510,7 +511,16 @@ export class CartService {
     }
 
     const itemsTotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
-    const { discount, codeRefusal } = await this.earned(cart, itemsTotal);
+    const currency =
+      cart.currency ??
+      (lines[0]
+        ? byId.get(lines[0].productId)!.currency
+        : this.prices.baseCurrency);
+    const { discount, codeRefusal } = await this.earned(
+      cart,
+      itemsTotal,
+      currency,
+    );
     this.applyDiscount(lines, discount?.amount ?? 0);
 
     return {
@@ -523,11 +533,7 @@ export class CartService {
         (sum, l) => sum + l.weightGrams * l.quantity,
         0,
       ),
-      currency:
-        cart.currency ??
-        (lines[0]
-          ? byId.get(lines[0].productId)!.currency
-          : this.prices.baseCurrency),
+      currency,
       discount,
       discountLabel: discount?.label,
       promotionCode: discount?.code,
@@ -542,6 +548,7 @@ export class CartService {
   protected async earned(
     cart: CartEntity,
     itemsTotal: number,
+    currency: string,
   ): Promise<{
     discount?: CartDiscount;
     codeRefusal?: PromotionRefusedError;
@@ -554,6 +561,7 @@ export class CartService {
         discount: await this.discounts.evaluate({
           cart,
           itemsTotal,
+          currency,
           code: cart.promotionCode,
         }),
       };
@@ -562,7 +570,11 @@ export class CartService {
         throw error;
       }
       return {
-        discount: await this.discounts.evaluate({ cart, itemsTotal }),
+        discount: await this.discounts.evaluate({
+          cart,
+          itemsTotal,
+          currency,
+        }),
         codeRefusal: error,
       };
     }

@@ -11,6 +11,11 @@ export interface CartDiscountContext {
    */
   itemsTotal: number;
   /**
+   * What the cart is priced in: its own currency, or its products' when it
+   * chose none.
+   */
+  currency: string;
+  /**
    * The code the buyer applied, normalised. Unset: only what applies on its
    * own can.
    */

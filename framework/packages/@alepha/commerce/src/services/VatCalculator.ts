@@ -83,8 +83,7 @@ export class VatCalculator {
 
   /**
    * The rate carrying the largest amount - what a one-line summary shows.
-   */
-  /**
+   *
    * @public Called by applications, not from this package. One downstream app
    * uses it in four services to stamp an invoice line's headline rate. It was
    * reported as unused by the 2026-08-23 audit, which read this repository
@@ -130,8 +129,7 @@ export class VatCalculator {
    * so the legs sum back to the sale exactly, for any split, at any rate.
    *
    * Ported from the point-of-sale app together with the rest of this class.
-   */
-  /**
+   *
    * @public Application surface, like {@link dominantRateBps}: a point-of-sale
    * SaleService splits VAT across payment legs with it in three places.
    */
@@ -198,8 +196,7 @@ export class VatCalculator {
 
   /**
    * Merge several ventilations into one. Used to aggregate a period.
-   */
-  /**
+   *
    * @public Application surface, like {@link dominantRateBps}: a point-of-sale
    * FiscalClosureService folds a day's VAT groups back together with it.
    */

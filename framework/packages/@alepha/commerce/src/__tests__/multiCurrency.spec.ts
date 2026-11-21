@@ -11,6 +11,7 @@ import { CartService } from "../cart/services/CartService.ts";
 import { AddressRulesProvider } from "../checkout/providers/AddressRulesProvider.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { ProductController } from "../controllers/ProductController.ts";
+import { NoShippingRateError } from "../errors/CommerceError.ts";
 import { AlephaCommerceInvoicing } from "../invoicing/index.ts";
 import { ExchangeRateProvider } from "../invoicing/providers/ExchangeRateProvider.ts";
 import { HtmlInvoiceRenderer } from "../invoicing/providers/HtmlInvoiceRenderer.ts";
@@ -611,6 +612,63 @@ describe("a promotion", () => {
     await expect(ctx.carts.applyCode(cart.id, code)).rejects.toThrow(
       /currency/,
     );
+  });
+});
+
+describe("a cart that chose no currency", () => {
+  const aDollarProduct = async (ctx: Ctx) => {
+    const product = await ctx.catalog.create({
+      slug: `dollar-ring-${randomUUID()}`,
+      name: "Dollar ring",
+      price: 10000,
+      currency: "USD",
+      published: true,
+    });
+    const cart = await aCart(ctx);
+    await ctx.carts.add(cart.id, product.id);
+    return cart;
+  };
+
+  it("judges a code by the currency it is priced in", async ({ expect }) => {
+    const ctx = await setup();
+    const code = `TEN${randomUUID().slice(0, 8)}`;
+    await ctx.promotions.create({
+      name: "Ten off",
+      code,
+      kind: "amount",
+      value: 1000,
+    });
+    const cart = await aDollarProduct(ctx);
+
+    expect((await ctx.carts.price(cart.id)).currency).toBe("USD");
+    await expect(ctx.carts.applyCode(cart.id, code)).rejects.toThrow(
+      /currency/,
+    );
+  });
+
+  it("offers no delivery rate in another currency", async ({ expect }) => {
+    const ctx = await setup();
+    const zone = await ctx.shipping.createZone({
+      name: `France ${randomUUID()}`,
+      countries: ["FR"],
+    });
+    await ctx.shipping.createRate({
+      zoneId: zone.id,
+      code: `fr-eur-${randomUUID()}`,
+      name: "France EUR",
+      price: 500,
+    });
+    const cart = await aDollarProduct(ctx);
+    const opened = await ctx.checkout.start(cart.id);
+
+    await expect(
+      ctx.checkout.setAddress(opened.id, {
+        ...address,
+        locality: "Paris",
+        postalCode: "75001",
+        country: "FR",
+      }),
+    ).rejects.toThrow(NoShippingRateError);
   });
 });
 
