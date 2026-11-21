@@ -246,7 +246,7 @@ export function useAction<Args extends any[], Result = void>(
 
       try {
         await alepha.events.emit("react:action:begin", {
-          type: "custom",
+          type: optionsRef.current.type ?? "custom",
           id: optionsRef.current.id,
         });
         // The context, with the abort signal, is the handler's first argument.
@@ -270,7 +270,10 @@ export function useAction<Args extends any[], Result = void>(
         // is reported by the event manager, and the run goes on.
         await alepha.events.emit(
           "react:action:success",
-          { type: "custom", id: optionsRef.current.id },
+          {
+            type: optionsRef.current.type ?? "custom",
+            id: optionsRef.current.id,
+          },
           { catch: true },
         );
 
@@ -314,7 +317,7 @@ export function useAction<Args extends any[], Result = void>(
           await alepha.events.emit(
             "react:action:error",
             {
-              type: "custom",
+              type: optionsRef.current.type ?? "custom",
               id: optionsRef.current.id,
               error,
               handled: false,
@@ -358,7 +361,7 @@ export function useAction<Args extends any[], Result = void>(
         await alepha.events.emit(
           "react:action:error",
           {
-            type: "custom",
+            type: optionsRef.current.type ?? "custom",
             id: optionsRef.current.id,
             error,
             handled: ActionErrorPolicy.isHandled(
@@ -384,7 +387,7 @@ export function useAction<Args extends any[], Result = void>(
             await alepha.events.emit(
               "react:action:error",
               {
-                type: "custom",
+                type: optionsRef.current.type ?? "custom",
                 id: optionsRef.current.id,
                 error: second,
                 handled: false,
@@ -412,7 +415,10 @@ export function useAction<Args extends any[], Result = void>(
 
         await alepha.events.emit(
           "react:action:end",
-          { type: "custom", id: optionsRef.current.id },
+          {
+            type: optionsRef.current.type ?? "custom",
+            id: optionsRef.current.id,
+          },
           { catch: true },
         );
 
@@ -663,9 +669,16 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
   invalidates?: unknown[][] | ((result: Result) => unknown[][]);
 
   /**
-   * Optional identifier for this action (useful for debugging/analytics)
+   * Optional identifier for this action (useful for debugging/analytics),
+   * carried by the `react:action:*` events.
    */
   id?: string;
+
+  /**
+   * The kind carried by the `react:action:*` events: `custom` unless set.
+   * `useQuery` and `useInfiniteQuery` set `query`.
+   */
+  type?: string;
 
   /**
    * Debounce delay in milliseconds. If specified, the action will only execute

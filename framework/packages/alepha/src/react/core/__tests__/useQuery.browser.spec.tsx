@@ -1210,4 +1210,33 @@ describe("useQuery null data and key changes", () => {
     expect(errors).toEqual([]);
     expect(succeeded).toEqual(["one"]);
   });
+
+  it("emits query events named by the key, or by the id it was given", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const seen: Array<{ type: string; id?: string }> = [];
+    alepha.events.on("react:action:begin", (ev) => {
+      seen.push({ type: ev.type, id: ev.id });
+    });
+    const handler = vi.fn(async () => "value");
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    renderHook(() => useQuery({ key: ["users", 1], handler }, []), {
+      wrapper,
+    });
+    renderHook(() => useQuery({ key: ["users", 2], id: "team", handler }, []), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(seen).toHaveLength(2));
+    expect(seen).toContainEqual({
+      type: "query",
+      id: alepha.inject(QueryCache).serialize(["users", 1]),
+    });
+    expect(seen).toContainEqual({ type: "query", id: "team" });
+  });
 });

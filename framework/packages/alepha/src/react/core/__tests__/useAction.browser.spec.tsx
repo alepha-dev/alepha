@@ -201,10 +201,10 @@ describe("useAction", () => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
-    const events: Array<{ id?: string }> = [];
+    const events: Array<{ id?: string; type: string }> = [];
 
     alepha.events.on("react:action:begin", (ev) => {
-      events.push({ id: ev.id });
+      events.push({ id: ev.id, type: ev.type });
     });
 
     const mockAction = vi.fn(async (ctx) => "done");
@@ -222,6 +222,7 @@ describe("useAction", () => {
     await action.run();
 
     expect(events[0].id).toBe("test-action");
+    expect(events[0].type).toBe("custom");
   });
 
   it("should prevent concurrent executions", async ({ expect }) => {
