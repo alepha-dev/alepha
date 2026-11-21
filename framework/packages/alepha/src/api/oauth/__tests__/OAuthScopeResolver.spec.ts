@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { MemoryDestinationProvider } from "alepha/logger";
 import { AlephaOrmTestPostgres } from "alepha/orm";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaOAuth, OAuthScopeResolver, oauthOptions } from "../index.ts";
 
@@ -25,7 +25,7 @@ describe("OAuthScopeResolver", () => {
     copyOnly: { label: "Copy only" },
   };
 
-  it("unions the declared lists of every granted scope", async () => {
+  it("unions the declared lists of every granted scope", async ({ expect }) => {
     const { resolver } = await setup(declared);
 
     expect(resolver.resolve(["projects", "quests"])).toEqual([
@@ -35,7 +35,7 @@ describe("OAuthScopeResolver", () => {
     ]);
   });
 
-  it("lets an identity scope contribute nothing", async () => {
+  it("lets an identity scope contribute nothing", async ({ expect }) => {
     const { resolver } = await setup(declared);
 
     expect(resolver.resolve(["openid"])).toEqual([]);
@@ -45,13 +45,17 @@ describe("OAuthScopeResolver", () => {
     ]);
   });
 
-  it("leaves the whole grant unrestricted when a DECLARED scope declares no permissions", async () => {
+  it("leaves the whole grant unrestricted when a DECLARED scope declares no permissions", async ({
+    expect,
+  }) => {
     const { resolver } = await setup(declared);
 
     expect(resolver.resolve(["quests", "copyOnly"])).toBeUndefined();
   });
 
-  it("fails closed on a scope the application never declared (#Q2514)", async () => {
+  it("fails closed on a scope the application never declared (#Q2514)", async ({
+    expect,
+  }) => {
     const { resolver } = await setup(declared);
 
     // It used to leave the grant unrestricted: a self-registered client
@@ -63,20 +67,26 @@ describe("OAuthScopeResolver", () => {
     expect(resolver.resolve(["never-declared"])).toEqual([]);
   });
 
-  it("fails closed on a grant naming no scope, once scopes are declared (#Q2514)", async () => {
+  it("fails closed on a grant naming no scope, once scopes are declared (#Q2514)", async ({
+    expect,
+  }) => {
     const { resolver } = await setup(declared);
 
     expect(resolver.resolve([])).toEqual([]);
   });
 
-  it("keeps an application that declares no scope unrestricted", async () => {
+  it("keeps an application that declares no scope unrestricted", async ({
+    expect,
+  }) => {
     const { resolver } = await setup({});
 
     expect(resolver.resolve([])).toBeUndefined();
     expect(resolver.resolve(["anything"])).toBeUndefined();
   });
 
-  it("warns at boot about each declared scope that narrows nothing", async () => {
+  it("warns at boot about each declared scope that narrows nothing", async ({
+    expect,
+  }) => {
     const { logs } = await setup(declared);
 
     const warnings = logs

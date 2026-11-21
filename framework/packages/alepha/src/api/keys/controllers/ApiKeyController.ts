@@ -19,7 +19,8 @@ import { ApiKeyService } from "../services/ApiKeyService.ts";
 
 /**
  * REST API controller for user's own API key management.
- * Users can create, list, and revoke their own API keys.
+ * Users can create, list, rotate and revoke their own API keys, and read
+ * the options a key may take.
  */
 export class ApiKeyController {
   protected readonly url = "/api-keys";
@@ -111,7 +112,8 @@ export class ApiKeyController {
 
   /**
    * Rotate one of your API keys: a new secret on the same row, returned once.
-   * The old token stops authenticating immediately.
+   * The old token stops authenticating at once on the instance that served
+   * the rotation, and within 30 seconds on any other.
    *
    * Owner only, and only from a signed-in session: a key cannot rotate a key.
    */

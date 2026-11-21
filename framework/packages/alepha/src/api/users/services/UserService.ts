@@ -2,6 +2,7 @@ import { $inject, Alepha } from "alepha";
 import {
   type VerificationController,
   VerificationService,
+  VerificationThrottledError,
 } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -183,7 +184,8 @@ export class UserService {
         params: { type },
         body: { target: email, token },
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error instanceof VerificationThrottledError) throw error;
         this.log.warn("Invalid email verification token", { email, type });
         throw new BadRequestError("Invalid or expired verification token");
       });

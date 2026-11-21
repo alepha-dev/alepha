@@ -1,5 +1,5 @@
 /**
- * RFC 8414 — OAuth 2.0 Authorization Server Metadata.
+ * RFC 8414: OAuth 2.0 Authorization Server Metadata.
  * `baseUrl` is the absolute origin of the deployment (e.g. https://app.com).
  */
 export const buildAuthorizationServerMetadata = (
@@ -43,7 +43,7 @@ export const buildAuthorizationServerMetadata = (
 });
 
 /**
- * RFC 9728 — OAuth 2.0 Protected Resource Metadata.
+ * RFC 9728: OAuth 2.0 Protected Resource Metadata.
  * `resource` is the absolute URL of the MCP endpoint being protected.
  */
 export const buildProtectedResourceMetadata = (

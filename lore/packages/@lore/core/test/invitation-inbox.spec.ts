@@ -178,15 +178,18 @@ describe("the pending-invitation inbox", () => {
     const one = await measure(1);
     const six = await measure(5);
 
-    // One read of each table for one invitation and for six. It used to be
-    // two per invitation, so six cost twelve.
+    // The same reads for one invitation and for six: one of `projects`, and
+    // three of `users` (the caller's own account and the inviters' realm,
+    // both read by `InvitationService.listMine` to decide what the caller
+    // may see, then the inviters' names). It used to be two reads per
+    // invitation, so six cost twelve.
     //
     // Exact, never `toBeLessThan`: an upper bound stays green if the
     // enrichment stops resolving anything at all, which is precisely the
     // regression the first case above catches from the other side.
     expect({ one, six }).toEqual({
-      one: { size: 1, projects: 1, users: 1 },
-      six: { size: 6, projects: 1, users: 1 },
+      one: { size: 1, projects: 1, users: 3 },
+      six: { size: 6, projects: 1, users: 3 },
     });
   });
 
@@ -220,9 +223,10 @@ describe("the pending-invitation inbox", () => {
       ]),
     );
 
-    // Three invitations, two distinct inviters, ONE users read — the dedupe
-    // is what stops the repeated inviter being fetched twice.
-    expect(ctx.counter.of("users")).toBe(1);
+    // Three invitations, two distinct inviters, and the same three users
+    // reads as an inbox of one: the dedupe is what stops the repeated
+    // inviter being fetched twice.
+    expect(ctx.counter.of("users")).toBe(3);
   });
 
   it("falls back to 'Project' when the project is gone", async ({ expect }) => {

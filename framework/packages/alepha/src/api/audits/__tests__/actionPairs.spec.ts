@@ -1,7 +1,7 @@
 import { $module, Alepha } from "alepha";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $audit, AlephaApiAudits } from "../index.ts";
 import { AuditService } from "../services/AuditService.ts";
@@ -47,7 +47,9 @@ const setup = async () => {
 };
 
 describe("audit action pairs", () => {
-  it("lists every (type, action) pair, sorted by type then action", async () => {
+  it("lists every (type, action) pair, sorted by type then action", async ({
+    expect,
+  }) => {
     const { audits } = await setup();
 
     const pairs = audits.getDistinctActions();
@@ -61,7 +63,7 @@ describe("audit action pairs", () => {
     ]);
   });
 
-  it("filters on the pair, and on the type alone", async () => {
+  it("filters on the pair, and on the type alone", async ({ expect }) => {
     const { audits, users, parameters } = await setup();
 
     await users.audit.log("create", { resourceId: "u1" });

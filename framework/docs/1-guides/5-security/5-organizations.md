@@ -57,7 +57,9 @@ against the caller's rank (see [Ranks](/docs/guides-security-organizations#ranks
 
 Ownership is transferred, never assigned as an ordinary rank. The transfer
 updates the old and new owner together, so an organization is not left with
-zero or two owners. The owner cannot leave or be removed until ownership has
+zero or two owners. The rank the outgoing owner keeps must be one the
+organization defines (`member` when none is named); an unknown rank is refused
+and nothing changes. The owner cannot leave or be removed until ownership has
 been transferred, and a user who still owns an organization cannot delete their
 account (`user:delete:before` answers `409`) until they transfer or delete it.
 
@@ -232,6 +234,39 @@ under `/organizations/invitations`: `me` (my pending invitations),
 invitation's own address), and `preview?token=...`, which needs no session and
 tells a landing page whether a token is `ok`, `invalid`, `expired`, `accepted`,
 `declined` or `revoked`.
+
+⚠️ An invitation is matched to an account by its address. `me`, `accept` and
+`decline` answer an account only when all of this holds, and refuse every other
+case with the same `403`:
+
+- The account's stored email is the invitation's.
+- The account belongs to the **inviter's realm**. The same address in another
+  realm is another person. An invitation whose inviter's account was deleted
+  is not stranded: the realm of the organization's owner answers for it.
+- Where the realm verifies addresses (`verifyEmailRequired` on), the account
+  has a claim on the address: its email is **verified**, or the account
+  **already existed when the invitation was created** (an account an
+  administrator created, or one registered before mail was configured: the
+  inviter invited a known account). An unverified account created after the
+  invitation is refused. A new account created from the invitation link in a
+  closed realm (see [Closed-realm signup](#closed-realm-signup)) is verified by
+  the link, so it can accept at once.
+
+In a realm that does not verify addresses, no account can prove its address,
+so the last condition does not apply: **whoever registers an invited address
+first can accept its invitations**. Turn `verifyEmailRequired` on to close
+that.
+
+The preview says something only to a caller holding the whole link. A token
+whose secret is wrong, or whose first half is not an invitation id, is
+`invalid` whatever the invitation's state, and the address and organization are
+returned only with a status other than `invalid`. A wrong secret costs the link
+nothing: the secret is a random UUID (122 random bits), so the link is not
+protected by an attempt counter, and nobody can lock the recipient out by
+previewing with wrong secrets. A link's verification row is purged within the
+hour after the invitation's expiry date, whatever became of the invitation.
+From then on the link reads `invalid`, where it read `expired`, `accepted`,
+`declined` or `revoked` before.
 
 Creating an invitation checks the inviter's rank, validates the target rank,
 checks organization capacity through `OrganizationPolicyProvider.assertRoom`,

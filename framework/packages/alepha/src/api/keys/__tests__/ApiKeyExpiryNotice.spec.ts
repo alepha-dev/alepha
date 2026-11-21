@@ -12,7 +12,7 @@ import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { users } from "../../users/entities/users.ts";
 import { apiKeyEntity } from "../entities/apiKeyEntity.ts";
@@ -85,7 +85,9 @@ const setup = async (options: { notifications: boolean }) => {
 };
 
 describe("the API key expiry notice", () => {
-  it("tells the owner once across the whole warning window", async () => {
+  it("tells the owner once across the whole warning window", async ({
+    expect,
+  }) => {
     const { app, service, time, owner, noticesFor, background } = await setup({
       notifications: true,
     });
@@ -126,7 +128,9 @@ describe("the API key expiry notice", () => {
     ).toBeDefined();
   });
 
-  it("leaves a key outside the window, or already revoked, alone", async () => {
+  it("leaves a key outside the window, or already revoked, alone", async ({
+    expect,
+  }) => {
     const { service, time, owner, noticesFor } = await setup({
       notifications: true,
     });
@@ -153,7 +157,9 @@ describe("the API key expiry notice", () => {
     expect(await noticesFor(revoked)).toHaveLength(0);
   });
 
-  it("clears the marker on rotation, so the new expiry gets its own notice", async () => {
+  it("clears the marker on rotation, so the new expiry gets its own notice", async ({
+    expect,
+  }) => {
     const { app, service, time, owner } = await setup({ notifications: true });
 
     const { apiKey } = await service.create({
@@ -174,7 +180,9 @@ describe("the API key expiry notice", () => {
     ).toBeUndefined();
   });
 
-  it("does nothing, and marks nothing, when the notifications module is absent", async () => {
+  it("does nothing, and marks nothing, when the notifications module is absent", async ({
+    expect,
+  }) => {
     const { app, service, time, owner } = await setup({ notifications: false });
 
     const { apiKey } = await service.create({
@@ -190,7 +198,7 @@ describe("the API key expiry notice", () => {
     ).toBeUndefined();
   });
 
-  it("does nothing when expiryWarningDays is 0", async () => {
+  it("does nothing when expiryWarningDays is 0", async ({ expect }) => {
     const { alepha, service, time, owner, noticesFor } = await setup({
       notifications: true,
     });

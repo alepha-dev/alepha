@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { Alepha, z } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import { $tool, AlephaMcp, StreamableHttpMcpTransport } from "alepha/mcp";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaOAuth, oauthOptions } from "../index.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
@@ -49,7 +49,7 @@ const boot = async () => {
         },
         onRefreshSession: async (refreshToken) => {
           const session = sessions.get(refreshToken);
-          if (!session) throw new Error("unknown refresh token");
+          if (!session) throw new AlephaError("unknown refresh token");
           return {
             user: { id: session.userId, roles: [] } as UserAccount,
             expiresIn: 3600,
@@ -175,7 +175,9 @@ const boot = async () => {
 };
 
 describe("RFC 8707: binding a token to the resource", () => {
-  it("binds a grant that names no resource to the declared one", async () => {
+  it("binds a grant that names no resource to the declared one", async ({
+    expect,
+  }) => {
     const { alepha, declared, exchange } = await boot();
 
     const body = await exchange();
@@ -184,7 +186,9 @@ describe("RFC 8707: binding a token to the resource", () => {
     await alepha.stop();
   });
 
-  it("binds a grant naming the declared resource, after normalisation", async () => {
+  it("binds a grant naming the declared resource, after normalisation", async ({
+    expect,
+  }) => {
     const { alepha, declared, exchange } = await boot();
     const url = new URL(declared);
     const spelled = `${url.protocol}//${url.host.toUpperCase()}${url.pathname}/`;
@@ -195,7 +199,7 @@ describe("RFC 8707: binding a token to the resource", () => {
     await alepha.stop();
   });
 
-  it("keeps the binding across a refresh", async () => {
+  it("keeps the binding across a refresh", async ({ expect }) => {
     const { alepha, declared, exchange, token } = await boot();
     const first = await exchange();
 
@@ -210,7 +214,9 @@ describe("RFC 8707: binding a token to the resource", () => {
     await alepha.stop();
   });
 
-  it("answers invalid_target at /oauth/authorize for another resource", async () => {
+  it("answers invalid_target at /oauth/authorize for another resource", async ({
+    expect,
+  }) => {
     const { alepha, authorize } = await boot();
 
     const res = await authorize("https://elsewhere.example/mcp");
@@ -222,7 +228,9 @@ describe("RFC 8707: binding a token to the resource", () => {
     await alepha.stop();
   });
 
-  it("renders consent with the canonical resource when it names the declared one", async () => {
+  it("renders consent with the canonical resource when it names the declared one", async ({
+    expect,
+  }) => {
     const { alepha, authorize, declared } = await boot();
 
     const res = await authorize(`${declared}/`);
@@ -232,7 +240,9 @@ describe("RFC 8707: binding a token to the resource", () => {
     await alepha.stop();
   });
 
-  it("answers invalid_target at /oauth/token for another resource, spending nothing", async () => {
+  it("answers invalid_target at /oauth/token for another resource, spending nothing", async ({
+    expect,
+  }) => {
     const { alepha, token } = await boot();
 
     const res = await token({
@@ -247,7 +257,9 @@ describe("RFC 8707: binding a token to the resource", () => {
     await alepha.stop();
   });
 
-  it("answers invalid_target at /oauth/device_authorization for another resource", async () => {
+  it("answers invalid_target at /oauth/device_authorization for another resource", async ({
+    expect,
+  }) => {
     const { alepha, hostname } = await boot();
 
     const res = await fetch(`${hostname}/oauth/device_authorization`, {
@@ -266,7 +278,7 @@ describe("RFC 8707: binding a token to the resource", () => {
 });
 
 describe("RFC 8707: the MCP endpoint checks the audience", () => {
-  it("serves a token bound to this endpoint", async () => {
+  it("serves a token bound to this endpoint", async ({ expect }) => {
     const { alepha, exchange, callMcp } = await boot();
 
     const body = await exchange();
@@ -275,7 +287,9 @@ describe("RFC 8707: the MCP endpoint checks the audience", () => {
     await alepha.stop();
   });
 
-  it("refuses a token bound to another resource with 401 and the resource_metadata challenge", async () => {
+  it("refuses a token bound to another resource with 401 and the resource_metadata challenge", async ({
+    expect,
+  }) => {
     const { alepha, app, callMcp } = await boot();
     const { access_token } = await app.issuer.createToken(
       { id: "user-1", roles: [] } as UserAccount,
@@ -292,7 +306,9 @@ describe("RFC 8707: the MCP endpoint checks the audience", () => {
     await alepha.stop();
   });
 
-  it("serves tokens bound to no resource: a first-party login and a pre-binding OAuth session", async () => {
+  it("serves tokens bound to no resource: a first-party login and a pre-binding OAuth session", async ({
+    expect,
+  }) => {
     const { alepha, app, callMcp } = await boot();
     const firstParty = await app.issuer.createToken(
       { id: "user-1", roles: [] } as UserAccount,

@@ -8,7 +8,8 @@ import { $entity, db } from "alepha/orm";
  * client (e.g. Claude) first connects, or from a Client ID Metadata Document
  * the first time a client authorizes with a URL as its `client_id`. `source`
  * records who created the client: `"dcr"`, `"cimd"`, `"user"` or `"admin"`;
- * `createdByUserId` is null until a user completes an authorization.
+ * `createdByUserId` is what a caller of `OAuthClientService.register` passed,
+ * and nothing else writes it.
  */
 export const oauthClientEntity = $entity({
   name: "oauth_clients",
@@ -34,7 +35,7 @@ export const oauthClientEntity = $entity({
      * First-party client: skip the consent screen. Consent exists to protect a
      * user from THIRD-party apps requesting their data; a trusted client is the
      * authorization server's own product (same vendor), so an authenticated
-     * user is sent straight back with a code — no "App X wants to connect" page.
+     * user is sent straight back with a code, with no "App X wants to connect" page.
      */
     trusted: db.default(z.boolean(), false),
     /**

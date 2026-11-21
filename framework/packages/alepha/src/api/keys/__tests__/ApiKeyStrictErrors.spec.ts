@@ -18,7 +18,7 @@ import {
   AlephaServerSwagger,
   ServerSwaggerProvider,
 } from "alepha/server/swagger";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
@@ -81,7 +81,9 @@ const caught = async (fn: () => Promise<unknown>): Promise<unknown> => {
  * is a 500.
  */
 describe("API keys: strict errors", () => {
-  it("answers a missing key with a declared 404, locally and over HTTP", async () => {
+  it("answers a missing key with a declared 404, locally and over HTTP", async ({
+    expect,
+  }) => {
     const { alepha, warnings } = await setup();
     const admin = { id: randomUUID(), roles: ["admin"] };
     const controller = alepha.inject(AdminApiKeyController);
@@ -101,7 +103,9 @@ describe("API keys: strict errors", () => {
     expect(warnings()).toEqual([]);
   });
 
-  it("answers a key that is not yours with a declared 403", async () => {
+  it("answers a key that is not yours with a declared 403", async ({
+    expect,
+  }) => {
     const { alepha, warnings } = await setup();
     const { apiKey } = await alepha
       .inject(ApiKeyService)
@@ -119,7 +123,9 @@ describe("API keys: strict errors", () => {
     expect(warnings()).toEqual([]);
   });
 
-  it("turns an undeclared error into a 500 and names it", async () => {
+  it("turns an undeclared error into a 500 and names it", async ({
+    expect,
+  }) => {
     const { alepha, warnings } = await setup({ broken: true });
 
     const error = await caught(() =>
@@ -136,7 +142,7 @@ describe("API keys: strict errors", () => {
     ]);
   });
 
-  it("documents the declared errors in OpenAPI", async () => {
+  it("documents the declared errors in OpenAPI", async ({ expect }) => {
     const { alepha } = await setup();
     const doc = alepha.inject(ServerSwaggerProvider).generateSwaggerDoc({});
     const rotate = doc.paths["/api/api-keys/{id}/rotate"].post;

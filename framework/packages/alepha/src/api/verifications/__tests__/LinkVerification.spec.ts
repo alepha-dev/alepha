@@ -5,7 +5,6 @@ import { describe, it } from "vitest";
 
 import {
   AlephaApiVerification,
-  VerificationController,
   VerificationParameters,
   VerificationService,
 } from "../index.ts";
@@ -15,7 +14,6 @@ const createTest = async () => {
     .with(AlephaOrmTestPostgres)
     .with(AlephaApiVerification);
   const parameters = alepha.inject(VerificationParameters).get("link");
-  const controller = alepha.inject(VerificationController);
   const service = alepha.inject(VerificationService);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const target = "test@example.com";
@@ -26,7 +24,6 @@ const createTest = async () => {
     alepha,
     service,
     parameters,
-    controller,
     dateTimeProvider,
     target,
   };
@@ -34,7 +31,7 @@ const createTest = async () => {
 
 describe("Link Verification", () => {
   it("should verify link with UUID token correctly", async ({ expect }) => {
-    const { parameters, controller, target, service } = await createTest();
+    const { parameters, target, service } = await createTest();
 
     const request = await service.createVerification({ type: "link", target });
 
@@ -51,83 +48,48 @@ describe("Link Verification", () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
 
-    expect(
-      await controller.validateVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-          token,
-        },
-      }),
-    ).toEqual({
+    expect(await service.verifyCode({ type: "link", target }, token)).toEqual({
       ok: true,
     });
 
-    expect(
-      await controller.validateVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-          token,
-        },
-      }),
-    ).toEqual({
+    expect(await service.verifyCode({ type: "link", target }, token)).toEqual({
       ok: true,
       alreadyVerified: true,
     });
   });
 
   it("should handle invalid token", async ({ expect }) => {
-    const { controller, target, service } = await createTest();
+    const { target, service } = await createTest();
 
     await service.createVerification({ type: "link", target });
 
     await expect(() =>
-      controller.validateVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-          token: "550e8400-e29b-41d4-a716-446655440000",
-        },
-      }),
+      service.verifyCode(
+        { type: "link", target },
+        "550e8400-e29b-41d4-a716-446655440000",
+      ),
     ).rejects.toThrow("Invalid verification code");
   });
 
   it("should handle max attempts", async ({ expect }) => {
-    const { parameters, controller, target, service } = await createTest();
+    const { parameters, target, service } = await createTest();
 
     await service.createVerification({ type: "link", target });
 
     for (let i = 0; i < parameters.maxAttempts; i++) {
-      await controller
-        .validateVerificationCode({
-          params: {
-            type: "link",
-          },
-          body: {
-            target,
-            token: "550e8400-e29b-41d4-a716-446655440000",
-          },
-        })
+      await service
+        .verifyCode(
+          { type: "link", target },
+          "550e8400-e29b-41d4-a716-446655440000",
+        )
         .catch(() => null);
     }
 
     await expect(() =>
-      controller.validateVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-          token: "550e8400-e29b-41d4-a716-446655440000",
-        },
-      }),
+      service.verifyCode(
+        { type: "link", target },
+        "550e8400-e29b-41d4-a716-446655440000",
+      ),
     ).rejects.toThrow("Maximum number of attempts reached");
   });
 
@@ -161,7 +123,7 @@ describe("Link Verification", () => {
       await createTest();
 
     // Anchor test time at noon to keep all `limitPerDay` inserts inside the
-    // same calendar day — running near midnight (real wall-clock) used to
+    // same calendar day, running near midnight (real wall-clock) used to
     // make the cooldown travel cross day boundaries and reset the window.
     const now = dateTimeProvider.now();
     const noon = now.startOf("day").add(12, "hours");
@@ -190,7 +152,7 @@ describe("Link Verification", () => {
   });
 
   it("should handle token expiration", async ({ expect }) => {
-    const { parameters, controller, dateTimeProvider, target, service } =
+    const { parameters, dateTimeProvider, target, service } =
       await createTest();
 
     const response = await service.createVerification({ type: "link", target });
@@ -201,28 +163,39 @@ describe("Link Verification", () => {
     await dateTimeProvider.travel(parameters.codeExpiration + 1, "seconds");
 
     await expect(() =>
-      controller.validateVerificationCode({
-        params: {
-          type: "link",
-        },
-        body: {
-          target,
-          token,
-        },
-      }),
+      service.verifyCode({ type: "link", target }, token),
     ).rejects.toThrow("Verification code has expired");
   });
 
-  it("should return token in response", async ({ expect }) => {
-    const { parameters, target, service } = await createTest();
+  it("reports the entry's own lifetime when it was created with one", async ({
+    expect,
+  }) => {
+    const { dateTimeProvider, target, service } = await createTest();
+    dateTimeProvider.pause();
 
-    const response = await service.createVerification({ type: "link", target });
+    const response = await service.createVerification({
+      type: "link",
+      target,
+      purpose: "invitation:1",
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
+    });
 
-    expect(response.token).toBeTruthy();
-    expect(response.codeExpiration).toBe(parameters.codeExpiration);
-    // Verify token is a UUID
-    expect(response.token).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    expect(response.codeExpiration).toBe(7 * 24 * 60 * 60);
+  });
+
+  it("refuses a verified token once it has expired", async ({ expect }) => {
+    const { parameters, dateTimeProvider, target, service } =
+      await createTest();
+    const { token } = await service.createVerification({
+      type: "link",
+      target,
+    });
+    await service.verifyCode({ type: "link", target }, token);
+
+    await dateTimeProvider.travel(parameters.codeExpiration + 1, "seconds");
+
+    await expect(() =>
+      service.verifyCode({ type: "link", target }, token),
+    ).rejects.toThrow("Verification code has expired");
   });
 });
