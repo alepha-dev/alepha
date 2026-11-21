@@ -1,5 +1,5 @@
 import { Alepha, type State } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $atom } from "../primitives/$atom.ts";
@@ -21,7 +21,7 @@ describe("$atom", () => {
     count = $store(count);
   }
 
-  it("should be get/set with state manager", () => {
+  it("should be get/set with state manager", ({ expect }) => {
     const alepha = Alepha.create();
 
     expect(alepha.store.get(count).value).toBe(0);
@@ -30,7 +30,7 @@ describe("$atom", () => {
     expect(alepha.store.get(count).value).toBe(42);
   });
 
-  it("should create virtual getter", () => {
+  it("should create virtual getter", ({ expect }) => {
     const alepha = Alepha.create();
     const app = alepha.inject(App);
 
@@ -45,7 +45,7 @@ describe("$atom", () => {
 });
 
 describe("$atom: serverOnly + persist is a contradiction", () => {
-  it("throws AlephaError when combined with persist: cookie", () => {
+  it("throws AlephaError when combined with persist: cookie", ({ expect }) => {
     expect(() =>
       $atom({
         name: "test.extras.serverOnlyCookie",
@@ -57,7 +57,9 @@ describe("$atom: serverOnly + persist is a contradiction", () => {
     ).toThrow(AlephaError);
   });
 
-  it("throws AlephaError when combined with persist: localStorage", () => {
+  it("throws AlephaError when combined with persist: localStorage", ({
+    expect,
+  }) => {
     expect(() =>
       $atom({
         name: "test.extras.serverOnlyLocalStorage",
@@ -69,7 +71,7 @@ describe("$atom: serverOnly + persist is a contradiction", () => {
     ).toThrow(AlephaError);
   });
 
-  it("does not throw when only serverOnly is set", () => {
+  it("does not throw when only serverOnly is set", ({ expect }) => {
     expect(() =>
       $atom({
         name: "test.extras.serverOnlyAlone",
@@ -80,7 +82,7 @@ describe("$atom: serverOnly + persist is a contradiction", () => {
     ).not.toThrow();
   });
 
-  it("does not throw when only persist is set", () => {
+  it("does not throw when only persist is set", ({ expect }) => {
     expect(() =>
       $atom({
         name: "test.extras.persistAlone",

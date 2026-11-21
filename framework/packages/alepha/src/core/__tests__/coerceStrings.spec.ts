@@ -1,48 +1,50 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { coerceObject, coerceScalar } from "../helpers/coerceStrings.ts";
 import { z } from "../providers/ZodProvider.ts";
 
 describe("coerceScalar", () => {
-  it("should coerce numeric strings for number schemas", () => {
+  it("should coerce numeric strings for number schemas", ({ expect }) => {
     expect(coerceScalar(z.integer(), "42")).toBe(42);
     expect(coerceScalar(z.number(), "3.14")).toBe(3.14);
   });
 
-  it("should leave non-numeric strings for number schemas unchanged", () => {
+  it("should leave non-numeric strings for number schemas unchanged", ({
+    expect,
+  }) => {
     expect(coerceScalar(z.integer(), "abc")).toBe("abc");
     expect(coerceScalar(z.integer(), "")).toBe("");
     expect(coerceScalar(z.integer(), "  ")).toBe("  ");
   });
 
-  it("should coerce boolean strings for boolean schemas", () => {
+  it("should coerce boolean strings for boolean schemas", ({ expect }) => {
     expect(coerceScalar(z.boolean(), "true")).toBe(true);
     expect(coerceScalar(z.boolean(), "false")).toBe(false);
     expect(coerceScalar(z.boolean(), "yes")).toBe("yes");
   });
 
-  it("should stringify typed scalars for string schemas", () => {
+  it("should stringify typed scalars for string schemas", ({ expect }) => {
     expect(coerceScalar(z.text(), 3000)).toBe("3000");
     expect(coerceScalar(z.text(), true)).toBe("true");
   });
 
-  it("should coerce through optional wrappers", () => {
+  it("should coerce through optional wrappers", ({ expect }) => {
     expect(coerceScalar(z.integer().optional(), "7")).toBe(7);
     expect(coerceScalar(z.boolean().optional(), "true")).toBe(true);
   });
 
-  it("should coerce array elements", () => {
+  it("should coerce array elements", ({ expect }) => {
     expect(coerceScalar(z.array(z.integer()), ["1", "2"])).toEqual([1, 2]);
   });
 
-  it("should pass through values it cannot coerce", () => {
+  it("should pass through values it cannot coerce", ({ expect }) => {
     expect(coerceScalar(z.integer(), { a: 1 })).toEqual({ a: 1 });
     expect(coerceScalar(z.text(), null)).toBe(null);
   });
 });
 
 describe("coerceObject", () => {
-  it("should coerce declared fields only", () => {
+  it("should coerce declared fields only", ({ expect }) => {
     const schema = z.object({
       PORT: z.integer(),
       DEBUG: z.boolean(),
@@ -59,7 +61,7 @@ describe("coerceObject", () => {
     expect(out.EXTRA).toBe("untouched");
   });
 
-  it("should parse a JSON object arriving as a string", () => {
+  it("should parse a JSON object arriving as a string", ({ expect }) => {
     const schema = z.object({
       CONFIG: z.object({ project: z.string(), analytics: z.boolean() }),
     });
@@ -77,7 +79,9 @@ describe("coerceObject", () => {
    * a dashboard textarea has to surface that way, not as an exception thrown
    * from a parser the caller never invoked.
    */
-  it("should leave malformed JSON unchanged for validation to reject", () => {
+  it("should leave malformed JSON unchanged for validation to reject", ({
+    expect,
+  }) => {
     const schema = z.object({ CONFIG: z.object({ a: z.string() }) });
     const broken = '{"a":"b",}';
 
@@ -85,10 +89,11 @@ describe("coerceObject", () => {
   });
 
   /**
-   * `"null"`, `"7"` and `"true"` are all valid JSON documents. A schema
-   * expecting an object should reject them as the wrong type, not receive one.
+   * `"null"` and `"7"` are valid JSON documents, and `"hello"` is not one.
+   * A schema expecting an object should reject all three as the wrong type,
+   * not receive a parsed scalar.
    */
-  it("should not parse scalar JSON for an object schema", () => {
+  it("should not parse scalar JSON for an object schema", ({ expect }) => {
     const schema = z.object({ CONFIG: z.object({ a: z.string() }) });
 
     expect(coerceObject(schema, { CONFIG: "null" }).CONFIG).toBe("null");
@@ -103,7 +108,9 @@ describe("coerceObject", () => {
    * down at boot, which is otherwise exactly what happens - the field is
    * optional, and `""` is the one value it can never satisfy.
    */
-  it("should read an empty string as an absent structured value", () => {
+  it("should read an empty string as an absent structured value", ({
+    expect,
+  }) => {
     const schema = z.object({
       CONFIG: z.object({ a: z.string() }).optional(),
       PATHS: z.array(z.string()).optional(),
@@ -114,7 +121,9 @@ describe("coerceObject", () => {
     expect(coerceObject(schema, { PATHS: "" }).PATHS).toBeUndefined();
   });
 
-  it("should still reject an empty string for a REQUIRED structured field", () => {
+  it("should read an empty string as absent for a REQUIRED structured field too", ({
+    expect,
+  }) => {
     // Absent rather than malformed, so the error names the missing variable
     // instead of complaining about its type. Both are errors; this one reads.
     const schema = z.object({ CONFIG: z.object({ a: z.string() }) });
@@ -122,7 +131,7 @@ describe("coerceObject", () => {
     expect(coerceObject(schema, { CONFIG: "" }).CONFIG).toBeUndefined();
   });
 
-  it("should parse a JSON array arriving as a string", () => {
+  it("should parse a JSON array arriving as a string", ({ expect }) => {
     const schema = z.object({ PATHS: z.array(z.string()) });
 
     expect(coerceObject(schema, { PATHS: '["/a","/b"]' }).PATHS).toEqual([
@@ -131,7 +140,7 @@ describe("coerceObject", () => {
     ]);
   });
 
-  it("should skip null and undefined values", () => {
+  it("should skip null and undefined values", ({ expect }) => {
     const schema = z.object({
       PORT: z.integer().optional(),
     });
@@ -141,7 +150,7 @@ describe("coerceObject", () => {
     expect(out.OTHER).toBeNull();
   });
 
-  it("should not mutate the input object", () => {
+  it("should not mutate the input object", ({ expect }) => {
     const schema = z.object({ PORT: z.integer() });
     const input = { PORT: "3000" };
 
@@ -150,7 +159,7 @@ describe("coerceObject", () => {
     expect(out.PORT).toBe(3000);
   });
 
-  it("should pass through when the schema has no shape", () => {
+  it("should pass through when the schema has no shape", ({ expect }) => {
     const value = { A: "1" };
     expect(coerceObject(z.any(), value)).toBe(value);
   });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { coerceScalar } from "../helpers/coerceStrings.ts";
 import { z } from "../providers/ZodProvider.ts";
@@ -11,13 +11,13 @@ import { z } from "../providers/ZodProvider.ts";
  * carry the whole absent case, so a half-written range is never a state.
  */
 describe("z.dateRange", () => {
-  it("accepts a closed pair of calendar days", () => {
+  it("accepts a closed pair of calendar days", ({ expect }) => {
     expect(z.dateRange().safeParse(["2026-01-01", "2026-01-31"]).success).toBe(
       true,
     );
   });
 
-  it("refuses one end, three ends, and an empty end", () => {
+  it("refuses one end, three ends, and an empty end", ({ expect }) => {
     // ⚠️ `["2026-01-01", ""]` is the shape a string-joined range produces for
     // an open bound, and it is exactly what mandatory ends exist to prevent.
     expect(z.dateRange().safeParse(["2026-01-01"]).success).toBe(false);
@@ -28,7 +28,7 @@ describe("z.dateRange", () => {
     expect(z.dateRange().safeParse(["2026-01-01", ""]).success).toBe(false);
   });
 
-  it("refuses an end before its start", () => {
+  it("refuses an end before its start", ({ expect }) => {
     expect(z.dateRange().safeParse(["2026-02-01", "2026-01-31"]).success).toBe(
       false,
     );
@@ -38,7 +38,7 @@ describe("z.dateRange", () => {
     );
   });
 
-  it("refuses an instant where a day is wanted", () => {
+  it("refuses an instant where a day is wanted", ({ expect }) => {
     expect(
       z.dateRange().safeParse(["2026-01-01T00:00:00.000Z", "2026-01-31"])
         .success,
@@ -50,7 +50,7 @@ describe("z.dateRange", () => {
    * can tell a range from an ordinary list of two dates, and selecting the
    * range picker is the whole point.
    */
-  it("tags the array itself with the date-range format", () => {
+  it("tags the array itself with the date-range format", ({ expect }) => {
     expect(z.schema.format(z.dateRange())).toBe("date-range");
     expect(z.schema.isDateRange(z.dateRange())).toBe(true);
     // And the guard peels the wrappers, so an optional field still answers.
@@ -66,7 +66,7 @@ describe("z.dateRange", () => {
    * `.length(2)` and not `z.tuple([...])`: a tuple emits `prefixItems`
    * (JSON Schema 2020-12), which OpenAPI 3.0 consumers do not understand.
    */
-  it("emits minItems/maxItems, never prefixItems", () => {
+  it("emits minItems/maxItems, never prefixItems", ({ expect }) => {
     const json = z.toJSONSchema(z.object({ r: z.dateRange() })) as any;
     const field = json.properties.r;
     expect(field.type).toBe("array");
@@ -83,7 +83,7 @@ describe("z.dateRange", () => {
    * as one string.
    */
   describe("the query-string boundary", () => {
-    it("splits a comma-joined pair for a date-range field", () => {
+    it("splits a comma-joined pair for a date-range field", ({ expect }) => {
       expect(coerceScalar(z.dateRange(), "2026-01-01,2026-01-31")).toEqual([
         "2026-01-01",
         "2026-01-31",
@@ -102,7 +102,7 @@ describe("z.dateRange", () => {
      * Splitting the JSON one on commas cuts it in half and the schema fails
      * with "Invalid ISO date", naming nothing useful.
      */
-    it("leaves the JSON form to the JSON branch", () => {
+    it("leaves the JSON form to the JSON branch", ({ expect }) => {
       expect(
         coerceScalar(z.dateRange(), '["2026-01-01","2026-01-31"]'),
       ).toEqual(["2026-01-01", "2026-01-31"]);
@@ -111,7 +111,9 @@ describe("z.dateRange", () => {
       ).toEqual(["2026-01-01", "2026-01-31"]);
     });
 
-    it("hands a malformed value on for the schema to refuse by name", () => {
+    it("hands a malformed value on for the schema to refuse by name", ({
+      expect,
+    }) => {
       // This file's contract: anything that cannot be coerced is passed
       // through so validation produces a proper rejection.
       expect(coerceScalar(z.dateRange(), "2026-01-01")).toEqual(["2026-01-01"]);
@@ -123,7 +125,7 @@ describe("z.dateRange", () => {
      * field changes behaviour, and a value containing a comma cannot start
      * splitting by surprise.
      */
-    it("leaves an ordinary array field alone", () => {
+    it("leaves an ordinary array field alone", ({ expect }) => {
       expect(coerceScalar(z.array(z.date()), "2026-01-01,2026-01-31")).toBe(
         "2026-01-01,2026-01-31",
       );

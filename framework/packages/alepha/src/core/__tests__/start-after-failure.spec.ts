@@ -1,10 +1,12 @@
 import { $hook, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 class Database {}
 
 describe("start() after a synchronous boot failure", () => {
-  it("boots again instead of returning the cached rejection", async () => {
+  it("boots again instead of returning the cached rejection", async ({
+    expect,
+  }) => {
     let failOnce = true;
     let ready = false;
 

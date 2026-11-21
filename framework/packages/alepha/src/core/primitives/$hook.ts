@@ -28,7 +28,7 @@ import type { Service } from "../interfaces/Service.ts";
  *
  * You can't register a hook after the App has started.
  *
- * It's used under the hood by the `configure`, `start`, and `stop` methods.
+ * `start()` and `stop()` run on it: they emit `configure`, `start`, `ready` and `stop`.
  * Some modules also use hooks to run their own logic. (e.g. `alepha/server`).
  *
  * You can create your own hooks by using module augmentation:
@@ -102,12 +102,12 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
     // App has started"). The reachable violation is a $hook declared on a
     // scoped/transient service instantiated per request: each instantiation
     // registered another callback on the app-level EventManager, and the
-    // hooks outlived their request scope — an unbounded leak that also
+    // hooks outlived their request scope: an unbounded leak that also
     // re-ran side effects once per past request.
     if (this.alepha.isStarted()) {
       throw new AlephaError(
         `Cannot register $hook '${this.options.on}' (${this.config.service?.name ?? "unknown"}.${this.config.propertyKey}) after Alepha has started. ` +
-          "Hooks live on the app-level EventManager and are never unregistered — " +
+          "Hooks live on the app-level EventManager and are never unregistered: " +
           "a $hook on a scoped or transient service would leak once per instantiation. " +
           "Declare it on a singleton service instead.",
       );
@@ -122,7 +122,7 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
       const arr = Array.isArray(deps) ? deps : [deps];
       // Both spellings, because both read as correct at the call site and only
       // one used to work. `dep.constructor` on a class yields `Function`, which
-      // matches no service — so `before: [SomeProvider]` compiled, ran, and
+      // matches no service, so `before: [SomeProvider]` compiled, ran, and
       // ordered nothing at all. A constraint that silently does nothing is
       // worse than one that refuses: the ordering it was meant to guarantee is
       // then only believed.

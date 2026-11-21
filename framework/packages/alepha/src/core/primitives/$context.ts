@@ -11,7 +11,7 @@ import type { Service } from "../interfaces/Service.ts";
  * It can only be used inside $primitive functions.
  *
  * ```ts
- * import { $context } from "alepha";
+ * import { $context, Alepha } from "alepha";
  *
  * const $hello = () => {
  *   const { alepha, service, module } = $context();
@@ -29,8 +29,6 @@ import type { Service } from "../interfaces/Service.ts";
  *
  * const alepha = new Alepha().with(MyService);
  * ```
- *
- * @internal
  */
 export const $context = (): ContextPrimitive => {
   if (!__alephaRef.alepha) {

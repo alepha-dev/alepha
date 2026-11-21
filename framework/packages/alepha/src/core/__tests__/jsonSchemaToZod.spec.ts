@@ -1,10 +1,37 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { jsonSchemaToZod } from "../helpers/jsonSchemaToZod.ts";
 import { z } from "../providers/ZodProvider.ts";
 
 describe("jsonSchemaToZod", () => {
-  it("should convert an object schema with required and optional fields", () => {
+  it("should round-trip a record as a record, keeping its keys", ({
+    expect,
+  }) => {
+    const open = jsonSchemaToZod(z.toJSONSchema(z.record(z.text(), z.any())));
+    expect(open.parse({ a: 1, b: "two" })).toEqual({ a: 1, b: "two" });
+
+    const typed = jsonSchemaToZod(
+      z.toJSONSchema(z.record(z.text(), z.integer())),
+    );
+    expect(typed.parse({ a: 1 })).toEqual({ a: 1 });
+    expect(typed.safeParse({ a: "one" }).success).toBe(false);
+  });
+
+  it("should still strip unknown keys from an object with no additionalProperties schema", ({
+    expect,
+  }) => {
+    const schema = jsonSchemaToZod({
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+      additionalProperties: false,
+    });
+    expect(schema.parse({ name: "a", extra: 1 })).toEqual({ name: "a" });
+  });
+
+  it("should convert an object schema with required and optional fields", ({
+    expect,
+  }) => {
     const schema = jsonSchemaToZod({
       type: "object",
       properties: {
@@ -20,7 +47,7 @@ describe("jsonSchemaToZod", () => {
     expect(schema.safeParse({ name: "a", age: 3.5 }).success).toBe(false);
   });
 
-  it("should convert arrays with item schemas", () => {
+  it("should convert arrays with item schemas", ({ expect }) => {
     const schema = jsonSchemaToZod({
       type: "array",
       items: { type: "number" },
@@ -30,7 +57,7 @@ describe("jsonSchemaToZod", () => {
     expect(schema.safeParse(["a"]).success).toBe(false);
   });
 
-  it("should apply string constraints", () => {
+  it("should apply string constraints", ({ expect }) => {
     const schema = jsonSchemaToZod({
       type: "string",
       minLength: 2,
@@ -44,12 +71,12 @@ describe("jsonSchemaToZod", () => {
     expect(schema.safeParse("ABC").success).toBe(false);
   });
 
-  it("should keep an unbounded string unbounded", () => {
+  it("should keep an unbounded string unbounded", ({ expect }) => {
     const schema = jsonSchemaToZod({ type: "string" });
     expect(schema.safeParse("x".repeat(100_000)).success).toBe(true);
   });
 
-  it("should map string formats", () => {
+  it("should map string formats", ({ expect }) => {
     expect(
       jsonSchemaToZod({ type: "string", format: "uuid" }).safeParse(
         "8f14e45f-ceea-4467-a1b9-2f7f6a2c11aa",
@@ -75,19 +102,19 @@ describe("jsonSchemaToZod", () => {
     ).toBe(true);
   });
 
-  it("should convert enums of strings", () => {
+  it("should convert enums of strings", ({ expect }) => {
     const schema = jsonSchemaToZod({ enum: ["a", "b"] });
     expect(schema.safeParse("a").success).toBe(true);
     expect(schema.safeParse("c").success).toBe(false);
   });
 
-  it("should convert const to a literal", () => {
+  it("should convert const to a literal", ({ expect }) => {
     const schema = jsonSchemaToZod({ const: "fixed" });
     expect(schema.safeParse("fixed").success).toBe(true);
     expect(schema.safeParse("other").success).toBe(false);
   });
 
-  it("should convert anyOf with a null variant to nullable", () => {
+  it("should convert anyOf with a null variant to nullable", ({ expect }) => {
     const schema = jsonSchemaToZod({
       anyOf: [{ type: "string" }, { type: "null" }],
     });
@@ -97,7 +124,7 @@ describe("jsonSchemaToZod", () => {
     expect(schema.safeParse(3).success).toBe(false);
   });
 
-  it("should convert multi-variant anyOf to a union", () => {
+  it("should convert multi-variant anyOf to a union", ({ expect }) => {
     const schema = jsonSchemaToZod({
       anyOf: [{ type: "string" }, { type: "number" }],
     });
@@ -107,7 +134,7 @@ describe("jsonSchemaToZod", () => {
     expect(schema.safeParse(true).success).toBe(false);
   });
 
-  it("should apply numeric bounds", () => {
+  it("should apply numeric bounds", ({ expect }) => {
     const schema = jsonSchemaToZod({
       type: "integer",
       minimum: 1,
@@ -120,7 +147,7 @@ describe("jsonSchemaToZod", () => {
     expect(schema.safeParse(2.5).success).toBe(false);
   });
 
-  it("should fall back to z.any for unknown shapes", () => {
+  it("should fall back to z.any for unknown shapes", ({ expect }) => {
     expect(jsonSchemaToZod(undefined).safeParse("anything").success).toBe(true);
     expect(jsonSchemaToZod({}).safeParse({ a: 1 }).success).toBe(true);
     expect(
@@ -128,7 +155,7 @@ describe("jsonSchemaToZod", () => {
     ).toBe(true);
   });
 
-  it("should carry title and description into meta", () => {
+  it("should carry title and description into meta", ({ expect }) => {
     const schema = jsonSchemaToZod({
       type: "string",
       title: "Name",
@@ -141,7 +168,7 @@ describe("jsonSchemaToZod", () => {
     });
   });
 
-  it("should round-trip a z.toJSONSchema export", () => {
+  it("should round-trip a z.toJSONSchema export", ({ expect }) => {
     const original = z.object({
       id: z.uuid(),
       label: z.text(),
@@ -158,7 +185,9 @@ describe("jsonSchemaToZod", () => {
     expect(roundTripped.safeParse({ label: "no-id" }).success).toBe(false);
   });
 
-  it("should carry an object $control across a round trip (#Q3424)", () => {
+  it("should carry an object $control across a round trip (#Q3424)", ({
+    expect,
+  }) => {
     const original = z.object({
       blocklist: z.array(z.text()).meta({
         description: "Reserved usernames",

@@ -5,8 +5,10 @@ import type { Infer, ZType } from "./ZodProvider.ts";
  * Validates + coerces a value against a zod schema.
  *
  * Trimming / lowercasing / defaults / unknown-key stripping all live in the
- * schema itself now (zod), so this is a thin wrapper over `schema.parse`.
- * No compile step, no `eval` - safe inside Cloudflare Workers.
+ * schema itself (zod), so this is a thin wrapper over `schema.safeParse`.
+ * Nothing is compiled here; `z.object` compiles its own parser where the
+ * runtime allows `new Function`, and interprets on Cloudflare Workers and
+ * in the browser.
  */
 export class SchemaValidator {
   /**
@@ -67,7 +69,7 @@ export class SchemaValidator {
   }
 
   /**
-   * Zod schemas are immutable — clone is a pass-through.
+   * Zod schemas are immutable: clone is a pass-through.
    */
   public clone<T extends ZType>(schema: T): T {
     return schema;

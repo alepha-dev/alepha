@@ -1,8 +1,10 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("Alepha#parseEnv", () => {
-  it("should substitute $KEY placeholders in string values", async () => {
+  it("should substitute $KEY placeholders in string values", async ({
+    expect,
+  }) => {
     const schema = z.object({
       HOST: z.text().optional(),
       PORT: z.text().optional(),
@@ -21,24 +23,7 @@ describe("Alepha#parseEnv", () => {
     expect(env.BASE_URL).toBe("http://localhost:3000");
   });
 
-  it("should handle keys with regex-special characters", async () => {
-    const schema = z.object({
-      "API.URL": z.text().optional(),
-      RESULT: z.text().optional(),
-    });
-
-    const alepha = Alepha.create({
-      env: {
-        "API.URL": "https://api.example.com",
-        RESULT: "$API.URL/v1",
-      },
-    });
-
-    const env = alepha.parseEnv(schema);
-    expect(env.RESULT).toBe("https://api.example.com/v1");
-  });
-
-  it("should coerce non-string replacement sources", async () => {
+  it("should coerce non-string replacement sources", async ({ expect }) => {
     const schema = z.object({
       PORT: z.text().optional(),
       DEBUG: z.text().optional(),
@@ -57,7 +42,7 @@ describe("Alepha#parseEnv", () => {
     expect(env.URL).toBe("http://localhost:3000?debug=true");
   });
 
-  it("should leave unresolved placeholders as-is", async () => {
+  it("should leave unresolved placeholders as-is", async ({ expect }) => {
     const schema = z.object({
       URL: z.text().optional(),
     });
@@ -70,7 +55,7 @@ describe("Alepha#parseEnv", () => {
     expect(env.URL).toBe("http://$MISSING/path");
   });
 
-  it("should match env keys case-sensitively", async () => {
+  it("should match env keys case-sensitively", async ({ expect }) => {
     const schema = z.object({
       HOST: z.text().optional(),
       URL: z.text().optional(),
@@ -84,7 +69,7 @@ describe("Alepha#parseEnv", () => {
     expect(env.URL).toBe("$host");
   });
 
-  it("should resolve transitive $KEY references", async () => {
+  it("should resolve transitive $KEY references", async ({ expect }) => {
     const schema = z.object({
       A: z.text().optional(),
       B: z.text().optional(),
@@ -104,7 +89,9 @@ describe("Alepha#parseEnv", () => {
     expect(env.C).toBe("value");
   });
 
-  it("should not replace substring keys when a longer key matches", async () => {
+  it("should not replace substring keys when a longer key matches", async ({
+    expect,
+  }) => {
     const schema = z.object({
       PORT: z.text().optional(),
       PORT_NAME: z.text().optional(),
@@ -123,7 +110,7 @@ describe("Alepha#parseEnv", () => {
     expect(env.URL).toBe("http://3000");
   });
 
-  it("should handle overlapping key prefixes correctly", async () => {
+  it("should handle overlapping key prefixes correctly", async ({ expect }) => {
     const schema = z.object({
       A: z.text().optional(),
       AB: z.text().optional(),
@@ -144,7 +131,7 @@ describe("Alepha#parseEnv", () => {
     expect(env.RESULT).toBe("3-2-1");
   });
 
-  it("should return cached result for same schema", async () => {
+  it("should return cached result for same schema", async ({ expect }) => {
     const schema = z.object({
       FOO: z.text().optional(),
     });
@@ -158,7 +145,7 @@ describe("Alepha#parseEnv", () => {
     expect(first).toBe(second);
   });
 
-  it("should keep '$$KEY' as a literal '$KEY' (escape)", async () => {
+  it("should keep '$$KEY' as a literal '$KEY' (escape)", async ({ expect }) => {
     const schema = z.object({
       PORT: z.text().optional(),
       PASSWORD: z.text().optional(),
@@ -172,7 +159,9 @@ describe("Alepha#parseEnv", () => {
     expect(env.PASSWORD).toBe("pre$PORTpost");
   });
 
-  it("should keep '$$' before an undeclared key untouched", async () => {
+  it("should keep '$$' before an undeclared key untouched", async ({
+    expect,
+  }) => {
     const schema = z.object({
       VALUE: z.text().optional(),
     });
@@ -185,7 +174,9 @@ describe("Alepha#parseEnv", () => {
     expect(env.VALUE).toBe("$$MISSING");
   });
 
-  it("should keep an escape intact through transitive substitution", async () => {
+  it("should keep an escape intact through transitive substitution", async ({
+    expect,
+  }) => {
     const schema = z.object({
       A: z.text().optional(),
       B: z.text().optional(),
@@ -207,7 +198,9 @@ describe("Alepha#parseEnv", () => {
     expect(env.C).toBe("$A");
   });
 
-  it("should not let regex metacharacters in keys break substitution", async () => {
+  it("should not let regex metacharacters in keys break substitution", async ({
+    expect,
+  }) => {
     const schema = z.object({
       "MY(VAR)": z.text().optional(),
       "A+B": z.text().optional(),
@@ -226,7 +219,9 @@ describe("Alepha#parseEnv", () => {
     expect(env.RESULT).toBe("one/two");
   });
 
-  it("should not treat a dotted key as a regex wildcard", async () => {
+  it("should not treat a dotted key as a regex wildcard", async ({
+    expect,
+  }) => {
     const schema = z.object({
       "API.URL": z.text().optional(),
       RESULT: z.text().optional(),
@@ -252,43 +247,51 @@ describe("Alepha#parseEnv", () => {
         .default(3000),
     });
 
-    it("should read the alias when the declared key is absent", () => {
+    it("should read the alias when the declared key is absent", ({
+      expect,
+    }) => {
       const alepha = Alepha.create({ env: { PORT: "8080" } });
       expect(alepha.parseEnv(schema).SERVER_PORT).toBe(8080);
     });
 
-    it("should prefer the declared key over its aliases", () => {
+    it("should prefer the declared key over its aliases", ({ expect }) => {
       const alepha = Alepha.create({
         env: { SERVER_PORT: 4000, PORT: "8080" },
       });
       expect(alepha.parseEnv(schema).SERVER_PORT).toBe(4000);
     });
 
-    it("should try aliases in the declared order", () => {
+    it("should try aliases in the declared order", ({ expect }) => {
       const alepha = Alepha.create({
         env: { HTTP_PORT: "9090", PORT: "8080" },
       });
       expect(alepha.parseEnv(schema).SERVER_PORT).toBe(8080);
     });
 
-    it("should fall through to a later alias when the first is absent", () => {
+    it("should fall through to a later alias when the first is absent", ({
+      expect,
+    }) => {
       const alepha = Alepha.create({ env: { HTTP_PORT: "9090" } });
       expect(alepha.parseEnv(schema).SERVER_PORT).toBe(9090);
     });
 
-    it("should apply the default when neither key nor alias is set", () => {
+    it("should apply the default when neither key nor alias is set", ({
+      expect,
+    }) => {
       const alepha = Alepha.create({
         env: { SERVER_PORT: undefined, PORT: undefined, HTTP_PORT: undefined },
       });
       expect(alepha.parseEnv(schema).SERVER_PORT).toBe(3000);
     });
 
-    it("should coerce and validate an aliased value as the declared key", () => {
+    it("should coerce and validate an aliased value as the declared key", ({
+      expect,
+    }) => {
       const alepha = Alepha.create({ env: { PORT: "not-a-port" } });
       expect(() => alepha.parseEnv(schema)).toThrow();
     });
 
-    it("should expose the aliased value to $KEY substitution", () => {
+    it("should expose the aliased value to $KEY substitution", ({ expect }) => {
       const withUrl = z.object({
         SERVER_PORT: z
           .integer()
@@ -304,13 +307,15 @@ describe("Alepha#parseEnv", () => {
       expect(alepha.parseEnv(withUrl).URL).toBe("http://localhost:8080");
     });
 
-    it("should not make the alias a key of its own", () => {
+    it("should not make the alias a key of its own", ({ expect }) => {
       const alepha = Alepha.create({ env: { PORT: "8080" } });
       expect(alepha.parseEnv(schema)).not.toHaveProperty("PORT");
     });
   });
 
-  it("should not interpret '$&' replacement patterns in values", async () => {
+  it("should not interpret '$&' replacement patterns in values", async ({
+    expect,
+  }) => {
     const schema = z.object({
       PORT: z.text().optional(),
       URL: z.text().optional(),

@@ -21,7 +21,6 @@ describe("$mode", () => {
       mode = $mode({ env: "MIGRATE" });
     }
 
-    // Use `new Alepha()` to avoid `process.env` overwriting MODE
     const alepha = new Alepha({ env: { MODE: "MIGRATE" } });
     alepha.with(Target);
 
@@ -110,7 +109,7 @@ describe("$mode", () => {
    * The shape that broke `MIGRATE=true` for every ORM app: the target lives in
    * a module's `services` list, and depends on another service of the same
    * module. Rebuilding the pruned graph re-resolves that dependency, which
-   * pulls the module in again — and the module's `register()` then re-injects
+   * pulls the module in again, and the module's `register()` then re-injects
    * the target while it is still being constructed.
    */
   it("should keep a module-owned dependency without re-registering its module", async () => {
@@ -204,7 +203,7 @@ describe("$mode", () => {
 
     await alepha.start();
 
-    // Both should fire — no pruning happened
+    // Both should fire: no pruning happened
     expect(stack).toContain("ModeClass.start");
     expect(stack).toContain("Other.start");
   });

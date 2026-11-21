@@ -80,16 +80,17 @@ export interface MiddlewareMetadata {
    * consumers that must react to it without knowing which middleware it is.
    *
    * `options` already carries a middleware's configuration, but reading it
-   * means knowing whose configuration it is — which is how the router ended up
+   * means knowing whose configuration it is, which is how the router ended up
    * matching on `name === "$secure"`, a string comparison that survives no
    * rename and admits no second implementation. `meta` is the portable half:
    * a middleware declares a capability, and anything may act on the declaration
    * without importing the module that made it.
    *
-   * Flat `Record<string, string>` on purpose — serialisable, transport-safe,
+   * Flat `Record<string, string>` on purpose: serialisable, transport-safe,
    * and cheap to read from a module that shares no types with the writer.
    *
-   * See {@link MIDDLEWARE_PROTECTED} for the one key the framework defines.
+   * The framework defines four keys: {@link MIDDLEWARE_PROTECTED},
+   * `MIDDLEWARE_PERMISSIONS`, `MIDDLEWARE_RESPONSES` and `MIDDLEWARE_ROLES`.
    * Applications may add their own; unknown keys are ignored.
    */
   meta?: Record<string, string>;

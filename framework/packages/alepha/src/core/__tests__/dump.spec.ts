@@ -1,5 +1,5 @@
 import { $env, $module, Alepha, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("Alepha.dump", () => {
   // Regression: dump() used to read `cacheEnv` BEFORE force-instantiating the
@@ -7,7 +7,9 @@ describe("Alepha.dump", () => {
   // lazy (a key only exists once its service is constructed), so dump() must
   // force-inject first. This proves a registered-but-never-injected service's
   // env shows up.
-  it("reports env from a registered service that was never injected", () => {
+  it("reports env from a registered service that was never injected", ({
+    expect,
+  }) => {
     class SecretService {
       env = $env(
         z.object({
@@ -20,7 +22,7 @@ describe("Alepha.dump", () => {
     const Mod = $module({ name: "secrets", services: [SecretService] });
     const alepha = Alepha.create({ env: { MY_SECRET: "shh" } }).with(Mod);
 
-    // No `alepha.inject(SecretService)` — dump() must surface it on its own.
+    // No `alepha.inject(SecretService)`: dump() must surface it on its own.
     const dump = alepha.dump();
 
     expect(dump.env.MY_SECRET).toBeDefined();
@@ -33,7 +35,7 @@ describe("Alepha.dump", () => {
   // Secret by default, and materialized as `true` rather than left absent: a
   // consumer writing `if (v.secret)` must get the SAFE answer for a var nobody
   // annotated. Absent would be falsy, so the naive reader would expose it.
-  it("reports env fields as secret unless declassified", () => {
+  it("reports env fields as secret unless declassified", ({ expect }) => {
     class Payments {
       env = $env(
         z.object({
@@ -56,7 +58,7 @@ describe("Alepha.dump", () => {
     const dump = alepha.dump();
 
     expect(dump.env.STRIPE_SECRET_KEY.secret).toBe(true);
-    // Never annotated — treated exactly like an explicit `true`, because that
+    // Never annotated: treated exactly like an explicit `true`, because that
     // is already what the deploy path does with every declared key.
     expect(dump.env.UNANNOTATED.secret).toBe(true);
     // Only an explicit opt-out declassifies.
@@ -64,9 +66,11 @@ describe("Alepha.dump", () => {
   });
 
   // `.meta()` binds to the schema it was called on, so on an optional field the
-  // opt-out sits on the INNER schema — the same trap `description` already has.
+  // opt-out sits on the INNER schema: the same trap `description` already has.
   // Losing it here would silently re-classify a declassified var as secret.
-  it("reports the declassifying opt-out through .optional() and .meta()", () => {
+  it("reports the declassifying opt-out through .optional() and .meta()", ({
+    expect,
+  }) => {
     class Mixed {
       env = $env(
         z.object({
@@ -89,7 +93,7 @@ describe("Alepha.dump", () => {
   // have to compensate by hand (`required && !default`) because every defaulted
   // variable was reported required - and a falsy default like `0` or `""` slipped
   // through the compensation anyway.
-  it("reports a defaulted env variable as not required", () => {
+  it("reports a defaulted env variable as not required", ({ expect }) => {
     class Ports {
       env = $env(
         z.object({
@@ -112,7 +116,9 @@ describe("Alepha.dump", () => {
     expect(dump.env.OPTIONAL.required).toBeUndefined();
   });
 
-  it("captures env from multiple independent services in one pass", () => {
+  it("captures env from multiple independent services in one pass", ({
+    expect,
+  }) => {
     class A {
       env = $env(z.object({ A_KEY: z.text().optional() }));
     }
@@ -129,7 +135,7 @@ describe("Alepha.dump", () => {
 
   // #Q2945: no service declares APP_NAME, so without Alepha's own schema the
   // manifest never listed it and Lore sealed it as a secret.
-  it("reports Alepha's own APP_NAME as a plain variable", () => {
+  it("reports Alepha's own APP_NAME as a plain variable", ({ expect }) => {
     const dump = Alepha.create().dump();
 
     expect(dump.env.APP_NAME).toBeDefined();

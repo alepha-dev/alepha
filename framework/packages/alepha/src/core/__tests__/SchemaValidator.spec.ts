@@ -1,12 +1,12 @@
 import { Alepha, z } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { SchemaValidationError } from "../errors/SchemaValidationError.ts";
 import { SchemaValidator } from "../providers/SchemaValidator.ts";
 
 describe("SchemaValidator", () => {
   describe("Basic validation", () => {
-    test("should validate simple objects", async ({ expect }) => {
+    it("should validate simple objects", async ({ expect }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
@@ -24,7 +24,7 @@ describe("SchemaValidator", () => {
       expect(result).toEqual(data);
     });
 
-    test("should trim strings when schema has trim option", async ({
+    it("should trim strings when schema has trim option", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
@@ -42,7 +42,7 @@ describe("SchemaValidator", () => {
       expect(result.name).toBe("Alice");
     });
 
-    test("rejects null for an optional (non-nullable) field (strict)", async ({
+    it("rejects null for an optional (non-nullable) field (strict)", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
@@ -54,7 +54,7 @@ describe("SchemaValidator", () => {
       });
 
       // Standard zod is strict: an optional field accepts `undefined`, not
-      // `null` (the old `nullToUndefined` coercion has been dropped).
+      // `null`.
       expect(() =>
         validator.validate(schema, { name: "Alice", bio: null }),
       ).toThrow();
@@ -66,7 +66,7 @@ describe("SchemaValidator", () => {
   });
 
   describe("Security - Prototype Pollution Protection", () => {
-    test("should filter out __proto__ key from input data", async ({
+    it("should filter out __proto__ key from input data", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
@@ -87,7 +87,7 @@ describe("SchemaValidator", () => {
       expect(Object.hasOwn(result, "__proto__")).toBe(false);
     });
 
-    test("should filter out constructor key from input data", async ({
+    it("should filter out constructor key from input data", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
@@ -108,7 +108,7 @@ describe("SchemaValidator", () => {
       expect(Object.hasOwn(result, "constructor")).toBe(false);
     });
 
-    test("should filter out prototype key from input data", async ({
+    it("should filter out prototype key from input data", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
@@ -129,9 +129,7 @@ describe("SchemaValidator", () => {
       expect(Object.hasOwn(result, "prototype")).toBe(false);
     });
 
-    test("should filter unsafe keys from nested objects", async ({
-      expect,
-    }) => {
+    it("should filter unsafe keys from nested objects", async ({ expect }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
@@ -141,20 +139,21 @@ describe("SchemaValidator", () => {
         }),
       });
 
-      const data = {
-        user: {
-          name: "Alice",
-          __proto__: { isAdmin: true },
-        },
-      };
+      // JSON.parse, because `__proto__` in an object literal sets the prototype
+      // and creates no own key.
+      const data = JSON.parse(
+        '{"user":{"name":"Alice","__proto__":{"isAdmin":true}}}',
+      );
+      expect(Object.hasOwn(data.user, "__proto__")).toBe(true);
 
       const result = validator.validate(schema, data);
 
       expect(result.user.name).toBe("Alice");
       expect(Object.hasOwn(result.user, "__proto__")).toBe(false);
+      expect((result.user as any).isAdmin).toBeUndefined();
     });
 
-    test("should not pollute Object.prototype", async ({ expect }) => {
+    it("should not pollute Object.prototype", async ({ expect }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
@@ -172,31 +171,10 @@ describe("SchemaValidator", () => {
       // Object.prototype should not be polluted
       expect(({} as any).polluted).toBeUndefined();
     });
-
-    test("should create objects without prototype chain", async ({
-      expect,
-    }) => {
-      const alepha = Alepha.create();
-      const validator = alepha.inject(SchemaValidator);
-
-      const schema = z.object({
-        name: z.text(),
-      });
-
-      const data = {
-        name: "Alice",
-      };
-
-      const result = validator.validate(schema, data);
-
-      // The result should not have Object.prototype methods directly accessible
-      // via hasOwnProperty (it should use Object.create(null))
-      expect(result.name).toBe("Alice");
-    });
   });
 
-  describe("beforeParse", () => {
-    test("should handle arrays correctly", async ({ expect }) => {
+  describe("arrays and optional fields", () => {
+    it("should handle arrays correctly", async ({ expect }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
@@ -212,9 +190,7 @@ describe("SchemaValidator", () => {
       expect(result.tags).toEqual(["tag1", "tag2"]);
     });
 
-    test("should unwrap optional arrays and preprocess items", async ({
-      expect,
-    }) => {
+    it("should trim the items of an optional array", async ({ expect }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
@@ -230,9 +206,7 @@ describe("SchemaValidator", () => {
       expect(result.tags).toEqual(["tag1", "tag2"]);
     });
 
-    test("should unwrap nullable arrays and preprocess items", async ({
-      expect,
-    }) => {
+    it("should trim the items of a nullable array", async ({ expect }) => {
       const alepha = Alepha.create();
       const validator = alepha.inject(SchemaValidator);
 
@@ -248,7 +222,7 @@ describe("SchemaValidator", () => {
       expect(result.tags).toEqual(["tag1", "tag2"]);
     });
 
-    test("validates an optional field left undefined (strict)", async ({
+    it("validates an optional field left undefined (strict)", async ({
       expect,
     }) => {
       const alepha = Alepha.create();
@@ -259,8 +233,7 @@ describe("SchemaValidator", () => {
         bio: z.text().optional(),
       });
 
-      // The `deleteUndefined` option has been dropped; an undefined optional
-      // field simply validates to `undefined`.
+      // An undefined optional field validates to `undefined`.
       const result = validator.validate(schema, {
         name: "Alice",
         bio: undefined,
@@ -282,7 +255,7 @@ describe("SchemaValidator", () => {
       throw new Error("expected a SchemaValidationError");
     };
 
-    test("keeps every issue, with path and message the first one", ({
+    it("keeps every issue, with path and message the first one", ({
       expect,
     }) => {
       const error = failure(
@@ -304,7 +277,7 @@ describe("SchemaValidator", () => {
       expect(error.data.issues?.[2].message).toBe("'items/1/name' is required");
     });
 
-    test("caps the issues at MAX_ISSUES", ({ expect }) => {
+    it("caps the issues at MAX_ISSUES", ({ expect }) => {
       const error = failure(
         z.array(z.integer()),
         Array.from({ length: 80 }, () => "x"),

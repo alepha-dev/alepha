@@ -63,7 +63,7 @@ declare const __ALEPHA_SURFACE__: string | undefined;
  * Where an `$env` schema was declared.
  *
  * Recorded so tooling can attribute a variable to the service and module that
- * expect it — a large application declares environment across dozens of
+ * expect it: a large application declares environment across dozens of
  * services, and a flat list gives no clue which subsystem a variable belongs
  * to.
  */
@@ -114,7 +114,7 @@ export interface EnvOwner {
  *
  * Alepha is designed to work in various environments:
  * - **Browser**: Runs in the browser, using the global `window` object.
- * - **Serverless**: Runs in serverless environments like Vercel or Vite.
+ * - **Serverless**: Runs in serverless environments like Vercel or Cloudflare Workers.
  * - **Test**: Runs in test environments like Jest or Vitest.
  * - **Production**: Runs in production environments, typically with NODE_ENV set to "production".
  * * You can check the current environment using the following methods:
@@ -232,14 +232,14 @@ export class Alepha {
      * unconditional `Object.assign(env, { NODE_ENV: "production" })`. So a built
      * server forced production at boot no matter what the environment said:
      * `NODE_ENV=development node dist` was silently ignored, and every
-     * `isProduction()` gate — including the ones that refuse test-only endpoints
-     * — was on in staging as much as in production.
+     * `isProduction()` gate, including the ones that refuse test-only endpoints,
+     * was on in staging as much as in production.
      *
      * The block below already does the job correctly, and only when nothing has
      * been said at runtime: it reads the baked `import.meta.env.PROD` flag rather
      * than an expression the bundler substitutes, and it never overrides an
      * explicit value. Browser and Vite builds have no `process`, so the spread
-     * above is dead code there and `NODE_ENV` arrives unset — which is exactly
+     * above is dead code there and `NODE_ENV` arrives unset, which is exactly
      * the case this covers. `import.meta.env` is `undefined` outside Vite (plain
      * server bundles, workerd), making it a no-op there.
      */
@@ -376,6 +376,13 @@ export class Alepha {
   protected cacheEnvOwner: Map<ZType, EnvOwner> = new Map();
 
   /**
+   * Every env schema parsed so far, in first-read order. Which schemas an
+   * app declares does not depend on their values, so `loadEnv` keeps this
+   * list and clears only {@link cacheEnv}.
+   */
+  protected envSchemas: Set<ZObject> = new Set();
+
+  /**
    * Every `$env` schema read so far that declares a `browser: true` key.
    * Kept apart from {@link cacheEnv}, which `loadEnv` clears.
    */
@@ -396,9 +403,6 @@ export class Alepha {
   protected substitutions = new Map<Service, { use: Service }>();
 
   /**
-   * Who created whom, and what each class holds: what {@link purity} reads.
-   */
-  /**
    * Depth of `inject` registering the module of the class it creates: that
    * `with` is the injection's doing, not a registration (#Q3485).
    */
@@ -409,6 +413,9 @@ export class Alepha {
    */
   protected registeringModules: Service[] = [];
 
+  /**
+   * Who created whom, and what each class holds: what {@link purity} reads.
+   */
   protected containerGraph = new ContainerGraph(
     (service) =>
       Module.is(service) ||
@@ -791,13 +798,6 @@ export class Alepha {
   }
 
   /**
-   * The classes declared and not created yet, in declaration order.
-   */
-  public declaredServices(): Service[] {
-    return [...this.declared];
-  }
-
-  /**
    * The environment variables for the App.
    */
   public get env(): Readonly<Env> {
@@ -989,7 +989,7 @@ export class Alepha {
   /**
    * True when the named environment variable is set to an "on" value.
    *
-   * Environment values are strings, and `!!"false"` is `true` — which is how
+   * Environment values are strings, and `!!"false"` is `true`, which is how
    * `MIGRATE=false` used to *activate* a `$mode`. This is the truthiness
    * check every env flag must go through: absent, `""`, `"false"` and `"0"`
    * (case-insensitive) are off; anything else is on.
@@ -1208,11 +1208,11 @@ export class Alepha {
         // The claim stays up for the whole rebuild, and `inject` rather than
         // `with` so the target itself is not swallowed by its own cutoff.
         //
-        // Clearing it first — which is what this used to do — re-armed `with()`
+        // Clearing it first, which is what this used to do, re-armed `with()`
         // for every module the target's `$inject` chain reaches. The registry
         // has just been emptied, so the first module-owned dependency looks
         // unregistered, gets its module registered again, and that module's
-        // `register()` walks its whole `services` list — which contains the
+        // `register()` walks its whole `services` list, which contains the
         // target, still in `pendingInstantiations`. The container then reported
         // a circular dependency on the target itself. `delete target[MODULE]`
         // above only severs the target's own module link, not its dependencies'.
@@ -1241,7 +1241,7 @@ export class Alepha {
       this.configured = true;
 
       // From here on some services may hold real resources, so a failure has
-      // to unwind them — see the catch below.
+      // to unwind them, see the catch below.
       startEmitted = true;
 
       await this.events.emit("start", this, { log: true });
@@ -1252,7 +1252,7 @@ export class Alepha {
       await this.events.emit("ready", this, { log: true });
       if (superseded()) return this;
 
-      // A `ready` hook may stop the app from inside this emit — `$mode` does
+      // A `ready` hook may stop the app from inside this emit: `$mode` does
       // exactly that for one-shot commands. Flipping `ready` afterwards
       // claimed a stopped container was ready, and a later `start()` would
       // short-circuit on the flag and report it as running.
@@ -1268,7 +1268,7 @@ export class Alepha {
       // Unwind whatever already started. A `start` hook throwing after
       // earlier services connected used to leave them running: resetStartup()
       // clears `started`, so a later stop() short-circuited and never emitted
-      // `stop` — DB connections and listening sockets leaked with no way to
+      // `stop`: DB connections and listening sockets leaked with no way to
       // close them. `catch: true` so one failing teardown cannot mask the
       // original error, which is what the caller actually needs to see.
       if (startEmitted) {
@@ -1286,15 +1286,15 @@ export class Alepha {
    * Format the "ready" line, reporting the boot duration only when the runtime
    * was actually able to measure it.
    *
-   * On workerd the clock does not advance during pure-CPU work — it only moves
-   * after I/O — and container boot performs none: bindings (D1, KV, R2,
+   * On workerd the clock does not advance during pure-CPU work (it only moves
+   * after I/O), and container boot performs none: bindings (D1, KV, R2,
    * Analytics Engine) are bound, never connected. So `performance.now()` is
    * identical either side of the whole boot and the delta is exactly zero.
    *
    * Measured on a deployed Worker: 12 of 12 cold starts emitted every boot log
    * line under a single identical timestamp while burning 30-216ms of CPU, and
    * all of them printed "[0ms]". That number is not "boot was free", it is
-   * "the runtime could not see boot" — and reporting it hid a real ~45ms of
+   * "the runtime could not see boot", and reporting it hid a real ~45ms of
    * per-cold-start CPU behind a zero. Say nothing rather than say zero.
    *
    * A sub-millisecond boot under Node still rounds to 0 but has a non-zero
@@ -1341,7 +1341,7 @@ export class Alepha {
     // A boot in flight has to finish before we can decide there is nothing to
     // stop: `started` is only set near the END of boot(). Returning early
     // here let the boot complete afterwards, leaving the app running after
-    // the caller had already awaited stop() — reachable from `run()`'s
+    // the caller had already awaited stop(): reachable from `run()`'s
     // SIGTERM trap and from test teardown racing a slow start.
     //
     // Guarded on `started` because a `ready` hook may stop the app from
@@ -1428,7 +1428,7 @@ export class Alepha {
    * direct fields AND registered as services. Replacing the registry without
    * re-seeding it desynchronised the two: a later `inject(StateManager)`
    * built a fresh, EMPTY instance while `alepha.store` still pointed at the
-   * populated one — env gone, atom registrations gone, codec registrations
+   * populated one: env gone, atom registrations gone, codec registrations
    * gone, and no error anywhere.
    */
   protected seedCoreServices(): void {
@@ -1451,7 +1451,8 @@ export class Alepha {
    * Destroys the App and clears all internal state.
    *
    * Use this for HMR in development mode to prevent duplicate class registrations.
-   * Unlike stop(), this method fully resets the container state.
+   * Unlike stop(), this method also resets the registry, the modules, the
+   * substitutions, the container graph, the parsed env and the event hooks.
    *
    * @return A promise that resolves when the App has been destroyed.
    */
@@ -1468,6 +1469,7 @@ export class Alepha {
     this.substitutions = new Map();
     this.cacheEnv = new Map();
     this.cacheEnvOwner = new Map();
+    this.envSchemas = new Set();
     this.events.clear();
 
     // Reset flags
@@ -1589,7 +1591,7 @@ export class Alepha {
       "default" in serviceEntry ? serviceEntry.default : serviceEntry;
 
     // just check if the entry is not present in the pending instantiation stack
-    // Alepha#get will handle the rest
+    // Alepha#inject will handle the rest
     if (
       this.has(entry, {
         inSubstitutions: false,
@@ -1680,7 +1682,7 @@ export class Alepha {
     const transient = lifetime === "transient";
 
     // `scoped` falls back to the global singleton registry when there is no
-    // AsyncLocalStorage context — expected in browser builds, where
+    // AsyncLocalStorage context: expected in browser builds, where
     // AlsProvider is a no-op, but on a server it means the caller asked for
     // per-request isolation and silently got a cross-request singleton. Warn
     // once per service so it is visible without spamming a hot path.
@@ -1694,7 +1696,7 @@ export class Alepha {
         this.scopedFallbackWarned.add(service);
         this.log?.warn(
           `Scoped DI requested for '${typeof service === "string" ? service : service.name}' ` +
-            "but no AsyncLocalStorage context is active — falling back to a singleton. " +
+            "but no AsyncLocalStorage context is active: falling back to a singleton. " +
             "Wrap the request in `alepha.context.run()` to get per-request isolation.",
         );
       }
@@ -1703,7 +1705,7 @@ export class Alepha {
     // If the requested type is the container, the current instance is returned.
     if ((service as unknown) === Alepha) {
       // The container is not a `T`, but asking for it is how a service reaches
-      // the container it lives in — the one injection that is definitionally
+      // the container it lives in: the one injection that is definitionally
       // untyped. `unknown` first because `this` and `T` do not overlap.
       return this as unknown as T;
     }
@@ -1716,7 +1718,7 @@ export class Alepha {
       }
       // A `provide`/`use` substitution keys the registry by the SUBSTITUTE
       // class, so a by-id lookup for the substituted base class finds no
-      // registry entry — follow the substitution through the class-keyed
+      // registry entry: follow the substitution through the class-keyed
       // path exactly as `inject(BaseClass)` would (e.g. the generated
       // Cloudflare worker entry injecting "alepha.websocket.WebSocketServerProvider" by id
       // while the websocket module provides it via a substitution).
@@ -1790,7 +1792,7 @@ export class Alepha {
       // The locked-container guard protects the GLOBAL registry from gaining new
       // singletons after start. A `scoped` inject targets a per-request registry
       // (a fresh Map created by `alepha.context.run` per request, resolved at
-      // `registry` above) and is stored only there — it never mutates the global
+      // `registry` above) and is stored only there: it never mutates the global
       // container. Refusing it after start makes `lifetime: "scoped"` unusable at
       // the only time it matters (while handling a request), so the guard must
       // apply only when we are instantiating into the global registry itself.
@@ -1871,7 +1873,7 @@ export class Alepha {
       } finally {
         this.registeringModules.pop();
         this.containerGraph.closeFrame();
-        // restore the previous $get context
+        // restore the previous module
         __alephaRef.parent = parent;
       }
     }
@@ -1886,15 +1888,16 @@ export class Alepha {
    *
    * Serverless entrypoints (Cloudflare Workers) receive their secrets and
    * vars on the runtime `env` binding rather than `process.env`, so they are
-   * absent from `alepha.env` — which is frozen at `create()` from
+   * absent from `alepha.env`, which is frozen at `create()` from
    * `process.env`. Call this from the entrypoint to lift the binding's string
    * values into `alepha.env`, so `$env` and `alepha.env.*` resolve them (e.g.
    * `PUBLIC_URL`).
    *
    * Only string values are lifted; non-string bindings (D1, R2, KV, queues,
    * …) are skipped. Existing env values win, so explicit configuration is
-   * never clobbered. The env cache is cleared so subsequent `$env` reads see
-   * the merged values.
+   * never clobbered. The parsed values are dropped, so `$env` reads made
+   * afterwards see the merged values; a service already built keeps the
+   * values it was given.
    */
   public loadEnv(env: Record<string, unknown>): this {
     const incoming: Record<string, string> = {};
@@ -1904,8 +1907,9 @@ export class Alepha {
       }
     }
     this.store.set("env", { ...incoming, ...this.env });
+    // Only the parsed values go. The schemas and their owners stay, so
+    // `getEnvSchemas` still lists them and reads their values again.
     this.cacheEnv.clear();
-    this.cacheEnvOwner.clear();
     return this;
   }
 
@@ -1913,7 +1917,7 @@ export class Alepha {
    * Applies environment variables to the provided schema and state object.
    *
    * It replaces also all templated $ENV inside string values. Write `$$KEY`
-   * for a literal `$KEY` — e.g. a password containing `$PORT` declared as
+   * for a literal `$KEY`, e.g. a password containing `$PORT` declared as
    * `$$PORT` survives substitution untouched.
    *
    * @param schema - The schema object to apply environment variables to.
@@ -1932,7 +1936,7 @@ export class Alepha {
 
     this.checkBrowserKeys(schema);
 
-    // Env vars are strings on the wire — coerce declared fields to their
+    // Env vars are strings on the wire: coerce declared fields to their
     // schema types (boolean/number) before strict validation. Aliases are
     // resolved first, so an aliased value is coerced and validated as the key
     // it stands in for.
@@ -1943,7 +1947,7 @@ export class Alepha {
 
     // Sort keys longest-first to prevent substring collisions
     // (e.g. $PORT must not match inside $PORT_NAME). Patterns are compiled
-    // once per key, outside the pass loop — and the key is regex-escaped:
+    // once per key, outside the pass loop, and the key is regex-escaped:
     // keys are user input, and an unescaped `(` used to blow up the RegExp
     // constructor while `.` silently matched any character.
     const patterns = Object.keys(config)
@@ -1962,7 +1966,7 @@ export class Alepha {
 
     // Neutralize `$$KEY` escapes BEFORE any substitution pass. The dollar is
     // parked as a sentinel so the multi-pass loop below can never see (and
-    // substitute) the unescaped `$KEY` it protects — the old single-regex
+    // substitute) the unescaped `$KEY` it protects: the old single-regex
     // approach unescaped and substituted in the same passes, so an escaped
     // `$$PORT` still came out as `$3000`. The sentinel survives transitively
     // (an escape inside a substituted value stays inert) and is restored
@@ -1984,7 +1988,7 @@ export class Alepha {
 
     // Resolve $KEY references. Multiple passes handle transitive references
     // where a replacement introduces a new $KEY that was already checked
-    // (e.g. C=$B, B=$A, A=value — single pass leaves C as "$A").
+    // (e.g. C=$B, B=$A, A=value: single pass leaves C as "$A").
 
     for (let pass = 0; changed && pass < 10; pass++) {
       changed = false;
@@ -2013,6 +2017,7 @@ export class Alepha {
     }
 
     this.cacheEnv.set(schema, config);
+    this.envSchemas.add(schema);
 
     return config as Infer<T>;
   }
@@ -2032,10 +2037,27 @@ export class Alepha {
       values: Record<string, any>;
       owner?: EnvOwner;
     }> = [];
-    for (const [schema, values] of this.cacheEnv.entries()) {
-      result.push({ schema, values, owner: this.cacheEnvOwner.get(schema) });
+    for (const schema of this.envSchemas) {
+      result.push({
+        schema,
+        values: this.envValuesOf(schema),
+        owner: this.cacheEnvOwner.get(schema),
+      });
     }
     return result;
+  }
+
+  /**
+   * The parsed values of a known env schema, read again after `loadEnv`
+   * dropped them. A schema the current env no longer satisfies is still
+   * listed, with no values: a listing must not throw.
+   */
+  protected envValuesOf(schema: ZObject): Record<string, any> {
+    try {
+      return this.parseEnv(schema);
+    } catch {
+      return {};
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -2094,7 +2116,7 @@ export class Alepha {
   }
 
   public dump(): AlephaDump {
-    // Force-instantiate the graph FIRST. `$env` is lazy — a key only lands in
+    // Force-instantiate the graph FIRST. `$env` is lazy: a key only lands in
     // `cacheEnv` once its owning service is constructed. `graph()` injects
     // every registered substitution (without emitting start/ready hooks), so
     // calling it before reading `cacheEnv` ensures `env` reflects the whole
@@ -2107,9 +2129,9 @@ export class Alepha {
     this.parseEnv(alephaEnvSchema, { service: "Alepha" });
 
     const env: Record<string, AlephaDumpEnvVariable> = {};
-    for (const [schema] of this.cacheEnv.entries()) {
+    for (const schema of this.envSchemas) {
       // `required` field names come from `z.schema.requiredInputKeys` (zod has no
-      // `.required` array — that name is the `.required()` method). Metadata
+      // `.required` array: that name is the `.required()` method). Metadata
       // (description/enum/default) lives on the unwrapped inner schema, under
       // `.meta()`.
       const shape = z.schema.shape(schema);
@@ -2135,7 +2157,7 @@ export class Alepha {
           // `z.text({ secret: false }).optional()` tagged the string, and the
           // ZodOptional wrapping it carries no meta of its own. `??` rather
           // than `||` so the inner schema's explicit `false` is not skipped
-          // over in favour of the wrapper's absent one — and the final `?? true`
+          // over in favour of the wrapper's absent one, and the final `?? true`
           // is what makes "nobody said" mean secret.
           // `browser: true` implies `secret: false`: the value is sent to
           // every visitor (`checkBrowserKeys` refuses an explicit `true`).
@@ -2294,8 +2316,8 @@ export class Alepha {
    * The `secret` marker a schema declared, or `undefined` if it declared none.
    *
    * A non-boolean `secret` in `.meta()` is dropped rather than coerced, so it
-   * falls back to secret. Coercing would let `secret: "no"` — truthy, and
-   * plainly meant as an opt-out — decide the question either way by accident.
+   * falls back to secret. Coercing would let `secret: "no"` (truthy, and
+   * plainly meant as an opt-out) decide the question either way by accident.
    */
   protected declaredSecret(schema: unknown): boolean | undefined {
     const value = z.schema.meta(schema).secret;
@@ -2309,7 +2331,7 @@ export class Alepha {
    * Read from the unwrapped schema first, then from the wrapper: `.meta()`
    * sits on the schema it was called on, and `z.integer().meta(…).default(0)`
    * puts it on the inner one. Non-string entries are dropped rather than
-   * coerced — an alias is a variable name, and `["PORT", 3000]` is a mistake
+   * coerced: an alias is a variable name, and `["PORT", 3000]` is a mistake
    * worth ignoring rather than a lookup of the key `"3000"`.
    */
   protected declaredAliases(schema: unknown): Array<string> {
@@ -2326,9 +2348,9 @@ export class Alepha {
    * absent filled in from the first of its `aliases` that is present.
    *
    * `.meta({ aliases: ["PORT"] })` is how a schema accepts a name it does not
-   * own. Hosts hand values over under names of their choosing — a port they
+   * own. Hosts hand values over under names of their choosing (a port they
    * allocated arrives as `PORT`, a database they provisioned as
-   * `POSTGRES_URL` — and an app should read them without the framework having
+   * `POSTGRES_URL`), and an app should read them without the framework having
    * to reserve those names. An alias is only ever read: it is not a declared
    * key, so it stays out of the `Env` type, out of {@link Alepha#dump}'s key
    * list and out of the deploy manifest, and the declared key remains the one
@@ -2421,13 +2443,20 @@ export class Alepha {
     // we use a global cursor to store the current context and definition
     // as new() is synchronous, there is no worry to do that
     //
+    // Another container may be mid-construction: a service that creates one
+    // in a field or in its constructor. Its cursor is handed back below.
+    const current = __alephaRef.alepha;
+    const outer =
+      current && current !== this && current.pendingInstantiations.length > 0
+        ? { alepha: current, service: __alephaRef.service }
+        : undefined;
     __alephaRef.alepha = this;
     __alephaRef.service = service;
 
     // The finally block is what keeps a THROWING constructor from corrupting
     // the container. Without it, the service stayed forever in
-    // `pendingInstantiations` — every later inject() of it reported a phantom
-    // CircularDependencyError that masked the original failure — and the
+    // `pendingInstantiations`: every later inject() of it reported a phantom
+    // CircularDependencyError that masked the original failure, and the
     // leaked `__alephaRef` cursor made `$context()` usable outside any
     // instantiation.
     try {
@@ -2460,13 +2489,18 @@ export class Alepha {
     } finally {
       this.pendingInstantiations.pop();
 
-      // tree is empty, now we can clean the global cursor
-      if (this.pendingInstantiations.length === 0) {
-        __alephaRef.alepha = undefined;
-      }
+      if (outer) {
+        __alephaRef.alepha = outer.alepha;
+        __alephaRef.service = outer.service;
+      } else {
+        // tree is empty, now we can clean the global cursor
+        if (this.pendingInstantiations.length === 0) {
+          __alephaRef.alepha = undefined;
+        }
 
-      __alephaRef.service =
-        this.pendingInstantiations[this.pendingInstantiations.length - 1];
+        __alephaRef.service =
+          this.pendingInstantiations[this.pendingInstantiations.length - 1];
+      }
     }
   }
 
@@ -2537,7 +2571,7 @@ export interface AlephaDumpEnvVariable {
    * Other variable names this one is read from when it is not set itself,
    * in the order they are tried. Absent when the field declared none.
    *
-   * Documentation only — an alias is resolved at parse time and is never a
+   * Documentation only: an alias is resolved at parse time and is never a
    * key of its own, so a consumer that lists variables should mention it
    * against the declared key rather than as a separate entry.
    */
@@ -2546,14 +2580,14 @@ export interface AlephaDumpEnvVariable {
    * Whether the value is sensitive. **`true` unless declassified.**
    *
    * Opt OUT with `z.text({ secret: false })` (or `.meta({ secret: false })`)
-   * for a var that is genuinely safe in plaintext — a public URL, a log level.
+   * for a var that is genuinely safe in plaintext: a public URL, a log level.
    * `secret: true` is accepted and is the default, so writing it is
    * documentation rather than a behaviour change.
    *
    * Secret-by-default for two reasons. It is what already happens: every
    * declared key is pushed to a deploy target as an encrypted binding today,
    * so an app that annotates nothing keeps exactly the behaviour it has. And
-   * it is the only default that survives being forgotten — the annotation is
+   * it is the only default that survives being forgotten: the annotation is
    * new, it WILL be missed, and a missed annotation must not be what exposes a
    * key. Always present rather than optional for the same reason: a consumer
    * writing `if (v.secret)` gets the safe answer without having to know that
@@ -2630,7 +2664,7 @@ export interface Env {
   /**
    * Public-facing base URL of the deployed app (e.g. "https://lore.alepha.app").
    *
-   * Used to render absolute links — emails, OAuth callbacks, sitemap. On the
+   * Used to render absolute links: emails, OAuth callbacks, sitemap. On the
    * Cloudflare platform it is auto-derived from the configured production
    * domain and pushed as a Worker secret by `alepha deploy`; otherwise
    * set it explicitly in `.env.<env>`. Unset → empty, and absolute-link

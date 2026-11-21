@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
 import { AlsProvider } from "../providers/AlsProvider.ts";
@@ -8,7 +8,7 @@ import { AlsProvider } from "../providers/AlsProvider.ts";
 AlsProvider.create = () => new AsyncLocalStorage();
 
 describe("fork", () => {
-  it("should inherit parent state", () => {
+  it("should inherit parent state", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -17,7 +17,7 @@ describe("fork", () => {
     });
   });
 
-  it("should isolate mutations from parent", () => {
+  it("should isolate mutations from parent", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -29,7 +29,7 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("A");
   });
 
-  it("should shadow the app value when a fork sets null", () => {
+  it("should shadow the app value when a fork sets null", ({ expect }) => {
     // `get` nullish-coalesced the ALS value into the app store, so a fork
     // writing `null` ("logged out" for a nullable session atom) read the
     // app-level value back instead of its own.
@@ -44,7 +44,7 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("app-value");
   });
 
-  it("should shadow the app value when a fork sets undefined", () => {
+  it("should shadow the app value when a fork sets undefined", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "app-value");
 
@@ -56,7 +56,7 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("app-value");
   });
 
-  it("should walk up the tree through nested forks", () => {
+  it("should walk up the tree through nested forks", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -76,14 +76,14 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("A");
   });
 
-  it("should return the callback result", () => {
+  it("should return the callback result", ({ expect }) => {
     const alepha = new Alepha();
 
     const result = alepha.fork(() => 42);
     expect(result).toBe(42);
   });
 
-  it("should accept initial data", () => {
+  it("should accept initial data", ({ expect }) => {
     const alepha = new Alepha();
 
     alepha.fork(
@@ -94,7 +94,7 @@ describe("fork", () => {
     );
   });
 
-  it("should not leak initial data to parent", () => {
+  it("should not leak initial data to parent", ({ expect }) => {
     const alepha = new Alepha();
 
     alepha.fork(() => {}, { seed: "hello" });
@@ -102,7 +102,7 @@ describe("fork", () => {
     expect(alepha.get("seed")).toBeUndefined();
   });
 
-  it("should handle async callbacks", async () => {
+  it("should handle async callbacks", async ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -115,7 +115,7 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("A");
   });
 
-  it("should isolate multiple parallel forks", async () => {
+  it("should isolate multiple parallel forks", async ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -135,7 +135,7 @@ describe("fork", () => {
     expect(alepha.get("test")).toBe("A");
   });
 
-  it("should fall back to app store for unset keys", () => {
+  it("should fall back to app store for unset keys", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("parent", "value");
 
@@ -149,11 +149,13 @@ describe("fork", () => {
   });
 });
 
-describe("the fork scope", () => {
+describe('the "fork" read scope', () => {
   // #Q2538: what a guard needs to find its action's request. A `nest()`
   // layer is the same unit of work as the `run()` beneath it; an outer
   // `run()` is a different one.
-  it("reads through nested layers to the fork that holds the key", () => {
+  it("reads through nested layers to the fork that holds the key", ({
+    expect,
+  }) => {
     const alepha = new Alepha();
 
     alepha.fork(
@@ -170,7 +172,9 @@ describe("the fork scope", () => {
     );
   });
 
-  it("stops at the first fork, never answering with an outer one's value", () => {
+  it("stops at the first fork, never answering with an outer one's value", ({
+    expect,
+  }) => {
     const alepha = new Alepha();
 
     alepha.fork(
@@ -190,7 +194,7 @@ describe("the fork scope", () => {
 });
 
 describe("nest", () => {
-  it("should inherit the caller's state", () => {
+  it("should inherit the caller's state", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -199,7 +203,7 @@ describe("nest", () => {
     });
   });
 
-  it("should isolate its writes from the caller", () => {
+  it("should isolate its writes from the caller", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("test", "A");
 
@@ -211,7 +215,7 @@ describe("nest", () => {
     expect(alepha.get("test")).toBe("A");
   });
 
-  it("should capture writes even with no active context", () => {
+  it("should capture writes even with no active context", ({ expect }) => {
     // The property the ORM relies on: outside a request there is no context,
     // and a write would otherwise land in the app-wide store where every
     // concurrent caller shares it.
@@ -226,7 +230,7 @@ describe("nest", () => {
     expect(alepha.get("test")).toBe("app-value");
   });
 
-  it("should keep two concurrent nests apart", async () => {
+  it("should keep two concurrent nests apart", async ({ expect }) => {
     const alepha = new Alepha();
 
     await Promise.all([
@@ -245,7 +249,7 @@ describe("nest", () => {
     expect(alepha.get("test")).toBeUndefined();
   });
 
-  it("should survive a sibling that finishes first", async () => {
+  it("should survive a sibling that finishes first", async ({ expect }) => {
     // The shape of the transaction bug: the sibling's `finally` used to clear
     // a shared slot while this block was still using it.
     const alepha = new Alepha();
@@ -269,7 +273,7 @@ describe("nest", () => {
     expect(await slow).toBe("slow");
   });
 
-  it("should keep the caller's correlation id", () => {
+  it("should keep the caller's correlation id", ({ expect }) => {
     // A new id here would detach everything the callback logs from the request
     // that caused it.
     const alepha = new Alepha();
@@ -284,7 +288,9 @@ describe("nest", () => {
     });
   });
 
-  it("should mint a correlation id when there is no caller to inherit from", () => {
+  it("should mint a correlation id when there is no caller to inherit from", ({
+    expect,
+  }) => {
     // Without one it does not register as a context, and `StateManager` writes
     // straight past the layer into the app store.
     const alepha = new Alepha();
@@ -295,7 +301,7 @@ describe("nest", () => {
     });
   });
 
-  it("should reuse the caller's scoped registry", () => {
+  it("should reuse the caller's scoped registry", ({ expect }) => {
     // A registry of its own would hand the callback different `scoped`
     // instances than the caller is holding.
     const alepha = new Alepha();
@@ -311,15 +317,15 @@ describe("nest", () => {
     });
   });
 
-  it("should return the callback result", () => {
+  it("should return the callback result", ({ expect }) => {
     const alepha = new Alepha();
 
     expect(alepha.context.nest(() => 42)).toBe(42);
   });
 });
 
-describe("fork scope", () => {
-  it("should resolve across tree by default", () => {
+describe("app, parent and current read scopes", () => {
+  it("should resolve across tree by default", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -333,7 +339,7 @@ describe("fork scope", () => {
     });
   });
 
-  it("should resolve app scope to root store", () => {
+  it("should resolve app scope to root store", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -347,7 +353,7 @@ describe("fork scope", () => {
     });
   });
 
-  it("should resolve parent scope to immediate parent layer", () => {
+  it("should resolve parent scope to immediate parent layer", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -361,7 +367,9 @@ describe("fork scope", () => {
     });
   });
 
-  it("should return undefined for parent scope when key not set in parent", () => {
+  it("should return undefined for parent scope when key not set in parent", ({
+    expect,
+  }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -373,7 +381,9 @@ describe("fork scope", () => {
     });
   });
 
-  it("should return undefined for app scope when key not set in app", () => {
+  it("should return undefined for app scope when key not set in app", ({
+    expect,
+  }) => {
     const alepha = new Alepha();
 
     alepha.fork(() => {
@@ -382,7 +392,7 @@ describe("fork scope", () => {
     });
   });
 
-  it("should walk full tree: L3 sees L2 value before L1", () => {
+  it("should walk full tree: L3 sees L2 value before L1", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -398,13 +408,13 @@ describe("fork scope", () => {
     });
   });
 
-  it("should not walk past parent when scope is parent", () => {
+  it("should not walk past parent when scope is parent", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("only-in-app", "root");
 
     alepha.fork(() => {
       alepha.fork(() => {
-        // Parent didn't set it — scope: "parent" doesn't walk further
+        // Parent didn't set it, and scope "parent" doesn't walk further
         expect(alepha.get("only-in-app", "parent")).toBeUndefined();
         // But default resolution walks to root
         expect(alepha.get("only-in-app")).toBe("root");
@@ -412,7 +422,7 @@ describe("fork scope", () => {
     });
   });
 
-  it("should resolve current scope to own layer only", () => {
+  it("should resolve current scope to own layer only", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -426,7 +436,9 @@ describe("fork scope", () => {
     });
   });
 
-  it("should return undefined for current scope when key not set in current layer", () => {
+  it("should return undefined for current scope when key not set in current layer", ({
+    expect,
+  }) => {
     const alepha = new Alepha();
     alepha.set("x", 1);
 
@@ -442,7 +454,7 @@ describe("fork scope", () => {
     });
   });
 
-  it("should handle 4 levels deep", () => {
+  it("should handle 4 levels deep", ({ expect }) => {
     const alepha = new Alepha();
     alepha.set("x", "L0");
 

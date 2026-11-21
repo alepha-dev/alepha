@@ -34,7 +34,7 @@ export interface FileLike {
   lastModified: number;
 
   /**
-   * Returns a ReadableStream or Node.js Readable stream of the file content.
+   * Returns a web `ReadableStream` of the file content.
    *
    * For streams, this is the original stream.
    */
@@ -65,7 +65,7 @@ export interface FileLike {
 }
 
 /**
- * A schema describing a file field — i.e. one tagged `format: "binary"`.
+ * A schema describing a file field, i.e. one tagged `format: "binary"`.
  *
  * Documentation, not a constraint: zod has no distinct file schema, so this is
  * `ZType` and any schema satisfies it. {@link isTypeFile} is what actually
@@ -74,12 +74,12 @@ export interface FileLike {
 export type FileSchema = ZType;
 
 export const isTypeFile = (value: ZType): value is FileSchema => {
-  // The format tag lives in zod's `.meta()`, read via `z.schema.format` — there
+  // The format tag lives in zod's `.meta()`, read via `z.schema.format`: there
   // is no own `format` property to test for.
   //
   // Unwrapped first: `.optional()` wraps the schema in a ZodOptional whose own
   // `.meta()` is empty, so the tag sits inside it. Reading the wrapper made
-  // `z.file().optional()` answer "not a file" — and a field that is merely not
+  // `z.file().optional()` answer "not a file", and a field that is merely not
   // mandatory got decoded as text instead of materialised as bytes.
   return (
     !!value &&
@@ -94,7 +94,7 @@ export const isTypeFile = (value: ZType): value is FileSchema => {
  * The difference is what the handler receives, and it is the whole point:
  * `z.file()` yields a `FileLike`, which promises to be readable more than once
  * and therefore has to be kept in memory. `z.stream()` yields the bytes as they
- * arrive, once — so the ceiling stops being "what fits in RAM".
+ * arrive, once, so the ceiling stops being "what fits in RAM".
  */
 export const isTypeStream = (value: ZType): value is StreamSchema => {
   // Unwrapped for the same reason as {@link isTypeFile}: an optional stream is

@@ -1,8 +1,8 @@
 import { $hook, $inject, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("$hook", () => {
-  it("should track hook calls", async () => {
+  it("should track hook calls", async ({ expect }) => {
     class App {
       hook = $hook({
         on: "test:echoed",
@@ -18,7 +18,7 @@ describe("$hook", () => {
     expect(alepha.inject(App).hook.called).toBe(2);
   });
 
-  it("should handle service substitution", async () => {
+  it("should handle service substitution", async ({ expect }) => {
     let count = 0;
 
     class Interface {
@@ -52,7 +52,9 @@ describe("$hook", () => {
     expect(count).toBe(1);
   });
 
-  it("should respect priority, before, and after ordering", async () => {
+  it("should respect priority, before, and after ordering", async ({
+    expect,
+  }) => {
     let stack = "";
 
     class A {
@@ -130,7 +132,9 @@ describe("$hook", () => {
 });
 
 describe("$hook after start", () => {
-  it("should refuse a $hook on a service instantiated after start", async () => {
+  it("should refuse a $hook on a service instantiated after start", async ({
+    expect,
+  }) => {
     class ScopedWithHook {
       onEcho = $hook({
         on: "test:echoed",

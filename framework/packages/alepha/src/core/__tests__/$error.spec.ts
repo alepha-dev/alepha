@@ -64,6 +64,17 @@ describe("$error", () => {
       expect(error.cause).toBe(cause);
       expect(new Busy().message).toBe("Busy");
     });
+
+    it("keeps the message and the cause of an init passed after undefined data", ({
+      expect,
+    }) => {
+      const cause = new Error("x");
+      const error = new Busy(undefined, { message: "Try later", cause });
+      expect(error.message).toBe("Try later");
+      expect(error.cause).toBe(cause);
+      expect(error.data).toEqual({});
+      expect(new Busy(undefined, { cause }).message).toBe("Busy");
+    });
   });
 
   describe("extend", () => {

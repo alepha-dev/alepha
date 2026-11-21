@@ -31,7 +31,7 @@ export const $scope = (): Middleware => {
       async (...args) => {
         if (alepha.context.exists()) {
           throw new AlephaError(
-            "$scope: already inside a scope — host primitives ($action, $job, $page) include $scope by default",
+            "$scope: already inside a scope: host primitives ($action, $job, $page) include $scope by default",
           );
         }
 

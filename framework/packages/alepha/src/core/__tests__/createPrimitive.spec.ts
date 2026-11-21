@@ -1,11 +1,13 @@
 import { KIND } from "alepha/internal";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 
-describe("primitive", () => {
-  it("should create custom primitives with key and identity methods", () => {
+describe("createPrimitive", () => {
+  it("should create custom primitives with key and identity methods", ({
+    expect,
+  }) => {
     class MyPrimitive extends Primitive<{ name?: string }> {
       key() {
         return this.options.name ?? this.config.propertyKey;

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { z } from "../providers/ZodProvider.ts";
 
@@ -24,7 +24,7 @@ const countNodes = (build: () => unknown): number => {
 };
 
 describe("z helpers build each schema once", () => {
-  test("json schema parity", () => {
+  it("publishes the expected JSON Schema", ({ expect }) => {
     expect(z.toJSONSchema(z.text())).toMatchInlineSnapshot(`
       {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -175,7 +175,7 @@ describe("z helpers build each schema once", () => {
     `);
   });
 
-  test("metadata parity", () => {
+  it("carries the expected metadata", ({ expect }) => {
     expect(z.schema.meta(z.text({ default: "x", title: "T" })))
       .toMatchInlineSnapshot(`
       {
@@ -210,7 +210,7 @@ describe("z helpers build each schema once", () => {
     `);
   });
 
-  test("check order is kept", () => {
+  it("check order is kept", ({ expect }) => {
     // max runs before trim: a padded value over the cap still fails.
     expect(z.text({ maxLength: 5 }).safeParse("  ab  ").success).toBe(false);
     expect(z.text({ maxLength: 5 }).parse(" ab ")).toBe("ab");
@@ -221,7 +221,7 @@ describe("z helpers build each schema once", () => {
     expect(z.int32().safeParse(2147483648).success).toBe(false);
   });
 
-  test("builds each helper once", () => {
+  it("builds each helper once", ({ expect }) => {
     expect(countNodes(() => z.text())).toBe(2);
     expect(
       countNodes(() =>
@@ -241,7 +241,7 @@ describe("z helpers build each schema once", () => {
     expect(countNodes(() => z.bigint())).toBe(2);
   });
 
-  test("public meta still copies", () => {
+  it("public meta still copies", ({ expect }) => {
     const base = z.string();
     const a = base.describe("a");
     expect(a).not.toBe(base);

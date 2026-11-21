@@ -5,55 +5,7 @@ import {
   type ZodRecord,
   z,
 } from "../providers/ZodProvider.ts";
-
-export const pageMetadataSchema = z.object({
-  number: z.integer().describe("Page number, starting from 0"),
-  size: z.integer().describe("Number of items per page (requested page size)"),
-  offset: z.integer().describe("Offset in the dataset (page × size)"),
-  numberOfElements: z
-    .integer()
-    .describe(
-      "Number of elements in THIS page (content.length). Different from totalElements which is the total across all pages.",
-    ),
-  totalElements: z
-    .integer()
-    .describe(
-      "Total number of elements across all pages. Only available when counting is enabled.",
-    )
-    .optional(),
-  totalPages: z
-    .integer()
-    .describe(
-      "Total number of pages. Only available when `totalElements` is present.",
-    )
-    .optional(),
-  isEmpty: z
-    .boolean()
-    .describe(
-      "Indicates if the current page has no items (numberOfElements === 0)",
-    ),
-  isFirst: z
-    .boolean()
-    .describe("Indicates if this is the first page (number === 0)"),
-  isLast: z
-    .boolean()
-    .describe("Indicates if this is the last page (no more pages after this)"),
-  sort: z
-    .object({
-      sorted: z.boolean().describe("Whether the results are sorted"),
-      fields: z.array(
-        z.object({
-          field: z.text({
-            description: "The field used for sorting",
-          }),
-          direction: z
-            .enum(["asc", "desc"])
-            .describe("The direction of the sort. Either 'asc' or 'desc'"),
-        }),
-      ),
-    })
-    .optional(),
-});
+import type { pageMetadataSchema } from "./pageMetadataSchema.ts";
 
 /**
  * Create a pagination schema for the given object schema.
@@ -81,11 +33,7 @@ export const pageMetadataSchema = z.object({
  */
 export const pageSchema = <T extends ZObject | ZodRecord>(
   objectSchema: T,
-): TPage<T> =>
-  z.object({
-    content: z.array(objectSchema),
-    page: pageMetadataSchema,
-  }) as unknown as TPage<T>;
+): TPage<T> => z.page(objectSchema) as unknown as TPage<T>;
 
 export type TPage<T extends ZObject | ZodRecord> = ZObject<{
   content: ZodArray<T>;
@@ -129,7 +77,3 @@ export type Page<T> = {
   content: T[];
   page: Infer<typeof pageMetadataSchema>;
 };
-
-export type PageMetadata = Infer<typeof pageMetadataSchema>;
-
-// ---------------------------------------------------------------------------------------------------------------------

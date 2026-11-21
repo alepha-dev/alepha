@@ -60,7 +60,7 @@ export function $store(target: Atom<any, any> | Computed<any>): any {
   const { alepha } = $context();
 
   // Only atoms live in the store. A computed is derived on every read, and
-  // `StateManager.register` throws on one by design — so the registration is
+  // `StateManager.register` throws on one by design, so the registration is
   // conditional, not a step that can be applied uniformly.
   if (target instanceof Atom) {
     alepha.store.register(target);

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
 import { $atom } from "../primitives/$atom.ts";
@@ -15,7 +15,9 @@ describe("StateManager web storage persistence", () => {
     window.sessionStorage.clear();
   });
 
-  it("writes to localStorage when a persisted atom mutates", async () => {
+  it("writes to localStorage when a persisted atom mutates", async ({
+    expect,
+  }) => {
     const prefs = $atom({
       name: "test.persist.write",
       schema,
@@ -32,7 +34,9 @@ describe("StateManager web storage persistence", () => {
     );
   });
 
-  it("hydrates from localStorage on registration in a fresh container", () => {
+  it("hydrates from localStorage on registration in a fresh container", ({
+    expect,
+  }) => {
     window.localStorage.setItem(
       "test.persist.read",
       JSON.stringify({ theme: "dark" }),
@@ -48,7 +52,7 @@ describe("StateManager web storage persistence", () => {
     expect(alepha.store.get(prefs)).toEqual({ theme: "dark" });
   });
 
-  it("drops an invalid persisted value and keeps the default", () => {
+  it("drops an invalid persisted value and keeps the default", ({ expect }) => {
     window.localStorage.setItem(
       "test.persist.bad",
       JSON.stringify({ theme: 42 }),
@@ -65,7 +69,7 @@ describe("StateManager web storage persistence", () => {
     expect(window.localStorage.getItem("test.persist.bad")).toBeNull();
   });
 
-  it("supports sessionStorage", async () => {
+  it("supports sessionStorage", async ({ expect }) => {
     const prefs = $atom({
       name: "test.persist.session",
       schema,

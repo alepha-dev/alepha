@@ -27,7 +27,7 @@ Hooks are used to run async functions from all registered providers/services.
 
 You can't register a hook after the App has started.
 
-It's used under the hood by the `configure`, `start`, and `stop` methods.
+`start()` and `stop()` run on it: they emit `configure`, `start`, `ready` and `stop`.
 Some modules also use hooks to run their own logic. (e.g. `alepha/server`).
 
 You can create your own hooks by using module augmentation:

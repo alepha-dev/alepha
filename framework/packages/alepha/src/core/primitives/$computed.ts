@@ -84,7 +84,7 @@ export class Computed<R = unknown, N extends string = string> {
   /**
    * Reentrancy guard for {@link keys}. Deps are declared as a `readonly`
    * array at construction time, so a cycle can't be built through the
-   * public API — but the array itself isn't frozen, so nothing stops a
+   * public API, but the array itself isn't frozen, so nothing stops a
    * caller from reaching in and creating one anyway. Without this guard,
    * a cycle would recurse until the JS engine throws a native
    * `RangeError`, which violates the repo's "never throw a bare `Error`"

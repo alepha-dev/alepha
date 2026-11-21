@@ -1,8 +1,8 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("Alepha#with", () => {
-  it("should register the services of a default import", async () => {
+  it("should register the services of a default import", async ({ expect }) => {
     const alepha = Alepha.create();
 
     alepha.with(await import("./fixtures/A.js"));

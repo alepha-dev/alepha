@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { z } from "../providers/ZodProvider.ts";
 
 /**
- * `getDefault` answers "what value does this schema stand in with". Two
+ * `defaultValue` answers "what value does this schema stand in with". Two
  * sources: the ORM attaches a value as an own `default` property, and zod
  * carries one in a `ZodDefault` wrapper.
  *
@@ -13,30 +13,32 @@ import { z } from "../providers/ZodProvider.ts";
  * somebody chained `.default()` on elsewhere, and hands back the function.
  */
 describe("z.schema.defaultValue", () => {
-  it("reports no default for a plain schema", () => {
+  it("reports no default for a plain schema", ({ expect }) => {
     expect(z.schema.defaultValue(z.enum(["day", "week", "month"]))).toBe(
       undefined,
     );
   });
 
-  it("reads a zod default", () => {
+  it("reads a zod default", ({ expect }) => {
     expect(z.schema.defaultValue(z.text().default("hello"))).toBe("hello");
   });
 
-  it("peels optional and nullable to find a zod default", () => {
+  it("peels optional and nullable to find a zod default", ({ expect }) => {
     expect(z.schema.defaultValue(z.text().default("hello").optional())).toBe(
       "hello",
     );
   });
 
-  it("reads a value attached as an own property", () => {
+  it("reads a value attached as an own property", ({ expect }) => {
     const schema = z.text();
     Object.assign(schema, { default: "attached" });
 
     expect(z.schema.defaultValue(schema)).toBe("attached");
   });
 
-  it("does not read zod's own .default method as a default value", () => {
+  it("does not read zod's own .default method as a default value", ({
+    expect,
+  }) => {
     // A schema shared between a settings atom, which chains `.default()`, and
     // an entity column, which does not. Calling the method leaves it behind
     // as an own property on the ORIGINAL schema (quest #Q341).

@@ -1,28 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { z } from "../providers/ZodProvider.ts";
 
 /**
- * `requiredKeys` answers one question: which keys must a caller supply for the
+ * `requiredInputKeys` answers one question: which keys must a caller supply for the
  * object to parse. It used to answer a narrower one - "which keys are not a
  * `ZodOptional`" - which reported every defaulted field as required, so
  * `alepha gen env` annotated defaulted variables "(required)" and forms marked
  * them with an asterisk and refused to submit them empty.
  */
 describe("z.schema.requiredInputKeys", () => {
-  it("should require a bare field", () => {
+  it("should require a bare field", ({ expect }) => {
     const schema = z.object({ name: z.string() });
 
     expect(z.schema.requiredInputKeys(schema)).toEqual(["name"]);
   });
 
-  it("should not require an optional field", () => {
+  it("should not require an optional field", ({ expect }) => {
     const schema = z.object({ name: z.string().optional() });
 
     expect(z.schema.requiredInputKeys(schema)).toEqual([]);
   });
 
-  it("should not require a defaulted field", () => {
+  it("should not require a defaulted field", ({ expect }) => {
     const schema = z.object({ name: z.string().default("x") });
 
     expect(z.schema.requiredInputKeys(schema)).toEqual([]);
@@ -30,7 +30,7 @@ describe("z.schema.requiredInputKeys", () => {
 
   // `null` is a value, and the key still has to be there to carry it: parsing
   // `{}` against a plain `.nullable()` fails.
-  it("should require a nullable field", () => {
+  it("should require a nullable field", ({ expect }) => {
     const schema = z.object({ name: z.string().nullable() });
 
     expect(z.schema.requiredInputKeys(schema)).toEqual(["name"]);
@@ -38,7 +38,7 @@ describe("z.schema.requiredInputKeys", () => {
     expect(schema.parse({ name: null })).toEqual({ name: null });
   });
 
-  it("should peel the wrappers in either order", () => {
+  it("should peel the wrappers in either order", ({ expect }) => {
     const schema = z.object({
       a: z.string().optional().nullable(),
       b: z.string().nullable().optional(),
@@ -49,7 +49,7 @@ describe("z.schema.requiredInputKeys", () => {
     expect(z.schema.requiredInputKeys(schema)).toEqual([]);
   });
 
-  it("should agree with what the schema actually accepts", () => {
+  it("should agree with what the schema actually accepts", ({ expect }) => {
     const schema = z.object({
       bare: z.string(),
       optional: z.string().optional(),
@@ -70,7 +70,7 @@ describe("z.schema.requiredInputKeys", () => {
     }
   });
 
-  it("should return an empty array for a non-object", () => {
+  it("should return an empty array for a non-object", ({ expect }) => {
     expect(z.schema.requiredInputKeys(z.string())).toEqual([]);
     expect(z.schema.requiredInputKeys(undefined)).toEqual([]);
   });

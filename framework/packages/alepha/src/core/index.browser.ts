@@ -18,12 +18,6 @@ export const run = (
     }
   }
 
-  // if (import.meta?.hot) {
-  //   import.meta.hot.on("alepha:reload", async () => {
-  //     window.location.reload();
-  //   });
-  // }
-
   void (async () => {
     try {
       await opts?.configure?.(alepha);

@@ -1,5 +1,5 @@
 import { $hook, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { StateManager } from "../providers/StateManager.ts";
 
@@ -7,7 +7,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe("Alepha lifecycle", () => {
   describe("stop during an in-flight start", () => {
-    it("should not leave the app running after stop() resolves", async () => {
+    it("should not leave the app running after stop() resolves", async ({
+      expect,
+    }) => {
       // `stop()` only checked `started`, which is set near the END of boot().
       // Called while the boot promise was pending it returned immediately,
       // the boot then finished, and the app was left running after the caller
@@ -38,7 +40,9 @@ describe("Alepha lifecycle", () => {
       expect(alepha.isStarted()).toBe(false);
     });
 
-    it("should run stop hooks for services that did start", async () => {
+    it("should run stop hooks for services that did start", async ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
       const events: string[] = [];
 
@@ -70,10 +74,10 @@ describe("Alepha lifecycle", () => {
   });
 
   describe("failed boot", () => {
-    it("should stop services that already started", async () => {
+    it("should stop services that already started", async ({ expect }) => {
       // A start hook throwing after earlier services connected left those
       // services running: resetStartup() cleared `started`, so a later stop()
-      // short-circuited and never emitted `stop` — DB connections and
+      // short-circuited and never emitted `stop`: DB connections and
       // listening sockets leaked with no way to close them.
       const alepha = Alepha.create();
       const events: string[] = [];
@@ -116,10 +120,12 @@ describe("Alepha lifecycle", () => {
   });
 
   describe("$mode auto-stop", () => {
-    it("should not report ready after a ready hook stopped the app", async () => {
+    it("should not report ready after a ready hook stopped the app", async ({
+      expect,
+    }) => {
       // `$mode` stops the app from inside the `ready` emit; boot() then
       // carried on and set ready = true anyway, so the container claimed to
-      // be ready while being stopped — and a later start() would
+      // be ready while being stopped, and a later start() would
       // short-circuit on that flag and report a stopped app as running.
       const alepha = Alepha.create();
 
@@ -141,9 +147,11 @@ describe("Alepha lifecycle", () => {
   });
 
   describe("destroy", () => {
-    it("should keep the core providers reachable through inject", async () => {
+    it("should keep the core providers reachable through inject", async ({
+      expect,
+    }) => {
       // `destroy()` replaced the registry but kept `this.store`/`this.events`,
-      // so a later inject(StateManager) built a fresh, EMPTY instance — env
+      // so a later inject(StateManager) built a fresh, EMPTY instance: env
       // and every registered atom silently gone.
       const alepha = Alepha.create();
       await alepha.start();

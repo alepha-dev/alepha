@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 /**
  * `alepha.meta` under vitest, where no build ever ran.
@@ -12,7 +12,9 @@ import { afterEach, describe, expect, it } from "vitest";
  * `typeof` and why this test exists at all.
  */
 describe("Alepha.meta", () => {
-  it("should fall back to a known record when no build produced this code", () => {
+  it("should fall back to a known record when no build produced this code", ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     expect(alepha.meta).toEqual({
@@ -26,7 +28,9 @@ describe("Alepha.meta", () => {
     });
   });
 
-  it("should omit build.date rather than invent one, because nothing built this", () => {
+  it("should omit build.date rather than invent one, because nothing built this", ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     // Absence is the signal: no `date` means no build produced this code.
@@ -34,7 +38,7 @@ describe("Alepha.meta", () => {
     expect(alepha.meta.build.date).toBeUndefined();
   });
 
-  it('should omit commit rather than report "unknown"', () => {
+  it('should omit commit rather than report "unknown"', ({ expect }) => {
     const alepha = Alepha.create();
 
     expect(alepha.meta.commit).toBeUndefined();
@@ -55,7 +59,9 @@ describe("Alepha.meta", () => {
      * `typeof` guard already looks for - the same mechanism the dev server uses
      * for the browser.
      */
-    it("should be read in preference to the no-build fallback", () => {
+    it("should be read in preference to the no-build fallback", ({
+      expect,
+    }) => {
       (globalThis as Record<string, unknown>).__ALEPHA_META__ = JSON.stringify({
         name: "docs",
         version: "0.27.1",
@@ -79,7 +85,9 @@ describe("Alepha.meta", () => {
      * otherwise pin the fallback in the memo and the prerender would still
      * write "latest".
      */
-    it("should not be shadowed by an earlier read that fell back", () => {
+    it("should not be shadowed by an earlier read that fell back", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
       expect(alepha.meta.version).toBe("latest");
 
