@@ -19,7 +19,7 @@
     "@types/ws": "^8.18.2",
     "alepha": "workspace:*",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0",
+    "vitest": "^5.1.1",
     "ws": "^8.23.0"
   }
 }
