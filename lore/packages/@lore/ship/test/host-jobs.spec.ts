@@ -50,9 +50,9 @@ const input = {
   allowedTools: ["Read"],
 };
 
-const setup = async () => {
+const setup = async (env: Record<string, string> = {}) => {
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
+    env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:", ...env },
   });
   alepha.with({ provide: HostCommandTransport, use: ConnectedTransport });
   alepha.with(AlephaOrm);
@@ -290,5 +290,42 @@ describe("HostJobService", () => {
     const again = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
     expect(again.status).toBe("running");
     expect(again.retries).toBe(1);
+  });
+
+  it("pins the agent image this Lore was deployed with, by digest only (#Q3997)", async ({
+    expect,
+  }) => {
+    const digest = `ghcr.io/alepha-dev/lore-agent@sha256:${"a".repeat(64)}`;
+    const pinned = await setup({ AGENT_IMAGE: digest });
+    const job = await start(pinned);
+    const row = await pinned.repos.jobs.getOne({
+      where: { id: { eq: job.id } },
+    });
+    expect((await pinned.service.spec(row, "https://lore.test")).image).toBe(
+      digest,
+    );
+    const check = await pinned.service.start({
+      projectId: pinned.projectId,
+      hostId: pinned.host.id,
+      kind: "check",
+      input: { profile: "check", maxTurns: 1, timeoutSeconds: 60 },
+    });
+    const checkRow = await pinned.repos.jobs.getOne({
+      where: { id: { eq: check.id } },
+    });
+    expect(
+      (await pinned.service.spec(checkRow, "https://lore.test")).image,
+    ).toBe(digest);
+
+    const tagged = await setup({
+      AGENT_IMAGE: "ghcr.io/alepha-dev/lore-agent:latest",
+    });
+    const other = await start(tagged);
+    const otherRow = await tagged.repos.jobs.getOne({
+      where: { id: { eq: other.id } },
+    });
+    expect(
+      (await tagged.service.spec(otherRow, "https://lore.test")).image,
+    ).toBeUndefined();
   });
 });
