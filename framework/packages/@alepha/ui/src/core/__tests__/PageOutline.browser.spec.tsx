@@ -1,4 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaContext } from "alepha/react";
+import { AlephaReactI18n } from "alepha/react/i18n";
 import { expectAccessible } from "alepha/testing/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -13,19 +16,25 @@ describe("PageOutline", () => {
   });
 
   it("lists every section with an id, labelled by its title", async () => {
+    // The danger section's default title is a catalogue entry: it renders
+    // inside an app.
+    const alepha = Alepha.create().with(AlephaReactI18n);
+    await alepha.start();
     render(
-      <PageOutline>
-        <SettingsSection id="general" title="General">
-          <SettingsRow label="Name" />
-        </SettingsSection>
-        <SettingsSection title="Untargeted">
-          <SettingsRow label="Hidden" />
-        </SettingsSection>
-        <div id="features" {...outlineEntry("Features")} />
-        <SettingsDangerSection id="danger">
-          <SettingsRow label="Delete" />
-        </SettingsDangerSection>
-      </PageOutline>,
+      <AlephaContext.Provider value={alepha}>
+        <PageOutline>
+          <SettingsSection id="general" title="General">
+            <SettingsRow label="Name" />
+          </SettingsSection>
+          <SettingsSection title="Untargeted">
+            <SettingsRow label="Hidden" />
+          </SettingsSection>
+          <div id="features" {...outlineEntry("Features")} />
+          <SettingsDangerSection id="danger">
+            <SettingsRow label="Delete" />
+          </SettingsDangerSection>
+        </PageOutline>
+      </AlephaContext.Provider>,
     );
 
     const nav = await screen.findByRole("navigation", { name: "On this page" });
@@ -36,6 +45,7 @@ describe("PageOutline", () => {
       ["Danger zone", "#danger"],
     ]);
     await expectAccessible();
+    await alepha.stop();
   });
 
   it("draws no rail for a single entry", () => {

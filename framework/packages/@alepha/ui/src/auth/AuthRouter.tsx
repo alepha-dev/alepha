@@ -8,7 +8,7 @@ import { AuthResetPassword } from "./AuthResetPassword.tsx";
 import { AuthVerifyEmail } from "./AuthVerifyEmail.tsx";
 
 /**
- * The four authentication screens, mounted and wired — a router you can use
+ * The four authentication screens, mounted and wired: a router you can use
  * as-is.
  *
  * ```ts
@@ -26,24 +26,16 @@ import { AuthVerifyEmail } from "./AuthVerifyEmail.tsx";
  *
  * ### Why this exists
  *
- * `@alepha/mantine/auth/AuthRouter` used to do exactly this, and was deleted with
- * Mantine without being ported. What survived were the components — the bricks
- * without the thing that assembled them — so every application rebuilt the same
- * four pages by hand: Lore in 414 lines across two files, `apps/examples/shop` in
- * three more. `apps/examples/shop` has since been moved onto this router and deleted its
- * three; Lore (github.com/alepha-dev/lore) still has its own.
- *
- * Worse, the components kept the old router's paths as their fallbacks
- * (`props.loginPath ?? "/auth/login"`). Those defaults described a topology
- * nothing mounted any more, so an application that placed its pages elsewhere
- * inherited internal links pointing at nothing — a 404 you only find by clicking,
- * invisible to typecheck, to tests, and to an e2e suite that reaches the sign-in
- * page by URL. Mounting this router makes those defaults true again.
+ * The components fall back to these paths (`props.loginPath ?? "/auth/login"`).
+ * Without a router that mounts them, an application that placed its pages
+ * elsewhere inherits internal links pointing at nothing: a 404 you only find by
+ * clicking, invisible to typecheck, to tests, and to an e2e suite that reaches
+ * the sign-in page by URL. Mounting this router makes those defaults true.
  *
  * ### Optional, and replaceable
  *
- * Nothing imports it implicitly. An application that wants different URLs — say
- * `/compte/connexion` for a French storefront — writes its own router and passes
+ * Nothing imports it implicitly. An application that wants different URLs (say
+ * `/compte/connexion` for a French storefront) writes its own router and passes
  * the components' path props itself; that stays entirely supported, and this
  * class is a readable reference for what wiring it by hand involves. It is a real
  * trade rather than a free one: `apps/examples/shop` made exactly that choice, then gave
@@ -53,7 +45,7 @@ import { AuthVerifyEmail } from "./AuthVerifyEmail.tsx";
  *
  * The paths here are fixed on purpose. Making them configurable would mean
  * threading a configuration object through four pages to save an application that
- * wants its own URLs about twenty lines — and that application also wants its own
+ * wants its own URLs about twenty lines, and that application also wants its own
  * titles, its own layout and its own copy. The seam is "use this router, or write
  * one", not "use this router with a hundred options".
  */
@@ -70,7 +62,7 @@ export class AuthRouter {
 
   /**
    * Named `login` rather than `authLogin`, because that is the name other parts
-   * of the framework look for — `$secure`'s redirect and `ButtonUser`'s sign-in
+   * of the framework look for: `$secure`'s redirect and `ButtonUser`'s sign-in
    * action both push a route called `login`.
    */
   login = $page({

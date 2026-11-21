@@ -1,4 +1,5 @@
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
+import { useI18n } from "alepha/react/i18n";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import {
   type ComponentProps,
@@ -146,7 +147,18 @@ export interface CommandDialogProps extends Omit<
   ComponentProps<typeof Dialog>,
   "children"
 > {
+  /**
+   * Screen-reader title of the dialog.
+   *
+   * @default "Command Palette", in the page's language
+   */
   title?: string;
+
+  /**
+   * Screen-reader description of the dialog.
+   *
+   * @default "Search for a command to run...", in the page's language
+   */
   description?: string;
   className?: string;
   showCloseButton?: boolean;
@@ -154,9 +166,12 @@ export interface CommandDialogProps extends Omit<
 }
 
 export const CommandDialog = (props: CommandDialogProps) => {
+  const { tr } = useI18n();
   const {
-    title = "Command Palette",
-    description = "Search for a command to run...",
+    title = tr("command.dialog.title", { default: "Command Palette" }),
+    description = tr("command.dialog.description", {
+      default: "Search for a command to run...",
+    }),
     children,
     className,
     showCloseButton = false,

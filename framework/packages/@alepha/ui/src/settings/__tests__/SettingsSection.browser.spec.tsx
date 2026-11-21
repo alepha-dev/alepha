@@ -1,7 +1,12 @@
 import { render, screen } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaContext } from "alepha/react";
+import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { expectAccessible } from "alepha/testing/react";
-import { describe, expect, it } from "vitest";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, it } from "vitest";
 
+import { uiFr } from "../../i18n/fr/uiFr.ts";
 import { SettingsDangerSection } from "../SettingsDangerSection.tsx";
 import { SettingsRow } from "../SettingsRow.tsx";
 import { SettingsSection } from "../SettingsSection.tsx";
@@ -105,8 +110,31 @@ describe("SettingsRow", () => {
 });
 
 describe("SettingsDangerSection", () => {
-  it("defaults its title and tints the border without shouting", () => {
-    const { container } = render(
+  let alepha: Alepha | undefined;
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  class Catalogues {
+    en = $dictionary({ lazy: async () => ({ default: {} }) });
+    fr = $dictionary({ lazy: async () => ({ default: uiFr }) });
+  }
+
+  // Its default title is a catalogue entry: it renders inside an app.
+  const mount = async (ui: ReactNode, lang: "en" | "fr" = "en") => {
+    alepha = Alepha.create().with(AlephaReactI18n);
+    alepha.inject(Catalogues);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang(lang);
+    return render(
+      <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
+    );
+  };
+
+  it("defaults its title and tints the border without shouting", async () => {
+    const { container } = await mount(
       <SettingsDangerSection>
         <SettingsRow label="Delete account" />
       </SettingsDangerSection>,
@@ -120,8 +148,19 @@ describe("SettingsDangerSection", () => {
     expect(card?.className).not.toMatch(/border-danger(?![/-])/);
   });
 
-  it("keeps the same padding contract as a normal section", () => {
-    const { container } = render(
+  it("defaults its title in the page's language", async () => {
+    await mount(
+      <SettingsDangerSection>
+        <SettingsRow label="Supprimer le compte" />
+      </SettingsDangerSection>,
+      "fr",
+    );
+
+    expect(screen.getByText("Zone de danger")).toBeTruthy();
+  });
+
+  it("keeps the same padding contract as a normal section", async () => {
+    const { container } = await mount(
       <SettingsDangerSection title="Danger">
         <SettingsRow label="Delete account" />
       </SettingsDangerSection>,

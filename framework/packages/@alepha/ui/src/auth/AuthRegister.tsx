@@ -65,7 +65,7 @@ export interface AuthRegisterProps {
    * Where the "Cancel" button abandons to. Defaults to "/". This is
    * intentionally decoupled from the post-auth `?redirect=` target: cancelling
    * an unauthenticated registration must land somewhere public (home), not the
-   * protected destination the user was *heading* to — which would only bounce
+   * protected destination the user was *heading* to, which would only bounce
    * them back to this page.
    *
    * Pass `false` to hide the link, for an application where every page
@@ -116,7 +116,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
   const { tr } = useI18n();
   const redirect = safeRedirect(props.redirect ?? router.query.redirect);
   // Surface upstream auth errors (e.g. failed OAuth callback redirects with
-  // `?error=...`) — same pattern as AuthLogin. Without this the user lands on
+  // `?error=...`), same pattern as AuthLogin. Without this the user lands on
   // a fresh-looking registration page with no clue why.
   const queryError =
     typeof router.query.error === "string" ? router.query.error : undefined;
@@ -241,10 +241,10 @@ export const AuthRegister = (props: AuthRegisterProps) => {
           });
         }
         // `force: true` so parent-layout loaders re-run against the freshly
-        // authenticated user — see the note in AuthLogin.tsx.
+        // authenticated user: see the note in AuthLogin.tsx.
         await router.push(redirect, { force: true });
       } catch (err) {
-        // Turnstile tokens are single-use — force a fresh challenge so the
+        // Turnstile tokens are single-use: force a fresh challenge so the
         // user can retry after a server-side failure.
         captchaRef.current?.reset();
         throw err;
@@ -300,7 +300,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
         });
       }
       // `force: true` so parent-layout loaders re-run against the freshly
-      // authenticated user — see the note in AuthLogin.tsx.
+      // authenticated user: see the note in AuthLogin.tsx.
       await router.push(redirect, { force: true });
     } catch (err) {
       setVerifyError(

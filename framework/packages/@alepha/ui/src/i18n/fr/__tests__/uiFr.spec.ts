@@ -10,7 +10,7 @@ import { uiFr } from "../uiFr.ts";
  *
  * Without this, the catalogue rots silently and in one direction only: a
  * component gains a key, nobody adds the translation, and the component falls
- * back to its English default — which looks deliberate. That is how the whole
+ * back to its English default, which looks deliberate. That is how the whole
  * back office came to be in English inside a French application in the first
  * place. A default is not a translation, and nothing but a test can tell the
  * difference.

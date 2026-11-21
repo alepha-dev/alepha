@@ -37,7 +37,7 @@ export interface AccountProfileViewProps extends AccountProfileProps {
 /**
  * Who you are: avatar, name, and the read-only facts about the account.
  *
- * Email is shown but not editable — changing it is a verification flow, not a
+ * Email is shown but not editable: changing it is a verification flow, not a
  * profile edit, and `updateMyProfile` deliberately refuses it. Rather than
  * render a disabled input with no explanation, the row says so.
  */
@@ -104,18 +104,18 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
   /**
    * Validated against the server's own body schema, so "3 to 30 characters"
    * is enforced before the request rather than only by the 400 that comes
-   * back — and is stated in exactly one place.
+   * back, and is stated in exactly one place.
    *
    * The schema stays whole and `username` is dropped from the *values*: the
    * column is `.optional()`, so an absent key decodes cleanly, while the empty
-   * string does not. Omitting it from `groups` below is what hides the row —
-   * `AutoForm` renders the fields its groups name and nothing else — and an
+   * string does not. Omitting it from `groups` below is what hides the row
+   * (`AutoForm` renders the fields its groups name and nothing else), and an
    * absent value is what keeps it out of the request.
    *
    * ⚠️ **`username` is never seeded as `""`, even when the field is shown.**
    * The old `?? ""` was not only a `"none"`-realm problem: `"optional"` is a
    * realm that collects usernames and does not insist, so an account without
-   * one is the normal case there — and it crashed the page for exactly those
+   * one is the normal case there, and it crashed the page for exactly those
    * users while working for everyone who had set one. `undefined` is what an
    * empty optional field means, and it is what the two name fields would use
    * too if they were not `.nullable()` with a real "clear me" state.
@@ -209,7 +209,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
   };
 
   // Realms opt into avatars (`features.avatars`, off by default), and an
-  // unregistered action is absent from `/api/_links` — so this is the realm's
+  // unregistered action is absent from `/api/_links`, so this is the realm's
   // own switch read through the mechanism that cannot drift from it. Checking
   // a flag mirrored into the client instead would let the picker render
   // against endpoints that answer 404.
@@ -292,7 +292,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
       )}
 
       {/* The one section here whose rows are all form fields, so it is an
-          `AutoForm` in row layout rather than hand-wired `SettingsRow`s — same
+          `AutoForm` in row layout rather than hand-wired `SettingsRow`s: same
           card, same rows, same heading, plus schema validation, the error
           popover, Reset, and a Save that knows whether anything changed. The
           sections above and below stay hand-wired because their rows are an
@@ -318,7 +318,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
           //
           // Icons are explicit because `Control`'s own fallback would resolve
           // the schema hint, and for a plain string that is the generic "T"
-          // glyph — the same mark three times, saying "this is text" next to a
+          // glyph: the same mark three times, saying "this is text" next to a
           // label that already said so. A field earns an icon by having one
           // that means something: `@` is what a handle looks like everywhere.
           username: {
@@ -330,7 +330,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
             icon: AtSign,
             // No clear button: `updateMyProfile` has no "unset" for a
             // username, so the × would offer a deletion the server cannot
-            // perform. First and last name keep theirs — those genuinely
+            // perform. First and last name keep theirs: those genuinely
             // clear, via `null`.
             clearable: false,
           },
@@ -374,7 +374,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
                 </Badge>
               ))
             ) : (
-              <span className="text-muted-foreground text-sm">—</span>
+              <span className="text-muted-foreground text-sm">-</span>
             )}
           </div>
         </SettingsRow>

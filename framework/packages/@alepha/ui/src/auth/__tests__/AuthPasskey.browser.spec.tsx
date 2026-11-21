@@ -2,7 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { AlephaContext } from "alepha/react";
-import { AlephaReactAuth, PasskeyClient, ReactAuth } from "alepha/react/auth";
+import {
+  AlephaReactAuth,
+  MfaRequiredError,
+  PasskeyClient,
+  ReactAuth,
+} from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { AlephaServerLinks } from "alepha/server/links";
@@ -39,6 +44,28 @@ class OfflineReactAuth extends ReactAuth {
   }
 }
 
+/**
+ * A passkey the realm accepts as a first factor only: once a ceremony
+ * settles, the server asks for the second factor, as
+ * `/_auth/passkey/verify` does for an authenticator that did not verify the
+ * user on an account with TOTP.
+ */
+class SecondFactorReactAuth extends ReactAuth {
+  public override async loginPasskey(
+    options: Parameters<ReactAuth["loginPasskey"]>[0] = {},
+  ): Promise<never> {
+    await this.passkeys.get(
+      { challenge: "Y2hhbGxlbmdl", allowCredentials: [] },
+      { mediation: options.mediation, signal: options.signal },
+    );
+    throw new MfaRequiredError({
+      challenge: "c",
+      methods: ["totp"],
+      passkey: false,
+    });
+  }
+}
+
 describe("AuthLogin and AuthMfaStep - passkeys", () => {
   let alepha: Alepha | undefined;
 
@@ -70,10 +97,14 @@ describe("AuthLogin and AuthMfaStep - passkeys", () => {
       .querySelector('input:not([type="password"])[autocomplete]')
       ?.getAttribute("autocomplete");
 
-  const mount = async (node: ReactNode, supported = true) => {
+  const mount = async (
+    node: ReactNode,
+    supported = true,
+    auth: typeof ReactAuth = OfflineReactAuth,
+  ) => {
     alepha = Alepha.create()
       .with({ provide: PasskeyClient, use: MemoryPasskeyClient })
-      .with({ provide: ReactAuth, use: OfflineReactAuth })
+      .with({ provide: ReactAuth, use: auth })
       .with(AlephaReactRouter)
       .with(AlephaReactI18n)
       .with(AlephaReactAuth)
@@ -122,6 +153,20 @@ describe("AuthLogin and AuthMfaStep - passkeys", () => {
     // Dismissed: no error on the page, and the autofill starts again.
     expect(screen.queryByRole("alert")).toBeNull();
     await waitFor(() => expect(client.pending).toHaveLength(1));
+  });
+
+  it("shows the code step when a passkey picked from the autofill owes a second factor", async () => {
+    const { client } = await mount(
+      <AuthLogin realmConfig={realmConfig("optional")} />,
+      true,
+      SecondFactorReactAuth,
+    );
+    await waitFor(() => expect(client.pending).toHaveLength(1));
+
+    await client.pickAutofill();
+
+    await screen.findByText("Verify");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("offers nothing when the realm has passkeys off", async () => {

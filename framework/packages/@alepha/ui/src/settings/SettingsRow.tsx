@@ -10,8 +10,8 @@ export interface SettingsRowProps {
   label: ReactNode;
 
   /**
-   * One line of explanation under the label. Omit when the label says it all
-   * — an empty helper line is worse than none.
+   * One line of explanation under the label. Omit when the label says it all:
+   * an empty helper line is worse than none.
    */
   description?: ReactNode;
 
@@ -21,7 +21,7 @@ export interface SettingsRowProps {
    * `<span>`, which is what gives the control an accessible name and makes
    * clicking the label focus it.
    *
-   * Without it the row is a `<span>` — correct for a row whose control is a
+   * Without it the row is a `<span>`, correct for a row whose control is a
    * button or a read-only value, where the button carries its own name and a
    * `<label>` pointing at nothing would be worse than none.
    */
@@ -47,7 +47,7 @@ export interface SettingsRowProps {
  * a 90px column is worse than a button on its own line.
  *
  * Rows carry all the vertical padding (`py-3`) and {@link SettingsSection}'s
- * card carries none (`py-0`) — see that component for why the two must not
+ * card carries none (`py-0`): see that component for why the two must not
  * both have it.
  */
 export const SettingsRow = (props: SettingsRowProps) => {
