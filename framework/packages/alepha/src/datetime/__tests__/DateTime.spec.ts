@@ -1,11 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import {
-  DateTime,
-  DateTimeProvider,
-  isDateTime,
-} from "../providers/DateTimeProvider.ts";
+import { DateTime, DateTimeProvider } from "../providers/DateTimeProvider.ts";
 
 describe("DateTime value class", () => {
   const create = () => {
@@ -91,9 +87,8 @@ describe("DateTime value class", () => {
     const time = create();
     const date = time.of(iso);
 
-    expect(isDateTime(date)).toBe(true);
-    expect(isDateTime(new Date())).toBe(false);
     expect(time.isDateTime(date)).toBe(true);
+    expect(time.isDateTime(new Date())).toBe(false);
     expect(time.isDateTime(iso)).toBe(false);
   });
 

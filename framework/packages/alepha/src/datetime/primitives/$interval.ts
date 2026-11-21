@@ -33,7 +33,8 @@ export interface IntervalPrimitiveOptions {
 
 export class IntervalPrimitive extends Primitive<IntervalPrimitiveOptions> {
   /**
-   * `boot` for the pure controller rule: starts its timer at init.
+   * `boot` for the pure controller rule: it registers its interval at init,
+   * and `DateTimeProvider` arms the timer on `start`.
    */
   public static override readonly side: PrimitiveSide = "boot";
 
@@ -47,7 +48,7 @@ export class IntervalPrimitive extends Primitive<IntervalPrimitiveOptions> {
         await this.options.handler();
       } catch (error) {
         // A throwing tick must not become an unhandled rejection that kills
-        // the process — log it and let the next tick run.
+        // the process: log it and let the next tick run.
         this.alepha.log?.error("Interval handler failed", error);
       }
       this.called += 1;

@@ -59,7 +59,7 @@ describe("unrefed timeouts", () => {
 
   /**
    * The regression this file exists for. `unref` is a property of the handle,
-   * and `travel()` throws the handle away and arms a new one — so a flag held
+   * and `travel()` throws the handle away and arms a new one, so a flag held
    * anywhere but on the timeout itself silently refs the timer again, and the
    * process it was meant to release stays alive.
    */

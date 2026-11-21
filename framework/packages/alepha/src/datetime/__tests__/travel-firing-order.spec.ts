@@ -12,7 +12,7 @@ describe("travel() firing order", () => {
   it("should fire due timeouts in expiry order, not creation order", async () => {
     // Real timers fire by expiry. A single travel() past several expiries
     // must preserve that order even when the timeouts were created in the
-    // opposite one — code racing two timers (a lock TTL against an
+    // opposite one: code racing two timers (a lock TTL against an
     // operation deadline, say) sees the wrong winner otherwise.
     const time = create();
     const fired: string[] = [];
