@@ -640,7 +640,6 @@ export default {
   "chat.composer.placeholder": "Message dans #$1",
   "chat.composer.hint":
     "Tapez @ pour mentionner quelqu'un. @lore répond dans le salon, pour tout le monde.",
-  "chat.composer.hintPersonal": "Lore répond à chaque message de ce salon.",
   "chat.composer.send": "Envoyer",
   "chat.agent.tag": "agent",
   "chat.agent.trace.read": "A lu $1",

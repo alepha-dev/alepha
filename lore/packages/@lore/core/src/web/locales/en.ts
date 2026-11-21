@@ -731,7 +731,6 @@ export default {
   "chat.composer.placeholder": "Message #$1",
   "chat.composer.hint":
     "Type @ to mention someone. @lore answers in the room, for everyone.",
-  "chat.composer.hintPersonal": "Lore answers every message in this room.",
   "chat.composer.send": "Send",
   "chat.agent.tag": "agent",
   "chat.agent.trace.read": "Read $1",
