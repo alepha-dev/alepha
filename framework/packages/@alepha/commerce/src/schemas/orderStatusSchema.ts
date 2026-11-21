@@ -10,6 +10,8 @@ import { z } from "alepha";
  * - `delivered` : received by the customer.
  * - `cancelled` : cancelled before fulfilment, nothing owed.
  * - `refunded`  : refunded after payment.
+ * - `partially_refunded` : part of the payment went back; says nothing of
+ *   fulfilment (see the note on the value).
  *
  * Consumers may use a subset: a point-of-sale only ever sees `paid`/`refunded`.
  *

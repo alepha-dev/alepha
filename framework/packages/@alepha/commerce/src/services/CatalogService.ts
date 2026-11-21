@@ -56,6 +56,8 @@ export interface CreateProduct {
  * nothing.
  */
 type Clearable =
+  | "categoryId"
+  | "vatRateBps"
   | "compareAtPrice"
   | "metaTitle"
   | "metaDescription"

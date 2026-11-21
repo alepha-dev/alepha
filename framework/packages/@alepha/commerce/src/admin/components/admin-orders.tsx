@@ -193,7 +193,13 @@ export const AdminOrders = () => {
           {
             label: tr("commerce.admin.ship", { default: "Ship" }),
             icon: Truck,
-            disabled: () => !["paid", "fulfilled"].includes(order.status),
+            // A partial refund before the parcel left still leaves goods to
+            // send; one after it reads the same status, so `shippedAt` decides.
+            disabled: () =>
+              Boolean(order.shippedAt) ||
+              !["paid", "fulfilled", "partially_refunded"].includes(
+                order.status,
+              ),
             onClick: (item, ctx) => void ship(item, ctx.refresh),
           },
           {

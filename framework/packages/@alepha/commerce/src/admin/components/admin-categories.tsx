@@ -235,14 +235,19 @@ const AdminCategorySheet = (props: AdminCategorySheetProps) => {
         published: category?.published ?? true,
       },
       handler: async (values) => {
-        const body = { ...values, parentId: values.parentId };
         if (category) {
           await client.commerceAdminCategoryUpdate({
             params: { id: category.id },
-            body,
+            // An emptied field arrives absent, which an update reads as
+            // "leave it": a category could never go back to the top level.
+            body: {
+              ...values,
+              parentId: values.parentId ?? null,
+              description: values.description ?? null,
+            },
           });
         } else {
-          await client.commerceAdminCategoryCreate({ body });
+          await client.commerceAdminCategoryCreate({ body: values });
         }
         onSaved();
       },

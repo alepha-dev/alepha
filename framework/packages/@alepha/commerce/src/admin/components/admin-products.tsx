@@ -26,11 +26,6 @@ const formatPrice = (cents: number, currency: string) =>
     (cents ?? 0) / 100,
   );
 
-/**
- * Toolbar filter. Module scope so its identity stays stable across renders -
- * `DataTable` owns a `useForm` over it, and a fresh reference each render would
- * re-anchor that form for nothing.
- */
 export interface AdminProductsProps {
   /**
    * Where a product's detail page lives. The route belongs to the application -

@@ -26,6 +26,16 @@ export interface VariantInput {
 }
 
 /**
+ * What a form leaves empty to clear: `null`, since an absent field changes
+ * nothing.
+ */
+type Clearable = "price" | "compareAtPrice" | "image" | "weightGrams";
+
+export type UpdateVariant = Omit<Partial<VariantInput>, Clearable> & {
+  [K in Clearable]?: VariantInput[K] | null;
+};
+
+/**
  * The sellable combinations of a product, and the one rule about them: a line
  * on a product with variants names one, and it must be on sale.
  */
@@ -46,7 +56,7 @@ export class VariantService {
 
   public async update(
     id: string,
-    data: Partial<VariantInput>,
+    data: UpdateVariant,
   ): Promise<ProductVariantEntity> {
     return this.repo.updateById(id, data);
   }

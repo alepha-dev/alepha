@@ -357,7 +357,15 @@ const AdminVariantSheet = (props: AdminVariantSheetProps) => {
       handler: async (values) => {
         await client.commerceAdminProductVariantUpdate({
           params: { id: productId, variantId: variant.id },
-          body: values,
+          // An emptied field arrives absent, which an update reads as "leave
+          // it": the variant would never fall back to the product's figures.
+          body: {
+            ...values,
+            price: values.price ?? null,
+            compareAtPrice: values.compareAtPrice ?? null,
+            weightGrams: values.weightGrams ?? null,
+            image: values.image ?? null,
+          },
         });
         onSaved();
       },

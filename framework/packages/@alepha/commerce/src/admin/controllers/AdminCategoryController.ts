@@ -15,6 +15,15 @@ const categoryInputSchema = z.object({
 });
 
 /**
+ * `null` clears what an update would otherwise leave alone: a category goes
+ * back to the top level.
+ */
+const categoryUpdateSchema = categoryInputSchema.partial().extend({
+  parentId: z.uuid().nullable().optional(),
+  description: z.text({ maxLength: 4000 }).nullable().optional(),
+});
+
+/**
  * Category management.
  */
 export class AdminCategoryController {
@@ -50,7 +59,7 @@ export class AdminCategoryController {
     description: "Update a category",
     schema: {
       params: z.object({ id: z.uuid() }),
-      body: categoryInputSchema.partial(),
+      body: categoryUpdateSchema,
       response: categories.schema,
     },
     handler: async ({ params, body }) =>

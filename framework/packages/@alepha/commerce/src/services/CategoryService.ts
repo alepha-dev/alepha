@@ -14,6 +14,16 @@ export interface CategoryInput {
 }
 
 /**
+ * What a form leaves empty to clear: `null`, since an absent field changes
+ * nothing.
+ */
+type Clearable = "parentId" | "description";
+
+export type UpdateCategory = Omit<Partial<CategoryInput>, Clearable> & {
+  [K in Clearable]?: CategoryInput[K] | null;
+};
+
+/**
  * The catalogue's shelves.
  *
  * Read whole and walked in memory: a shop has dozens of categories, and a
@@ -35,7 +45,7 @@ export class CategoryService {
    */
   public async update(
     id: string,
-    data: Partial<CategoryInput>,
+    data: UpdateCategory,
   ): Promise<CategoryEntity> {
     if (
       data.parentId &&

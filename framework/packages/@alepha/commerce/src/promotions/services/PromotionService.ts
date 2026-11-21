@@ -30,6 +30,23 @@ export interface PromotionInput {
 }
 
 /**
+ * What a form leaves empty to clear: `null`, since an absent field changes
+ * nothing.
+ */
+type Clearable =
+  | "code"
+  | "minSubtotal"
+  | "currency"
+  | "startsAt"
+  | "endsAt"
+  | "usageLimit"
+  | "usagePerCustomer";
+
+export type UpdatePromotion = Omit<Partial<PromotionInput>, Clearable> & {
+  [K in Clearable]?: PromotionInput[K] | null;
+};
+
+/**
  * Promotions, and the rule that decides whether one applies.
  *
  * {@link assertApplies} is a read, and what a cart sees. {@link redeem} is the
@@ -53,11 +70,13 @@ export class PromotionService {
 
   public async update(
     id: string,
-    data: Partial<PromotionInput>,
+    data: UpdatePromotion,
   ): Promise<PromotionEntity> {
     return this.repo.updateById(id, {
       ...data,
-      ...(data.code !== undefined ? { code: this.normalise(data.code) } : {}),
+      ...(data.code !== undefined
+        ? { code: this.normalise(data.code ?? undefined) ?? null }
+        : {}),
     });
   }
 
