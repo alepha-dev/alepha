@@ -34,12 +34,12 @@ import { SseReader } from "./SseReader.ts";
  *   (Mistral on Workers AI): with the offered tool names, such a reply is
  *   held back and read as calls.
  */
-/**
- * The marker Mistral-family models put before the calls they write.
- */
-const TOOL_CALLS_MARKER = "[TOOL_CALLS]";
-
 export class ChatCompletionFormat {
+  /**
+   * The marker Mistral-family models put before the calls they write.
+   */
+  public readonly toolCallsMarker = "[TOOL_CALLS]";
+
   protected readonly sse = $inject(SseReader);
   protected readonly errors = $inject(AiHttpErrors);
 
@@ -243,11 +243,11 @@ export class ChatCompletionFormat {
    */
   public mayBeTextualCall(text: string): boolean {
     let rest = text.trimStart();
-    if (TOOL_CALLS_MARKER.startsWith(rest)) {
+    if (this.toolCallsMarker.startsWith(rest)) {
       return true;
     }
-    if (rest.startsWith(TOOL_CALLS_MARKER)) {
-      rest = rest.slice(TOOL_CALLS_MARKER.length).trimStart();
+    if (rest.startsWith(this.toolCallsMarker)) {
+      rest = rest.slice(this.toolCallsMarker.length).trimStart();
     }
     if (rest === "" || rest.startsWith("{")) {
       return true;
@@ -270,8 +270,8 @@ export class ChatCompletionFormat {
     tools: readonly string[],
   ): Array<{ name: string; input: Record<string, unknown> }> | undefined {
     let body = text.trim();
-    if (body.startsWith(TOOL_CALLS_MARKER)) {
-      body = body.slice(TOOL_CALLS_MARKER.length).trim();
+    if (body.startsWith(this.toolCallsMarker)) {
+      body = body.slice(this.toolCallsMarker.length).trim();
     }
     let parsed: unknown;
     try {

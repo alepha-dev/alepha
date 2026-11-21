@@ -12,9 +12,9 @@ import { build } from "vite";
  * `alepha build` does) and run it in Miniflare under the build's own
  * compatibility date, then hand `use` a fetch into the worker.
  *
- * Shared by the AI vendor providers' workerd specs, which all prove the same
- * thing: the provider's real code path (fetch, ReadableStream, the SSE
- * reader) runs on workerd.
+ * Shared by every workerd spec of the package (the AI vendor providers', and
+ * those of security, cli/infra-lib, api/ai, api/users, api/webhooks and orm):
+ * the real code path runs on workerd.
  */
 export const withWorkerd = async <T>(
   options: {

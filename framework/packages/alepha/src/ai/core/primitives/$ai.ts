@@ -92,16 +92,16 @@ export const $ai = (options: AiPrimitiveOptions): AiPrimitive =>
   createPrimitive(AiPrimitive, options);
 
 /**
- * A tool the browser runs (`navigate`, `fillForm`): calling it pauses the
- * turn with a `client_tool` event, and the result comes back on resume.
- */
-/**
  * What `$ai({ tools })` takes: actions, MCP tools and client tools.
  */
 export type AiToolList = Array<
   ActionPrimitive<any> | ToolPrimitive<any> | AiClientTool
 >;
 
+/**
+ * A tool the browser runs (`navigate`, `fillForm`): calling it pauses the
+ * turn with a `client_tool` event, and the result comes back on resume.
+ */
 export const clientTool = (
   name: string,
   options: { description: string; schema: ZType },
@@ -669,18 +669,28 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     if (tool.kind !== "action") {
       return this.toolError(call, `Tool '${call.name}' is not an action.`);
     }
-    const input: Record<string, unknown> = {};
-    for (const part of ["params", "query", "body"] as const) {
-      if (tool.parts.includes(part) && call.input[part] !== undefined) {
-        input[part] = call.input[part];
-      }
-    }
     try {
-      const result = await tool.action.run(
-        input as any,
-        // `user` is how `run()` carries an identity (`alepha/security`);
-        // without it the action runs anonymous, never as "system".
-        { user },
+      // Inside the `try`: a model may send an input that is not an object
+      // (`arguments: "null"`), and reading a part off it is a tool error the
+      // model reads, not a crash of the whole turn.
+      if (!call.input || typeof call.input !== "object") {
+        throw new TypeError(
+          `Tool input must be an object, got ${call.input === null ? "null" : typeof call.input}.`,
+        );
+      }
+      const input: Record<string, unknown> = {};
+      for (const part of ["params", "query", "body"] as const) {
+        if (tool.parts.includes(part) && call.input[part] !== undefined) {
+          input[part] = call.input[part];
+        }
+      }
+      const result = await this.asUser(user, () =>
+        tool.action.run(
+          input as any,
+          // `user` is how `run()` carries an identity (`alepha/security`);
+          // without it the action runs anonymous, never as "system".
+          { user },
+        ),
       );
       return {
         role: "tool",
@@ -696,11 +706,33 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   }
 
   /**
-   * Run a `$tool` as `user`: in a fork setting the current user, the same
-   * thing `run({ user })` does for an action, so its `$secure` and
-   * `ToolPrimitive.currentUser()` see that user. Without one the fork sets
-   * nothing and a `$secure` tool refuses. The turn's signal is the tool's
-   * `context.signal` and its ambient signal.
+   * Run `fn` in a fork whose only identity is `user`.
+   *
+   * With a user, the fork sets the current user, the same thing
+   * `run({ user })` does for an action, so `$secure` and
+   * `ToolPrimitive.currentUser()` see that user. Without one it hides BOTH
+   * slots they read: the current-user atom and the HTTP request (whose user
+   * or credentials they fall back to). Clearing nothing ran a turn called
+   * without `user` from inside a signed-in request as that request's user.
+   */
+  protected asUser<R>(user: UserAccountToken | undefined, fn: () => R): R {
+    // `currentUserAtom.key` (`alepha/security`), spelled out: alepha/ai
+    // imports that module as types only.
+    return this.alepha.fork(
+      fn,
+      user
+        ? { "alepha.security.user": user }
+        : {
+            "alepha.security.user": undefined,
+            "alepha.http.request": undefined,
+          },
+    );
+  }
+
+  /**
+   * Run a `$tool` as `user` (see {@link asUser}): without one a `$secure`
+   * tool refuses. The turn's signal is the tool's `context.signal` and its
+   * ambient signal.
    */
   protected async runMcpTool(
     tool: Extract<AiTool, { kind: "tool" }>,
@@ -711,12 +743,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     try {
       const context: McpContext = { signal };
       const result = await this.alepha.context.withSignal(signal, () =>
-        this.alepha.fork(
-          () => tool.tool.execute(call.input, context),
-          // `currentUserAtom.key` (`alepha/security`), spelled out: alepha/ai
-          // imports that module as types only.
-          user ? { "alepha.security.user": user } : {},
-        ),
+        this.asUser(user, () => tool.tool.execute(call.input, context)),
       );
       return {
         role: "tool",
