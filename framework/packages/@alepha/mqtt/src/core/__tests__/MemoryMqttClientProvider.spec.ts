@@ -9,6 +9,7 @@ import {
   MqttJsClientProvider,
   type MqttOptions,
   mqttOptions,
+  type MqttQoS,
 } from "../index.ts";
 import { MqttInbox } from "./MqttClientContract.ts";
 
@@ -218,6 +219,60 @@ describe("MemoryMqttClientProvider", () => {
 
     expect(exact.texts()).toEqual(["one"]);
     expect(wildcard.texts()).toEqual(["one"]);
+  });
+
+  it("fails only the QoS upgrade the broker refuses, and keeps the acknowledged subscription", async ({
+    expect,
+  }) => {
+    class RefusingQos2 extends MemoryMqttClientProvider {
+      protected override async sendSubscribe(
+        filter: string,
+        qos: MqttQoS,
+        id: number | undefined,
+      ): Promise<void> {
+        if (qos === 2) {
+          throw new AlephaError(`refused qos 2 on '${filter}'`);
+        }
+        await super.sendSubscribe(filter, qos, id);
+      }
+    }
+    const alepha = Alepha.create()
+      .with({ provide: MqttClientProvider, use: RefusingQos2 })
+      .with(AlephaMqtt);
+    const client = alepha.inject(RefusingQos2).useBroker(newBroker());
+    await alepha.start();
+    const first = new MqttInbox();
+    const upgrade = new MqttInbox();
+    const third = new MqttInbox();
+
+    await client.subscribe("t", first.callback, { qos: 0 });
+    await expect(
+      client.subscribe("t", upgrade.callback, { qos: 2 }),
+    ).rejects.toThrow(/refused qos 2/);
+    await client.subscribe("t", third.callback, { qos: 0 });
+    // The reconnect resubscribes at the acknowledged QoS, not the refused
+    // one, so it is not refused in turn.
+    await client.simulateDisconnect();
+    await client.publish("t", "after");
+
+    expect(first.texts()).toEqual(["after"]);
+    expect(upgrade.texts()).toEqual([]);
+    expect(third.texts()).toEqual(["after"]);
+  });
+
+  it("has the broker refuse an invalid filter on its own", async ({
+    expect,
+  }) => {
+    const broker = newBroker();
+    const session = {
+      deliver: async () => undefined,
+      will: () => undefined,
+    };
+    broker.connect(session);
+
+    await expect(broker.subscribe(session, "a/#/b", 0, 1)).rejects.toThrow(
+      /Invalid MQTT topic filter/,
+    );
   });
 
   it("refuses useBroker() once connected", async ({ expect }) => {

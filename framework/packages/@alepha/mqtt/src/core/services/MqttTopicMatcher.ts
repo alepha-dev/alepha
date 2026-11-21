@@ -70,6 +70,28 @@ export class MqttTopicMatcher {
   }
 
   /**
+   * Refuse a filter that cannot be subscribed to: empty, a `#` that is not
+   * alone in the last level, or a `+` sharing its level (MQTT 5, 4.7.1).
+   * A `$share/<group>/` prefix is checked by `parse()`, its filter here.
+   */
+  public assertFilter(filter: string): void {
+    const levels = this.parse(filter).filter.split("/");
+    const valid =
+      filter !== "" &&
+      levels.every((level, i) =>
+        level === "#"
+          ? i === levels.length - 1
+          : level === "+" || !/[+#]/.test(level),
+      );
+
+    if (!valid) {
+      throw new AlephaError(
+        `Invalid MQTT topic filter '${filter}': '#' goes alone in the last level, '+' alone in its level`,
+      );
+    }
+  }
+
+  /**
    * Refuse a topic name that cannot be published to: empty, or holding a
    * wildcard.
    */

@@ -13,6 +13,7 @@ import type {
   MemoryMqttBroker,
   MemoryMqttSession,
 } from "./MemoryMqttBroker.ts";
+import { MqttTopicMatcher } from "./MqttTopicMatcher.ts";
 
 export interface MemoryMqttListenOptions {
   /**
@@ -184,6 +185,7 @@ export class MemoryMqttConnection implements MemoryMqttSession {
   protected readonly server: MemoryMqttListenerServer;
   protected readonly socket: Socket;
   protected readonly parser: ReturnType<typeof mqttPacket.parser>;
+  protected readonly matcher = new MqttTopicMatcher();
   protected protocolVersion: 3 | 4 | 5 = 4;
   protected clientId = "";
   protected connected = false;
@@ -291,6 +293,9 @@ export class MemoryMqttConnection implements MemoryMqttSession {
       case "connect":
         return this.onConnect(packet);
       case "publish": {
+        // A wildcard in a topic name is a protocol error (MQTT 3.3.2.1): the
+        // throw drops the connection.
+        this.matcher.assertPublishable(packet.topic);
         const qos: MqttQoS = (packet.qos ?? 0) >= 1 ? 1 : 0;
         await this.server.memoryBroker.publish(
           packet.topic,
@@ -319,6 +324,13 @@ export class MemoryMqttConnection implements MemoryMqttSession {
         const granted: number[] = [];
         const id = packet.properties?.subscriptionIdentifier;
         for (const subscription of packet.subscriptions) {
+          try {
+            this.matcher.assertFilter(subscription.topic);
+          } catch {
+            // Topic Filter invalid on MQTT 5, Failure on MQTT 3.1.1.
+            granted.push(this.protocolVersion === 5 ? 0x8f : 0x80);
+            continue;
+          }
           const qos: MqttQoS = subscription.qos >= 1 ? 1 : 0;
           granted.push(qos);
           await this.server.memoryBroker.subscribe(

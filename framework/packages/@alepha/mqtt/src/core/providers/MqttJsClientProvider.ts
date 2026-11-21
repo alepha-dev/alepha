@@ -145,6 +145,13 @@ export class MqttJsClientProvider extends MqttClientProvider {
       this.connecting = undefined;
     });
 
+    // With `reconnectPeriod: 0` mqtt.js never reconnects nor ends by itself,
+    // so the wait above would never settle, and `disconnect()` with it:
+    // reconnect on demand, as the memory client does.
+    if (reconnecting && !reconnecting.options.reconnectPeriod) {
+      reconnecting.reconnect();
+    }
+
     return this.connecting;
   }
 
@@ -172,7 +179,8 @@ export class MqttJsClientProvider extends MqttClientProvider {
 
   /**
    * Drop the socket without a DISCONNECT, as a crash or a network cut would,
-   * and resolve once mqtt.js has reconnected and every subscription is back.
+   * and resolve once mqtt.js has reconnected and every subscription is back,
+   * or once the socket is closed when `reconnectPeriod` is 0.
    *
    * The broker publishes the Last Will. A test method: the contract suite
    * uses it on a real broker, as it uses the memory client's.
@@ -181,6 +189,15 @@ export class MqttJsClientProvider extends MqttClientProvider {
     const client = this.client;
     if (!client?.connected) {
       throw new AlephaError("MQTT client is not connected");
+    }
+
+    if (!client.options.reconnectPeriod) {
+      const closed = new Promise<void>((resolve) => {
+        client.once("close", () => resolve());
+      });
+      client.stream.destroy();
+      await closed;
+      return;
     }
 
     const reconnected = this.awaitReconnect(client);
