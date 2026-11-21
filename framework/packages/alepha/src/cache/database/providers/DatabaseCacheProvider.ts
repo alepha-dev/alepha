@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
+import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -101,15 +101,6 @@ export class DatabaseCacheProvider extends CacheProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected readonly onStart = $hook({
-    on: "start",
-    handler: () => {
-      this.log.debug("DatabaseCacheProvider ready");
-    },
-  });
-
-  // -------------------------------------------------------------------------------------------------------------------
-
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {
     if (!this.alepha.isStarted()) {
       return undefined;
@@ -207,7 +198,11 @@ export class DatabaseCacheProvider extends CacheProvider {
       where: { and: baseAnd },
     });
 
-    return rows.map((row) => row.cacheKey);
+    // `startsWith` is a case-insensitive `LIKE`: it narrows the rows, and the
+    // exact prefix is decided here, as on every other backend.
+    return rows
+      .map((row) => row.cacheKey)
+      .filter((key) => !filter || key.startsWith(filter));
   }
 
   public async clear(): Promise<void> {
@@ -240,9 +235,7 @@ export class DatabaseCacheProvider extends CacheProvider {
     // Both Postgres and SQLite (incl. D1) support this in a single statement,
     // so concurrent callers can never observe an interleaved read/write.
     const table = this.repository.table;
-    const expiresAt = ttl
-      ? this.dateTimeProvider.now().add(ttl, "millisecond").toISOString()
-      : null;
+    const expiresAt = this.computeExpiresAt(ttl);
 
     const updated = await this.repository.upsert(
       {

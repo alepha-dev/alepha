@@ -1,4 +1,4 @@
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -40,5 +40,3 @@ export const cacheEntries = $entity({
   }),
   indexes: [{ columns: ["container", "cacheKey"], unique: true }, "expiresAt"],
 });
-
-export type CacheEntry = Infer<typeof cacheEntries.schema>;

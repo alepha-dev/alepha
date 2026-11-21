@@ -85,7 +85,7 @@ export const testCacheStop = async (
   expect(await test.a({ name: "A" })).toBe("A:2");
 };
 
-export const testCacheMissingProvider = async (
+export const testCacheNotStarted = async (
   configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
@@ -97,6 +97,8 @@ export const testCacheMissingProvider = async (
 
   const test = app.inject(TestCache);
 
+  // No `app.start()`: nothing is read from or written to the store yet, so
+  // every call runs the handler.
   expect(await test.a({ name: "A" })).toBe("A:0");
   expect(await test.a({ name: "A" })).toBe("A:1");
 };
@@ -213,17 +215,30 @@ export const testCacheReturnTypes = async (
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class Types {
+    calls = 0;
     json = $cache({
-      handler: () => ({ a: 1 }),
+      handler: () => {
+        this.calls++;
+        return { a: 1 };
+      },
     });
     int = $cache({
-      handler: () => 1,
+      handler: () => {
+        this.calls++;
+        return 1;
+      },
     });
     bool = $cache({
-      handler: () => true,
+      handler: () => {
+        this.calls++;
+        return true;
+      },
     });
     string = $cache({
-      handler: () => '{ "a": 1 }',
+      handler: () => {
+        this.calls++;
+        return '{ "a": 1 }';
+      },
     });
   }
 
@@ -234,6 +249,7 @@ export const testCacheReturnTypes = async (
   configure(app);
 
   const test = app.inject(Types);
+  await app.start();
 
   expect(await test.json()).toEqual({ a: 1 });
   expect(await test.json()).toEqual({ a: 1 });
@@ -246,6 +262,10 @@ export const testCacheReturnTypes = async (
   expect(await test.bool()).toBe(true);
   expect(await test.string()).toBe('{ "a": 1 }');
   expect(await test.string()).toBe('{ "a": 1 }');
+
+  // One handler call per cache: every later answer was serialized, stored and
+  // read back.
+  expect(test.calls).toBe(4);
 };
 
 export const testCacheKeys = async (
@@ -265,9 +285,9 @@ export const testCacheKeys = async (
   const provider = alepha.inject(CacheProvider);
   await alepha.start();
 
-  void app.cache.set("test:A", "A");
-  void app.cache.set("test:B", "B");
-  void app.cache.set("hello", "C");
+  await app.cache.set("test:A", "A");
+  await app.cache.set("test:B", "B");
+  await app.cache.set("hello", "C");
   expect(await provider.keys("TestApp:cache").then((it) => it.length)).toEqual(
     3,
   );
@@ -360,7 +380,7 @@ export const testCacheIncrThenGet = async (
 
   await provider.incr(name, key, 5);
 
-  // Reading a counter back must work on every provider — Redis/KV store the
+  // Reading a counter back must work on every provider: Redis and KV store the
   // raw ASCII digits, and getTyped must not choke on the missing type marker.
   expect(await provider.getTyped(name, key)).toBe(5);
 };
@@ -814,4 +834,99 @@ export const assertCacheKeyContract = async (
   // The same round trip through the wildcard path.
   await provider.invalidateKeys(container, ["100%:*"]);
   expect((await provider.keys(container)).sort()).toEqual(["plain"]);
+};
+
+/**
+ * A key filter is a literal prefix, and a container name is a literal name, on
+ * every backend.
+ *
+ * Redis matches with a glob (`SCAN MATCH`) and SQL with a case-insensitive
+ * `LIKE`, so `* ? [ ] \`, `% _` and letter case each mean something to one
+ * backend. Unescaped, a filter `a?`
+ * also matched `ab`, and a filter over the default `JSON.stringify(args)` keys,
+ * which all start with `[`, matched nothing at all. Memory compares with
+ * `startsWith` and is the reference the others have to agree with.
+ */
+export const testCacheLiteralFilter = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  await assertCacheLiteralFilter(provider);
+};
+
+/**
+ * The assertions of {@link testCacheLiteralFilter}, against a provider that is
+ * already started, for the reason given on
+ * {@link assertCacheContainerIsolation}.
+ */
+export const assertCacheLiteralFilter = async (
+  provider: CacheProvider,
+): Promise<void> => {
+  const encoder = new TextEncoder();
+  const container = "literal";
+  const written = [
+    "ab",
+    "a?",
+    "a*",
+    '["user",1]',
+    "x[1]y",
+    "x1y",
+    "back\\slash",
+    "backslash",
+    "50%_off",
+    "50%xoff",
+    "50zzoff",
+    "Case:1",
+    "case:1",
+  ];
+  for (const key of written) {
+    await provider.set(container, key, encoder.encode(key));
+  }
+
+  const keys = async (filter: string) =>
+    (await provider.keys(container, filter)).sort();
+
+  expect(await keys("a?")).toEqual(["a?"]);
+  expect(await keys("a*")).toEqual(["a*"]);
+  expect(await keys('["user",')).toEqual(['["user",1]']);
+  expect(await keys("x[1]")).toEqual(["x[1]y"]);
+  expect(await keys("back\\")).toEqual(["back\\slash"]);
+  expect(await keys("50%_")).toEqual(["50%_off"]);
+  expect(await keys("50%")).toEqual(["50%_off", "50%xoff"]);
+  // Case included: a SQL `LIKE` may fold it.
+  expect(await keys("Case:")).toEqual(["Case:1"]);
+
+  // The invalidation path expands its wildcard through `keys()`: `a?*` is
+  // the prefix `a?`, so `ab` survives it.
+  await provider.invalidateKeys(container, ["a?*"]);
+  expect(await provider.has(container, "a?")).toBe(false);
+  expect(await provider.has(container, "ab")).toBe(true);
+  expect(await provider.has(container, "a*")).toBe(true);
+
+  await provider.invalidateKeys(container, ['["user",*']);
+  expect(await provider.has(container, '["user",1]')).toBe(false);
+
+  // A container name holding a glob character names that container only.
+  await provider.set("lit?", "one", encoder.encode("1"));
+  await provider.set("litx", "two", encoder.encode("2"));
+  await provider.set("lit*", "three", encoder.encode("3"));
+
+  expect(await provider.keys("lit?")).toEqual(["one"]);
+  expect(await provider.keys("lit*")).toEqual(["three"]);
+  expect(await provider.keys("lit?", "t")).toEqual([]);
+
+  await provider.del("lit?");
+  await provider.del("lit*");
+  expect(await provider.has("lit?", "one")).toBe(false);
+  expect(await provider.has("lit*", "three")).toBe(false);
+  expect(await provider.has("litx", "two")).toBe(true);
 };

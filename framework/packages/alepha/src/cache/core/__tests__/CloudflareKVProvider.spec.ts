@@ -7,54 +7,13 @@ import { CacheProvider } from "../providers/CacheProvider.ts";
 import {
   CloudflareKVProvider,
   KV_DEFAULT_BINDING,
-  type KVListOptions,
-  type KVListResult,
-  type KVPutOptions,
 } from "../providers/CloudflareKVProvider.ts";
+import { FakeKV } from "./FakeKV.ts";
 import {
   assertCacheContainerIsolation,
   assertCacheKeyContract,
+  assertCacheLiteralFilter,
 } from "./shared.ts";
-
-/**
- * Records what reached the KV binding, so the test can assert on the
- * `expirationTtl` the provider actually asked Cloudflare for.
- */
-class FakeKV {
-  public puts: Array<{ key: string; options?: KVPutOptions }> = [];
-  protected store = new Map<string, ArrayBuffer | string>();
-
-  async get(key: string, type?: "text" | "arrayBuffer"): Promise<any> {
-    const value = this.store.get(key);
-    if (value === undefined) return null;
-    // Test fixture: the body is a string the test just wrote.
-    // oxlint-disable-next-line typescript/no-base-to-string
-    return type === "arrayBuffer" ? value : String(value);
-  }
-
-  async put(
-    key: string,
-    value: string | ArrayBuffer,
-    options?: KVPutOptions,
-  ): Promise<void> {
-    this.puts.push({ key, options });
-    this.store.set(key, value);
-  }
-
-  async delete(key: string): Promise<void> {
-    this.store.delete(key);
-  }
-
-  async list(options?: KVListOptions): Promise<KVListResult> {
-    const prefix = options?.prefix ?? "";
-    return {
-      keys: [...this.store.keys()]
-        .filter((name) => name.startsWith(prefix))
-        .map((name) => ({ name })),
-      list_complete: true,
-    };
-  }
-}
 
 describe("CloudflareKVProvider", () => {
   let kv: FakeKV;
@@ -88,7 +47,7 @@ describe("CloudflareKVProvider", () => {
   describe("TTL clamping", () => {
     it("should warn when a TTL is widened to KV's 60-second floor", async () => {
       // KV genuinely refuses anything under 60s, so the clamp itself is
-      // correct — but it was silent. A `$cache({ ttl: [5, "seconds"] })`
+      // correct, but it was silent. A `$cache({ ttl: [5, "seconds"] })`
       // deployed to Workers served entries up to 12× staler than configured
       // and nothing anywhere said so.
       const { alepha, app } = await boot();
@@ -136,6 +95,12 @@ describe("CloudflareKVProvider", () => {
       const { alepha } = await boot();
 
       await assertCacheKeyContract(alepha.inject(CacheProvider));
+    });
+
+    it("should match a key filter and a container name literally", async () => {
+      const { alepha } = await boot();
+
+      await assertCacheLiteralFilter(alepha.inject(CacheProvider));
     });
   });
 });

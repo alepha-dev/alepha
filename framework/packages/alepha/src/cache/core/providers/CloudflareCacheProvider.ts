@@ -7,8 +7,6 @@ import { CloudflareKVProvider } from "./CloudflareKVProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * Cloudflare cache provider: the database cache when the app has one, else KV.
  *
@@ -25,10 +23,10 @@ import { CloudflareKVProvider } from "./CloudflareKVProvider.ts";
  * And KV is the only one of the four providers that cannot implement `incr`
  * atomically. `CloudflareKVProvider.incr` documents that against itself:
  * two isolates incrementing concurrently can lose an update, which is not
- * sufficient for a rate limiter that must never over-admit. That is why five
- * `$cache` call sites across `api/users` and `api/oauth` used to pin
- * `provider: DatabaseCacheProvider` by hand; this class is what let those
- * hardcodes go.
+ * sufficient for a rate limiter that must never over-admit. That is why the
+ * attempt counters of `alepha/api/users` pin `provider: DatabaseCacheProvider`
+ * by hand; with this class, every other `$cache` of a Cloudflare app with a
+ * database counts atomically too.
  *
  * The latency argument for KV does not survive either: D1 has read
  * replication, `CloudflareD1Provider.openSession()` implements it, Cloudflare
@@ -40,7 +38,8 @@ import { CloudflareKVProvider } from "./CloudflareKVProvider.ts";
  * Two simpler mechanisms were tried on paper first and both fail:
  *
  * - **Branch `AlephaCache`'s `register()` on `DATABASE_URL`.** It cannot name
- *   `DatabaseCacheProvider` (the cycle above), and `DATABASE_URL` is the
+ *   `DatabaseCacheProvider` (`alepha/cache/database` imports `alepha/cache`,
+ *   so the reverse import is a cycle), and `DATABASE_URL` is the
  *   wrong question anyway: an app can set it and register no ORM.
  * - **Let `alepha/cache/database` bind `CacheProvider` itself.** ⚠️ This one
  *   looks right and is silently order-dependent. A substitution is recorded

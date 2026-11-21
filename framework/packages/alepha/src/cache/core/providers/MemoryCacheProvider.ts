@@ -37,32 +37,20 @@ export interface MemoryCacheStats {
   deletes: number;
 }
 
-export interface MemoryCacheProviderOptions {
-  /**
-   * Error to throw on get operations (for testing error handling)
-   */
-  getError?: Error | null;
-  /**
-   * Error to throw on set operations (for testing error handling)
-   */
-  setError?: Error | null;
-  /**
-   * Error to throw on del operations (for testing error handling)
-   */
-  delError?: Error | null;
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * In-memory implementation of CacheProvider for testing.
+ * Cache entries in this process's memory.
  *
- * This provider stores all cache entries in memory, making it ideal for
- * unit tests that need to verify cache operations without touching Redis or other backends.
+ * The default `CacheProvider` on Node and Bun when `REDIS_URL` is not set,
+ * and what `$cache({ provider: "memory" })` resolves to whatever the default
+ * is. Entries belong to one process and are lost when it exits.
+ *
+ * Under test it also records its calls, so a spec can assert on cache
+ * behavior without a backend.
  *
  * @example
  * ```typescript
- * // In tests, substitute the real CacheProvider with MemoryCacheProvider
  * const alepha = Alepha.create().with({
  *   provide: CacheProvider,
  *   use: MemoryCacheProvider,
@@ -142,13 +130,6 @@ export class MemoryCacheProvider extends CacheProvider {
    * Error to throw on del (for testing error handling)
    */
   public delError: Error | null = null;
-
-  constructor(options: MemoryCacheProviderOptions = {}) {
-    super();
-    this.getError = options.getError ?? null;
-    this.setError = options.setError ?? null;
-    this.delError = options.delError ?? null;
-  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // CacheProvider implementation

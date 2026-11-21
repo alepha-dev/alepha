@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { $cache } from "../index.ts";
@@ -6,7 +6,7 @@ import { CacheProvider } from "../providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
 
 /**
- * A provider whose writes always fail — a Redis outage, a KV quota, a
+ * A provider whose writes always fail: a Redis outage, a KV quota, a
  * network blip. Reads keep working so the failure is isolated to `set`.
  */
 class FailingWriteCacheProvider extends MemoryCacheProvider {
@@ -14,7 +14,7 @@ class FailingWriteCacheProvider extends MemoryCacheProvider {
 
   public override async set(): Promise<Uint8Array> {
     this.writeAttempts++;
-    throw new Error("cache backend is down");
+    throw new AlephaError("cache backend is down");
   }
 }
 
@@ -26,11 +26,11 @@ describe("$cache write failures", () => {
     });
 
   it("should still return the handler result in primitive mode", async () => {
-    // Middleware mode already swallowed write failures
-    // (`instance.set(...).catch(() => {})`), but `run()` awaited the write
-    // unguarded — so a cache outage turned a request that had already
-    // computed a perfectly good answer into a 500. The cache is an
-    // optimisation; it must never be the thing that fails the request.
+    // `run()` awaits its write where middleware mode does not
+    // (`void instance.persist(key, result)`), and both go through `persist`:
+    // a cache outage must not turn a request that has already computed a
+    // perfectly good answer into a 500. The cache is an optimisation; it
+    // must never be the thing that fails the request.
     class App {
       compute = $cache({
         handler: async (n: number) => n * 2,
@@ -57,7 +57,7 @@ describe("$cache write failures", () => {
   });
 
   it("should attempt the write on both paths", async () => {
-    // Guards the fix against the lazy reading of "non-fatal" — dropping the
+    // Guards the fix against the lazy reading of "non-fatal": dropping the
     // write entirely would also make the tests above pass.
     class App {
       viaRun = $cache({ handler: async (n: number) => n * 2 });

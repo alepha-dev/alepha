@@ -39,7 +39,7 @@ export class RedisCacheProvider extends CacheProvider {
   public async set(
     name: string,
     key: string,
-    value: Uint8Array | string,
+    value: Uint8Array,
     ttl?: number,
   ): Promise<Uint8Array> {
     // Started, not ready: a write issued from a start hook must land, the
@@ -94,7 +94,7 @@ export class RedisCacheProvider extends CacheProvider {
   public async keys(name: string, filter?: string): Promise<string[]> {
     const prefix = `${this.prefix(name)}:`;
     const pattern = filter
-      ? `${this.pattern(name)}:${this.escapeKey(filter)}*`
+      ? `${this.pattern(name, this.escapeKey(filter))}*`
       : `${this.pattern(name)}:*`;
     return this.callerKeys(prefix, await this.redisProvider.keys(pattern));
   }
@@ -128,14 +128,12 @@ export class RedisCacheProvider extends CacheProvider {
   }
 
   /**
-   * {@link prefix} as a `KEYS` pattern: the app name is glob-escaped, so an
-   * `APP_NAME` holding `*`, `?` or `[` matches only itself.
+   * {@link prefix} as a `SCAN MATCH` pattern: every segment is glob-escaped,
+   * so an `APP_NAME`, a container name or a key filter holding `*`, `?`, `[`,
+   * `]` or a backslash matches only itself. The caller appends the one wildcard it
+   * means.
    */
   protected pattern(...path: string[]): string {
-    return [
-      this.alepha.name.replace(/[*?[\]\\]/g, "\\$&"),
-      "cache",
-      ...path,
-    ].join(":");
+    return this.prefix(...path).replace(/[*?[\]\\]/g, "\\$&");
   }
 }
