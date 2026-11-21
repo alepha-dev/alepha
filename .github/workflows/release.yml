@@ -299,7 +299,7 @@ jobs:
       # Bay, built and tested before anything ships: the binaries go onto the
       # GitHub release below, with their checksums.
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: bay/go.mod
           cache-dependency-path: bay/go.sum
