@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 
 import type {
@@ -19,18 +19,20 @@ export class DiskStaticFileSource implements StaticFileSource {
   protected readonly ignoreDotFiles: boolean;
 
   /**
-   * @param root Absolute path of the directory to serve.
+   * @param root Absolute path of the directory to serve. A trailing separator
+   * is dropped here, once, so every URL path below starts with one `/`
+   * however the root was spelled.
    * @param ignoreDotFiles Skip `.env` and every other dot file (the default).
    */
   constructor(root: string, ignoreDotFiles = true) {
-    this.root = root;
+    this.root = resolve(root);
     this.ignoreDotFiles = ignoreDotFiles;
   }
 
   public async list(): Promise<string[]> {
     const files = await this.walk(this.root);
-    return files.map((file) =>
-      file.slice(this.root.length).replace(/\\/g, "/"),
+    return files.map(
+      (file) => `/${relative(this.root, file).replace(/\\/g, "/")}`,
     );
   }
 

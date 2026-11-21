@@ -95,7 +95,7 @@ export type ProxyPrimitiveOptions = {
   /**
    * Path pattern to match for proxying requests.
    *
-   * Must end with `/*` — the wildcard captures the rest of the path to
+   * Must end with `/*`: the wildcard captures the rest of the path to
    * forward upstream:
    * - `/api/*` - Matches all paths starting with `/api/`
    * - `/api/v1/*` - Matches all paths starting with `/api/v1/`
@@ -109,7 +109,7 @@ export type ProxyPrimitiveOptions = {
    * Target URL to which matching requests should be forwarded.
    *
    * Can be either:
-   * - **Infer string**: A fixed URL like `"https://api.example.com"`
+   * - **Static string**: A fixed URL like `"https://api.example.com"`
    * - **Dynamic function**: A function that returns the URL, enabling runtime target resolution
    *
    * The target URL will be combined with the remaining path from the original request.
@@ -161,10 +161,13 @@ export type ProxyPrimitiveOptions = {
   /**
    * Hook called after receiving the response from the target server.
    *
+   * It observes: the response's status, headers and body were already copied
+   * onto `request.reply`, so changing `proxyResponse` changes nothing. Edit
+   * `request.reply` to change what the client receives.
+   *
    * Use this to:
    * - Log response details for monitoring
-   * - Add custom headers to the response
-   * - Transform response data
+   * - Add custom headers through `request.reply.headers`
    * - Handle error responses
    *
    * @param request - The original incoming server request
@@ -233,8 +236,11 @@ export type ProxyPrimitiveOptions = {
    *
    * The removal runs when the outgoing request is built, before
    * `beforeRequest`, so a hook setting its own `Authorization` (a service
-   * token) is untouched. Every other request header is forwarded, and the
-   * upstream's `Set-Cookie` is still copied to the client.
+   * token) is untouched. Every other request header is forwarded, except the
+   * hop-by-hop ones, which describe the client's connection (`Connection`
+   * and the headers it names, `Keep-Alive`, `Transfer-Encoding`, `Upgrade`,
+   * `TE`, `Trailer`, `Proxy-Authorization`). The upstream's `Set-Cookie` is
+   * still copied to the client.
    *
    * @example ["authorization"]
    */

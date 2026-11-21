@@ -4,8 +4,9 @@ import {
   Registry,
 } from "@prometheus-io/client";
 import { $env, $hook, $inject, Alepha, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
-import { $route, HttpError } from "alepha/server";
+import { $route, HttpError, ServerProvider } from "alepha/server";
 
 export class ServerMetricsProvider {
   // `private`, not `protected`: @prometheus-io/client is bundled into alepha,
@@ -13,13 +14,15 @@ export class ServerMetricsProvider {
   // consumers do not have.
   private readonly register: Registry = new Registry();
   protected readonly alepha = $inject(Alepha);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly server = $inject(ServerProvider);
   protected readonly log = $logger();
   protected readonly env = $env(
     z.object({
       /**
        * Bearer token protecting the `/metrics` endpoint. When set, requests
        * must carry `Authorization: Bearer <token>`. Without it the endpoint
-       * is public — set this in any internet-facing production deployment.
+       * is public: set this in any internet-facing production deployment.
        */
       METRICS_TOKEN: z.string().optional(),
     }),
@@ -34,7 +37,10 @@ export class ServerMetricsProvider {
     silent: true,
     handler: ({ headers }) => {
       const token = this.env.METRICS_TOKEN;
-      if (token && headers.authorization !== `Bearer ${token}`) {
+      if (
+        token &&
+        !this.crypto.equals(headers.authorization ?? "", `Bearer ${token}`)
+      ) {
         throw new HttpError({ status: 401 }, { message: "Unauthorized" });
       }
       return this.register.metrics();
@@ -50,7 +56,7 @@ export class ServerMetricsProvider {
         !this.isLoopbackOnly()
       ) {
         this.log.warn(
-          "/metrics is reachable from the network without authentication — set METRICS_TOKEN, or bind SERVER_HOST to loopback and put a proxy in front.",
+          "/metrics is reachable from the network without authentication: set METRICS_TOKEN, or bind SERVER_HOST to loopback and put a proxy in front.",
         );
       }
       collectDefaultMetrics({
@@ -69,19 +75,27 @@ export class ServerMetricsProvider {
   /**
    * Reports whether the server only accepts connections from this machine.
    *
-   * The warning above is about being reachable, not about being unauthenticated
-   * — and an app bound to loopback is not reachable. That is the normal shape
-   * behind a reverse proxy, where the proxy decides what the internet may see;
-   * a self-hosted supervisor typically refuses `/metrics` on the public host
-   * outright.
+   * The warning above is about being reachable, not about being
+   * unauthenticated, and an app bound to loopback is not reachable. That is
+   * the normal shape behind a reverse proxy, where the proxy decides what the
+   * internet may see; a self-hosted supervisor typically refuses `/metrics` on
+   * the public host outright.
    *
    * Warning there anyway is worse than saying nothing. It fires on every boot
    * of every correctly-configured app, and a warning that is usually wrong is
-   * how people learn to skip warnings — including the one time it is right,
+   * how people learn to skip warnings, including the one time it is right,
    * which is `SERVER_HOST=0.0.0.0` with no token.
+   *
+   * The host is the one the server binds, read from the server: its default
+   * lives in the server's own environment schema, so the raw `SERVER_HOST` is
+   * empty on an app that left it alone. A runtime with no listener of its own
+   * has no host, and is not loopback.
    */
   protected isLoopbackOnly(): boolean {
-    const host = String(this.alepha.env.SERVER_HOST ?? "").trim();
+    const host = this.server.hostname
+      .replace(/^[a-z]+:\/\//i, "")
+      .replace(/:\d+$/, "")
+      .trim();
     return (
       host === "localhost" ||
       host === "127.0.0.1" ||

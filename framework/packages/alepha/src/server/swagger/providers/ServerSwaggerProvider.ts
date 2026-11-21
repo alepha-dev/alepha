@@ -1,10 +1,8 @@
 import {
-  $atom,
   $hook,
   $inject,
   $store,
   Alepha,
-  type Infer,
   isTypeFile,
   isTypeStream,
   MIDDLEWARE_PERMISSIONS,
@@ -32,41 +30,13 @@ import {
   statusTextByStatus,
 } from "alepha/server";
 
+import { swaggerOptions } from "../atoms/swaggerOptionsAtom.ts";
 import {
   $swagger,
   type OpenApiDocument,
   type OpenApiOperation,
   type SwaggerPrimitiveOptions,
 } from "../primitives/$swagger.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Swagger provider configuration atom
- */
-export const swaggerOptions = $atom({
-  name: "alepha.server.swagger.options",
-  schema: z.object({
-    excludeKeys: z
-      .array(z.string())
-      .describe("Keys to exclude from swagger schema")
-      .optional(),
-  }),
-  default: {
-    excludeKeys: [],
-  },
-  serverOnly: true,
-});
-
-export type ServerSwaggerProviderOptions = Infer<typeof swaggerOptions.schema>;
-
-declare module "alepha" {
-  interface State {
-    [swaggerOptions.key]: ServerSwaggerProviderOptions;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerSwaggerProvider {
   public static readonly id: string = "alepha.server.ServerSwaggerProvider";
@@ -193,7 +163,7 @@ export class ServerSwaggerProvider {
     /**
      * A form body, with its byte fields spelled the way OpenAPI spells them.
      *
-     * `z.file()` and `z.stream()` are tagged `format: "binary"` / `"stream"` —
+     * `z.file()` and `z.stream()` are tagged `format: "binary"` / `"stream"`:
      * Alepha's words for *how the bytes reach the handler*, which is a question
      * OpenAPI does not ask and has no vocabulary for. Emitted raw, a reader
      * that does not recognise the format renders no file picker at all.
@@ -244,7 +214,10 @@ export class ServerSwaggerProvider {
         continue;
       }
 
-      if (excludeTags.includes(route.group)) {
+      // Either spelling: the group as declared (`admin:users`) or the tag as
+      // the document prints it (`admin / users`).
+      const tag = route.group.replaceAll(":", " / ");
+      if (excludeTags.includes(route.group) || excludeTags.includes(tag)) {
         continue;
       }
 
@@ -257,7 +230,7 @@ export class ServerSwaggerProvider {
         summary: route.options.summary,
         description: route.options.description,
         deprecated: route.options.deprecated || undefined,
-        tags: [route.group.replaceAll(":", " / ")],
+        tags: [tag],
         responses: {
           [response.status]: {
             description: this.getStatusDescription(response.status),
@@ -292,7 +265,7 @@ export class ServerSwaggerProvider {
       ) {
         // `isMultipart`, not a second predicate of this module's own. The one
         // that used to live here answered for `z.file()` alone, so a route
-        // taking its bytes in flight was documented as JSON — and it had
+        // taking its bytes in flight was documented as JSON, and it had
         // already missed `.optional()` the same way. One reading of "is this
         // multipart" for the client, the server and the spec.
         if (
@@ -654,17 +627,6 @@ export class ServerSwaggerProvider {
         type: "application/octet-stream",
       };
     }
-
-    // Status-code-keyed map: e.g. { 201: z.object({...}) }
-    const status = Object.keys(schema)[0];
-    if (status && !Number.isNaN(Number(status))) {
-      const inner = schema[status];
-      return {
-        schema: inner,
-        status: Number(status),
-        type: this.getContentType(inner),
-      };
-    }
   }
 
   protected extractExample(schema: any): any {
@@ -704,23 +666,6 @@ export class ServerSwaggerProvider {
       default:
         return statusTextByStatus[status] ?? "";
     }
-  }
-
-  protected getContentType(schema: any): string | undefined {
-    if (!schema) return undefined;
-    if (z.schema.isObject(schema) || z.schema.isArray(schema)) {
-      return "application/json";
-    }
-    if (z.schema.isString(schema)) return "text/plain";
-    if (
-      z.schema.isNumber(schema) ||
-      z.schema.isInteger(schema) ||
-      z.schema.isBoolean(schema)
-    ) {
-      return "application/json";
-    }
-    if (isTypeFile(schema)) return "application/octet-stream";
-    return "application/json";
   }
 
   protected configureSwaggerApi(prefix: string, json: OpenApiDocument): void {

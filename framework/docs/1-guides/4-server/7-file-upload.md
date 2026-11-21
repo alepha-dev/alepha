@@ -126,11 +126,11 @@ limit.
 
 Defaults, applied to every route:
 
-| Limit             | Default | Counts                                                               |
-| ----------------- | ------- | -------------------------------------------------------------------- |
-| One file          | 5 MB    | that part's content                                                  |
-| Whole request     | 10 MB   | every part's content, **plus** the preamble and every part's headers |
-| Parts per request | 10      | every part - text fields as well as files                            |
+| Limit             | Default | Counts                                                                                             |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| One file          | 5 MB    | that part's content                                                                                |
+| Whole request     | 10 MB   | every part's content, **plus** the preamble, every part's headers and the padding after a boundary |
+| Parts per request | 10      | every part - text fields as well as files                                                          |
 
 The last two columns are the ones that surprise. The request budget bounds
 _reading_, not delivering: a sender that never emits a boundary costs exactly as

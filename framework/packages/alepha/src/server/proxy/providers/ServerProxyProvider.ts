@@ -34,6 +34,30 @@ export class ServerProxyProvider {
   ];
 
   /**
+   * The headers that describe one connection and stop at each hop (RFC 9110
+   * section 7.6.1), removed from a proxied HTTP request and from its answer.
+   * `fetch` refuses most of them on a request outright.
+   */
+  protected readonly hopByHop: readonly string[] = [
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "proxy-connection",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+  ];
+
+  /**
+   * Request headers that end at this server without being hop-by-hop:
+   * `Expect: 100-continue` was answered by the server that read the body, and
+   * `fetch` refuses to send it.
+   */
+  protected readonly answeredHere: readonly string[] = ["expect"];
+
+  /**
    * The proxies that forward a WebSocket upgrade (`websocket: true`), by the
    * path prefix they own.
    */
@@ -112,7 +136,6 @@ export class ServerProxyProvider {
       );
     }
 
-    // Extract base path without /*
     const handler = this.createProxyHandler(options.target, options);
 
     for (const method of routeMethods) {
@@ -137,7 +160,7 @@ export class ServerProxyProvider {
     return async (request) => {
       // Resolved PER REQUEST. The function form is documented as runtime
       // resolution, but it used to be called exactly once during `configure`
-      // and every request then used that frozen string — so a target that
+      // and every request then used that frozen string, so a target that
       // depends on anything discovered after startup never changed.
       const resolved = typeof target === "function" ? target() : target;
 
@@ -157,7 +180,10 @@ export class ServerProxyProvider {
         url: url.toString(),
         method: request.method,
         headers: {
-          ...this.forwardedHeaders(request.headers, options.forward),
+          ...this.withoutHopByHop(
+            this.forwardedHeaders(request.headers, options.forward),
+            this.answeredHere,
+          ),
           "accept-encoding": "identity", // ignore compression
         },
         body: this.getRawRequestBody(request),
@@ -173,32 +199,25 @@ export class ServerProxyProvider {
         await options.beforeRequest(request, requestInit);
       }
 
-      this.log.debug("Proxying request", {
-        url: url.toString(),
-        method: request.method,
-        headers: request.headers,
-      });
+      // Guarded: the filtered copy would otherwise be built on every proxied
+      // request, whatever the level.
+      if (this.log.isLevelEnabled("DEBUG")) {
+        this.log.debug("Proxying request", {
+          url: url.toString(),
+          method: request.method,
+          // Never the credentials, forwarded or not: this is a log line.
+          headers: this.forwardedHeaders(request.headers),
+        });
+      }
 
       // Note: `beforeRequest` may set `requestInit.fetcher` to a Cloudflare
-      // service binding — a NATIVE workerd RequestInit field that routes the
+      // service binding, a NATIVE workerd RequestInit field that routes the
       // subrequest through that Worker (same-zone subrequests to a host
       // served by another Worker's route would bypass it and 522). Node's
       // fetch ignores the unknown field.
       const response = await this.send(requestInit, options.timeout);
 
-      request.reply.status = response.status;
-      request.reply.headers = Object.fromEntries(response.headers.entries());
-      // Hop-by-hop headers describe the upstream connection, not ours.
-      for (const name of ["connection", "keep-alive", "transfer-encoding"]) {
-        delete request.reply.headers[name];
-      }
-      // Header iteration yields one entry per `set-cookie`, so fromEntries
-      // keeps only the last cookie — restore the full list as an array.
-      const setCookies = response.headers.getSetCookie?.() ?? [];
-      if (setCookies.length > 0) {
-        request.reply.headers["set-cookie"] = setCookies;
-      }
-      request.reply.body = response.body;
+      this.copyResponse(request, response);
 
       this.log.debug("Received response", {
         status: request.reply.status,
@@ -245,6 +264,102 @@ export class ServerProxyProvider {
       out[name] = value;
     }
     return out;
+  }
+
+  /**
+   * `headers` without the hop-by-hop ones, those `Connection` names included,
+   * and without `also`. Names are matched without regard to case.
+   *
+   * A request's `Connection` is the client's: it can name any header it sent,
+   * a credential `forward` lets through included, and that header stops here.
+   */
+  protected withoutHopByHop(
+    headers: Record<string, any>,
+    also: readonly string[] = [],
+  ): Record<string, any> {
+    const connection = Object.entries(headers).find(
+      ([name]) => name.toLowerCase() === "connection",
+    )?.[1];
+    const named = new Set(
+      String(connection ?? "")
+        .split(",")
+        .map((it) => it.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const out: Record<string, any> = {};
+    for (const [name, value] of Object.entries(headers)) {
+      const lower = name.toLowerCase();
+      if (
+        this.hopByHop.includes(lower) ||
+        also.includes(lower) ||
+        named.has(lower)
+      ) {
+        continue;
+      }
+      out[name] = value;
+    }
+    return out;
+  }
+
+  /**
+   * Copy the upstream's answer onto the reply: status, headers and body.
+   */
+  protected copyResponse(request: ServerRequest, response: Response): void {
+    request.reply.status = response.status;
+    // Hop-by-hop headers describe the upstream connection, not ours.
+    request.reply.headers = this.withoutHopByHop(
+      Object.fromEntries(response.headers.entries()),
+    );
+    // Header iteration yields one entry per `set-cookie`, so fromEntries
+    // keeps only the last cookie: restore the full list as an array.
+    const setCookies = response.headers.getSetCookie?.() ?? [];
+    if (setCookies.length > 0) {
+      request.reply.headers["set-cookie"] = setCookies;
+    }
+    // An upstream may compress whatever `accept-encoding` asked. `fetch`
+    // then hands over the decoded body, which the upstream's encoding and
+    // length no longer describe. A bodiless answer (HEAD, 304) takes the same
+    // decision, so it carries the headers its GET does.
+    if (this.wasDecoded(response)) {
+      delete request.reply.headers["content-encoding"];
+      delete request.reply.headers["content-length"];
+    }
+    request.reply.body = response.body;
+  }
+
+  /**
+   * Whether `fetch` decoded this response's body: it carries a
+   * `content-encoding` made only of codings this runtime's `fetch` decodes.
+   * One coding outside the set and `fetch` decodes none: the answer is
+   * passed through as received, headers and body.
+   */
+  protected wasDecoded(response: Response): boolean {
+    const codings = (response.headers.get("content-encoding") ?? "")
+      .split(",")
+      .map((it) => it.trim().toLowerCase())
+      .filter(Boolean);
+    return (
+      codings.length > 0 &&
+      codings.every((it) => this.decodedEncodings().includes(it))
+    );
+  }
+
+  /**
+   * The content codings `fetch` decodes on its own, which differs by
+   * runtime: workerd decodes gzip and brotli, Node and Bun deflate and zstd
+   * as well.
+   */
+  protected decodedEncodings(): readonly string[] {
+    return this.isWorkerd()
+      ? ["gzip", "br"]
+      : ["gzip", "x-gzip", "deflate", "br", "zstd"];
+  }
+
+  /**
+   * Whether this is workerd, by the user agent the runtime gives itself.
+   */
+  protected isWorkerd(): boolean {
+    return globalThis.navigator?.userAgent === "Cloudflare-Workers";
   }
 
   /**
@@ -335,9 +450,7 @@ export class ServerProxyProvider {
     }
 
     // The upstream refused the upgrade: its answer goes back as any other.
-    request.reply.status = response.status;
-    request.reply.headers = Object.fromEntries(response.headers.entries());
-    request.reply.body = response.body;
+    this.copyResponse(request, response);
   }
 
   /**

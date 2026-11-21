@@ -26,7 +26,7 @@ export interface ServePrimitiveOptions {
   root?: string;
 
   /**
-   * If true, primitive will be ignored.
+   * If true, primitive will be ignored: none of its files is mounted.
    *
    * @default false
    */
@@ -72,10 +72,7 @@ export interface ServePrimitiveOptions {
   site?: boolean;
 
   /**
-   * Optional name of the primitive.
-   * This is used for logging and debugging purposes.
-   *
-   * @default Key name.
+   * Optional name of the primitive. The static server does not read it.
    */
   name?: string;
 

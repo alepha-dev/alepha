@@ -3,6 +3,7 @@ import { createServer, type IncomingHttpHeaders } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { deflateSync, gzipSync } from "node:zlib";
 
 import { Miniflare } from "miniflare";
 import { build } from "vite";
@@ -24,7 +25,18 @@ describe("$proxy websocket (workerd)", () => {
     // The upstream: a `ws` echo server on Node, recording each handshake.
     const handshakes: IncomingHttpHeaders[] = [];
     const urls: string[] = [];
-    const http = createServer();
+    // And two compressed answers, for the plain HTTP proxy below.
+    const text = "a".repeat(5000);
+    const http = createServer((req, res) => {
+      const deflate = req.url === "/deflate";
+      const body = deflate ? deflateSync(text) : gzipSync(text);
+      res.writeHead(200, {
+        "content-type": "text/plain",
+        "content-encoding": deflate ? "deflate" : "gzip",
+        "content-length": body.length,
+      });
+      res.end(body);
+    });
     const wss = new WebSocketServer({ noServer: true });
     http.on("upgrade", (req, socket, head) => {
       handshakes.push(req.headers);
@@ -65,6 +77,11 @@ class Front {
   target: ${JSON.stringify(target)},
   websocket: true,
   rewrite: (url) => { url.pathname = url.pathname.replace("/bare", ""); },
+ });
+ plain = $proxy({
+  path: "/plain/*",
+  target: ${JSON.stringify(target)},
+  rewrite: (url) => { url.pathname = url.pathname.replace("/plain", ""); },
  });
  authed = $proxy({
   path: "/authed/*",
@@ -177,6 +194,24 @@ export default { async fetch(request) {
       authed.close();
       expect(handshakes[1].authorization).toBe("Bearer token-of:abc");
       expect(handshakes[1].cookie).toBeUndefined();
+
+      // workerd's `fetch` decodes gzip and not deflate. The gzip answer goes
+      // back decoded, without the upstream's length, which no longer
+      // describes it (workerd then compresses its own answer as it sees fit).
+      // The deflate one goes back as received, its encoding and length with
+      // it: Miniflare decodes it and moves the encoding it read to
+      // `mf-content-encoding`.
+      const gzip = await runtime.dispatchFetch("http://front.test/plain/gzip");
+      expect(gzip.headers.get("content-length")).toBeNull();
+      expect(await gzip.text()).toBe(text);
+      const deflate = await runtime.dispatchFetch(
+        "http://front.test/plain/deflate",
+      );
+      expect(deflate.headers.get("mf-content-encoding")).toBe("deflate");
+      expect(deflate.headers.get("content-length")).toBe(
+        String(deflateSync(text).length),
+      );
+      expect(await deflate.text()).toBe(text);
     } finally {
       await runtime?.dispose();
       wss.close();

@@ -16,21 +16,20 @@ viewer: point any OpenAPI viewer at the JSON route.
 
 ## Options
 
-| Option        | Type                      | Required | Description                                                 |
-| ------------- | ------------------------- | -------- | ----------------------------------------------------------- |
-| `info`        | `OpenApiDocument["info"]` | No       |                                                             |
-| `prefix`      | `string`                  | No       |                                                             |
-| `disabled`    | `boolean`                 | No       | If true, docs will be disabled.                             |
-| `excludeTags` | `string[]`                | No       | Tags to exclude from the documentation.                     |
-| `servers`     | `OpenApiServer[]`         | No       | Server URLs for the API                                     |
-| `rewrite`     | `Object`                  | No       | Function to rewrite the OpenAPI document before serving it. |
+| Option        | Type                      | Required | Description                                                  |
+| ------------- | ------------------------- | -------- | ------------------------------------------------------------ |
+| `info`        | `OpenApiDocument["info"]` | No       |                                                              |
+| `prefix`      | `string`                  | No       | URL prefix the document is served under, at `<prefix>/json`. |
+| `disabled`    | `boolean`                 | No       | If true, docs will be disabled.                              |
+| `excludeTags` | `string[]`                | No       | Tags to exclude from the documentation                       |
+| `servers`     | `OpenApiServer[]`         | No       | Server URLs for the API                                      |
+| `rewrite`     | `Object`                  | No       | Function to rewrite the OpenAPI document before serving it.  |
 
 ## Examples
 
 ```ts
 class App {
   docs = $swagger({
-    prefix: "/api-docs",
     info: {
       title: "My API",
       version: "1.0.0",

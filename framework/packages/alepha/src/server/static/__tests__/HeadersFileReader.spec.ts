@@ -9,8 +9,8 @@ import { HeadersFileReader } from "../services/HeadersFileReader.ts";
 
 /**
  * The conformance fixture Bay's Go reader runs too. Bay's copy
- * (`github.com/alepha-dev/bay`, `internal/headers/testdata/`) is the
- * authority, and `fixtures/bay-headers/` mirrors it: see its README.
+ * (`bay/internal/headers/testdata/`, in this repository) is the authority,
+ * and `fixtures/bay-headers/` mirrors it: see its README.
  */
 const fixture = new URL("./fixtures/bay-headers/", import.meta.url);
 

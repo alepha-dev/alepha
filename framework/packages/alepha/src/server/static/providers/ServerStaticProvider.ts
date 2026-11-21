@@ -38,7 +38,6 @@ export class ServerStaticProvider {
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly headersReader = $inject(HeadersFileReader);
   protected readonly log = $logger();
-  protected readonly directories: ServeDirectory[] = [];
 
   /**
    * The `_headers` rules of every route a static server created with
@@ -95,6 +94,7 @@ export class ServerStaticProvider {
       await Promise.all(
         this.alepha
           .primitives($serve)
+          .filter((it) => !it.options.disabled)
           .map((it) => this.createStaticServer(it.options)),
       );
     },
@@ -160,23 +160,23 @@ export class ServerStaticProvider {
             urlPath,
             fileOptions,
           );
+          // A file NAMED `index.html`: `blogindex.html` ends the same way and
+          // is no directory index.
+          const index = urlPath.endsWith("/index.html");
           return this.routePaths(prefix, urlPath).map((routePath) => {
             this.log.trace(`Mount ${routePath} -> ${urlPath}`);
-            return { silent: options.silent, path: routePath, handler };
+            return { silent: options.silent, path: routePath, handler, index };
           });
         }),
       )
     ).flat();
 
-    for (const route of routes) {
+    for (const { index, ...route } of routes) {
       mount(route);
 
       // if route is for index.html, also create a route without it
       // e.g. /my/path/index.html -> /my/path/
-      if (
-        options.indexFallback !== false &&
-        route.path.endsWith("index.html")
-      ) {
+      if (options.indexFallback !== false && index) {
         mount({
           silent: options.silent,
           path: route.path.replace(/index\.html$/, ""),
@@ -184,9 +184,6 @@ export class ServerStaticProvider {
         });
       }
     }
-
-    // 3. store the directory info for reference
-    this.directories.push({ options, files });
 
     if (options.site) {
       await this.mountSiteRules(prefix, files, fileSource, fileOptions, mount, {
@@ -377,7 +374,7 @@ export class ServerStaticProvider {
       }
 
       // The response body depends on Accept-Encoding when a precompressed
-      // sibling exists, so it MUST vary on it — without this a shared cache
+      // sibling exists, so it MUST vary on it: without this a shared cache
       // can hand a brotli body to a client that never asked for brotli.
       let chosenEncoding = "";
       const encoding = headers["accept-encoding"];
@@ -388,11 +385,11 @@ export class ServerStaticProvider {
           : "accept-encoding";
       }
       if (encoding) {
-        if (hasBr && encoding.includes("br")) {
+        if (hasBr && this.acceptsEncoding(encoding, "br")) {
           reply.headers["content-encoding"] = "br";
           chosenEncoding = "br";
           path += ".br";
-        } else if (hasGzip && encoding.includes("gzip")) {
+        } else if (hasGzip && this.acceptsEncoding(encoding, "gzip")) {
           reply.headers["content-encoding"] = "gzip";
           chosenEncoding = "gzip";
           path += ".gz";
@@ -400,7 +397,6 @@ export class ServerStaticProvider {
       }
 
       reply.headers["content-type"] = contentType;
-      reply.headers["accept-ranges"] = "bytes";
       reply.headers["last-modified"] = lastModified;
 
       if (cacheControl) {
@@ -438,6 +434,21 @@ export class ServerStaticProvider {
       }
       return body;
     };
+  }
+
+  /**
+   * Whether an `Accept-Encoding` header names `coding` and does not refuse it:
+   * `gzip, br;q=0` accepts gzip and refuses brotli (RFC 9110 section 12.5.3).
+   */
+  protected acceptsEncoding(header: string, coding: string): boolean {
+    return header.split(",").some((entry) => {
+      const [name, ...params] = entry.split(";").map((it) => it.trim());
+      if (name.toLowerCase() !== coding) {
+        return false;
+      }
+      const weight = params.find((it) => /^q\s*=/i.test(it));
+      return !weight || Number(weight.slice(weight.indexOf("=") + 1)) > 0;
+    });
   }
 
   /**
@@ -573,9 +584,4 @@ export class ServerStaticProvider {
       this.dateTimeProvider.duration(maxAge ?? [30, "days"]).as("seconds"),
     );
   }
-}
-
-export interface ServeDirectory {
-  options: ServePrimitiveOptions;
-  files: string[];
 }

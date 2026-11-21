@@ -5,11 +5,11 @@ import { $error, z } from "alepha";
  *
  * **`data` is consume-once.** That is the whole reason this parser exists: a
  * part whose bytes can be read twice is a part whose bytes are retained, and
- * retaining them caps every upload at whatever fits in memory. Nothing here
- * holds more than one chunk plus a delimiter.
+ * retaining them caps every upload at whatever fits in memory. While a part's
+ * content is read, nothing here holds more than one chunk plus a delimiter.
  *
  * The part is yielded as soon as its **headers** end, so a consumer can decide
- * where the bytes go — a bucket, a hash, the floor — before any arrive.
+ * where the bytes go (a bucket, a hash, the floor) before any arrive.
  */
 export interface MultipartPart {
   /**
@@ -31,9 +31,10 @@ export interface MultipartPart {
   /**
    * The part's bytes, in arrival order.
    *
-   * Must be consumed — fully or not at all — before advancing to the next
-   * part. The parser drains whatever is left behind, because the delimiter of
-   * the next part can only be found by walking past this one's content.
+   * Read it before advancing to the next part: once the parser moves on, the
+   * bytes are gone. Whatever is left behind, all of it or the rest of a read
+   * that stopped early, is drained by the parser, because the delimiter of the
+   * next part can only be found by walking past this one's content.
    */
   data: AsyncIterable<Uint8Array>;
 }
@@ -70,7 +71,8 @@ export type MultipartParseError = InstanceType<typeof MultipartParseError>;
 
 export interface MultipartParserOptions {
   /**
-   * Maximum bytes of headers for a single part.
+   * Maximum bytes of headers for a single part, the blank line that ends them
+   * included.
    *
    * Small on purpose: part headers are a filename and a content type. A
    * megabyte of them is not a use case, it is someone looking for a buffer to
@@ -92,9 +94,10 @@ export interface MultipartParserOptions {
   /**
    * Maximum bytes of the message, all of it.
    *
-   * Content **and** everything walked to reach it: the preamble, and every
-   * part's headers. It bounds reading rather than delivering, because a sender
-   * that never emits a boundary costs just as much as one that emits content.
+   * Content **and** everything walked to reach it: the preamble, every part's
+   * headers, and the padding after a boundary. It bounds reading rather than
+   * delivering, because a sender that never emits a boundary costs just as
+   * much as one that emits content.
    */
   maxTotalBytes?: number;
 }
@@ -105,10 +108,13 @@ export interface MultipartParserOptions {
  * Written against RFC 2046 §5.1 and RFC 7578, on Web streams only, so one
  * implementation serves node, bun and workerd rather than three that drift.
  *
- * **Memory is flat.** The parser holds one source chunk plus, at most, the
- * length of a delimiter — because a delimiter can straddle two chunks and the
- * tail has to be kept until the next chunk proves it is content. That is the
- * only bookkeeping; the bytes of a part are handed out and forgotten.
+ * **Memory is flat.** While a part's content is read, the parser holds one
+ * source chunk plus, at most, the length of a delimiter, because a delimiter
+ * can straddle two chunks and the tail has to be kept until the next chunk
+ * proves it is content. Between parts it holds a part's headers, up to
+ * `maxHeaderBytes`, or the padding after a boundary, up to
+ * `MAX_PADDING_BYTES`, plus the chunk that carried them. The bytes of a part
+ * are handed out and forgotten.
  *
  * The alternative the platform offers, `Request.formData()`, cannot do this:
  * it yields `File` objects, a `File` is re-readable by specification, and
@@ -119,6 +125,15 @@ export class MultipartStreamParser {
    * RFC 2046 §5.1.1 caps a boundary at 70 characters.
    */
   protected static readonly MAX_BOUNDARY_LENGTH = 70;
+
+  /**
+   * Most spaces and tabs accepted between a delimiter and its CRLF.
+   *
+   * RFC 2046 allows this transport padding and gives it no length. No sender
+   * has a use for more than a few bytes of it, and without a cap it is a
+   * buffer that grows for as long as spaces arrive.
+   */
+  protected static readonly MAX_PADDING_BYTES = 256;
 
   protected static readonly DEFAULTS = {
     maxHeaderBytes: 16 * 1024,
@@ -133,7 +148,8 @@ export class MultipartStreamParser {
   protected readonly maxTotalBytes: number;
 
   /**
-   * Unconsumed bytes. Never larger than one chunk plus a delimiter.
+   * Unconsumed bytes: one chunk plus a delimiter while content is read, one
+   * chunk plus a part's headers or a boundary's padding between parts.
    */
   protected buffer: Uint8Array = new Uint8Array(0);
   protected reader?: ReadableStreamDefaultReader<Uint8Array>;
@@ -155,7 +171,7 @@ export class MultipartStreamParser {
    * Reads the boundary out of a `Content-Type` header.
    *
    * Returns `undefined` rather than throwing when the header is not multipart
-   * at all — that is a routing question, not a parse error.
+   * at all: that is a routing question, not a parse error.
    */
   public boundaryOf(
     contentType: string | undefined | null,
@@ -187,7 +203,8 @@ export class MultipartStreamParser {
    *
    * The generator and each part's `data` share one cursor over the source, so
    * they cannot be consumed out of order: advancing to the next part drains
-   * whatever the caller left, because the next delimiter lies past it.
+   * whatever the caller left, unread or half read, because the next delimiter
+   * lies past it.
    */
   public async *parse(
     body: ReadableStream<Uint8Array>,
@@ -202,7 +219,7 @@ export class MultipartStreamParser {
     // Every delimiter is preceded by CRLF except the very first, which may sit
     // at byte zero. Prepending one lets a single pattern find them all, and
     // costs two bytes instead of a special case that only the first part would
-    // exercise — the case least likely to be covered by a test.
+    // exercise, the case least likely to be covered by a test.
     this.buffer = this.encode("\r\n");
 
     const delimiter = this.encode(`\r\n--${boundary}`);
@@ -234,9 +251,12 @@ export class MultipartStreamParser {
           headers["content-disposition"],
         );
 
-        let drained = false;
-        // oxlint-disable-next-line typescript/no-this-alias -- `[Symbol.asyncIterator]` must be a generator method, whose `this` is the object literal; an arrow cannot be a generator
-        const self = this;
+        let started = false;
+        // One generator for the whole part, shared by the consumer and by the
+        // drain below, so a read that stops early is resumed where it stopped,
+        // with the part's byte count intact. `yield*` would close it on the
+        // consumer's `break`.
+        const content = this.readContent(delimiter);
         const part: MultipartPart = {
           name: disposition.name,
           filename: disposition.filename,
@@ -244,27 +264,33 @@ export class MultipartStreamParser {
           headers,
           data: {
             async *[Symbol.asyncIterator]() {
-              if (drained) {
+              if (started) {
                 throw new MultipartParseError(
-                  "This part's data was already consumed — it is a stream, not a buffer",
+                  "This part's data was already consumed: it is a stream, not a buffer",
                 );
               }
-              drained = true;
-              yield* self.readContent(delimiter);
+              started = true;
+              while (true) {
+                const next = await content.next();
+                if (next.done) {
+                  return;
+                }
+                yield next.value;
+              }
             },
           },
         };
 
         yield part;
 
-        // Whatever the consumer ignored still has to be walked: the next
-        // delimiter is on the far side of it. Dropping the bytes as they pass
-        // costs nothing and keeps a skipped part from being a leak.
-        if (!drained) {
-          drained = true;
-          for await (const _ of this.readContent(delimiter)) {
-            // discarded on purpose
-          }
+        // Whatever the consumer left, a part it ignored or the rest of one it
+        // stopped reading, still has to be walked: the next delimiter is on
+        // the far side of it. Dropping the bytes as they pass costs nothing
+        // and keeps a skipped part from being a leak. A part read to its end
+        // answers `done` at once.
+        started = true;
+        while (!(await content.next()).done) {
+          // discarded on purpose
         }
       }
     } finally {
@@ -313,7 +339,7 @@ export class MultipartStreamParser {
 
       if (!(await this.pull())) {
         throw new MultipartParseError(
-          "body ended inside a part — no closing boundary",
+          "body ended inside a part: no closing boundary",
         );
       }
     }
@@ -340,11 +366,11 @@ export class MultipartStreamParser {
    * Charges bytes against the message budget alone.
    *
    * Separate from {@link count} because the message budget bounds *reading*,
-   * not delivering: a preamble is discarded and a part's headers are never
-   * handed to anyone, yet both are bytes this process was made to walk. Billing
-   * only what reaches a consumer left two ways to spend an unbounded amount
-   * under any budget — a preamble that never reaches a boundary, and headers
-   * spread over many small parts. Neither grows memory, both spin forever, and
+   * not delivering: a preamble and a boundary's padding are discarded and a
+   * part's headers are never handed to anyone, yet all are bytes this process
+   * was made to walk. Billing only what reaches a consumer leaves ways to
+   * spend an unbounded amount under any budget: a preamble that never reaches
+   * a boundary, and headers spread over many small parts. Both spin forever, and
    * `Transfer-Encoding: chunked` carries no `Content-Length` for the cheap
    * pre-check to catch first.
    */
@@ -362,7 +388,8 @@ export class MultipartStreamParser {
    * Reads what follows a delimiter: `--` closes the message, CRLF opens a part.
    *
    * Linear whitespace between the two is tolerated because RFC 2046 allows it,
-   * and a sender that emits it is not worth a failed upload.
+   * and a sender that emits it is not worth a failed upload. It is billed to
+   * the message budget and capped at `MAX_PADDING_BYTES`.
    */
   protected async readDelimiterSuffix(): Promise<"open" | "close"> {
     await this.want(2);
@@ -373,14 +400,20 @@ export class MultipartStreamParser {
     let i = 0;
     while (this.buffer[i] === 0x20 || this.buffer[i] === 0x09) {
       i++;
+      if (i > MultipartStreamParser.MAX_PADDING_BYTES) {
+        throw new MultipartParseError(
+          `a boundary was followed by more than ${MultipartStreamParser.MAX_PADDING_BYTES} bytes of padding`,
+        );
+      }
       if (i >= this.buffer.length && !(await this.pull())) {
         break;
       }
     }
+    this.spend(i);
     // `want` again, and past `i` this time: the one above ran before the
     // whitespace was walked, so it guaranteed two bytes at position 0, not at
     // the CRLF. Reading `buffer[i + 1]` on its word turned a body whose CR and
-    // LF landed in different chunks into a parse error — the same upload
+    // LF landed in different chunks into a parse error, the same upload
     // succeeding or failing on where TCP happened to cut it.
     if (this.buffer.length < i + 2) {
       await this.want(i + 2).catch(() => {
@@ -399,6 +432,10 @@ export class MultipartStreamParser {
 
   /**
    * Reads a part's headers, up to the blank line that ends them.
+   *
+   * `maxHeaderBytes` is checked where the blank line is found as well as while
+   * it is awaited: a header block that arrives whole in one chunk never goes
+   * through the second check.
    */
   protected async readHeaders(): Promise<Record<string, string>> {
     const separator = this.encode("\r\n\r\n");
@@ -406,21 +443,28 @@ export class MultipartStreamParser {
     while (true) {
       const at = this.indexOf(this.buffer, separator);
       if (at >= 0) {
+        if (at + separator.length > this.maxHeaderBytes) {
+          throw this.headerLimit();
+        }
         this.spend(at + separator.length);
         const raw = this.decode(this.buffer.subarray(0, at));
         this.buffer = this.buffer.subarray(at + separator.length);
         return this.parseHeaders(raw);
       }
       if (this.buffer.length > this.maxHeaderBytes) {
-        throw new MultipartLimitError(
-          { limit: this.maxHeaderBytes, kind: "header" },
-          { message: `Part headers exceed ${this.maxHeaderBytes} bytes` },
-        );
+        throw this.headerLimit();
       }
       if (!(await this.pull())) {
         throw new MultipartParseError("body ended inside a part's headers");
       }
     }
+  }
+
+  protected headerLimit(): MultipartLimitError {
+    return new MultipartLimitError(
+      { limit: this.maxHeaderBytes, kind: "header" },
+      { message: `Part headers exceed ${this.maxHeaderBytes} bytes` },
+    );
   }
 
   protected parseHeaders(raw: string): Record<string, string> {
@@ -444,7 +488,7 @@ export class MultipartStreamParser {
    * what senders intend: the plain one is the ASCII fallback they expect to be
    * ignored by anything that understands the encoded form.
    *
-   * Every pattern is anchored to the start of a parameter — `(?:^|;)\s*` —
+   * Every pattern is anchored to the start of a parameter, `(?:^|;)\s*`,
    * rather than searched loose. Unanchored, `name=` matches **inside**
    * `filename=`, so `filename="x"; name="avatar"` reported the field as `x`:
    * legal input, no mandated parameter order, and the sender got to choose
@@ -471,7 +515,7 @@ export class MultipartStreamParser {
       try {
         filename = decodeURIComponent(extended[3].trim());
       } catch {
-        // A malformed percent-encoding is not worth failing an upload over —
+        // A malformed percent-encoding is not worth failing an upload over:
         // the ASCII `filename` is exactly the fallback it exists to be.
       }
     }
@@ -536,7 +580,7 @@ export class MultipartStreamParser {
 
   /**
    * Plain forward search. The haystack is one chunk, so the naive scan is the
-   * right one — an index would cost more to build than it saves.
+   * right one: an index would cost more to build than it saves.
    */
   protected indexOf(haystack: Uint8Array, needle: Uint8Array): number {
     const last = haystack.length - needle.length;

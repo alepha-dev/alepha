@@ -99,7 +99,7 @@ docs = $swagger({
 Each `$action` with a `schema` becomes an OpenAPI operation; an action without one is left out of the document:
 
 - **Operation ID**: The action name (property key or explicit `name`).
-- **Tag**: The action group (class name or explicit `group`). Colons render as separators: group `admin:files` becomes tag `admin / files`, while `excludeTags` still matches the raw `admin:files`.
+- **Tag**: The action group (class name or explicit `group`). Colons render as separators: group `admin:files` becomes tag `admin / files`, and `excludeTags` matches either spelling.
 - **Summary/Description**: From the `summary` and `description` options on `$action`. Importing `alepha/server/swagger` adds `summary`, `hide` and `deprecated` to the `$action` options: `hide: true` drops the operation from the document, `deprecated: true` flags it.
 - **Parameters**: Generated from `schema.params` (path) and `schema.query` (query). A query parameter is `required` unless it is optional or has a default, and a schema's `example` (or first `examples` entry) is carried over.
 - **Request Body**: Generated from `schema.body`. Objects become `application/json`; a body with a `z.file()` or `z.stream()` field becomes `multipart/form-data`, the file as a `binary` string.
