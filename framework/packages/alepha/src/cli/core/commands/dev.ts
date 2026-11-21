@@ -58,7 +58,7 @@ export class DevCommand {
    * Discover apps in the workspace root.
    *
    * Looks for directories under apps/ that contain a package.json.
-   * Supports scoped directories (e.g., apps/@passeo/api).
+   * Supports scoped directories (e.g., apps/@acme/api).
    * Returns empty array if not in a workspace root.
    */
   protected async discoverApps(
@@ -82,7 +82,7 @@ export class DevCommand {
         continue;
       }
 
-      // Check scoped directories (e.g., apps/@passeo/api)
+      // Check scoped directories (e.g., apps/@acme/api)
       const entryStat = await stat(appPath).catch(() => null);
       if (entryStat?.isDirectory()) {
         const scopedEntries = await readdir(appPath);

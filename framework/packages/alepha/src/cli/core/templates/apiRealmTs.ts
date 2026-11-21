@@ -8,7 +8,7 @@ export interface ApiRealmTsOptions {
  * Only features that need nothing but the database are on. `notifications`
  * is the reason the file reads more conservatively than it looks: with it
  * off, `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
- * are *refused* — each can only complete by sending a code, so a realm that
+ * are *refused*: each can only complete by sending a code, so a realm that
  * asks for one without notifications does not boot. Scaffolding them as
  * `true` would produce a project that fails on first run, so they are
  * written as `false` with the one instruction that changes them.
@@ -16,7 +16,7 @@ export interface ApiRealmTsOptions {
  * `adminEmails` reads `ADMIN_EMAIL` rather than carrying a literal. A
  * scaffolded placeholder address is a real address someone else can register
  * and the promotion is automatic, so the address has to come from the
- * environment — and it is per-environment anyway: the admin of your laptop is
+ * environment, and it is per-environment anyway: the admin of your laptop is
  * not the admin of production. Init writes a `.env` with the address from
  * `git config user.email`, so a fresh project has a working admin without an
  * edit; production gets its own value.
@@ -61,7 +61,7 @@ export class Realm {
 
       /**
        * The first registration matching one of these addresses is promoted
-       * to admin — that is how the first admin account is created. Set
+       * to admin: that is how the first admin account is created. Set
        * ADMIN_EMAIL in .env (already done for you locally) and in each
        * deployed environment.
        */
@@ -89,8 +89,8 @@ export class Realm {
 
       /**
        * All three need to send a code, so they stay off until
-       * \`features.notifications\` is on and a mail provider is configured —
-       * $realm forces them to false otherwise.
+       * \`features.notifications\` is on and a mail provider is configured:
+       * a realm that sets one without it refuses to boot.
        */
       verifyEmailRequired: false,
       verifyPhoneRequired: false,

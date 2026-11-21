@@ -9,7 +9,6 @@ import {
   type ConventionRuleFinding,
 } from "../conventions/ConventionRule.ts";
 import { NoDateNowRule } from "../conventions/NoDateNowRule.ts";
-import { AlephaCliServices } from "../index.ts";
 import { ConventionRegistry } from "../services/ConventionRegistry.ts";
 import { ConventionRunner } from "../services/ConventionRunner.ts";
 
@@ -309,14 +308,16 @@ describe("ConventionRunner", () => {
     });
   });
 
-  describe("registration", () => {
-    it("is declared in AlephaCliServices with the registry and the rules", () => {
-      const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with(
-        AlephaCliServices,
-      );
-      const registry = alepha.inject(ConventionRegistry);
-      expect(registry.ids()).toContain("no-date-now");
-      expect(alepha.inject(ConventionRunner)).toBeInstanceOf(ConventionRunner);
+  describe("selecting rules", () => {
+    it("runs a rule named twice once", async () => {
+      const { runner } = await create({ "src/a.ts": "debugger;\n" });
+
+      const report = await runner.run({
+        root: "/app",
+        rules: ["no-debugger", "no-debugger"],
+      });
+
+      expect(report.findings).toHaveLength(1);
     });
   });
 });

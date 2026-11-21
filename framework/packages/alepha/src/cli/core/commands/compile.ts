@@ -1,4 +1,4 @@
-import { $inject, $store, z } from "alepha";
+import { $inject, $store, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
@@ -39,7 +39,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  *
  * ## The options are flags, and there is no `compile:` config key
  *
- * Three settings — the binary name, the Bun triple, minification — and a key
+ * Three settings (the binary name, the Bun triple, minification) and a key
  * nobody sets is worse than three flags. Measured before deciding: no app in
  * this monorepo set `build.compile`, so the rename this would have cost
  * downstream is zero, and the reason to keep it in config (repeating it on
@@ -66,7 +66,7 @@ export class CompileCommand {
       target: z
         .text({
           description:
-            "Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine). ⚠️ A Bun binary is not fully static — the triple picks the libc — so a binary meant for a musl container must say so.",
+            "Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine). ⚠️ A Bun binary is not fully static: the triple picks the libc, so a binary meant for a musl container must say so.",
         })
         .optional(),
       minify: z
@@ -83,7 +83,7 @@ export class CompileCommand {
     handler: async ({ flags, root, run }) => {
       const name = flags.output ?? "app";
       if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) {
-        throw new (await import("alepha")).AlephaError(
+        throw new AlephaError(
           `Invalid binary name '${name}': use lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit.`,
         );
       }

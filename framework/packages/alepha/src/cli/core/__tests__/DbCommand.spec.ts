@@ -35,11 +35,19 @@ class TestDbCommand extends DbCommand {
     this.formatGeneratedMigrations.bind(this);
   public testPrepareDrizzleOrmResolution =
     this.prepareDrizzleOrmResolution.bind(this);
+  public testQuoteShellArg = this.quoteShellArg.bind(this);
   public readonly testBaselineMark = this.baselineMark;
   public readonly testDoctor = this.doctor;
   public readonly testCreate = this.create;
   public testFindRepositoryProvider = this.findRepositoryProvider.bind(this);
   public testRequireDatabase = this.requireDatabase.bind(this);
+}
+
+/**
+ * Exposes the parser a command string goes through on its way to a child.
+ */
+class TestShellProvider extends NodeShellProvider {
+  public testParseCommand = this.parseCommand.bind(this);
 }
 
 /**
@@ -864,6 +872,24 @@ describe("DbCommand", () => {
         );
       });
 
+      it("audits the sqlite database when --provider says d1", async () => {
+        const { alepha, utils, cli, cmd } = createWithUserApp();
+        const fs = alepha.inject(MemoryFileSystemProvider);
+        await fs.writeFile("/project/src/main.server.ts", "export default {};");
+        const { sql } = await import("alepha/orm");
+        utils.userAlepha = await userAppWith(async (provider) => {
+          await provider.execute(
+            sql.raw(`INSERT INTO "gauges" ("level") VALUES ('high')`),
+          );
+        });
+
+        await expect(
+          cli.run(cmd.testDoctor, { root: "/project", argv: "--provider d1" }),
+        ).rejects.toThrow(
+          /1 column\(s\) hold values of the wrong storage class/,
+        );
+      });
+
       it("prints the statements instead of running them with --print", async () => {
         const { alepha, utils, cli, cmd } = createWithUserApp();
         const fs = alepha.inject(MemoryFileSystemProvider);
@@ -902,6 +928,55 @@ describe("DbCommand", () => {
       await expect(
         cli.run(cmd.testBaselineMark, { root: "/project", argv: "" }),
       ).rejects.toThrow(/alepha infra db baseline mark/);
+    });
+
+    /**
+     * `--provider` names a migrations folder, and `d1` names `sqlite/`'s, as
+     * it does for `migrations check` and `migrations create`. Compared raw
+     * against the provider's name it matched nothing, and the command
+     * resolved having done nothing.
+     */
+    it("reads --provider d1 as the sqlite folder, and still redirects", async () => {
+      const { alepha, utils, cli, cmd } = createWithUserApp();
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      await fs.writeFile("/project/src/main.server.ts", "export default {};");
+
+      const userAlepha = Alepha.create({ env: { DATABASE_URL: "d1://DB" } });
+      class App {
+        widgets = $repository(widgets);
+      }
+      userAlepha.inject(App);
+      utils.userAlepha = userAlepha;
+
+      await expect(
+        cli.run(cmd.testBaselineMark, {
+          root: "/project",
+          argv: "--provider d1",
+        }),
+      ).rejects.toThrow(/alepha infra db baseline mark/);
+    });
+
+    it("refuses an unknown --provider instead of doing nothing", async () => {
+      const { alepha, utils, cli, cmd } = createWithUserApp();
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      await fs.writeFile("/project/src/main.server.ts", "export default {};");
+
+      const userAlepha = Alepha.create({ env: { DATABASE_URL: "d1://DB" } });
+      class App {
+        widgets = $repository(widgets);
+      }
+      userAlepha.inject(App);
+      utils.userAlepha = userAlepha;
+
+      await expect(
+        cli.run(cmd.testBaselineMark, {
+          root: "/project",
+          argv: "--provider typo",
+        }),
+      ).rejects.toThrow(/Unknown --provider 'typo'/);
+      await expect(
+        cli.run(cmd.testDoctor, { root: "/project", argv: "--provider typo" }),
+      ).rejects.toThrow(/Unknown --provider 'typo'/);
     });
 
     /**
@@ -968,13 +1043,23 @@ describe("DbCommand", () => {
         rmSync(root, { recursive: true, force: true });
       }
     });
+  });
 
-    it("no longer declares a --reset flag", () => {
-      const { cmd } = createWithUserApp();
+  describe("quoting a value into a command string", () => {
+    /**
+     * The string is split by the shell provider's parser, not by a shell: it
+     * toggles on quotes and knows no backslash escape.
+     */
+    it("survives the parser with an apostrophe, a space and a double quote", () => {
+      const { db } = create();
+      const shell = Alepha.create().inject(TestShellProvider);
 
-      const shape = (cmd.testBaselineMark.flags as unknown as { shape: object })
-        .shape;
-      expect(Object.keys(shape)).not.toContain("reset");
+      for (const value of ["it's", "a b", 'say "hi"', `[{"a":"it's"}]`, "'"]) {
+        expect(
+          shell.testParseCommand(`cmd --name=${db.testQuoteShellArg(value)}`),
+          value,
+        ).toEqual(["cmd", `--name=${value}`]);
+      }
     });
   });
 

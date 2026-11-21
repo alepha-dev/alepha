@@ -12,7 +12,7 @@ import {
  * `z.integer()`), and a second copy of zod produces schemas that are not
  * type-compatible with it: an `$action` typed with one refuses the other.
  *
- * Tests are out of scope (`*.spec.*`, `__tests__/`, `test/`, `e2e/`,
+ * Tests are out of scope (`*.spec.*`, `*.test.*`, `__tests__/`, `test/`, `tests/`, `e2e/`,
  * `fixtures/`), as for the other core rules.
  */
 export class NoZodImportRule extends ConventionRule {

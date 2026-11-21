@@ -18,7 +18,7 @@ import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
  *
  * A Bun `--compile` binary is NOT fully static: the target triple picks the
  * libc. Put a glibc binary on `scratch` or on `distroless/static` (which
- * carries no libc at all) and the result is not a build failure — it is an
+ * carries no libc at all) and the result is not a build failure: it is an
  * image whose binary exits immediately, with an error saying nothing about
  * why.
  *
@@ -203,7 +203,7 @@ describe("alepha image, choosing a Bun triple for a base", () => {
    * WAS the default base, and a Bun binary could never have run on it: the
    * binary is dynamically linked under every triple, needing an interpreter,
    * `libstdc++` and `libgcc`. What that produced was
-   * `exec /app/app: no such file or directory` — an error naming a file that
+   * `exec /app/app: no such file or directory`: an error naming a file that
    * is right there, from a container that simply stops.
    *
    * No triple fixes a base with no libc, so it is refused rather than

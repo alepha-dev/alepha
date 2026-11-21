@@ -270,7 +270,7 @@ describe("alepha init --preset", () => {
 
     /**
      * AGENTS.md opens with "Every Alepha project has the same layout. There
-     * are no variants" — true of the skeleton, and misleading in a project
+     * are no variants", true of the skeleton, and misleading in a project
      * that also has a realm and three mounted routers. An agent that never
      * learns about `Realm.ts` edits the wrong file to change auth settings.
      */
@@ -288,7 +288,7 @@ describe("alepha init --preset", () => {
 
     /**
      * The templates are strings, so every other test here proves only that we
-     * wrote the specifier we meant to write — not that anything answers to it.
+     * wrote the specifier we meant to write, not that anything answers to it.
      * A router moved or dropped from its module inside `@alepha/ui` would
      * leave all of them green and ship a preset whose generated project does
      * not compile.
@@ -390,7 +390,7 @@ describe("alepha init --preset", () => {
   //
   // `alepha verify` runs `db migrations check` unconditionally, and in
   // production `DatabaseProvider.migrate()` creates nothing when there is no
-  // `migrations/` directory — it warns and returns. A preset that declares
+  // `migrations/` directory: it warns and returns. A preset that declares
   // entities and generates no migration therefore scaffolds a project that
   // fails its own documented CI command and, if deployed anyway, boots green
   // and 500s on its first query. The baseline is generated here so neither is
@@ -456,7 +456,7 @@ describe("alepha init --preset", () => {
      * dirties a project they have not touched.
      *
      * (That it also lands before `git add .` is structural rather than
-     * asserted here — `git init` and `git add` go through
+     * asserted here: `git init` and `git add` go through
      * `AlephaCliUtils.exec`, which this provider does not record.)
      */
     it("should generate it after install and before the lint pass", async () => {
@@ -496,8 +496,8 @@ describe("alepha init --preset", () => {
     });
 
     /**
-     * Expo owns its own client runtime, so `init` skips the web module for it
-     * — and all three saas routers are React pages. Failing loudly beats
+     * Expo owns its own client runtime, so `init` skips the web module for it,
+     * and all three saas routers are React pages. Failing loudly beats
      * scaffolding an api-only project that silently ignored the flag.
      */
     it("should refuse the saas preset in an expo project", async () => {
@@ -546,7 +546,9 @@ describe("alepha init --preset", () => {
         expect(agents).toContain("// alepha-allow <rule>: <reason>");
         expect(agents).toContain("npx alepha check --list");
         // Said once, by no-zod-import, not twice.
-        expect(agents).not.toContain("never `zod` directly");
+        expect(
+          agents.split("\n").filter((line) => /\bzod\b/.test(line)),
+        ).toHaveLength(1);
       });
     }
   });

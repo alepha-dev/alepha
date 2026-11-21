@@ -5,13 +5,13 @@ import { type Infer, z } from "alepha";
  *
  * Two, and deliberately not more. Every project still gets the same API +
  * web + Tailwind skeleton; a preset only decides whether the identity surface
- * — auth, account, admin — is scaffolded with it or added by hand later. The
+ * (auth, account, admin) is scaffolded with it or added by hand later. The
  * argument the old `--api` / `--react` / `--tailwind` flags lost still holds
  * for everything below that line: a code base that looks different in every
  * repository costs more than the scaffolding it saves.
  *
- * - `default` — API module, web module, Tailwind. Nothing to configure.
- * - `saas` — the above plus `@alepha/ui`, `AuthRouter`, `AccountDialog`,
+ * - `default`: API module, web module, Tailwind. Nothing to configure.
+ * - `saas`: the above plus `@alepha/ui`, `AuthRouter`, `AccountDialog`,
  *   `AdminRouter`, a layout with a `DialogProvider`, and the `$realm` that
  *   backs them.
  */

@@ -18,7 +18,7 @@ import {
  *   `describe`, and the parser cannot tell where it is called from.
  * - A case inside a top-level loop or `if` IS reported: it is still at the
  *   top level of the file.
- * - Playwright files are exempt, by path (`e2e/`, `*.e2e.ts(x)`) and by
+ * - Playwright files are exempt, by path (`e2e/`) and by
  *   import (any file importing `@playwright/test`): Playwright's API is
  *   `test`, with no `it` to move to.
  *
@@ -31,11 +31,7 @@ export class DescribeItRule extends ConventionRule {
     'Wrap the cases in describe("<unit>", () => { ... }) and write each one as it().';
 
   public appliesTo(relativePath: string): boolean {
-    return (
-      this.isSpecFile(relativePath) &&
-      !/(^|\/)e2e\//.test(relativePath) &&
-      !/\.e2e\.tsx?$/.test(relativePath)
-    );
+    return this.isSpecFile(relativePath) && !/(^|\/)e2e\//.test(relativePath);
   }
 
   public check(file: ConventionFile, program: any): ConventionRuleFinding[] {
@@ -66,8 +62,8 @@ export class DescribeItRule extends ConventionRule {
   }
 
   /**
-   * Whether a case sits inside a `describe` callback, or inside any other
-   * function (see the class's edge decisions).
+   * Whether a case sits inside any function: a `describe` callback, or any
+   * other one (see the class's edge decisions).
    */
   protected isEnclosed(parents: any[]): boolean {
     return parents.some(

@@ -1,5 +1,4 @@
 import { $inject, AlephaError } from "alepha";
-import type { AlephaMeta } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -18,7 +17,7 @@ import { StaticImageBundler } from "./StaticImageBundler.ts";
  */
 export interface ImageContext {
   /**
-   * The app directory — where `alepha.config.ts` lives, and where a generated
+   * The app directory, where `alepha.config.ts` lives, and where a generated
    * Dockerfile lands so the author can commit and edit it.
    */
   root: string;
@@ -77,8 +76,6 @@ export interface ImageContext {
   push?: boolean;
 
   run: RunnerMethod;
-
-  meta?: AlephaMeta;
 }
 
 /**
@@ -107,7 +104,8 @@ interface ResolvedCompile {
  * Creates:
  * - Dockerfile (compile or standard variant)
  * - Copies migrations directory if it exists
- * - Builds Docker image when `--tag` flag is provided (standard mode)
+ * - Builds the Docker image, in both modes, unless `--dockerfile` asked
+ *   for the file alone
  */
 export class DockerImageBuilder {
   protected readonly slices = $inject(BuildSlices);
@@ -124,7 +122,7 @@ export class DockerImageBuilder {
    * ## ⚠️ It was `distroless/static-debian12`, and that never worked
    *
    * Measured, because the failure is invisible from the build side. A Bun
-   * `--compile` binary is **not static at all** — not with the musl triple
+   * `--compile` binary is **not static at all**, not with the musl triple
    * either:
    *
    * ```
@@ -137,8 +135,8 @@ export class DockerImageBuilder {
    * ```
    *
    * `distroless/static` carries no libc, so the binary could never start
-   * there. What that looks like is `exec /app/app: no such file or directory`
-   * — an error naming a file that plainly exists, from a container that just
+   * there. What that looks like is `exec /app/app: no such file or directory`,
+   * an error naming a file that plainly exists, from a container that just
    * stops. Nothing about it points at a base image.
    *
    * `cc-debian12` is the same distroless family plus glibc, `libstdc++` and
@@ -192,7 +190,7 @@ export class DockerImageBuilder {
    * ⚠️ Called by `alepha image` before it compiles: a check that ran after a
    * compile of several minutes would be a bad error.
    */
-  async preflight(ctx: {
+  public async preflight(ctx: {
     root: string;
     distDir: string;
     sbom?: boolean;
@@ -257,7 +255,7 @@ export class DockerImageBuilder {
   /**
    * Write the Dockerfile when the app owns none, then build the image.
    */
-  async run(ctx: ImageContext): Promise<void> {
+  public async run(ctx: ImageContext): Promise<void> {
     const distDir = ctx.distDir;
     const compile = this.resolveCompile(ctx);
 
@@ -290,14 +288,14 @@ export class DockerImageBuilder {
         if (owned) {
           /*
             ⚠️ **Reused untouched, and a mismatch WARNS rather than fails.**
-            The file is the author's once it exists — that is the whole point
+            The file is the author's once it exists: that is the whole point
             of generating it into the app directory rather than into `dist/`,
             which the build wipes. Failing on a difference would make an
             intentional edit feel like a bug.
 
             The warning exists only so the drift is not silent: a committed
-            Dockerfile stops tracking `runtimeVersion` the moment
-            `engines.node` moves, and nothing else would ever say so.
+            Dockerfile stops tracking the build the moment its runtime or its
+            entry moves, and nothing else would ever say so.
           */
           await this.warnOnDrift(dockerfile, ctx);
           return;
@@ -370,7 +368,10 @@ export class DockerImageBuilder {
   protected dockerfileHeaderFacts(ctx: ImageContext): Record<string, string> {
     return {
       runtime: ctx.runtime,
-      entry: ctx.compile ?? this.entryOf(ctx),
+      // The compiled entry is the path `ENTRYPOINT` runs, not the bare binary
+      // name: `app`, the default, is in every `WORKDIR /app`, so a standard
+      // Dockerfile would pass for a compiled one.
+      entry: ctx.compile ? `/app/${ctx.compile}` : this.entryOf(ctx),
     };
   }
 
@@ -385,12 +386,11 @@ export class DockerImageBuilder {
   }
 
   /**
-   * The binary's name from `build.compile`, and the base image: distroless
-   * unless `docker.from` names another. Returns null when compile mode is
-   * disabled.
+   * The binary's name from `alepha image --compile`, and the base image:
+   * distroless unless `image.from` names another. Returns null when compile
+   * mode is disabled.
    *
-   * The flag and the config were already merged and validated by the build
-   * command (runtime, target, binary name); this only reads the result.
+   * The name was validated by the command; this only reads the result.
    */
   protected resolveCompile(ctx: ImageContext): ResolvedCompile | null {
     const name = ctx.compile;
@@ -407,8 +407,8 @@ export class DockerImageBuilder {
   /**
    * The user the container process runs as.
    *
-   * The standard variant defaults to uid 1000 — present in both official
-   * bases (`node:x:1000:1000`, `bun:x:1000:1000`) — so a public image does
+   * The standard variant defaults to uid 1000, present in both official
+   * bases (`node:x:1000:1000`, `bun:x:1000:1000`), so a public image does
    * not serve HTTP as root. Emitted numerically rather than by name because
    * `image.from` is a supported override and `USER node` fails the
    * build outright on a base without that user.
@@ -447,15 +447,19 @@ export class DockerImageBuilder {
   }
 
   /**
-   * Escape a value for a Dockerfile `ENV key="value"` line.
+   * Escape a value for a Dockerfile `ENV key="value"` or `LABEL` line.
    *
    * An unescaped space, quote or backslash produces a Dockerfile that
    * builds fine and sets the wrong thing, which is worse than a build
    * failure. JSON string syntax is a subset of what the Dockerfile parser
    * accepts for a double-quoted word.
+   *
+   * ⚠️ A double-quoted word still gets `$VAR` and `${VAR}` substituted at
+   * build time, so a `$` is escaped too: the container receives the value as
+   * it was configured.
    */
   protected escapeEnvValue(value: string): string {
-    return JSON.stringify(value);
+    return JSON.stringify(value).replaceAll("$", "\\$");
   }
 
   /**
@@ -553,7 +557,7 @@ export class DockerImageBuilder {
   /**
    * Whether the produced `dist/package.json` declares any runtime
    * dependencies. Alepha apps normally bundle everything into the
-   * server entry via Vite, leaving `dependencies: {}` — in which case
+   * server entry via Vite, leaving `dependencies: {}`, in which case
    * the generated Dockerfile's `RUN npm install` is wasted work
    * (and emits deprecation noise). Skip the line when empty.
    */
@@ -677,7 +681,7 @@ ENTRYPOINT ["/app/${opts.compile.name}"]
         ? ""
         : ` --chown=${this.chownSpec(opts.user as string)}`;
       // Skip `RUN <pm> install` when `dist/package.json` declares no
-      // runtime deps — Alepha apps normally bundle everything via Vite,
+      // runtime deps: Alepha apps normally bundle everything via Vite,
       // making the install a no-op that just emits deprecation noise.
       const baseInstallLine = opts.hasDeps
         ? `RUN ${command === "bun" ? "bun" : "npm"} install\n`
@@ -688,7 +692,7 @@ ENTRYPOINT ["/app/${opts.compile.name}"]
       // module resolution walks up into `/app/node_modules/` when the
       // workspace lives under `/app/workspace/<deploy-id>/`.
       const extraInstallLine = opts.install.length
-        ? `RUN npm install --no-save --no-fund --no-audit ${opts.install.join(" ")}\n`
+        ? `RUN ${command === "bun" ? "bun add --no-save" : "npm install --no-save --no-fund --no-audit"} ${opts.install.join(" ")}\n`
         : "";
       // Both install lines and the volume prep need root, so `USER` lands
       // last, just above the command.
@@ -707,7 +711,7 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
     }
 
     /*
-      ⚠️ **In the APP directory, beside `alepha.config.ts`** — not in `dist/`,
+      ⚠️ **In the APP directory, beside `alepha.config.ts`**, not in `dist/`,
       which `alepha build` wipes on every run. A file that cannot survive a
       build cannot be committed or edited, and this one is meant to be both.
 
@@ -728,18 +732,14 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
    *
    * ⚠️ Emitted UNCONDITIONALLY, and deliberately not through
    * {@link staticOciLabels}: that one returns nothing unless
-   * `image.image.oci` is set, so routing this through it would mean
+   * `image.oci` is set, so routing this through it would mean
    * an app that never opted into OCI annotations ships an image whose push
    * is refused for a missing label, for a reason nothing in its config
    * explains. This label is Alepha's contract with its own registry, not an
    * annotation the user opts into.
    *
-   * Only `node` and `bun` are reachable here: {@link run} returns early on
-   * any target but `docker`, so `static` (which comes from
-   * `target: "static"`) never gets this far. `workerd` is technically
-   * reachable and deliberately left so — a Worker in a container is refused
-   * at push time, where the refusal can name itself, rather than at build
-   * time, which would be a behaviour change of its own.
+   * `node`, `bun` and `static` reach this. A `workerd` primary is refused by
+   * `alepha image` before the builder runs.
    */
   protected runtimeLabel(ctx: ImageContext): Record<string, string> {
     // Same resolution BuildManifestTask uses, so the label and the
@@ -789,7 +789,7 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
    * `--label` arguments for the annotations that describe THIS build rather
    * than the source: the git revision, the build timestamp, and the version
    * taken from the resolved image tag. The config-driven ones are in the
-   * Dockerfile — see {@link staticOciLabels}.
+   * Dockerfile: see {@link staticOciLabels}.
    */
   protected async buildOciLabelArgs(version: string): Promise<string[]> {
     const labels: Record<string, string | undefined> = {
@@ -812,21 +812,20 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
    *
    * Names arrive FULLY QUALIFIED. This used to prepend
    * `org.opencontainers.image.` to every key it was handed, which made it
-   * impossible to render a label from any other namespace — and
+   * impossible to render a label from any other namespace, and
    * `dev.alepha.runtime` is one.
    */
   protected renderLabels(labels: Record<string, string>): string {
     return Object.entries(labels)
       .map(
         ([name, value]) =>
-          `LABEL ${JSON.stringify(name)}=${JSON.stringify(value)}\n`,
+          `LABEL ${JSON.stringify(name)}=${this.escapeEnvValue(value)}\n`,
       )
       .join("");
   }
 
   /**
-   * `docker build` the image. Public because in compile
-   * mode `BuildCompileTask` calls it once the binary exists.
+   * `docker build` the image.
    */
   public async buildDockerImage(
     ctx: ImageContext,
@@ -855,12 +854,16 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
     } else if (flagValue.includes(":")) {
       // A full `name:tag` is taken verbatim.
       imageTag = flagValue;
-      // The last colon: `registry:5000/app:1.2` carries one in the host.
-      version = flagValue.slice(flagValue.lastIndexOf(":") + 1);
+      // The last colon, and only past the last slash: `registry:5000/app:1.2`
+      // carries one in the host, and `registry:5000/app` carries no tag.
+      const colon = flagValue.lastIndexOf(":");
+      version =
+        colon > flagValue.lastIndexOf("/")
+          ? flagValue.slice(colon + 1)
+          : "latest";
     } else {
-      // A bare value is a VERSION, as the flag documents ("-i=<version> for
-      // specific version"). It used to become the image *name*, so
-      // `--tag=1.3.4` silently built `1.3.4:latest`.
+      // A bare value is a VERSION, as `--tag` documents. Taken as the image
+      // *name*, `--tag=1.3.4` would silently build `1.3.4:latest`.
       if (!imageConfig?.tag) {
         throw new AlephaError(
           "Flag '--tag=<version>' requires 'image.tag' in config. Pass a full 'name:tag' to name the image explicitly.",
@@ -885,7 +888,7 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
       ⚠️ **The Dockerfile is in the app directory, the CONTEXT is `dist/`.**
       Both halves matter. The file has to live where it can be committed and
       edited, and the context has to be `dist/` so the Dockerfile's `COPY . .`
-      keeps meaning the built output — a context of the app directory would
+      keeps meaning the built output: a context of the app directory would
       drag `src/` and `node_modules/` into every build.
     */
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");

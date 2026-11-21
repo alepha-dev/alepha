@@ -27,7 +27,7 @@ import { TestCommand } from "../test.ts";
  *   naming both of them work at all.
  */
 describe("TestCommand", () => {
-  const argv = async (flags: string) => {
+  const argv = async (flags: string | string[]) => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
@@ -47,6 +47,16 @@ describe("TestCommand", () => {
     expect(command).toContain(" run");
     expect(command).not.toContain("--coverage");
     expect(command).not.toContain("--reporter");
+  });
+
+  /**
+   * The command is one string, split on spaces on its way to the child: a
+   * path with a space has to be quoted to stay one argument.
+   */
+  it("keeps a --config path with a space in one argument", async () => {
+    const command = await argv(["--config", "my dir/vitest.config.ts"]);
+
+    expect(command).toContain(' run --config="my dir/vitest.config.ts"');
   });
 
   describe("--coverage", () => {

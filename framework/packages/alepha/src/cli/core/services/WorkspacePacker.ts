@@ -82,7 +82,7 @@ export interface WorkspacePackResult {
  * artifact produced from here on has this shape. A consumer meeting the old
  * one should say so and ask for a redeploy, which is what Bay does.
  *
- * No source, no `alepha.config.ts`, no `package.json`  -  the deploy side reads
+ * No source, no `alepha.config.ts`, no `package.json`: the deploy side reads
  * everything from `manifest.json` and never touches source.
  *
  * ## ⚠️ zstd, with a pinned window, and why that is not a detail
@@ -139,8 +139,8 @@ export class WorkspacePacker {
   /**
    * Include list: the CONTENTS of `dist/`, plus `migrations/` as a directory.
    *
-   * ⚠️ These are no longer two equivalent entries. `dist` is unwrapped  -  its
-   * contents land at the archive root  -  while `migrations` keeps its name,
+   * ⚠️ These are no longer two equivalent entries. `dist` is unwrapped (its
+   * contents land at the archive root) while `migrations` keeps its name,
    * because a deployer looks for `migrations/<dialect>` relative to the root.
    * {@link tarArguments} is where that asymmetry is expressed; this list only
    * says what to look for.
@@ -183,8 +183,8 @@ export class WorkspacePacker {
    * to read the archive back has to slugify the same way, and the two copies
    * that used to exist were held together by a comment.
    *
-   * `platform-lib`'s `NamingService` does the same thing for cloud resource
-   * names, but `cli/core` must not depend on `platform-lib`  -  the dependency
+   * `infra-lib`'s `NamingService` does the same thing for cloud resource
+   * names, but `cli/core` must not depend on `infra-lib`: the dependency
    * runs the other way.
    */
   public slugify(name: string): string {
@@ -203,6 +203,11 @@ export class WorkspacePacker {
     const { root } = options;
     const project = await this.resolveName(root, options.name);
     const tag = options.tag ?? "latest";
+    if (!this.namePattern.test(tag)) {
+      throw new AlephaError(
+        `Invalid --tag "${tag}": the artifact filename is built from it, so it must be a single filename segment matching ${this.namePattern}.`,
+      );
+    }
     const outputDir = options.output ?? root;
     const filename = `${project}-${tag}.tar.zst`;
     const outputPath = this.fs.join(outputDir, filename);
@@ -236,7 +241,7 @@ export class WorkspacePacker {
    * `-C <root> migrations` steps back out and adds that one as a named
    * directory. Both GNU and BSD tar read it this way.
    *
-   * The alternative  -  `tar -C dist .` then a second archive appended  -  needs
+   * The alternative, `tar -C dist .` then a second archive appended, needs
    * `-r`, which no compressed stream supports.
    */
   protected tarArguments(root: string, includes: string[]): string {
@@ -245,14 +250,23 @@ export class WorkspacePacker {
       if (include === "dist") {
         // Unwrapped: its contents ARE the archive root.
         parts.push(
-          `-C '${this.fs.join(root, this.build.output?.dist ?? "dist")}' .`,
+          `-C ${this.quote(this.fs.join(root, this.build.output?.dist ?? "dist"))} .`,
         );
       } else {
         // Named, because a deployer looks for `migrations/<dialect>`.
-        parts.push(`-C '${root}' '${include}'`);
+        parts.push(`-C ${this.quote(root)} ${this.quote(include)}`);
       }
     }
     return parts.join(" ");
+  }
+
+  /**
+   * One word of the `sh -c` script, single-quoted. A quote inside the value
+   * closes the word, adds an escaped quote and opens it again, the POSIX
+   * idiom, so a path holding `'`, `"`, `$` or a space stays one argument.
+   */
+  protected quote(value: string): string {
+    return `'${value.replace(/'/g, "'\\''")}'`;
   }
 
   /**
@@ -260,7 +274,7 @@ export class WorkspacePacker {
    *
    * ⚠️ **Not `tar --zstd`.** That needs GNU tar 1.31+ on every machine that
    * packs, which macOS does not have, and it exposes no way to set
-   * `windowLog`  -  which would make {@link ArchiveCompressor.WINDOW_LOG} unenforceable and
+   * `windowLog`, which would make {@link ArchiveCompressor.WINDOW_LOG} unenforceable and
    * the dedup silently absent.
    *
    * ⚠️ **Not an in-memory buffer either.** Lore's uncompressed archive is
@@ -280,14 +294,19 @@ export class WorkspacePacker {
       which slip in via `dist/`.
     */
     const excludes = WorkspacePacker.EXCLUDES.map(
-      (p) => `--exclude='${p}'`,
+      (p) => `--exclude=${this.quote(p)}`,
     ).join(" ");
 
     const tarPath = `${outputPath}.tar`;
-    // Wrap in `sh -c` so the env-var assignment is interpreted by the
-    // shell instead of being parsed as the binary name.
+    // `sh -c` so the env-var assignment is interpreted by the shell instead
+    // of being taken as the binary name. The script is ONE argv entry, so
+    // only `sh` parses it and {@link quote} is the only quoting it needs.
     await this.shell.run(
-      `sh -c "COPYFILE_DISABLE=1 tar -cf '${tarPath}' ${excludes} ${operands}"`,
+      [
+        "sh",
+        "-c",
+        `COPYFILE_DISABLE=1 tar -cf ${this.quote(tarPath)} ${excludes} ${operands}`,
+      ],
       { root },
     );
 
@@ -357,7 +376,7 @@ export class WorkspacePacker {
 
     if (!includes.includes("dist")) {
       throw new AlephaError(
-        "dist/ missing  -  run `alepha build` before `alepha pack`.",
+        "dist/ missing: run `alepha build` before `alepha pack`.",
       );
     }
     const manifestPath = this.fs.join(
@@ -367,7 +386,7 @@ export class WorkspacePacker {
     );
     if (!(await this.fs.exists(manifestPath))) {
       throw new AlephaError(
-        `dist/manifest.json missing  -  required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build\`).`,
+        `dist/manifest.json missing: it is required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build\`).`,
       );
     }
 
@@ -378,7 +397,7 @@ export class WorkspacePacker {
     // It is a real shape, not a hypothetical: in a monorepo the migrations
     // often live in a shared package (`packages/server/migrations`) while the
     // deployable workspace is `apps/<name>`, and a self-hosted runtime
-    // resolves `migrations/<dialect>` relative to its own working directory  -
+    // resolves `migrations/<dialect>` relative to its own working directory,
     // so only what `pack` includes ever exists.
     const manifest = await this.manifestReader.read(manifestPath);
     if (manifest.resources?.hasDatabase && !includes.includes("migrations")) {
@@ -386,8 +405,8 @@ export class WorkspacePacker {
         "This app declares a database but there is no `migrations/` next to " +
           "`dist/`, so the artifact would deploy with no schema and fail at " +
           "runtime with missing tables.\n\n" +
-          "Generate them with `alepha db migrations create`, or  -  if they live " +
-          "in another workspace  -  make them reachable from this one before " +
+          "Generate them with `alepha db migrations create`, or, if they live " +
+          "in another workspace, make them reachable from this one before " +
           "packing.",
       );
     }

@@ -62,14 +62,15 @@ layout's \`children\`. Options go through \`adminRouterOptionsAtom\` /
 
 \`src/api/Realm.ts\` is the switchboard for all of it:
 
-- \`settings.adminEmails\`  -  the first registration matching one of these is
-  promoted to admin. It reads \`ADMIN_EMAIL\`; init wrote your \`git config
-user.email\` into \`.env\`, so registering with that address locally makes you
-  admin. Every deployed environment must set its own \`ADMIN_EMAIL\`, and one
+- \`settings.adminEmails\`: the first registration matching one of these is
+  promoted to admin. It reads \`ADMIN_EMAIL\`; init wrote your
+  \`git config user.email\` into \`.env\`, so registering with that address
+  locally makes you admin. Every deployed environment must set its own \`ADMIN_EMAIL\`, and one
   that does not promotes nobody.
-- \`features\`  -  \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
-  \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
-  on registers its module _and_ makes its admin/account screens appear.
+- \`features\`: \`apiKeys\` is on; \`notifications\`, \`avatars\`,
+  \`parameters\` and \`oauth\` each need a provider first. Turning one on
+  registers its module _and_ makes its admin/account screens appear. Audits
+  and jobs are not features: they always run.
 - \`verifyEmailRequired\` / \`verifyPhoneRequired\` / \`resetPasswordAllowed\`
   each need \`features.notifications\`, because each completes by sending a
   code. Setting one without it refuses to boot rather than running with the
@@ -101,7 +102,7 @@ entities, reads its logs, emails and rows, and calls an action as a test user.
 
 ## Structure
 
-Every Alepha project has the same layout. There are no variants  -  put new
+Every Alepha project has the same layout. There are no variants: put new
 code where this table says it goes. Directories marked \`(create)\` are not
 scaffolded, because there is nothing to put in them yet; create them under
 that exact name when you write the first file.
@@ -115,7 +116,7 @@ src/
 │   ├── schemas/          # Request/response schemas${
       opts.saas
         ? `
-│   ├── Realm.ts          # $realm  -  auth settings & features`
+│   ├── Realm.ts          # $realm: auth settings & features`
         : ""
     }
 │   └── index.ts          # ApiModule ($module)
@@ -129,10 +130,10 @@ src/
 \`\`\`
 
 \`src/api/\` and \`src/web/\` each have an \`index.ts\` exporting the \`$module\`
-that groups everything below it  -  register new services there. The
+that groups everything below it: register new services there. The
 subdirectories are plain folders; they have no \`index.ts\` of their own.
 
-Tailwind is already wired up through \`vite.config.ts\`  -  style with utility
+Tailwind is already wired up through \`vite.config.ts\`: style with utility
 classes, don't add another CSS framework. The scaffolded home page renders
 \`GettingStarted\` from the framework and carries no classes of its own, so
 there is no house style to match: the first component you write sets it.
@@ -192,7 +193,7 @@ ${saas}
 ## Testing
 
 - Specs live in \`test/\`, named \`*.spec.ts\`.
-- Run with \`alepha test\` (Vitest, embedded in alepha  -  nothing to install).
+- Run with \`alepha test\` (Vitest, embedded in alepha: nothing to install).
 - \`test/dummy.spec.ts\` is the starting example; \`Alepha.create()\` is the
   entry point and \`.inject(...)\` resolves providers.
 

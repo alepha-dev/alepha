@@ -38,7 +38,7 @@ describe("VerifyCommand", () => {
     it("should detect co-located specs under src/", async () => {
       // Gating on `test/` alone meant a project using the framework's own
       // co-located convention got a green `alepha verify` with zero tests
-      // executed — the pipeline reported success without running anything.
+      // executed: the pipeline reported success without running anything.
       const { verify, fs } = create();
       await fs.mkdir("/app/src/users", { recursive: true });
       await fs.writeFile("/app/src/users/UserService.ts", "export {};");

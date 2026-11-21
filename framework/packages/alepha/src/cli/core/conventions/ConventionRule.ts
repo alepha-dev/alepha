@@ -84,7 +84,7 @@ export abstract class ConventionRule {
 
   /**
    * Whether a path is a test: a spec file, or anything under a `__tests__/`,
-   * `test/`, `e2e/` or `fixtures/` directory.
+   * `test/`, `tests/`, `e2e/` or `fixtures/` directory.
    */
   protected isTestPath(relativePath: string): boolean {
     return (

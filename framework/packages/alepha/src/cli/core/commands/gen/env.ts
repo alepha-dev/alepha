@@ -47,7 +47,7 @@ export class GenEnvCommand {
             dotEnvFile += `# Also read from: ${value.aliases.join(", ")}\n`;
           }
           // Every var is a secret unless it opted out, so the exception is what
-          // carries the label — marking the secrets instead would repeat the
+          // carries the label: marking the secrets instead would repeat the
           // same line on nearly every key and tell the reader nothing. Last
           // annotation before the key, so it reads as a label ON the line a
           // human is about to paste a value into.
@@ -72,7 +72,7 @@ export class GenEnvCommand {
           );
         } else {
           // The template is what this command *produces*, so it goes through
-          // the output provider — never the logger, which prefixes a timestamp
+          // the output provider, never the logger, which prefixes a timestamp
           // and a level and emits ANSI whether or not stdout is a TTY. That is
           // why `alepha gen env > .env.example` used to write a first line
           // reading `<esc>[90m14:31:16 I #DATABASE_URL=`.

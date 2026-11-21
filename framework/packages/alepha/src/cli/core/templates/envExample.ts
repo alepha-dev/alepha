@@ -1,7 +1,7 @@
 export interface EnvExampleOptions {
   /**
    * Document `DATABASE_URL`. Set for presets that mount `AlephaOrm`, where
-   * the variable is not optional in any meaningful sense — the app has
+   * the variable is not optional in any meaningful sense: the app has
    * entities and nowhere to put them.
    */
   database?: boolean;
@@ -11,21 +11,21 @@ export interface EnvExampleOptions {
  * The committed template for `.env`.
  *
  * It exists because the generated `.gitignore` already carries a
- * `!.env.example` negation — it expected this file all along — and because
+ * `!.env.example` negation (it expected this file all along) and because
  * `APP_SECRET` is a hard stop for an app that signs anything: `SecretProvider`
  * refuses to boot in production without it, so the very first
  * `node dist` after `alepha build` failed with nothing on disk
  * pointing at the fix.
  *
  * `APP_SECRET` is left empty on purpose. A scaffolded secret would be a public
- * one, committed to every project generated from this template — worse than
+ * one, committed to every project generated from this template, worse than
  * none, because it looks configured.
  *
  * `DATABASE_URL` is documented but left commented out. Uncommenting it is a
  * downgrade in the default case: unset, the sqlite driver writes to
  * `node_modules/.alepha/sqlite.db`, alongside every other generated dev
  * artifact, and inherits `node_modules/`'s gitignore entry. Any path written
- * here instead lands in the project root, where nothing ignores it — see
+ * here instead lands in the project root, where nothing ignores it: see
  * `gitignore`, which deliberately does not carry a `*.db` rule because there
  * is no database file to ignore until someone opts out of the default.
  *
@@ -46,7 +46,7 @@ ${
   options.database
     ? `
 # Database connection. Unset, development uses sqlite at
-# node_modules/.alepha/sqlite.db — no configuration, nothing to gitignore,
+# node_modules/.alepha/sqlite.db: no configuration, nothing to gitignore,
 # and it is removed with the rest of node_modules.
 #
 # REQUIRED IN PRODUCTION. That scratch path is a development file: \`npm ci\`
@@ -62,7 +62,7 @@ ${
 # delete node_modules/.alepha/sqlite.db and start again.
 # DATABASE_URL=postgres://user:password@localhost:5432/mydb
 
-# The first account registered with this address is promoted to admin — that
+# The first account registered with this address is promoted to admin: that
 # is how the first admin is created. Read by \`$realm\` in src/api/Realm.ts.
 # Your \`.env\` already has one, taken from \`git config user.email\`.
 # ADMIN_EMAIL=

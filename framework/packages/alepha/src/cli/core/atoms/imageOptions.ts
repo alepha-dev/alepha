@@ -14,7 +14,7 @@ import { $atom, type Infer, z } from "alepha";
  * ## ⚠️ `alepha image` needs the docker CLI
  *
  * It shells out to `docker build`, so it cannot run in an in-process build
- * path , notably the one Lore's Worker deploy uses, which has no shell at all.
+ * path, notably the one Lore's Worker deploy uses, which has no shell at all.
  * It is a local and CI command.
  */
 export const imageOptions = $atom({
@@ -41,11 +41,11 @@ export const imageOptions = $atom({
     /**
      * Extra packages to install in the generated image.
      *
-     * Each entry becomes a `RUN npm install --no-fund --no-audit
-     * <pkg> …` line (local, not `--global`, so the app resolves them
-     * like any dependency) inserted after `FROM` and before the
-     * app `COPY`. Use it for CLI tools the running app shells out to
-     * , typical example is `wrangler` for a service that deploys to
+     * All of them go on one `RUN npm install --no-save --no-fund --no-audit
+     * <pkg> …` line, or `RUN bun add --no-save <pkg> …` on the bun base
+     * (local, not `--global`, so the app resolves them like any dependency).
+     * Use it for CLI tools the running app shells out to:
+     * the typical example is `wrangler` for a service that deploys to
      * Cloudflare on someone else's behalf.
      *
      * Ignored in `compile` mode (the distroless base has no `npm`).

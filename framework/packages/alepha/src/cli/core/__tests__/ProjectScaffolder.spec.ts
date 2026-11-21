@@ -106,7 +106,7 @@ describe("ProjectScaffolder", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // init — where the project lands
+  // init, where the project lands
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
@@ -121,7 +121,7 @@ describe("ProjectScaffolder", () => {
    */
   describe("init target directory", () => {
     // `run` is the task runner the CLI injects. Invoke the handler form and
-    // ignore the shell-command form — this asserts where files land, not what
+    // ignore the shell-command form: this asserts where files land, not what
     // the package manager did.
     const run: any = Object.assign(
       async (task: any) =>

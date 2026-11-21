@@ -30,7 +30,7 @@ export class OpenApiCommand {
       try {
         // By NAME, not by class: `alepha` is the user's container built from
         // Vite's SSR module graph, while a class imported here comes from the
-        // CLI's own graph — two distinct objects for the same source. On a
+        // CLI's own graph: two distinct objects for the same source. On a
         // miss `inject(class)` happily instantiates a fresh CLI-graph
         // provider, so the app got a duplicate.
         //
@@ -38,7 +38,7 @@ export class OpenApiCommand {
         // work. Generating a spec is a build-time concern derived purely from
         // the `$action` primitives already in the container; making it
         // conditional on the app also mounting a runtime `/docs` UI is a
-        // requirement with no technical basis. `$swagger()` stays meaningful —
+        // requirement with no technical basis. `$swagger()` stays meaningful:
         // when present, its configured document is what gets emitted below.
         const openapiProvider = (await this.injectSwaggerProvider(
           alepha,
@@ -75,7 +75,7 @@ export class OpenApiCommand {
           );
         } else {
           // The document is what this command *produces*, so it goes through
-          // the output provider — never the logger, which prefixes a timestamp
+          // the output provider, never the logger, which prefixes a timestamp
           // and a level and emits ANSI whether or not stdout is a TTY. That is
           // why `alepha gen openapi > api.json` used to write a file whose
           // first line was `<esc>[90m14:31:18 I {`.
@@ -99,7 +99,7 @@ export class OpenApiCommand {
    *
    * The module has to be imported through the app's own Vite SSR graph. A
    * static import at the top of this file is a *different object* for the same
-   * source — the CLI's copy — and registering that would give the container a
+   * source (the CLI's copy) and registering that would give the container a
    * parallel set of services whose `$action` primitives are not the app's, so
    * the generated spec would come back empty.
    */

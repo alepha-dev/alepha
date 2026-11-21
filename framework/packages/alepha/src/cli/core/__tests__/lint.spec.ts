@@ -43,8 +43,7 @@ describe("alepha lint", () => {
    * `oxlint --fix` walk into its dependencies and rewrite them.
    *
    * `alepha init` reaches exactly that state: it lints before `ensureGitRepo`
-   * writes the `.gitignore`, and skips that write altogether when the
-   * directory was already a git repository. A `--preset saas` scaffold
+   * writes the `.gitignore`. A `--preset saas` scaffold
    * reported 258k errors from `node_modules` and edited 460 files across
    * drizzle-kit, react-dom and alepha's own installed `dist`.
    */

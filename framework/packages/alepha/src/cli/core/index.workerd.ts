@@ -9,7 +9,7 @@
  * entry reaches Vite, `node:child_process` and every command, and a Worker can
  * bundle none of it. So a Worker importing a name this file omits fails at
  * BUILD time in CI, which is exactly where that mistake should land, and
- * `workerd-entry-graph.spec.ts` proves the closure stays clean rather than
+ * `workerdEntryGraph.spec.ts` proves the closure stays clean rather than
  * asserting two signatures match.
  *
  * What a Worker wants from the CLI is epic #1's deploy: unpack an artifact,
