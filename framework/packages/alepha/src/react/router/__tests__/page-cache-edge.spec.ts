@@ -2,7 +2,11 @@ import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AlephaReactRouter, ReactPageCacheProvider } from "../index.ts";
+import {
+  AlephaReactRouter,
+  ReactPageCacheProvider,
+  reactPageCacheOptions,
+} from "../index.ts";
 
 /**
  * The page cache's edge tier on workerd (#E78): entries also go to
@@ -108,6 +112,29 @@ describe("page cache edge tier", () => {
 
     expect(read?.head).toBe("<html>shared");
     expect(edge.entries.size).toBe(1);
+  });
+
+  it("keeps the in-process tier under max when entries come from the edge", async ({
+    expect,
+  }) => {
+    alepha.store.set(reactPageCacheOptions, {
+      ...alepha.store.get(reactPageCacheOptions),
+      max: 2,
+    });
+    const keys = ["a", "b", "c", "d"].map(
+      (slug) => `page:b1:product:slug%3D${slug}:-:fr`,
+    );
+    // Another isolate wrote them: this one only reads.
+    for (const key of keys) {
+      await cache.write(key, entry, 0);
+      freshIsolate();
+    }
+
+    for (const key of keys) {
+      expect((await cache.read(key))?.head).toBe("<html>shared");
+    }
+
+    expect(cache.size).toBe(2);
   });
 
   it("caps an entry at 60 seconds on workerd, even one kept until the next deploy", async ({

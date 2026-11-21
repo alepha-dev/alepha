@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { $page, Link, ReactRouter } from "../index.browser.ts";
 
@@ -82,7 +82,7 @@ describe("Link prefetching", () => {
     return { loaded, router, link };
   };
 
-  it("sets the attribute, and only that", async () => {
+  it("sets the attribute, and only that", async ({ expect }) => {
     const { link } = await start();
 
     expect(link("hover")?.getAttribute("data-prefetch")).toBe("hover");
@@ -90,7 +90,9 @@ describe("Link prefetching", () => {
     expect(link("hover")?.hasAttribute("prefetch")).toBe(false);
   });
 
-  it("fetches the page and its layouts after 100 ms of hover", async () => {
+  it("fetches the page and its layouts after 100 ms of hover", async ({
+    expect,
+  }) => {
     const { loaded, link } = await start();
 
     hover(link("hover"));
@@ -100,7 +102,7 @@ describe("Link prefetching", () => {
     expect([...loaded].sort()).toEqual(["page", "section"]);
   });
 
-  it("does nothing when the pointer leaves first", async () => {
+  it("does nothing when the pointer leaves first", async ({ expect }) => {
     const { loaded, link } = await start();
 
     hover(link("hover"));
@@ -110,7 +112,7 @@ describe("Link prefetching", () => {
     expect(loaded).toEqual([]);
   });
 
-  it("does nothing on a plain link", async () => {
+  it("does nothing on a plain link", async ({ expect }) => {
     const { loaded, link } = await start();
 
     hover(link("plain"));
@@ -119,7 +121,7 @@ describe("Link prefetching", () => {
     expect(loaded).toEqual([]);
   });
 
-  it("fetches each chunk once", async () => {
+  it("fetches each chunk once", async ({ expect }) => {
     const { loaded, link } = await start();
 
     hover(link("hover"));
@@ -131,7 +133,7 @@ describe("Link prefetching", () => {
     expect(loaded).toHaveLength(2);
   });
 
-  it("reaches a chunk by name, through the router", async () => {
+  it("reaches a chunk by name, through the router", async ({ expect }) => {
     const { loaded, router } = await start();
 
     (router as ReactRouter<any>).prefetch("page");
@@ -140,7 +142,7 @@ describe("Link prefetching", () => {
     expect([...loaded].sort()).toEqual(["page", "section"]);
   });
 
-  it("ignores a URL no page answers", async () => {
+  it("ignores a URL no page answers", async ({ expect }) => {
     const { loaded, router } = await start();
 
     (router as ReactRouter<any>).prefetch("/no/such/page");
@@ -149,7 +151,7 @@ describe("Link prefetching", () => {
     expect(loaded).toEqual([]);
   });
 
-  it("keeps at most 4 chunks in flight", async () => {
+  it("keeps at most 4 chunks in flight", async ({ expect }) => {
     let running = 0;
     let peak = 0;
     let done = 0;
@@ -186,7 +188,7 @@ describe("Link prefetching", () => {
     expect(done).toBe(6);
   });
 
-  it("is off under saveData", async () => {
+  it("is off under saveData", async ({ expect }) => {
     const { loaded, link } = await start();
     Object.defineProperty(navigator, "connection", {
       value: { saveData: true },
@@ -199,7 +201,9 @@ describe("Link prefetching", () => {
     expect(loaded).toEqual([]);
   });
 
-  it("swallows a failure, with no reload and no rejection", async () => {
+  it("swallows a failure, with no reload and no rejection", async ({
+    expect,
+  }) => {
     const { loaded, link } = await start();
     const url = window.location.href;
 
@@ -211,7 +215,9 @@ describe("Link prefetching", () => {
     expect(sessionStorage.getItem("alepha:chunk-reload")).toBeNull();
   });
 
-  it("fetches a visible link through one shared observer", async () => {
+  it("fetches a visible link through one shared observer", async ({
+    expect,
+  }) => {
     let observers = 0;
     const seen: Element[] = [];
     let notify: (entries: unknown[]) => void = () => {};

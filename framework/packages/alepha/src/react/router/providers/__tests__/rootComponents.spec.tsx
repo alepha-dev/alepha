@@ -32,8 +32,6 @@ function collectTestIds(node: any, seen = new Set<any>()): string[] {
     ids.push(...collectTestIds(children, seen));
   }
 
-  // Also walk positional children (args 2+ on createElement are spread as props.children
-  // but StrictMode wraps with a single child — unwrap one level manually)
   return ids;
 }
 
@@ -60,7 +58,7 @@ describe("rootComponents in ReactPageProvider.root", () => {
 
     const element: any = page.root(state);
 
-    // StrictMode wraps the root — unwrap one level
+    // StrictMode wraps the root: unwrap one level
     const inner = element?.props?.children ?? element;
     const ids = collectTestIds(inner);
     expect(ids).toContain("sigil-marker");

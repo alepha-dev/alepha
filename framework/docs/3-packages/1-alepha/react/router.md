@@ -34,12 +34,12 @@ This module enables:
 - [`useOverlay`](/docs/reference-react-hooks-useoverlay) - The overlay on screen, and the way out of it.
 - [`useQueryParams`](/docs/reference-react-hooks-usequeryparams) - Hook to manage query parameters in the URL using a defined schema.
 - [`useRouter`](/docs/reference-react-hooks-userouter) - Use this hook to access the React Router instance.
-- [`useRouterState`](/docs/reference-react-hooks-userouterstate) - Subscribes to the router's live state - the matched route, its params and
+- [`useRouterState`](/docs/reference-react-hooks-userouterstate) - Subscribes to the router's live state: the matched route, its URL, params
 
 ### Providers
 
 - [`ReactBrowserRendererProvider`](/docs/reference-providers-reactbrowserrendererprovider) - Browser specific React renderer (react-dom/client interface)
-- [`ReactBrowserRouterProvider`](/docs/reference-providers-reactbrowserrouterprovider) - Implementation of AlephaRouter for React in browser environment.
+- [`ReactBrowserRouterProvider`](/docs/reference-providers-reactbrowserrouterprovider) - The browser's page router: a `RouterProvider` over the app's pages.
 - [`ReactDomServerProvider`](/docs/reference-providers-reactdomserverprovider) - The renderer half of React, loaded only once something actually renders.
 - [`ReactPageCacheProvider`](/docs/reference-providers-reactpagecacheprovider) - The automatic page cache.
 - [`ReactPageProvider`](/docs/reference-providers-reactpageprovider) - Handle page routes for React applications. (Browser and Server)

@@ -77,7 +77,12 @@ const DevErrorPage = (props: ErrorViewerProps) => {
 
 // ----- Error Block (recursive) -----
 
-const ErrorBlock = (props: { error: Error; depth?: number }) => {
+export interface ErrorBlockProps {
+  error: Error;
+  depth?: number;
+}
+
+const ErrorBlock = (props: ErrorBlockProps) => {
   const { error, depth = 0 } = props;
 
   return (
@@ -115,7 +120,7 @@ const ProdErrorPage = (props: ProdErrorPageProps) => {
     }
   };
 
-  // An auth failure is not a malfunction — give it its own message instead
+  // An auth failure is not a malfunction: give it its own message instead
   // of the generic "something went wrong" (which implies a 500).
   const { heading, subtitle } =
     status === 401
@@ -133,7 +138,7 @@ const ProdErrorPage = (props: ProdErrorPageProps) => {
             subtitle: "We're having trouble processing your request.",
           };
 
-  // Reloading does not fix an auth failure — only offer it for real errors.
+  // Reloading does not fix an auth failure, only offer it for real errors.
   const canReload = status !== 401 && status !== 403;
 
   return (
@@ -159,15 +164,15 @@ const ProdErrorPage = (props: ProdErrorPageProps) => {
 
 // ----- Helpers -----
 
-function cleanStack(stack: string): string {
+const cleanStack = (stack: string): string => {
   return stack
     .split("\n")
     .slice(1)
     .map((l) => l.trim())
     .join("\n");
-}
+};
 
-function buildErrorText(error: Error): string {
+const buildErrorText = (error: Error): string => {
   const parts: string[] = [];
 
   const append = (err: Error, depth: number) => {
@@ -185,14 +190,14 @@ function buildErrorText(error: Error): string {
 
   append(error, 0);
   return parts.join("\n");
-}
+};
 
-function getHttpStatus(error: Error): number | undefined {
+const getHttpStatus = (error: Error): number | undefined => {
   if ("status" in error && typeof error.status === "number") {
     return error.status;
   }
   return undefined;
-}
+};
 
 // ----- Dev Styles -----
 

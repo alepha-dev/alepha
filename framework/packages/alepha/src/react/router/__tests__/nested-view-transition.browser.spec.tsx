@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { $page, ReactRouter } from "../index.browser.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
@@ -61,7 +61,9 @@ describe("NestedView view transitions", () => {
     return { leaving, started };
   };
 
-  it("does not commit a view that a later navigation has superseded", async () => {
+  it("does not commit a view that a later navigation has superseded", async ({
+    expect,
+  }) => {
     class App {
       a = $page({
         path: "/a",
@@ -107,7 +109,9 @@ describe("NestedView view transitions", () => {
     expect(view()?.textContent).toBe("C");
   });
 
-  it("reports the commit with the new view already in the DOM", async () => {
+  it("reports the commit with the new view already in the DOM", async ({
+    expect,
+  }) => {
     class App {
       a = $page({
         path: "/a",
@@ -141,7 +145,9 @@ describe("NestedView view transitions", () => {
     expect(onScreen).toEqual(["A", "B"]);
   });
 
-  it("reports the commit of a navigation that reuses every layer", async () => {
+  it("reports the commit of a navigation that reuses every layer", async ({
+    expect,
+  }) => {
     class App {
       a = $page({
         path: "/a",
@@ -170,7 +176,9 @@ describe("NestedView view transitions", () => {
     expect(committed).toEqual(["", "#section"]);
   });
 
-  it("gives the leaving page the exit its function reads from the target", async () => {
+  it("gives the leaving page the exit its function reads from the target", async ({
+    expect,
+  }) => {
     class App {
       a = $page({
         path: "/a",
@@ -211,7 +219,9 @@ describe("NestedView view transitions", () => {
     expect(leaving[0]).toBe("to-b");
   });
 
-  it("starts no view transition for pages that ask for none", async () => {
+  it("starts no view transition for pages that ask for none", async ({
+    expect,
+  }) => {
     class App {
       a = $page({
         path: "/a",

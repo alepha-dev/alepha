@@ -95,6 +95,20 @@ describe("$page deferred values (server)", () => {
     await alepha.stop();
   });
 
+  it("fetch() without html returns the root's content, not the payload scripts", async ({
+    expect,
+  }) => {
+    const { alepha, app } = await start();
+
+    const { html } = await app.deferred.fetch({ query: { ms: "50" } });
+
+    expect(html).toContain("Shell");
+    expect(html).toContain(">Done<");
+    expect(html).not.toContain("__ssr");
+    expect(html).not.toContain("alepha:boot");
+    await alepha.stop();
+  });
+
   it("marks a pending value in the payload, never as {}", async ({
     expect,
   }) => {

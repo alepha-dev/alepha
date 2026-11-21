@@ -8,4 +8,4 @@ import { ReactBrowserRouterProvider } from "alepha/react/router";
 
 ## Overview
 
-Implementation of AlephaRouter for React in browser environment.
+The browser's page router: a `RouterProvider` over the app's pages.

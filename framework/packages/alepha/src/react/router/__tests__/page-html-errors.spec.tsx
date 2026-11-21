@@ -8,12 +8,13 @@ import {
 import { $action, HttpError, isHttpError, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
+import { ssrManifestAtom } from "../atoms/ssrManifestAtom.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import { AlephaReactRouter } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
 
 /**
- * A failure thrown *around* the render — a `use:` middleware, or any
+ * A failure thrown *around* the render: a `use:` middleware, or any
  * `server:request:before` hook , never reaches `createLayers`, so it never reaches
  * the page's `errorHandler` either. It used to fall through to
  * `ServerRouterProvider`, which answers JSON.
@@ -36,10 +37,15 @@ const $throwing = (error: Error): Middleware =>
 
 const HTML = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 
-const start = async (App: new () => any, env: Record<string, any> = {}) => {
+const start = async (
+  App: new () => any,
+  env: Record<string, any> = {},
+  configure?: (alepha: Alepha) => void,
+) => {
   const alepha = Alepha.create({
     env: { SERVER_PORT: 0, APP_SECRET: "test-secret", ...env },
   }).with(AlephaReactRouter);
+  configure?.(alepha);
   alepha.inject(App);
   await alepha.start();
   const hostname = alepha.inject(ServerProvider).hostname;
@@ -182,7 +188,7 @@ describe("$page html errors", () => {
 
     expect(res.status).toBe(500);
     expect(res.headers.get("content-type")).toContain("text/html");
-    // The dev viewer shows the error and its stack.
+    // The dev viewer shows the error's message.
     expect(await res.text()).toContain("Middleware crash");
   });
 
@@ -219,7 +225,20 @@ describe("$page html errors", () => {
       });
     }
 
-    const get = await start(App);
+    // A built app: the manifest names the entry script and its stylesheet.
+    const get = await start(App, {}, (alepha) => {
+      alepha.store.set(ssrManifestAtom, {
+        preload: {
+          files: ["/entry.js", "/entry.css"],
+          integrity: [],
+          keys: {},
+          entry: { js: 0, css: [1], graph: [] },
+        },
+      });
+    });
+    const page = await (await get("/", HTML)).text();
+    expect(page).toContain('<script type="module"');
+
     const res = await get("/boom", HTML);
     const html = await res.text();
 
@@ -229,6 +248,8 @@ describe("$page html errors", () => {
     // refused, replacing the error with a working-looking page.
     expect(html).not.toContain('<script type="module"');
     expect(html).not.toContain('id="__ssr"');
+    // Still styled.
+    expect(html).toContain('href="/entry.css"');
   });
 
   it("covers a server:request:before hook, not just page middleware", async ({
@@ -240,7 +261,7 @@ describe("$page html errors", () => {
       /**
        * The shape `ServerNotReadyProvider` and `ServerAuthProvider` take.
        * These run before the route handler, so `withGuardDenial` never sees
-       * them — they were the JSON that reached a real first-time visitor.
+       * them: they were the JSON that reached a real first-time visitor.
        */
       notReady = $hook({
         on: "server:request:before",
@@ -289,9 +310,7 @@ describe("$page html errors", () => {
     expect(api.headers.get("content-type")).toContain("application/json");
   });
 
-  it("leaves a non-page route alone apart from the content type", async ({
-    expect,
-  }) => {
+  it("leaves a page that renders alone", async ({ expect }) => {
     class App {
       home = $page({ path: "/", component: () => "home" });
     }

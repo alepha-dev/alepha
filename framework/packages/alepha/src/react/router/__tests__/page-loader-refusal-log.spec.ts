@@ -1,8 +1,9 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
+import { ForbiddenError } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
 import { AlephaReactRouter } from "../index.ts";
@@ -21,18 +22,12 @@ const stateFor = (path: string): ReactRouterState =>
     onError: () => null,
   }) as unknown as ReactRouterState;
 
-class Refusal extends Error {
-  public readonly status = 403;
-}
-
-class Broken extends Error {}
-
 class Router {
   refused = $page({
     path: "/refused",
     name: "refused",
     loader: () => {
-      throw new Refusal("Accès refusé");
+      throw new ForbiddenError("Accès refusé");
     },
     lazy: async () => ({ default: () => null }),
   });
@@ -41,7 +36,7 @@ class Router {
     path: "/broken",
     name: "broken",
     loader: () => {
-      throw new Broken("boom");
+      throw new AlephaError("boom");
     },
     lazy: async () => ({ default: () => null }),
   });
@@ -80,9 +75,9 @@ describe("$page loader logs a refusal below error level", () => {
 
     expect(failures("ERROR")).toEqual([]);
     expect(failures("DEBUG")).toHaveLength(1);
-    expect(failures("DEBUG")[0].data).toBeInstanceOf(Refusal);
+    expect(failures("DEBUG")[0].data).toBeInstanceOf(ForbiddenError);
     // The page still renders its refusal: the error reaches the layer.
-    expect(state.layers.at(-1)?.error).toBeInstanceOf(Refusal);
+    expect(state.layers.at(-1)?.error).toBeInstanceOf(ForbiddenError);
   });
 
   it("still logs an error with no status at error level", async () => {
@@ -92,6 +87,6 @@ describe("$page loader logs a refusal below error level", () => {
 
     expect(failures("DEBUG")).toEqual([]);
     expect(failures("ERROR")).toHaveLength(1);
-    expect(failures("ERROR")[0].data).toBeInstanceOf(Broken);
+    expect(failures("ERROR")[0].data).toBeInstanceOf(AlephaError);
   });
 });

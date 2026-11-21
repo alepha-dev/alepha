@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaReactRouter } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
@@ -22,7 +22,7 @@ const stateFor = (path: string): ReactRouterState =>
  * A CSR page's component must not be imported on the server.
  *
  * `createLayers` wraps the whole chain in `ClientOnly` when the matched route
- * opts out of SSR, so any element built for it is discarded — but the import
+ * opts out of SSR, so any element built for it is discarded, but the import
  * that produced it still happened, dragging that page's entire module graph
  * into the server runtime.
  *
@@ -30,7 +30,7 @@ const stateFor = (path: string): ReactRouterState =>
  * route down in production: importing MDXEditor + Lexical server-side blew the
  * isolate's ceiling and killed it mid-stream, so the browser received the
  * early-head flush and nothing else. It never reproduced in dev or under
- * `node dist` — neither is workerd — which is why this is pinned by asserting
+ * `node dist` (neither is workerd) which is why this is pinned by asserting
  * the import never happens rather than by measuring memory.
  */
 describe("$page CSR does not import its component on the server", () => {
@@ -70,7 +70,7 @@ describe("$page CSR does not import its component on the server", () => {
     };
   };
 
-  it("skips the lazy import but still runs the loader", async () => {
+  it("skips the lazy import but still runs the loader", async ({ expect }) => {
     const { Router, counts } = build();
     const alepha = Alepha.create().with(AlephaReactRouter).with(Router);
     await alepha.start();
@@ -85,7 +85,7 @@ describe("$page CSR does not import its component on the server", () => {
     expect(loaderCalls).toBe(1);
   });
 
-  it("still imports a page that does server-render", async () => {
+  it("still imports a page that does server-render", async ({ expect }) => {
     const { Router, counts } = build();
     const alepha = Alepha.create().with(AlephaReactRouter).with(Router);
     await alepha.start();

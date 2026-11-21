@@ -1,4 +1,5 @@
 import { $inject, Alepha, AlephaError, type Infer, type ZType } from "alepha";
+import { $logger } from "alepha/logger";
 
 import type { PagePrimitive } from "../primitives/$page.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
@@ -161,10 +162,12 @@ export type RegisteredRouter = RouterOf<Routers>;
 /**
  * Friendly browser router API.
  *
- * Can be safely used server-side, but most methods will be no-op.
+ * Reads (`path`, `anchor`, `isActive`, `state`) work on the server too.
+ * Navigation does nothing there, and `location` and `setQueryParams` throw.
  */
 export class ReactRouter<T extends object> {
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected readonly pageApi = $inject(ReactPageProvider);
 
   public get state(): ReactRouterState {
@@ -222,7 +225,7 @@ export class ReactRouter<T extends object> {
 
     if (options.startWith && !isActive) {
       // Match on a SEGMENT boundary. A bare `startsWith` made `/foo` active on
-      // `/foobar` — and since this drives nav highlighting, a short parent
+      // `/foobar`, and since this drives nav highlighting, a short parent
       // href lit up on every unrelated sibling that shared its prefix.
       const prefix = target.endsWith("/") ? target : `${target}/`;
       isActive = current.startsWith(prefix);
@@ -334,13 +337,22 @@ export class ReactRouter<T extends object> {
 
   /**
    * The URL a navigation goes to: a page name resolved with its params, or a
-   * path with the query appended.
+   * path with the query appended. Anything else is refused: an unknown name,
+   * a relative path, an absolute URL, and a protocol-relative one.
    */
   protected resolveHref(
     target: string,
     options: RouterPushOptions = {},
   ): string {
     if (target.startsWith("/")) {
+      // `//host` and `/\host` are another origin to a browser, which also
+      // drops every tab and line break before reading a URL.
+      if (/^\/[/\\]/.test(target.replace(/[\t\n\r]/g, ""))) {
+        throw new AlephaError(
+          `${JSON.stringify(target)} is another origin, not a path of this app. ` +
+            'Navigate to a page name or to a path starting with a single "/".',
+        );
+      }
       if (!options.query || Object.keys(options.query).length === 0) {
         return target;
       }
@@ -446,9 +458,8 @@ export class ReactRouter<T extends object> {
    * `ReactBrowserProvider.invalidate`, which spells out why only the first
    * key is read.
    *
-   * @public No caller in this repository. It is application surface, exported
-   * on the router returned by `useRouter()`; do not delete it for being
-   * unreferenced.
+   * @public Application surface, exported on the router returned by
+   * `useRouter()`.
    */
   public async invalidate(props?: Record<string, any>) {
     await this.browser?.invalidate(props);
@@ -515,7 +526,7 @@ export class ReactRouter<T extends object> {
       href: this.base(href),
       onClick: (ev: any) => {
         if (!this.shouldHandleAnchorClick(ev)) {
-          // Modified/aux click or another browsing context — let the browser
+          // Modified/aux click or another browsing context: let the browser
           // do its thing ("open in new tab" must not navigate this tab).
           return;
         }
@@ -523,7 +534,7 @@ export class ReactRouter<T extends object> {
         ev.stopPropagation();
         ev.preventDefault();
 
-        this.browser?.push(href, options).catch(console.error);
+        this.browser?.push(href, options).catch((e) => this.log.error(e));
       },
     };
   }
@@ -533,7 +544,7 @@ export class ReactRouter<T extends object> {
    *
    * Modified clicks (cmd/ctrl/shift/alt), non-primary buttons, anchors
    * targeting another browsing context, and already-prevented events fall
-   * through to the browser — the single source of truth for `anchor()`,
+   * through to the browser: the single source of truth for `anchor()`,
    * `<Link>`, `useActive`, and the global interceptor.
    */
   public shouldHandleAnchorClick(ev?: {
@@ -579,10 +590,9 @@ export class ReactRouter<T extends object> {
   }
 
   /**
-   * Set query params.
-   *
-   * @param record
-   * @param options
+   * Set the query params of the current URL, replacing every one of them: a
+   * record, or a function from the current params to the next. A key whose
+   * value is `undefined` or `null` is removed. Browser only.
    */
   public setQueryParams(
     record:
@@ -596,7 +606,13 @@ export class ReactRouter<T extends object> {
     } = {},
   ) {
     const func = typeof record === "function" ? record : () => record;
-    const search = new URLSearchParams(func(this.query)).toString();
+    const next: Record<string, any> = {};
+    for (const [key, value] of Object.entries(func(this.query))) {
+      if (value != null) {
+        next[key] = value;
+      }
+    }
+    const search = new URLSearchParams(next).toString();
     const { pathname } = this.state.overlay?.url ?? this.state.url;
     const path = search ? `${pathname}?${search}` : pathname;
 
@@ -609,7 +625,7 @@ export class ReactRouter<T extends object> {
     // canGoBack(). A bare `replaceState({})` wiped that key.
     this.browser.pushState(path, !options.push);
 
-    // Keep the router store in sync — `router.query`, `useQueryParams`, and
+    // Keep the router store in sync: `router.query`, `useQueryParams`, and
     // every `useRouterState` subscriber read from the store, not from
     // `window.location`. Writing only to history would desync them.
     const current = this.alepha.store.get("alepha.react.router.state");

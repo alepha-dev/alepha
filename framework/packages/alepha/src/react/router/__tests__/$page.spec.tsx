@@ -1,14 +1,13 @@
-import { Alepha, z } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import { $cache } from "alepha/cache";
 import { OPTIONS } from "alepha/internal";
 import type { FC } from "react";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 
 import {
   $page,
   NestedView,
   PagePrimitive,
-  type ReactRouterState,
   Redirection,
   reactPageCacheOptions,
 } from "../index.ts";
@@ -20,7 +19,7 @@ describe("$page primitive tests", () => {
     alepha = Alepha.create();
   });
 
-  test("$page - basic creation and configuration", async ({ expect }) => {
+  it("$page - basic creation and configuration", async ({ expect }) => {
     class App {
       basic = $page({
         name: "Basic Page",
@@ -34,13 +33,12 @@ describe("$page primitive tests", () => {
 
     expect(app.basic).toBeInstanceOf(PagePrimitive);
     expect(app.basic.name).toBe("Basic Page");
-    expect(app.basic.options.path).toBe("/basic");
 
     const rendered = await app.basic.render();
     expect(rendered.html).toBe("Basic content");
   });
 
-  test("$page - name defaults to property key", async ({ expect }) => {
+  it("$page - name defaults to property key", async ({ expect }) => {
     class App {
       testPageName = $page({
         component: () => "test content",
@@ -56,9 +54,7 @@ describe("$page primitive tests", () => {
     expect(rendered.html).toBe("test content");
   });
 
-  test("$page - schema validation with params and query", async ({
-    expect,
-  }) => {
+  it("$page - schema validation with params and query", async ({ expect }) => {
     class App {
       user = $page({
         path: "/user/:id",
@@ -80,11 +76,6 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.user.options.schema?.params).toBeDefined();
-    expect(app.user.options.schema?.query).toBeDefined();
-    expect(app.user.options.loader).toBeDefined();
-    expect(app.user.options.component).toBeDefined();
-
     const rendered = await app.user.render({
       params: { id: "123" },
       query: { tab: "settings", sort: "name" },
@@ -92,7 +83,7 @@ describe("$page primitive tests", () => {
     expect(rendered.html).toBe("User 123 - Tab: settings");
   });
 
-  test("$page - lazy component configuration", async ({ expect }) => {
+  it("$page - lazy component configuration", async ({ expect }) => {
     const LazyComponent: FC<{ message: string }> = ({ message }) =>
       `Lazy: ${message}`;
 
@@ -107,17 +98,11 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.lazy.options.lazy).toBeDefined();
-    expect(typeof app.lazy.options.lazy).toBe("function");
-
-    const lazyModule = await app.lazy.options.lazy!();
-    expect(lazyModule.default).toBe(LazyComponent);
-
     const rendered = await app.lazy.render();
     expect(rendered.html).toBe("Lazy: loaded");
   });
 
-  test("$page - lazy takes precedence over component when both defined", async ({
+  it("$page - lazy takes precedence over component when both defined", async ({
     expect,
   }) => {
     const Component: FC = () => "Component";
@@ -133,16 +118,13 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.both.options.component).toBe(Component);
-    expect(app.both.options.lazy).toBeDefined();
-
     const rendered = await app.both.render();
     expect(rendered.html).toBe("Lazy Component");
   });
 
-  test("$page - resolve function with async data loading", async ({
-    expect,
-  }) => {
+  it("$page - loader with async data loading", async ({ expect }) => {
+    let loads = 0;
+
     class App {
       async = $page({
         path: "/async/:id",
@@ -153,33 +135,20 @@ describe("$page primitive tests", () => {
         },
         loader: async ({ params }) => {
           await new Promise((resolve) => setTimeout(resolve, 10));
-          return { data: `Data for ${params.id}`, timestamp: Date.now() };
+          return { data: `Data for ${params.id}`, loads: ++loads };
         },
-        component: ({ data, timestamp }) => `${data} at ${timestamp}`,
+        component: ({ data, loads }) => `${data}, load ${loads}`,
       });
     }
 
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.async.options.loader).toBeDefined();
-    expect(typeof app.async.options.loader).toBe("function");
-
-    const mockContext = {
-      params: { id: "test" },
-      query: {},
-      pathname: "/async/test",
-      search: "",
-    };
-    const result = await app.async.options.loader!(mockContext as any);
-    expect(result.data).toBe("Data for test");
-    expect(typeof result.timestamp).toBe("number");
-
     const rendered = await app.async.render({ params: { id: "test" } });
-    expect(rendered.html).toMatch(/^Data for test at \d+$/);
+    expect(rendered.html).toBe("Data for test, load 1");
   });
 
-  test("$page - parent-child relationship", async ({ expect }) => {
+  it("$page - parent-child relationship", async ({ expect }) => {
     class App {
       parent = $page({
         path: "/parent",
@@ -200,13 +169,11 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.child.options.parent).toBe(app.parent);
-
     const rendered = await app.child.render();
     expect(rendered.html).toBe("child with from parent");
   });
 
-  test("$page - children as function", async ({ expect }) => {
+  it("$page - children as function", async ({ expect }) => {
     class App {
       c1 = $page({ path: "/child1", component: () => "Child 1" });
       c2 = $page({ path: "/child2", component: () => "Child 2" });
@@ -225,15 +192,6 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    const children =
-      typeof app.parent.options.children === "function"
-        ? app.parent.options.children()
-        : app.parent.options.children;
-
-    expect(children).toHaveLength(2);
-    expect(children?.[0].options.path).toBe("/child1");
-    expect(children?.[1].options.path).toBe("/child2");
-
     const parentRendered = await app.parent.render();
     expect(parentRendered.html).toBe("Parent content");
 
@@ -244,36 +202,12 @@ describe("$page primitive tests", () => {
     expect(child2Rendered.html).toBe("Parent content<!-- -->Child 2");
   });
 
-  test("$page - can permission function", async ({ expect }) => {
-    let canAccess = true;
-
-    class App {
-      protected = $page({
-        path: "/protected",
-        can: () => canAccess,
-        component: () => "Protected content",
-      });
-    }
-
-    const app = alepha.inject(App);
-    await alepha.start();
-
-    const ctx = { has: () => false };
-    expect(app.protected.options.can?.(ctx)).toBe(true);
-
-    canAccess = false;
-    expect(app.protected.options.can?.(ctx)).toBe(false);
-
-    const rendered = await app.protected.render();
-    expect(rendered.html).toBe("Protected content");
-  });
-
-  test("$page - error handler returns ReactNode", async ({ expect }) => {
+  it("$page - error handler returns ReactNode", async ({ expect }) => {
     class App {
       errorPage = $page({
         path: "/error",
         loader: () => {
-          throw new Error("Test error");
+          throw new AlephaError("Test error");
         },
         errorHandler: (error) => `Error: ${error.message}`,
         component: () => "Should not render",
@@ -283,25 +217,16 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.errorPage.options.errorHandler).toBeDefined();
-
-    const mockState = {} as ReactRouterState;
-    const result = app.errorPage.options.errorHandler?.(
-      new Error("Test error"),
-      mockState,
-    );
-    expect(result).toBe("Error: Test error");
-
     const rendered = await app.errorPage.render();
     expect(rendered.html).toBe("Error: Test error");
   });
 
-  test("$page - error handler returns Redirection", async ({ expect }) => {
+  it("$page - error handler returns Redirection", async ({ expect }) => {
     class App {
       errorPage = $page({
         path: "/error",
         loader: () => {
-          throw new Error("unauthorized");
+          throw new AlephaError("unauthorized");
         },
         errorHandler: (error) => {
           if (error.message === "unauthorized") {
@@ -316,31 +241,16 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    const mockState = {} as ReactRouterState;
-
-    const redirect = app.errorPage.options.errorHandler?.(
-      new Error("unauthorized"),
-      mockState,
-    );
-    expect(redirect).toBeInstanceOf(Redirection);
-    expect((redirect as Redirection).data.redirect).toBe("/login");
-
-    const noRedirect = app.errorPage.options.errorHandler?.(
-      new Error("other"),
-      mockState,
-    );
-    expect(noRedirect).toBeUndefined();
-
     const rendered = await app.errorPage.render();
     expect(rendered.redirect).toBe("/login");
   });
 
-  test("$page - static page configuration", async ({ expect }) => {
+  it("$page - static page configuration", async ({ expect }) => {
     class App {
       staticPage = $page({
         path: "/static",
         static: true,
-        component: () => "Infer content",
+        component: () => "Static content",
       });
 
       staticWithEntries = $page({
@@ -354,35 +264,30 @@ describe("$page primitive tests", () => {
           entries: [{ params: { id: "1" } }, { params: { id: "2" } }],
         },
         loader: ({ params }) => ({ id: params.id }),
-        component: ({ id }) => `Infer page ${id}`,
+        component: ({ id }) => `Static page ${id}`,
       });
     }
 
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.staticPage.options.static).toBe(true);
-    expect(app.staticWithEntries.options.static).toEqual({
-      entries: [{ params: { id: "1" } }, { params: { id: "2" } }],
-    });
-
     const staticRendered = await app.staticPage.render();
-    expect(staticRendered.html).toBe("Infer content");
+    expect(staticRendered.html).toBe("Static content");
 
     const staticWithEntriesRendered = await app.staticWithEntries.render({
       params: { id: "1" },
     });
-    expect(staticWithEntriesRendered.html).toBe("Infer page 1");
+    expect(staticWithEntriesRendered.html).toBe("Static page 1");
   });
 
-  test("$page - static page adds no $cache, the page cache is automatic", async ({
+  it("$page - static page adds no $cache, the page cache is automatic", async ({
     expect,
   }) => {
     class App {
       staticPage = $page({
         path: "/static",
         static: true,
-        component: () => "Infer content",
+        component: () => "Static content",
       });
     }
 
@@ -395,22 +300,25 @@ describe("$page primitive tests", () => {
     expect(cacheMw).toBeUndefined();
 
     const rendered = await app.staticPage.render();
-    expect(rendered.html).toBe("Infer content");
+    expect(rendered.html).toBe("Static content");
   });
 
-  test("$page - static page respects custom cache configuration", async ({
+  it("$page - a static page is served from the page cache", async ({
     expect,
   }) => {
+    let renders = 0;
+
     class App {
       staticPage = $page({
         path: "/static",
         static: true,
-        component: () => `Infer ${Date.now()}`,
+        component: () => `Static ${++renders}`,
       });
     }
 
-    // The markup prints the time, which the anonymous re-render would refuse
-    // (#E78): switched off to show the page cache itself keeps the first copy.
+    // The markup counts its renders, which the anonymous re-render would
+    // refuse (#E78): switched off to show the page cache itself keeps the
+    // first copy.
     alepha.store.mut(reactPageCacheOptions, (it) => ({
       ...it,
       anonymousCheck: false,
@@ -419,12 +327,12 @@ describe("$page primitive tests", () => {
     await alepha.start();
 
     const { html } = await app.staticPage.fetch();
-    expect(html).toMatch(/^Infer \d+$/);
+    expect(html).toBe("Static 1");
 
     expect(await app.staticPage.fetch().then((it) => it.html)).toBe(html);
   });
 
-  test("$page.fetch - fills the page's params and query into the URL", async ({
+  it("$page.fetch - fills the page's params and query into the URL", async ({
     expect,
   }) => {
     class App {
@@ -454,7 +362,7 @@ describe("$page primitive tests", () => {
     expect(new URL(response.url).search).toBe("?tab=billing");
   });
 
-  test("$page.fetch - builds a single slash, at the root and below it", async ({
+  it("$page.fetch - builds a single slash, at the root and below it", async ({
     expect,
   }) => {
     class App {
@@ -474,7 +382,7 @@ describe("$page primitive tests", () => {
     expect(new URL(about.response.url).pathname).toBe("/about");
   });
 
-  test("$page.fetch - requests a child under its parent's path", async ({
+  it("$page.fetch - requests a child under its parent's path", async ({
     expect,
   }) => {
     class App {
@@ -495,13 +403,15 @@ describe("$page primitive tests", () => {
     expect(new URL(response.url).pathname).toBe("/settings/profile");
   });
 
-  test("$page - server response handler", async ({ expect }) => {
-    const mockHandler = vi.fn();
-
+  it("$page - onServerResponse sets the status of the HTTP response", async ({
+    expect,
+  }) => {
     class App {
       withHandler = $page({
         path: "/handler",
-        onServerResponse: mockHandler,
+        onServerResponse: ({ reply }) => {
+          reply.status = 202;
+        },
         component: () => "With handler",
       });
     }
@@ -509,65 +419,12 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.withHandler.options.onServerResponse).toBe(mockHandler);
-
-    const rendered = await app.withHandler.render();
-    expect(rendered.html).toBe("With handler");
+    const { html, response } = await app.withHandler.fetch();
+    expect(response.status).toBe(202);
+    expect(html).toBe("With handler");
   });
 
-  test("$page - onLeave handler", async ({ expect }) => {
-    const mockLeaveHandler = vi.fn();
-
-    class App {
-      leavePage = $page({
-        path: "/leave",
-        onLeave: mockLeaveHandler,
-        component: () => "Leave page",
-      });
-    }
-
-    const app = alepha.inject(App);
-    await alepha.start();
-
-    expect(app.leavePage.options.onLeave).toBe(mockLeaveHandler);
-
-    const rendered = await app.leavePage.render();
-    expect(rendered.html).toBe("Leave page");
-  });
-
-  test("$page - viewTransition configuration", async ({ expect }) => {
-    class App {
-      simple = $page({
-        path: "/simple-transition",
-        viewTransition: "fade",
-        component: () => "Simple transition",
-      });
-
-      detailed = $page({
-        path: "/detailed-transition",
-        viewTransition: { enter: "fade-in", exit: "fade-out", update: "pulse" },
-        component: () => "Detailed transition",
-      });
-
-      dynamic = $page({
-        path: "/function-transition",
-        viewTransition: () => ({ enter: "slide-in", exit: "slide-out" }),
-        component: () => "Function transition",
-      });
-    }
-
-    const app = alepha.inject(App);
-    await alepha.start();
-
-    expect(app.simple.options.viewTransition).toBe("fade");
-
-    // Server rendering is unaffected: the option only exists at a commit.
-    expect((await app.simple.render()).html).toBe("Simple transition");
-    expect((await app.detailed.render()).html).toBe("Detailed transition");
-    expect((await app.dynamic.render()).html).toBe("Function transition");
-  });
-
-  test("$page - complex schema with nested objects", async ({ expect }) => {
+  it("$page - complex schema with nested objects", async ({ expect }) => {
     class App {
       complex = $page({
         path: "/complex/:userId",
@@ -600,10 +457,6 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.complex.options.schema?.params).toBeDefined();
-    expect(app.complex.options.schema?.query).toBeDefined();
-    expect(app.complex.options.loader).toBeDefined();
-
     const rendered = await app.complex.render({
       params: { userId: "123" },
       query: {
@@ -617,55 +470,148 @@ describe("$page primitive tests", () => {
     );
   });
 
-  test("$page - multiple error handlers in hierarchy", async ({ expect }) => {
+  it("$page - a JSON query value is not percent-decoded twice", async ({
+    expect,
+  }) => {
     class App {
-      parent = $page({
-        path: "/parent",
-        errorHandler: (error) => `Parent handled: ${error.message}`,
-        children: [],
-        component: () => "Parent content",
-      });
-
-      child = $page({
-        path: "/child",
-        loader: () => {
-          throw new Error("Child error");
-        },
-        errorHandler: (error) => {
-          if (error.message === "Child error") {
-            return `Child handled: ${error.message}`;
-          }
-          return undefined;
-        },
-        component: () => "Child",
+      search = $page({
+        path: "/search",
+        schema: { query: z.object({ filter: z.object({ q: z.text() }) }) },
+        loader: ({ query }) => ({ q: query.filter.q }),
+        component: (props: { q: string }) => `q=${props.q}`,
       });
     }
 
     const app = alepha.inject(App);
     await alepha.start();
 
-    const mockState = {} as ReactRouterState;
-
-    const childResult = app.child.options.errorHandler?.(
-      new Error("Child error"),
-      mockState,
-    );
-    expect(childResult).toBe("Child handled: Child error");
-
-    const parentResult = app.parent.options.errorHandler?.(
-      new Error("Other error"),
-      mockState,
-    );
-    expect(parentResult).toBe("Parent handled: Other error");
-
-    const childRendered = await app.child.render();
-    expect(childRendered.html).toBe("Child handled: Child error");
-
-    const parentRendered = await app.parent.render();
-    expect(parentRendered.html).toBe("Parent content");
+    // A lone `%` is not an escape: decoding it again threw, and the page
+    // rendered its error view for a valid URL.
+    expect(
+      (await app.search.render({ query: { filter: '{"q":"50%"}' } })).html,
+    ).toBe("q=50%");
+    // A literal `%41` stays what the visitor typed.
+    expect(
+      (await app.search.render({ query: { filter: '{"q":"%41"}' } })).html,
+    ).toBe("q=%41");
+    // Over HTTP, where the server decoded the query once already.
+    const { html } = await app.search.fetch({
+      query: { filter: '{"q":"50%"}' },
+    });
+    expect(html).toBe("q=50%");
   });
 
-  test("$page - resolve function receives parent props", async ({ expect }) => {
+  it("$page - fetch() returns the whole root content, nested divs included", async ({
+    expect,
+  }) => {
+    class App {
+      home = $page({
+        path: "/",
+        component: () => (
+          <div>
+            <div>a</div>
+            <p>b</p>
+          </div>
+        ),
+      });
+      card = $page({
+        path: "/card",
+        loader: () => ({ title: "t" }),
+        component: (props: { title: string }) => (
+          <section>
+            <div>{props.title}</div>
+          </section>
+        ),
+      });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    expect((await app.home.fetch()).html).toBe(
+      '<div vt-update="none"><div>a</div><p>b</p></div>',
+    );
+    // Stops at the root's own closing tag: no hydration script.
+    expect((await app.card.fetch()).html).toBe(
+      '<section vt-update="none"><div>t</div></section>',
+    );
+  });
+
+  it("$page - error handlers in a hierarchy", async ({ expect }) => {
+    const calls: string[] = [];
+
+    class App {
+      parent = $page({
+        path: "/parent",
+        errorHandler: (error) => {
+          calls.push(`parent:${error.message}`);
+          return error.message === "nobody"
+            ? undefined
+            : `Parent handled: ${error.message}`;
+        },
+      });
+
+      middle = $page({
+        path: "/middle",
+        parent: this.parent,
+      });
+
+      child = $page({
+        path: "/child",
+        parent: this.middle,
+        schema: { query: z.object({ fail: z.text().default("child") }) },
+        loader: ({ query }) => {
+          throw new AlephaError(query.fail);
+        },
+        errorHandler: (error) => {
+          calls.push(`child:${error.message}`);
+          return error.message === "child"
+            ? `Child handled: ${error.message}`
+            : undefined;
+        },
+        component: () => "Child",
+      });
+
+      inherits = $page({
+        path: "/inherits",
+        parent: this.middle,
+        schema: { query: z.object({ fail: z.text().default("inherited") }) },
+        loader: ({ query }) => {
+          throw new AlephaError(query.fail);
+        },
+        component: () => "Inherits",
+      });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    // The nearest handler answers.
+    expect((await app.child.render()).html).toBe("Child handled: child");
+    expect(calls).toEqual(["child:child"]);
+
+    // It passes (`undefined`): the parent's answers, once.
+    calls.length = 0;
+    expect((await app.child.render({ query: { fail: "other" } })).html).toBe(
+      "Parent handled: other",
+    );
+    expect(calls).toEqual(["child:other", "parent:other"]);
+
+    // A handler inherited through two layers runs once per error, not once
+    // per layer below it.
+    calls.length = 0;
+    expect((await app.inherits.render()).html).toBe(
+      "Parent handled: inherited",
+    );
+    expect(calls).toEqual(["parent:inherited"]);
+
+    // Even when it passes, leaving the built-in error view to render.
+    calls.length = 0;
+    await app.inherits.render({ query: { fail: "nobody" } });
+    expect(calls).toEqual(["parent:nobody"]);
+  });
+
+  it("$page - loader receives parent props", async ({ expect }) => {
     class App {
       parent = $page({
         loader: () => ({ parentValue: "from parent" }),
@@ -685,13 +631,11 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.child.options.loader).toBeDefined();
-
     const rendered = await app.child.fetch();
     expect(rendered.html).toBe("Child received: from parent and from parent");
   });
 
-  test("$page - redirect shorthand", async ({ expect }) => {
+  it("$page - redirect shorthand", async ({ expect }) => {
     class App {
       home = $page({
         path: "/",
@@ -711,7 +655,7 @@ describe("$page primitive tests", () => {
     expect(rendered.redirect).toBe("/dashboard");
   });
 
-  test("$page - a raw $cache in use is refused", async ({ expect }) => {
+  it("$page - a raw $cache in use is refused", async ({ expect }) => {
     // It stored the whole document, the visitor's private state included.
     class App {
       cached = $page({

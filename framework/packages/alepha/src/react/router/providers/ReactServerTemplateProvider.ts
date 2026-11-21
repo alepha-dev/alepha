@@ -1,8 +1,8 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
-import { ServerHelmetProvider } from "alepha/server";
+import { HttpError, ServerHelmetProvider } from "alepha/server";
 import { createElement, type ReactNode } from "react";
 
 import ErrorViewer from "../components/ErrorViewer.tsx";
@@ -46,7 +46,17 @@ export class ReactServerTemplateProvider {
       return "";
     }
     const content = this.serverHead.executableInlineContent(script);
-    if (!content || this.helmet.isCspScriptHashed(content)) {
+    if (!content) {
+      return "";
+    }
+    // Hashes are registered for the bytes written, which the escape may
+    // have changed from what was authored (see `registerCspHashes`).
+    const type = typeof script === "string" ? undefined : script.type;
+    const written = this.escapeInlineScript(
+      content,
+      typeof type === "string" ? type : undefined,
+    );
+    if (this.helmet.isCspScriptHashed(written)) {
       return "";
     }
     return ` nonce="${nonce}"`;
@@ -110,7 +120,7 @@ export class ReactServerTemplateProvider {
    *
    * An error document is not the app. If it shipped the entry module, the
    * client would boot, find no `#__ssr` payload, and client-render the very
-   * URL the server just refused — replacing a 503 or a guard's refusal with a
+   * URL the server just refused: replacing a 503 or a guard's refusal with a
    * working-looking page. Dropping the script is what keeps that from
    * happening; the cost is that these pages are not interactive.
    */
@@ -122,18 +132,28 @@ export class ReactServerTemplateProvider {
   public readonly rootId = "root";
 
   /**
-   * Regex for extracting root div content from HTML.
+   * Regex for extracting root div content from HTML: everything up to the
+   * root's own closing tag, the last `</div>` before the hydration scripts
+   * or the end of the body, so a `<div>` in the page does not end it.
    */
   public readonly rootDivRegex = new RegExp(
-    `<div[^>]*\\s+id=["']${this.rootId}["'][^>]*>([\\s\\S]*?)<\\/div>`,
+    `<div[^>]*\\s+id=["']${this.rootId}["'][^>]*>([\\s\\S]*)<\\/div>\\s*(?:<script id="__ssr|<\\/body>)`,
     "i",
   );
 
   /**
-   * Extract content inside the root div from HTML.
+   * Extract content inside the root div from HTML: what React rendered. A
+   * streamed page with a deferred value writes its hydration payload and
+   * boot signal inside the root, right after the shell; they are left out.
    */
   public extractRootContent(html: string): string | undefined {
-    return html.match(this.rootDivRegex)?.[1];
+    return html
+      .match(this.rootDivRegex)?.[1]
+      .replace(
+        /<script id="__ssr(_private)?" type="application\/json"[^>]*>[\s\S]*?<\/script>/g,
+        "",
+      )
+      .replace(`<script>${this.bootSignalScript}</script>`, "");
   }
 
   /**
@@ -150,7 +170,7 @@ export class ReactServerTemplateProvider {
   /**
    * Set the head content used by standalone error documents.
    *
-   * Takes stylesheets and the favicon, never the entry script — see
+   * Takes stylesheets and the favicon, never the entry script, see
    * {@link errorHeadContent}.
    */
   public setErrorHeadContent(
@@ -281,7 +301,7 @@ export class ReactServerTemplateProvider {
     if (head.script) {
       for (const script of head.script) {
         if (typeof script === "string") {
-          content += `<script${this.nonceAttribute(script)}>${script}</script>\n`;
+          content += `<script${this.nonceAttribute(script)}>${this.escapeInlineScript(script)}</script>\n`;
         } else {
           const { content: scriptContent, ...rest } = script;
           const attrs = Object.entries(rest)
@@ -292,13 +312,64 @@ export class ReactServerTemplateProvider {
             .join(" ");
           const nonce = this.nonceAttribute(script);
           content += scriptContent
-            ? `<script ${attrs}${nonce}>${scriptContent}</script>\n`
+            ? `<script ${attrs}${nonce}>${this.escapeInlineScript(
+                scriptContent,
+                typeof script.type === "string" ? script.type : undefined,
+              )}</script>\n`
             : `<script ${attrs}></script>\n`;
         }
       }
     }
 
     return content;
+  }
+
+  /**
+   * The content of an inline `<script>`, unable to end its own element.
+   *
+   * - **A JSON block** ({@link isJsonBlock}) usually carries values the page
+   *   loaded: every `<`, U+2028 and U+2029 becomes its JSON unicode escape,
+   *   which reads back as the same JSON.
+   * - **Anything else**, executable code or a data block in another language
+   *   (a template, a shader), is written as authored, where `<` means
+   *   something. Only what would end or derail the element is rewritten, with
+   *   `\u003c` for its `<`: a literal `</script`, and a `<!--` that a
+   *   `<script` follows, after which an HTML parser no longer sees the
+   *   closing tag. In JavaScript the rewrite reads the same inside a string,
+   *   a template or a regular expression, the only places `</script` can sit
+   *   (a raw template, `String.raw`, is the exception: it keeps the six
+   *   characters of the escape);
+   *   a `<!--` used as operators (`a<!--b`) ahead of a `<script` is altered
+   *   too, and must be written with spaces. In another language the rewrite
+   *   changes the text.
+   *
+   * Running it twice changes nothing more.
+   */
+  public escapeInlineScript(content: string, type?: string): string {
+    if (ReactServerTemplateProvider.isJsonBlock(type)) {
+      return content
+        .replace(/</g, "\\u003c")
+        .replace(new RegExp("\\u2028", "g"), "\\u2028")
+        .replace(new RegExp("\\u2029", "g"), "\\u2029");
+    }
+    return content
+      .replace(/<(?=\/script)/gi, "\\u003c")
+      .replace(/<(?=!--[\s\S]*<script)/gi, "\\u003c");
+  }
+
+  /**
+   * Whether a `<script type>` holds JSON: `application/json`, any
+   * `application/*+json` (JSON-LD, a manifest), with or without parameters,
+   * and the two JSON types that have no MIME type, `importmap` and
+   * `speculationrules`.
+   */
+  public static isJsonBlock(type: string | undefined): boolean {
+    const essence = (type ?? "").split(";")[0].trim().toLowerCase();
+    return (
+      /^application\/([\w.-]+\+)?json$/.test(essence) ||
+      essence === "importmap" ||
+      essence === "speculationrules"
+    );
   }
 
   /**
@@ -337,22 +408,61 @@ export class ReactServerTemplateProvider {
       key: layer.key,
       config: layer.config,
       props: this.deferred.serialize(layer.props, index + 1),
-      error: layer.error
-        ? {
-            // Deliberately flattening an Error for the SSR payload: `name` and `message`
-            // are non-enumerable, which is why they are re-added on the next lines.
-            // oxlint-disable-next-line typescript/no-misused-spread
-            ...layer.error,
-            name: layer.error.name,
-            message: layer.error.message,
-            stack: !this.alepha.isProduction() ? layer.error.stack : undefined,
-          }
-        : undefined,
+      error: layer.error ? this.describeError(layer.error) : undefined,
     }));
 
     return {
       "alepha.react.router.layers": layers,
       ...this.alepha.store.exportAtoms("current", { personal: false }),
+    };
+  }
+
+  /**
+   * A layer's error as the shared payload carries it.
+   *
+   * Outside production, the whole error: its own fields, name, message and
+   * stack. In production, only what the browser needs to show the error view
+   * again on hydration: `name`, `status` and `requestId` when it has them,
+   * and a message.
+   *
+   * The message and the `data` are kept for an `HttpError` below 500, which
+   * is said to the client on purpose. Anything else is internal (a driver's
+   * error, a query, an upstream URL) and reads "Internal Server Error".
+   *
+   * This is stricter than an API response: `ServerRouterProvider` also keeps
+   * the message of an error that is not an `HttpError` but carries a known
+   * 4xx `status` (a library's). Here that message is dropped, since it was
+   * never written for a visitor and this payload is shared bytes; the status
+   * alone still routes the error (`isHttpError`).
+   */
+  protected describeError(error: Error): Record<string, unknown> {
+    if (!this.alepha.isProduction()) {
+      return {
+        // Deliberately flattening an Error for the SSR payload: `name` and `message`
+        // are non-enumerable, which is why they are re-added on the next lines.
+        // oxlint-disable-next-line typescript/no-misused-spread
+        ...error,
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      };
+    }
+
+    const { status, requestId, data } = error as Error & {
+      status?: unknown;
+      requestId?: unknown;
+      data?: Record<string, unknown>;
+    };
+    const known = typeof status === "number" ? status : undefined;
+    const shown =
+      error instanceof HttpError && known !== undefined && known < 500;
+
+    return {
+      name: error.name,
+      message: shown ? error.message : "Internal Server Error",
+      status: known,
+      requestId: typeof requestId === "string" ? requestId : undefined,
+      data: shown ? data : undefined,
     };
   }
 
@@ -455,7 +565,7 @@ export class ReactServerTemplateProvider {
       controller.enqueue(
         this.encoder.encode(
           this.renderErrorToString(
-            error instanceof Error ? error : new Error(String(error)),
+            error instanceof Error ? error : new AlephaError(String(error)),
             state,
           ),
         ),
@@ -816,7 +926,8 @@ export class ReactServerTemplateProvider {
   }
 
   /**
-   * Create HTML stream (non-early version, for testing/prerender).
+   * Create the HTML stream of a document built in one piece, with no early
+   * head: a `stream: false` page, a prerendered page, and `render()`.
    */
   public createHtmlStream(
     reactStream: ReadableStream<Uint8Array>,
@@ -916,7 +1027,7 @@ export class ReactServerTemplateProvider {
     controller.enqueue(
       encoder.encode(
         this.renderErrorToString(
-          error instanceof Error ? error : new Error(String(error)),
+          error instanceof Error ? error : new AlephaError(String(error)),
           routerState,
         ),
       ),
@@ -942,7 +1053,7 @@ export class ReactServerTemplateProvider {
    * Render a complete, standalone HTML document for an error.
    *
    * This is the answer for a failure that happened *before* any React stream
-   * opened — a guard, a hook, a middleware — where the streaming error paths
+   * opened (a guard, a hook, a middleware) where the streaming error paths
    * above have nothing to inject into. Nothing has been flushed yet, so the
    * whole document is built at once and returned as a string.
    *
@@ -977,7 +1088,7 @@ export class ReactServerTemplateProvider {
    * Render error to HTML string.
    *
    * `element` short-circuits the `onError` lookup for callers that already
-   * resolved a custom error component — the pre-stream path does, because it
+   * resolved a custom error component: the pre-stream path does, because it
    * has to inspect the result for a `Redirection` while a redirect is still
    * possible.
    */
@@ -986,7 +1097,11 @@ export class ReactServerTemplateProvider {
     routerState: ReactRouterState | undefined,
     element?: ReactNode,
   ): string {
-    this.log.error("SSR rendering error", error);
+    // A refusal is the app working, not a crash: the rule `createLayers`
+    // logs a loader's failure with.
+    const status = (error as { status?: unknown }).status;
+    const expected = typeof status === "number" && status < 500;
+    this.log[expected ? "debug" : "error"]("SSR rendering error", error);
 
     let errorElement: ReactNode = element;
 
@@ -1020,7 +1135,7 @@ export class ReactServerTemplateProvider {
 
     // Read without awaiting: this runs inside a stream controller callback.
     // Safe because an SSR error implies a render is under way, and a render
-    // awaits the same module before opening the stream — see
+    // awaits the same module before opening the stream, see
     // ReactDomServerProvider.peek.
     const reactDomServer = this.reactDomServer.peek();
     if (!reactDomServer) {
@@ -1053,11 +1168,17 @@ interface TeeController extends ReadableStreamDefaultController<Uint8Array> {
  */
 interface StreamConsumer {
   cancelled: boolean;
-  /** Why the stream was cancelled, as the runtime said. */
+  /**
+   * Why the stream was cancelled, as the runtime said.
+   */
   reason?: unknown;
-  /** The React stream, once there is one, to cancel with the HTML stream. */
+  /**
+   * The React stream, once there is one, to cancel with the HTML stream.
+   */
   reactStream?: ReadableStream<Uint8Array>;
-  /** The reader the body is piped through, while it is. */
+  /**
+   * The reader the body is piped through, while it is.
+   */
   reader?: ReadableStreamDefaultReader<Uint8Array>;
 }
 
@@ -1069,9 +1190,17 @@ export interface HydrationData {
   "alepha.react.router.layers": Array<{
     part?: string;
     name?: string;
+    /**
+     * The layer's identity, which hydration compares to reuse it.
+     */
+    key?: string;
     config?: Record<string, any>;
     props?: Record<string, any>;
-    error?: { name: string; message: string; stack?: string };
+    /**
+     * See `ReactServerTemplateProvider.describeError` for what it carries
+     * in production.
+     */
+    error?: Record<string, unknown>;
   }>;
   [key: string]: unknown;
 }

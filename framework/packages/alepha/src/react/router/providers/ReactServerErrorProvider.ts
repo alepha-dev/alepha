@@ -81,7 +81,7 @@ export class ReactServerErrorProvider {
    * Does this caller want a document, or a payload?
    *
    * Matches `text/html` as an explicit entry only. A browser lists it first on
-   * a top-level navigation, so the signal is exact — and the bare wildcard
+   * a top-level navigation, so the signal is exact, and the bare wildcard
    * that `fetch()` defaults to deliberately does not match.
    */
   protected acceptsHtml(accept?: string): boolean {
@@ -137,7 +137,7 @@ export class ReactServerErrorProvider {
   }
 
   /**
-   * Ask the page — and then its parents — for a custom error component.
+   * Ask the page (and then its parents) for a custom error component.
    *
    * Same chain, same contract as a loader failure: return a `ReactNode` to
    * render it, a `Redirection` to leave, or nothing to fall through to the
@@ -170,7 +170,7 @@ export class ReactServerErrorProvider {
    * Minimal router state for a render that never got one.
    *
    * These errors happen instead of `createLayers`, so there are no layers and
-   * no resolved props — only what the request itself already told us.
+   * no resolved props, only what the request itself already told us.
    */
   protected createState(
     request: ServerRequest,
