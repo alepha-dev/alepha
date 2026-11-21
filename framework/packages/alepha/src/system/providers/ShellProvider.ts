@@ -7,9 +7,12 @@ export interface ShellRunOptions {
   root?: string;
 
   /**
-   * Additional environment variables.
+   * Additional environment variables, over the process's own. A key set to
+   * `undefined` is removed from the child's environment instead: the way to
+   * keep an inherited variable (a `GIT_DIR` exported by a git hook) from
+   * reaching the command.
    */
-  env?: Record<string, string>;
+  env?: Record<string, string | undefined>;
 
   /**
    * Resolve the executable from node_modules/.bin.

@@ -181,21 +181,13 @@ export class NodeShellProvider implements ShellProvider {
           stdio,
           cwd: options.cwd,
           shell: true,
-          env: {
-            ...process.env,
-            PATH: this.localBinPath(options.cwd),
-            ...options.env,
-          },
+          env: this.childEnv(options),
         })
       : spawn(executable, args, {
           stdio,
           cwd: options.cwd,
           detached: this.needsProcessGroup(options),
-          env: {
-            ...process.env,
-            PATH: this.localBinPath(options.cwd),
-            ...options.env,
-          },
+          env: this.childEnv(options),
         });
 
     if (options.stdin !== undefined) {
@@ -535,12 +527,30 @@ export class NodeShellProvider implements ShellProvider {
   protected captureEnv(
     options: ShellRunOptions & { cwd: string },
   ): NodeJS.ProcessEnv {
-    return {
+    return this.childEnv(options, { LOG_FORMAT: "pretty" });
+  }
+
+  /**
+   * A child's environment: the process's own, the project's `PATH`, then
+   * `defaults`, then the caller's `env`, where a key set to `undefined` is
+   * removed rather than passed on.
+   */
+  protected childEnv(
+    options: ShellRunOptions & { cwd: string },
+    defaults: Record<string, string> = {},
+  ): Record<string, string> {
+    const env: Record<string, string | undefined> = {
       ...process.env,
       PATH: this.localBinPath(options.cwd),
-      LOG_FORMAT: "pretty",
+      ...defaults,
       ...options.env,
     };
+    for (const key of Object.keys(env)) {
+      if (env[key] === undefined) {
+        delete env[key];
+      }
+    }
+    return env as Record<string, string>;
   }
 
   /**

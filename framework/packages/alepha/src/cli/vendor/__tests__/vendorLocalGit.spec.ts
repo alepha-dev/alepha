@@ -135,4 +135,44 @@ describe("alepha vendor, against a local git repository", () => {
         }),
     ).rejects.toThrow(/1 vendored package could not be synced/);
   });
+
+  it("clones at a commit into its own directory even with GIT_DIR exported", async ({
+    expect,
+  }) => {
+    // Inside a git hook, GIT_DIR names the hook's repository: `git -C <tmp>
+    // init` and `remote add` used to act on it, and <tmp> stayed empty.
+    const decoy = join(dir, "decoy");
+    mkdirSync(decoy);
+    execFileSync("git", ["init", "--quiet", decoy], { env: gitEnv() });
+    const commit = git("rev-parse", "HEAD").toString().trim();
+    const exported = process.env.GIT_DIR;
+    process.env.GIT_DIR = join(decoy, ".git");
+    let cloned: string;
+    try {
+      cloned = await create()
+        .inject(ExposedVendorService)
+        .testCloneAtCommit(remote, commit);
+    } finally {
+      if (exported === undefined) {
+        delete process.env.GIT_DIR;
+      } else {
+        process.env.GIT_DIR = exported;
+      }
+    }
+
+    const head = execFileSync("git", ["-C", cloned, "rev-parse", "HEAD"], {
+      env: gitEnv(),
+    });
+    expect(head.toString().trim()).toBe(commit);
+    const decoyRemotes = execFileSync("git", ["-C", decoy, "remote"], {
+      env: gitEnv(),
+    });
+    expect(decoyRemotes.toString().trim()).toBe("");
+    rmSync(cloned, { recursive: true, force: true });
+  });
 });
+
+class ExposedVendorService extends VendorService {
+  public testCloneAtCommit = (remote: string, commit: string) =>
+    this.cloneAtCommit(remote, commit);
+}

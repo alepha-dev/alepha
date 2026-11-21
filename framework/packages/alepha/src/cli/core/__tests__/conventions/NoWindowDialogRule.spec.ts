@@ -1,5 +1,8 @@
+import { Alepha } from "alepha";
+import { MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import { NoWindowDialogRule } from "../../conventions/NoWindowDialogRule.ts";
 import { ConventionRunner } from "../../services/ConventionRunner.ts";
 import { checkFiles, lines } from "../fixtures/conventionHarness.ts";
 
@@ -115,4 +118,20 @@ describe("no-window-dialog", () => {
       [4, RULE],
     ]);
   });
+
+  it("finds the package.json above a Windows path", async () => {
+    // The runner joins paths with node's `join`: backslashes on Windows, so a
+    // dirname by "/" never found the manifest and the rule never reported.
+    const alepha = Alepha.create();
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    await fs.writeFile("C:\\app\\package.json", withUi);
+    const rule = alepha.inject(ExposedRule);
+
+    expect(await rule.testHasUi("C:\\app\\src\\web\\Page.tsx")).toBe(true);
+    expect(await rule.testHasUi("D:\\other\\src\\Page.tsx")).toBe(false);
+  });
 });
+
+class ExposedRule extends NoWindowDialogRule {
+  public testHasUi = (path: string) => this.hasUi(path);
+}

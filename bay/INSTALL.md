@@ -492,12 +492,12 @@ console is the same stop, with the same durability.
 
 The Alepha CLI's pre-flight distinguishes these for you, so read its message before digging:
 
-| Message                                    | Fix                                                          |
-| ------------------------------------------ | --------------------------------------------------------- |
-| `bay` is not on that user's PATH           | §5b — symlink into `/usr/local/bin`                          |
-| `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect          |
-| too old to read the artifact from stdin    | §7 — upgrade the host binary                                 |
-| `bay` does not know `--secrets-file`       | §7 — upgrade the host binary; nothing was deployed           |
-| `bay` has no `env` command                 | §7 — upgrade the host binary; affects `infra status` only    |
-| `no secrets file at /tmp/…`                | §7 — remove `PrivateTmp=` from `bay.service`                 |
-| `control api unreachable` as root          | Bay really is down: `systemctl status bay`                   |
+| Message                                     | Fix                                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `bay` is not on that user's PATH            | §5b — symlink into `/usr/local/bin`                                                                        |
+| `connect: permission denied` on the socket  | §5a — add the user to `bay-control`, then reconnect                                                        |
+| too old to read the artifact from stdin     | §7 — upgrade the host binary                                                                               |
+| `bay` does not know `--secrets-file`        | §7 — upgrade the host binary; nothing was deployed                                                         |
+| `bay` does not know the command it was sent | §7: upgrade the host binary; any subcommand an older host lacks (`env`, behind `infra status`, among them) |
+| `no secrets file at /tmp/…`                 | §7 — remove `PrivateTmp=` from `bay.service`                                                               |
+| `control api unreachable` as root           | Bay really is down: `systemctl status bay`                                                                 |

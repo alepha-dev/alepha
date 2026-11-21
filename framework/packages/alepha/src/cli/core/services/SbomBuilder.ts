@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { dirname, sep } from "node:path";
+import { dirname, isAbsolute } from "node:path";
 
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -241,7 +241,9 @@ export class SbomBuilder {
    * The file a module id points at, or null for a virtual module.
    */
   protected modulePath(id: string): string | null {
-    if (id.startsWith("\0") || !id.startsWith(sep)) {
+    // `isAbsolute`, not a leading `sep`: a Windows id (`C:\\...` or `C:/...`)
+    // never starts with one, so every bundled package was dropped there.
+    if (id.startsWith("\0") || !isAbsolute(id)) {
       return null;
     }
     const clean = id.split("?")[0];

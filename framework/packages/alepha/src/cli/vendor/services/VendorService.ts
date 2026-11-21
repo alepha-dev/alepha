@@ -545,6 +545,23 @@ export class VendorService {
   }
 
   /**
+   * The repository-locating `GIT_*` variables, removed from this service's
+   * git calls. A run started from a git hook carries them, and git then acts
+   * on the hook's repository: `git -C <tmp> init` and `remote add` landed
+   * there, and `<tmp>` stayed empty.
+   */
+  protected readonly gitEnv: Record<string, undefined> = {
+    GIT_DIR: undefined,
+    GIT_WORK_TREE: undefined,
+    GIT_INDEX_FILE: undefined,
+    GIT_OBJECT_DIRECTORY: undefined,
+    GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
+    GIT_COMMON_DIR: undefined,
+    GIT_NAMESPACE: undefined,
+    GIT_PREFIX: undefined,
+  };
+
+  /**
    * Clone a remote repository into a temporary directory.
    */
   protected async cloneRemote(remote: string, branch: string): Promise<string> {
@@ -567,7 +584,7 @@ export class VendorService {
         remote,
         tmpDir,
       ],
-      { capture: true },
+      { capture: true, env: this.gitEnv },
     );
 
     if (output) {
@@ -591,18 +608,20 @@ export class VendorService {
 
     this.log.debug(`Cloning ${remote}@${commit} into ${tmpDir}`);
 
-    await this.shell.run(["git", "init", tmpDir], { capture: true });
+    const options = { capture: true, env: this.gitEnv };
+    await this.shell.run(["git", "init", tmpDir], options);
     await this.shell.run(
       ["git", "-C", tmpDir, "remote", "add", "origin", remote],
-      { capture: true },
+      options,
     );
     await this.shell.run(
       ["git", "-C", tmpDir, "fetch", "--depth", "1", "origin", commit],
-      { capture: true },
+      options,
     );
-    await this.shell.run(["git", "-C", tmpDir, "checkout", "FETCH_HEAD"], {
-      capture: true,
-    });
+    await this.shell.run(
+      ["git", "-C", tmpDir, "checkout", "FETCH_HEAD"],
+      options,
+    );
 
     return tmpDir;
   }
@@ -613,7 +632,7 @@ export class VendorService {
   protected async getCommitHash(repoDir: string): Promise<string> {
     const hash = await this.shell.run(
       ["git", "-C", repoDir, "rev-parse", "HEAD"],
-      { capture: true },
+      { capture: true, env: this.gitEnv },
     );
     return hash.trim();
   }

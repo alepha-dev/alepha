@@ -26,13 +26,10 @@ export class BunShellProvider extends NodeShellProvider {
   ): Promise<string> {
     const proc = Bun.spawn([executable, ...args], {
       cwd: options.cwd,
-      env: {
-        ...process.env,
-        // Same PATH prefix as the node engine: without it, a globally
-        // installed binary shadows the project's own copy on Bun only.
-        PATH: this.localBinPath(options.cwd),
-        ...options.env,
-      },
+      // Same PATH prefix as the node engine (without it, a globally
+      // installed binary shadows the project's own copy on Bun only), and the
+      // same removal of a key the caller set to `undefined`.
+      env: this.childEnv(options),
       stdout: "inherit",
       stderr: "inherit",
       // `Bun.spawn` takes a TypedArray directly and closes the stream itself,
