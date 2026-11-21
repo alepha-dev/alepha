@@ -150,4 +150,39 @@ describe("FakeProvider - Key Name Intelligence", () => {
     expect(result.price).toBeGreaterThan(0);
     expect(result.amount).toBeGreaterThan(0);
   });
+
+  test("a key-name value never breaks its own schema", ({ expect }) => {
+    // Each of these used to come out invalid 50 times out of 50: the key's
+    // generator ignored the constraints of the schema it generated for.
+    const fake = new FakeProvider();
+    const schema = z.object({
+      price: z.integer(),
+      amount: z.integer().min(0).max(10),
+      age: z.integer().max(10),
+      name: z.string().max(5),
+      email: z.string().max(8),
+      day: z.integer().min(40),
+      title: z.string().min(80),
+    });
+
+    for (let i = 0; i < 50; i++) {
+      const value = fake.generate(schema);
+      expect(schema.safeParse(value).success, JSON.stringify(value)).toBe(true);
+    }
+  });
+
+  test("keeps the contextual value when the schema accepts it", ({
+    expect,
+  }) => {
+    const fake = new FakeProvider();
+    for (let i = 0; i < 20; i++) {
+      const { price, email } = fake.generate(
+        z.object({ price: z.integer(), email: z.text() }),
+      );
+      expect(Number.isInteger(price)).toBe(true);
+      expect(price).toBeGreaterThanOrEqual(1);
+      expect(price).toBeLessThanOrEqual(1000);
+      expect(email).toMatch(/@/);
+    }
+  });
 });

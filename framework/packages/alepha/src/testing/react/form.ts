@@ -1,4 +1,7 @@
 import { fireEvent, type Screen, waitFor } from "@testing-library/react";
+import { type Alepha, AlephaError } from "alepha";
+// The `form:submit:end` hook's type, declared by alepha/react/form.
+import type {} from "alepha/react/form";
 
 /**
  * Options for fillForm helper.
@@ -213,25 +216,28 @@ export const resetForm = async (
  * ```
  */
 export const waitForFormSubmit = async (
-  alepha: {
-    events: {
-      once: (event: string, handler: (data: any) => void) => () => void;
-    };
-  },
+  alepha: Alepha,
   formId: string,
   timeout: number = 5000,
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`Form submission timeout after ${timeout}ms`));
-    }, timeout);
-
-    alepha.events.once("form:submit:end", (data: { id: string }) => {
+    // `on`, filtered, and removed once the awaited form ends: a one-shot
+    // listener would be consumed by the first other form that ends.
+    const off = alepha.events.on("form:submit:end", (data) => {
       if (data.id === formId) {
+        off();
         clearTimeout(timer);
         resolve();
       }
     });
+    const timer = setTimeout(() => {
+      off();
+      reject(
+        new AlephaError(
+          `Form '${formId}' did not finish submitting within ${timeout}ms`,
+        ),
+      );
+    }, timeout);
   });
 };
 

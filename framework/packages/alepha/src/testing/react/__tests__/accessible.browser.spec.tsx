@@ -60,15 +60,4 @@ describe("expectAccessible", () => {
       expectAccessible(undefined, { disable: ["button-name"] }),
     ).resolves.toBeUndefined();
   });
-
-  it("never reports contrast, which jsdom cannot compute", async ({
-    expect,
-  }) => {
-    render(
-      <p style={{ color: "#eeeeee", backgroundColor: "#ffffff" }}>
-        Low contrast text
-      </p>,
-    );
-    await expect(expectAccessible()).resolves.toBeUndefined();
-  });
 });

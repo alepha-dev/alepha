@@ -5,7 +5,7 @@ import { FakeProvider } from "../providers/FakeProvider.ts";
 
 const personSchema = z.object({ firstName: z.string() });
 
-describe("FakeProvider — locale option", () => {
+describe("FakeProvider locale option", () => {
   it("uses the configured locale when generating data", () => {
     const alepha = Alepha.create();
     const fake = alepha.inject(FakeProvider);
@@ -18,7 +18,7 @@ describe("FakeProvider — locale option", () => {
       );
     };
 
-    // Same seed, different locale — the option is documented as "Faker locale
+    // Same seed, different locale: the option is documented as "Faker locale
     // to use for generating fake data", so it must actually change the corpus.
     expect(sample("fr")).not.toEqual(sample("en"));
   });

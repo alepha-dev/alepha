@@ -130,9 +130,10 @@ export const scanPageAccessibility = async (
 };
 
 /**
- * Format findings the way every accessibility assertion of
- * `alepha/testing` reports them: per finding, the rule id and what it asks,
- * its help URL, and the node's selector and HTML.
+ * Format findings the way the page assertions of `alepha/testing/playwright`
+ * report them: per finding, the rule id and what it asks, its help URL, and
+ * the node's selector and HTML. (`expectAccessible` of `alepha/testing/react`
+ * builds its own message, grouped by rule.)
  */
 export const formatAccessibilityFindings = (
   findings: AccessibilityFinding[],

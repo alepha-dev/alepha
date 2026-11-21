@@ -235,15 +235,10 @@ describe("FakeProvider", () => {
       optional: z.text().optional(),
     });
 
-    // Generate multiple times to check both defined and undefined cases
+    // Each result's shape; both ends of the probability are pinned by the
+    // probability tests below.
     const results = Array.from({ length: 20 }, () => fake.generate(schema));
 
-    // At least one should be undefined
-    const hasUndefined = results.some((r) => r.optional === undefined);
-    // At least one should be defined
-    const hasDefined = results.some((r) => r.optional !== undefined);
-
-    expect(hasUndefined || hasDefined).toBe(true);
     results.forEach((result) => {
       expect(typeof result.required).toBe("string");
       if (result.optional !== undefined) {
@@ -259,15 +254,10 @@ describe("FakeProvider", () => {
       nullable: z.text().nullable(),
     });
 
-    // Generate multiple times to check both null and non-null cases
+    // Each result's shape; both ends of the probability are pinned by the
+    // probability tests below.
     const results = Array.from({ length: 20 }, () => fake.generate(schema));
 
-    // At least one should be null
-    const hasNull = results.some((r) => r.nullable === null);
-    // At least one should be non-null
-    const hasNonNull = results.some((r) => r.nullable !== null);
-
-    expect(hasNull || hasNonNull).toBe(true);
     results.forEach((result) => {
       expect(typeof result.required).toBe("string");
       if (result.nullable !== null) {
