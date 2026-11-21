@@ -61,7 +61,10 @@ export const AutoFormErrorPopover = (props: AutoFormErrorPopoverProps) => {
                 <span className="font-medium">
                   {it.path || tr("autoForm.formLabel", { default: "Form" })}
                 </span>
-                <span className="text-muted-foreground"> — {it.message}</span>
+                <span className="text-muted-foreground">
+                  {": "}
+                  {it.message ?? tr("autoForm.invalid", { default: "Invalid" })}
+                </span>
               </button>
             </li>
           ))}
@@ -73,7 +76,8 @@ export const AutoFormErrorPopover = (props: AutoFormErrorPopoverProps) => {
 
 interface ErrorItem {
   path: string;
-  message: string;
+  /** Absent when the error carries none: the popover says "Invalid". */
+  message?: string;
 }
 
 /**
@@ -101,7 +105,7 @@ const collectErrors = (error: Error): ErrorItem[] => {
   return [
     {
       path: data?.path ?? "",
-      message: data?.message ?? error.message ?? "Invalid",
+      message: data?.message ?? error.message,
     },
   ];
 };

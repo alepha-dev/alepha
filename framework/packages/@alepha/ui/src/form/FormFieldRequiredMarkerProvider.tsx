@@ -27,7 +27,7 @@ export const FormFieldRequiredMarkerProvider = (
  *
  * ⚠️ **This is a purely visual switch, and must stay one.** The marker is
  * `aria-hidden`, so it never carried the information to assistive tech in the
- * first place — `aria-required` on the input does, and it is set from the
+ * first place: `aria-required` on the input does, and it is set from the
  * schema regardless of this flag. Hiding the marker must never be the reason a
  * field stops announcing that it is required.
  *

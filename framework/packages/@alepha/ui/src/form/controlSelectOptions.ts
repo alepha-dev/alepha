@@ -7,7 +7,7 @@ import type { ControlSelectComboboxProps } from "./ControlSelectCombobox.tsx";
 /**
  * Normalized option used as the Base UI `Combobox.Item` value. Because the
  * shape is `{ value, label }`, Base UI uses `label` for display/search and
- * `value` for selection automatically — which is what makes the popup search
+ * `value` for selection automatically, which is what makes the popup search
  * match the visible label rather than the raw id.
  */
 export interface ComboOption {
@@ -73,16 +73,20 @@ export const resolveComboboxItems = (
     disabled: optDisabled(o),
   }));
 
-  const selected: string[] = props.multi
-    ? Array.isArray(props.value)
-      ? (props.value as unknown[]).map(String)
-      : []
-    : props.value != null
-      ? // Coercion at a boundary: the value is a form/route/chart primitive whose
-        // declared type is wider than what can reach here.
-        // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
-        [String(props.value)]
-      : [];
+  // An empty string is no selection, as on the trigger: counted as one, it
+  // drew a blank orphan row, unmuted the trigger and offered a clear.
+  const selected: string[] = (
+    props.multi
+      ? Array.isArray(props.value)
+        ? (props.value as unknown[]).map(String)
+        : []
+      : props.value != null
+        ? // Coercion at a boundary: the value is a form/route/chart primitive whose
+          // declared type is wider than what can reach here.
+          // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
+          [String(props.value)]
+        : []
+  ).filter((val) => val !== "");
 
   const labelFor = (val: string) =>
     dataOptions.find((o) => o.value === val)?.label ??
@@ -132,7 +136,7 @@ export const resolveComboboxItems = (
     : dataOptions;
 
   // Server mode (`onSearch`) filters upstream; for static lists we filter on
-  // the visible label — never the value/id (that was the cmdk bug).
+  // the visible label, never the value/id (that was the cmdk bug).
   const serverMode = Boolean(props.onSearch);
   const q = query.trim().toLowerCase();
   const matchesQuery = (o: ComboOption) => o.label.toLowerCase().includes(q);
@@ -191,7 +195,7 @@ export const resolveComboboxItems = (
   // a REQUIRED field deselectable.
 
   /**
-   * "Select every match" — the row that makes a typed prefix a filter clause
+   * "Select every match": the row that makes a typed prefix a filter clause
    * rather than a way to find one item.
    *
    * Areas are named by import path (`lore/quests`, `lore/folios`, `lore/ui`),

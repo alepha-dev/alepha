@@ -20,6 +20,7 @@ import { Control, type ControlProps } from "./Control.tsx";
 import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
 import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { spanClass, widthFor } from "./grid.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlObjectProps {
   /**
@@ -77,6 +78,7 @@ export interface ControlObjectProps {
 
 export const ControlObject = (props: ControlObjectProps) => {
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const [value, setValue] = useFieldValue(props.input);
   const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
   const { tr } = useI18n();
@@ -106,6 +108,7 @@ export const ControlObject = (props: ControlObjectProps) => {
     description: props.description,
     error: form.error,
   });
+  meta.error = errorText(meta.error);
 
   // The field schema may be wrapped (optional/nullable/default); peel to the
   // ZodObject before reading its shape.

@@ -36,7 +36,7 @@ const FormFieldLayoutContext = createContext<FormFieldLayout>("stack");
  * Read the ambient layout (see {@link FormFieldLayoutProvider}).
  *
  * `<FormField>` reads this itself, so a widget only needs the hook when it
- * sizes or arranges something *around* its FormField — `<Control>` uses it to
+ * sizes or arranges something *around* its FormField: `<Control>` uses it to
  * give text inputs the settings-row column width.
  */
 export function useFormFieldLayout(): FormFieldLayout {

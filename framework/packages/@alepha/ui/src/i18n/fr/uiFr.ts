@@ -171,6 +171,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "autoForm.error": "Erreur",
   "autoForm.errors": "Erreurs du formulaire",
   "autoForm.formLabel": "Formulaire",
+  "autoForm.invalid": "Invalide",
   "autoForm.reset": "Réinitialiser",
   "autoForm.save": "Enregistrer",
 
@@ -185,6 +186,11 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "controlArray.moveDown": "Descendre",
   "controlArray.moveUp": "Monter",
   "controlArray.remove": "Retirer",
+
+  // Text and password inputs: the clear cross and the reveal toggle.
+  "control.clear": "Effacer",
+  "controlPassword.hide": "Masquer le mot de passe",
+  "controlPassword.show": "Afficher le mot de passe",
 
   // Date and date range controls: the trigger while nothing is picked.
   "controlDate.placeholder": "Choisir une date",
@@ -210,6 +216,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "controlSelect.no": "Non",
   "controlSelect.noResults": "Aucun résultat.",
   "controlSelect.none": "Aucun",
+  "controlSelect.search": "Rechercher…",
   "controlSelect.select": "Sélectionner…",
   "controlSelect.yes": "Oui",
 
@@ -225,6 +232,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "controlUpload.singleOnly": "Un seul fichier est accepté",
   "controlUpload.tooBig": "$1 dépasse $2",
   "controlUpload.uploadedMany": "$1 fichiers envoyés",
+  "controlUpload.uploaded": "envoyé",
   "controlUpload.uploadedOne": "Fichier envoyé",
   "controlUpload.uploading": "Envoi…",
 

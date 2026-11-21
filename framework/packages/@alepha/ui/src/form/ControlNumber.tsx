@@ -13,6 +13,7 @@ import { Input } from "../core/Input.tsx";
 import { Slider } from "../core/Slider.tsx";
 import { FormField } from "./FormField.tsx";
 import { iconFor } from "./iconHint.tsx";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlNumberProps {
   /**
@@ -56,6 +57,7 @@ export interface ControlNumberProps {
 
 export const ControlNumber = (props: ControlNumberProps) => {
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const [value, setValue] = useFieldValue(props.input);
 
   if (!props.input?.props) return null;
@@ -65,6 +67,7 @@ export const ControlNumber = (props: ControlNumberProps) => {
     description: props.description,
     error: form.error,
   });
+  meta.error = errorText(meta.error);
 
   const min = props.min ?? meta.constraints.minimum;
   const max = props.max ?? meta.constraints.maximum;

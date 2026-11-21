@@ -28,7 +28,7 @@ export const autoGroupSchema = (
     // Classify the unwrapped schema: an optional object is still an object.
     const inner = z.schema.unwrap(prop);
     const isObject = z.schema.isObject(inner);
-    // An array of a UNION of objects is a complex field too — without this it
+    // An array of a UNION of objects is a complex field too: without this it
     // lands in the "General" grid and gets a third of a row to render a list
     // of object editors in.
     const isArrayOfObjects =

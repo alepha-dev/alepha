@@ -15,7 +15,7 @@ export interface ResizeImageOptions {
   /**
    * Output MIME type. WebP by default: the browser's encoder is **lossy** and
    * keeps the alpha channel, which no wasm build available to the server can
-   * do — a transparent logo at 128px is a few kilobytes here and roughly five
+   * do: a transparent logo at 128px is a few kilobytes here and roughly five
    * times that server-side.
    *
    * @default "image/webp"
@@ -40,8 +40,8 @@ export interface ResizeImageOptions {
  *
  * **Returns the input untouched** when it is not a raster image, when it
  * already fits, or when the browser lacks `OffscreenCanvas`/`createImageBitmap`
- * — including SVG, which has no pixels to resample and would be rasterised into
- * something worse than it started. So this is a best-effort downscale, not a
+ * (including SVG, which has no pixels to resample and would be rasterised into
+ * something worse than it started). So this is a best-effort downscale, not a
  * gate: the storage's `maxSize` is what bounds the pathological case.
  *
  * The browser is also the *better* encoder here, which is why the work belongs
@@ -115,7 +115,7 @@ export const resizeImage = async (
       lastModified: file.lastModified,
     });
   } catch {
-    // A corrupt or unsupported image must not cost the user their upload —
+    // A corrupt or unsupported image must not cost the user their upload:
     // let the server have its say about the original.
     return file;
   } finally {

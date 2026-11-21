@@ -10,6 +10,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { resolveSchemaControl, type SchemaControl } from "alepha/react/ui";
 import { Check, X } from "lucide-react";
 import {
@@ -58,7 +59,7 @@ export interface ControlProps {
    */
   description?: string;
   /**
-   * Force a specific input variant — renders a single-line text input.
+   * Force a specific input variant: renders a single-line text input.
    */
   text?: boolean;
   /**
@@ -117,7 +118,7 @@ export interface ControlProps {
    */
   time?: boolean;
   /**
-   * Date picker caption style — `"dropdown"` swaps the month arrows for
+   * Date picker caption style: `"dropdown"` swaps the month arrows for
    * month/year selects. See {@link ControlDateProps.captionLayout}.
    */
   captionLayout?: ControlDateProps["captionLayout"];
@@ -139,7 +140,7 @@ export interface ControlProps {
    */
   combobox?: boolean;
   /**
-   * Force the select's search input on or off. Defaults to "auto" — on for an
+   * Force the select's search input on or off. Defaults to "auto": on for an
    * async list, when `createNewEntry` is set, or above ~50 options.
    */
   searchable?: boolean;
@@ -166,7 +167,7 @@ export interface ControlProps {
   array?: boolean;
   /**
    * Props forwarded to the nested `<ControlObject>`, keyed by child field name.
-   * This is the only way to reach INSIDE an object field — without it a caller
+   * This is the only way to reach INSIDE an object field: without it a caller
    * can style/override the object as a whole but never one of its children
    * (e.g. attaching a `custom` widget to `payg.zoneFareCents`).
    */
@@ -186,7 +187,7 @@ export interface ControlProps {
    */
   custom?: ComponentType<{ value: unknown; onChange: (v: unknown) => void }>;
   /**
-   * Override icon — pass `null` to remove the schema-inferred icon.
+   * Override icon: pass `null` to remove the schema-inferred icon.
    */
   icon?: IconComponent | string | null;
   /**
@@ -252,7 +253,7 @@ export interface ControlProps {
    */
   rows?: number;
   /**
-   * Escape hatch — extra native attributes (event handlers, `className`,
+   * Escape hatch: extra native attributes (event handlers, `className`,
    * `aria-*`, `data-*`, `style`, …) forwarded to whichever element the
    * control actually renders (text input / textarea / password input). The
    * form bindings (`value`, `onChange`, `id`, `name`) always win and cannot
@@ -295,17 +296,17 @@ export interface ControlProps {
    * Whether the field offers a way back to empty.
    *
    * On a `ControlSelect`, `true` adds a synthetic "none" row that resets the
-   * field to `undefined` — use it for optional filter chips.
+   * field to `undefined`; use it for optional filter chips.
    *
    * On a text field the affordance is the opposite way round: an optional
    * field already shows a clear (×) button whenever it holds a value, and
    * `false` takes it away. Pass `false` when emptying the field is not
-   * something the API can honour — a username has no "unset" on the server,
+   * something the API can honour: a username has no "unset" on the server,
    * so offering the button would promise an edit that silently does nothing.
    */
   clearable?: boolean;
   /**
-   * Forwarded to `ControlSelect` — label of the `clearable` row, also
+   * Forwarded to `ControlSelect`: label of the `clearable` row, also
    * used as the empty-state trigger placeholder. Defaults to "None".
    */
   clearLabel?: string;
@@ -323,7 +324,7 @@ export interface ControlProps {
    */
   maxTriggerLength?: number;
   /**
-   * Forwarded to `ControlSelect` — extra className on the trigger.
+   * Forwarded to `ControlSelect`: extra className on the trigger.
    * Useful for sizing filter chips inline.
    */
   triggerClassName?: string;
@@ -385,6 +386,7 @@ export interface ControlProps {
 export const Control = (props: ControlProps) => {
   const form = useFormState(props.input, ["error", "dirty"]);
   const errorText = useFieldErrorText();
+  const { tr } = useI18n();
   const autoSaveEnabled = useFormFieldAutoSave();
   const rowLayout = useFormFieldLayout() === "row";
   const [value, setValue] = useFieldValue(props.input);
@@ -894,7 +896,7 @@ export const Control = (props: ControlProps) => {
           // `cn`, not a plain join: the settings width below has to be
           // overridable by the caller, and only `cn`'s merge can decide
           // that `sm:w-96` beats `sm:w-64` rather than both landing on the
-          // element. Order is precedence — later wins.
+          // element. Order is precedence: later wins.
           className={cn(
             // Row layout is the settings-card shape, whose right-hand cell is
             // an `auto` grid column: `w-full` there resolves against the
@@ -989,7 +991,7 @@ export const Control = (props: ControlProps) => {
           <button
             type="button"
             onClick={() => props.input.form.submit()}
-            aria-label="Save"
+            aria-label={tr("autoForm.save", { default: "Save" })}
             className="text-primary hover:text-primary/80 absolute end-2 top-1/2 -translate-y-1/2 p-1"
           >
             <Check className="size-3.5" />
@@ -999,7 +1001,7 @@ export const Control = (props: ControlProps) => {
           <button
             type="button"
             onClick={() => setValue(undefined)}
-            aria-label="Clear"
+            aria-label={tr("control.clear", { default: "Clear" })}
             // `data-slot` like every other clear in the kit
             // (`combobox-clear`, and `control-clear` on the field trigger).
             // It was the only one without a hook, so the only way to address

@@ -422,10 +422,8 @@ export const INDENT_GUIDE_ORIGIN_PX = INDENT_BASE_PX + DISCLOSURE_BOX_PX / 2;
  * Checking the tree's drag id instead would be wrong in the other direction:
  * it is unset for an external drag, but also unset in the frame before an
  * internal drag's `dragstart` state lands.
- *
- * Exported because a consumer's own tests reach for it.
  */
-export const isFileDrag = (e: DragEvent<HTMLElement>): boolean =>
+const isFileDrag = (e: DragEvent<HTMLElement>): boolean =>
   [...e.dataTransfer.types].includes("Files");
 
 /**

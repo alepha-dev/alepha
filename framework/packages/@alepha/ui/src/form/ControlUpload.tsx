@@ -35,6 +35,7 @@ import { formatBytes } from "../core/utils.ts";
 import { ControlUploadItemThumb } from "./ControlUploadItemThumb.tsx";
 import { FormField } from "./FormField.tsx";
 import { type ResizeImageOptions, resizeImage } from "./resizeImage.ts";
+import { useFieldErrorText } from "./useFieldErrorText.ts";
 
 export interface ControlUploadProps {
   /**
@@ -66,14 +67,14 @@ export interface ControlUploadProps {
   /**
    * Downscale images to these bounds before uploading.
    *
-   * Set it wherever the result is rendered small — the bytes never leave the
+   * Set it wherever the result is rendered small: the bytes never leave the
    * machine, so it speeds up the upload as well as every later fetch. Applied
    * before {@link maxSize}, so a photo that would have been rejected for being
    * too large is resized and accepted instead.
    *
    * Best-effort by design: a browser without `OffscreenCanvas`, an SVG, or an
    * image the decoder chokes on is uploaded as-is, and the storage's own
-   * `maxSize` remains what actually bounds it. That trade is deliberate — a
+   * `maxSize` remains what actually bounds it. That trade is deliberate: a
    * server-side codec able to close the gap costs more bundle than the case is
    * worth on an edge runtime, and encodes worse (see `files:upload:before` in
    * `alepha/api/files` for where it would attach if you want it anyway).
@@ -101,6 +102,7 @@ export interface ControlUploadProps {
  */
 export const ControlUpload = (props: ControlUploadProps) => {
   const form = useFormState(props.input, ["error"]);
+  const errorText = useFieldErrorText();
   const [value, setValue] = useFieldValue(props.input);
   const client = useClient<FileController>();
   const { tr } = useI18n();
@@ -112,6 +114,17 @@ export const ControlUpload = (props: ControlUploadProps) => {
   const [meta, setMeta] = useState<Map<string, UploadedFileMeta>>(new Map());
   const [dragOver, setDragOver] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  // The latest `meta`, for the effects below that revoke its object URLs.
+  const metaRef = useRef(meta);
+  useEffect(() => {
+    metaRef.current = meta;
+  });
+  useEffect(
+    () => () => {
+      for (const item of metaRef.current.values()) revokePreview(item);
+    },
+    [],
+  );
 
   /**
    * Backfill `meta` for ids that arrived from form state (e.g. after a page
@@ -132,10 +145,21 @@ export const ControlUpload = (props: ControlUploadProps) => {
     // holds, and the entries it keeps were filled in by the upload requests this
     // same effect issues. It is the cache for an external system, not derived
     // state; the updater already no-ops when nothing changed.
+    // An entry whose id left the value (a replaced file, a form reset) gives
+    // back its preview's object URL, or the blob lives as long as the page.
+    for (const item of metaRef.current.values()) {
+      if (!ids.includes(item.id)) revokePreview(item);
+    }
     // oxlint-disable-next-line react/set-state-in-effect -- reconciles a cache for an external system, see the comment above
     setMeta((current) => {
       let changed = false;
       const next = new Map(current);
+      for (const id of next.keys()) {
+        if (!ids.includes(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      }
       for (const id of ids) {
         if (!next.has(id)) {
           next.set(id, {
@@ -157,6 +181,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
     description: props.description,
     error: form.error,
   });
+  fieldMeta.error = errorText(fieldMeta.error);
 
   const ids: string[] = props.multi
     ? Array.isArray(value)
@@ -218,12 +243,6 @@ export const ControlUpload = (props: ControlUploadProps) => {
         setProgress(Math.round(((i + 1) / files.length) * 100));
       }
 
-      setMeta(next);
-      if (props.multi) {
-        setValue([...ids, ...newIds]);
-      } else if (newIds[0]) {
-        setValue(newIds[0]);
-      }
       if (newIds.length) {
         toast.success(
           newIds.length === 1
@@ -243,6 +262,16 @@ export const ControlUpload = (props: ControlUploadProps) => {
         }),
       );
     } finally {
+      // Committed here, not after the loop: a file failing part-way must not
+      // drop the ids of the ones the server already stored.
+      if (newIds.length) {
+        setMeta(next);
+        if (props.multi) {
+          setValue([...ids, ...newIds]);
+        } else {
+          setValue(newIds[0]);
+        }
+      }
       setUploading(false);
       setProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -403,7 +432,9 @@ export const ControlUpload = (props: ControlUploadProps) => {
         {ids.length > 0 && (
           <div className="flex flex-col gap-2">{ids.map(renderItem)}</div>
         )}
-        {(props.multi || ids.length === 0) && dropZone}
+        {/* Kept beside a required single file as its replace: the field
+            draws no remove cross, so it is the only way to change it. */}
+        {(props.multi || ids.length === 0 || fieldMeta.required) && dropZone}
         {uploading && (
           <div className="bg-muted h-1 w-full overflow-hidden rounded">
             <div
@@ -426,7 +457,8 @@ export const ControlUpload = (props: ControlUploadProps) => {
                 : tr("controlUpload.savedFile", { default: "Saved file" })}
             </DialogTitle>
             <DialogDescription>
-              {previewItem?.mimeType ?? "uploaded"}
+              {previewItem?.mimeType ??
+                tr("controlUpload.uploaded", { default: "uploaded" })}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4">
@@ -460,6 +492,13 @@ export const ControlUpload = (props: ControlUploadProps) => {
       </Dialog>
     </FormField>
   );
+};
+
+/** Gives back a preview's object URL; the `/api/files/:id` stubs have none. */
+const revokePreview = (item: UploadedFileMeta) => {
+  if (item.previewUrl?.startsWith("blob:")) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
 };
 
 interface UploadedFileMeta {

@@ -31,10 +31,6 @@ export interface ControlMonthPopoverProps {
   value?: string;
   disabled?: boolean;
   clearable?: boolean;
-  /** First selectable month, `YYYY-MM`. */
-  min?: string;
-  /** Last selectable month, `YYYY-MM`. */
-  max?: string;
   /** Forwarded to the trigger: an `aria-label`, a `data-testid`. */
   triggerProps?: HTMLAttributes<HTMLElement>;
   onChange: (value: string | undefined) => void;
@@ -60,9 +56,6 @@ export const ControlMonthPopover = (props: ControlMonthPopoverProps) => {
 
   const key = (y: number, m: number) =>
     `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
-  const outOfRange = (value: string) =>
-    (props.min !== undefined && value < props.min) ||
-    (props.max !== undefined && value > props.max);
 
   const formatted =
     year !== undefined && month !== undefined
@@ -152,7 +145,6 @@ export const ControlMonthPopover = (props: ControlMonthPopoverProps) => {
                 size="sm"
                 data-value={value}
                 aria-pressed={selected}
-                disabled={outOfRange(value)}
                 onClick={() => {
                   props.onChange(value);
                   setOpen(false);

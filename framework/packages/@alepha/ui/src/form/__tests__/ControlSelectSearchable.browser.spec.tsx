@@ -13,7 +13,7 @@ import { ControlSelect } from "../ControlSelect.tsx";
 /**
  * ControlSelect used to pick a *primitive* by option count: a native `Select`
  * below ~20 options, a `Combobox` above. That made per-option `description`,
- * `tag` and `disabled` — plus `triggerClassName` and deselection — appear or
+ * `tag` and `disabled` (plus `triggerClassName` and deselection) appear or
  * vanish depending on how many siblings an option happened to have. Now a
  * single Combobox renders every list and the count only decides whether the
  * popup carries a search field.
@@ -35,7 +35,7 @@ describe("ControlSelect searchable", () => {
     { value: "editor", label: "Editor", tag: "write" },
   ];
 
-  // Must stay above `SEARCH_THRESHOLD`, which is 50 — this was 30, and went
+  // Must stay above `SEARCH_THRESHOLD`, which is 50: this was 30, and went
   // red when the threshold was raised from 20. The number is a fixture for
   // "long enough to need a search field", so it follows the threshold rather
   // than pinning a value of its own.

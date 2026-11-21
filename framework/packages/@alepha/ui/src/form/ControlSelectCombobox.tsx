@@ -47,7 +47,7 @@ export interface ControlSelectComboboxProps {
   loading: boolean;
   multi: boolean;
   /**
-   * Render the search input. When false the popup is the list alone — the
+   * Render the search input. When false the popup is the list alone: the
    * shape a short static list gets. Multi-select ignores it: its input is the
    * chips box itself, and it is the only way to open and type.
    */
@@ -142,7 +142,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
   const [query, setQuery] = useState("");
   // Remembers labels for values the user has picked, so the trigger/chips keep
   // a human label even after the source option drops out of a server-filtered
-  // `data` set — or for freshly created entries that never existed in `data`.
+  // `data` set, or for freshly created entries that never existed in `data`.
   const labelCache = useRef(new Map<string, string>());
 
   const { selected, labelFor, options, unselectedMatches, items } =
@@ -181,9 +181,9 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       setQuery("");
       return;
     }
-    // Base UI's single-select `Combobox` re-selects on every item press — its
+    // Base UI's single-select `Combobox` re-selects on every item press (its
     // `handleSelection` calls `setSelectedValue(itemValue)` unconditionally and
-    // never emits `null` — so pressing the checked row was a no-op and an
+    // never emits `null`), so pressing the checked row was a no-op and an
     // optional field had no way back to empty. Toggle it off here, the way the
     // multi path already does via its chips.
     if (props.deselectable && !o.create && selected[0] === o.value) {
@@ -404,7 +404,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       filter={null}
       onOpenChange={(open) => props.onPopupOpenChange?.(open)}
       // Base UI leaves `autoHighlight` off by default, so nothing is
-      // highlighted while typing and Enter has no target — the user has to
+      // highlighted while typing and Enter has no target: the user has to
       // click a row (including the `createNewEntry` one). Highlighting the
       // first match makes Enter pick it, which is what a search field is
       // expected to do. It only engages while the query is non-empty, so
@@ -516,7 +516,10 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       <ComboboxContent className={props.popupClassName}>
         {props.popupHeader}
         {props.searchable ? (
-          <ComboboxInput showTrigger={false} placeholder="Search…" />
+          <ComboboxInput
+            showTrigger={false}
+            placeholder={tr("controlSelect.search", { default: "Search…" })}
+          />
         ) : (
           /*
             Base UI's combobox moves through its list from its INPUT only:

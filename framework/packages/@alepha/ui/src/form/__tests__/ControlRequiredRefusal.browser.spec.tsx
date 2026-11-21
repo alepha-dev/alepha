@@ -4,6 +4,7 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { FormValidationError, useForm } from "alepha/react/form";
 import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { AlephaServerLinks } from "alepha/server/links";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
@@ -89,6 +90,51 @@ describe("Control and the schema's refusal of an empty required field", () => {
     await waitFor(() => {
       expect(ui.getByText("Ce champ est obligatoire")).toBeTruthy();
     });
+
+    await alepha.stop();
+  });
+
+  it("speaks the page's language on a number, an object and an upload", async ({
+    expect,
+  }) => {
+    class Catalogues {
+      en = $dictionary({ lazy: async () => ({ default: {} }) });
+      fr = $dictionary({ lazy: async () => ({ default: uiFr }) });
+    }
+    const Fields = () => {
+      const form = useForm({
+        id: "required-others",
+        schema: z.object({
+          count: z.number(),
+          address: z.object({ city: z.text().optional() }),
+          file: z.uuid(),
+        }),
+        handler: () => {},
+      });
+      return (
+        <form {...form.props} data-testid="form">
+          <Control input={form.input.count} label="Count" />
+          <Control input={form.input.address} label="Address" />
+          <Control input={form.input.file} label="File" upload />
+        </form>
+      );
+    };
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaReactI18n)
+      // The upload control's client.
+      .with(AlephaServerLinks);
+    alepha.inject(Catalogues);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("fr");
+    const ui = mount(alepha, <Fields />);
+
+    fireEvent.submit(ui.getByTestId("form"));
+
+    await waitFor(() => {
+      expect(ui.getAllByText("Ce champ est obligatoire")).toHaveLength(3);
+    });
+    expect(ui.queryByText("This field is required")).toBeNull();
 
     await alepha.stop();
   });

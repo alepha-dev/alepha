@@ -15,7 +15,7 @@ import { Control } from "../Control.tsx";
  * It used not to: the select branch forwarded `label`, `icon`, `clearable`
  * and `triggerClassName` and dropped `inputProps` on the floor. That is
  * silent in every way that matters, because the prop is accepted, typechecks,
- * and simply does nothing — so `inputProps={{ "aria-label": … }}` on the
+ * and simply does nothing, so `inputProps={{ "aria-label": … }}` on the
  * epics and quests status filters named nothing at all for as long as it has
  * been written there.
  *
