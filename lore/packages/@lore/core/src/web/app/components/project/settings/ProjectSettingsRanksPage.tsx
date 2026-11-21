@@ -49,10 +49,17 @@ const ProjectSettingsRanksPage = () => {
           const owner = capabilityRegistry.ownerOfPermissionGroup(group.name);
           return (
             capabilityRegistry.isOwnerEnabled(owner, enabled) &&
-            !LoreRankBounds.OUT_OF_SCOPE.includes(permission.name) &&
-            !LoreRankBounds.OWNER_ONLY.includes(permission.name)
+            !LoreRankBounds.OUT_OF_SCOPE.includes(permission.name)
           );
         }}
+        // The owner-only permissions (`project:delete`) are shown, so the
+        // matrix says deleting is the owner's alone (#Q4015): held by the
+        // Owner column, which is read-only, and closed with a padlock in
+        // every other. Still never grantable: `LoreRankBounds` refuses a
+        // save that carries one, whatever the page does.
+        closedPermission={(_rank, permission) =>
+          LoreRankBounds.OWNER_ONLY.includes(permission)
+        }
         lockPermission={(permission) => {
           if (LoreRankBounds.FLOOR.includes(permission.name)) return "on";
           const granted = held.some(

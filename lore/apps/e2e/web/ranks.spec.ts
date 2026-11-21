@@ -120,13 +120,15 @@ test.describe("Ranks", () => {
    * Feedback #P2124. An owner-only permission used to draw a permanently
    * grey, permanently unchecked box in every rank column - a choice that does
    * not exist, once per rank. Since #Q3736 `project:delete` is the only one;
-   * `capability:manage` is an ordinary row again.
+   * `capability:manage` is an ordinary row again. Since #Q4015 it is shown
+   * again, so the page says deleting is the owner's alone: held by the
+   * read-only Owner column, closed with a padlock in every other.
    *
    * In a browser rather than only in `projectRankMatrix.spec.ts`: the unit
    * spec proves the rows are filtered, and what had to be confirmed is that
    * the section drops rather than rendering an empty heading.
    */
-  test("the matrix lists no permission a rank can never hold", async ({
+  test("the matrix shows the owner-only permission, closed for every other rank", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -159,7 +161,13 @@ test.describe("Ranks", () => {
 
     await expect(
       matrix.getByText("Delete the project", { exact: true }),
-    ).toHaveCount(0);
+    ).toHaveCount(1);
+    // No rank but the owner's can be given it: every box in its row is
+    // disabled (the Owner column read-only, the others closed).
+    const boxes = matrix.getByRole("checkbox", { name: "project:delete" });
+    const count = await boxes.count();
+    expect(count).toBeGreaterThan(1);
+    for (let i = 0; i < count; i++) await expect(boxes.nth(i)).toBeDisabled();
     await expect(
       matrix.getByText("Turn capabilities on and off", { exact: true }),
     ).toHaveCount(1);
