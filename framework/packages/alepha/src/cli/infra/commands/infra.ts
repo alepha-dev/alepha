@@ -7,6 +7,7 @@ import { BuildManifestReader } from "alepha/cli";
 import {
   BayAdapter,
   CloudflareAdapter,
+  type CloudflareEnvironmentOptions,
   D1MigrationsService,
   type DetectedResources,
   NamingService,
@@ -100,11 +101,17 @@ export class InfraCommand {
           resources.push({ label: "Analytics", value: namingCtx.analytics() });
         }
 
+        // The jurisdiction is part of both names, as `provision` composes
+        // them: without it `plan` names resources the deploy never creates.
+        const { jurisdiction } = target.options as CloudflareEnvironmentOptions;
         if (app.resources.hasKV) {
-          resources.push({ label: "KV", value: namingCtx.kv() });
+          resources.push({ label: "KV", value: namingCtx.kv(jurisdiction) });
         }
         if (app.resources.hasQueue) {
-          resources.push({ label: "Queue", value: namingCtx.queue() });
+          resources.push({
+            label: "Queue",
+            value: namingCtx.queue(jurisdiction),
+          });
         }
       }
 
@@ -809,7 +816,7 @@ export class InfraCommand {
 
   /**
    * `db` subgroup  -  operations against the *deployed* database (export,
-   * migrate, baseline mark). They live under `platform` (not core
+   * migrate, baseline mark). They live under `alepha infra` (not core
    * `alepha db`) because they need the env config, adapter, and
    * resource naming.
    */

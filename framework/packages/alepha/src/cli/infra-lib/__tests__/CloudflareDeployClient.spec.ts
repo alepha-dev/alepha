@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import { describe, it } from "vitest";
 
 import type { CloudflareAssetEntry } from "../services/CloudflareAssetManifest.ts";
@@ -288,7 +289,7 @@ describe("the Cloudflare deploy client", () => {
      *
      * `read` is a pull, and a pull needs every byte to be addressable, which
      * inside Lore's Worker meant the whole unpacked tree sitting in a
-     * `MemoryFileSystemProvider`: `apps/docs` is 49 MB of assets against a
+     * `MemoryFileSystemProvider`: the docs site is 49 MB of assets against a
      * 128 MB isolate, and it died with `Worker exceeded memory limit` before
      * the upload started.
      *
@@ -381,7 +382,7 @@ describe("the Cloudflare deploy client", () => {
         "acme",
         async () => {
           if (failures++ === 0) {
-            throw new Error("503 from the edge");
+            throw new AlephaError("503 from the edge");
           }
         },
       );
@@ -665,6 +666,205 @@ describe("the Cloudflare deploy client", () => {
         client.uploadAssets("my-app-staging", { manifest, read }),
       ).rejects.toThrow(/not in the manifest we sent/);
     });
+
+    it("sends a pushed batch made only of empty files", async ({ expect }) => {
+      // An empty file encodes to zero bytes of base64, and it is still a file
+      // Cloudflare asked for.
+      const { client, of } = fake({ jwt: "session", buckets: [["empty"]] }, [
+        "completion",
+      ]);
+
+      const answer = await client.uploadAssets("my-app-staging", {
+        manifest: { "/empty.txt": { hash: "empty", size: 0 } },
+        read,
+        readAll: async (keys, onFile) => {
+          for (const key of keys) await onFile(key, new Uint8Array());
+        },
+      });
+
+      const uploads = of("assets.upload");
+      expect(uploads).toHaveLength(1);
+      expect(
+        Object.keys((uploads[0]!.args[0] as { body: object }).body),
+      ).toEqual(["empty"]);
+      expect(answer).toEqual({ jwt: "completion" });
+    });
+
+    it("refuses when no batch answers a completion token, instead of answering the session's", async ({
+      expect,
+    }) => {
+      const pulled = fake({ jwt: "session", buckets: [["bbbb"]] }, [undefined]);
+      await expect(
+        pulled.client.uploadAssets("my-app-staging", { manifest, read }),
+      ).rejects.toThrow(/returned no completion token/);
+
+      const pushed = fake({ jwt: "session", buckets: [["bbbb"]] }, [undefined]);
+      await expect(
+        pushed.client.uploadAssets("my-app-staging", {
+          manifest,
+          read,
+          readAll: async (keys, onFile) => {
+            for (const key of keys) await onFile(key, bytes("abcd"));
+          },
+        }),
+      ).rejects.toThrow(/returned no completion token/);
+    });
+
+    describe("an upload that fails while the source is still being read", () => {
+      /**
+       * No backoff: what is under test is who observes the failure, and the
+       * real ladder waits whole seconds.
+       */
+      class NoRetryClient extends CloudflareDeployClient {
+        protected override async withRetry(
+          _expiresAt: number | undefined,
+          request: () => Promise<{ jwt?: string }>,
+        ): Promise<{ jwt?: string }> {
+          return await request();
+        }
+      }
+
+      /**
+       * Runs an upload and reports how it settled, with every rejection
+       * nobody was awaiting.
+       */
+      const settle = async (upload: () => Promise<unknown>) => {
+        const unhandled: unknown[] = [];
+        const onUnhandled = (reason: unknown) => unhandled.push(reason);
+        process.on("unhandledRejection", onUnhandled);
+        let answer: unknown;
+        let failure: unknown;
+        try {
+          answer = await upload();
+        } catch (error) {
+          failure = error;
+        }
+        // An unhandled rejection is reported a turn after it happens.
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        process.off("unhandledRejection", onUnhandled);
+        return { answer, failure, unhandled };
+      };
+
+      const pause = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+      it("rejects a pushed multipart upload, with no rejection left unhandled", async ({
+        expect,
+      }) => {
+        // 201 files: a full batch of 200 goes out and fails while the reader
+        // is still producing the last file, with nothing awaiting it.
+        const many: Record<string, CloudflareAssetEntry> = {};
+        for (let i = 0; i < 201; i++) {
+          many[`/f${i}.js`] = { hash: `h${i}`, size: 1 };
+        }
+        let uploads = 0;
+        const client = new NoRetryClient({
+          apiToken: "host-token",
+          accountId: "host-account",
+          client: {
+            workers: {
+              scripts: {
+                assets: {
+                  upload: {
+                    create: async () => ({
+                      jwt: "session",
+                      buckets: [Object.values(many).map((it) => it.hash)],
+                    }),
+                  },
+                },
+              },
+              assets: {
+                upload: {
+                  create: async () => {
+                    if (uploads++ === 0) {
+                      throw new AlephaError("the first batch was refused");
+                    }
+                    return { jwt: "completion" };
+                  },
+                },
+              },
+            },
+          } as never,
+        });
+
+        const { answer, failure, unhandled } = await settle(() =>
+          client.uploadAssets("my-app-staging", {
+            manifest: many,
+            read,
+            readAll: async (keys, onFile) => {
+              let fed = 0;
+              for (const key of keys) {
+                await onFile(key, bytes("a"));
+                if (++fed === 200) await pause();
+              }
+            },
+          }),
+        );
+
+        expect(answer).toBeUndefined();
+        expect(String(failure)).toContain("the first batch was refused");
+        expect(unhandled).toEqual([]);
+      });
+
+      it("rejects a single-asset upload, with no rejection left unhandled", async ({
+        expect,
+      }) => {
+        const session = `x.${btoa(
+          JSON.stringify({ wrangler_single_asset_uploads: true }),
+        ).replace(/=+$/, "")}.y`;
+        const client = new NoRetryClient({
+          apiToken: "host-token",
+          accountId: "host-account",
+          client: {
+            workers: {
+              scripts: {
+                assets: {
+                  upload: {
+                    create: async () => ({
+                      jwt: session,
+                      buckets: [["aaaa", "bbbb"]],
+                    }),
+                  },
+                },
+              },
+            },
+          } as never,
+        });
+        const original = globalThis.fetch;
+        let requests = 0;
+        globalThis.fetch = (async () => {
+          const first = requests++ === 0;
+          return new Response(
+            JSON.stringify(
+              first
+                ? { success: false, errors: [{ message: "refused" }] }
+                : { success: true, result: { jwt: "completion" }, errors: [] },
+            ),
+          );
+        }) as unknown as typeof globalThis.fetch;
+
+        let settled: Awaited<ReturnType<typeof settle>>;
+        try {
+          settled = await settle(() =>
+            client.uploadAssets("my-app-staging", {
+              manifest,
+              read,
+              readAll: async (keys, onFile) => {
+                for (const key of keys) {
+                  await onFile(key, bytes("a"));
+                  await pause();
+                }
+              },
+            }),
+          );
+        } finally {
+          globalThis.fetch = original;
+        }
+
+        expect(settled.answer).toBeUndefined();
+        expect(String(settled.failure)).toContain("refused");
+        expect(settled.unhandled).toEqual([]);
+      });
+    });
   });
 
   describe("the script upload", () => {
@@ -738,7 +938,7 @@ describe("the Cloudflare deploy client", () => {
       const api = (ctx.client as unknown as { client: CloudflareDeployApi })
         .client;
       api.workers.scripts.schedules.get = async () => {
-        if (crons === "unreadable") throw new Error("no read");
+        if (crons === "unreadable") throw new AlephaError("no read");
         return { schedules: crons.map((cron) => ({ cron })) };
       };
     };
@@ -826,7 +1026,7 @@ describe("the Cloudflare deploy client", () => {
       (
         one.client as unknown as { client: CloudflareDeployApi }
       ).client.workers.domains.update = (async () => {
-        throw new Error("hostname taken");
+        throw new AlephaError("hostname taken");
       }) as never;
       await expect(
         one.client.deploy(
@@ -844,10 +1044,10 @@ describe("the Cloudflare deploy client", () => {
       const api = (two.client as unknown as { client: CloudflareDeployApi })
         .client;
       api.workers.domains.update = (async () => {
-        throw new Error("hostname taken");
+        throw new AlephaError("hostname taken");
       }) as never;
       api.workers.scripts.schedules.update = (async () => {
-        throw new Error("bad cron");
+        throw new AlephaError("bad cron");
       }) as never;
       await expect(
         two.client.deploy(
@@ -952,7 +1152,9 @@ describe("the Cloudflare deploy client", () => {
             scripts: {
               subdomain: {
                 create: async () => {
-                  throw new Error("workers.dev subdomain not found (10007)");
+                  throw new AlephaError(
+                    "workers.dev subdomain not found (10007)",
+                  );
                 },
               },
             },
@@ -1007,7 +1209,9 @@ describe("the Cloudflare deploy client", () => {
             workers: {
               subdomains: {
                 get: async () => {
-                  throw new Error("workers.dev subdomain not found (10007)");
+                  throw new AlephaError(
+                    "workers.dev subdomain not found (10007)",
+                  );
                 },
               },
             },
@@ -1099,7 +1303,7 @@ describe("the Cloudflare deploy client", () => {
                       it.script === params.script_name,
                   )
                 ) {
-                  throw new Error(
+                  throw new AlephaError(
                     `queue ${queueId} already has a consumer for ${params.script_name}`,
                   );
                 }
@@ -1126,7 +1330,7 @@ describe("the Cloudflare deploy client", () => {
                     it.id === consumerId && it.queueId === params.queue_id,
                 );
                 if (!row) {
-                  throw new Error(`no consumer ${consumerId}`);
+                  throw new AlephaError(`no consumer ${consumerId}`);
                 }
                 Object.assign(row, {
                   script: params.script_name,
@@ -1533,7 +1737,7 @@ describe("the Cloudflare deploy client", () => {
       const { client } = fake();
       Object.assign(client as unknown as Record<string, unknown>, {
         listVersions: async () => {
-          throw new Error("Cloudflare timed out");
+          throw new AlephaError("Cloudflare timed out");
         },
       });
 

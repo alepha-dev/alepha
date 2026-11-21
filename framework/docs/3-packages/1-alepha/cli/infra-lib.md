@@ -12,7 +12,7 @@ npm install alepha
 
 Framework-agnostic platform deploy services.
 
-Exports `InfraOrchestrator` + adapters + secret stores + the
+Exports `InfraOrchestrator` + adapters + the
 `infraOptions` atom: everything needed to drive a deploy
 programmatically. **No `$command` instances** and **no
 `AppEntryProvider` / `ViteBuildProvider` dependency**, so consumers

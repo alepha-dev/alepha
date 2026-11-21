@@ -1,5 +1,3 @@
-import { join } from "node:path";
-
 import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -77,7 +75,7 @@ export class StoragePlaceholderService {
       return result;
     }
 
-    const storageRoot = join(
+    const storageRoot = this.fs.join(
       options.root,
       options.storagePath ?? StoragePlaceholderService.DEFAULT_STORAGE_PATH,
     );
@@ -88,8 +86,8 @@ export class StoragePlaceholderService {
       this.assertSafeSegment(row.bucket);
       this.assertSafeSegment(row.blob_id);
 
-      const dir = join(storageRoot, row.bucket);
-      const target = join(dir, row.blob_id);
+      const dir = this.fs.join(storageRoot, row.bucket);
+      const target = this.fs.join(dir, row.blob_id);
       buckets.add(row.bucket);
 
       if (await this.fs.exists(target)) {

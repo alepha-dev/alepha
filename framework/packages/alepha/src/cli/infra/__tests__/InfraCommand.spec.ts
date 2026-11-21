@@ -1,11 +1,8 @@
-import { join as nodeJoin } from "node:path";
-
 import { Alepha } from "alepha";
 import {
   bay,
   cloudflare,
   CloudflareAdapter,
-  D1MigrationsService,
   infraOptions,
 } from "alepha/cli/infra-lib";
 import { CliProvider } from "alepha/command";
@@ -20,7 +17,7 @@ import { InfraCommand } from "../commands/infra.ts";
  * under test here  -  only that `infra db baseline mark` resolves the
  * right D1 database name (naming) and reaches
  * `D1MigrationsService.baseline` with the right arguments  -  so it is
- * stubbed to a no-op, same as a real `platform up` would have already
+ * stubbed to a no-op, same as a real `alepha deploy` would have already
  * authenticated in an earlier step.
  */
 class FakeCloudflareAdapter extends CloudflareAdapter {
@@ -38,8 +35,8 @@ class TestInfraCommand extends InfraCommand {
 }
 
 /**
- * `D1MigrationsService` is used for real (not substituted)  -  only its `api`/`fs`
- * collaborators are swapped, exactly like `d1MigrationsApply.spec.ts`. That
+ * `D1MigrationsService` is used for real (not substituted): only its
+ * transport is a fake, and it reads the container's memory filesystem. That
  * proves the whole chain (naming -> dbName -> the service -> the SQL posted to
  * the D1 query API) actually works end-to-end, not just that the right method
  * gets called.
@@ -61,50 +58,6 @@ class FakeD1Transport {
   }
 }
 
-/**
- * Models just enough of a real filesystem for migration discovery: `ls(dir)`
- * returns the immediate child names under `dir` (files and directories
- * alike, same as a raw `readdir`), and `exists(path)` is true for a known
- * file or a directory with something nested under it.
- *
- * The previous version of this fixture returned a fixed file list
- * regardless of the directory queried, and `exists()` was unconditionally
- * `true` for any path. That shape structurally cannot distinguish the v1
- * folder-per-migration layout (`<tag>/migration.sql`) from an empty
- * directory or from a directory that merely looks like it might hold one  -
- * so this end-to-end suite could pass without ever exercising v1 discovery
- * through the actual `alepha infra db baseline mark` command surface,
- * even after the underlying migration logic was fixed and unit-tested
- * elsewhere.
- */
-class FakeFs {
-  protected readonly paths: Set<string>;
-
-  constructor(paths: Set<string>) {
-    this.paths = paths;
-  }
-
-  join(...parts: string[]) {
-    return nodeJoin(...parts);
-  }
-
-  async exists(path: string) {
-    if (this.paths.has(path)) return true;
-    return [...this.paths].some((p) => p.startsWith(`${path}/`));
-  }
-
-  async ls(dir: string) {
-    const prefix = `${dir}/`;
-    const names = new Set<string>();
-    for (const p of this.paths) {
-      if (p.startsWith(prefix)) {
-        names.add(p.slice(prefix.length).split("/")[0] as string);
-      }
-    }
-    return [...names];
-  }
-}
-
 describe("InfraCommand", () => {
   describe("db baseline mark", () => {
     const create = async (
@@ -119,17 +72,14 @@ describe("InfraCommand", () => {
       const cli = alepha.inject(CliProvider);
       const cmd = alepha.inject(TestInfraCommand);
 
-      const migrations = alepha.inject(D1MigrationsService);
       const api = new FakeD1Transport();
-      const migrationsFs = new FakeFs(
-        new Set(migrationPaths.map((p) => nodeJoin("/project", p))),
-      );
-      // The filesystem is the service's own; the TRANSPORT is the adapter's,
-      // because it carries the credential (#288). So the fake goes on the
-      // adapter, not on the service.
-      Object.assign(migrations as unknown as Record<string, unknown>, {
-        fs: migrationsFs,
-      });
+      // The migrations sit in the container's memory filesystem, the one the
+      // service reads; the TRANSPORT is the adapter's, because it carries the
+      // credential (#288). So the fake goes on the adapter, not on the
+      // service.
+      for (const path of migrationPaths) {
+        await fs.writeFile(`/project/${path}`, "");
+      }
       alepha.inject(FakeCloudflareAdapter).transport = api;
 
       alepha.set(infraOptions, {
@@ -158,12 +108,12 @@ describe("InfraCommand", () => {
         return writes.join("");
       };
 
-      return { alepha, fs, cli, cmd, api, migrationsFs, captureStdout };
+      return { alepha, fs, cli, cmd, api, captureStdout };
     };
 
     /**
-     * The whole point of Task 4's CLI half: `--reset` on `alepha infra db
-     * baseline mark` must actually reach `D1MigrationsService.baseline`
+     * `--reset` on `alepha infra db baseline mark` must actually reach
+     * `D1MigrationsService.baseline`
      * (previously it was declared on core `alepha db baseline mark` and read
      * by nothing). Proven end-to-end: real naming resolves the D1 database
      * name, the real service issues the DELETE + INSERT against the (faked)

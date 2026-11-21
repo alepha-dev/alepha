@@ -376,7 +376,7 @@ describe("d1MigrationsApply", () => {
   }) => {
     const { call } = capture(["0001_first.sql", "README.md"]);
 
-    await expect(call()).rejects.toThrow(/none are recognizable as migrations/);
+    await expect(call()).rejects.toThrow(/not recognizable as migrations/);
   });
 
   /**
@@ -464,9 +464,7 @@ describe("d1MigrationsApply", () => {
       // inside it (corrupt/partial), and nothing else recognisable.
       const { call } = capture(["20260729013337_baseline/snapshot.json"]);
 
-      await expect(call()).rejects.toThrow(
-        /none are recognizable as migrations/,
-      );
+      await expect(call()).rejects.toThrow(/not recognizable as migrations/);
     });
 
     /**
@@ -486,9 +484,7 @@ describe("d1MigrationsApply", () => {
         "20260801000000_addcol/snapshot.json",
       ]);
 
-      await expect(call()).rejects.toThrow(
-        /none are recognizable as migrations/,
-      );
+      await expect(call()).rejects.toThrow(/not recognizable as migrations/);
     });
 
     /**
@@ -540,9 +536,7 @@ describe("d1MigrationsApply", () => {
         ".mystery/leftover",
       ]);
 
-      await expect(call()).rejects.toThrow(
-        /none are recognizable as migrations/,
-      );
+      await expect(call()).rejects.toThrow(/not recognizable as migrations/);
     });
   });
 });
@@ -681,9 +675,7 @@ describe("d1MigrationsBaseline", () => {
     }) => {
       const { call } = capture(["README.md"], []);
 
-      await expect(call()).rejects.toThrow(
-        /none are recognizable as migrations/,
-      );
+      await expect(call()).rejects.toThrow(/not recognizable as migrations/);
     });
   });
 });

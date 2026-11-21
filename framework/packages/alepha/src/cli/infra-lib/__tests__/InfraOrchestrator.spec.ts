@@ -43,10 +43,6 @@ describe("InfraOrchestrator", () => {
       }),
     );
 
-    // Default wrangler responses
-    shell.outputs.set("wrangler whoami", "Account | abc123");
-    shell.outputs.set("wrangler d1 list --json", "[]");
-
     return { alepha, fs, shell, orchestrator };
   };
 
@@ -135,6 +131,17 @@ describe("InfraOrchestrator", () => {
       const { orchestrator } = createTestEnv();
       expect(orchestrator.isTmpEnv("production")).toBe(false);
       expect(orchestrator.isTmpEnv("staging")).toBe(false);
+    });
+
+    test("isTmpEnv is false for a name that only starts with the letters tmp", ({
+      expect,
+    }) => {
+      // The typed confirmation of `alepha infra down` is skipped on this
+      // answer alone, so a bare prefix would tear `tmpl-live` down unasked.
+      const { orchestrator } = createTestEnv();
+      expect(orchestrator.isTmpEnv("tmpl-live")).toBe(false);
+      expect(orchestrator.isTmpEnv("tmpdata")).toBe(false);
+      expect(orchestrator.isTmpEnv("tmp")).toBe(false);
     });
   });
 });

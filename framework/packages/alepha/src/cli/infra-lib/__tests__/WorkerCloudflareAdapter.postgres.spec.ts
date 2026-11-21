@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -161,6 +161,29 @@ describe("the worker-side Cloudflare adapter on Postgres", () => {
     ]);
     expect(d1.applied).toBe(0);
     expect(adapter.migrationsApplied).toBe(3);
+  });
+
+  it("refuses a DATABASE_URL that does not parse before migrating, naming the variable and never its value", async ({
+    expect,
+  }) => {
+    const { adapter, postgres, ctx } = setup();
+    adapter.withSecrets({
+      DATABASE_URL: "postgres://app:s3cr/et@db.example.com/app",
+    });
+
+    let caught: any;
+    try {
+      await adapter.migrate(ctx, run);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AlephaError);
+    expect(caught.message).toContain("DATABASE_URL");
+    expect(caught.message).not.toContain("s3cr");
+    expect(JSON.stringify(caught)).not.toContain("s3cr");
+    expect(caught.cause).toBeUndefined();
+    expect(postgres.calls).toEqual([]);
   });
 
   it("stays on D1 when the instance holds no Postgres URL", async ({

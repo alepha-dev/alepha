@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { join } from "node:path";
 
 import { $inject, $store, AlephaError } from "alepha";
 import { buildOptions, BuildSlices, PackageManagerUtils } from "alepha/cli";
@@ -120,7 +119,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
    * to a committed config.
    */
   protected host(ctx: InfraContext<BayEnvironmentOptions>): string {
-    const configured = process.env.BAY_HOST ?? ctx.options.host;
+    const configured = process.env.BAY_HOST || ctx.options.host;
     if (!configured) {
       throw new AlephaError(
         `No Bay host for environment "${ctx.env}". Set it in alepha.config.ts  -  ` +
@@ -155,7 +154,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   protected socket(
     ctx: InfraContext<BayEnvironmentOptions>,
   ): string | undefined {
-    const configured = process.env.BAY_SOCKET ?? ctx.options.socket;
+    const configured = process.env.BAY_SOCKET || ctx.options.socket;
     if (!configured) {
       return undefined;
     }
@@ -189,7 +188,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   protected stack(
     ctx: InfraContext<BayEnvironmentOptions>,
   ): string | undefined {
-    const configured = process.env.BAY_STACK ?? ctx.options.stack;
+    const configured = process.env.BAY_STACK || ctx.options.stack;
     if (!configured) {
       return undefined;
     }
@@ -221,7 +220,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     } catch {
       // Anything but JSON means something other than `bay list` answered  -
       // the same reasoning `deployedUrl` uses for `bay deploy`. Without this,
-      // `platform status` against a login banner or a shell error dies on a
+      // `alepha infra status` against a login banner or a shell error dies on a
       // parse error naming neither Bay nor the host.
       throw new AlephaError(
         `Bay at ${host} answered \`bay list\` with something other than JSON: ${answer.slice(0, 300)}`,
@@ -439,14 +438,14 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
 
     if (/Alepha application server/i.test(detail)) {
       // `bay` prints its whole usage banner and exits 2 for a subcommand it
-      // does not know, so this is what a host that predates `bay env` says to
-      // a secrets push. Without this branch it falls through to the generic
-      // "ssh to HOST failed"  -  which hands the reader a page of usage text and
-      // no statement of what is wrong or what to do about it.
+      // does not know, which is what a host that predates `bay env` says to
+      // the `bay env list` of `inspect`. Without this branch it falls through
+      // to the generic "ssh to HOST failed", which hands the reader a page of
+      // usage text and no statement of what is wrong or what to do about it.
       return new AlephaError(
-        `Signed in to ${host}, but its \`bay\` has no \`env\` command, so there is nowhere to put ` +
-          "this app's secrets  -  it answered with its usage banner instead. Upgrade `bay` on the " +
-          `host (see https://github.com/alepha-dev/alepha/blob/main/bay/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
+        `Signed in to ${host}, but its \`bay\` does not know the command it was sent: ` +
+          "it answered with its usage banner instead. Upgrade `bay` on the " +
+          `host (see https://github.com/alepha-dev/alepha/blob/main/bay/INSTALL.md). (${detail.slice(0, 200)})`,
       );
     }
     if (/unknown flag "--secrets-file"/i.test(detail)) {
@@ -807,7 +806,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
           await this.cli(ctx, `pack --name ${ctx.project}`),
           { root: ctx.root },
         );
-        artifact = join(ctx.root, `${ctx.project}-latest.tar.zst`);
+        artifact = this.fs.join(ctx.root, `${ctx.project}-latest.tar.zst`);
         if (!(await this.fs.exists(artifact))) {
           throw new AlephaError(`\`alepha pack\` produced no ${artifact}.`);
         }
@@ -1080,7 +1079,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   async migrate(): Promise<void> {}
 
   // -------------------------------------------------------------------------
-  // secrets (`bay env set`, over ssh, on stdin)
+  // secrets (the file `bay deploy --secrets-file` reads)
   // -------------------------------------------------------------------------
 
   /**
@@ -1181,7 +1180,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   override async secrets(): Promise<void> {}
 
   /**
-   * Renders the payload `bay env set` parses.
+   * Renders the file `bay deploy --secrets-file` reads.
    *
    * One `KEY=VALUE` per line, so a value containing a newline would arrive as
    * two variables  -  the second one a fragment of a secret, under a name the

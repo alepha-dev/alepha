@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -194,5 +194,26 @@ describe("PostgresMigrationsService", () => {
     }
     expect(chain[0]).toMatch(/^Could not connect to 127\.0\.0\.1:15432\//);
     expect(chain.join("\n")).not.toContain("s3cr3t-never-logged");
+  });
+
+  it("refuses a DATABASE_URL that does not parse, naming the variable and never its value", async ({
+    expect,
+  }) => {
+    const service = await memoryService([FIRST]);
+    // An unencoded "/" in the password: the scheme is Postgres, the URL is not one.
+    const url = "postgres://app:s3cr/et@db.example.com/app";
+
+    let caught: any;
+    try {
+      await service.apply({ url, root: "/artifact" });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AlephaError);
+    expect(caught.message).toContain("DATABASE_URL");
+    expect(caught.message).not.toContain("s3cr");
+    expect(JSON.stringify(caught)).not.toContain("s3cr");
+    expect(caught.cause).toBeUndefined();
   });
 });

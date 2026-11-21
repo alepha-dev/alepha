@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -97,7 +97,7 @@ describe("the worker-side Cloudflare adapter", () => {
     const remove = (kind: string) => async (name: string) => {
       calls.push(`${kind}:${name}`);
       if (failing.includes(name)) {
-        throw new Error(`${name} could not be deleted`);
+        throw new AlephaError(`${name} could not be deleted`);
       }
     };
     return {
@@ -453,6 +453,28 @@ describe("the worker-side Cloudflare adapter", () => {
     // Asserted by absence, because the failure mode is an EXTRA module.
     expect(names).not.toContain("index.node.js");
     expect(names).not.toContain("server/node/chunk.js");
+  });
+
+  it("treats a module glob it cannot read as a miss, never as a match", ({
+    expect,
+  }) => {
+    class GlobAdapter extends WorkerCloudflareAdapter {
+      public testMatches = this.matchesModuleGlobs.bind(this);
+    }
+    const adapter = Alepha.create().inject(GlobAdapter);
+
+    // The two shapes the build writes.
+    const written = ["index.workerd.js", "server/workerd/*.js"];
+    expect(adapter.testMatches("index.workerd.js", written)).toBe(true);
+    expect(adapter.testMatches("server/workerd/a.js", written)).toBe(true);
+    expect(adapter.testMatches("server/node/a.js", written)).toBe(false);
+    // A hand-written rule with more than one `*`: read as a prefix and a
+    // suffix it would match the Node entry and drop every workerd chunk.
+    expect(adapter.testMatches("index.node.js", ["**/*.js"])).toBe(false);
+    expect(adapter.testMatches("server/workerd/a.js", ["**/*.js"])).toBe(false);
+    expect(adapter.testMatches("server/node/xa.js", ["server/*/x*.js"])).toBe(
+      false,
+    );
   });
 
   /**
@@ -1427,7 +1449,7 @@ describe("the worker-side Cloudflare adapter", () => {
       expect(calls).toHaveLength(0);
     });
 
-    it("deploys the config apps/docs and apps/ui build, asset behaviour included", async ({
+    it("deploys the config the docs site and apps/ui build, asset behaviour included", async ({
       expect,
     }) => {
       // `build.cloudflare.config` of both apps, merged the way

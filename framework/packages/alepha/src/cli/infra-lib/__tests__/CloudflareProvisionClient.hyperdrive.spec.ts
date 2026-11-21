@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import { describe, it } from "vitest";
 
 import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
@@ -147,6 +148,32 @@ describe("CloudflareProvisionClient Hyperdrive", () => {
       expect(
         calls.find((it) => it.method === "PATCH")?.body.origin.password,
       ).toBe("new");
+    } finally {
+      restore();
+    }
+  });
+
+  it("refuses a DATABASE_URL that does not parse, naming the variable and never its value", async ({
+    expect,
+  }) => {
+    const { api, calls, restore } = capture();
+    try {
+      let caught: any;
+      try {
+        await api.ensureHyperdrive(
+          "acme-app-production",
+          "postgres://app:s3cr/et@db.example.com/app",
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(AlephaError);
+      expect(caught.message).toContain("DATABASE_URL");
+      expect(caught.message).not.toContain("s3cr");
+      expect(JSON.stringify(caught)).not.toContain("s3cr");
+      expect(caught.cause).toBeUndefined();
+      expect(calls.some((it) => it.method === "POST")).toBe(false);
     } finally {
       restore();
     }

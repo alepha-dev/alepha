@@ -30,6 +30,7 @@ import {
   type DurableObjectLifecycleConfig,
 } from "../services/DurableObjectLifecycle.ts";
 import { PostgresMigrationsService } from "../services/PostgresMigrationsService.ts";
+import { PostgresUrlReader } from "../services/PostgresUrlReader.ts";
 import {
   InfraAdapter,
   type InfraContext,
@@ -54,15 +55,16 @@ export interface WorkerCloudflareCredential {
 /**
  * A `InfraAdapter` a Cloudflare Worker can bundle.
  *
- * ## ⚠️ Why `CloudflareAdapter` could not be this
+ * ## ⚠️ Nothing here may need Node
  *
- * It shells out. `WranglerApi` for the token and the deploy, `node:crypto` for
- * the secret hash, `node:fs/promises` for the manifest. All of that is correct
- * on a laptop and none of it can be bundled for workerd, which is why the
- * `workerd` entry of `alepha/cli/infra-lib` registered no adapter at all
- * until this one.
+ * This is the adapter the `workerd` entry of `alepha/cli/infra-lib`
+ * registers, so it shells out to nothing and imports no Node API: the
+ * credential is handed to it and its files come through `FileSystemProvider`.
+ * `CloudflareAdapter` extends it with what only a laptop or CI has: wrangler
+ * for the login, the shell for the non-prebuilt build, `.env.<env>` for the
+ * secrets.
  *
- * Composed rather than inherited, and from three pieces that already exist:
+ * Composed from three pieces:
  * `CloudflareProvisionClient` makes the resources, `CloudflareDeployClient`
  * uploads the Worker, `D1MigrationsService` runs the migrations. This class is
  * the order they go in.
@@ -492,7 +494,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       // A Postgres instance (#Q3508): the artifact's migrations/postgres/,
       // read from the deploy's own filesystem and applied over a direct
       // connection. The URL is the instance's secret and is never logged.
-      const target = new URL(postgres).hostname;
+      const target = new PostgresUrlReader().read(postgres).hostname;
       await run({
         name: `migrate postgres (${target})`,
         handler: async () => {
@@ -535,12 +537,6 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   }
 
   /**
-   * Upload the Worker.
-   *
-   * ⚠️ Reads the config `build` just wrote, and the config only. The packed
-   * one is scratch; this one carries the bindings.
-   */
-  /**
    * The version the last upload produced, for the runner to record.
    *
    * ⚠️ On the instance rather than in the return value, because
@@ -550,7 +546,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   public deployedVersionId?: string;
 
   /**
-   * How many D1 migrations this deploy applied: `0` for a build with no
+   * How many migrations, D1 or Postgres, this deploy applied: `0` for a build with no
    * database, unset until `migrate` ran. Read off the adapter by a deployer
    * that records it, so a rollback past this run knows whether it crosses a
    * schema change (#Q3479).
@@ -606,6 +602,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     durableObjects?: boolean;
   } = {};
 
+  /**
+   * Upload the Worker.
+   *
+   * ⚠️ Reads the config `build` just wrote, and the config only. The packed
+   * one is scratch; this one carries the bindings.
+   */
   async deploy(
     ctx: InfraContext<EnvironmentOptions>,
     run: RunnerMethod,
@@ -738,7 +740,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   /**
    * The address a deploy with no custom domain answers on.
    *
-   * `infraOptions.ts` has documented `domain` as "omit to use the adapter's
+   * `environmentOptions.ts` has documented `domain` as "omit to use the adapter's
    * default `*.workers.dev` / preview URL" all along, and nothing implemented
    * the second half: `up` returned `undefined`, so the orchestrator reported
    * `urls: []`, `DeployRegistry.succeeded` stored no url and skipped its own
@@ -747,7 +749,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    *
    * The name needs no work: `NamingService.forContext` already builds
    * `<project>-<env>` and `DeployRunner` passes `${project}-${app}` as the
-   * project, so the script is already `etihad-api-production`. Only the middle
+   * project, so the script is already `acme-api-production`. Only the middle
    * label was missing.
    *
    * ⚠️ **Never written back to `app_instances.url`.** That column is what
@@ -798,19 +800,6 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     return url;
   }
 
-  /**
-   * The module set, from the config's own `rules` globs.
-   *
-   * ⚠️ No import-graph walk. With `no_bundle` wrangler globs files under the
-   * module root against `rules` and excludes the entry, and the generated
-   * config sets
-   * `rules: [{ type: "ESModule", globs: ["index.workerd.js", "server/workerd/*.js"] }]`,
-   * so the upload set is a directory listing.
-   *
-   * ⚠️ Scoped to the workerd slice, which is why the slices are namespaced. A
-   * `--runtime node,workerd` build leaves both in one `dist/`, and a glob one
-   * level wider uploads every Node chunk with them.
-   */
   /**
    * The app's own variables, plus the one the copy's address implies.
    *
@@ -896,7 +885,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     }
     // ⚠️ When the runner has them, they never touched a filesystem: it walks
     // the archive instead, because materialising a 49 MB asset tree inside a
-    // 128 MB isolate is what killed `apps/docs`. See {@link useAssets}.
+    // 128 MB isolate is what killed the docs site. See {@link useAssets}.
     //
     // ⚠️ The runner's own `config` carries the `_headers` / `_redirects` texts
     // it caught on its first pass, so it is MERGED into the wrangler config
@@ -992,7 +981,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * a filesystem.
    *
    * ⚠️ **This is how a large site deploys at all.** `DeployRunner` unpacks an
-   * artifact into a `MemoryFileSystemProvider`, and `apps/docs` is 49 MB of
+   * artifact into a `MemoryFileSystemProvider`, and the docs site is 49 MB of
    * `dist/public` inside a 128 MB isolate - so it never gets as far as being
    * read. The runner instead walks the archive twice: once to hash, once to
    * feed the upload, and neither pass keeps a file. Set before `up()`, in the
@@ -1045,16 +1034,33 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       if (!glob.includes("*")) {
         return entry === glob;
       }
-      const [prefix, suffix] = glob.split("*", 2);
+      const parts = glob.split("*");
+      if (parts.length !== 2) {
+        return false;
+      }
+      const [prefix, suffix] = parts;
       return (
         entry.startsWith(prefix) &&
-        entry.endsWith(suffix ?? "") &&
+        entry.endsWith(suffix) &&
         // A `*` names files in ONE directory, never a subtree.
         !entry.slice(prefix.length).includes("/")
       );
     });
   }
 
+  /**
+   * The module set, from the config's own `rules` globs.
+   *
+   * ⚠️ No import-graph walk. With `no_bundle` wrangler globs files under the
+   * module root against `rules` and excludes the entry, and the generated
+   * config sets
+   * `rules: [{ type: "ESModule", globs: ["index.workerd.js", "server/workerd/*.js"] }]`,
+   * so the upload set is a directory listing.
+   *
+   * ⚠️ Scoped to the workerd slice, which is why the slices are namespaced. A
+   * `--runtime node,workerd` build leaves both in one `dist/`, and a glob one
+   * level wider uploads every Node chunk with them.
+   */
   protected async modules(
     distDir: string,
     config: WranglerConfig,
@@ -1347,7 +1353,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    *
    * ⚠️ **The contract with `build.cloudflare.config`.** That object is spread
    * into the config wholesale, and `wrangler deploy` honoured any key in it.
-   * The API upload maps a fixed list, so a key outside it (`ai`, `vectorize`,
+   * The API upload maps a fixed list, so a key outside it (`vectorize`,
    * `browser`, `tail_consumers`, ...) would ship a Worker without it behind a
    * green deploy. Refused by name instead, by {@link refuseUnsupported}.
    *
