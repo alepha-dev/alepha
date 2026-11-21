@@ -92,4 +92,48 @@ describe("the inspector outbox", () => {
 
     await alepha.stop();
   });
+
+  it("skips an outbox file of the wrong shape, as it skips one that does not parse", async ({
+    expect,
+  }) => {
+    const { alepha, fs } = await boot({
+      emails: "/data/emails",
+      sms: "/data/sms",
+    });
+
+    await fs.mkdir("/data/emails", { recursive: true });
+    for (const name of ["a", "b"]) {
+      await fs.writeFile(
+        `/data/emails/${name},2026-01-01T00-00-00-000Z.eml.json`,
+        JSON.stringify({
+          to: `${name}@example.com`,
+          subject: name,
+          body: "hello",
+          sentAt: "2026-01-01T00:00:00.000Z",
+        }),
+      );
+    }
+    await fs.writeFile("/data/emails/c,bad.eml.json", "{}");
+    await fs.writeFile("/data/emails/d,bad.eml.json", "not json");
+    await fs.mkdir("/data/sms", { recursive: true });
+    await fs.writeFile("/data/sms/+1,bad.sms.json", JSON.stringify({ to: 1 }));
+
+    const dispatcher = alepha.inject(InspectorDispatcher);
+    const emails = await dispatcher.dispatch({
+      method: "GET",
+      path: "/emails",
+    });
+    expect(emails.status).toBe(200);
+    expect(
+      (emails.body as { emails: Array<{ subject: string }> }).emails
+        .map((e) => e.subject)
+        .toSorted((x, y) => x.localeCompare(y)),
+    ).toEqual(["a", "b"]);
+
+    const sms = await dispatcher.dispatch({ method: "GET", path: "/sms" });
+    expect(sms.status).toBe(200);
+    expect((sms.body as { messages: unknown[] }).messages).toEqual([]);
+
+    await alepha.stop();
+  });
 });

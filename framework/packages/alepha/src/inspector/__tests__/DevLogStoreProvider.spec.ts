@@ -113,11 +113,10 @@ describe("DevLogStoreProvider", () => {
       await alepha.stop();
     });
 
-    it("compacts the file back within bounds on boot", async () => {
+    it("rewrites the file on boot, restart marker included", async () => {
       const many = Array.from({ length: 50 }, (_, i) => entry(`e${i}`, i + 1));
-      const { alepha, fs, store } = await boot(asLines(many));
+      const { alepha, fs } = await boot(asLines(many));
 
-      store.options.maxEntries = 2_000;
       const written = await fs.readTextFile(LOG_FILE);
 
       // Rewritten, marker included, so the running process only ever appends.

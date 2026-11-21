@@ -597,10 +597,9 @@ export class DevToolsMetadataProvider {
     // out of the *application's* SSR hydration payload; it is not a general
     // secrecy marker, and devtools is not the application. This module refuses
     // to register in production precisely because it already serves the whole
-    // environment — every secret in it — in cleartext, and its atom route
-    // already lets you write these same atoms. Redacting the read while
-    // permitting the write left the one screen that exists to show server
-    // state unable to show it.
+    // environment, every secret in it, in cleartext. Redacting one atom's
+    // value here would hide nothing the module does not already serve, and
+    // left the one screen that exists to show server state unable to show it.
     return atomsWithValues.map(({ atom, value }) => {
       return {
         name: atom.key,

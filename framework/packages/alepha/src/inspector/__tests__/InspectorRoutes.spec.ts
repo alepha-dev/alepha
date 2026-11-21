@@ -65,6 +65,11 @@ describe("InspectorDispatcher", () => {
     const alepha = await boot();
 
     expect((await call(alepha, "GET", "/nope")).status).toBe(404);
+    // A malformed escape in a parameter is a route that does not match, not
+    // a URIError thrown out of the dispatcher.
+    expect((await call(alepha, "GET", "/jobs/%E0/executions")).status).toBe(
+      404,
+    );
     expect(
       (await call(alepha, "POST", "/actions/any/call", { body: 1 })).status,
     ).toBe(400);

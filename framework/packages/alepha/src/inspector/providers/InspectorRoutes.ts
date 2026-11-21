@@ -1,4 +1,4 @@
-import { $inject, $store, Alepha, z } from "alepha";
+import { $inject, $store, Alepha, type Infer, type ZType, z } from "alepha";
 import { JobService } from "alepha/api/jobs";
 import { UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -26,6 +26,37 @@ import type {
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
 import { DevLogStoreProvider } from "./DevLogStoreProvider.ts";
 import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
+
+/**
+ * One message of the local email outbox, as `GET /emails` serves it.
+ */
+const outboxEmailSchema = z.object({
+  /**
+   * The outbox file's name: stable, so one message can be read back by it.
+   */
+  id: z.text({ size: "long" }),
+  to: z.text(),
+  subject: z.text(),
+  body: z.string(),
+  /**
+   * The plain-text alternative, when the sender gave one.
+   */
+  text: z.string().optional(),
+  sentAt: z.text(),
+});
+
+/**
+ * One message of the local SMS outbox, as `GET /sms` serves it.
+ */
+const outboxSmsSchema = z.object({
+  /**
+   * The outbox file's name: stable, so one message can be read back by it.
+   */
+  id: z.text({ size: "long" }),
+  to: z.text(),
+  message: z.string(),
+  sentAt: z.text(),
+});
 
 /**
  * The inspector protocol: every endpoint a tool can call on a running app.
@@ -117,23 +148,7 @@ export class InspectorRoutes {
       ...INSPECTOR_ENDPOINTS.emails,
       schema: {
         response: z.object({
-          emails: z.array(
-            z.object({
-              /**
-               * The outbox file's name: stable, so one message can be read
-               * back by it.
-               */
-              id: z.text({ size: "long" }),
-              to: z.text(),
-              subject: z.text(),
-              body: z.string(),
-              /**
-               * The plain-text alternative, when the sender gave one.
-               */
-              text: z.string().optional(),
-              sentAt: z.text(),
-            }),
-          ),
+          emails: z.array(outboxEmailSchema),
           /**
            * Where these were read from. The view used to print the default
            * path as a literal, which is wrong the moment `DATA_DIR` moves it,
@@ -145,14 +160,11 @@ export class InspectorRoutes {
       },
       handler: async () => {
         const dir = this.emailOptions.directory;
-        const emails = await this.readOutbox<{
-          id: string;
-          to: string;
-          subject: string;
-          body: string;
-          text?: string;
-          sentAt: string;
-        }>(dir, ".eml.json");
+        const emails = await this.readOutbox(
+          dir,
+          ".eml.json",
+          outboxEmailSchema,
+        );
         return { emails, directory: dir };
       },
     }),
@@ -161,18 +173,7 @@ export class InspectorRoutes {
       ...INSPECTOR_ENDPOINTS.sms,
       schema: {
         response: z.object({
-          messages: z.array(
-            z.object({
-              /**
-               * The outbox file's name: stable, so one message can be read
-               * back by it.
-               */
-              id: z.text({ size: "long" }),
-              to: z.text(),
-              message: z.string(),
-              sentAt: z.text(),
-            }),
-          ),
+          messages: z.array(outboxSmsSchema),
           /**
            * Where these were read from - `localSmsOptions`, not the default
            * spelled out a second time. An app that moved its outbox used to
@@ -183,12 +184,11 @@ export class InspectorRoutes {
       },
       handler: async () => {
         const dir = this.smsOptions.directory;
-        const messages = await this.readOutbox<{
-          id: string;
-          to: string;
-          message: string;
-          sentAt: string;
-        }>(dir, ".sms.json");
+        const messages = await this.readOutbox(
+          dir,
+          ".sms.json",
+          outboxSmsSchema,
+        );
         return { messages, directory: dir };
       },
     }),
@@ -430,7 +430,14 @@ export class InspectorRoutes {
         const expected = pattern[i];
         const actual = segments[i];
         if (expected.startsWith(":")) {
-          params[expected.slice(1)] = decodeURIComponent(actual);
+          try {
+            params[expected.slice(1)] = decodeURIComponent(actual);
+          } catch {
+            // A malformed escape (`%E0`) is a path no route answers: a 404,
+            // never a URIError thrown out of the dispatcher as a 500.
+            matched = false;
+            break;
+          }
         } else if (expected !== actual) {
           matched = false;
           break;
@@ -571,31 +578,41 @@ export class InspectorRoutes {
 
   /**
    * Every `*<suffix>` file of a local outbox directory, newest first, each
-   * with its file name as `id`. Malformed files are skipped, and a missing
+   * with its file name as `id`. Malformed files are skipped (one that does
+   * not parse, and one that parses into something `item` refuses, which the
+   * response schema would otherwise answer with a 500), and a missing
    * directory is an empty outbox.
    */
-  protected async readOutbox<T extends { id: string; sentAt: string }>(
+  protected async readOutbox<T extends ZType>(
     dir: string,
     suffix: string,
-  ): Promise<T[]> {
+    item: T,
+  ): Promise<Infer<T>[]> {
     try {
       if (!(await this.fs.exists(dir))) return [];
 
       const files = (await this.fs.ls(dir)).filter((f) => f.endsWith(suffix));
-      const items: T[] = [];
+      const items: Infer<T>[] = [];
 
       for (const file of files) {
         try {
-          items.push({
-            ...(await this.fs.readJsonFile<T>(this.fs.join(dir, file))),
+          const parsed = item.safeParse({
+            ...(await this.fs.readJsonFile<object>(this.fs.join(dir, file))),
             id: file,
           });
+          if (parsed.success) {
+            items.push(parsed.data as Infer<T>);
+          }
         } catch {
           // skip malformed files
         }
       }
 
-      items.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+      items.sort((a, b) =>
+        (b as { sentAt: string }).sentAt.localeCompare(
+          (a as { sentAt: string }).sentAt,
+        ),
+      );
       return items;
     } catch {
       return [];
@@ -792,13 +809,5 @@ export class InspectorRoutes {
       where[column] = { eq: value };
     }
     return where;
-  }
-
-  protected parseId(repo: any, rawId: string): string | number {
-    const idType = repo.id.type;
-    if (idType?.type === "integer" || idType?.type === "number") {
-      return Number(rawId);
-    }
-    return rawId;
   }
 }
