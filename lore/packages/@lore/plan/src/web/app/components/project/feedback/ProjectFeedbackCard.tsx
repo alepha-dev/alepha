@@ -67,6 +67,18 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
           <span className="shrink-0 opacity-50">·</span>
           {/* Reporter name is user-provided — plain escaped text only. */}
           <span className="truncate">{reporterLabel}</span>
+          {feedback.untrusted && (
+            <>
+              <span className="shrink-0 opacity-50">·</span>
+              <span
+                className="shrink-0 text-amber-600 dark:text-amber-400"
+                title={tr("feedback.untrusted.description")}
+                data-testid="feedback-card-untrusted"
+              >
+                {tr("feedback.untrusted")}
+              </span>
+            </>
+          )}
         </span>
       </div>
       {attachmentCount > 0 && (

@@ -212,6 +212,13 @@ export const hosts = $entity({
      */
     agentHost: db.default(z.boolean(), false),
     /**
+     * How the machine runs jobs, from its inventory (#Q3983): `process` (a
+     * Unix user on the host) or `container`. Absent when it reported no jobs
+     * user. Lore refuses untrusted input on anything but `container`
+     * (#Q3987).
+     */
+    jobsRunner: z.string().max(20).optional(),
+    /**
      * The last capability check: `checking` while one runs, then `available`
      * or `unavailable` with the CLI's message in `agentError` (an expired
      * token, a reached usage limit). A usage limit clears itself at the next

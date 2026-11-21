@@ -6,7 +6,7 @@ import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { hostInventories } from "../entities/hostInventories.ts";
-import type { Host } from "../entities/hosts.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
 import { BayUpgrade } from "../schemas/BayUpgrade.ts";
 import type { HostInventoryFrame } from "../schemas/hostInventoryFrameSchema.ts";
 import type {
@@ -39,6 +39,7 @@ import { BayReleaseTarget } from "./BayReleaseTarget.ts";
 export class HostInventoryService {
   protected readonly log = $logger();
   protected readonly inventories = $repository(hostInventories);
+  protected readonly hosts = $repository(hosts);
   protected readonly instances = $repository(appInstances);
   protected readonly projects = $repository(projects);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -67,6 +68,12 @@ export class HostInventoryService {
         ? {}
         : { bayVersion: frame.host.bayVersion }),
     };
+
+    // How it runs jobs, on the host row the job gates read (#Q3987).
+    const runner = frame.jobs?.runner ?? null;
+    if ((host.jobsRunner ?? null) !== runner) {
+      await this.hosts.updateById(host.id, { jobsRunner: runner });
+    }
 
     const existing = await this.findFor(host.id);
     if (existing) {

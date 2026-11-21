@@ -62,6 +62,7 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -261,6 +262,8 @@ export const LoreCoreApi = $module({
     // Job keys (#Q3995): the credential a host job holds, its pins checked on
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
+    // Untrusted input in an agent's prompt (#Q3987).
+    AgentPromptGuard,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     CommitReferenceRegistry,
     McpProjectScope,
@@ -478,10 +481,12 @@ export {
   type CommitReferenceResult,
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
+export { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export { JobKeyService } from "./services/JobKeyService.ts";
 export type {
   AgentHostDirectory,
+  AgentHostRef,
   HostJobInput,
   HostJobKeyIssuer,
   HostJobKeyScope,

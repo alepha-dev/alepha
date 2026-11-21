@@ -3297,6 +3297,11 @@ export class QuestController {
             );
           }
           patch.feedbackId = body.feedbackId;
+          // A quest linked to untrusted feedback carries the marker, for
+          // good (#Q3987): an agent works it only once a member confirms.
+          if (feedback.untrusted) {
+            patch.untrusted = true;
+          }
         }
       }
       // Attach to / detach from a release. The refusal on a PUBLISHED

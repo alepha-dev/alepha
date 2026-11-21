@@ -3073,6 +3073,9 @@ export default {
   "hosts.agent.default.label": "Agent host",
   "hosts.agent.default.empty": "None",
   "hosts.agent.default.save": "Save",
+  "feedback.untrusted": "Untrusted",
+  "feedback.untrusted.description":
+    "Written by someone outside the project's team. No agent works on it while the Agent host runs jobs as a host process; on a container host an agent only reads it.",
   "account.hosts.switch.jobs": "Allow jobs",
   "account.hosts.switch.jobs.description":
     "One-shot jobs Lore starts on this machine, such as agent jobs. A job runs a repository's code here, under the jobs user Bay is configured with.",

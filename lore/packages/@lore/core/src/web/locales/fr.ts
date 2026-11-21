@@ -3081,6 +3081,9 @@ export default {
   "hosts.agent.default.label": "Hôte d'agent",
   "hosts.agent.default.empty": "Aucun",
   "hosts.agent.default.save": "Enregistrer",
+  "feedback.untrusted": "Non fiable",
+  "feedback.untrusted.description":
+    "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne la traite tant que l'hôte d'agent exécute les tâches comme un processus de l'hôte ; sur un hôte à conteneurs, un agent ne fait que la lire.",
   "account.hosts.switch.jobs": "Autoriser les tâches",
   "account.hosts.switch.jobs.description":
     "Les tâches ponctuelles que Lore lance sur cette machine, comme les tâches d'agent. Une tâche exécute ici le code d'un dépôt, sous l'utilisateur de tâches configuré dans Bay.",
