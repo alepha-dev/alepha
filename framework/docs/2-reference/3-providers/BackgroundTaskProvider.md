@@ -12,7 +12,7 @@ Runs fire-and-forget work that should outlive the request that scheduled it
 (sending a welcome email, an audit write, a webhook) without blocking the
 response.
 
-On a long-lived runtime (Node, Vercel) the event loop keeps the promise
+On a long-lived runtime (Node, Bun) the event loop keeps the promise
 alive, so the only job here is to detach the task from the caller and never
 leak an unhandled rejection. On serverless/edge runtimes that freeze the
 isolate once the response is returned (Cloudflare Workers) the

@@ -25,7 +25,7 @@ describe("WebVitalsCollector", () => {
   });
 
   /**
-   * `ttfb` shipped twice on every page view in production — the navigation
+   * `ttfb` shipped twice on every page view in production: the navigation
    * entry reaches a `buffered: true` observer once from the buffer and again on
    * dispatch. A duplicate does not move the p75, it inflates the population the
    * p75 is computed over, so one visitor counts as two.
@@ -42,7 +42,7 @@ describe("WebVitalsCollector", () => {
 
   /**
    * `finalize` runs on every `visibilitychange` to hidden, so a visitor who
-   * tabs away and comes back reported the accumulating metrics again — with a
+   * tabs away and comes back reported the accumulating metrics again, with a
    * *different* value the second time, which is the case most likely to look
    * like real data.
    */
@@ -84,24 +84,6 @@ describe("WebVitalsCollector", () => {
   });
 
   /**
-   * The callback is a timing signal, not a measurement — the value is still
-   * only final at hidden, and the last entry is the one that counts.
-   */
-  it("still reports the last LCP value, not the one that triggered onLcp", () => {
-    const got: any[] = [];
-    const v = new TestCollector(
-      (m) => got.push(m),
-      () => {},
-    );
-
-    v.testNoteLcp(1200);
-    v.testNoteLcp(2400);
-    v.report("lcp", 2400);
-
-    expect(got).toEqual([{ metric: "lcp", value: 2400, path: "/" }]);
-  });
-
-  /**
    * An app that collects no vitals still needs the signal, because it is what
    * tells it when to go and ask for its config. Gating the callback behind the
    * metric sink would leave such an app waiting on the fallback timer forever.
@@ -129,6 +111,12 @@ describe("WebVitalsCollector", () => {
 class FakePerformanceObserver {
   static byType = new Map<string, (entries: any[]) => void>();
 
+  /**
+   * What the browser says it can observe. A test narrows it to play a browser
+   * without one of the entry types.
+   */
+  static supportedEntryTypes: readonly string[] = [];
+
   protected readonly cb: (list: { getEntries: () => any[] }) => void;
 
   constructor(cb: (list: { getEntries: () => any[] }) => void) {
@@ -136,6 +124,10 @@ class FakePerformanceObserver {
   }
 
   observe(options: { type: string }) {
+    // As a browser does: an entry type it does not have is ignored, silently.
+    if (!FakePerformanceObserver.supportedEntryTypes?.includes(options.type)) {
+      return;
+    }
     FakePerformanceObserver.byType.set(options.type, (entries) =>
       this.cb({ getEntries: () => entries }),
     );
@@ -175,6 +167,13 @@ describe("WebVitalsCollector path attribution", () => {
     realPO = globalThis.PerformanceObserver;
     (globalThis as any).PerformanceObserver = FakePerformanceObserver;
     FakePerformanceObserver.byType.clear();
+    FakePerformanceObserver.supportedEntryTypes = [
+      "paint",
+      "largest-contentful-paint",
+      "layout-shift",
+      "event",
+      "navigation",
+    ];
     Object.defineProperty(document, "visibilityState", {
       value: "visible",
       configurable: true,
@@ -203,6 +202,34 @@ describe("WebVitalsCollector path attribution", () => {
 
     expect(got).toContainEqual({ metric: "lcp", value: 1800, path: "/a" });
     expect(got.filter((m) => m.metric === "lcp")).toHaveLength(1);
+  });
+
+  /**
+   * LCP is dispatched again for every larger element, and only the last one
+   * is the page's: the value reported at hidden is the latest candidate, not
+   * the one that fired `onLcp`.
+   */
+  it("reports the last LCP candidate, not the first", () => {
+    const got: any[] = [];
+    let notified = 0;
+    const v = new WebVitalsCollector(
+      (m) => got.push(m),
+      () => notified++,
+      () => "/a",
+    );
+    v.observe();
+
+    deliver("largest-contentful-paint", [{ startTime: 1200 }]);
+    deliver("largest-contentful-paint", [
+      { startTime: 1900 },
+      { startTime: 2400 },
+    ]);
+    hide();
+
+    expect(notified).toBe(1);
+    expect(got.filter((m) => m.metric === "lcp")).toEqual([
+      { metric: "lcp", value: 2400, path: "/a" },
+    ]);
   });
 
   it("splits layout shift between the pages that shifted", () => {
@@ -296,5 +323,60 @@ describe("WebVitalsCollector path attribution", () => {
       { metric: "cls", value: 0.05, path: "/a" },
       { metric: "cls", value: 0, path: "/b" },
     ]);
+  });
+
+  /**
+   * Zero is a measurement only where shifts can be measured. A browser with
+   * no `layout-shift` entry type delivers nothing either, and a zero from it
+   * would pull the CLS percentile toward a score nobody measured.
+   */
+  it("reports no CLS when the browser has no layout-shift entry type", () => {
+    FakePerformanceObserver.supportedEntryTypes = [
+      "paint",
+      "largest-contentful-paint",
+      "event",
+      "navigation",
+    ];
+    const got: any[] = [];
+    const v = new WebVitalsCollector(
+      (m) => got.push(m),
+      undefined,
+      () => "/a",
+    );
+    v.observe();
+
+    deliver("largest-contentful-paint", [{ startTime: 1800 }]);
+    hide();
+
+    expect(got).toEqual([{ metric: "lcp", value: 1800, path: "/a" }]);
+  });
+
+  it("reports a zero CLS when the browser measures shifts and none happened", () => {
+    const got: any[] = [];
+    const v = new WebVitalsCollector(
+      (m) => got.push(m),
+      undefined,
+      () => "/a",
+    );
+    v.observe();
+
+    hide();
+
+    expect(got).toEqual([{ metric: "cls", value: 0, path: "/a" }]);
+  });
+
+  it("reports no CLS when the browser cannot say what it observes", () => {
+    (FakePerformanceObserver as any).supportedEntryTypes = undefined;
+    const got: any[] = [];
+    const v = new WebVitalsCollector(
+      (m) => got.push(m),
+      undefined,
+      () => "/a",
+    );
+
+    expect(() => v.observe()).not.toThrow();
+    hide();
+
+    expect(got).toEqual([]);
   });
 });

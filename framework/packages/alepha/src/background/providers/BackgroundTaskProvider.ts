@@ -6,7 +6,7 @@ import { $logger } from "alepha/logger";
  * (sending a welcome email, an audit write, a webhook) without blocking the
  * response.
  *
- * On a long-lived runtime (Node, Vercel) the event loop keeps the promise
+ * On a long-lived runtime (Node, Bun) the event loop keeps the promise
  * alive, so the only job here is to detach the task from the caller and never
  * leak an unhandled rejection. On serverless/edge runtimes that freeze the
  * isolate once the response is returned (Cloudflare Workers) the
@@ -59,11 +59,36 @@ export class BackgroundTaskProvider {
   protected keepAlive(_promise: Promise<void>): void {}
 
   /**
-   * Await all in-flight tasks (best-effort). Called on `stop` so shutdown and
-   * tests don't drop deferred work.
+   * How many rounds one {@link flush} call waits through. A task may defer a
+   * follow-up, which may defer another: each round awaits what is pending at
+   * that moment. The bound is per call, not per chain of tasks: tasks deferred
+   * by anything else while `flush` waits use up rounds too.
+   *
+   * A count of rounds, not a deadline: `stop` already gives its hooks one,
+   * and `flush` called directly has never cut a slow task short. What is left
+   * to guard against is a task that defers itself again every time.
+   */
+  protected readonly maxFlushRounds: number = 10;
+
+  /**
+   * Await all in-flight tasks (best-effort), those deferred by a task that was
+   * itself being awaited included. Called on `stop` so shutdown and tests don't
+   * drop deferred work.
+   *
+   * Each call gives up after {@link maxFlushRounds} rounds, with a warning,
+   * when tasks are still being deferred, by a chain that never ends or by
+   * steady traffic on a live server: stop must end.
    */
   public async flush(): Promise<void> {
-    await Promise.allSettled(this.pending);
+    for (let round = 0; this.pending.size > 0; round++) {
+      if (round >= this.maxFlushRounds) {
+        this.log.warn(
+          `Background tasks were still being deferred after ${this.maxFlushRounds} rounds, ${this.pending.size} not awaited`,
+        );
+        return;
+      }
+      await Promise.allSettled(this.pending);
+    }
   }
 
   protected readonly onStop = $hook({

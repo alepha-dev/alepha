@@ -70,7 +70,7 @@ describe("alepha.scheduler.CronProvider", () => {
     expect(maxConcurrent).toBe(1);
     expect(calls).toBe(1);
 
-    // The guard must reset once the run finishes — a later trigger runs again.
+    // The guard must reset once the run finishes: a later trigger runs again.
     await cron.trigger("slow-trigger");
     expect(calls).toBe(2);
   });
@@ -98,6 +98,22 @@ describe("alepha.scheduler.CronProvider", () => {
     expect(() =>
       cron.createCronJob("bad-cron", "not a cron", async () => {}),
     ).toThrow(/bad-cron/);
+  });
+
+  it("should create no AbortController until a job waits for its tick", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const cron = alepha.inject(CronProvider);
+
+    cron.createCronJob("lazy", "* * * * *", async () => {});
+    const job = cron.getCronJobs().find((j) => j.name === "lazy");
+    expect(job?.abort).toBeUndefined();
+
+    await alepha.start();
+    expect(job?.abort).toBeInstanceOf(AbortController);
+
+    await alepha.stop();
   });
 
   it("should not start a timer loop from createCronJob(start) in serverless", async ({
@@ -234,7 +250,7 @@ describe("alepha.scheduler.CronProvider", () => {
     expect(seen.length).toBeGreaterThanOrEqual(1);
     for (const tick of seen) {
       // Ticks carry the scheduled cron instant, not "whenever the timer
-      // actually fired" — for `* * * * *` that is an exact minute boundary.
+      // actually fired": for `* * * * *` that is an exact minute boundary.
       expect(tick % 60000).toBe(0);
     }
 
@@ -274,24 +290,6 @@ describe("alepha.scheduler.CronProvider", () => {
     const cron = alepha.inject(CronProvider);
 
     await expect(cron.trigger("does-not-exist")).resolves.toBeUndefined();
-  });
-
-  it("should run remaining jobs when one fails in triggerAll()", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create();
-    const cron = alepha.inject(CronProvider);
-
-    let okCalls = 0;
-    cron.createCronJob("ok", "* * * * *", async () => {
-      okCalls++;
-    });
-    cron.createCronJob("ko", "* * * * *", async () => {
-      throw new AlephaError("nope");
-    });
-
-    await expect(cron.triggerAll()).resolves.toBeUndefined();
-    expect(okCalls).toBe(1);
   });
 
   it("should run jobs via the serverless:cron:triggered hook by name", async ({

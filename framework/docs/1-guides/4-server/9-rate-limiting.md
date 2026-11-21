@@ -155,6 +155,14 @@ that declares its [`errors`](/docs/guides-server-typed-errors), the middleware's
 `429` is added to the documented responses, so it appears in the
 [OpenAPI](/docs/guides-server-openapi) document.
 
+An action called in process, through `run()` from another route (a batch, a page
+loader), is limited the same way and keyed on the calling request's IP. The
+`X-RateLimit-*` headers stay off the calling route's response, which is not the
+limited action's. `Retry-After` does go on it when the call is refused, so a `429`
+left to propagate still tells the client when to retry. The cost: a calling handler
+that catches the `429` and answers something else, a `200` for instance, sends that
+answer with a stray `Retry-After`.
+
 `skipFailedRequests` refunds the hit when the handler throws (anything but an
 `HttpError` below 400); `skipSuccessfulRequests` refunds it when the handler
 succeeds, so only failures count, as on a login endpoint.

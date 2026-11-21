@@ -419,7 +419,7 @@ class VitalsForwarder {
 }
 ```
 
-CLS and INP are measured per path across client navigations, so each page a visitor reads gets its own sample, and every metric is reported once per path. LCP, FCP and TTFB happen once, at load. `path` is the page the metric was measured on, not the page on screen when the tab was hidden.
+CLS and INP are measured per path across client navigations, so each page a visitor reads gets its own sample, and every metric is reported once per path. A page nothing shifted on reports a CLS of zero, in a browser that measures layout shift only: one that does not reports no CLS at all. LCP, FCP and TTFB happen once, at load. `path` is the page the metric was measured on, not the page on screen when the tab was hidden.
 
 `value` is raw: milliseconds, and the unitless score for `cls`. A histogram sink scales CLS itself, as in [the histogram pattern](#the-histogram-pattern). `react:lcp:painted` fires once, when the main content has painted, and is a timing signal rather than a measurement.
 

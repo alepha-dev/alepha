@@ -138,6 +138,14 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
    * error:** `HttpError(503)`, no limit headers: an outage is not a limit the
    * client exceeded.
    *
+   * An action called in process, through `run()` from another route, is
+   * limited the same way and keyed on the calling request's ip. The
+   * `X-RateLimit-*` headers stay off the calling route's response, which is
+   * not the limited action's. `Retry-After` does go on it when the call is
+   * refused, so a 429 left to propagate still tells the client when to retry.
+   * The cost: a calling handler that catches the 429 and answers something
+   * else sends that answer with a stray `Retry-After`.
+   *
    * `skipFailedRequests` / `skipSuccessfulRequests` refund the hit once the
    * outcome is known: failed means the handler threw anything but an
    * `HttpError` below 400.
@@ -173,6 +181,20 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
           const request = alepha.store.getUntracked("alepha.http.request") as
             | ServerRequest
             | undefined;
+          // The key is the HTTP caller's, the reply is this action's. Inside
+          // a nested `run()` (a batch route, a page loader) the container-wide
+          // `alepha.http.request` is the OUTER request: the address that pays
+          // for the call, so the right key, but its reply belongs to a route
+          // that declared no limiter. `run()` publishes its own request on its
+          // fork layer, so `"fork"` finds the action that declared this
+          // middleware, reading through any layer a `$transactional()` nested
+          // in between, and never an enclosing action's. A refusal is the
+          // exception: left to propagate, the 429 becomes the outer response,
+          // so `Retry-After` goes on the outer reply as well.
+          const reply = (
+            alepha.store.getUntracked("alepha.action.request", "fork") ??
+            request
+          )?.reply;
           const key = options.key
             ? options.key(...args)
             : request
@@ -184,22 +206,21 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
               { status: 503 },
               { message: "Rate limiter unavailable" },
             );
-          if (request && result.resetAt !== undefined) {
-            request.reply.setHeader("X-RateLimit-Limit", String(result.limit));
-            request.reply.setHeader(
-              "X-RateLimit-Remaining",
-              String(result.remaining),
-            );
-            request.reply.setHeader(
+          if (reply && result.resetAt !== undefined) {
+            reply.setHeader("X-RateLimit-Limit", String(result.limit));
+            reply.setHeader("X-RateLimit-Remaining", String(result.remaining));
+            reply.setHeader(
               "X-RateLimit-Reset",
               String(Math.ceil(result.resetAt / 1000)),
             );
           }
           if (!result.allowed) {
-            request?.reply.setHeader(
-              "Retry-After",
-              String(Math.max(1, Math.ceil((result.retryAfterMs ?? 0) / 1000))),
+            const retryAfter = String(
+              Math.max(1, Math.ceil((result.retryAfterMs ?? 0) / 1000)),
             );
+            reply?.setHeader("Retry-After", retryAfter);
+            if (request && request.reply !== reply)
+              request.reply.setHeader("Retry-After", retryAfter);
             throw new HttpError(
               { status: 429 },
               { message: "Too Many Requests" },

@@ -1,11 +1,9 @@
 import { $module } from "alepha";
-import { AlephaLock } from "alepha/lock";
 
 import { CronProvider } from "./providers/CronProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./constants/CRON.ts";
 export * from "./providers/CronProvider.ts";
 export * from "./providers/WorkerdCronProvider.ts";
 
@@ -16,10 +14,9 @@ declare module "alepha" {
     /**
      * Generic serverless cron trigger event.
      *
-     * Emitted by serverless platform entry points (Cloudflare scheduled,
-     * etc.) to trigger a registered cron job by name. `CronProvider`
-     * listens to this and calls `trigger(name)` so the same
-     * `$job({ cron })` declarations work across runtimes.
+     * Emitted by an app's own serverless entry point to run a registered
+     * cron job by name: `CronProvider` listens and calls `trigger(name)`.
+     * Nothing in the framework emits it.
      *
      * Cloudflare Workers uses the platform-specific `cloudflare:scheduled`
      * event instead (matched by cron expression), see
@@ -45,7 +42,8 @@ declare module "alepha" {
  *
  * **Features:**
  * - Cron expression scheduling (e.g., `0 0 * * *`)
- * - Serverless cron dispatch via the `serverless:cron:triggered` hook (Cloudflare, generic)
+ * - Serverless cron dispatch: `cloudflare:scheduled` on Cloudflare Workers,
+ *   `serverless:cron:triggered` for an app's own entry point elsewhere
  *
  * For distributed locking and retries around scheduled work, use `$job({ cron })`
  * from `alepha/api/jobs` - it layers durability on top of this scheduler.
@@ -54,5 +52,5 @@ declare module "alepha" {
  */
 export const AlephaScheduler = $module({
   name: "alepha.scheduler",
-  services: [AlephaLock, CronProvider],
+  services: [CronProvider],
 });

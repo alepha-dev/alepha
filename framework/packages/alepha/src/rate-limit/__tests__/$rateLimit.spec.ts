@@ -1,30 +1,21 @@
 import { randomUUID } from "node:crypto";
 
-import { Alepha, AlephaError } from "alepha";
+import { Alepha } from "alepha";
 import {
   ActorContentionError,
   ActorProvider,
   ActorRedisConnection,
-  type ActorRequest,
   MemoryActorProvider,
 } from "alepha/actor";
 import { $rateLimit, AlephaRateLimit } from "alepha/rate-limit";
 import { describe, it } from "vitest";
 
+import { BrokenActorProvider } from "./BrokenActorProvider.ts";
 import { Limits, RateLimitCases } from "./RateLimitCases.ts";
 
 class InspectMemory extends MemoryActorProvider {
   public raw(identity: string): string | undefined {
     return this.snapshots.get(identity);
-  }
-}
-
-class BrokenActorProvider extends ActorProvider {
-  public error: Error = new AlephaError("actor store down");
-  public calls: ActorRequest[] = [];
-  public override async execute(request: ActorRequest): Promise<unknown> {
-    this.calls.push(request);
-    throw this.error;
   }
 }
 

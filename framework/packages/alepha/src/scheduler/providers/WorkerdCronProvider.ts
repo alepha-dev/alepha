@@ -1,5 +1,4 @@
 import { $hook } from "alepha";
-import type { DateTime } from "alepha/datetime";
 
 import { CronProvider } from "./CronProvider.ts";
 
@@ -42,24 +41,6 @@ declare module "alepha" {
  * @see https://developers.cloudflare.com/workers/configuration/cron-triggers/
  */
 export class WorkerdCronProvider extends CronProvider {
-  /**
-   * Override to avoid creating AbortController in global scope.
-   * Cloudflare Workers doesn't allow this during initialization.
-   */
-  public override createCronJob(
-    name: string,
-    expression: string,
-    handler: (context: { now: DateTime }) => Promise<void>,
-  ): void {
-    this.cronJobs.push({
-      name,
-      cron: this.parseCronJob(name, expression),
-      expression,
-      handler,
-      loop: false,
-    });
-  }
-
   /**
    * Handle a scheduled event from Cloudflare Workers.
    */

@@ -21,6 +21,10 @@ export class CronProvider {
   protected readonly log = $logger();
   protected readonly cronJobs: Array<CronJob> = [];
 
+  /**
+   * Every registered cron job, in registration order. The Cloudflare build
+   * reads the expressions from here.
+   */
   public getCronJobs(): Array<CronJob> {
     return this.cronJobs;
   }
@@ -55,10 +59,11 @@ export class CronProvider {
   });
 
   /**
-   * Generic serverless cron trigger. Vercel's platform-emitted entry
-   * point fires `serverless:cron:triggered` with the job name; we run the matching
-   * job in-process. On long-running runtimes this listener is harmless
-   * (no one fires the event).
+   * Generic serverless cron trigger: runs the job named by a
+   * `serverless:cron:triggered` event, in process. Nothing in the framework
+   * emits that event. It is there for an app whose platform calls it on a
+   * schedule and whose entry point emits it; Cloudflare Workers go through
+   * `cloudflare:scheduled` instead.
    */
   protected readonly onServerlessCron = $hook({
     on: "serverless:cron:triggered",
@@ -77,7 +82,7 @@ export class CronProvider {
       return;
     }
 
-    // Same guard as the `start` hook — a job registered after start (e.g.
+    // Same guard as the `start` hook: a job registered after start (e.g.
     // `createCronJob(..., start: true)`) must not spin up a timer loop in an
     // environment where the start hook refuses to.
     if (this.alepha.isServerless()) {
@@ -117,8 +122,13 @@ export class CronProvider {
    * Registers a cron job.
    *
    * `$job({ cron })` registers through here automatically. Call this
-   * directly when you need a bare periodic tick with no database — you get
+   * directly when you need a bare periodic tick with no database: you get
    * no run history, no retry and no admin view in exchange.
+   *
+   * A job registered before the app starts begins ticking at start. One
+   * registered later ticks only when `start` is true. In a serverless
+   * environment no job ever ticks on a timer, whatever `start` says: the
+   * platform's own trigger runs it.
    */
   public createCronJob(
     name: string,
@@ -131,8 +141,6 @@ export class CronProvider {
       cron: this.parseCronJob(name, expression),
       expression,
       handler,
-      loop: true,
-      abort: new AbortController(),
     };
 
     this.cronJobs.push(cron);
@@ -144,7 +152,6 @@ export class CronProvider {
 
   /**
    * Validates that the name is unused and the expression parses.
-   * Shared by the Node and Workerd `createCronJob` implementations.
    */
   protected parseCronJob(name: string, expression: string): Cron {
     if (this.cronJobs.some((job) => job.name === name)) {
@@ -192,9 +199,7 @@ export class CronProvider {
           this.log.warn(
             `Cron task '${task.name}' is still running, skipping this invocation`,
           );
-          if (task.loop) {
-            this.run(task, this.dt.of(nextRun));
-          }
+          this.run(task, this.dt.of(nextRun));
           return;
         }
 
@@ -208,11 +213,7 @@ export class CronProvider {
             signal: tick.signal,
           })
           .catch((err) => {
-            if (task.onError) {
-              task.onError(err);
-            } else {
-              this.log.error("Error in cron task:", err);
-            }
+            this.log.error("Error in cron task:", err);
           })
           .finally(() => {
             task.executing = false;
@@ -221,9 +222,7 @@ export class CronProvider {
             }
           });
 
-        if (task.loop) {
-          this.run(task, this.dt.of(nextRun));
-        }
+        this.run(task, this.dt.of(nextRun));
       })
       .catch((err) => {
         this.log.warn("Issue during cron waiting timer", err as Error);
@@ -257,17 +256,10 @@ export class CronProvider {
   }
 
   /**
-   * Trigger all registered cron jobs.
-   */
-  public async triggerAll(): Promise<void> {
-    await this.runJobs(this.cronJobs, this.dt.now());
-  }
-
-  /**
    * Run multiple cron jobs in parallel.
    *
    * Shares the overlap guard with the timer loop: a job whose previous
-   * invocation is still in flight — scheduled or triggered — is skipped, so
+   * invocation is still in flight, scheduled or triggered, is skipped, so
    * a manual `trigger()` (or a burst of serverless cron events) can never
    * run the same job concurrently with itself.
    */
@@ -308,12 +300,11 @@ export interface CronJob {
   expression: string;
   handler: (context: { now: DateTime }) => Promise<void>;
   cron: Cron;
-  loop: boolean;
   running?: boolean;
   executing?: boolean;
-  onError?: (error: Error) => void;
   /**
-   * Cancels the wait before the next tick.
+   * Cancels the wait before the next tick. Set while the timer loop waits,
+   * so never in a serverless environment, where no loop runs.
    */
   abort?: AbortController;
   /**

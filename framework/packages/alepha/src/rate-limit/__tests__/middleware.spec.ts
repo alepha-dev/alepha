@@ -1,12 +1,15 @@
 import { $pipeline, Alepha, AlephaError } from "alepha";
-import {
-  ActorContentionError,
-  ActorProvider,
-  type ActorRequest,
-} from "alepha/actor";
+import { ActorContentionError, ActorProvider } from "alepha/actor";
 import { $rateLimit } from "alepha/rate-limit";
-import { $action, HttpError, type ServerRequest } from "alepha/server";
+import {
+  $action,
+  HttpError,
+  type ServerRequest,
+  ServerProvider,
+} from "alepha/server";
 import { describe, it } from "vitest";
+
+import { BrokenActorProvider } from "./BrokenActorProvider.ts";
 
 const fakeRequest = (ip = "127.0.0.1"): ServerRequest => {
   const headers: Record<string, string> = {};
@@ -37,13 +40,6 @@ const inRequest = <T>(
     alepha.set("alepha.http.request", request);
     return fn();
   });
-
-class BrokenActorProvider extends ActorProvider {
-  public error: Error = new AlephaError("actor store down");
-  public override async execute(_request: ActorRequest): Promise<unknown> {
-    throw this.error;
-  }
-}
 
 class Service {
   two = $rateLimit({ name: "mw:two", limit: 2, window: 60_000 });
@@ -243,9 +239,120 @@ describe("$rateLimit middleware", () => {
     });
   });
 
+  it("keeps the calling request's reply clean when its action is called through run()", async ({
+    expect,
+  }) => {
+    const { alepha, service } = await boot();
+    const request = fakeRequest("10.0.0.7");
+    const headers = (request.reply as any)._headers;
+    await inRequest(alepha, request, async () => {
+      expect(await service.action.run({})).toBe("done");
+      expect(await service.action.run({})).toBe("done");
+      await expect(service.action.run({})).rejects.toThrow("Too Many Requests");
+    });
+    // No limit headers: the reply is the caller's, not the limited action's.
+    // Only the refusal's Retry-After, since the 429 may become its response.
+    expect(headers).toEqual({ "Retry-After": "60" });
+    // The budget was the caller's all the same: another address has its own.
+    await inRequest(alepha, fakeRequest("10.0.0.8"), async () => {
+      expect(await service.action.run({})).toBe("done");
+    });
+  });
+
   it("carries middleware metadata", ({ expect }) => {
     const service = Alepha.create().inject(Service);
     expect(service.limited.middlewares).toHaveLength(1);
     expect(service.limited.middlewares[0].name).toBe("$rateLimit");
+  });
+});
+
+/**
+ * The same over HTTP: `outer` declares no limiter and calls `inner`, which
+ * does, in process. That is the shape of a batch route or of a page loader.
+ */
+class Nested {
+  three = $rateLimit({ name: "nested:three", limit: 3, window: 60_000 });
+
+  inner = $action({
+    path: "/nested-inner",
+    method: "GET",
+    use: [this.three.middleware()],
+    handler: () => "inner",
+  });
+
+  outer = $action({
+    path: "/nested-outer",
+    method: "GET",
+    handler: async () => `outer:${await this.inner.run({})}`,
+  });
+
+  lenient = $action({
+    path: "/nested-lenient",
+    method: "GET",
+    handler: async () => {
+      try {
+        return await this.inner.run({});
+      } catch {
+        return "caught";
+      }
+    },
+  });
+}
+
+describe("$rateLimit middleware over HTTP", () => {
+  it("sets the limit headers on the response of the action it limits", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Nested);
+    await alepha.start();
+
+    const response = await app.inner.fetch({});
+
+    expect(response.data).toBe("inner");
+    expect(response.headers.get("x-ratelimit-limit")).toBe("3");
+    expect(response.headers.get("x-ratelimit-remaining")).toBe("2");
+  });
+
+  it("keeps them off the response of a route that calls the action through run()", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Nested);
+    await alepha.start();
+
+    const response = await app.outer.fetch({});
+
+    expect(response.data).toBe("outer:inner");
+    expect(response.headers.get("x-ratelimit-limit")).toBeNull();
+    expect(response.headers.get("x-ratelimit-remaining")).toBeNull();
+    expect(response.headers.get("x-ratelimit-reset")).toBeNull();
+
+    // The nested call counted against the caller's address: two more, and
+    // the fourth is refused. The 429 propagates as the outer response, so it
+    // says when to retry, and still carries no limit headers.
+    await app.outer.fetch({});
+    await app.outer.fetch({});
+    const refused = await fetch(
+      `${alepha.inject(ServerProvider).hostname}${app.outer.route.path}`,
+    );
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("retry-after")).toBe("60");
+    expect(refused.headers.get("x-ratelimit-limit")).toBeNull();
+  });
+
+  it("leaves a stray Retry-After on a 200 whose handler caught the nested 429", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Nested);
+    await alepha.start();
+
+    for (let i = 0; i < 3; i++) await app.inner.fetch({});
+    const response = await app.lenient.fetch({});
+
+    expect(response.data).toBe("caught");
+    expect(response.headers.get("retry-after")).toBe("60");
+    expect(response.headers.get("x-ratelimit-limit")).toBeNull();
   });
 });
