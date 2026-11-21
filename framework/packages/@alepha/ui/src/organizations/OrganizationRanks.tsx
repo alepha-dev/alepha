@@ -374,7 +374,13 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outlined" size="sm" aria-label="Create rank" />
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={tr("organizations.ranks.create", {
+              default: "Create rank",
+            })}
+          />
         }
       >
         <Plus className="size-3.5" />
@@ -448,7 +454,9 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
           <Button
             disabled={saving}
             onClick={() => void save.run()}
-            aria-label="Save ranks"
+            aria-label={tr("organizations.ranks.save", {
+              default: "Save ranks",
+            })}
           >
             <Save className="size-4" />
             {tr("organizations.ranks.save", { default: "Save ranks" })}

@@ -8,7 +8,7 @@ import { SettingsHeading } from "./SettingsHeading.tsx";
 
 export interface SettingsSectionProps {
   /**
-   * Heading above the card. Optional — a page whose first section needs no
+   * Heading above the card. Optional: a page whose first section needs no
    * heading (because the page title already says it) omits it.
    */
   title?: ReactNode;
@@ -37,7 +37,7 @@ export interface SettingsSectionProps {
 }
 
 /**
- * A titled group of settings rows in one bordered card — the GitHub-settings
+ * A titled group of settings rows in one bordered card, the GitHub-settings
  * shape.
  *
  * ⚠️ **The card is `py-0` and that is deliberate.** `Card` ships its own
@@ -47,7 +47,7 @@ export interface SettingsSectionProps {
  * row's own padding is the only vertical space, which is also what makes
  * `divide-y` land flush between rows.
  *
- * The rule is one or the other, never both — so do **not** "fix" this to a
+ * The rule is one or the other, never both, so do **not** "fix" this to a
  * numeric `py-4` / `py-3`. Several pages in Lore's project settings did
  * exactly that and they are the ones that look wrong next to these.
  */

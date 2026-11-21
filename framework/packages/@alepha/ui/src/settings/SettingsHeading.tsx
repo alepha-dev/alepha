@@ -11,7 +11,7 @@ export interface SettingsHeadingProps {
 
   /**
    * One line under the title. The place to put what the reader needs to know
-   * before touching anything below it — a consequence, a constraint, a limit.
+   * before touching anything below it: a consequence, a constraint, a limit.
    * Skip it rather than restate the title in more words.
    */
   description?: ReactNode;
@@ -24,15 +24,15 @@ export interface SettingsHeadingProps {
  *
  * It exists so there is exactly one of it. {@link SettingsSection} renders this
  * for the common case (a heading over a card of {@link SettingsRow}s), and a
- * page whose content is not a card of rows — a table, a list of invitations —
+ * page whose content is not a card of rows (a table, a list of invitations)
  * uses it directly instead of hand-rolling the markup.
  *
  * That hand-rolling is the failure this prevents, and it had already happened:
  * Lore's account pages grew an `<h2 className="text-base font-semibold">`
  * on one page and a bare `<span className="text-xs">` with no title at all on
  * another, so the account rail led to three different type scales depending
- * on which entry you clicked. Nothing was broken and nothing could have failed
- * — it just read as three pages from three different applications.
+ * on which entry you clicked. Nothing was broken and nothing could have failed:
+ * it just read as three pages from three different applications.
  *
  * ⚠️ **No em dash in these strings.** House rule across every user-facing
  * string, in this component and everywhere else: use a comma, a semicolon, a

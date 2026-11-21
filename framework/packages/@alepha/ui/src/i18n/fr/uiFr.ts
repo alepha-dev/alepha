@@ -87,6 +87,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   // The data table: toolbar, selection, empty state.
   "settings.dialog.back": "Retour",
   "settings.dialog.close": "Fermer",
+  "settings.danger.title": "Zone de danger",
   "dataTable.bulkMenu.empty": "Rien à choisir",
   "dataTable.bulkMenu.failed": "Impossible de charger les choix",
   "dataTable.bulkMenu.loading": "Chargement…",
@@ -317,6 +318,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
     "Saisissez le ou les codes qui vous ont été envoyés.",
   "auth.register.verifySubmit": "Terminer l'inscription",
   "auth.register.verifyTitle": "Vérifiez votre compte",
+  "auth.reset.back": "Retour",
   "auth.reset.backToSignIn": "Retour à la connexion",
   "auth.reset.cancel": "Annuler",
   "auth.reset.codeLabel": "Saisissez le code à 6 chiffres",
@@ -363,6 +365,10 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "nav.sidebar.expand": "Déplier la barre latérale",
   "nav.sidebar.title": "Barre latérale",
   "nav.sidebar.toggle": "Afficher ou masquer la barre latérale",
+
+  // The command palette's dialog, when its caller names it nothing.
+  "command.dialog.description": "Rechercher une commande à exécuter…",
+  "command.dialog.title": "Palette de commandes",
 
   // The `@alepha/ui/admin` back office: users, sessions, API keys, files, jobs,
   // audits, notifications, payments and parameters.

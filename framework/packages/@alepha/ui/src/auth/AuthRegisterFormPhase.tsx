@@ -176,7 +176,7 @@ export const AuthRegisterFormPhase = (props: AuthRegisterFormPhaseProps) => {
                   icon={iconFor("phone")}
                 />
               )}
-              {/* `onFocus`/`onBlur` bubble from the input + toggle inside —
+              {/* `onFocus`/`onBlur` bubble from the input + toggle inside:
                   the rules stay visible while the user types or interacts
                   with the password toggle, and only collapse once the field
                   is blurred AND empty. */}

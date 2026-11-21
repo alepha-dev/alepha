@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import type { MyIdentity, PasskeyProofKind } from "alepha/api/users";
 import { AlephaLogger } from "alepha/logger";
@@ -9,7 +15,7 @@ import { HttpError } from "alepha/server";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { MemoryPasskeyClient } from "alepha/testing/webauthn";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { usePasskey } from "../../auth/usePasskey.ts";
@@ -46,6 +52,22 @@ const MfaDialog = (props: { proof?: PasskeyProofKind }) => (
   />
 );
 
+/**
+ * The two-factor dialog behind a button, opened and closed as the Security
+ * page does it: it stays mounted while closed.
+ */
+const MfaDialogToggle = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open
+      </button>
+      <AccountMfaDialog open={open} onOpenChange={setOpen} />
+    </>
+  );
+};
+
 const PasswordDialog = (props: { proof: PasskeyProofKind }) => (
   <AccountPasswordDialog
     open
@@ -72,6 +94,7 @@ class Links extends LinkProvider {
   public proof: PasskeyProofKind = "password";
   public identities: MyIdentity[] = [PASSWORD, GITHUB];
   public writes: Array<{ name: string; input: any }> = [];
+  public enrollFails = false;
 
   override client(): any {
     return new Proxy(
@@ -90,6 +113,9 @@ class Links extends LinkProvider {
               return { proof: this.proof, items: [] };
             }
             if (name === "enrollTotp") {
+              if (this.enrollFails) {
+                throw refusal("BAD_REQUEST", "Enrollment refused");
+              }
               return {
                 secret: "JBSWY3DPEHPK3PXP",
                 uri: "otpauth://totp/Test:ada",
@@ -115,8 +141,16 @@ class Links extends LinkProvider {
             if (name === "activateTotp") {
               return { recoveryCodes: ["7k2m-9xqa-0fzt-h3wd"] };
             }
+            // Both writes change the proof the server asks for next, as
+            // `PasskeyService.proofKind` does: a password once there is one,
+            // nothing once it is gone (no passkey here is usable).
+            if (name === "setMyFirstPassword") {
+              this.identities = [PASSWORD, ...this.identities];
+              this.proof = "password";
+            }
             if (name === "removeMyPassword") {
               this.identities = [GITHUB];
+              this.proof = "none";
               return { otherSessionsRevoked: 0 };
             }
             return { ok: true };
@@ -245,6 +279,24 @@ describe("account - proof before a sign-in change", () => {
       );
     });
 
+    it("keeps nothing of the enrollment once closed", async () => {
+      const { links } = await mount(<MfaDialogToggle />);
+      fireEvent.click(screen.getByRole("button", { name: "Open" }));
+      await typeCode("123456");
+      expect(screen.getByText("JBSWY3DPEHPK3PXP")).toBeTruthy();
+      fireEvent.click(
+        await screen.findByRole("button", { name: "I have saved them" }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      // Reopened, the next enrollment fails: the activated seed of the last
+      // one must not be shown, because it must not be kept at all.
+      links.enrollFails = true;
+      fireEvent.click(screen.getByRole("button", { name: "Open" }));
+      await screen.findByText(/Could not start the enrollment/);
+      expect(screen.queryByText("JBSWY3DPEHPK3PXP")).toBeNull();
+    });
+
     it("asks nothing of an account that owes no proof", async () => {
       const { links } = await mount(<MfaDialog />);
       await typeCode("123456");
@@ -295,6 +347,65 @@ describe("account - proof before a sign-in change", () => {
         ]),
       );
       expect(screen.queryByLabelText("Current password")).toBeNull();
+    });
+
+    const openMfaSetUp = async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Set up" }));
+      await typeCode("123456");
+    };
+
+    it("asks for the new password, not the passkey, once a first password is set", async () => {
+      const { links, client } = await mount(<AccountSecurity />, (links) => {
+        links.identities = [GITHUB];
+        links.proof = "passkey";
+      });
+      await holdPasskey(client);
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Set a password" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.change(within(dialog).getByLabelText(/^New password/), {
+        target: { value: "Correct-Horse-1" },
+      });
+      fireEvent.change(within(dialog).getByLabelText(/^Confirm new password/), {
+        target: { value: "Correct-Horse-1" },
+      });
+      fireEvent.click(
+        within(dialog).getByRole("button", { name: "Set a password" }),
+      );
+      await screen.findByLabelText("Remove credentials");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      await openMfaSetUp();
+      await typePassword("Secret-123");
+      await screen.findByText("7k2m-9xqa-0fzt-h3wd");
+      expect(links.writes.at(-1)).toEqual({
+        name: "activateTotp",
+        input: {
+          body: { code: "123456", proof: { currentPassword: "Secret-123" } },
+        },
+      });
+    });
+
+    it("asks for no password once the password is removed", async () => {
+      const { links } = await mount(<AccountSecurity />);
+      await openRemove("credentials");
+      await typePassword("Secret-123");
+      await waitFor(() =>
+        expect(screen.queryByLabelText("Remove credentials")).toBeNull(),
+      );
+      await waitFor(() =>
+        expect(screen.queryByLabelText("Current password")).toBeNull(),
+      );
+
+      await openMfaSetUp();
+      await screen.findByText("7k2m-9xqa-0fzt-h3wd");
+      expect(screen.queryByLabelText("Current password")).toBeNull();
+      expect(links.writes.at(-1)).toEqual({
+        name: "activateTotp",
+        input: { body: { code: "123456" } },
+      });
     });
   });
 

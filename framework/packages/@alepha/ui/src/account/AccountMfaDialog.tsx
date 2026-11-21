@@ -8,11 +8,10 @@ import {
   TrustedTypes,
   useAction,
   useClient,
-  useQuery,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { Button } from "../core/Button.tsx";
@@ -91,29 +90,47 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
 
   /**
    * A fresh enrollment is started each time the dialog opens, and the
-   * previous pending one is replaced server-side. `enabled` keys it to
-   * `props.open` so nothing is issued for a dialog nobody asked for. The
-   * previous opening's QR is not shown while the new one loads: it names a
-   * secret the server has replaced.
+   * previous pending one is replaced server-side. Nothing is issued for a
+   * dialog nobody asked for.
+   *
+   * The enrollment is this dialog's own state, dropped as soon as it closes,
+   * not the `data` of a query: a query keeps its last result until the next
+   * one lands, and the dialog stays mounted with the page, so the secret of
+   * an enrollment just activated stayed in memory, readable from the page,
+   * after the dialog was gone. The server keeps it encrypted; nothing here
+   * keeps it at all. A closed dialog also cannot show the previous opening's
+   * QR while the new one loads: it names a secret the server has replaced.
    */
-  const {
-    data: enrollment,
-    error,
-    loading: enrolling,
-  } = useQuery<TotpEnrollment>(
+  const [enrollment, setEnrollment] = useState<TotpEnrollment>();
+  const enroll = useAction<[]>(
     {
-      enabled: props.open,
-      handler: () => api.enrollTotp() as Promise<TotpEnrollment>,
+      handler: async (ctx) => {
+        const value = (await api.enrollTotp()) as TotpEnrollment;
+        if (!ctx.signal.aborted) {
+          setEnrollment(value);
+        }
+      },
     },
-    [props.open],
+    [api],
   );
+  const { error, loading: enrolling } = enroll;
+  useEffect(() => {
+    if (props.open) {
+      void enroll.refetch();
+      return;
+    }
+    // One still in flight lands nowhere: its handler sees the abort.
+    enroll.cancel();
+  }, [props.open]);
 
   /**
    * Closing resets the transient state, so reopening does not flash the
-   * previous run's recovery codes at whoever is next at the keyboard.
+   * previous run's recovery codes at whoever is next at the keyboard, and
+   * drops the enrollment with its secret.
    */
   const setOpen = (open: boolean) => {
     if (!open) {
+      setEnrollment(undefined);
       setCode("");
       setRecoveryCodes(undefined);
       setPendingCode(undefined);

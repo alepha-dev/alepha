@@ -1,3 +1,4 @@
+import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 
 import { Card } from "../core/Card.tsx";
@@ -9,7 +10,7 @@ export interface SettingsDangerSectionProps {
   /**
    * Heading above the card.
    *
-   * @default "Danger zone"
+   * @default "Danger zone", in the page's language
    */
   title?: ReactNode;
 
@@ -32,7 +33,7 @@ export interface SettingsDangerSectionProps {
 }
 
 /**
- * {@link SettingsSection} for irreversible actions — delete, leave, revoke
+ * {@link SettingsSection} for irreversible actions: delete, leave, revoke
  * everything.
  *
  * Identical in structure, with a destructive-tinted border and title. The
@@ -41,13 +42,15 @@ export interface SettingsDangerSectionProps {
  * the only thing separating "change your display name" from "delete your
  * account" is the button colour at the moment of the click.
  *
- * The tint stays at 30–40% opacity on purpose. A full-strength destructive
+ * The tint stays at 30 to 40% opacity on purpose. A full-strength destructive
  * border reads as *"something is wrong"* rather than *"be careful here"*, and
  * a settings page that looks like it is erroring every time you open it
  * teaches people to ignore the colour.
  */
 export const SettingsDangerSection = (props: SettingsDangerSectionProps) => {
-  const { title = "Danger zone" } = props;
+  const { tr } = useI18n();
+  const title =
+    props.title ?? tr("settings.danger.title", { default: "Danger zone" });
 
   return (
     <div

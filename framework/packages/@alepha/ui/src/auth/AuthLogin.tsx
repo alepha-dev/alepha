@@ -46,7 +46,7 @@ export interface AuthLoginProps {
   /**
    * Layout variant.
    * - `centered` (default): single column, form centered on the viewport.
-   * - `split`: two-pane on `lg`+ — branded background panel on the left, form on the right. Collapses to centered on small screens.
+   * - `split`: two-pane on `lg`+: branded background panel on the left, form on the right. Collapses to centered on small screens.
    */
   variant?: "centered" | "split";
   /**
@@ -96,7 +96,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
   const loginMethods = useMemo(() => {
     const methods: string[] = [];
     // `username: "email"` means the username is auto-derived from the email
-    // server-side and never typed by the user — it's not a separate login
+    // server-side and never typed by the user: it's not a separate login
     // method from the user's perspective.
     if (settings.username !== "none" && settings.username !== "email") {
       methods.push("username");
@@ -147,7 +147,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
 
   // Pick the most-precise HTML autocomplete hint so password managers and
   // browser autofill (especially iOS Keychain) pair the identifier with the
-  // saved password reliably. Mixed configs fall back to `username` — the
+  // saved password reliably. Mixed configs fall back to `username`, the
   // WHATWG-canonical hint for "the account identifier".
   const baseAutoComplete =
     loginMethods.length === 1
@@ -218,9 +218,12 @@ export const AuthLogin = (props: AuthLoginProps) => {
         .string()
         .min(1)
         .meta({ requiredMessage: identifierRequired }),
+      // No policy here: the server checks none on sign-in, and a password
+      // set before the realm raised its minimum, or by an operator, must
+      // still sign in. The request goes out and the server decides.
       password: z
         .string()
-        .min(settings.passwordPolicy?.minLength || 6)
+        .min(1)
         .meta({
           requiredMessage: tr("auth.login.passwordRequired", {
             default: "Enter your password",
@@ -244,7 +247,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
         // `force: true` recreates the whole page state so every parent-layout
         // loader re-runs against the now-authenticated user. Without it, an
         // SPA push to a sibling under the same layout reuses the cached layout
-        // layer and skips its loader — leaving `user`-gated bootstrap data
+        // layer and skips its loader, leaving `user`-gated bootstrap data
         // (e.g. the campaign list) stale/empty after sign-in.
         await router.push(safeRedirect(router.query.redirect), {
           force: true,
@@ -267,7 +270,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
             path: "/password",
           });
         }
-        // Other 4xx are intentional, user-facing API errors — surface as-is.
+        // Other 4xx are intentional, user-facing API errors: surface as-is.
         if (err instanceof HttpError && err.status < 500) {
           throw err;
         }
@@ -302,7 +305,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
   const showDivider =
     !challenge && credentialsProvider && externalMethods.length > 0;
   // Propagate BOTH realm and the post-auth redirect to the register / reset
-  // links — dropping `redirect` here strands a user who signs up mid-flow
+  // links: dropping `redirect` here strands a user who signs up mid-flow
   // (e.g. an OIDC authorize continuation) on the home page. Mirrors the
   // login-link construction in auth-register.
   const realmBit = props.realmConfig.realmName
@@ -408,7 +411,13 @@ export const AuthLogin = (props: AuthLoginProps) => {
                   }}
                   generation={autofillGeneration}
                   onSignedIn={afterPasskey}
-                  onError={(err) => setPasskeyError(passkeyErrorMessage(err))}
+                  onError={(err) =>
+                    // A second factor owed is the code step, as from the
+                    // button, never an error.
+                    err instanceof MfaRequiredError
+                      ? setChallenge(err.data)
+                      : setPasskeyError(passkeyErrorMessage(err))
+                  }
                 />
                 <Button
                   type="button"

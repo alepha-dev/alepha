@@ -25,7 +25,7 @@ declare global {
 }
 
 /**
- * Cloudflare Turnstile loader — idempotent across remounts.
+ * Cloudflare Turnstile loader, idempotent across remounts.
  * Resolves once the global `window.turnstile` is ready.
  */
 let turnstileLoader: Promise<void> | undefined;
@@ -64,7 +64,7 @@ const loadTurnstile = (): Promise<void> => {
 
 export interface TurnstileWidgetHandle {
   /**
-   * Force a fresh challenge (e.g. after a failed form submission — Turnstile
+   * Force a fresh challenge (e.g. after a failed form submission: Turnstile
    * tokens are single-use). Emits `onToken(undefined)` until the user solves
    * the new challenge.
    */
@@ -77,7 +77,7 @@ export interface TurnstileWidgetProps {
    */
   ref?: Ref<TurnstileWidgetHandle>;
   /**
-   * Public Turnstile site key (from the realm config or a public endpoint —
+   * Public Turnstile site key (from the realm config or a public endpoint:
    * never ship the secret key to the browser).
    */
   siteKey: string;
@@ -108,7 +108,7 @@ export const TurnstileWidget = (props: TurnstileWidgetProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
   // The render effect must not re-run when the parent passes a fresh
-  // `onToken` arrow each render — route the latest callback through a ref.
+  // `onToken` arrow each render: route the latest callback through a ref.
   const onTokenRef = useRef(props.onToken);
   useEffect(() => {
     onTokenRef.current = props.onToken;

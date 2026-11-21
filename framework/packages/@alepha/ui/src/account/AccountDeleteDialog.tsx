@@ -23,7 +23,7 @@ export interface AccountDeleteDialogProps {
 
   /**
    * Whether the account has a `credentials` identity. An OAuth-only account
-   * has no password to prove knowledge of, so the field is not shown — and
+   * has no password to prove knowledge of, so the field is not shown, and
    * the server agrees, accepting the confirmation phrase alone.
    */
   hasPassword: boolean;
@@ -34,8 +34,8 @@ export interface AccountDeleteDialogProps {
    * Application-supplied consequences, rendered above the confirmation field.
    *
    * The framework can say what deleting an *account* does; it cannot say what
-   * that costs inside your data. An application whose foreign keys cascade —
-   * rows the account authored inside other people's projects, say — puts the
+   * that costs inside your data. An application whose foreign keys cascade
+   * (rows the account authored inside other people's projects, say) puts the
    * count here so the person reads it *before* confirming rather than
    * discovering it afterwards.
    *
@@ -61,7 +61,7 @@ export interface AccountDeleteDialogProps {
  *
  * The phrase is fetched rather than guessed. The server accepts the account's
  * email, falling back to username and then the literal `DELETE`, and this
- * dialog must ask for exactly what the server will accept — a hardcoded
+ * dialog must ask for exactly what the server will accept: a hardcoded
  * "type DELETE" would be refused for every account that has an email.
  */
 export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {

@@ -8,6 +8,7 @@ import { type RunResult, useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, useState } from "react";
 
+import { ACCOUNT_PASSKEYS_KEY } from "../auth/usePasskey.ts";
 import { Button } from "../core/Button.tsx";
 import {
   Dialog,
@@ -24,7 +25,7 @@ export interface AccountPasswordDialogProps {
 
   /**
    * Whether the account already has a `credentials` identity. Decides both
-   * the copy and — critically — which endpoint is called.
+   * the copy and, critically, which endpoint is called.
    */
   hasPassword: boolean;
 
@@ -52,7 +53,7 @@ export interface AccountPasswordDialogProps {
 
   /**
    * Called after a successful change so the caller can refresh its identity
-   * list — setting a first password creates one.
+   * list: setting a first password creates one.
    */
   onDone?: () => void | Promise<void>;
 }
@@ -68,7 +69,7 @@ export interface AccountPasswordDialogProps {
  * account takeover.
  *
  * `changeMyPassword` verifies the current password and revokes every other
- * session — the usual reason to change a password is believing someone else
+ * session: the usual reason to change a password is believing someone else
  * has it, and leaving their session alive would accomplish nothing. It
  * reports how many it ended, which is why the toast can say so rather than
  * leave the person wondering about their phone.
@@ -139,6 +140,9 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
         await props.onDone?.();
         close();
       },
+      // The passkey list carries the proof the next change asks for, and a
+      // first password turns it into the password.
+      invalidates: [ACCOUNT_PASSKEYS_KEY],
     },
     [
       currentPassword,

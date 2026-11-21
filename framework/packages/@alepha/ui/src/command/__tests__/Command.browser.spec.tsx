@@ -1,9 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaContext } from "alepha/react";
+import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { expectAccessible } from "alepha/testing/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
+import { uiFr } from "../../i18n/fr/uiFr.ts";
 import {
   Command,
+  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -145,5 +150,44 @@ describe("Command", () => {
 
     await waitFor(() => expect(input()).toHaveProperty("value", "zzz"));
     expect(rows()).toEqual(["Tree", "Table", "Tabs", "Audit log", "Users"]);
+  });
+});
+
+/**
+ * The palette's dialog names itself for screen readers in the page's
+ * language when the caller gives no title or description.
+ */
+describe("CommandDialog", () => {
+  let alepha: Alepha | undefined;
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  class Catalogues {
+    en = $dictionary({ lazy: async () => ({ default: {} }) });
+    fr = $dictionary({ lazy: async () => ({ default: uiFr }) });
+  }
+
+  it("defaults its title and description in the page's language", async () => {
+    alepha = Alepha.create().with(AlephaReactI18n);
+    alepha.inject(Catalogues);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("fr");
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <CommandDialog open>
+          <Command<string> items={[]}>
+            <CommandInput placeholder="Rechercher" />
+          </Command>
+        </CommandDialog>
+      </AlephaContext.Provider>,
+    );
+
+    expect(await screen.findByText("Palette de commandes")).toBeTruthy();
+    expect(
+      screen.getByText("Rechercher une commande à exécuter…"),
+    ).toBeTruthy();
   });
 });

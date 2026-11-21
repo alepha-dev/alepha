@@ -2,11 +2,12 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
-import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DialogProvider } from "../../core/useDialog.tsx";
+import { uiFr } from "../../i18n/fr/uiFr.ts";
 import { OrganizationRanks } from "../OrganizationRanks.tsx";
 
 const organizationId = "00000000-0000-4000-8000-000000000041";
@@ -83,6 +84,11 @@ class Links extends LinkProvider {
   }
 }
 
+class Catalogues {
+  en = $dictionary({ lazy: async () => ({ default: {} }) });
+  fr = $dictionary({ lazy: async () => ({ default: uiFr }) });
+}
+
 describe("OrganizationRanks", () => {
   let alepha: Alepha | undefined;
 
@@ -103,6 +109,7 @@ describe("OrganizationRanks", () => {
     options: {
       blank?: boolean;
       closedPermission?: (rank: { key: string }, permission: string) => boolean;
+      lang?: "en" | "fr";
     } = {},
   ) => {
     alepha = Alepha.create()
@@ -110,8 +117,9 @@ describe("OrganizationRanks", () => {
       .with({ provide: LinkProvider, use: Links })
       .with(AlephaReact)
       .with(AlephaReactI18n);
+    alepha.inject(Catalogues);
     await alepha.start();
-    await alepha.inject(I18nProvider).setLang("en");
+    await alepha.inject(I18nProvider).setLang(options.lang ?? "en");
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
@@ -167,6 +175,16 @@ describe("OrganizationRanks", () => {
         body: { name: "Member", permissions: ["document:read"] },
       }),
     );
+  });
+
+  it("names Create rank and Save ranks in the page's language", async () => {
+    const { view } = await mount({ lang: "fr" });
+
+    expect(view.getByRole("button", { name: "Créer un rang" })).toBeTruthy();
+    fireEvent.click(view.getAllByLabelText("document:read")[2]);
+    expect(
+      await view.findByRole("button", { name: "Enregistrer les rangs" }),
+    ).toBeTruthy();
   });
 
   it("draws no Built-in badge, and still offers no delete on a built-in", async () => {

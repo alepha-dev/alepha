@@ -13,6 +13,7 @@ import { useClient } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { isHttpError } from "alepha/server";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -93,7 +94,7 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
    * Captcha, mirroring the registration screen.
    *
    * `createPasswordResetIntent` rejects a request with no token whenever the
-   * realm sets `captchaRequired` — it sends mail in our name, so it is gated
+   * realm sets `captchaRequired`: it sends mail in our name, so it is gated
    * exactly like registration. Without a widget here the screen could not
    * satisfy that gate at all and every reset answered 400.
    */
@@ -145,11 +146,26 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
     },
   });
 
+  // The realm's own minimum, as the registration form reads it: the server
+  // holds the new password to the same policy.
+  const minLength = settings?.passwordPolicy?.minLength ?? 8;
+
+  /**
+   * Back to the code step, with the code cleared for a new one. The code is
+   * only checked with the new password, so this is the way out of a
+   * mistyped one.
+   */
+  const backToCode = (message: string | null) => {
+    setError(message);
+    setCode("");
+    setState((s) => ({ ...s, step: "code", code: undefined }));
+  };
+
   const passwordForm = useForm(
     {
       schema: z.object({
-        password: z.string().min(8),
-        confirmPassword: z.string().min(8),
+        password: z.string().min(minLength),
+        confirmPassword: z.string().min(minLength),
       }),
       // Handled here: every error this form throws is rendered by the page itself,
       // under its field or in the alert above the form. Without an `onError`,
@@ -168,13 +184,29 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
             tr("auth.reset.invalidState", { default: "Invalid reset state" }),
           );
         }
-        await userCtrl.completePasswordReset({
-          body: {
-            intentId: state.intent.intentId,
-            code: state.code,
-            newPassword: data.password,
-          },
-        });
+        try {
+          await userCtrl.completePasswordReset({
+            body: {
+              intentId: state.intent.intentId,
+              code: state.code,
+              newPassword: data.password,
+            },
+          });
+        } catch (err) {
+          // A refused code (wrong, expired or already used) cannot be fixed
+          // on this step: every resubmit would send the same one. The
+          // server checks the password policy first, and words its code
+          // refusals with "verification code", so a policy refusal stays
+          // here, on the password it is about.
+          if (
+            isHttpError(err, 400) &&
+            /verification code/i.test((err as Error).message)
+          ) {
+            backToCode((err as Error).message);
+            return;
+          }
+          throw err;
+        }
         setState({ step: "success" });
       },
     },
@@ -194,6 +226,7 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
 
   const handleCodeSubmit = () => {
     if (code.length === 6) {
+      setError(null);
       setState((s) => ({ ...s, step: "password", code }));
     }
   };
@@ -347,7 +380,7 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
                     {tr("auth.reset.continue", { default: "Continue" })}
                   </Button>
                   {/* Resend calls the same gated endpoint as the first send,
-                    and the token that got us here is already spent — so this
+                    and the token that got us here is already spent, so this
                     step needs its own challenge rather than reusing one. */}
                   {captchaSiteKey && (
                     <TurnstileWidget
@@ -409,6 +442,14 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
                     {tr("auth.reset.setPassword", {
                       default: "Set new password",
                     })}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="minimal"
+                    disabled={passwordSubmitting}
+                    onClick={() => backToCode(null)}
+                  >
+                    {tr("auth.reset.back", { default: "Back" })}
                   </Button>
                 </form>
               ) : (

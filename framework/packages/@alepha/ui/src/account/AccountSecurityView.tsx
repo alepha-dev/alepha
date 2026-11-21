@@ -22,7 +22,7 @@ import {
 import { useCallback, useState } from "react";
 
 import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
-import { usePasskey } from "../auth/usePasskey.ts";
+import { ACCOUNT_PASSKEYS_KEY, usePasskey } from "../auth/usePasskey.ts";
 import { Button } from "../core/Button.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
@@ -55,7 +55,7 @@ export interface AccountSecurityViewProps extends AccountSecurityProps {
  *
  * The delete-account row lives here rather than on Profile because the
  * re-authentication it demands is the same material as everything else on
- * this page — and because a destructive action on the page you land on by
+ * this page, and because a destructive action on the page you land on by
  * default is a worse default than one behind a deliberate click.
  */
 export const AccountSecurityView = (props: AccountSecurityViewProps) => {
@@ -227,12 +227,15 @@ export const AccountSecurityView = (props: AccountSecurityViewProps) => {
   );
 
   // A wrong password is shown on the proof dialog's own field, not toasted.
+  // The passkey list is read again: it carries the proof the next change
+  // asks for, which is no longer the password.
   const removePassword = useAction<[currentPassword: string]>(
     {
       handler: async (_ctx, currentPassword) => {
         await passwordApi.removeMyPassword({ body: { currentPassword } });
         await reload();
       },
+      invalidates: [ACCOUNT_PASSKEYS_KEY],
       onError: useCallback(() => {}, []),
     },
     [passwordApi],

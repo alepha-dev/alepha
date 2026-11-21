@@ -7,11 +7,6 @@ import { AuthRouter } from "../AuthRouter.tsx";
 /**
  * Registering `AuthRouter` must be the whole integration.
  *
- * The four pages it mounts are what `@alepha/mantine/auth/AuthRouter` used to
- * provide before it was deleted with Mantine and not ported — which is why both
- * Lore (github.com/alepha-dev/lore) and `apps/examples/shop` ended up rebuilding
- * the same screens by hand.
- *
  * The paths are asserted literally because they are a contract, not an
  * implementation detail: the auth components fall back to exactly these strings
  * (`props.loginPath ?? "/auth/login"`), so a path drifting here would silently
@@ -41,14 +36,6 @@ describe("AuthRouter", () => {
         { path: "/auth/reset-password", name: "resetPassword" },
         { path: "/auth/verify-email", name: "verifyEmail" },
       ]),
-    );
-  });
-
-  it("names sign-in `login`, which is what the rest of the framework pushes", async () => {
-    const pages = await mount();
-
-    expect(pages.find((page) => page.name === "login")?.path).toBe(
-      "/auth/login",
     );
   });
 });
