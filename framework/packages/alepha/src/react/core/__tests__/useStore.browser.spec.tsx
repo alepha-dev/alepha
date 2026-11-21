@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { Alepha } from "alepha";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useStore } from "../hooks/useStore.ts";
@@ -18,7 +18,7 @@ describe("useStore", () => {
     return { alepha, wrapper };
   };
 
-  it("reflects a mutation to the subscribed key", async () => {
+  it("reflects a mutation to the subscribed key", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
     alepha.store.set("count", 1);
 
@@ -33,7 +33,7 @@ describe("useStore", () => {
     expect(result.current[0]).toBe(2);
   });
 
-  it("ignores mutations to other keys", async () => {
+  it("ignores mutations to other keys", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
     alepha.store.set("count", 1);
 
@@ -49,9 +49,9 @@ describe("useStore", () => {
   /**
    * The subscription used to be registered in a `[]`-deps effect and the value
    * seeded via `useState`, so a component that switches which key it watches
-   * kept reading — and listening to — the ORIGINAL key forever.
+   * kept reading, and listening to, the ORIGINAL key forever.
    */
-  it("re-reads the store when the target key changes", async () => {
+  it("re-reads the store when the target key changes", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
     alepha.store.set("a", "value-a");
     alepha.store.set("b", "value-b");
@@ -68,7 +68,7 @@ describe("useStore", () => {
     expect(result.current[0]).toBe("value-b");
   });
 
-  it("re-subscribes when the target key changes", async () => {
+  it("re-subscribes when the target key changes", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
     alepha.store.set("a", "value-a");
     alepha.store.set("b", "value-b");
@@ -87,7 +87,7 @@ describe("useStore", () => {
     expect(result.current[0]).toBe("value-b2");
   });
 
-  it("seeds the default value into the store", async () => {
+  it("seeds the default value into the store", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
 
     const { result } = renderHook(() => useStore("seeded", "hello"), {
@@ -98,7 +98,7 @@ describe("useStore", () => {
     expect(alepha.store.get("seeded")).toBe("hello");
   });
 
-  it("writes through the setter", async () => {
+  it("writes through the setter", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
     alepha.store.set("count", 1);
 

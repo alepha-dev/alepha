@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { Alepha, TimeoutError } from "alepha";
 import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
 import { HttpError } from "alepha/server";
-import { describe, test, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useAction } from "../hooks/useAction.ts";
@@ -11,7 +11,7 @@ import { AlephaReact, isRetryableError, queryOptionsAtom } from "../index.ts";
 import { QueryCache } from "../services/QueryCache.ts";
 
 describe("useQuery", () => {
-  test("runs on mount and exposes data/loading/error/refetch", async ({
+  it("runs on mount and exposes data/loading/error/refetch", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -46,7 +46,7 @@ describe("useQuery", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  test("reports loading on the first render, before the fetch settles", async ({
+  it("reports loading on the first render, before the fetch settles", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -71,7 +71,7 @@ describe("useQuery", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  test("does not run when enabled is false", async ({ expect }) => {
+  it("does not run when enabled is false", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -92,7 +92,7 @@ describe("useQuery", () => {
     expect(result.current.data).toBe(undefined);
   });
 
-  test("fetches when enabled flips from false to true", async ({ expect }) => {
+  it("fetches when enabled flips from false to true", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -102,7 +102,7 @@ describe("useQuery", () => {
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
 
-    // The common gate pattern: `enabled: !!userId` — the query must start
+    // The common gate pattern: `enabled: !!userId`: the query must start
     // the moment the gate opens, not stay a skeleton forever.
     const { result, rerender } = renderHook(
       ({ enabled }: { enabled: boolean }) => useQuery({ handler, enabled }, []),
@@ -120,7 +120,7 @@ describe("useQuery", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  test("does not poll while enabled is false, and polls once it is", async ({
+  it("does not poll while enabled is false, and polls once it is", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -150,7 +150,7 @@ describe("useQuery", () => {
     });
   });
 
-  test("refetch supersedes an in-flight request", async ({ expect }) => {
+  it("refetch supersedes an in-flight request", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -172,7 +172,7 @@ describe("useQuery", () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    // refetch while the first request is still pending — the docs promise the
+    // refetch while the first request is still pending: the docs promise the
     // in-flight request is aborted and a new one starts, not a silent no-op.
     let refetched: Promise<unknown> = Promise.resolve();
     act(() => {
@@ -197,7 +197,7 @@ describe("useQuery", () => {
     expect(result.current.data).toBe("fresh");
   });
 
-  test("supports initialData", async ({ expect }) => {
+  it("supports initialData", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -224,7 +224,7 @@ describe("useQuery", () => {
    * a dep that changed while a request was in flight never triggered a refetch:
    * the stale user's data committed and stayed forever.
    */
-  test("refetches when a dep changes mid-flight and commits the newest result", async ({
+  it("refetches when a dep changes mid-flight and commits the newest result", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
@@ -256,7 +256,7 @@ describe("useQuery", () => {
 
     await waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
 
-    // Now let both finish — alice (superseded) first, then bob.
+    // Now let both finish: alice (superseded) first, then bob.
     await act(async () => {
       release.alice?.();
       release.bob?.();
@@ -269,7 +269,7 @@ describe("useQuery", () => {
 });
 
 describe("useQuery keyed cache", () => {
-  test("shares data between two components on the same key", async ({
+  it("shares data between two components on the same key", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -298,7 +298,7 @@ describe("useQuery keyed cache", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  test("serves cached data within staleTime instead of refetching", async ({
+  it("serves cached data within staleTime instead of refetching", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -337,7 +337,7 @@ describe("useQuery keyed cache", () => {
    * mutated, so the new key rendered the old key's data - and, under a
    * `staleTime`, took that entry as fresh and never fetched at all.
    */
-  test("reads and fetches the new entry when the key changes", async ({
+  it("reads and fetches the new entry when the key changes", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -370,7 +370,7 @@ describe("useQuery keyed cache", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  test("refetches when a mutation invalidates the key", async ({ expect }) => {
+  it("refetches when a mutation invalidates the key", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
     await alepha.start();
 
@@ -402,7 +402,7 @@ describe("useQuery keyed cache", () => {
     expect(calls).toBe(2);
   });
 
-  test("an invalidation of a fresh entry sends one request, not two", async ({
+  it("an invalidation of a fresh entry sends one request, not two", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -429,7 +429,7 @@ describe("useQuery keyed cache", () => {
    * "Invalid key in record" and the query settled on that error instead of
    * its data. A file viewer keyed on a long worktree path hit it.
    */
-  test("resolves a key that serializes past 255 characters", async ({
+  it("resolves a key that serializes past 255 characters", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -487,9 +487,7 @@ describe("useQuery keyed cache", () => {
       return { handler, calls };
     };
 
-    test("settles with the newest run's data, not empty", async ({
-      expect,
-    }) => {
+    it("settles with the newest run's data, not empty", async ({ expect }) => {
       const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
       await alepha.start();
 
@@ -524,7 +522,7 @@ describe("useQuery keyed cache", () => {
       expect(result.current.error).toBe(undefined);
     });
 
-    test("does not join a request that was already cancelled", async ({
+    it("does not join a request that was already cancelled", async ({
       expect,
     }) => {
       const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -555,7 +553,7 @@ describe("useQuery keyed cache", () => {
    * the FIRST component's signal, so unmounting it aborted the request the
    * second one was waiting on, and the survivor settled with no data.
    */
-  test("keeps a shared request alive when the first of two components unmounts", async ({
+  it("keeps a shared request alive when the first of two components unmounts", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -602,7 +600,7 @@ describe("useQuery keyed cache", () => {
    * There was no entry to remove, so nothing refetched, and the pre-mutation
    * response was written into the cache afterwards.
    */
-  test("does not cache a response that an invalidation overtook, and refetches", async ({
+  it("does not cache a response that an invalidation overtook, and refetches", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -636,7 +634,7 @@ describe("useQuery keyed cache", () => {
     expect(cache.get(["folio", 9])?.data).toBe("after-write");
   });
 
-  test("does not let a component mounting after an invalidation join the stale request", async ({
+  it("does not let a component mounting after an invalidation join the stale request", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
@@ -675,11 +673,20 @@ describe("useQuery keyed cache", () => {
 });
 
 describe("useQuery retry", () => {
+  class TestDateTimeProvider extends DateTimeProvider {
+    public pendingTimeouts() {
+      return this.timeouts.length;
+    }
+  }
+
   const setup = async (configure?: (alepha: Alepha) => void) => {
-    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    const alepha = Alepha.create()
+      .with({ provide: DateTimeProvider, use: TestDateTimeProvider })
+      .with(AlephaDateTime)
+      .with(AlephaReact);
     configure?.(alepha);
     await alepha.start();
-    const dateTime = alepha.inject(DateTimeProvider);
+    const dateTime = alepha.inject(TestDateTimeProvider);
     dateTime.pause();
     const errors: Error[] = [];
     alepha.events.on("react:action:error", ({ error }) => {
@@ -693,7 +700,7 @@ describe("useQuery retry", () => {
 
   const unavailable = () => new HttpError({ status: 503 }, { message: "down" });
 
-  test("tries a 503 three times by default, 1 s then 2 s apart", async ({
+  it("tries a 503 three times by default, 1 s then 2 s apart", async ({
     expect,
   }) => {
     const { dateTime, errors, wrapper } = await setup();
@@ -722,7 +729,7 @@ describe("useQuery retry", () => {
     expect(handler).toHaveBeenCalledTimes(3);
   });
 
-  test("succeeds on a retry, with no error ever shown", async ({ expect }) => {
+  it("succeeds on a retry, with no error ever shown", async ({ expect }) => {
     const { dateTime, errors, wrapper } = await setup();
     let calls = 0;
     const handler = vi.fn(async () => {
@@ -744,7 +751,7 @@ describe("useQuery retry", () => {
     expect(errors).toHaveLength(0);
   });
 
-  test("retries a network failure, a 408, 502, 503, 504 and a TimeoutError", async ({
+  it("retries a network failure, a 408, 502, 503, 504 and a TimeoutError", async ({
     expect,
   }) => {
     for (const make of [
@@ -759,7 +766,7 @@ describe("useQuery retry", () => {
     }
   });
 
-  test("never retries an abort, a 4xx, a 429, a 500 or a plain Error", async ({
+  it("never retries an abort, a 4xx, a 429, a 500 or a plain Error", async ({
     expect,
   }) => {
     for (const make of [
@@ -786,7 +793,7 @@ describe("useQuery retry", () => {
     expect(errors).toHaveLength(1);
   });
 
-  test("retry: 0 on the query, or in the atom, fails at once", async ({
+  it("retry: 0 on the query, or in the atom, fails at once", async ({
     expect,
   }) => {
     {
@@ -818,7 +825,7 @@ describe("useQuery retry", () => {
     }
   });
 
-  test("the query's own retry wins over the atom, and a predicate decides each one", async ({
+  it("the query's own retry wins over the atom, and a predicate decides each one", async ({
     expect,
   }) => {
     const { dateTime, wrapper } = await setup((alepha) =>
@@ -852,7 +859,7 @@ describe("useQuery retry", () => {
     expect(seen).toEqual([1, 2]);
   });
 
-  test("an unmount stops the backoff: no attempt and no timer after it", async ({
+  it("an unmount stops the backoff: no attempt and no timer after it", async ({
     expect,
   }) => {
     const { dateTime, errors, wrapper } = await setup();
@@ -867,12 +874,10 @@ describe("useQuery retry", () => {
     await act(() => dateTime.travel(60_000));
     expect(handler).toHaveBeenCalledTimes(1);
     expect(errors).toHaveLength(0);
-    expect(
-      (dateTime as unknown as { timeouts: unknown[] }).timeouts,
-    ).toHaveLength(0);
+    expect(dateTime.pendingTimeouts()).toBe(0);
   });
 
-  test("refetch() during the backoff starts a fresh sequence", async ({
+  it("refetch() during the backoff starts a fresh sequence", async ({
     expect,
   }) => {
     const { dateTime, wrapper } = await setup();
@@ -896,7 +901,7 @@ describe("useQuery retry", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  test("two components on one key share one sequence of attempts", async ({
+  it("two components on one key share one sequence of attempts", async ({
     expect,
   }) => {
     const { dateTime, errors, wrapper } = await setup();
@@ -918,7 +923,7 @@ describe("useQuery retry", () => {
     expect(errors).toHaveLength(2);
   });
 
-  test("useAction has no retry: a failing handler runs once", async ({
+  it("useAction has no retry: a failing handler runs once", async ({
     expect,
   }) => {
     const { dateTime, wrapper } = await setup();
@@ -956,7 +961,7 @@ describe("useQuery staleness", () => {
     return { alepha, dateTime, wrapper };
   };
 
-  test("a re-render past staleTime sends no request", async ({ expect }) => {
+  it("a re-render past staleTime sends no request", async ({ expect }) => {
     const { dateTime, wrapper } = await setup();
     const handler = vi.fn(async () => handler.mock.calls.length);
 
@@ -977,7 +982,7 @@ describe("useQuery staleness", () => {
     expect(result.current.isStale).toBe(true);
   });
 
-  test("a write to another key does not revalidate a stale entry", async ({
+  it("a write to another key does not revalidate a stale entry", async ({
     expect,
   }) => {
     const { alepha, dateTime, wrapper } = await setup();
@@ -998,7 +1003,7 @@ describe("useQuery staleness", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  test("a deps change under the same key revalidates a stale entry", async ({
+  it("a deps change under the same key revalidates a stale entry", async ({
     expect,
   }) => {
     const { dateTime, wrapper } = await setup();
@@ -1020,9 +1025,7 @@ describe("useQuery staleness", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  test("enabled turning true over a stale entry fetches", async ({
-    expect,
-  }) => {
+  it("enabled turning true over a stale entry fetches", async ({ expect }) => {
     const { dateTime, wrapper } = await setup();
     const handler = vi.fn(async () => handler.mock.calls.length);
 
@@ -1047,5 +1050,164 @@ describe("useQuery staleness", () => {
 
     await waitFor(() => expect(result.current.data).toBe(2));
     expect(handler).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("useQuery null data and key changes", () => {
+  const setup = async () => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    return { alepha, wrapper };
+  };
+
+  const sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  it("a null result replaces initialData, keyed or not", async ({ expect }) => {
+    const { wrapper } = await setup();
+    const keyless = renderHook(
+      () =>
+        useQuery<string | null>(
+          { handler: async () => null, initialData: "seed" },
+          [],
+        ),
+      { wrapper },
+    );
+    const keyed = renderHook(
+      () =>
+        useQuery<string | null>(
+          {
+            key: ["null-result"],
+            handler: async () => null,
+            initialData: "seed",
+          },
+          [],
+        ),
+      { wrapper },
+    );
+    expect(keyless.result.current.data).toBe("seed");
+    expect(keyed.result.current.data).toBe("seed");
+
+    await waitFor(() => expect(keyless.result.current.data).toBe(null));
+    await waitFor(() => expect(keyed.result.current.data).toBe(null));
+    expect(keyless.result.current.loading).toBe(false);
+    expect(keyed.result.current.loading).toBe(false);
+  });
+
+  it("a key whose result is null does not render the previous key's data", async ({
+    expect,
+  }) => {
+    const { wrapper } = await setup();
+    const { result, rerender } = renderHook(
+      (props: { id: number }) =>
+        useQuery<string | null>(
+          {
+            key: ["nullable", props.id],
+            keepPreviousData: true,
+            handler: async () => (props.id === 1 ? "one" : null),
+          },
+          [props.id],
+        ),
+      { wrapper, initialProps: { id: 1 } },
+    );
+    await waitFor(() => expect(result.current.data).toBe("one"));
+
+    rerender({ id: 2 });
+    await waitFor(() => expect(result.current.data).toBe(null));
+  });
+
+  it("never renders a new key with no data and loading false", async ({
+    expect,
+  }) => {
+    const { wrapper } = await setup();
+    const frames: string[] = [];
+    const { result, rerender } = renderHook(
+      (props: { id: number }) => {
+        const query = useQuery(
+          {
+            key: ["item", props.id],
+            handler: async () => {
+              await sleep(10);
+              return `v${props.id}`;
+            },
+          },
+          [props.id],
+        );
+        frames.push(`${props.id}:${query.data}:${query.loading}`);
+        return query;
+      },
+      { wrapper, initialProps: { id: 1 } },
+    );
+    await waitFor(() => expect(result.current.data).toBe("v1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    frames.length = 0;
+    rerender({ id: 2 });
+    await waitFor(() => expect(result.current.data).toBe("v2"));
+
+    expect(frames[0]).toBe("2:undefined:true");
+    expect(frames).not.toContain("2:undefined:false");
+  });
+
+  it("back on a fresh key, the other key's slow run no longer reaches the hook", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await setup();
+    const errors: string[] = [];
+    alepha.events.on("react:action:error", (event) => {
+      errors.push(event.error.message);
+    });
+    const succeeded: string[] = [];
+    const pending: Record<
+      string,
+      { resolve: (value: string) => void; reject: (error: Error) => void }
+    > = {};
+    const { result, rerender } = renderHook(
+      ({ key }: { key: string }) =>
+        useQuery(
+          {
+            key: ["detach", key],
+            staleTime: [1, "minute"],
+            retry: 0,
+            handler: () =>
+              new Promise<string>((resolve, reject) => {
+                pending[key] = { resolve, reject };
+              }),
+            onSuccess: (value) => {
+              succeeded.push(value);
+            },
+          },
+          [key],
+        ),
+      { wrapper, initialProps: { key: "k1" } },
+    );
+    await waitFor(() => expect(pending.k1).toBeDefined());
+    await act(async () => {
+      pending.k1.resolve("one");
+      await sleep(5);
+    });
+    expect(result.current.data).toBe("one");
+
+    // To k2, which hangs, then back to a still-fresh k1: no run starts for
+    // k1, so k2's run has to be let go of here.
+    rerender({ key: "k2" });
+    await waitFor(() => expect(pending.k2).toBeDefined());
+    rerender({ key: "k1" });
+    await act(async () => {
+      await sleep(10);
+    });
+    expect(result.current.data).toBe("one");
+    expect(result.current.loading).toBe(false);
+
+    await act(async () => {
+      pending.k2.reject(new Error("k2 failed"));
+      await sleep(10);
+    });
+    expect(result.current.error).toBeUndefined();
+    expect(errors).toEqual([]);
+    expect(succeeded).toEqual(["one"]);
   });
 });

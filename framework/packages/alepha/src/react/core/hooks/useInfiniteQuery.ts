@@ -125,17 +125,24 @@ export function useInfiniteQuery<Page, Param>(
       handler: async (context) => {
         const current = optionsRef.current;
         const key = cache.serialize(current.key);
-        const entry = cache.get(current.key)?.data as
-          | InfiniteQueryData<Page, Param>
-          | undefined;
-        const count =
-          entry?.pages.length ??
-          (loadedRef.current?.key === key ? loadedRef.current.count : 1);
+        // How many pages to reload, read again after every page: a
+        // `loadMore()` landing while this runs appends a page to the entry,
+        // and a count taken once at the start wrote the list back without it.
+        const count = () => {
+          const entry = cache.get(current.key)?.data as
+            | InfiniteQueryData<Page, Param>
+            | undefined;
+          return Math.max(
+            entry?.pages.length ??
+              (loadedRef.current?.key === key ? loadedRef.current.count : 1),
+            1,
+          );
+        };
 
         const pages: Page[] = [];
         const pageParams: Param[] = [];
         let param = current.initialPageParam;
-        for (let index = 0; index < Math.max(count, 1); index++) {
+        for (let index = 0; index < count(); index++) {
           const page = await current.handler(context, param);
           pages.push(page);
           pageParams.push(param);

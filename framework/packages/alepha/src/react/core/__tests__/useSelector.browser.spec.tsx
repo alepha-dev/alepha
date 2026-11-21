@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { $atom, Alepha, z } from "alepha";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useSelector } from "../hooks/useSelector.ts";
@@ -28,7 +28,7 @@ describe("useSelector", () => {
     return { alepha, wrapper };
   };
 
-  it("returns the selected slice", async () => {
+  it("returns the selected slice", async ({ expect }) => {
     const { wrapper } = await setup();
 
     const { result } = renderHook(
@@ -39,7 +39,7 @@ describe("useSelector", () => {
     expect(result.current).toBe("light");
   });
 
-  it("re-renders when the selected slice changes", async () => {
+  it("re-renders when the selected slice changes", async ({ expect }) => {
     const { alepha, wrapper } = await setup();
 
     const { result } = renderHook(
@@ -54,7 +54,9 @@ describe("useSelector", () => {
     expect(result.current).toBe("dark");
   });
 
-  it("re-selects when the selector changes and the atom does not", async () => {
+  it("re-selects when the selector changes and the atom does not", async ({
+    expect,
+  }) => {
     const { wrapper } = await setup();
 
     const { result, rerender } = renderHook(
@@ -71,7 +73,9 @@ describe("useSelector", () => {
     expect(result.current).toBe("false");
   });
 
-  it("does not re-render when an unselected field changes", async () => {
+  it("does not re-render when an unselected field changes", async ({
+    expect,
+  }) => {
     const { alepha, wrapper } = await setup();
     let renders = 0;
 
@@ -94,7 +98,9 @@ describe("useSelector", () => {
     expect(renders).toBe(before);
   });
 
-  it("suppresses re-renders for structurally equal object slices via shallowEqual", async () => {
+  it("suppresses re-renders for structurally equal object slices via shallowEqual", async ({
+    expect,
+  }) => {
     const { alepha, wrapper } = await setup();
     let renders = 0;
 

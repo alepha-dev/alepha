@@ -35,7 +35,10 @@ export interface UseFormQuerySyncOptions<TKey extends string> {
  * navigable via back/forward.
  *
  * @example
- * const form = useForm({ schema: z.object({ status: z.string(), q: z.string() }) });
+ * const form = useForm({
+ *   schema: z.object({ status: z.string(), q: z.string() }),
+ *   handler: () => {},
+ * });
  * useFormQuerySync(form, { keys: ["status", "q"] });
  *
  * @public No caller in this repository, and that is fine: it is a hook for
@@ -62,7 +65,7 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
 
   // First-mount semantics differ from later URL changes: when the URL
   // is empty AND the form has an initial value (e.g. status: "new"),
-  // preserve that initial value — and write it back to the URL so the
+  // preserve that initial value: and write it back to the URL so the
   // URL becomes the source of truth from then on. Without this guard
   // the mount would clear the form's defaults, defeating the whole
   // "default lane" pattern.
@@ -70,8 +73,7 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
   useEffect(() => {
     const isFirstRun = !initialized.current;
     initialized.current = true;
-    const values = (form as unknown as { currentValues: Record<string, any> })
-      .currentValues;
+    const values = form.currentValues;
     const missingInitials: Record<string, string> = {};
     for (const key of keys) {
       const raw = state.query?.[key];
@@ -84,12 +86,12 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
         current !== ""
       ) {
         // URL missing this key on first mount but the form has a
-        // default — keep the default, queue it to be written below.
+        // default: keep the default, queue it to be written below.
         missingInitials[key] = String(current);
         continue;
       }
-      // Skip when already in sync , avoids bouncing form:changed ↔
-      // setQueryParams and re-triggering subscribers.
+      // Skip when already in sync: it avoids bouncing between form:changed
+      // and setQueryParams, and re-triggering subscribers.
       if ((current ?? undefined) !== next) {
         const input = (form.input as Record<string, any>)[key];
         if (input && typeof input.set === "function") {
@@ -99,7 +101,7 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
     }
     if (isFirstRun && Object.keys(missingInitials).length > 0) {
       // Merge with whatever URL params ARE present so we don't clobber
-      // unrelated keys the page also uses — the updater form receives the
+      // unrelated keys the page also uses: the updater form receives the
       // current query, so params this form doesn't own survive.
       router.setQueryParams((current: Record<string, any>) => ({
         ...current,
@@ -119,10 +121,9 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
       const path = typeof e.path === "string" ? e.path.replace(/^\//, "") : "";
       if (!keys.includes(path as TKey)) return;
 
-      const values = (form as unknown as { currentValues: Record<string, any> })
-        .currentValues;
+      const values = form.currentValues;
 
-      // Replace-state (default) — filters shouldn't pollute history.
+      // Replace-state (default): filters shouldn't pollute history.
       router.setQueryParams((current: Record<string, any>) => {
         // Merge: the page owns query params this form knows nothing about.
         const next: Record<string, any> = { ...current };

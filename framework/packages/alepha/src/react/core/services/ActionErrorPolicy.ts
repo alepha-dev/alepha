@@ -13,6 +13,9 @@
  *   renders under that field. Read by name, since this module cannot import
  *   the form's. Or an error `markShownInPlace` was given: `useActionForm`
  *   marks a server `ValidationError` whose every issue landed on a field.
+ *   A form goes one step further for its own submits: a refusal whose path
+ *   names no field of its schema has nowhere to be shown, so `FormModel`
+ *   reports it unhandled whatever this rule says.
  *
  * Static rather than a service: hooks call it during a render, on a container
  * that may already be started, where injecting a service it never registered

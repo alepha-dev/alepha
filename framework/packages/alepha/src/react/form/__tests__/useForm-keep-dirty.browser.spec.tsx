@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
@@ -186,5 +186,93 @@ describe("useForm keeps an edit that restores the previous value", () => {
     );
     // And the form knows it has something left to send.
     expect(getByTestId("dirty").textContent).toBe("dirty");
+  });
+});
+
+/**
+ * A submit's success says the values it SENT are saved. An edit made while it
+ * was in flight is not among them, so the form is still dirty when it lands:
+ * marked clean, a Save button gated on `dirty` could never send that edit.
+ */
+describe("useFormState dirty across a submit", () => {
+  it("stays dirty when a field was edited while the submit was in flight", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const sent: unknown[] = [];
+    let release: () => void = () => {};
+    let setName: (value: string) => void = () => {};
+    const Widget = () => {
+      const form = useForm({
+        schema: z.object({ name: z.text() }),
+        initialValues: { name: "a" },
+        handler: (values) => {
+          sent.push(values);
+          return new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        },
+      });
+      setName = form.input.name.set;
+      const { dirty, loading } = useFormState(form, ["dirty", "loading"]);
+      return (
+        <form {...form.props} data-testid="form">
+          <span data-testid="dirty">{dirty ? "dirty" : "clean"}</span>
+          <span data-testid="loading">{loading ? "loading" : "idle"}</span>
+        </form>
+      );
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <Widget />
+      </AlephaContext.Provider>,
+    );
+    const text = (id: string) => ui.getByTestId(id).textContent;
+
+    act(() => setName("b"));
+    fireEvent.submit(ui.getByTestId("form"));
+    await waitFor(() => expect(sent).toEqual([{ name: "b" }]));
+
+    act(() => setName("c"));
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(text("loading")).toBe("idle"));
+    expect(text("dirty")).toBe("dirty");
+  });
+
+  it("turns clean when nothing was edited during the submit", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    let setName: (value: string) => void = () => {};
+    const Widget = () => {
+      const form = useForm({
+        schema: z.object({ name: z.text() }),
+        initialValues: { name: "a" },
+        handler: async () => {},
+      });
+      setName = form.input.name.set;
+      const { dirty } = useFormState(form, ["dirty"]);
+      return (
+        <form {...form.props} data-testid="form">
+          <span data-testid="dirty">{dirty ? "dirty" : "clean"}</span>
+        </form>
+      );
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <Widget />
+      </AlephaContext.Provider>,
+    );
+
+    act(() => setName("b"));
+    await waitFor(() =>
+      expect(ui.getByTestId("dirty").textContent).toBe("dirty"),
+    );
+    fireEvent.submit(ui.getByTestId("form"));
+    await waitFor(() =>
+      expect(ui.getByTestId("dirty").textContent).toBe("clean"),
+    );
   });
 });

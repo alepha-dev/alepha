@@ -158,6 +158,8 @@ import { useAction } from "alepha/react";
 | `{ ok: false, reason: "aborted" }`      | Cancelled by `cancel()`, an unmount or a newer run.                                          |
 | `{ ok: false, reason: "cancelled" }`    | A wrapper hook's user backed out (a declined confirm); `useAction` itself never produces it. |
 
+Nothing a listener or a callback does changes that. A `react:action:*` listener that throws is reported by the event manager and the run goes on, so a saved write stays `ok: true`. An `onError` that throws is logged and emitted as a second `react:action:error`, with `handled: false`. A handler that fails after `cancel()` resolves `"aborted"`, with no `error` set and no event.
+
 So a follow-up branches on it: `if ((await save.run()).ok) close();`. By default, concurrent executions are prevented, which is the `dropped` case: disable the controls that trigger the action on `loading`. `refetch` and a `debounce`d call abort the in-flight run and replace it instead.
 
 `run` is not an event handler: write `onClick={() => save.run()}`, never `onClick={save.run}`, which would pass the click event as the first argument.
@@ -348,7 +350,7 @@ const { data, loading, isStale } = useQuery(
 | `staleTime`          | `0`     | `DurationLike`. While an entry is fresh, mounting renders it from cache without fetching.              |
 | `keepPreviousData`   | `false` | Keep rendering the previous key's data while a new key loads (pagination, filters). Requires `key`.    |
 | `enabled`            | `true`  | `false` skips the automatic runs (mount, dependency change, `runEvery`); `refetch()` still works.      |
-| `initialData`        | none    | Value of `data` before the first successful fetch.                                                     |
+| `initialData`        | none    | Value of `data` before the first successful fetch. A `null` result is data, and replaces it.           |
 | `runEvery`           | none    | Poll at this interval, as in `useAction`. Paused while the page is hidden.                             |
 | `refetchOnReconnect` | `true`  | Re-run a stale or failed keyed query when the browser comes back online.                               |
 | `refetchOnFocus`     | `false` | Re-run a stale keyed query when the page becomes visible again.                                        |
@@ -358,7 +360,7 @@ const { data, loading, isStale } = useQuery(
 | `onError`            | none    | Marks the failure handled: `onError: () => {}` is how a read that can do without its data stays quiet. |
 | `id`                 | none    | Identifier carried by the `react:action:*` events.                                                     |
 
-`loading` is already `true` on the very first render of an enabled query with no `initialData`, so a skeleton renders without a flash of empty content. `isStale` is `true` when a cached entry outlived `staleTime` and is being revalidated in the background.
+`loading` is already `true` on the very first render of an enabled query with no `initialData`, and on the first render of a key it has no data for, so a skeleton renders without a flash of empty content. A key change lets go of the previous key's run even when the new key is fresh and starts none: its `loading`, its error and its `onSuccess` never reach the new key. `isStale` is `true` when a cached entry outlived `staleTime` and is being revalidated in the background.
 
 A key buys four things:
 
@@ -454,7 +456,7 @@ queries.get(["folio", id]); // read without subscribing
 queries.clear(); // drop everything; mounted queries refetch
 ```
 
-The app never needs `clear()` on a sign-out: see "Eviction and a change of user" below.
+Every key starts with the empty one, so `queries.invalidate([])` drops every entry. The app never needs `clear()` on a sign-out: see "Eviction and a change of user" below.
 
 ### Eviction and a change of user
 
@@ -496,7 +498,7 @@ It returns `{ pages, loadMore, hasMore, loadingMore, loading, error, refetch }`.
 
 Pages a route loader already read seed the entry with `initialData: { pages: [page], pageParams: [0] }`: mounting then sends no request while the entry is fresh, so pair it with a `staleTime` that covers the handoff. `keepPreviousData` keeps the previous key's pages on screen while a new key (a filter, a status) loads.
 
-**A refetch reloads what is loaded.** After an invalidation, `refetch()`, a reconnect or a tab-return refetch, the pages loaded so far are read again in order, each from the fresh previous page, stopping early if the list got shorter, and the entry is written once at the end. A list with 20 pages loaded sends 20 requests each time: keep that in mind before invalidating a long list on every write.
+**A refetch reloads what is loaded.** After an invalidation, `refetch()`, a reconnect or a tab-return refetch, the pages loaded so far are read again in order, each from the fresh previous page, stopping early if the list got shorter, and the entry is written once at the end. A page that `loadMore()` appends while a refetch runs is reloaded with the others, not lost. A list with 20 pages loaded sends 20 requests each time: keep that in mind before invalidating a long list on every write.
 
 The cache entry is an `InfiniteQueryData<Page, Param>`, `{ pages, pageParams }`, so an optimistic write is a `setData` that maps over `pages`:
 

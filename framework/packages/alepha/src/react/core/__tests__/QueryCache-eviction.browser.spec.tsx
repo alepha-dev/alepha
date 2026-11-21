@@ -14,8 +14,17 @@ import {
   queryOptionsAtom,
 } from "../index.ts";
 
+class TestQueryCache extends QueryCache {
+  public hasGeneration(serialized: string) {
+    return this.generations.has(serialized);
+  }
+}
+
 const setup = async (configure?: (alepha: Alepha) => void) => {
-  const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+  const alepha = Alepha.create()
+    .with({ provide: QueryCache, use: TestQueryCache })
+    .with(AlephaDateTime)
+    .with(AlephaReact);
   configure?.(alepha);
   const dateTime = alepha.inject(DateTimeProvider);
   dateTime.pause();
@@ -23,7 +32,7 @@ const setup = async (configure?: (alepha: Alepha) => void) => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
   );
-  return { alepha, dateTime, wrapper, cache: alepha.inject(QueryCache) };
+  return { alepha, dateTime, wrapper, cache: alepha.inject(TestQueryCache) };
 };
 
 const MINUTE = 60_000;
@@ -143,13 +152,10 @@ describe("QueryCache eviction", () => {
     expect(cache.get(["k"])?.data).toBe("v");
     second.unmount();
 
-    const generations = (
-      cache as unknown as { generations: Map<string, number> }
-    ).generations;
-    expect(generations.has('["k"]')).toBe(true);
+    expect(cache.hasGeneration('["k"]')).toBe(true);
     await act(() => dateTime.travel(5 * MINUTE + 1));
     expect(cache.get(["k"])).toBe(undefined);
-    expect(generations.has('["k"]')).toBe(false);
+    expect(cache.hasGeneration('["k"]')).toBe(false);
   });
 });
 
@@ -193,6 +199,32 @@ describe("QueryCache on a change of signed-in user", () => {
       { wrapper },
     );
     await waitFor(() => expect(result.current.data).toBe("u1"));
+
+    user = "u2";
+    await act(async () => {
+      alepha.store.set(currentUserAtom, { id: "u2" } as never);
+    });
+    await waitFor(() => expect(result.current.data).toBe("u2"));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it("a sign-out then a sign-in in place re-runs the queries still mounted", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await setupAuth();
+    let user = "u1";
+    const handler = vi.fn(async () => user);
+    const { result } = renderHook(
+      () => useQuery({ key: ["me"], handler }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.data).toBe("u1"));
+
+    await act(async () => {
+      alepha.store.set(currentUserAtom, undefined);
+    });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(handler).toHaveBeenCalledTimes(1);
 
     user = "u2";
     await act(async () => {

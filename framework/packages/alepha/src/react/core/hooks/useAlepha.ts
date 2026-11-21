@@ -10,7 +10,7 @@ import { AlephaContext } from "../contexts/AlephaContext.ts";
  *
  * With Alepha, you can access the core functionalities of the framework:
  *
- * - alepha.state() for state management
+ * - alepha.store for state management
  * - alepha.inject() for dependency injection
  * - alepha.events.emit() for event handling
  * etc...

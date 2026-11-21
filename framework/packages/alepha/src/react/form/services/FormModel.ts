@@ -100,9 +100,9 @@ export class FormModel<T extends ZObject> {
   /**
    * Flatten nested OBJECT values into the store's dotted-key convention.
    *
-   * The store is flat on purpose — `createInputFromSchema` keys nested inputs
+   * The store is flat on purpose (`createInputFromSchema` keys nested inputs
    * as `payg.dailyCapCents` and `restructureValues()` rebuilds the nesting at
-   * submit time — and `extractSchemaDefaults` already emits dotted keys. Caller
+   * submit time), and `extractSchemaDefaults` already emits dotted keys. Caller
    * `initialValues`, however, arrive NESTED (that is the shape of an API
    * payload), so without this pass `values.payg` sits there as one opaque
    * object while every nested input reads `values["payg.dailyCapCents"]` and
@@ -196,6 +196,24 @@ export class FormModel<T extends ZObject> {
 
       if (defaultValue !== undefined) {
         defaults[fullKey] = defaultValue;
+        // An object default is flattened like an object in `initialValues`,
+        // or its nested inputs read their dotted keys and find nothing.
+        const objectSchema = z.schema.unwrap(propSchema);
+        if (
+          defaultValue !== null &&
+          typeof defaultValue === "object" &&
+          !Array.isArray(defaultValue) &&
+          z.schema.isObject(objectSchema)
+        ) {
+          Object.assign(
+            defaults,
+            this.flattenObjectValues(
+              objectSchema as ZObject,
+              defaultValue as Record<string, any>,
+              fullKey,
+            ),
+          );
+        }
       } else if (absentByDefault && z.schema.isObject(inner)) {
         // Nothing: the object starts absent, and its inner defaults come with
         // it when it is initialised.
@@ -550,17 +568,17 @@ export class FormModel<T extends ZObject> {
    * anything typed between submit and response was overwritten by data that
    * predates it - the user watched their own words disappear.
    *
-   * "Edited" is derived, not tracked: a key is dirty when its current value
-   * differs from the baseline it was seeded with. That is also why the flag
-   * needs no reset after a submit - this very call installs the new baseline,
-   * so a field the server echoed back unchanged becomes clean again on its
-   * own.
+   * "Edited" is tracked, not derived: a key is edited when it was written
+   * since the last baseline (`touched`), which is what tells a field cleared
+   * back to its baseline from one never touched. This very call installs the
+   * new baseline, so a kept field the server echoed back unchanged becomes
+   * clean again on its own.
    */
   public readonly setInitialValues = (
     values: Record<string, any>,
     options: { keepDirty?: boolean } = {},
   ) => {
-    // Same partial-decode rationale as the constructor — initial values may be
+    // Same partial-decode rationale as the constructor: initial values may be
     // incomplete; full schema is enforced only at submit time.
     const decoded = this.flattenObjectValues(
       this.options.schema,
@@ -569,7 +587,7 @@ export class FormModel<T extends ZObject> {
       }) as Record<string, any>,
     );
 
-    // Snapshot the OLD keys before we wipe — without this, fields that
+    // Snapshot the OLD keys before we wipe: without this, fields that
     // had a value but are absent from the new initialValues never emit
     // form:changed and useFieldValue subscribers keep showing the stale
     // value. Mirrors the union-of-keys pattern in reset() below.
@@ -637,7 +655,7 @@ export class FormModel<T extends ZObject> {
    * `JSON.stringify` is exact enough and cheap; anything exotic falls back to
    * reference equality rather than throwing.
    */
-  protected sameValue(a: unknown, b: unknown): boolean {
+  public sameValue(a: unknown, b: unknown): boolean {
     if (a === b) return true;
     if (a == null || b == null) return false;
     try {
@@ -649,7 +667,7 @@ export class FormModel<T extends ZObject> {
 
   public readonly reset = (event?: FormEventLike) => {
     event?.preventDefault?.();
-    // Snapshot all keys that need notification — both keys present
+    // Snapshot all keys that need notification: both keys present
     // before reset (so subscribers learn the cleared value) and keys
     // restored from initialValues. Without the union, fields that were
     // typed but absent from initialValues stay visually stale.
@@ -691,7 +709,7 @@ export class FormModel<T extends ZObject> {
 
     // Claimed SYNCHRONOUSLY, before the first await. The flag used to be set
     // only after the two awaited emits below, so a second submit arriving
-    // during them sailed past the guard and ran the handler twice — a
+    // during them sailed past the guard and ran the handler twice: a
     // double-clicked button charging a card twice.
     this.submitInProgress = true;
     // A new attempt starts clean: the errors of the last one describe values
@@ -700,7 +718,7 @@ export class FormModel<T extends ZObject> {
 
     // Lifecycle events are best-effort NOTIFICATIONS (loading spinners, toasts,
     // analytics). A misbehaving listener must never break form state or reject
-    // submit() — hence `{ catch: true }` on every emit below. Without it, a
+    // submit(): hence `{ catch: true }` on every emit below. Without it, a
     // throwing `react:action:error`/`form:submit:error` listener would skip the
     // `form:submit:end` "loading off" signal and leave submit buttons stuck in
     // their loading state forever.
@@ -749,8 +767,13 @@ export class FormModel<T extends ZObject> {
     } catch (error) {
       this.log.error("Form submission error:", error);
 
+      // Whether every issue landed under a field. A refusal the form
+      // cannot show (a path into a record's value, a union variant, a key
+      // the schema does not have) is not reported as handled below, so the
+      // toaster says it.
+      let shown = true;
       if (error instanceof SchemaValidationError) {
-        this.setErrors(
+        shown = this.setErrors(
           error.data.issues ?? [
             { path: error.data.path, message: error.data.message },
           ],
@@ -770,7 +793,9 @@ export class FormModel<T extends ZObject> {
           type: "form",
           id: this.id,
           error: error as Error,
-          handled: ActionErrorPolicy.isHandled(error, this.options.onError),
+          handled:
+            this.options.onError !== undefined ||
+            (shown && ActionErrorPolicy.isHandled(error)),
         },
         { catch: true },
       );
@@ -783,7 +808,7 @@ export class FormModel<T extends ZObject> {
       this.submitInProgress = false;
 
       // The "loading off" signals live in `finally` so they ALWAYS fire,
-      // even if something above threw — guaranteeing the begin/end pairing
+      // even if something above threw: guaranteeing the begin/end pairing
       // that drives submit-button loading state.
       await this.alepha.events.emit(
         "react:action:end",
@@ -818,7 +843,7 @@ export class FormModel<T extends ZObject> {
    * handler (a response that broke its own schema) is a fault and still
    * reports, while this one is somebody leaving a title empty (error #585,
    * #Q2343). The subclass keeps every `instanceof SchemaValidationError` and
-   * `value.path` check that routes the error to its field working unchanged.
+   * `data.path` check that routes the error to its field working unchanged.
    */
   protected decodeValues(
     schema: ZObject,
@@ -924,24 +949,11 @@ export class FormModel<T extends ZObject> {
         }
 
         if (prop in z.schema.shape(schema)) {
-          // // it's a nested object, create another proxy
-          // if (z.schema.isObject(schema.properties[prop])) {
-          //   return this.createProxyFromSchema(
-          //     options,
-          //     schema.properties[prop],
-          //     {
-          //       parent: parent ? `${parent}.${prop}` : prop,
-          //       store: context.store,
-          //     },
-          //   );
-          // }
-
           return this.createInputFromSchema<T>(
             prop as keyof Infer<T> & string,
             options,
             schema,
-            z.schema.requiredInputKeys(schema).includes(prop as string) ||
-              false,
+            z.schema.requiredInputKeys(schema).includes(prop as string),
             context,
           );
         }
@@ -975,7 +987,7 @@ export class FormModel<T extends ZObject> {
     }
     // Peel optional/nullable/default wrappers so the structural guards below
     // (`isObject`/`isArray`/`isString`/…, `.maxLength`, format) see the real
-    // schema. Optionality is tracked separately via `isRequired`/`required`.
+    // schema. Optionality is tracked separately via `required`.
     //
     // ⚠️ The peeled wrappers may carry `.meta()`, which is what labels every
     // control: `.meta()` binds to one instance, so `.default(x).meta({ title })`
@@ -989,8 +1001,6 @@ export class FormModel<T extends ZObject> {
       Object.keys(chainMeta).length ? unwrapped.meta(chainMeta) : unwrapped
     ) as typeof rawField;
 
-    const isRequired =
-      z.schema.requiredInputKeys(schema).includes(name) ?? false;
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 
@@ -1012,7 +1022,7 @@ export class FormModel<T extends ZObject> {
         !Array.isArray(typedValue) &&
         z.schema.isObject(objectField)
       ) {
-        // The object exists from here on, so its inner defaults apply — this
+        // The object exists from here on, so its inner defaults apply: this
         // is the moment `extractSchemaDefaults` deliberately waited for. The
         // value is flattened over them, so anything it names wins, and the
         // nested controls read their own dotted keys rather than finding the
@@ -1047,12 +1057,12 @@ export class FormModel<T extends ZObject> {
       name: key,
     };
 
-    // Use the form's runtime id (always set — comes from `useId()` when
+    // Use the form's runtime id (always set: comes from `useId()` when
     // no explicit `options.id` was provided). This guarantees stable
     // per-field DOM ids without forcing callers to pass `id`.
     attr.id = `${this.id}-${key}`;
     // `data-*` is not in the typed attribute record, but it is the hook every
-    // e2e suite reaches for — carried deliberately, not by accident.
+    // e2e suite reaches for: carried deliberately, not by accident.
     (attr as Record<string, unknown>)["data-testid"] = attr.id;
 
     if (z.schema.isString(field)) {
@@ -1069,7 +1079,7 @@ export class FormModel<T extends ZObject> {
       }
     }
 
-    if (isRequired) {
+    if (required) {
       attr.required = true;
     }
 
@@ -1102,15 +1112,15 @@ export class FormModel<T extends ZObject> {
       attr.type = "checkbox";
     }
 
-    // Self-wiring. `<input {...form.input.username.props} />` — the pattern
-    // useForm's own JSDoc documents — used to produce an input that fed
+    // Self-wiring. `<input {...form.input.username.props} />` (the pattern
+    // useForm's own JSDoc documents) used to produce an input that fed
     // nothing back: `props` carried id/name/type/validation only, so whatever
     // the user typed stayed in the DOM and `submit()` shipped an empty object.
     //
     // Uncontrolled (`defaultValue` + `onChange`) rather than controlled: form
     // values live in the model, not in React state, so a keystroke must not
     // re-render the tree. `useFieldValue` stays the opt-in for reactive reads.
-    // Container fields (object/array) are excluded — they render children, not
+    // Container fields (object/array) are excluded: they render children, not
     // an input. Assigned before `onCreateField` so a caller can still override.
     if (!z.schema.isObject(field) && !z.schema.isArray(field)) {
       const initialValue = context.store[key];
@@ -1168,7 +1178,7 @@ export class FormModel<T extends ZObject> {
         form: this,
         required,
         initialValue: context.store[key],
-        items: [], // see ArrayInputField — the UI builds the per-row fields
+        items: [], // see ArrayInputField: the UI builds the per-row fields
       } as ArrayInputField<any>;
     }
 
@@ -1192,7 +1202,7 @@ export class FormModel<T extends ZObject> {
     // Treat null/undefined as "unset" for every schema. Without this the
     // string branch below stringifies them to "null"/"undefined" (and
     // the date branches throw on `new Date(undefined)`), which then
-    // round-trips into controlled inputs as literal text — most
+    // round-trips into controlled inputs as literal text: most
     // visible after the Clear (X) affordance in Control sets
     // value=undefined and the input promptly displays "undefined".
     if (input === null || input === undefined) {
@@ -1229,20 +1239,54 @@ export class FormModel<T extends ZObject> {
     if (z.schema.isString(schema)) {
       const format = z.schema.format(schema);
       if (format === "date" || format === "time" || format === "date-time") {
-        // A cleared native date/time input emits "" — treat it (and any
+        // A cleared native date/time input emits "": treat it (and any
         // unparseable value) as unset instead of throwing on toISOString().
         if (input === "") return undefined;
         const date =
           format === "time" ? new Date(`1970-01-01T${input}`) : new Date(input);
         if (Number.isNaN(date.getTime())) return undefined;
-        if (format === "date") return date.toISOString().slice(0, 10); // For date input
-        if (format === "time") return date.toISOString().slice(11, 16); // For time input
-        return date.toISOString(); // For datetime-local input
+        if (format === "date-time") {
+          return date.toISOString();
+        }
+        // A time or a day is a wall-clock value, read back in the zone it
+        // was parsed in: `toISOString()` reads in UTC, which stored 13:30
+        // for a 14:30 typed in Paris, and the day before for a local
+        // midnight.
+        const local = this.isParsedAsLocalTime(input, format);
+        const pad = (part: number) => String(part).padStart(2, "0");
+        if (format === "time") {
+          return local
+            ? `${pad(date.getHours())}:${pad(date.getMinutes())}`
+            : date.toISOString().slice(11, 16);
+        }
+        return local
+          ? `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+          : date.toISOString().slice(0, 10);
       }
       return String(input);
     }
 
     return input; // fallback for other types
+  }
+
+  /**
+   * Whether JavaScript parses `input` in the local zone: a string carrying a
+   * time and no offset. A date alone (`2024-03-10`) is UTC midnight, a string
+   * ending in `Z` or `+02:00` names its own zone, and a `Date` or a number is
+   * an instant already.
+   */
+  protected isParsedAsLocalTime(
+    input: unknown,
+    format: "date" | "time",
+  ): boolean {
+    if (typeof input !== "string") {
+      return false;
+    }
+    const text = input.trim();
+    if (format === "date" && /^\d{4}(-\d{2}){0,2}$/.test(text)) {
+      return false;
+    }
+    return !/(Z|[+-]\d{2}:?\d{2})$/i.test(text);
   }
 }
 
@@ -1288,9 +1332,8 @@ export interface ObjectInputField<T extends ZObject> extends BaseInputField {
  * `items` is intentionally always `[]` at model level: the model does not know
  * how many rows exist, so the UI builds the per-row fields itself. The
  * property is still present and always an array so consumers can
- * `field.items.map(...)` without a null check — `useForm.browser.spec.tsx`
- * pins exactly that. Review #3 read it as a "permanently empty typed surface"
- * and proposed removing it; the test is what says otherwise.
+ * `field.items.map(...)` without a null check: `useForm.browser.spec.tsx`
+ * pins exactly that.
  */
 export interface ArrayInputField<T extends ZType> extends BaseInputField {
   items: Array<InputField<T>>;
@@ -1407,8 +1450,9 @@ export type FormCtrlOptions<T extends ZObject> = {
    *
    * A `FormValidationError` thrown with a field `path` is handled without
    * one: its message is shown under that field (`useFormState`), not toasted.
-   * Any other error, a refusal with no path included, still toasts when no
-   * `onError` is given.
+   * Any other error still toasts when no `onError` is given: a refusal with
+   * no path, and one whose path names no field of the schema (a key of a
+   * record, a union variant), which the form has nowhere to show.
    */
   onError?: (error: Error) => void;
 
