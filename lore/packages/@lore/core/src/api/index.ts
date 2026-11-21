@@ -64,6 +64,7 @@ import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
+import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -268,6 +269,7 @@ export const LoreCoreApi = $module({
     // The port agent jobs start through (#Q3988): Build registers it.
     AgentJobs,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
+    ChannelRoomRegistry,
     CommitReferenceRegistry,
     McpProjectScope,
     ProjectLimits,
@@ -478,6 +480,11 @@ export {
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "./services/DeliveryChangeRegistry.ts";
+export {
+  type ChannelRoom,
+  type ChannelRoomProvider,
+  ChannelRoomRegistry,
+} from "./services/ChannelRoomRegistry.ts";
 export {
   type CommitReferenceInput,
   type CommitReferenceRecorder,

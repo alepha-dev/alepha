@@ -2,14 +2,21 @@ import { type Infer, z } from "alepha";
 
 /**
  * Add a channel (#Q3614, #Q3900): a Discord channel by its webhook URL, or a
- * webhook endpoint by the URL Lore calls. The URL travels in this body; a
- * Discord one never comes back.
+ * webhook endpoint by the URL Lore calls, or a chat room of the project by its
+ * id (#Q4052). The URL travels in this body; a Discord one never comes back.
  */
 export const projectChannelCreateBodySchema = z
   .object({
-    kind: z.enum(["discord", "webhook"]).optional(),
+    kind: z.enum(["discord", "webhook", "chat"]).optional(),
     name: z.string().min(1).max(64),
-    url: z.string().min(1).max(2048),
+    /**
+     * Discord's webhook URL or the webhook endpoint's. Not for a room.
+     */
+    url: z.string().min(1).max(2048).optional(),
+    /**
+     * A `chat` channel's room (#Q4052): an open room of the project.
+     */
+    roomId: z.string().min(1).max(64).optional(),
   })
   .strict();
 

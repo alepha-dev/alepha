@@ -1,6 +1,7 @@
 import { $inject, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
+import { channelRoomSchema } from "../schemas/channelRoomSchema.ts";
 import { projectChannelCreateBodySchema } from "../schemas/projectChannelCreateBodySchema.ts";
 import { projectChannelCreatedSchema } from "../schemas/projectChannelCreatedSchema.ts";
 import { projectChannelResourceSchema } from "../schemas/projectChannelResourceSchema.ts";
@@ -27,6 +28,22 @@ export class ProjectChannelController {
     },
     handler: async ({ params, user }) => ({
       items: await this.service.list(params.projectId, user),
+    }),
+  });
+  /**
+   * The chat rooms a channel may post into (#Q4052): the room picker of
+   * Add a channel.
+   */
+  listProjectChannelRooms = $action({
+    use: [this.gate],
+    method: "GET",
+    path: "/projects/:projectId/channels/rooms",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ items: z.array(channelRoomSchema) }),
+    },
+    handler: async ({ params, user }) => ({
+      items: await this.service.rooms(params.projectId, user),
     }),
   });
   createProjectChannel = $action({

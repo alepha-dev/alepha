@@ -5,7 +5,11 @@ import { z } from "alepha";
  * to keep the current webhook.
  */
 export const projectChannelFormSchema = z.object({
-  kind: z.enum(["discord", "webhook"]).optional(),
+  kind: z.enum(["discord", "webhook", "chat"]).optional(),
   name: z.string().min(1).max(64),
   url: z.string().max(2048).optional(),
+  /**
+   * A chat room channel's room (#Q4052).
+   */
+  roomId: z.string().max(64).optional(),
 });

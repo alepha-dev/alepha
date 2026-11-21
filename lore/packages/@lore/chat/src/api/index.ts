@@ -9,6 +9,7 @@ import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
 import { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
 import { ChatBuckets } from "./services/ChatBuckets.ts";
+import { ChatChannelRooms } from "./services/ChatChannelRooms.ts";
 import { ChatFileAccess } from "./services/ChatFileAccess.ts";
 import { ChatLifecycle } from "./services/ChatLifecycle.ts";
 import { ChatLive } from "./services/ChatLive.ts";
@@ -55,6 +56,8 @@ export const LoreChatApi = $module({
     ChatResponderRegistry,
     ChatAgentRunner,
     ChatMessageController,
+    // Room channels (#Q4052): registered on core's registry at boot.
+    ChatChannelRooms,
   ],
 });
 

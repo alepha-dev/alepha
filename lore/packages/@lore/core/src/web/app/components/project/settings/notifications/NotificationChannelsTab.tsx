@@ -12,6 +12,7 @@ import {
   Hash,
   KeyRound,
   Mail,
+  MessagesSquare,
   Pencil,
   Plus,
   Shapes,
@@ -174,6 +175,8 @@ const NotificationChannelsTab = (props: NotificationChannelsTabProps) => {
     if (channel.kind === "webhook") return <Webhook className={className} />;
     if (channel.kind === "email") return <Mail className={className} />;
     if (channel.kind === "inbox") return <Bell className={className} />;
+    if (channel.kind === "chat")
+      return <MessagesSquare className={className} />;
     return <Hash className={className} />;
   };
 
@@ -255,7 +258,9 @@ const NotificationChannelsTab = (props: NotificationChannelsTabProps) => {
                   </span>
                 ) : channel.status === "disabled" ? (
                   <Badge variant="destructive">
-                    {tr("notifications.channels.switchedOff")}
+                    {channel.disabledReason === "room_archived"
+                      ? tr("notifications.channels.roomArchived")
+                      : tr("notifications.channels.switchedOff")}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground text-sm">
@@ -265,10 +270,11 @@ const NotificationChannelsTab = (props: NotificationChannelsTabProps) => {
             },
             url: {
               label: tr("notifications.channels.url"),
+              // A chat room channel's room in place of a URL (#Q4052).
               cell: (channel) =>
-                channel.url ? (
+                channel.url || channel.roomName ? (
                   <span className="text-muted-foreground block max-w-80 truncate text-sm">
-                    {channel.url}
+                    {channel.url ?? `# ${channel.roomName}`}
                   </span>
                 ) : null,
             },

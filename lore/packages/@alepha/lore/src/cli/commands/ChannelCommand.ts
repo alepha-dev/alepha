@@ -99,12 +99,20 @@ export class ChannelCommand {
   public readonly add = $command({
     name: "add",
     description:
-      "Add a Discord or webhook channel, its URL read from stdin; a webhook's signing secret is printed once",
+      "Add a Discord or webhook channel, its URL read from stdin (a webhook's signing secret is printed once), or a chat room by --room",
     flags: z.object({
       ...ChannelCommand.PROJECT_FLAG,
       kind: z
-        .enum(["discord", "webhook"])
-        .describe("discord (the default) or webhook.")
+        .enum(["discord", "webhook", "chat"])
+        .describe(
+          "discord (the default), webhook, or chat (a room, by --room).",
+        )
+        .optional(),
+      room: z
+        .text({
+          description:
+            "For --kind chat: the id of an open room of the project.",
+        })
         .optional(),
       name: z.text({
         description: "The channel's name, as the page lists it.",
@@ -113,7 +121,9 @@ export class ChannelCommand {
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
-      const url = await this.url(flags["url-stdin"], true);
+      const chat = flags.kind === "chat";
+      if (chat && !flags.room) throw new UsageError("--kind chat needs --room");
+      const url = chat ? undefined : await this.url(flags["url-stdin"], true);
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const { projectId } = await this.projects.named(flags.project, context);
@@ -122,7 +132,7 @@ export class ChannelCommand {
           body: {
             ...(flags.kind ? { kind: flags.kind } : {}),
             name: flags.name,
-            url: url!,
+            ...(chat ? { roomId: flags.room } : { url: url! }),
           },
         });
         this.created(print, flags.output, "Added", channel);

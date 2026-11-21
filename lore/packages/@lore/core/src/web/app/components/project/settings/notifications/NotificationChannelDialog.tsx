@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import { useAction, useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
@@ -47,7 +47,14 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
   const editing = props.channel;
 
   const save = useAction<
-    [values: { kind?: "discord" | "webhook"; name: string; url?: string }],
+    [
+      values: {
+        kind?: "discord" | "webhook" | "chat";
+        name: string;
+        url?: string;
+        roomId?: string;
+      },
+    ],
     void
   >(
     {
@@ -61,13 +68,13 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
           props.onOpenChange(false);
           return;
         }
+        const kind = values.kind ?? "discord";
         const created = await api.createProjectChannel({
           params: { projectId: props.projectId },
-          body: {
-            kind: values.kind ?? "discord",
-            name: values.name,
-            url: url ?? "",
-          },
+          body:
+            kind === "chat"
+              ? { kind, name: values.name, roomId: values.roomId ?? "" }
+              : { kind, name: values.name, url: url ?? "" },
         });
         props.onOpenChange(false);
         if (created.secret) props.onSecret(created.secret);
@@ -83,7 +90,10 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
     {
       schema: projectChannelFormSchema,
       initialValues: {
-        kind: editing?.kind === "webhook" ? "webhook" : "discord",
+        kind:
+          editing?.kind === "webhook" || editing?.kind === "chat"
+            ? editing.kind
+            : "discord",
         name: editing?.name ?? "",
         url: "",
       },
@@ -95,7 +105,21 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
   );
   const values = useFormValues(form);
   const busy = save.loading;
-  const webhook = (editing ? editing.kind : values.kind) === "webhook";
+  const kind = editing ? editing.kind : values.kind;
+  const webhook = kind === "webhook";
+  // A chat room (#Q4052): a room picker instead of a URL.
+  const chat = kind === "chat";
+  const rooms = useQuery(
+    {
+      key: ["channel-rooms", props.projectId],
+      enabled: props.open && chat && !editing,
+      handler: () =>
+        api.listProjectChannelRooms({
+          params: { projectId: props.projectId },
+        }),
+    },
+    [api, props.projectId, props.open, chat, editing],
+  );
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -109,9 +133,11 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
               : tr("notifications.channels.add")}
           </DialogTitle>
           <DialogDescription>
-            {webhook
-              ? tr("notifications.channels.webhookHelp")
-              : tr("notifications.channels.discordHelp")}
+            {chat
+              ? tr("notifications.channels.chatHelp")
+              : webhook
+                ? tr("notifications.channels.webhookHelp")
+                : tr("notifications.channels.discordHelp")}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -133,6 +159,10 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
                   value: "webhook",
                   label: tr("notifications.channels.kind.webhook"),
                 },
+                {
+                  value: "chat",
+                  label: tr("notifications.channels.kind.chat"),
+                },
               ]}
               disabled={busy}
             />
@@ -142,17 +172,32 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
             label={tr("notifications.channels.name")}
             disabled={busy}
           />
-          <Control
-            input={form.input.url}
-            label={
-              editing
-                ? tr("notifications.channels.replaceUrl")
-                : webhook
-                  ? tr("notifications.channels.webhookUrl")
-                  : tr("notifications.channels.discordUrl")
-            }
-            disabled={busy}
-          />
+          {chat ? (
+            !editing && (
+              <Control
+                input={form.input.roomId}
+                label={tr("notifications.channels.room")}
+                select
+                items={(rooms.data?.items ?? []).map((room) => ({
+                  value: room.id,
+                  label: `# ${room.name}`,
+                }))}
+                disabled={busy || rooms.loading}
+              />
+            )
+          ) : (
+            <Control
+              input={form.input.url}
+              label={
+                editing
+                  ? tr("notifications.channels.replaceUrl")
+                  : webhook
+                    ? tr("notifications.channels.webhookUrl")
+                    : tr("notifications.channels.discordUrl")
+              }
+              disabled={busy}
+            />
+          )}
           <DialogFooter>
             <Button
               type="button"

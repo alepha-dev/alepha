@@ -1,0 +1,1 @@
+ALTER TABLE `notification_channels` ADD `room_id` text;
