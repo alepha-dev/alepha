@@ -45,6 +45,9 @@ type InventoryJobs struct {
 	// user's PATH, most often), so the console can say it before a job fails.
 	ClaudeError string `json:"claudeError,omitempty"`
 	Running     string `json:"running,omitempty"`
+	// Secrets are the NAMES of the host-local secrets (`bay secret set`),
+	// never a value: what Lore shows as set (#Q3999).
+	Secrets []string `json:"secrets,omitempty"`
 }
 
 // InventoryStack is one stack environment as the machine sees it.

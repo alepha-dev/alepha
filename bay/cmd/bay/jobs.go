@@ -56,6 +56,22 @@ const jobsConfigFile = "jobs.json"
 
 type jobsConfig struct {
 	User string `json:"user,omitempty"`
+	// Runner is `process` (the default) or `container` (#Q3999).
+	Runner string `json:"runner,omitempty"`
+	// Credential names the host-local secret a container job's claude step
+	// runs with, which is also the variable it is set as.
+	Credential string `json:"credential,omitempty"`
+	// GVisor runs container jobs under runsc, refused when the daemon has
+	// none.
+	GVisor bool `json:"gvisor,omitempty"`
+}
+
+// runnerKind is what the inventory reports and the executor dispatches on.
+func (c jobsConfig) runnerKind() string {
+	if c.Runner == "container" {
+		return "container"
+	}
+	return "process"
 }
 
 func loadJobsConfig(root string) (jobsConfig, error) {
@@ -85,25 +101,56 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
 // restart.
 func cmdConfigJobs(args []string) error {
 	root, _ := resolveRoot(args, defaultRoot)
+	cfg, err := loadJobsConfig(root)
+	if err != nil {
+		return err
+	}
 	var name string
-	clear := false
+	clear, changed := false, false
 	for i := 0; i < len(args); i++ {
+		value := func() (string, error) {
+			if i+1 >= len(args) {
+				return "", errors.New(jobsUsage)
+			}
+			i++
+			return args[i], nil
+		}
 		switch args[i] {
 		case "--user":
-			if i+1 >= len(args) {
-				return errors.New(jobsUsage)
+			if name, err = value(); err != nil {
+				return err
 			}
-			name = args[i+1]
-			i++
 		case "--clear":
 			clear = true
+		case "--runner":
+			runner, err := value()
+			if err != nil {
+				return err
+			}
+			if runner != "process" && runner != "container" {
+				return errors.New("--runner is process or container")
+			}
+			cfg.Runner, changed = runner, true
+		case "--credential":
+			credential, err := value()
+			if err != nil {
+				return err
+			}
+			if credential != "" && !secretNamePattern.MatchString(credential) {
+				return fmt.Errorf("%q is not a secret name", credential)
+			}
+			cfg.Credential, changed = credential, true
+		case "--gvisor":
+			cfg.GVisor, changed = true, true
+		case "--no-gvisor":
+			cfg.GVisor, changed = false, true
 		case "--root", "--control-socket":
 			// Read by resolveRoot, or not needed: the file is read per job.
 			i++
@@ -111,30 +158,47 @@ func cmdConfigJobs(args []string) error {
 			return errors.New(jobsUsage)
 		}
 	}
-	if clear == (name != "") {
-		return errors.New(jobsUsage)
-	}
 	if clear {
+		if name != "" || changed {
+			return errors.New(jobsUsage)
+		}
 		if err := saveJobsConfig(root, jobsConfig{}); err != nil {
 			return err
 		}
-		fmt.Println("jobs user cleared: this bay refuses every job")
+		fmt.Println("jobs config cleared: this bay refuses every job")
 		return nil
 	}
-	u, err := user.Lookup(name)
-	if err != nil {
-		return fmt.Errorf("no Unix user %q on this host: create it first (useradd --create-home %s)", name, name)
+	if name == "" && !changed {
+		return errors.New(jobsUsage)
 	}
-	// A dev build in the e2e suite runs jobs as itself (devSelf).
-	devSelf := version == "dev" && os.Getenv("BAY_DEV_JOBS_AS_SELF") == "1"
-	if err := checkJobsUser(u, os.Getuid()); err != nil && !devSelf {
+	if name != "" {
+		u, err := user.Lookup(name)
+		if err != nil {
+			return fmt.Errorf("no Unix user %q on this host: create it first (useradd --create-home %s)", name, name)
+		}
+		// A dev build in the e2e suite runs jobs as itself (devSelf).
+		devSelf := version == "dev" && os.Getenv("BAY_DEV_JOBS_AS_SELF") == "1"
+		if err := checkJobsUser(u, os.Getuid()); err != nil && !devSelf {
+			return err
+		}
+		cfg.User = name
+	}
+	if cfg.User == "" && cfg.runnerKind() == "process" {
+		return errors.New("the process runner needs a jobs user: --user NAME")
+	}
+	if err := saveJobsConfig(root, cfg); err != nil {
 		return err
 	}
-	if err := saveJobsConfig(root, jobsConfig{User: name}); err != nil {
-		return err
+	if cfg.runnerKind() == "container" {
+		fmt.Println("jobs run in the agent image, in containers with no host mount, no socket, every capability dropped,")
+		fmt.Println("  and a network whose only way out is Bay's egress proxy")
+		if cfg.Credential != "" {
+			fmt.Printf("  claude runs with the host-local secret %s (bay secret set %s -)\n", cfg.Credential, cfg.Credential)
+		}
+		return nil
 	}
-	fmt.Printf("jobs run as %s (home %s)\n", name, u.HomeDir)
-	fmt.Println("  claude must be on that user's PATH, logged in by hand: sudo -iu " + name + " claude login")
+	fmt.Printf("jobs run as %s\n", cfg.User)
+	fmt.Println("  claude must be on that user's PATH, logged in by hand: sudo -iu " + cfg.User + " claude login")
 	fmt.Println("  ⚠ a host that runs process jobs should do nothing else: no production app, no other project's secrets")
 	return nil
 }
@@ -461,6 +525,8 @@ func (r *processRunner) claudeVersion(ctx context.Context) (string, error) {
 // the claude version the inventory reports.
 type jobs struct {
 	runner *processRunner
+	// container is the container runner (#Q3999), used when the config says.
+	container *jobContainerRunner
 
 	mu      sync.Mutex
 	current string
@@ -479,7 +545,21 @@ var jobSecond = time.Second
 // errJobCancelled is the cause a `job-cancel` stops a job with.
 var errJobCancelled = errors.New("cancelled by a job-cancel")
 
-func newJobs(root string) *jobs { return &jobs{runner: newProcessRunner(root)} }
+func newJobs(root string) *jobs {
+	return &jobs{runner: newProcessRunner(root), container: newJobContainerRunner(root)}
+}
+
+// run executes a job on the runner the config names.
+func (j *jobs) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*int, error) {
+	cfg, err := loadJobsConfig(j.runner.root)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.runnerKind() == "container" {
+		return j.container.run(ctx, id, spec, log)
+	}
+	return j.runner.run(ctx, id, spec, log)
+}
 
 // claim takes the machine's one job slot.
 func (j *jobs) claim(id string, cancel context.CancelCauseFunc) bool {
@@ -530,10 +610,16 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 		return nil
 	}
 	cfg, err := loadJobsConfig(j.runner.root)
-	if err != nil || cfg.User == "" {
+	if err != nil || (cfg.User == "" && cfg.runnerKind() == "process") {
 		return nil
 	}
-	out := &connector.InventoryJobs{Runner: "process", User: cfg.User, Running: j.running()}
+	out := &connector.InventoryJobs{Runner: cfg.runnerKind(), User: cfg.User, Running: j.running(),
+		Secrets: hostSecretNames(j.runner.root)}
+	if cfg.runnerKind() == "container" {
+		// The CLI is the agent image's, pinned by digest per job: its version
+		// is what the check job reports, not a reading of this host.
+		return out
+	}
 	j.versionMu.Lock()
 	defer j.versionMu.Unlock()
 	if time.Since(j.versionAt) > 10*time.Minute {
@@ -601,7 +687,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 		a.streamJobLog(runCtx, log)
 	}()
 
-	exit, runErr := a.jobs.runner.run(runCtx, cmd.ID, spec, log)
+	exit, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
 	cause := context.Cause(runCtx)
 	switch {
 	case errors.Is(cause, errJobCancelled):

@@ -21,6 +21,11 @@ export const hostInventoryJobsSchema = z.object({
   claudeError: z.string().max(500).optional(),
   /** The `job-run` command running now, if any. */
   running: z.string().max(64).optional(),
+  /**
+   * The NAMES of the host-local secrets (`bay secret set`), the Claude
+   * credential of a container runner first (#Q3999). Never a value.
+   */
+  secrets: z.array(z.string().max(64)).max(50).optional(),
 });
 
 export type HostInventoryJobs = Infer<typeof hostInventoryJobsSchema>;
