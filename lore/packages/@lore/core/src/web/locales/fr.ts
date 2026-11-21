@@ -3094,6 +3094,13 @@ export default {
   "feedback.agent.startedMany":
     "$1 tâches de tri lancées ; $2 laissées à un membre",
   "feedback.agent.job": "Tâche d'agent",
+  "quest.agent.work": "Travailler avec Claude",
+  "quest.agent.started":
+    "Claude travaille sur cette quête sur l'hôte d'agent : il pousse sa propre branche",
+  "quest.untrusted": "Non fiable",
+  "quest.untrusted.confirm": "Confirmer son texte",
+  "quest.untrusted.confirm.description":
+    "Cette quête est née d'un retour écrit hors de l'équipe. Lisez son texte, puis confirmez-le : un agent ne la traite qu'après la confirmation d'un membre.",
   "account.hosts.switch.jobs": "Autoriser les tâches",
   "account.hosts.switch.jobs.description":
     "Les tâches ponctuelles que Lore lance sur cette machine, comme les tâches d'agent. Une tâche exécute ici le code d'un dépôt, sous l'utilisateur de tâches configuré dans Bay.",
