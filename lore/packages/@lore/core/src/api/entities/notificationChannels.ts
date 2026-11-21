@@ -17,7 +17,8 @@ import { users } from "./users.ts";
  *
  * A `webhook` channel (#Q3900) is one endpoint of the framework's
  * `$webhook` module: its URL, signing secret, retries and health are the
- * framework's, and the row holds the endpoint's id.
+ * framework's, and the row holds the endpoint's id. A `chat` channel
+ * (#Q4052) is one of the project's chat rooms, by `roomId`.
  */
 export const notificationChannels = $entity({
   name: "notification_channels",
@@ -29,7 +30,7 @@ export const notificationChannels = $entity({
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    kind: z.enum(["discord", "webhook"]).meta({ mode: "text" }),
+    kind: z.enum(["discord", "webhook", "chat"]).meta({ mode: "text" }),
     name: z.string().min(1).max(64),
     /**
      * The sealed Discord URL. Empty for a webhook: its URL lives on its
@@ -41,6 +42,12 @@ export const notificationChannels = $entity({
      * `project:<id>`. No foreign key: the endpoint table is the framework's.
      */
     endpointId: z.uuid().optional(),
+    /**
+     * A `chat` channel's room (#Q4052), posted into as Lore. No foreign key:
+     * rooms are `@lore/chat`'s. A room is archived, never deleted; an
+     * archived one takes nothing, and the channel says so.
+     */
+    roomId: z.string().max(64).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),

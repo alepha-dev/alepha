@@ -136,6 +136,11 @@ export default {
   "notifications.channels.kind.email": "Email",
   "notifications.channels.kind.discord": "Discord",
   "notifications.channels.kind.webhook": "Webhook",
+  "notifications.channels.kind.chat": "Chat room",
+  "notifications.channels.room": "Room",
+  "notifications.channels.chatHelp":
+    "Lore posts each event into an open room of this project, as Lore. Private rooms are not offered.",
+  "notifications.channels.roomArchived": "Room archived",
   "notifications.channels.name": "Name",
   "notifications.channels.discordUrl": "Discord webhook URL",
   "notifications.channels.webhookUrl": "URL Lore calls",

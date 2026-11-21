@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "13c079de-0ddb-4759-b88a-2c0e0f8cd892",
+  "prevIds": ["cf611e26-4a54-482d-9645-cf05765f3068"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "notification_channels",
+        "room_id"
+      ],
+      "writes": [
+        "s|col|public.notification_channels.room_id",
+        "n|col|public.notification_channels.room_id",
+        "e|col|public.notification_channels.room_id"
+      ],
+      "reads": ["n|tbl|public.notification_channels", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "notification_channels",
+        "name": "room_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

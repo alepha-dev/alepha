@@ -16,6 +16,12 @@ export const projectChannelResourceSchema = z
     status: z.enum(["active", "paused", "disabled"]).optional(),
     disabledReason: z.string().max(32).optional(),
     secretPrefix: z.string().max(10).optional(),
+    /**
+     * A `chat` channel's room (#Q4052), and its name while it can take a
+     * post; `status: "disabled"` once it is archived.
+     */
+    roomId: z.string().max(64).optional(),
+    roomName: z.string().max(80).optional(),
   })
   .strict();
 export type ProjectChannelResource = Infer<typeof projectChannelResourceSchema>;

@@ -23,6 +23,7 @@ import {
 } from "../entities/notificationChannels.ts";
 import type { ProjectChannelCreated } from "../schemas/projectChannelCreatedSchema.ts";
 import type { ProjectChannelResource } from "../schemas/projectChannelResourceSchema.ts";
+import { ChannelRoomRegistry } from "./ChannelRoomRegistry.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { ProjectRecipients } from "./ProjectRecipients.ts";
 
@@ -49,6 +50,7 @@ export class ProjectChannelService {
   protected readonly transport = $inject(DiscordTransport);
   protected readonly endpoints = $inject(WebhookEndpointService);
   protected readonly policy = $inject(WebhookDestinationPolicy);
+  protected readonly roomChannels = $inject(ChannelRoomRegistry);
 
   /**
    * Inbox and Email, then every configured channel: never a URL.
@@ -76,11 +78,19 @@ export class ProjectChannelService {
   public async add(
     projectId: number,
     user: UserAccountToken,
-    input: { kind?: "discord" | "webhook"; name: string; url: string },
+    input: {
+      kind?: "discord" | "webhook" | "chat";
+      name: string;
+      url?: string;
+      roomId?: string;
+    },
   ): Promise<ProjectChannelCreated> {
     await this.assert(projectId, user, "manage");
     const name = this.name(input.name);
     await this.unique(projectId, name);
+    if (input.kind === "chat")
+      return this.addRoom(projectId, user, name, input.roomId);
+    if (!input.url) throw new BadRequestError("url: required");
     if (input.kind === "webhook")
       return this.addWebhook(projectId, user, name, input.url);
     const url = await this.prove(input.url, name);
@@ -90,6 +100,47 @@ export class ProjectChannelService {
       kind: "discord",
       name,
       url: await this.seal.seal(url, CredentialSealService.DISCORD_PURPOSE),
+      createdBy: user.id,
+    });
+    return this.resource(row, true);
+  }
+
+  /**
+   * The rooms a chat channel may post into (#Q4052): the project's open,
+   * unarchived rooms, for whoever manages notifications.
+   */
+  public async rooms(
+    projectId: number,
+    user: UserAccountToken,
+  ): Promise<{ id: string; name: string }[]> {
+    await this.assert(projectId, user, "manage");
+    return this.roomChannels.rooms(projectId);
+  }
+
+  /**
+   * A chat room channel (#Q4052): an open room of the project, posted into
+   * as Lore. A private room is refused: a channel would tell its members
+   * whatever a manager subscribed it to, and the manager may not be one.
+   */
+  protected async addRoom(
+    projectId: number,
+    user: UserAccountToken,
+    name: string,
+    roomId: string | undefined,
+  ): Promise<ProjectChannelCreated> {
+    if (!roomId) throw new BadRequestError("roomId: required for a chat room");
+    const room = (await this.roomChannels.rooms(projectId)).find(
+      (it) => it.id === roomId,
+    );
+    if (!room)
+      throw new BadRequestError("roomId: not an open room of this project");
+    const row = await this.rows.create({
+      id: `chat-${this.crypto.randomUUID()}`,
+      projectId,
+      kind: "chat",
+      name,
+      url: "",
+      roomId,
       createdBy: user.id,
     });
     return this.resource(row, true);
@@ -204,6 +255,12 @@ export class ProjectChannelService {
       const renamed = await this.rows.updateById(row.id, { name });
       return this.webhookResource(renamed, endpoint, true);
     }
+    // A room channel has no URL: a rename only (#Q4052).
+    if (row.kind === "chat") {
+      if (input.url !== undefined)
+        throw new BadRequestError("A chat room channel has no URL");
+      return this.resource(await this.rows.updateById(row.id, { name }), true);
+    }
     const url =
       input.url !== undefined
         ? await this.seal.seal(
@@ -288,6 +345,23 @@ export class ProjectChannelService {
         name: row.name,
         builtIn: false,
         status: "disabled",
+      };
+    }
+    if (row.kind === "chat") {
+      // Disabled once its room is archived or gone (#Q4052): it takes
+      // nothing, and the page says so rather than dropping the row.
+      const room = (await this.roomChannels.rooms(row.projectId)).find(
+        (it) => it.id === row.roomId,
+      );
+      return {
+        id: row.id,
+        kind: row.kind,
+        name: row.name,
+        builtIn: false,
+        ...(row.roomId ? { roomId: row.roomId } : {}),
+        ...(room
+          ? { roomName: room.name, status: "active" as const }
+          : { status: "disabled" as const, disabledReason: "room_archived" }),
       };
     }
     return { id: row.id, kind: row.kind, name: row.name, builtIn: false };

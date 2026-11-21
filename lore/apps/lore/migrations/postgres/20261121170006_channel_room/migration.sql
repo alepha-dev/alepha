@@ -1,0 +1,1 @@
+ALTER TABLE "notification_channels" ADD COLUMN "room_id" text;

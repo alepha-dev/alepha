@@ -14,6 +14,7 @@ import { projects } from "../entities/projects.ts";
 import { ProjectEventNotifications } from "../notifications/ProjectEventNotifications.ts";
 import type { SubscriptionChannel } from "../schemas/subscriptionChannelSchema.ts";
 import { BatchRepository } from "./BatchRepository.ts";
+import { ChannelRoomRegistry } from "./ChannelRoomRegistry.ts";
 import { ProjectChannelService } from "./ProjectChannelService.ts";
 import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
 import { ProjectRecipients } from "./ProjectRecipients.ts";
@@ -52,6 +53,7 @@ export class ProjectEventDelivery {
   protected readonly endpoints = $inject(WebhookEndpointService);
   protected readonly outbox = $inject(WebhookOutbox);
   protected readonly projects = $repository(projects);
+  protected readonly roomChannels = $inject(ChannelRoomRegistry);
   protected readonly users = $repository(users);
   protected readonly executions = $inject(
     BatchRepository.of(jobExecutionEntity),
@@ -227,6 +229,20 @@ export class ProjectEventDelivery {
     if (!channel) return false;
     if (channel.kind === "webhook")
       return this.call(channel.endpointId, project, event);
+    // A chat room (#Q4052): the event's message, posted as Lore. An
+    // archived room takes nothing.
+    if (channel.kind === "chat") {
+      if (!channel.roomId) return false;
+      const variables = this.variables(project, event);
+      const body = [
+        `**${variables.title}**`,
+        variables.text,
+        variables.href ? variables.url : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+      return this.roomChannels.post(project.id, channel.roomId, body);
+    }
     await this.notifications.discord.push({
       lang: this.notifications.lang,
       variables: { ...this.variables(project, event), channelId },
