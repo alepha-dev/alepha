@@ -81,7 +81,7 @@ export function $cache(options: any = {}): any {
       const result = await instance.runSingleFlight(key, () =>
         handler(...args),
       );
-      // Fire-and-forget — cache write failures must not break the handler
+      // Fire-and-forget: cache write failures must not break the handler
       // result. `persist` logs, so an outage is visible rather than silent.
       void instance.persist(key, result);
       return result;
@@ -111,7 +111,7 @@ export interface CacheMemoryTierOptions {
   ttl?: DurationLike;
 
   /**
-   * LRU bound — max entries kept in memory before eviction.
+   * LRU bound: max entries kept in memory before eviction.
    *
    * @default 500
    */
@@ -119,7 +119,8 @@ export interface CacheMemoryTierOptions {
 
   /**
    * Also cache provider misses (`undefined`) in memory for this duration.
-   * Prevents hammering the remote tier on cold/unknown keys.
+   * Prevents hammering the remote tier on cold/unknown keys. A read answered
+   * by a remembered miss still emits `cache:missed`.
    *
    * @default off
    */
@@ -135,7 +136,7 @@ export interface CachePrimitiveOptions<
    *
    * Store key as `<alepha.name>:cache:$name:$key` on a shared backend.
    *
-   * @default Name of the key of the class.
+   * @default `<Service name>:<property>`, for example `UserService:userCache`.
    */
   name?: string;
 
@@ -154,16 +155,17 @@ export interface CachePrimitiveOptions<
    * The store provider for the cache.
    *
    * Accepts:
-   * - `"memory"` — short-circuits to {@link MemoryCacheProvider} regardless
+   * - `"memory"`: short-circuits to {@link MemoryCacheProvider} regardless
    *   of the default `CacheProvider` binding. Useful for caches that must
    *   stay process-local (e.g. ETag, HTTP client).
-   * - A {@link CacheProvider} class (concrete OR abstract) — resolved via
+   * - A {@link CacheProvider} class (concrete OR abstract): resolved via
    *   `alepha.inject(...)` at primitive construction. Use this to opt a
    *   specific cache into a non-default backend (e.g.
    *   `provider: DatabaseCacheProvider` to keep one cache in SQL while the
    *   rest of the app uses Cloudflare KV).
-   * - `undefined` — falls back to whatever is bound to `CacheProvider` in
-   *   the container. On Node that is {@link MemoryCacheProvider}. On
+   * - `undefined`: falls back to whatever is bound to `CacheProvider` in
+   *   the container. On Node and Bun that is `RedisCacheProvider` when
+   *   `REDIS_URL` is set and {@link MemoryCacheProvider} otherwise. On
    *   Cloudflare Workers it is `CloudflareCacheProvider`, which resolves at
    *   `start` to the **database cache when the container has one** and to
    *   {@link CloudflareKVProvider} only when it does not.
@@ -205,11 +207,18 @@ export interface CachePrimitiveOptions<
    * Reads check memory first, fall back to the provider on miss. Writes go
    * to both tiers (write-through), so own-writes are immediately visible.
    *
+   * How long an L1 entry lives depends on what made it. An entry made by a
+   * write is bounded by that write's `ttl`. An entry copied from a provider
+   * read lives the L1 ttl from the read, cut at the fresh deadline when
+   * `stale` is set.
+   *
    * Caveats:
    * - Per-process only. Each Worker isolate / Node process has its own L1.
    *   `invalidate()` clears the local L1 + the remote provider; other
    *   processes keep their L1 until its TTL expires.
-   * - Use a short L1 TTL to bound the cross-isolate staleness window.
+   * - Use a short L1 TTL to bound the cross-isolate staleness window. Without
+   *   `stale`, a copy made by a read can outlive the provider's entry by up
+   *   to that TTL.
    *
    * @default off
    */
@@ -222,7 +231,7 @@ export interface CachePrimitiveOptions<
    * (single-flight per key).
    *
    * Requires a `handler` (primitive mode) OR middleware mode wrapping a
-   * handler — the cache needs to know how to recompute.
+   * handler: the cache needs to know how to recompute.
    *
    * @default off
    */
@@ -260,18 +269,12 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const DEFAULT_MEMORY_MAX = 500;
-const DEFAULT_MEMORY_TTL_MS = 30_000;
-// Deliberately distinctive so plausible user data can never be mistaken for
-// (and unwrapped as) the SWR envelope.
-const SWR_MARKER = "__alepha_swr_envelope__" as const;
-
 type SwrEnvelope = {
-  [SWR_MARKER]: 1;
+  __alepha_swr_envelope__: 1;
   v: unknown;
   f: number;
   /**
-   * Set when `v` is a base64-encoded Uint8Array — the envelope is
+   * Set when `v` is a base64-encoded Uint8Array: the envelope is
    * JSON-serialized, which would otherwise mangle raw bytes into a plain
    * object.
    */
@@ -298,6 +301,24 @@ export class CachePrimitive<
    */
   public static override readonly side: PrimitiveSide = "inert";
 
+  /**
+   * LRU bound of the L1 tier when `memory.max` is not set.
+   */
+  protected static readonly defaultMemoryMax = 500;
+
+  /**
+   * L1 ttl, in milliseconds, when `memory.ttl` is not set and the cache's own
+   * `ttl` is longer or infinite.
+   */
+  protected static readonly defaultMemoryTtlMs = 30_000;
+
+  /**
+   * The key that marks a stored value as the SWR envelope. Deliberately
+   * distinctive, so plausible user data is never mistaken for an envelope
+   * and unwrapped.
+   */
+  protected static readonly swrMarker = "__alepha_swr_envelope__";
+
   protected readonly settings = $store(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly tracer = $inject(Tracer);
@@ -305,7 +326,7 @@ export class CachePrimitive<
   public readonly provider = this.$provider();
 
   protected readonly memoryStore?: Map<string, L1Entry<TReturn>>;
-  protected readonly memoryMax: number = DEFAULT_MEMORY_MAX;
+  protected readonly memoryMax: number = CachePrimitive.defaultMemoryMax;
   protected readonly memoryTtlMs: number = 0;
   protected readonly negativeTtlMs: number = 0;
 
@@ -321,7 +342,7 @@ export class CachePrimitive<
     if (mem) {
       this.memoryStore = new Map();
       const memOpts: CacheMemoryTierOptions = mem === true ? {} : mem;
-      this.memoryMax = memOpts.max ?? DEFAULT_MEMORY_MAX;
+      this.memoryMax = memOpts.max ?? CachePrimitive.defaultMemoryMax;
       // Default L1 TTL: min(remote ttl, 30s). If remote ttl is 0/infinite, use 30s.
       if (memOpts.ttl !== undefined) {
         this.memoryTtlMs = this.dateTimeProvider
@@ -333,8 +354,8 @@ export class CachePrimitive<
           : 0;
         this.memoryTtlMs =
           remoteTtlMs > 0
-            ? Math.min(remoteTtlMs, DEFAULT_MEMORY_TTL_MS)
-            : DEFAULT_MEMORY_TTL_MS;
+            ? Math.min(remoteTtlMs, CachePrimitive.defaultMemoryTtlMs)
+            : CachePrimitive.defaultMemoryTtlMs;
       }
       if (memOpts.negative !== undefined) {
         this.negativeTtlMs = this.dateTimeProvider
@@ -371,7 +392,7 @@ export class CachePrimitive<
     // note: when exception occurs, don't cache the result.
     //
     // Awaited (unlike the middleware path) so the entry is durable before the
-    // caller sees the value — but through `persist`, so a provider outage
+    // caller sees the value, but through `persist`, so a provider outage
     // cannot fail a request whose answer has already been computed. This used
     // to be a bare `await this.set(...)`: a Redis blip turned a successful
     // handler into a 500, and the two modes failed differently for no reason.
@@ -384,7 +405,7 @@ export class CachePrimitive<
    *
    * A cache is an optimisation: a write that fails costs a future cache miss,
    * never the current result. Both the middleware and the primitive path go
-   * through here so they degrade identically — the difference between them is
+   * through here so they degrade identically: the difference between them is
    * only whether the caller waits for the write.
    */
   public async persist(key: string, value: TReturn): Promise<void> {
@@ -404,18 +425,6 @@ export class CachePrimitive<
   }
 
   /**
-   * Atomically increment a counter.
-   *
-   * The counter is created with a lifetime, resolved the same way `set()`
-   * resolves one: the per-call `ttl`, else the cache's `ttl`, else the
-   * container-wide `defaultTtl`. Only the *creation* applies it — an
-   * existing counter keeps whatever expiry it was born with, so a window
-   * is fixed rather than sliding and a rate limiter cannot be held open by
-   * the very traffic it is meant to throttle.
-   *
-   * Pass `ttl: 0` for a counter that must never expire.
-   */
-  /**
    * Whether this cache will actually reach its store.
    *
    * Three ways it will not: the container has not started (on Cloudflare KV
@@ -423,13 +432,9 @@ export class CachePrimitive<
    * `disabled`, or the operator turned caching off container-wide through
    * `alepha.cache.options`.
    *
-   * Exposed because the degraded behaviour is deliberately invisible from
-   * the outside: `read()` answers a miss and `incr()` answers `amount`, both
-   * indistinguishable from a cold first call, which is exactly what a caching
-   * caller wants and exactly what a caller using the cache as INFRASTRUCTURE
-   * cannot work with. A rate limiter whose whole job is to count cannot tell
-   * "first request" from "no limiter at all" through the return value, so it
-   * has to be able to ask.
+   * The degraded behaviour cannot be told from a cold cache through a return
+   * value: `read()` answers a miss and `incr()` answers `amount`. A caller
+   * that needs to know the difference reads this.
    */
   public get enabled(): boolean {
     return (
@@ -437,6 +442,17 @@ export class CachePrimitive<
     );
   }
 
+  /**
+   * Atomically increment a counter.
+   *
+   * The counter is created with a lifetime, resolved the same way `set()`
+   * resolves one: the per-call `ttl`, else the cache's `ttl`, else the
+   * container-wide `defaultTtl`. Only the *creation* applies it: an
+   * existing counter keeps whatever expiry it was born with, so a window
+   * is fixed rather than sliding.
+   *
+   * Pass `ttl: 0` for a counter that must never expire.
+   */
   public async incr(
     key: string,
     amount = 1,
@@ -556,12 +572,16 @@ export class CachePrimitive<
       this.options.stale && freshTtlMs > 0
         ? value instanceof Uint8Array
           ? ({
-              [SWR_MARKER]: 1,
+              [CachePrimitive.swrMarker]: 1,
               v: Buffer.from(value).toString("base64"),
               f: freshUntil,
               b: 1,
             } satisfies SwrEnvelope)
-          : ({ [SWR_MARKER]: 1, v: value, f: freshUntil } satisfies SwrEnvelope)
+          : ({
+              [CachePrimitive.swrMarker]: 1,
+              v: value,
+              f: freshUntil,
+            } satisfies SwrEnvelope)
         : value;
 
     await this.provider.setTyped(this.container, key, payload, {
@@ -569,13 +589,16 @@ export class CachePrimitive<
       compress: this.options.compress,
     });
 
-    // Write-through to L1 (raw value, not wrapped).
+    // Write-through to L1 (raw value, not wrapped). The entry lives for the
+    // shorter of the L1 ttl and this write's own ttl: L1 answers `stale:
+    // false`, so it must not hold a value past its fresh deadline.
+    const memoryTtlMs =
+      freshTtlMs > 0 && this.memoryTtlMs > 0
+        ? Math.min(this.memoryTtlMs, freshTtlMs)
+        : this.memoryTtlMs || freshTtlMs;
     this.setL1(key, {
       value,
-      expiresAt:
-        this.memoryTtlMs > 0
-          ? now + this.memoryTtlMs
-          : Number.POSITIVE_INFINITY,
+      expiresAt: memoryTtlMs > 0 ? now + memoryTtlMs : Number.POSITIVE_INFINITY,
       negative: false,
     });
 
@@ -625,10 +648,15 @@ export class CachePrimitive<
           // LRU touch
           this.memoryStore.delete(key);
           this.memoryStore.set(key, entry);
-          await this.alepha.events.emit("cache:hit", {
-            container: this.container,
-            key,
-          });
+          // A negative entry remembers that the provider had nothing: the
+          // lookup is a miss, answered without asking again.
+          await this.alepha.events.emit(
+            entry.negative ? "cache:missed" : "cache:hit",
+            {
+              container: this.container,
+              key,
+            },
+          );
           return {
             value: entry.negative ? undefined : entry.value,
             stale: false,
@@ -662,6 +690,7 @@ export class CachePrimitive<
 
     let value: TReturn;
     let stale = false;
+    let freshUntil = 0;
 
     if (this.isSwrEnvelope(raw)) {
       value = (
@@ -669,16 +698,23 @@ export class CachePrimitive<
           ? new Uint8Array(Buffer.from(raw.v as string, "base64"))
           : raw.v
       ) as TReturn;
+      freshUntil = raw.f;
       stale = raw.f > 0 && raw.f <= now;
     } else {
       value = raw as TReturn;
     }
 
-    // Populate L1 (write-back from L2 read)
-    if (this.memoryStore && this.memoryTtlMs > 0) {
+    // Populate L1 (write-back from L2 read). Never with a stale value: L1
+    // answers `stale: false`, so the reads it served would schedule no
+    // refresh, and a refresh that failed would not be retried until the L1
+    // entry expired. For the same reason an envelope's copy ends at its fresh
+    // deadline. A plain value carries no deadline, so its copy lives the full
+    // L1 ttl, whatever is left of the provider's.
+    if (this.memoryStore && this.memoryTtlMs > 0 && !stale) {
+      const expiresAt = now + this.memoryTtlMs;
       this.setL1(key, {
         value,
-        expiresAt: now + this.memoryTtlMs,
+        expiresAt: freshUntil > 0 ? Math.min(expiresAt, freshUntil) : expiresAt,
         negative: false,
       });
     }
@@ -761,7 +797,7 @@ export class CachePrimitive<
     return (
       value !== null &&
       typeof value === "object" &&
-      (value as Record<string, unknown>)[SWR_MARKER] === 1 &&
+      (value as Record<string, unknown>)[CachePrimitive.swrMarker] === 1 &&
       "f" in (value as Record<string, unknown>) &&
       "v" in (value as Record<string, unknown>)
     );

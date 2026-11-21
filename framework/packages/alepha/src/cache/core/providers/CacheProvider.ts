@@ -30,7 +30,7 @@ export abstract class CacheProvider {
   ): Promise<Uint8Array | undefined>;
 
   /**
-   * Set the string value of a key.
+   * Set the value of a key.
    *
    * @param name Cache name, used to group keys. Should be Redis-like "some:group:name" format.
    * @param key The key of the value to set.
@@ -56,6 +56,13 @@ export abstract class CacheProvider {
 
   public abstract has(name: string, key: string): Promise<boolean>;
 
+  /**
+   * List the keys of a cache name, as the caller wrote them.
+   *
+   * @param name Cache name, used to group keys.
+   * @param filter A literal, case-sensitive key prefix. No character in it
+   * is a wildcard.
+   */
   public abstract keys(name: string, filter?: string): Promise<string[]>;
 
   /**
@@ -73,9 +80,8 @@ export abstract class CacheProvider {
    * @param key The key to increment.
    * @param amount The amount to increment by.
    * @param ttl Optional counter lifetime in milliseconds. Applied when the
-   * counter is created (fixed window — increments do not extend it); once
-   * elapsed the counter starts fresh. Without it, counters never expire and
-   * any rate limiter built on them becomes a permanent lock-out.
+   * counter is created (fixed window: increments do not extend it); once
+   * elapsed the counter starts fresh. Without it, the counter never expires.
    * @returns The new value after incrementing.
    */
   public abstract incr(
@@ -86,7 +92,7 @@ export abstract class CacheProvider {
   ): Promise<number>;
 
   // ---------------------------------------------------------------------------
-  // High-level methods — serialize/compress layer used by CachePrimitive
+  // High-level methods: serialize/compress layer used by CachePrimitive
   // ---------------------------------------------------------------------------
 
   /**
@@ -123,7 +129,8 @@ export abstract class CacheProvider {
   /**
    * Invalidate cache keys with wildcard support.
    *
-   * Keys ending in `*` are expanded via `this.keys()`.
+   * Keys ending in `*` are expanded via `this.keys()`: what precedes the `*`
+   * is a literal prefix.
    * Called with no keys, delegates to `this.del(name)` which clears the entire container.
    */
   public async invalidateKeys(name: string, keys: string[]): Promise<void> {
@@ -259,7 +266,7 @@ export abstract class CacheProvider {
     }
 
     // Counters written by Redis INCRBY / KV incr are raw ASCII digits with no
-    // type marker — reading them back must work like on Memory/Database.
+    // type marker: reading them back must work like on Memory/Database.
     const text = this.decoder.decode(uint8Array);
     if (/^-?\d+$/.test(text)) {
       return Number.parseInt(text, 10) as T;

@@ -5,8 +5,8 @@ import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
 
 /**
  * Reaches into `store` because the event-loop reference is the whole subject
- * and there is no public surface carrying it. The alternative — asserting that
- * a process exits — is a 5-minute test.
+ * and there is no public surface carrying it. The alternative, asserting that
+ * a process exits, is a 5-minute test.
  */
 class TestMemoryCacheProvider extends MemoryCacheProvider {
   public timerOf(name: string, key: string): any {
@@ -18,7 +18,7 @@ class TestMemoryCacheProvider extends MemoryCacheProvider {
  * The CI symptom this pins: `lore quality push` pushed in 3.2s and then
  * held the runner for 5 more minutes. `HttpClient` caches any GET carrying an
  * `etag`, `$cache` gave it the 300s default TTL, and the refed eviction timer
- * kept Node's event loop alive for the whole of it — once per push, in front of
+ * kept Node's event loop alive for the whole of it, once per push, in front of
  * every deploy gated on that job.
  */
 describe("MemoryCacheProvider eviction timers", () => {

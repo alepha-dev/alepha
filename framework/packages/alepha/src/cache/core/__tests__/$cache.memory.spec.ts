@@ -11,7 +11,7 @@ import { $cache, CacheProvider, MemoryCacheProvider } from "../index.ts";
  * memory first; writes are write-through to both tiers. The L1 store is
  * per-primitive and uses lazy expiry + LRU eviction.
  *
- * In these tests, the L2 provider is also a fresh MemoryCacheProvider —
+ * In these tests, the L2 provider is also a fresh MemoryCacheProvider,
  * but it's a *separate* instance from the inline L1 Map inside the
  * primitive, so we can distinguish hits clearly via `provider.getCalls`.
  */
@@ -41,7 +41,7 @@ describe("$cache memory tier (L1)", () => {
     const providerGetsAfterFirst = provider.getCalls.length;
     expect(calls).toBe(1);
 
-    // Subsequent reads should hit L1 — no new provider gets.
+    // Subsequent reads should hit L1: no new provider gets.
     expect(await app.cache("a")).toBe("v:a");
     expect(await app.cache("a")).toBe("v:a");
     expect(await app.cache("a")).toBe("v:a");
@@ -107,7 +107,7 @@ describe("$cache memory tier (L1)", () => {
     expect(await app.cache()).toBe("v:1");
     expect(provider.getCalls.length).toBe(getsBeforeExpire);
 
-    // L1 expired but L2 still valid — fallback to provider, no handler call
+    // L1 expired but L2 still valid: fallback to provider, no handler call
     await time.travel([3, "seconds"]);
     expect(await app.cache()).toBe("v:1");
     expect(provider.getCalls.length).toBeGreaterThan(getsBeforeExpire);
@@ -377,7 +377,7 @@ describe("$cache memory tier (L1)", () => {
     const getsAfterFirst = provider.getCalls.length;
     expect(await app.fn("a")).toBe("v:a");
     expect(await app.fn("a")).toBe("v:a");
-    // L1 takes over — no new provider gets
+    // L1 takes over: no new provider gets
     expect(provider.getCalls.length).toBe(getsAfterFirst);
     expect(app.calls).toBe(1);
   });
@@ -408,6 +408,89 @@ describe("$cache memory tier (L1)", () => {
 
     expect(hits).toContain("k");
     expect(hits.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not emit cache:hit for a negative L1 entry", async () => {
+    class App {
+      cache = $cache<string>({
+        ttl: [5, "minutes"],
+        memory: { negative: [5, "seconds"] },
+      });
+    }
+
+    const alepha = Alepha.create().with({
+      provide: CacheProvider,
+      use: MemoryCacheProvider,
+    });
+    const app = alepha.inject(App);
+    const provider = alepha.inject(CacheProvider) as MemoryCacheProvider;
+    await alepha.start();
+
+    const hits: string[] = [];
+    const misses: string[] = [];
+    alepha.events.on("cache:hit", (e) => {
+      hits.push(e.key);
+    });
+    alepha.events.on("cache:missed", (e) => {
+      misses.push(e.key);
+    });
+
+    expect(await app.cache.get("nope")).toBeUndefined();
+    const getsAfterFirst = provider.getCalls.length;
+    expect(await app.cache.get("nope")).toBeUndefined();
+
+    // The second read was answered by the negative entry, and it is a miss.
+    expect(provider.getCalls.length).toBe(getsAfterFirst);
+    expect(hits).toEqual([]);
+    expect(misses).toEqual(["nope", "nope"]);
+  });
+
+  it("set() with a per-call ttl does not keep the entry in L1 past it", async () => {
+    class App {
+      cache = $cache<string>({
+        ttl: [10, "minutes"],
+        memory: true,
+      });
+    }
+
+    const alepha = Alepha.create().with({
+      provide: CacheProvider,
+      use: MemoryCacheProvider,
+    });
+    const app = alepha.inject(App);
+    const provider = alepha.inject(CacheProvider) as MemoryCacheProvider;
+    const time = alepha.inject(DateTimeProvider);
+    await alepha.start();
+
+    await app.cache.set("k", "v", [1, "second"]);
+    expect(await app.cache.get("k")).toBe("v");
+
+    await time.travel([5, "seconds"]);
+
+    expect(await provider.has("App:cache", "k")).toBe(false);
+    expect(await app.cache.get("k")).toBeUndefined();
+  });
+
+  it("a ttl shorter than `memory.ttl` bounds the L1 entry", async () => {
+    class App {
+      cache = $cache<string>({
+        ttl: [2, "seconds"],
+        memory: { ttl: [1, "minute"] },
+      });
+    }
+
+    const alepha = Alepha.create().with({
+      provide: CacheProvider,
+      use: MemoryCacheProvider,
+    });
+    const app = alepha.inject(App);
+    const time = alepha.inject(DateTimeProvider);
+    await alepha.start();
+
+    await app.cache.set("k", "v");
+    await time.travel([5, "seconds"]);
+
+    expect(await app.cache.get("k")).toBeUndefined();
   });
 
   it("memory option off (undefined) does not allocate an L1 store", () => {

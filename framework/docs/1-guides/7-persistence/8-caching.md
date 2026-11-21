@@ -117,11 +117,11 @@ A cache is a no-op until the container has started, when it is `disabled`, or wh
 
 `memory: true` puts a process-local memory cache in front of the provider. Reads check memory first and fall back to the provider on miss; writes go to both tiers, so your own writes are immediately visible. Each process/isolate has its own L1 - `invalidate()` clears the local L1 plus the remote provider, but other processes keep their L1 until its TTL expires, so use a short L1 TTL to bound the staleness window.
 
-Pass an object instead of `true` to tune it: `ttl` (default the smaller of the cache's `ttl` and 30 seconds), `max` (LRU bound, default 500 entries) and `negative` (also remember provider misses for that duration, off by default).
+Pass an object instead of `true` to tune it: `ttl` (default the smaller of the cache's `ttl` and 30 seconds), `max` (LRU bound, default 500 entries) and `negative` (also remember provider misses for that duration, off by default). How long an L1 entry lives depends on what made it: an entry made by a write is bounded by that write's `ttl`, a per-call `set(key, value, ttl)` included; an entry copied from a provider read lives the L1 `ttl` from the read, cut at the fresh deadline when `stale` is set. So without `stale`, a process that only read a value can keep serving it up to the L1 `ttl` after the provider dropped it. A read answered by a remembered miss emits `cache:missed`, like any other miss.
 
 ### Stale-While-Revalidate
 
-With `stale` set, a value that outlived its `ttl` remains servable for the `stale` window: reads return the stale value immediately and trigger one background refresh (single-flight per key). Requires a `handler`, or middleware mode, since the cache needs to know how to recompute.
+With `stale` set, a value that outlived its `ttl` remains servable for the `stale` window: reads return the stale value immediately and trigger one background refresh (single-flight per key). A refresh that fails leaves the stale value in place and is retried on the next stale read, with no backoff. Requires a `handler`, or middleware mode, since the cache needs to know how to recompute.
 
 ```typescript
 getPrices = $cache({
@@ -183,7 +183,7 @@ await this.sessions.set("session-123", sessionData, [30, "minutes"]);
 
 ### invalidate
 
-Remove one or more keys from the cache. Supports pattern-based invalidation with a trailing wildcard `*`.
+Remove one or more keys from the cache. A key ending in `*` invalidates every key that starts with what precedes it. That prefix is literal and case-sensitive on every backend: only the trailing `*` is a wildcard.
 
 ```typescript
 // Invalidate a specific key

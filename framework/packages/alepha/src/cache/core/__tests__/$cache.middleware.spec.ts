@@ -145,7 +145,7 @@ describe("$cache middleware", () => {
     await alepha.start();
 
     expect(await svc.fn("a", "x")).toBe("a:x");
-    // Same id, different extra — same cache key
+    // Same id, different extra: same cache key
     expect(await svc.fn("a", "y")).toBe("a:x");
     expect(calls).toBe(1);
 

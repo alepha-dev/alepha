@@ -17,7 +17,8 @@ import {
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
   testCacheKeys,
-  testCacheMissingProvider,
+  testCacheLiteralFilter,
+  testCacheNotStarted,
   testCachePrimitiveIncr,
   testCachePrimitiveIncrDefaultTtl,
   testCacheContainerIsolation,
@@ -39,8 +40,8 @@ describe("$cache", () => {
     await testCacheStop();
   });
 
-  it("should handle missing provider", async () => {
-    await testCacheMissingProvider();
+  it("should not cache before the container starts", async () => {
+    await testCacheNotStarted();
   });
 
   it("should handle disabled cache", async () => {
@@ -126,6 +127,10 @@ describe("$cache", () => {
 
   it("should return and accept caller-side keys", async () => {
     await testCacheKeyContract();
+  });
+
+  it("should match a key filter and a container name literally", async () => {
+    await testCacheLiteralFilter();
   });
 
   it("should increment values atomically", async () => {

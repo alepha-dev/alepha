@@ -15,50 +15,8 @@ import { $cache } from "../index.ts";
 import { AlephaCache as AlephaCacheWorkerd } from "../index.workerd.ts";
 import { CacheProvider } from "../providers/CacheProvider.ts";
 import { CloudflareCacheProvider } from "../providers/CloudflareCacheProvider.ts";
-import {
-  KV_DEFAULT_BINDING,
-  type KVListOptions,
-  type KVListResult,
-  type KVPutOptions,
-} from "../providers/CloudflareKVProvider.ts";
-
-/**
- * Enough of a KV namespace to say whether anything reached it.
- */
-class FakeKV {
-  public puts: Array<{ key: string; options?: KVPutOptions }> = [];
-  protected store = new Map<string, ArrayBuffer | string>();
-
-  async get(key: string, type?: "text" | "arrayBuffer"): Promise<any> {
-    const value = this.store.get(key);
-    if (value === undefined) return null;
-    // oxlint-disable-next-line typescript/no-base-to-string
-    return type === "arrayBuffer" ? value : String(value);
-  }
-
-  async put(
-    key: string,
-    value: string | ArrayBuffer,
-    options?: KVPutOptions,
-  ): Promise<void> {
-    this.puts.push({ key, options });
-    this.store.set(key, value);
-  }
-
-  async delete(key: string): Promise<void> {
-    this.store.delete(key);
-  }
-
-  async list(options?: KVListOptions): Promise<KVListResult> {
-    const prefix = options?.prefix ?? "";
-    return {
-      keys: [...this.store.keys()]
-        .filter((name) => name.startsWith(prefix))
-        .map((name) => ({ name })),
-      list_complete: true,
-    };
-  }
-}
+import { KV_DEFAULT_BINDING } from "../providers/CloudflareKVProvider.ts";
+import { FakeKV } from "./FakeKV.ts";
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 
@@ -184,8 +142,8 @@ describe("CloudflareCacheProvider", () => {
 
     /**
      * The whole point of the new default: KV cannot do this without losing
-     * updates, which is why five `$cache` call sites in `api/users` and
-     * `api/oauth` pin the database provider by hand.
+     * updates, which is why the attempt counters of `api/users` pin the
+     * database provider by hand.
      */
     it("forwards incr to a target that counts atomically", async () => {
       const cache = (await booted()).inject(CacheProvider);

@@ -25,7 +25,7 @@ const make = (
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("DatabaseCacheProvider — atomic incr", () => {
+describe("DatabaseCacheProvider: atomic incr", () => {
   it("increments through SQL upsert (no read/modify/write race)", async () => {
     const { alepha, provider } = make();
     await alepha.start();
@@ -71,7 +71,7 @@ describe("DatabaseCacheProvider — atomic incr", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("DatabaseCacheProvider — lazy expiration on read", () => {
+describe("DatabaseCacheProvider: lazy expiration on read", () => {
   it("returns undefined for an expired entry without sweeping it first", async () => {
     const { alepha, provider } = make();
     await alepha.start();
@@ -114,7 +114,7 @@ describe("DatabaseCacheProvider — lazy expiration on read", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("DatabaseCacheProvider — opportunistic sweep", () => {
+describe("DatabaseCacheProvider: opportunistic sweep", () => {
   it("does nothing when sweepProbability is 0", async () => {
     const { alepha, provider } = make((app) => {
       app.store.mut(databaseCacheOptions, (cur) => ({
@@ -179,7 +179,7 @@ describe("DatabaseCacheProvider — opportunistic sweep", () => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("DatabaseCacheProvider — provider option on $cache", () => {
+describe("DatabaseCacheProvider: provider option on $cache", () => {
   it("$cache({ provider: DatabaseCacheProvider }) routes to the SQL backend even when the default CacheProvider is something else", async () => {
     class App {
       // Default fallback CacheProvider is MemoryCacheProvider in this test.
@@ -191,7 +191,7 @@ describe("DatabaseCacheProvider — provider option on $cache", () => {
     const alepha = Alepha.create({
       env: { DATABASE_URL: "sqlite://:memory:" },
     });
-    // Note: NO substitution of CacheProvider — the framework default is in
+    // Note: NO substitution of CacheProvider: the framework default is in
     // play. The pinned `$cache` should still reach DatabaseCacheProvider via
     // the explicit option.
     const app = alepha.inject(App);

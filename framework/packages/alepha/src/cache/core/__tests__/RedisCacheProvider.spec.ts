@@ -24,7 +24,8 @@ import {
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
   testCacheKeys,
-  testCacheMissingProvider,
+  testCacheLiteralFilter,
+  testCacheNotStarted,
   testCachePrimitiveIncr,
   testCachePrimitiveIncrDefaultTtl,
   testCacheContainerIsolation,
@@ -56,8 +57,8 @@ describe("$cache - redis", () => {
     await testCacheStop(configure(), provider);
   });
 
-  it("should handle missing provider", async () => {
-    await testCacheMissingProvider(configure(), provider);
+  it("should not cache before the container starts", async () => {
+    await testCacheNotStarted(configure(), provider);
   });
 
   it("should handle disabled cache", async () => {
@@ -89,7 +90,7 @@ describe("$cache - redis", () => {
   });
 
   it("should handle unique key with args", async () => {
-    await testSimpleKeyMappingHandler();
+    await testSimpleKeyMappingHandler(configure(), provider);
   });
 
   it("should clear provider cache", async () => {
@@ -102,6 +103,10 @@ describe("$cache - redis", () => {
 
   it("should return and accept caller-side keys", async () => {
     await testCacheKeyContract(configure(), provider);
+  });
+
+  it("should match a key filter and a container name literally", async () => {
+    await testCacheLiteralFilter(configure(), provider);
   });
 
   it("should increment values atomically", async () => {

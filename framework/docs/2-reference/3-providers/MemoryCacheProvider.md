@@ -8,7 +8,11 @@ import { MemoryCacheProvider } from "alepha/cache";
 
 ## Overview
 
-In-memory implementation of CacheProvider for testing.
+Cache entries in this process's memory.
 
-This provider stores all cache entries in memory, making it ideal for
-unit tests that need to verify cache operations without touching Redis or other backends.
+The default `CacheProvider` on Node and Bun when `REDIS_URL` is not set,
+and what `$cache({ provider: "memory" })` resolves to whatever the default
+is. Entries belong to one process and are lost when it exits.
+
+Under test it also records its calls, so a spec can assert on cache
+behavior without a backend.

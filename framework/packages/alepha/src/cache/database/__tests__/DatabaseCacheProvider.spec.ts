@@ -15,7 +15,8 @@ import {
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
   testCacheKeys,
-  testCacheMissingProvider,
+  testCacheLiteralFilter,
+  testCacheNotStarted,
   testCachePrimitiveIncr,
   testCachePrimitiveIncrDefaultTtl,
   testCacheContainerIsolation,
@@ -32,7 +33,7 @@ const provider = DatabaseCacheProvider;
 // Override DATABASE_URL via process.env BEFORE Alepha.create() runs in each
 // shared test. The shared `testSimpleKeyMappingHandler` instantiates the app
 // (and therefore the SQLite provider) inside the .with() chain, BEFORE the
-// `configure` callback runs — so we can't rely on `app.store.set("env", ...)`
+// `configure` callback runs, so we can't rely on `app.store.set("env", ...)`
 // to flip the URL fast enough; the env schema has already been parsed and
 // cached by the time configure fires.
 const sqlite = () => (_app: Alepha) => {};
@@ -50,8 +51,8 @@ describe("$cache - database (sqlite)", () => {
     await testCacheBasic(sqlite(), provider);
   });
 
-  it("should handle missing provider", async () => {
-    await testCacheMissingProvider(sqlite(), provider);
+  it("should not cache before the container starts", async () => {
+    await testCacheNotStarted(sqlite(), provider);
   });
 
   it("should handle disabled cache", async () => {
@@ -96,6 +97,10 @@ describe("$cache - database (sqlite)", () => {
 
   it("should return and accept caller-side keys", async () => {
     await testCacheKeyContract(sqlite(), provider);
+  });
+
+  it("should match a key filter and a container name literally", async () => {
+    await testCacheLiteralFilter(sqlite(), provider);
   });
 
   it("should increment values atomically", async () => {
