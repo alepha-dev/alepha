@@ -137,7 +137,7 @@ describe("create-alepha", () => {
     const { fs, cli, cmd, asker } = createTestEnv();
     await expect(
       cli.run(cmd.root, { root: "/project", argv: "my-app --yes --infra bay" }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/Invalid flag: \/infra Invalid option/);
     expect(asker.questionCount).toBe(0);
     expect(fs.writeFileCalls).toHaveLength(0);
   });
