@@ -72,7 +72,7 @@ export abstract class RouterProvider<T extends Route = Route> {
    * a malformed path throws where it is declared, not at the first match.
    */
   protected parse(route: T): RouteSegment[] {
-    const path = route.path.replaceAll("//", "/");
+    const path = route.path.replace(/\/{2,}/g, "/");
 
     this.test(path);
 
@@ -174,8 +174,8 @@ export abstract class RouterProvider<T extends Route = Route> {
     for (const [index, value] of hit.captures) {
       const name = names?.get(index);
       // A position the matched route does not name is a position it does not
-      // want: only a route registered UNDER a param node can be reached
-      // through one, so this only skips a wildcard's trailing segments.
+      // want. Every capture is named today (a wildcard tail is reported as
+      // `hit.wildcard`, never as a capture), so this is a guard only.
       if (name) {
         params[name] = value;
       }
@@ -192,7 +192,7 @@ export abstract class RouterProvider<T extends Route = Route> {
    * Depth-first search with backtracking, static child first.
    *
    * A greedy walk cannot do this: with `/a/{x}` and `/a/b/c` registered it
-   * descends into the static `b`, finds no route there, and gives up — 404 on
+   * descends into the static `b`, finds no route there, and gives up: 404 on
    * a route the caller declared. Here a failed subtree returns `undefined` and
    * the caller tries the next alternative at its own level.
    *
@@ -208,7 +208,7 @@ export abstract class RouterProvider<T extends Route = Route> {
       if (node.route) {
         return { route: node.route, captures: [] };
       }
-      // "/a/*" also answers "/a" — with an empty capture.
+      // "/a/*" also answers "/a", with an empty capture.
       if (node.wildcard) {
         return { route: node.wildcard.route, captures: [], wildcard: "" };
       }
@@ -259,7 +259,7 @@ export abstract class RouterProvider<T extends Route = Route> {
    * Query values already go through a decoder, so leaving path params raw made
    * the same string arrive decoded as `?q=john%20doe` and literal as
    * `/:id`. A malformed sequence (`100%`) is kept verbatim rather than
-   * throwing — a bad escape in a URL is a 404 at worst, never a 500.
+   * throwing: a bad escape in a URL is a 404 at worst, never a 500.
    */
   protected decodeParam(value: string): string {
     if (!value.includes("%")) {
@@ -274,7 +274,7 @@ export abstract class RouterProvider<T extends Route = Route> {
   }
 
   protected createParts(path: string): string[] {
-    let pathname = path.split("?")[0].replaceAll("//", "/");
+    let pathname = path.split("?")[0].replace(/\/{2,}/g, "/");
 
     // remove trailing slash
     if (pathname.endsWith("/") && pathname.length > 1) {

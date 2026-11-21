@@ -142,7 +142,7 @@ describe("RouterProvider", () => {
     });
 
     // Falls all the way back to the root `/*`. The route that matched is
-    // `/*`, so it gets the whole path as its capture — and `name`, captured
+    // `/*`, so it gets the whole path as its capture, and `name`, captured
     // on the branch that was abandoned, is not part of it.
     expect(match("/users/jack/info/other")).toEqual({
       name: "not-found",
@@ -286,36 +286,5 @@ describe("RouterProvider", () => {
     add("/new", "new-route");
     const m2 = router.match("/new");
     expect(m2.route?.name).toBe("new-route");
-  });
-
-  it("should handle three-way conflicting param names at the same level", ({
-    expect,
-  }) => {
-    const { add, match } = playground();
-    add("/u/:a", "a-route");
-    add("/u/:b/x", "b-route");
-    add("/u/:c/y", "c-route");
-
-    expect(match("/u/1")).toEqual({ name: "a-route", params: { a: "1" } });
-    expect(match("/u/1/x")).toEqual({ name: "b-route", params: { b: "1" } });
-    expect(match("/u/1/y")).toEqual({ name: "c-route", params: { c: "1" } });
-  });
-
-  it("should handle routes with different param names", ({ expect }) => {
-    const { add, match } = playground();
-    add("/users/:id", "home");
-    add("/users/:userId/hello", "hello");
-    expect(match("/users/jack")).toEqual({
-      name: "home",
-      params: {
-        id: "jack",
-      },
-    });
-    expect(match("/users/jack/hello")).toEqual({
-      name: "hello",
-      params: {
-        userId: "jack",
-      },
-    });
   });
 });

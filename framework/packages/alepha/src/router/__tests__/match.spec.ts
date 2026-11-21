@@ -250,7 +250,7 @@ describe("match", () => {
       add("/users/jack/profile", "profile");
 
       // Dead-ends at "settings" under the static "jack" branch and unwinds to
-      // /users/* — which used to arrive with no "*" entry at all, so static
+      // /users/*, which used to arrive with no "*" entry at all, so static
       // file serving and catch-alls read `undefined`.
       expect(match("/users/jack/settings")).toEqual({
         name: "catch_all",
@@ -328,6 +328,12 @@ describe("match", () => {
     test("should handle empty path parts correctly", () => {
       add("/a//b", "double_slash"); // Should be treated as /a/b
       expect(match("/a/b")).toEqual({ name: "double_slash", params: {} });
+      expect(match("/a//b")).toEqual({ name: "double_slash", params: {} });
+      expect(match("/a///b")).toEqual({ name: "double_slash", params: {} });
+      expect(match("////a////b")).toEqual({
+        name: "double_slash",
+        params: {},
+      });
     });
   });
 });

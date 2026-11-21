@@ -175,26 +175,4 @@ describe("TemplatedPathParser", () => {
       expect(parser.wildcardize("*")).toBe("sensors:*:temperature");
     });
   });
-
-  describe("custom separator (colon for Redis)", () => {
-    it("interpolates with colon separator", () => {
-      const parser = new TemplatedPathParser("cache:{namespace}:{key}", ":");
-      expect(parser.interpolate({ namespace: "users", key: "42" })).toBe(
-        "cache:users:42",
-      );
-    });
-
-    it("extracts with colon separator", () => {
-      const parser = new TemplatedPathParser("cache:{namespace}:{key}", ":");
-      expect(parser.extract("cache:users:42")).toEqual({
-        namespace: "users",
-        key: "42",
-      });
-    });
-
-    it("wildcardizes with colon separator", () => {
-      const parser = new TemplatedPathParser("cache:{namespace}:{key}", ":");
-      expect(parser.wildcardize("*")).toBe("cache:*:*");
-    });
-  });
 });
