@@ -2,12 +2,12 @@
 
 This repository holds three products side by side (#Q2765, folio #F1398 of the Alepha project):
 
-| folder       | product                                     | read first            | Lore areas                     |
-| ------------ | ------------------------------------------- | --------------------- | ------------------------------ |
+| folder       | product                                             | read first            | Lore areas                     |
+| ------------ | --------------------------------------------------- | --------------------- | ------------------------------ |
 | `framework/` | Alepha, the framework (`alepha`, `@alepha/ui`, ...) | `framework/AGENTS.md` | `alepha/*`, `@alepha/*`, `cli` |
-| `lore/`      | Lore, the app, its CLI and its modules      | `lore/AGENTS.md`      | `lore/*`                       |
-| `bay/`       | Bay, the Go application server              | `bay/AGENTS.md`       | `bay`                          |
-| `docs/`      | alepha.dev, the site documenting all three   | this file             | `docs`                         |
+| `lore/`      | Lore, the app, its CLI and its modules              | `lore/AGENTS.md`      | `lore/*`                       |
+| `bay/`       | Bay, the Go application server                      | `bay/AGENTS.md`       | `bay`                          |
+| `docs/`      | alepha.dev, the site documenting all three          | this file             | `docs`                         |
 
 All three products are planned in ONE Lore project, **Alepha** (`https://lore.alepha.app/alepha`, id `1`), since #E94 (2026-10-27): a quest says which product it is for by its `area`. A change spanning two products takes the area of the one it is for, and names the other in its description. The projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number either used after 2026-10-01 that project 1 already held was renumbered, and folios #F1422 (Lore) and #F1427 (Bay) map the old number to the new one.
 
@@ -40,7 +40,7 @@ A step's own `working-directory` is relative to the repository root, so it names
 
 ## The workflow
 
-The framework's rules apply to the whole repository (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, staged by explicit path and naming its quest as `#Q<n>`; every pull request rebase-merged through the merge queue with auto-merge on (`gh pr merge --auto --rebase`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. A worktree goes under `.claude/worktrees/<name>` at the repository root, never in a sibling folder of the checkout. See "The workflow" in `framework/AGENTS.md`.
+The framework's rules apply to the whole repository (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, staged by explicit path and naming its quest as `#Q<n>`; every pull request rebase-merged through the merge queue with auto-merge on (`gh pr merge --auto --rebase`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. A worktree goes under `.worktrees/<name>` at the repository root, never in a sibling folder of the checkout. See "The workflow" in `framework/AGENTS.md`.
 
 ## What the repository may name
 

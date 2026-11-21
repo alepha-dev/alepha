@@ -23,7 +23,7 @@ This suite used to run on **3303 — the same port as `yarn dev`**. With `reuseE
 E2E_PORT=4999 yarn w e2e web quest.spec.ts
 ```
 
-Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> -d cwd`. A `node dist` whose cwd sits under `.claude/worktrees/` belongs to another agent's run.
+Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> -d cwd`. A `node dist` whose cwd sits under `.worktrees/` (or an older `.claude/worktrees/`) belongs to another agent's run.
 
 ## One Lore instance per worker, and why `fullyParallel` is on
 

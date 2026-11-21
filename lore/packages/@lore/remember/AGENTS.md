@@ -41,27 +41,27 @@ Live in `src/web/app/atoms/`, filled by this module's `ProjectLoaderRegistry` en
 
 > `folioTagsAtom` and `currentFolioContentsAtom` are **gone** — the first with the tag feature (feedback #62), the second with the directory table the workspace replaced.
 
-## Folios are this project's memory for Claude
+## Folios are this project's memory for agents
 
-Folios are markdown notes scoped to a **project** and shared across all its members (they were per-user before quest #65) — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the project level: persistent across sessions, exportable, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore project should look for context and write down what it learns.
+Folios are markdown notes scoped to a **project** and shared across all its members (they were per-user before quest #65) — they mirror a per-repo agent memory file (`MEMORY.md`) but at the project level: persistent across sessions, exportable, readable over MCP and the `lore` CLI. Treat them as the canonical place where any agent working on a Lore project should look for context and write down what it learns.
 
 Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** module — the directory tree + binary blobs that used to have their own URL path, entities (`archiveDirectories`/`archiveBlobs`/`archiveNames`) and MCP tool class (`ArchiveTools`). Folios live in a directory tree rather than nesting under each other. `folioDirectories` is the tree (depth-capped at 8), `folioAttachments` holds binary attachments, and `folioNames` backs name-uniqueness. `folios.directoryId` is `undefined` for the project root and **cascades on directory delete** — removing a directory removes everything in it, folios included. Surfaced at `/:projectSlug/folios` and over MCP via `FolioTools` (`directory_*`, `folio_attachment_*` tools live in this same file now).
 
-**Conventions** (apply when curating folios — yourself or via Claude):
+**Conventions** (apply when curating folios — yourself or via an agent):
 
 - One topic per folio. The title is the topic and the `summary` is the taxonomy — folios carry no tags (the tag feature was removed in feedback #62, and `folios.tags` dropped with #E74). Say what kind of note it is in the summary's first clause, since that is the line `project_context` shows.
 - Keep folios short and self-contained. A folio that needs scrolling is two folios.
-- When an agent creates a folio via MCP, it should always provide a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `project_context` returns a self-explanatory index. It is the only orientation field there is now. Web-created folios may leave `summary` empty — the index falls back to the title.
+- When an agent creates a folio (via MCP or the `lore` CLI), it should always provide a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `project_context` returns a self-explanatory index. It is the only orientation field there is now. Web-created folios may leave `summary` empty — the index falls back to the title.
 - Cross-link with the typed grammar of epic #32, and nothing else: `[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release, the number being the per-project id. A title, a path, a `quest:` prefix or a `#anchor` between the brackets is not a reference and renders as a broken link. Links re-sync on every save; agents see them as `links.outbound` / `links.inbound` on `folio_get` and humans see them in the Links tab of the inspector.
 
-**MCP orientation flow** (every AI client should follow this on a fresh task):
+**Agent orientation flow** (every AI client should follow this on a fresh task, via MCP or the equivalent `lore` CLI commands):
 
 1. `project_context` — one-shot orientation: project metadata + active quests + folio index (~2K tokens, no folio bodies).
 2. `folio_get` / `quest_get` on the specific entries that look relevant.
 3. `folio_create` / `folio_update` when the agent decides something worth remembering long-term.
 4. A folio that belongs to an epic is filed with `epic_number` on `folio_create` / `folio_update` (0 detaches), exactly like quests. `epic_get` lists the attached folios, `folio_list` takes an `epic` filter, and every folio row carries its `epic` ref. A design folio left unattached is how an epic's Folios tab ends up reading 0.
 
-The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/FolioTools.ts` are the public-facing version of this convention — every Claude reads them on connect. Keep them sharp.
+The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/FolioTools.ts` are the public-facing version of this convention — every agent reads them on connect. Keep them sharp.
 
 **Where to look**
 
