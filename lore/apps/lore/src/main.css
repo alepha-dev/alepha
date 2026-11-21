@@ -1034,14 +1034,24 @@ body::before {
  * uses, so View and Edit finally agree on measure and rhythm and the
  * toggle stops moving the text.
  *
- * Scoped to the folio document: quest and epic description fields keep the
- * monospace face they were designed against.
+ * Scoped to the folio document (and the discussion composer, below): quest
+ * and epic description fields keep the monospace face they were designed
+ * against.
  *
  * ⚠️ Code fences inherit the text face here, which is wrong and stays wrong
  * until the live-preview decorations give fence contents a mono face of
  * their own.
  */
 [data-slot="folio-document"] .cm-content {
+  font-family: var(--font-sans);
+}
+
+/*
+ * A discussion comment, on a quest or a feedback item, is written in the
+ * face it is read in (#Q4056): the editor, its placeholder included, takes
+ * the app's text face rather than the description fields' monospace.
+ */
+[data-slot="discussion-composer"] .cm-content {
   font-family: var(--font-sans);
 }
 
