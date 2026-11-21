@@ -192,6 +192,10 @@ export class WorkShell {
           labelKey: "project.settings.tab.board",
         },
         {
+          route: "projectSettingsTagColors",
+          labelKey: "project.settings.tab.tagColors",
+        },
+        {
           route: "projectSettingsPrompts",
           labelKey: "project.settings.tab.prompts",
           // Requirements' six kinds are edited here too, with `agentPrompts`

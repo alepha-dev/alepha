@@ -1,5 +1,3 @@
-import { Card, CardContent, cn } from "@alepha/ui";
-import { settingsCardEdge } from "@alepha/ui/settings";
 import {
   currentProjectAtom,
   ProjectShellRegistry,
@@ -9,15 +7,13 @@ import {
 import { useInject, useStore } from "alepha/react";
 
 import ProjectSettingsRoadmapSection from "./ProjectSettingsRoadmapSection.tsx";
-import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 
 /**
- * Quests > Features: how quests behave, their tag colours, and who may read
- * the roadmap.
+ * Quests > Features: how quests behave, and who may read the roadmap.
  *
  * The master switch and the options that add a sidebar entry (board, epics,
- * releases) are in General > Capabilities since #Q2565. The board's columns
- * and the agent prompts have tabs of their own.
+ * releases) are in General > Capabilities since #Q2565. The board's columns,
+ * the tag colours (#Q4061) and the prompts have tabs of their own.
  */
 const ProjectSettingsWorkPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -31,16 +27,6 @@ const ProjectSettingsWorkPage = () => {
         master={false}
         options={shell.settingsOptions("plan")}
       />
-
-      {/* Tag colours belong to quests, not to the board: they render on the
-          list too. Gated on the capability, not on `board`. */}
-      {workEnabled && (
-        <Card className={cn(settingsCardEdge, "py-4")}>
-          <CardContent className="px-4">
-            <ProjectSettingsTagColors />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Who may read `/:projectSlug/roadmap`. It draws releases and the
           epics inside them, so it moved here with them from the Releases
