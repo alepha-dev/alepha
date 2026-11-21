@@ -8,6 +8,23 @@ import type { I18nProvider } from "alepha/react/i18n";
 type TrFunction = I18nProvider<any, any>["tr"];
 
 /**
+ * Offered in the currency picker. Not an exhaustive ISO-4217 list - a picker
+ * with 180 entries is worse than one with eight, and the caller merges in
+ * whatever the product is already priced in so an unusual currency already set
+ * never silently disappears from its own form.
+ */
+const COMMON_CURRENCIES = [
+  "EUR",
+  "USD",
+  "GBP",
+  "CHF",
+  "CAD",
+  "AUD",
+  "JPY",
+  "SEK",
+];
+
+/**
  * The product editor's schema.
  *
  * Built per render rather than declared at module scope because both its
@@ -25,23 +42,6 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * `images`, `attributes` and `config` deliberately stay out: they have their
  * own tabs, because an upload grid and a key/value editor are not form fields.
  */
-/**
- * Offered in the currency picker. Not an exhaustive ISO-4217 list - a picker
- * with 180 entries is worse than one with eight, and the caller merges in
- * whatever the product is already priced in so an unusual currency already set
- * never silently disappears from its own form.
- */
-const COMMON_CURRENCIES = [
-  "EUR",
-  "USD",
-  "GBP",
-  "CHF",
-  "CAD",
-  "AUD",
-  "JPY",
-  "SEK",
-];
-
 export const productFormSchema = (
   tr: TrFunction,
   kinds: string[],

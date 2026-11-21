@@ -386,7 +386,18 @@ const AdminPromotionSheet = (props: AdminPromotionSheetProps) => {
         if (promotion) {
           await client.commerceAdminPromotionUpdate({
             params: { id: promotion.id },
-            body: values,
+            // An emptied field arrives absent, which an update reads as
+            // "leave it": a code or a limit could never come off.
+            body: {
+              ...values,
+              code: values.code ?? null,
+              minSubtotal: values.minSubtotal ?? null,
+              currency: values.currency ?? null,
+              startsAt: values.startsAt ?? null,
+              endsAt: values.endsAt ?? null,
+              usageLimit: values.usageLimit ?? null,
+              usagePerCustomer: values.usagePerCustomer ?? null,
+            },
           });
         } else {
           await client.commerceAdminPromotionCreate({ body: values });

@@ -1,7 +1,7 @@
 import { $inject, type Infer, z } from "alepha";
 import { db } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, BadRequestError, NotFoundError } from "alepha/server";
 
 import { orderItems } from "../../entities/orderItems.ts";
 import { productPrices } from "../../entities/productPrices.ts";
@@ -57,6 +57,17 @@ const variantInputSchema = z.object({
   active: z.boolean().optional(),
 });
 
+/**
+ * `null` clears what an update would otherwise leave alone: the variant falls
+ * back to its product's price, compare-at price and weight.
+ */
+const variantUpdateSchema = variantInputSchema.partial().extend({
+  price: z.integer().min(0).nullable().optional(),
+  compareAtPrice: z.integer().min(0).nullable().optional(),
+  image: z.text({ maxLength: 500 }).nullable().optional(),
+  weightGrams: z.integer().min(0).nullable().optional(),
+});
+
 const productInputSchema = z.object({
   kind: z.text({ maxLength: 64 }).optional(),
   slug: z.text({ minLength: 1, maxLength: 200 }),
@@ -92,9 +103,12 @@ const productInputSchema = z.object({
 
 /**
  * `null` clears what an update would otherwise leave alone: a sale ends by
- * taking the compare-at price off.
+ * taking the compare-at price off, a product goes back to the seller's default
+ * VAT rate, or out of its category.
  */
 const productUpdateSchema = productInputSchema.partial().extend({
+  categoryId: z.uuid().nullable().optional(),
+  vatRateBps: z.integer().min(0).max(10000).nullable().optional(),
   compareAtPrice: z.integer().min(0).nullable().optional(),
   metaTitle: z.text({ maxLength: 200 }).nullable().optional(),
   metaDescription: z.text({ maxLength: 500 }).nullable().optional(),
@@ -378,7 +392,9 @@ export class AdminProductController {
       params: z.object({ id: z.uuid() }),
       body: z.object({
         /**
-         * Signed, and refused at zero - see `StockService.recordAdjustment`.
+         * Signed for an adjustment (an intake or a return counts its absolute
+         * value), and refused at zero whatever the reason - see
+         * `StockService.recordAdjustment`.
          */
         quantity: z.integer().min(-100000).max(100000),
         reason: z.enum(["intake", "return", "adjustment"]),
@@ -392,6 +408,11 @@ export class AdminProductController {
       }),
     },
     handler: async ({ params, body }) => {
+      // A zero row says nothing and still shows in the ledger an operator
+      // reads, whatever its reason.
+      if (body.quantity === 0) {
+        throw new BadRequestError("A stock correction cannot be zero.");
+      }
       const variantId = await this.stockTarget(params.id, body.variantId);
       // An intake and a return are additions the ledger reports separately; an
       // adjustment is the only one that may go down.
@@ -448,8 +469,12 @@ export class AdminProductController {
       body: priceInputSchema,
       response: productPrices.schema,
     },
-    handler: async ({ params, body }) =>
-      this.prices.set(await this.catalog.getById(params.id), body),
+    handler: async ({ params, body }) => {
+      if (body.variantId) {
+        await this.variantOf(params.id, body.variantId);
+      }
+      return this.prices.set(await this.catalog.getById(params.id), body);
+    },
   });
 
   public readonly commerceAdminProductPriceRemove = $action({
@@ -529,11 +554,13 @@ export class AdminProductController {
     description: "Update a variant",
     schema: {
       params: z.object({ id: z.uuid(), variantId: z.uuid() }),
-      body: variantInputSchema.partial(),
+      body: variantUpdateSchema,
       response: productVariants.schema,
     },
-    handler: async ({ params, body }) =>
-      this.variants.update(params.variantId, body),
+    handler: async ({ params, body }) => {
+      await this.variantOf(params.id, params.variantId);
+      return this.variants.update(params.variantId, body);
+    },
   });
 
   public readonly commerceAdminProductVariantDelete = $action({
@@ -547,6 +574,7 @@ export class AdminProductController {
       response: z.object({ deleted: z.boolean() }),
     },
     handler: async ({ params }) => {
+      await this.variantOf(params.id, params.variantId);
       await this.variants.delete(params.variantId);
       return { deleted: true };
     },
@@ -633,6 +661,25 @@ export class AdminProductController {
       ...variant,
       ...stock.of(productId, variant.id),
     }));
+  }
+
+  /**
+   * The variant, refused unless it is one of the product's: a path naming
+   * another product's variant must not edit it.
+   *
+   * @throws NotFoundError
+   */
+  protected async variantOf(
+    productId: string,
+    variantId: string,
+  ): Promise<ProductVariantEntity> {
+    const variant = await this.variants.getById(variantId);
+    if (variant.productId !== productId) {
+      throw new NotFoundError(
+        `No such variant on product ${productId}: ${variantId}`,
+      );
+    }
+    return variant;
   }
 
   /**

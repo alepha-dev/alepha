@@ -203,6 +203,7 @@ export const commerceEn: Record<string, string> = {
   "commerce.admin.loading": "Loading…",
   "commerce.admin.maxDays": "Max. lead time (days)",
   "commerce.admin.minDays": "Min. lead time (days)",
+  "commerce.admin.nameRequired": "Name is required",
   "commerce.admin.newProduct": "New product",
   "commerce.admin.newRate": "New rate",
   "commerce.admin.noOrders": "No orders.",
@@ -240,6 +241,7 @@ export const commerceEn: Record<string, string> = {
     "Tracking number, if there is one. The customer receives it by email.",
   "commerce.admin.shipTitle": "Hand to the carrier",
   "commerce.admin.shippingLine": "Shipping",
+  "commerce.admin.slugRequired": "Reference is required",
   "commerce.admin.unpublish": "Remove from sale",
   "commerce.admin.unpublishConfirm":
     "“$1” will disappear from the shop. Orders already placed are unchanged.",
@@ -254,6 +256,7 @@ export const commerceEn: Record<string, string> = {
   "commerce.status.delivered": "Delivered",
   "commerce.status.fulfilled": "Fulfilled",
   "commerce.status.paid": "Paid",
+  "commerce.status.partially_refunded": "Partly refunded",
   "commerce.status.pending": "Pending",
   "commerce.status.refunded": "Refunded",
   "commerce.status.shipped": "Shipped",

@@ -215,6 +215,8 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
             ...values,
             // An emptied field arrives absent, which an update reads as "leave
             // it": the sale would never end.
+            categoryId: values.categoryId ?? null,
+            vatRateBps: values.vatRateBps ?? null,
             compareAtPrice: values.compareAtPrice ?? null,
             metaTitle: values.metaTitle ?? null,
             metaDescription: values.metaDescription ?? null,
@@ -251,6 +253,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       name: product.name,
       slug: product.slug,
       kind: product.kind,
+      categoryId: product.categoryId,
       price: product.price,
       currency: product.currency,
       compareAtPrice: product.compareAtPrice,

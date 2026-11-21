@@ -65,6 +65,8 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.restockConfirm": "Ajouter une unité de « $1 » au stock ?",
   "commerce.admin.restocked": "« $1 » : +1 en stock.",
   "commerce.admin.saved": "Produit enregistré.",
+  "commerce.admin.nameRequired": "Le nom est obligatoire",
+  "commerce.admin.slugRequired": "La référence est obligatoire",
   "commerce.admin.allKinds": "Tous les types",
 
   // Catalogue: columns
@@ -130,6 +132,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.status.delivered": "Reçue",
   "commerce.status.cancelled": "Annulée",
   "commerce.status.refunded": "Remboursée",
+  "commerce.status.partially_refunded": "Remboursée en partie",
 
   // Livraison: modes et tarifs
   "commerce.admin.noRates": "Aucun mode de livraison dans cette zone.",

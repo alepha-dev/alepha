@@ -21,6 +21,20 @@ const promotionInputSchema = z.object({
 });
 
 /**
+ * `null` clears what an update would otherwise leave alone: a code comes off
+ * (the promotion turns automatic), a limit or an end of the window goes.
+ */
+const promotionUpdateSchema = promotionInputSchema.partial().extend({
+  code: z.text({ minLength: 1, maxLength: 64 }).nullable().optional(),
+  minSubtotal: z.integer().min(0).nullable().optional(),
+  currency: z.text({ minLength: 3, maxLength: 3 }).nullable().optional(),
+  startsAt: z.text().nullable().optional(),
+  endsAt: z.text().nullable().optional(),
+  usageLimit: z.integer().min(1).nullable().optional(),
+  usagePerCustomer: z.integer().min(1).nullable().optional(),
+});
+
+/**
  * Promotion management. Reads answer how many times each has been used, which
  * is the first thing anyone asks of a code.
  */
@@ -72,7 +86,7 @@ export class AdminPromotionController {
     description: "Update a promotion",
     schema: {
       params: z.object({ id: z.uuid() }),
-      body: promotionInputSchema.partial(),
+      body: promotionUpdateSchema,
       response: promotions.schema,
     },
     handler: async ({ params, body }) =>

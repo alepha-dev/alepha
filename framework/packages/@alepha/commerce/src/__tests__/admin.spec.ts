@@ -223,7 +223,7 @@ describe("admin catalog", () => {
         },
         { user: admin },
       ),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/'fileId' is required/);
   });
 });
 

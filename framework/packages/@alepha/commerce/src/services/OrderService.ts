@@ -810,6 +810,10 @@ export class OrderService {
    * this codebase has been bitten by before. Conditional as well as guarded: of
    * two clicks that overlap, one ships and the other is refused, so the
    * shipping email goes out once.
+   *
+   * Once only: a partial refund moves a shipped or delivered order to
+   * `partially_refunded` too, and shipping that again would send a second
+   * shipping email, or move a delivered parcel back to `shipped`.
    */
   public async markShipped(
     id: string,
@@ -827,6 +831,7 @@ export class OrderService {
             : {}),
           ...(options.trackingUrl ? { trackingUrl: options.trackingUrl } : {}),
         },
+        { shippedAt: { isNull: true } },
       );
 
       await this.db.afterCommit(() =>
@@ -962,10 +967,11 @@ export class OrderService {
     id: string,
     from: OrderStatus[],
     patch: Partial<OrderEntity> & { status: OrderStatus },
+    where: { shippedAt?: { isNull: true } } = {},
   ): Promise<OrderEntity | undefined> {
     try {
       return await this.orderRepo.updateOne(
-        { id: { eq: id }, status: { inArray: from } },
+        { id: { eq: id }, status: { inArray: from }, ...where },
         patch,
       );
     } catch (error) {
@@ -984,8 +990,9 @@ export class OrderService {
     id: string,
     from: OrderStatus[],
     patch: Partial<OrderEntity> & { status: OrderStatus },
+    where: { shippedAt?: { isNull: true } } = {},
   ): Promise<OrderEntity> {
-    const order = await this.claim(id, from, patch);
+    const order = await this.claim(id, from, patch, where);
     if (!order) {
       throw this.refusedTransition(
         await this.orderRepo.getById(id),
