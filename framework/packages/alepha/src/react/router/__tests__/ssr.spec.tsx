@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 
 import { $page, NestedView } from "../index.ts";
 
@@ -10,7 +10,7 @@ describe("$page ssr option", () => {
     alepha = Alepha.create();
   });
 
-  test("default (no ssr option) renders server-side", async ({ expect }) => {
+  it("default (no ssr option) renders server-side", async ({ expect }) => {
     class App {
       home = $page({
         path: "/",
@@ -25,7 +25,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("Home content");
   });
 
-  test("ssr: true renders server-side", async ({ expect }) => {
+  it("ssr: true renders server-side", async ({ expect }) => {
     class App {
       home = $page({
         path: "/",
@@ -41,9 +41,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("Home content");
   });
 
-  test("ssr: false skips server rendering on a leaf page", async ({
-    expect,
-  }) => {
+  it("ssr: false skips server rendering on a leaf page", async ({ expect }) => {
     class App {
       home = $page({
         path: "/",
@@ -59,7 +57,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("");
   });
 
-  test("ssr: false still runs the loader server-side", async ({ expect }) => {
+  it("ssr: false still runs the loader server-side", async ({ expect }) => {
     let loaderCalls = 0;
 
     class App {
@@ -82,7 +80,7 @@ describe("$page ssr option", () => {
     expect(loaderCalls).toBe(1);
   });
 
-  test("parent ssr: false cascades to child without override", async ({
+  it("parent ssr: false cascades to child without override", async ({
     expect,
   }) => {
     class App {
@@ -111,7 +109,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("");
   });
 
-  test("child ssr: true overrides parent ssr: false (both render)", async ({
+  it("child ssr: true overrides parent ssr: false (both render)", async ({
     expect,
   }) => {
     class App {
@@ -141,7 +139,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("Parent<!-- -->Child");
   });
 
-  test("child ssr: false overrides parent ssr: true (skip everything)", async ({
+  it("child ssr: false overrides parent ssr: true (skip everything)", async ({
     expect,
   }) => {
     class App {
@@ -171,7 +169,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("");
   });
 
-  test("siblings: one inherits parent ssr: false, the other overrides", async ({
+  it("siblings: one inherits parent ssr: false, the other overrides", async ({
     expect,
   }) => {
     class App {
@@ -210,7 +208,7 @@ describe("$page ssr option", () => {
     expect(about.html).toBe("");
   });
 
-  test("3-level chain: nearest explicit ssr wins (leaf decides)", async ({
+  it("3-level chain: nearest explicit ssr wins (leaf decides)", async ({
     expect,
   }) => {
     class App {
@@ -253,7 +251,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("Grand<!-- -->Mid<!-- -->Leaf");
   });
 
-  test("3-level chain: middle ssr: true does not affect leaf without explicit value", async ({
+  it("3-level chain: middle ssr: true does not affect leaf without explicit value", async ({
     expect,
   }) => {
     class App {
@@ -296,7 +294,7 @@ describe("$page ssr option", () => {
     expect(rendered.html).toBe("Grand<!-- -->Mid<!-- -->Leaf");
   });
 
-  test("parent ssr: false: loaders still run for parent and child", async ({
+  it("parent ssr: false: loaders still run for parent and child", async ({
     expect,
   }) => {
     let parentLoaderCalls = 0;

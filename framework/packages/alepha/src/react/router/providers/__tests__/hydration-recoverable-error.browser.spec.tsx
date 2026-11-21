@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -111,29 +111,39 @@ describe("a recoverable render error on the browser", () => {
   /**
    * A client-rendered boot has the same blank-report problem and no hydration
    * at all, so `createRoot` takes the option too. Driven here through a render
-   * that throws and is recovered by React's own retry.
+   * that throws once and is recovered by React's own retry.
    */
   it("is wired on the client-rendered root as well", async () => {
-    const { alepha } = await setup();
-    const renderer = alepha.inject(ReactBrowserRendererProvider) as any;
+    const { alepha, events } = await setup();
 
     const root = document.createElement("div");
     root.id = "root-csr";
     document.body.append(root);
 
+    let attempts = 0;
+    const Flaky = () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new AlephaError("first attempt");
+      }
+      return createElement("p", null, "client only");
+    };
+
     await alepha.events.emit("react:browser:render:before", {
       root,
-      element: createElement("p", null, "client only"),
-      state: stateFor("http://localhost/"),
+      element: createElement(Flaky),
+      state: stateFor("http://localhost/client"),
       hydration: undefined,
     });
 
     // `render` on a concurrent root is not synchronous.
-    await settle(() => root.textContent !== "");
+    await settle(() => events.length > 0);
 
-    // The root React actually created, not a claim about which branch ran:
-    // `hydration` was absent, so this must be the `createRoot` one.
-    expect(renderer.root).toBeDefined();
     expect(root.textContent).toContain("client only");
+    expect(events).toHaveLength(1);
+    expect(((events[0].error as Error).cause as Error).message).toBe(
+      "first attempt",
+    );
+    expect(events[0].state.url.pathname).toBe("/client");
   });
 });

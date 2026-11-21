@@ -93,7 +93,16 @@ A personal page is never cached, whatever `cache` says. A `$cache` middleware in
 
 ### What makes the key
 
-`page:<build>:<page>:<params>:<query>:<language>`. Only the query parameters the page declares in `schema.query` count. A request carrying a query parameter the page does not declare bypasses the cache: a page without a query schema receives the raw query and may print it, so a `/reset?token=...` must never be served to the next visitor. Links carrying `utm_*` therefore miss the cache until the page declares them.
+`page:<build>:<page>:<params>:<query>:<language>:<origin>`. Params and query are each written as JSON, names and values escaped, so a value holding `&` or `=` cannot pass for a second parameter. A param or query value is written as the text the URL carries, so a purge handed `{ id: 5 }` reaches the entries of `/item/5`.
+
+The origin is there because a page may print the request's, and the request's origin is its `Host` header, which the client chooses:
+
+- **With `PUBLIC_URL` set**, every key carries `PUBLIC_URL`'s origin. A request whose host is another one is rendered and answered, but never read from the cache nor written to it. Host means name and port, so this covers a forged `Host`, an IP address and a preview hostname, and also four ordinary setups: an alias of the site (`cloudflare({ domain, aliases })`, which derives `PUBLIC_URL` from `domain`), an apex and its `www` both attached with no redirect, a proxy that rewrites `Host` to the upstream's, and another port (`alepha dev` of an app whose config sets `PUBLIC_URL`). The server warns once per such host, for the first few. Serve the site on its `PUBLIC_URL` host and redirect the others to it, or make the proxy pass the original `Host`. The absolute URLs the framework writes (the `hreflang` alternates, the canonical link, the sitemap) come from `PUBLIC_URL` too.
+- **Without it**, the key carries the request's own origin, its host lower-cased and without a trailing dot. One host is never served another's bytes, but each made-up `Host` gets an entry of its own, which lives until its TTL.
+
+> **Set `PUBLIC_URL` in production** for any app that serves a cacheable page. It is what keeps a forged `Host` out of the cache entirely.
+
+Only the query parameters the page declares in `schema.query` count. A request carrying a query parameter the page does not declare bypasses the cache: a page without a query schema receives the raw query and may print it, so a `/reset?token=...` must never be served to the next visitor. Links carrying `utm_*` therefore miss the cache until the page declares them.
 
 ### Never written
 

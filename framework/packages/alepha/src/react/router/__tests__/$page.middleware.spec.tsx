@@ -1,10 +1,10 @@
 import { Alepha, createMiddleware, type Middleware } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { $page, PagePrimitive } from "../index.ts";
 
 describe("$page middleware", () => {
-  test("applies middleware to server handler (wraps loader + render)", async ({
+  it("applies middleware to server handler (wraps loader + render)", async ({
     expect,
   }) => {
     const alepha = Alepha.create();
@@ -45,7 +45,7 @@ describe("$page middleware", () => {
     expect(calls).toEqual(["before", "loader", "after"]);
   });
 
-  test("works without middleware", async ({ expect }) => {
+  it("works without middleware", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class App {
@@ -63,7 +63,7 @@ describe("$page middleware", () => {
     expect(result.html).toBe("ok");
   });
 
-  test("works with empty use array", async ({ expect }) => {
+  it("works with empty use array", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class App {
@@ -82,7 +82,7 @@ describe("$page middleware", () => {
     expect(result.html).toBe("ok");
   });
 
-  test("parent middleware cascades to child pages", async ({ expect }) => {
+  it("parent middleware cascades to child pages", async ({ expect }) => {
     const alepha = Alepha.create();
 
     const calls: string[] = [];
@@ -138,7 +138,7 @@ describe("$page middleware", () => {
     expect(calls.slice(0, 3)).toEqual(["parent", "child", "loader"]);
   });
 
-  test("is still a PagePrimitive", ({ expect }) => {
+  it("is still a PagePrimitive", ({ expect }) => {
     const alepha = Alepha.create();
 
     const $noop = (): Middleware =>

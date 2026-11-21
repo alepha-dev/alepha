@@ -35,7 +35,7 @@ export interface NestedViewProps {
  *
  * @example
  * ```tsx
- * import { NestedView } from "alepha/react";
+ * import { NestedView } from "alepha/react/router";
  *
  * class App {
  *   parent = $page({
@@ -43,7 +43,7 @@ export interface NestedViewProps {
  *   });
  *
  *   child = $page({
- *     parent: this.root,
+ *     parent: this.parent,
  *     component: () => <div>Child Page</div>,
  *   });
  * }
@@ -58,7 +58,7 @@ const NestedView = (props: NestedViewProps) => {
   const viewTransition = useInject(ReactViewTransition);
   const dateTime = useInject(DateTimeProvider);
 
-  // Navigating away from a page that threw must clear the boundary — otherwise
+  // Navigating away from a page that threw must clear the boundary, otherwise
   // the fallback latches and every later page keeps rendering the old error
   // until a full reload. Resetting on the path (rather than remounting via
   // `key`) recovers without tearing down the children on every navigation.

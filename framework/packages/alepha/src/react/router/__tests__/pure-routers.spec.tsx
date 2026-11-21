@@ -2,9 +2,8 @@ import { $inject, Alepha, type AppSurface, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { AlephaReactRouter, NestedView } from "../index.ts";
+import { AlephaReactRouter, NestedView, ReactRouter } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
-import { ReactPageProvider } from "../providers/ReactPageProvider.ts";
 
 /**
  * Pure page routers are created on the first page request (#Q3405): a cron
@@ -134,6 +133,7 @@ describe("pure page routers", () => {
     const { alepha, request } = await start();
     const missing = await request("/nowhere");
     expect(missing.status).toBe(404);
+    expect(await missing.text()).toContain("Page not found");
     await alepha.stop();
   });
 
@@ -141,7 +141,9 @@ describe("pure page routers", () => {
     expect,
   }) => {
     const { alepha } = await start();
-    expect(alepha.inject(ReactPageProvider).pathname("docs")).toBe("/docs");
+    expect(created).toEqual([]);
+    expect(alepha.inject(ReactRouter).path("docs" as never)).toBe("/docs");
+    expect([...created].sort()).toEqual(["DocsRouter", "LayoutRouter"]);
     await alepha.stop();
   });
 

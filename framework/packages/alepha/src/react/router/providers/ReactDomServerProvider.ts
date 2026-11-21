@@ -26,7 +26,7 @@ export class ReactDomServerProvider {
   /**
    * Load the renderer, reusing it on every subsequent call.
    *
-   * Call this from the render path, which is async anyway — the first call
+   * Call this from the render path, which is async anyway: the first call
    * pays for fetching the chunk and later ones resolve from cache.
    *
    * ⚠️ **Only the settled module is shared, never the pending load** (#Q3792).
@@ -66,7 +66,7 @@ export class ReactDomServerProvider {
    * returns the module.
    *
    * It is still an `undefined`-returning accessor rather than an assertion,
-   * because the cost of being wrong is a throw inside a stream controller —
+   * because the cost of being wrong is a throw inside a stream controller,
    * which surfaces as a truncated response rather than as the error the page
    * was trying to report. Callers fall back to plain text instead.
    */

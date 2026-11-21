@@ -3,7 +3,7 @@ export * from "./atoms/reactBootOptions.ts";
 export type * from "./components/ErrorViewer.tsx";
 export { default as ErrorViewer } from "./components/ErrorViewer.tsx";
 export type * from "./components/Link.tsx";
-export { default as Link, type LinkProps } from "./components/Link.tsx";
+export { default as Link } from "./components/Link.tsx";
 export type * from "./components/NestedView.tsx";
 export { default as NestedView } from "./components/NestedView.tsx";
 export type * from "./components/NotFound.tsx";

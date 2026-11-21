@@ -1,8 +1,9 @@
 import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaReact } from "alepha/react";
 import { BUILD_HEADER, buildToken } from "alepha/server";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, vi } from "vitest";
 
 import { $page, ReactBrowserProvider, ReactRouter } from "../index.browser.ts";
 
@@ -101,7 +102,7 @@ describe("A newer build deployed while the tab is open", () => {
           });
         });
         (browser as unknown as { lastBuildCheck: number }).lastBuildCheck =
-          Date.now() - checked;
+          alepha.inject(DateTimeProvider).nowMillis() - checked;
         Object.defineProperty(document, "visibilityState", {
           value: "visible",
           configurable: true,
@@ -115,7 +116,9 @@ describe("A newer build deployed while the tab is open", () => {
     return { left, respond, push, returnToTab };
   };
 
-  it("loads the next page as a full page once a response came from another build", async () => {
+  it("loads the next page as a full page once a response came from another build", async ({
+    expect,
+  }) => {
     const { left, respond, push } = await start();
 
     await respond("/api/quests", next);
@@ -125,7 +128,9 @@ describe("A newer build deployed while the tab is open", () => {
     expect(document.body.textContent).toContain("home page");
   });
 
-  it("navigates in place while the responses come from its own build", async () => {
+  it("navigates in place while the responses come from its own build", async ({
+    expect,
+  }) => {
     const { left, respond, push } = await start();
 
     await respond("/api/quests", buildToken(built));
@@ -136,7 +141,7 @@ describe("A newer build deployed while the tab is open", () => {
     expect(document.body.textContent).toContain("other page");
   });
 
-  it("ignores the build of another origin's Alepha app", async () => {
+  it("ignores the build of another origin's Alepha app", async ({ expect }) => {
     const { left, respond, push } = await start();
 
     await respond("https://api.example.app/quests", next);
@@ -146,7 +151,7 @@ describe("A newer build deployed while the tab is open", () => {
     expect(document.body.textContent).toContain("other page");
   });
 
-  it("compares nothing in development", async () => {
+  it("compares nothing in development", async ({ expect }) => {
     const { left, respond, push } = await start({ built: false });
 
     await respond("/api/quests", next);
@@ -156,7 +161,9 @@ describe("A newer build deployed while the tab is open", () => {
     expect(document.body.textContent).toContain("other page");
   });
 
-  it("asks the server for its build when the tab comes back into view", async () => {
+  it("asks the server for its build when the tab comes back into view", async ({
+    expect,
+  }) => {
     const { left, push, returnToTab } = await start();
 
     expect(await returnToTab(next)).toEqual(["/health"]);
@@ -165,7 +172,7 @@ describe("A newer build deployed while the tab is open", () => {
     expect(left).toEqual(["assign /other"]);
   });
 
-  it("asks at most once a minute", async () => {
+  it("asks at most once a minute", async ({ expect }) => {
     const { left, push, returnToTab } = await start();
 
     expect(await returnToTab(next, 30_000)).toEqual([]);

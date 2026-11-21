@@ -19,7 +19,7 @@ export class RouterLocaleProvider {
   protected readonly alepha = $inject(Alepha);
 
   /**
-   * Whether locale path-prefixing is active. Off by default — opt-in via the
+   * Whether locale path-prefixing is active. Off by default: opt-in via the
    * i18n module.
    */
   public enabled = false;
@@ -39,7 +39,7 @@ export class RouterLocaleProvider {
    *
    * Locale-prefixed URLs exist for crawlers: a distinct, indexable URL per
    * language. That argument covers a storefront and stops dead at the signed-in
-   * surfaces — `/admin`, `/account` — which are behind a guard, never crawled,
+   * surfaces (`/admin`, `/account`) which are behind a guard, never crawled,
    * and would only gain a second URL for the same private page. Worse, the
    * prefix is a *route*: `/en/admin` has to be registered, matched and kept
    * working, and every deep link into the back office acquires a language.
@@ -77,7 +77,7 @@ export class RouterLocaleProvider {
    * Whether this pathname sits in a subtree that opts out of locale prefixes.
    *
    * Matches a prefix on a segment boundary, so `/admin` covers `/admin` and
-   * `/admin/pieces` but not `/administration` — the difference between an
+   * `/admin/pieces` but not `/administration`: the difference between an
    * exclusion and an accidental one.
    *
    * The pathname is taken unprefixed. Call it with `detect(...).pathname` when
@@ -93,7 +93,7 @@ export class RouterLocaleProvider {
   }
 
   /**
-   * Locales that carry a URL prefix — every known locale except the default.
+   * Locales that carry a URL prefix: every known locale except the default.
    */
   public get prefixedLocales(): string[] {
     return this.locales.filter((locale) => locale !== this.defaultLocale);
@@ -151,7 +151,7 @@ export class RouterLocaleProvider {
    *
    * **An excluded path leaves `current` untouched.** `detect` reports the
    * default locale for anything unprefixed, so adopting it would publish "the
-   * URL says <default>" on every navigation into `/admin` — and the i18n
+   * URL says <default>" on every navigation into `/admin`, and the i18n
    * module listens to exactly that to pick the language. It would overwrite
    * the cookie, which inside an excluded subtree is the only thing carrying
    * the choice. The symptom is a language switch that visibly works and then

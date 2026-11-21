@@ -9,7 +9,7 @@ import { $page } from "../primitives/$page.ts";
 /**
  * `$secure` on a page is a real guard, and these pin the two halves of that.
  *
- * The router does not inspect what a middleware returned — it tracks whether
+ * The router does not inspect what a middleware returned: it tracks whether
  * `next` was ever called. So a guard denies by short-circuiting, and the router
  * turns that into a redirect (anonymous) or a 403 (authenticated) instead of
  * rendering the page without its data.
@@ -22,7 +22,7 @@ import { $page } from "../primitives/$page.ts";
 const setup = () => Alepha.create().with(AlephaReactRouter);
 
 /**
- * Denies by returning without calling `next` — the shape `$secure` and `$owns`
+ * Denies by returning without calling `next`: the shape `$secure` and `$owns`
  * both take in the browser.
  */
 const $deny = (): Middleware =>
@@ -49,10 +49,9 @@ describe("$page + $secure", () => {
 
     // Anonymous visitor → bounced to login carrying the blocked URL.
     expect(result.redirect).toBe("/login?redirect=%2Fadmin");
-    expect(result.html).toBe("");
     // Regression: this path used to throw `Cannot read properties of undefined
-    // (reading 'redirect')` — neither a denial nor a render.
-    expect(result.html).not.toContain("TOP SECRET");
+    // (reading 'redirect')`, neither a denial nor a render.
+    expect(result.html).toBe("");
   });
 
   it("throws 401 when a guarded page has no login route to fall back on", async () => {
@@ -121,8 +120,8 @@ describe("$page + $secure", () => {
   });
 
   /**
-   * The two `$secure` variants disagree on how they refuse — the browser
-   * returns, the server throws — and that disagreement used to reach the user:
+   * The two `$secure` variants disagree on how they refuse: the browser
+   * returns, the server throws, and that disagreement used to reach the user:
    * the same URL redirected on a client-side navigation and answered a bare 401
    * on a hard load. A crawler or a pasted link got the 401.
    *
@@ -150,7 +149,6 @@ describe("$page + $secure", () => {
 
     expect(result.redirect).toBe("/login?redirect=%2Fadmin");
     expect(result.html).toBe("");
-    expect(result.html).not.toContain("TOP SECRET");
   });
 
   it("lets a non-401 error keep its own meaning", async () => {
@@ -409,7 +407,7 @@ describe("$page can() derived from $secure", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    // `can` is a permission probe — there is nothing to derive from a role
+    // `can` is a permission probe: there is nothing to derive from a role
     // list, and inventing one would hide the entry from everybody.
     expect(app.page.options.can).toBeUndefined();
   });

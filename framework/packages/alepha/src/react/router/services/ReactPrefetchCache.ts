@@ -64,7 +64,11 @@ export class ReactPrefetchCache {
    * lands meanwhile waits for it rather than sending the same requests again.
    */
   public track(url: string, work: Promise<void>): void {
-    const done = work.finally(() => this.running.delete(url));
+    // A failed prefetch is the prefetcher's to report: what waits here only
+    // needs to know it is over.
+    const done = work
+      .catch(() => undefined)
+      .finally(() => this.running.delete(url));
     this.running.set(url, done);
   }
 

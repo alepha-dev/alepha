@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 
 import { $page, ReactRouter } from "../index.browser.ts";
 
@@ -35,7 +35,9 @@ describe("Chunk load failure after a deployment", () => {
     return alepha.inject(ReactRouter);
   };
 
-  it("keeps the current page on screen while the reload is on its way", async () => {
+  it("keeps the current page on screen while the reload is on its way", async ({
+    expect,
+  }) => {
     const router = await start();
     expect(document.body.textContent).toContain("home page");
 
@@ -51,7 +53,9 @@ describe("Chunk load failure after a deployment", () => {
     expect(document.body.textContent).not.toContain("Something went wrong");
   });
 
-  it("still gives up on a failure right after a reload, to avoid a loop", async () => {
+  it("still gives up on a failure right after a reload, to avoid a loop", async ({
+    expect,
+  }) => {
     sessionStorage.setItem("alepha:chunk-reload", String(Date.now()));
     const router = await start();
 

@@ -12,7 +12,7 @@ import { type RegisteredRouter, ReactRouter } from "../services/ReactRouter.ts";
  *
  * @example
  * class App {
- *   home = $page();
+ *   home = $page({ path: "/", component: Home });
  * }
  *
  * declare module "alepha/react/router" {

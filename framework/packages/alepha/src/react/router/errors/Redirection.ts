@@ -1,8 +1,8 @@
 import { $error, z } from "alepha";
 
 /**
- * Thrown (or returned) by a page's loader or resolver to send the visitor
- * elsewhere: the router answers with a redirect to `data.redirect`.
+ * Thrown by a page's loader, or returned by its `errorHandler`, to send the
+ * visitor elsewhere: the router answers with a redirect to `data.redirect`.
  *
  * ```ts
  * throw new Redirection({ redirect: "/new-path" });

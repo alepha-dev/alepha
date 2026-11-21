@@ -2,7 +2,7 @@ import { Alepha, createMiddleware } from "alepha";
 import { ServerProvider, UnauthorizedError } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { AlephaReactRouter } from "../index.ts";
+import { AlephaReactRouter, ReactPageProvider } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
 
 /**
@@ -28,7 +28,10 @@ const start = async (App: new () => any) => {
   await alepha.start();
   const hostname = alepha.inject(ServerProvider).hostname;
 
-  return (path: string) => fetch(`${hostname}${path}`, { redirect: "manual" });
+  return Object.assign(
+    (path: string) => fetch(`${hostname}${path}`, { redirect: "manual" }),
+    { alepha, hostname },
+  );
 };
 
 describe("$page not-found status", () => {
@@ -74,6 +77,62 @@ describe("$page not-found status", () => {
     const res = await request("/some/slug");
 
     expect(res.status).toBe(200);
+  });
+
+  it("does not take a nested catch-all for the app's not-found page", async ({
+    expect,
+  }) => {
+    class App {
+      docs = $page({
+        path: "/docs",
+        children: () => [this.any],
+      });
+      // `/docs/*`: real content under one section, not the app's 404.
+      any = $page({ path: "/*", component: () => "a doc" });
+    }
+
+    const request = await start(App);
+
+    const doc = await request("/docs/intro");
+    expect(doc.status).toBe(200);
+    expect(await doc.text()).toContain("a doc");
+
+    // The built-in not-found page is still there for the rest of the app.
+    const res = await fetch(`${request.hostname}/nope`, {
+      headers: { accept: "text/html" },
+    });
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(
+      request.alepha
+        .inject(ReactPageProvider)
+        .getPages()
+        .map((page) => `${page.name}=${page.match}`),
+    ).toEqual(["docs=/docs", "any=/docs/*", "notFound=/*"]);
+  });
+
+  it("takes a catch-all under a pathless layout for the not-found page", async ({
+    expect,
+  }) => {
+    class App {
+      layout = $page({
+        component: () => "layout",
+        children: () => [this.home, this.missing],
+      });
+      home = $page({ path: "/", component: () => "home" });
+      missing = $page({ path: "/*", component: () => "custom not found" });
+    }
+
+    const request = await start(App);
+    const res = await request("/nope");
+
+    expect(res.status).toBe(404);
+    expect(
+      request.alepha
+        .inject(ReactPageProvider)
+        .getPages()
+        .some((page) => page.name === "notFound"),
+    ).toBe(false);
   });
 
   /**

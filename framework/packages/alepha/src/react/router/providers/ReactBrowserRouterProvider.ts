@@ -34,7 +34,7 @@ export interface RouterTransitionOptions {
 }
 
 /**
- * Implementation of AlephaRouter for React in browser environment.
+ * The browser's page router: a `RouterProvider` over the app's pages.
  */
 export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
   protected readonly log = $logger();
@@ -115,7 +115,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       }
 
       // NOTE: `page.can` is a UI-affordance predicate (sidebar visibility),
-      // NOT a route guard — real access control is `use: [$secure(...)]`.
+      // NOT a route guard: real access control is `use: [$secure(...)]`.
       // The router intentionally does not block routing on it.
 
       state.name = route?.page.name;
@@ -139,7 +139,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
             });
 
         opensOverlay = opensOverlay && !state.layers.some((it) => it.error);
-        // A newer navigation already won — bail before committing or
+        // A newer navigation already won: bail before committing or
         // emitting any further events. The caller (ReactBrowserProvider)
         // also re-checks staleness, but stopping here avoids running
         // success hooks for a transition the user no longer wants.
@@ -223,9 +223,15 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     }
 
     if (!opensOverlay) {
+      // What is on screen, not `previous`: `invalidate` and a forced push
+      // hand over an empty `previous` for a page that stays, which is neither
+      // left nor entered. Nothing is committed yet on the first render, where
+      // `previous` is what the server rendered, or nothing.
+      const onScreen: Array<{ name: string }> = committed?.layers ?? previous;
+
       // [feature]: local hook for leaving a page
-      for (let i = 0; i < previous.length; i++) {
-        const layer = previous[i];
+      for (let i = 0; i < onScreen.length; i++) {
+        const layer = onScreen[i];
         if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
           this.pageApi.findRoute(layer.name)?.onLeave?.();
         }
@@ -234,7 +240,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       // [feature]: local hook for entering a page
       for (let i = 0; i < state.layers.length; i++) {
         const layer = state.layers[i];
-        if (previous?.[i]?.name !== layer.name && layer.name !== "error") {
+        if (onScreen[i]?.name !== layer.name && layer.name !== "error") {
           this.pageApi.findRoute(layer.name)?.onEnter?.();
         }
       }
@@ -316,7 +322,10 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
    * as text.
    */
   public resolvesToPage(path: string): boolean {
-    if (!path.startsWith("/")) {
+    // A single leading slash: `//host` and `/\host` are another origin to a
+    // browser, which drops tabs and line breaks before reading a URL, and
+    // `router.anchor` refuses them.
+    if (!/^\/(?![/\\])/.test(path.replace(/[\t\n\r]/g, ""))) {
       return false;
     }
     const pathname = path.split(/[?#]/, 1)[0];
@@ -326,8 +335,9 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
         : pathname;
       const { route } = this.match(canonical);
       // The catch-all `/*` (the not-found page) answers every path: a path
-      // only it matches resolves to no page.
-      return isPageRoute(route) && !route.path.endsWith("/*");
+      // only it matches resolves to no page. A nested one (`/docs/*`) is a
+      // section's content.
+      return isPageRoute(route) && route.path !== "/*";
     } catch {
       return false;
     }

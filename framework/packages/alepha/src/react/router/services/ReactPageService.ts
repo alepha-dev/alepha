@@ -6,7 +6,9 @@ import type {
 } from "../primitives/$page.ts";
 
 /**
- * $page methods interface.
+ * What `$page` methods (`render`, `fetch`, `invalidate`) call. This base
+ * refuses each one, and is what the browser registers: the server
+ * substitutes `ReactPageServerService`.
  */
 export abstract class ReactPageService {
   public fetch(

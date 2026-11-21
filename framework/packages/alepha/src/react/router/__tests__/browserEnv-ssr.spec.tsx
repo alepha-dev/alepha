@@ -36,7 +36,7 @@ describe("browser env keys in the page", () => {
       },
     });
 
-  it("puts the runtime values of the browser keys, and only those, in the head before the entry", async ({
+  it("puts the runtime values of the browser keys, and only those, in the head", async ({
     expect,
   }) => {
     const alepha = create("https://runtime.example.com");
