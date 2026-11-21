@@ -1131,7 +1131,7 @@ describe("BuildCloudflareTask", () => {
         const content = fs.getFileContent(ENTRY) ?? "";
         const admitIndex = content.indexOf("wsProvider.admit(endpoint,");
         const admittedRoomIndex = content.indexOf("admission.roomId ||");
-        const urlRoomIndex = content.indexOf('url.searchParams.get("roomId")');
+        const urlRoomIndex = content.indexOf("wsProvider.roomIdFor(url)");
         const forwardIndex = content.indexOf(
           'forward.headers.set("x-alepha-ws-room", roomId)',
         );
@@ -1140,6 +1140,10 @@ describe("BuildCloudflareTask", () => {
         expect(admittedRoomIndex).toBeGreaterThan(admitIndex);
         expect(urlRoomIndex).toBeGreaterThan(admittedRoomIndex);
         expect(forwardIndex).toBeGreaterThan(urlRoomIndex);
+        // No room parsing of the entry's own: `?roomIds=,b` landed in a room
+        // `canJoin` was never asked about.
+        expect(content).not.toContain('searchParams.get("roomIds")');
+        expect(content).not.toContain('searchParams.get("roomId")');
         expect(content).toContain(
           'new Response("Unauthorized", { status: 401 })',
         );

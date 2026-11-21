@@ -154,7 +154,9 @@ describe("NodeWebSocketServerProvider — hardening", () => {
     );
     await delay(150);
 
-    expect(targets).not.toContain("private-room");
+    // The handler ran, as the joined room: not merely "not the spoofed one",
+    // which also held when the handler never ran.
+    expect(targets).toEqual(["lobby"]);
 
     ws.close();
     await alepha.stop();

@@ -322,8 +322,10 @@ export class WebSocketRoom {
       await roomEngine.leave(att.connectionId);
       this.joined.delete(att.connectionId);
       this.dataBags.delete(att.connectionId);
-      if (roomEngine.size === 0) {
-        this.roomEngines.delete(`${att.channelPath}:${att.roomId}`);
+      // As on Node: only this engine, and only once no join is pending.
+      const key = `${att.channelPath}:${att.roomId}`;
+      if (roomEngine.idle && this.roomEngines.get(key) === roomEngine) {
+        this.roomEngines.delete(key);
       }
       return;
     }
@@ -363,9 +365,13 @@ export class WebSocketRoom {
    */
   async broadcast(
     message: unknown,
-    criteria: { exceptConnectionIds?: string[] } = {},
+    criteria: { exceptConnectionIds?: string[]; exceptUserIds?: string[] } = {},
   ): Promise<void> {
-    this.broadcastLocal(message, new Set(criteria.exceptConnectionIds ?? []));
+    this.broadcastLocal(
+      message,
+      new Set(criteria.exceptConnectionIds ?? []),
+      new Set(criteria.exceptUserIds ?? []),
+    );
   }
 
   /**
@@ -410,11 +416,16 @@ export class WebSocketRoom {
           roomId?: string;
           exceptSelf?: boolean;
           exceptConnectionIds?: string[];
+          exceptUserIds?: string[];
         }) => {
           this.assertReplyRoom(opts.roomId, att.roomId);
           const except = new Set(opts.exceptConnectionIds ?? []);
           if (opts.exceptSelf) except.add(att.connectionId);
-          this.broadcastLocal(opts.message, except);
+          this.broadcastLocal(
+            opts.message,
+            except,
+            new Set(opts.exceptUserIds ?? []),
+          );
         };
 
         await endpoint.handler({
@@ -468,9 +479,14 @@ export class WebSocketRoom {
 
   /**
    * Send a message to every socket held by this Durable Object, skipping
-   * excepted connection ids.
+   * excepted connection ids and every socket of an excepted user (read off
+   * the socket's attachment, as Node reads it off the connection).
    */
-  protected broadcastLocal(message: unknown, except: Set<string>): void {
+  protected broadcastLocal(
+    message: unknown,
+    except: Set<string>,
+    exceptUsers: Set<string> = new Set(),
+  ): void {
     const serialized =
       typeof message === "string" ? message : JSON.stringify(message);
 
@@ -497,6 +513,7 @@ export class WebSocketRoom {
     for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as WsAttachment | null;
       if (att && except.has(att.connectionId)) continue;
+      if (att?.userId && exceptUsers.has(att.userId)) continue;
       try {
         ws.send(forRoom(att?.roomId));
       } catch (error) {
@@ -532,11 +549,6 @@ export class WebSocketRoom {
     }
   }
 
-  /**
-   * Boot the shared app graph on first use (bind this Durable Object's env),
-   * then run fn with the endpoint registered for channelPath. No-op if no
-   * such endpoint is registered.
-   */
   /**
    * Why this upgrade must not be admitted, or `undefined` to let it through.
    *
@@ -624,6 +636,11 @@ export class WebSocketRoom {
     return true;
   }
 
+  /**
+   * Boot the shared app graph on first use (bind this Durable Object's env),
+   * then run fn with the endpoint registered for channelPath. No-op if no
+   * such endpoint is registered.
+   */
   protected async withEndpoint(
     channelPath: string,
     fn: (endpoint: WebSocketPrimitiveOptions<any, any>) => Promise<void>,

@@ -55,7 +55,7 @@ export class AlephaWebSocketDurableObject extends DurableObject {
    */
   async broadcast(
     message: unknown,
-    criteria: { exceptConnectionIds?: string[] } = {},
+    criteria: { exceptConnectionIds?: string[]; exceptUserIds?: string[] } = {},
   ): Promise<void> {
     return this.room.broadcast(message, criteria);
   }

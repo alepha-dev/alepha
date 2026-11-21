@@ -504,6 +504,22 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   }
 
   /**
+   * How many sockets `userId` holds on the endpoint at `channelPath`: what
+   * `maxConnectionsPerUser` caps on Node. `userConnections` spans every
+   * endpoint, so counting it whole refused a user's first socket on one
+   * endpoint for the sockets they held on another.
+   */
+  protected userConnectionCount(userId: string, channelPath: string): number {
+    let count = 0;
+    for (const id of this.userConnections.get(userId) ?? []) {
+      if (this.connections.get(id)?.channelPath === channelPath) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
    * Adapt one Node `ws` socket into a {@link RoomSocket} and drive its room
    * engine's join/message/leave lifecycle. The room's tick loop, state and
    * per-recipient send all live in the engine.
@@ -529,8 +545,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     }
 
     if (userId && endpoint.maxConnectionsPerUser) {
-      const existing = this.userConnections.get(userId);
-      if (existing && existing.size >= endpoint.maxConnectionsPerUser) {
+      if (
+        this.userConnectionCount(userId, path) >= endpoint.maxConnectionsPerUser
+      ) {
         this.log.warn(
           `User ${userId} exceeded max connections (${endpoint.maxConnectionsPerUser})`,
         );
@@ -652,7 +669,12 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       joined
         .then(() => engine.leave(connectionId))
         .then(() => {
-          if (engine.size === 0) this.roomEngines.delete(key);
+          // Only this engine, and only once no join is on its way in: a
+          // socket joining during the teardown would otherwise sit in an
+          // engine no broadcast reaches, beside a second one for its room.
+          if (engine.idle && this.roomEngines.get(key) === engine) {
+            this.roomEngines.delete(key);
+          }
         })
         .catch((error) => {
           this.log.error(`Error leaving room on ${connectionId}:`, error);
@@ -662,16 +684,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     ws.on("error", (error) => {
       this.log.error(`WebSocket room error on ${connectionId}:`, error);
     });
-  }
-
-  /**
-   * Adapt a Node upgrade request into the minimal shape the security resolvers
-   * read (url + headers, including cookie), then resolve the user id.
-   */
-  protected async resolveUserIdFromUpgrade(
-    request: IncomingMessage,
-  ): Promise<string | undefined> {
-    return this.resolveUserId(this.handshakeOf(request));
   }
 
   /**
@@ -737,10 +749,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     // Check max connections per user before registering
     if (userId && endpoint.maxConnectionsPerUser) {
-      const existingConns = this.userConnections.get(userId);
       if (
-        existingConns &&
-        existingConns.size >= endpoint.maxConnectionsPerUser
+        this.userConnectionCount(userId, endpoint.channel.options.path) >=
+        endpoint.maxConnectionsPerUser
       ) {
         this.log.warn(
           `User ${userId} exceeded max connections (${endpoint.maxConnectionsPerUser})`,
@@ -851,11 +862,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   /**
    * Decode a `ws` frame to text.
    *
-   * `RawData` is `Buffer | ArrayBuffer | Buffer[]`, and the array arm is not
-   * hypothetical: `ws` hands back a list of chunks for a fragmented message.
-   * A bare `.toString()` on that list comma-joins the chunks, so a message
-   * split across frames arrived as corrupt JSON and was dropped by the
-   * `catch` below as "non-JSON".
+   * `RawData` is `Buffer | ArrayBuffer | Buffer[]`. With the default
+   * `binaryType` (`nodebuffer`) `ws` concatenates a fragmented message into
+   * one Buffer; the array arm only comes with `binaryType: "fragments"`,
+   * which nothing here sets, and is handled anyway because a bare
+   * `.toString()` on that list would comma-join the chunks.
    */
   protected decodeFrame(data: RawData): string {
     if (Buffer.isBuffer(data)) {
@@ -1019,7 +1030,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         return;
       }
 
-      // `maxPayload` is the pre-parse transport backstop (see the atom's docblock above) — every
+      // `maxPayload` is the pre-parse transport backstop (see the atom's docblock in `websocketOptions.ts`): every
       // frame over this size is rejected by `ws` itself, before `handleRoomConnection`'s
       // `JSON.parse` or any app-level per-message cap ever sees it.
       this.wss = new WebSocketServer({

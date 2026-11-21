@@ -76,6 +76,21 @@ export class RoomEngine<
     return this.sockets.size;
   }
 
+  /**
+   * Joins started and not yet settled: a join waits for a running teardown
+   * and for the `state` factory before the socket counts in {@link size}.
+   */
+  protected joining = 0;
+
+  /**
+   * No socket in the room and none on its way in: the only state in which
+   * the engine may be dropped. `size === 0` alone also holds while a join
+   * waits out a teardown, and dropping the engine then orphaned the joiner.
+   */
+  get idle(): boolean {
+    return this.sockets.size === 0 && this.joining === 0;
+  }
+
   protected get options(): RoomPrimitiveOptions<TClient, TServer, TState> {
     return this.deps.options;
   }
@@ -85,8 +100,13 @@ export class RoomEngine<
    * tick loop if this room ticks.
    */
   async join(socket: RoomSocket): Promise<void> {
-    await this.ensureAlive();
-    this.sockets.set(socket.id, socket);
+    this.joining++;
+    try {
+      await this.ensureAlive();
+      this.sockets.set(socket.id, socket);
+    } finally {
+      this.joining--;
+    }
     await this.options.onJoin?.(this.context(), socket);
     this.ensureLoop();
   }

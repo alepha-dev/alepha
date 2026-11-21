@@ -8,7 +8,7 @@ import { $logger } from "alepha/logger";
  *
  * This is an injectable service on `alepha/websocket`, so its whole surface is
  * public on purpose: the framework itself only calls `joinRooms`,
- * `leaveAllRooms`, `getRoomConnections` and `getStats`, and the membership
+ * `leaveAllRooms` and `getRoomConnections`; `getStats` and the membership
  * readers exist for applications that inject it directly.
  */
 export class RoomManager {

@@ -34,12 +34,6 @@ declare module "alepha" {
 }
 
 /**
- * WebSocket channel connection
- *
- * Manages a single WebSocket connection to a channel with multiple room subscriptions.
- * One connection can handle multiple rooms on the same channel.
- */
-/**
  * How a channel connection reconnects, and where it connects to.
  *
  * Named rather than written inline on the constructor: the parameter property
@@ -64,6 +58,12 @@ export interface WebSocketClientOptions {
   maxReconnectInterval?: number;
 }
 
+/**
+ * WebSocket channel connection
+ *
+ * Manages a single WebSocket connection to a channel with multiple room subscriptions.
+ * One connection can handle multiple rooms on the same channel.
+ */
 export class WebSocketChannelConnection<
   TClient extends TWSObject,
   TServer extends TWSObject,
@@ -167,13 +167,25 @@ export class WebSocketChannelConnection<
   }
 
   /**
-   * Append the `roomIds` query to a URL that does not carry one yet. A
-   * caller that wrote the list into its custom URL by hand keeps it.
+   * Whether a URL names its rooms itself: a caller that wrote `roomId=` or
+   * `roomIds=` into its custom URL by hand keeps them.
+   */
+  protected namesRooms(url: string): boolean {
+    return /[?&]roomIds?=/.test(url);
+  }
+
+  /**
+   * Append one `roomId=` per room to a URL that does not name its rooms yet.
+   * One parameter per room, not a comma-separated `roomIds=`: the server
+   * splits that list on ",", so a room id holding a comma joined two other
+   * rooms instead of itself.
    */
   protected withRoomIds(base: string, roomIds: string[]): string {
-    if (roomIds.length === 0 || /[?&]roomIds=/.test(base)) return base;
+    if (roomIds.length === 0 || this.namesRooms(base)) return base;
     const separator = base.includes("?") ? "&" : "?";
-    return `${base}${separator}roomIds=${roomIds.map(encodeURIComponent).join(",")}`;
+    return `${base}${separator}${roomIds
+      .map((roomId) => `roomId=${encodeURIComponent(roomId)}`)
+      .join("&")}`;
   }
 
   /**
@@ -268,6 +280,13 @@ export class WebSocketChannelConnection<
     // An explicit connect() supersedes any prior intentional disconnect.
     this.manuallyClosed = false;
 
+    // The rooms this socket's URL announces, to tell after it opens whether
+    // a room was subscribed while it was connecting. `undefined` when the
+    // caller's URL names its own rooms: nothing to rejoin then.
+    const announced =
+      this.options.url && this.namesRooms(this.options.url)
+        ? undefined
+        : new Set(this.subscriptions.keys());
     const url = this.buildUrl();
     this.log.info("Connecting to WebSocket server", { url });
 
@@ -314,6 +333,19 @@ export class WebSocketChannelConnection<
           }
 
           resolve();
+
+          // A room subscribed while this socket was connecting reused the
+          // pending connect, whose URL was built before the room existed:
+          // reconnect once, with every room the client now holds.
+          if (
+            announced &&
+            [...this.subscriptions.keys()].some((room) => !announced.has(room))
+          ) {
+            this.log.trace(
+              "Reconnecting for rooms subscribed while connecting",
+            );
+            this.reconnect();
+          }
         };
 
         ws.onmessage = (event) => {

@@ -1,3 +1,4 @@
+import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
 
 import { WebSocketRoom } from "../providers/WebSocketRoom.ts";
@@ -87,6 +88,66 @@ describe("WebSocketRoom", () => {
 
       expect(a.sent).toEqual([JSON.stringify({ type: "hi" })]);
       expect(b.sent).toEqual([]);
+    });
+  });
+
+  describe("exceptUserIds", () => {
+    /**
+     * Every socket's attachment carries its user, and Node honours
+     * `exceptUserIds`; on Cloudflare the option was dropped silently, so the
+     * excluded user's sockets got the message.
+     */
+    const sockets = () => ({
+      u1a: new FakeWs({ connectionId: "u1a", userId: "u1", roomId: "r" }),
+      u1b: new FakeWs({ connectionId: "u1b", userId: "u1", roomId: "r" }),
+      u2: new FakeWs({ connectionId: "u2", userId: "u2", roomId: "r" }),
+      anon: new FakeWs({ connectionId: "anon", roomId: "r" }),
+    });
+
+    it("skips every socket of an excluded user on the broadcast RPC", async ({
+      expect,
+    }) => {
+      const s = sockets();
+      const ctx = {
+        acceptWebSocket: () => {},
+        getWebSockets: () => Object.values(s),
+      };
+      const room = new WebSocketRoom(ctx, {});
+
+      await room.broadcast("m", { exceptUserIds: ["u1"] });
+
+      expect(s.u1a.sent).toEqual([]);
+      expect(s.u1b.sent).toEqual([]);
+      expect(s.u2.sent).toEqual(["m"]);
+      expect(s.anon.sent).toEqual(["m"]);
+    });
+
+    it("skips them on reply too", async ({ expect }) => {
+      const s = sockets();
+      const ctx = {
+        acceptWebSocket: () => {},
+        getWebSockets: () => Object.values(s),
+      };
+      const room = new WebSocketRoom(ctx, {});
+      const endpoint = {
+        channel: { options: { schema: { out: z.object({ t: z.text() }) } } },
+        handler: async ({ reply }: any) => {
+          await reply({ message: "m", exceptUserIds: ["u1"] });
+        },
+      };
+      const probe = room as any;
+      probe.withEndpoint = async (_path: string, fn: any) => fn(endpoint);
+      probe.getAlepha = () => Alepha.create();
+
+      await probe.handleRawMessage(
+        s.u2,
+        { connectionId: "u2", userId: "u2", roomId: "r", channelPath: "/ws" },
+        JSON.stringify({ t: "x" }),
+      );
+
+      expect(s.u1a.sent).toEqual([]);
+      expect(s.u1b.sent).toEqual([]);
+      expect(s.u2.sent).toEqual(["m"]);
     });
   });
 
