@@ -115,6 +115,22 @@ export interface HostJobQueue {
   stdout(jobId: string): Promise<string>;
   /** Stores what a kind's reader made of the job's output. */
   setResult(jobId: string, result: Record<string, unknown>): Promise<void>;
+  /**
+   * Marks an ended job paused by a provider's usage limit, queued again at
+   * `retryAt` (a bounded number of times).
+   */
+  pause(jobId: string, retryAt: string, reason: string): Promise<void>;
+}
+
+/**
+ * What Ship registers about Agent hosts (#Q3985): the one a project's agent
+ * jobs run on, and the recheck an agent job's auth or limit failure asks for.
+ */
+export interface AgentHostDirectory {
+  defaultFor(
+    projectId: number,
+  ): Promise<{ id: string; slug: string; status?: string } | undefined>;
+  recheck(hostId: string): Promise<void>;
 }
 
 /**
@@ -129,6 +145,36 @@ export interface HostJobQueue {
 export class HostJobs {
   protected queue?: HostJobQueue;
   protected issuer?: HostJobKeyIssuer;
+  protected agents?: AgentHostDirectory;
+
+  public registerAgentHosts(agents: AgentHostDirectory): void {
+    if (this.agents) {
+      throw new AlephaError("An Agent host directory is already registered");
+    }
+    this.agents = agents;
+  }
+
+  /**
+   * The project's default Agent host when it may still run its agent jobs,
+   * or undefined: the agent buttons hide, and an agent job refuses to start.
+   */
+  public async agentHostFor(
+    projectId: number,
+  ): Promise<{ id: string; slug: string; status?: string } | undefined> {
+    return this.agents?.defaultFor(projectId);
+  }
+
+  public async recheckHost(hostId: string): Promise<void> {
+    await this.agents?.recheck(hostId);
+  }
+
+  public async pause(
+    jobId: string,
+    retryAt: string,
+    reason: string,
+  ): Promise<void> {
+    await this.queue?.pause(jobId, retryAt, reason);
+  }
 
   public registerQueue(queue: HostJobQueue): void {
     if (this.queue) {

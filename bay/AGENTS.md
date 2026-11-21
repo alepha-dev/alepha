@@ -23,6 +23,11 @@ the Alepha project), and its history came with it.
   issuance test in `internal/tlsconf` needs `pebble` and `pebble-challtestsrv`
   (installed by CI and the container, same version in both), and the backup
   round trip in `internal/backup` needs a `node` with `node:sqlite`.
+- One-shot jobs (`cmd/bay/jobs.go`) run as a dedicated Unix user and refuse
+  Bay's own; the tests use the runner's seams instead. Lore's
+  `bay.e2e.spec.ts` drives a real job through a **dev build only**:
+  `BAY_DEV_JOBS_AS_SELF=1` (with `BAY_DEV_JOBS_PATH` for a stub `claude`) is
+  read when `version` is `dev` and ignored by every released binary.
 - The Go version lives in `go.mod` and in `ARG GO_VERSION` in the `Dockerfile`;
   `ci.sh` fails when they differ.
 

@@ -80,6 +80,7 @@ export class HostJobService {
       setResult: async (id, result) => {
         await this.jobs.updateById(id, { result });
       },
+      pause: (id, retryAt, reason) => this.pause(id, retryAt, reason),
     });
   }
 
@@ -213,7 +214,18 @@ export class HostJobService {
     return {
       kind: job.kind,
       profile: input.profile,
-      ...(input.repository ? { repository: input.repository } : {}),
+      // A clone URL may be stored as a path: it is then on the origin the
+      // machine asked on, the one Bay accepts it from.
+      ...(input.repository
+        ? {
+            repository: {
+              ...input.repository,
+              cloneUrl: input.repository.cloneUrl.startsWith("/")
+                ? `${origin}${input.repository.cloneUrl}`
+                : input.repository.cloneUrl,
+            },
+          }
+        : {}),
       ...(key ? { key } : {}),
       mcpUrl: `${origin}/mcp`,
       prompt: input.prompt ?? "",
@@ -226,7 +238,8 @@ export class HostJobService {
         ? { disallowedTools: input.disallowedTools }
         : {}),
       ...(input.permissionMode ? { permissionMode: input.permissionMode } : {}),
-      ...(input.egress?.length ? { egress: input.egress } : {}),
+      // Lore itself is on every agent job's list: the clone and the MCP.
+      egress: [...new Set([...(input.egress ?? []), new URL(origin).hostname])],
       ...(input.image ? { image: input.image } : {}),
     };
   }
