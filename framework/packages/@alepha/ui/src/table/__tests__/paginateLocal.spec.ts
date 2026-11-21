@@ -187,6 +187,24 @@ describe("paginateLocal", () => {
       expect(result.content.map((r) => r.id)).toEqual([1, 2]);
     });
 
+    it("applies each field's preset operator", () => {
+      const operators = { area: "areaOp", tags: "tagsOp" };
+      const ids = (filters: Record<string, unknown>) =>
+        paginateLocal(mixed, {
+          page: 0,
+          size: 10,
+          filters,
+          operators,
+        }).content.map((r) => r.id);
+
+      expect(ids({ area: ["core"], areaOp: "not" })).toEqual([2]);
+      expect(ids({ tags: ["perf"], tagsOp: "none" })).toEqual([3]);
+      expect(ids({ tags: ["dx", "perf"], tagsOp: "all" })).toEqual([2]);
+      expect(ids({ tags: ["dx", "perf"], tagsOp: "any" })).toEqual([1, 2]);
+      // An operator standing alone narrows nothing.
+      expect(ids({ areaOp: "not" })).toEqual([1, 2, 3]);
+    });
+
     it("counts the filtered set, not the original", () => {
       // The pager is drawn from `totalElements`. Counting the unfiltered
       // array would offer pages that render empty.

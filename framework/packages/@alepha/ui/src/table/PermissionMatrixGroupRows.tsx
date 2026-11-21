@@ -149,9 +149,9 @@ export const PermissionMatrixGroupRows = (
                 key={column.key}
                 className="border-border/60 relative border-s pe-2! text-center"
               >
-                {/* Decorative: the column header says how many cells differ,
-                    in words. Beside the box, never on it, so the box keeps
-                    its size and its tick. */}
+                {/* Decorative: the dot marks a cell changed from the
+                    column's `defaults`. Beside the box, never on it, so the
+                    box keeps its size and its tick. */}
                 {differs && (
                   <span
                     aria-hidden

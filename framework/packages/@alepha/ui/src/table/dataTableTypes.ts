@@ -84,7 +84,7 @@ export interface ColumnDef<T> {
 
 /**
  * Context passed to every row-action `onClick`. `refresh()` re-fires the
- * current fetch with the current filters/sort — call it after a mutation
+ * current fetch with the current filters/sort; call it after a mutation
  * so the table reflects the new state without a manual reload.
  *
  * ⚠️ In static-data mode there is no fetch to re-fire, so `refresh()` only
@@ -685,8 +685,8 @@ export interface DataTableFilters<
    * `initialValues` is what the table starts from when the reader has never
    * chosen anything; a persisted choice wins over it, which is the right
    * default for a preference. This is the opposite case: values the caller
-   * derived from *how the reader got here* — typically a URL param on a
-   * drill-through link — where landing on last week's stored filter instead
+   * derived from *how the reader got here* (typically a URL param on a
+   * drill-through link), where landing on last week's stored filter instead
    * would ignore the link that was just clicked.
    *
    * Read once, at mount, exactly like `initialValues`. Change the
@@ -810,8 +810,8 @@ export type DataTableSource<
        * Rows the caller already holds. The table filters, sorts and pages
        * them in memory and never issues a request.
        *
-       * Use it when the array is the page's data rather than the table's —
-       * shared with a chart, a count, an aside — so that one array stays
+       * Use it when the array is the page's data rather than the table's
+       * (shared with a chart, a count, an aside), so that one array stays
        * the single source of truth. For anything the reader can outgrow,
        * pass `fetch` and let the server page it.
        */
@@ -820,11 +820,14 @@ export type DataTableSource<
        * Static-data mode only: predicate replacing the built-in field
        * matching, which pairs each filter value with the same-named
        * property (strings as a case-insensitive substring, arrays by
-       * membership, everything else strictly).
+       * membership, everything else strictly), under the field's preset
+       * operator when it has one (`not` and `none` negate the match, `all`
+       * needs every member).
        *
        * Reach for it as soon as a filter is not a field: a `search` box
-       * spanning several columns, a range, a joined label. Only ever
-       * called with filter values that are actually set.
+       * spanning several columns, a range, a joined label, a field with a
+       * custom `operators` list. Only ever called with filter values that
+       * are actually set.
        */
       filter?: (item: T, filters: DataTableFilterValues<F>) => boolean;
       fetch?: never;

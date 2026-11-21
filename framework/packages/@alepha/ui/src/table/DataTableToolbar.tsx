@@ -144,12 +144,12 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
     // `bg-muted`, paired with the pagination footer below: the filter bar
     // and the footer are the table's chrome and bracket it top and
     // bottom, so they sit one step off the page while the table itself
-    // (header included) stays on it. They were `bg-card` — pure white in
+    // (header included) stays on it. They were `bg-card`, pure white in
     // light, the same colour as the page, so neither had an edge.
     //
     // The controls need an explicit fill because of that. shadcn ships
     // inputs and select triggers `bg-transparent` in light and only fills
-    // them in dark (`dark:bg-input/30`) — the light case assumes a white
+    // them in dark (`dark:bg-input/30`): the light case assumes a white
     // page, where transparent already reads as a white field. On this bar
     // it does not: they would take the muted grey and the border alone
     // would have to say "input". Scoped here rather than to the
@@ -158,7 +158,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
     //
     // `bg-background` suits both modes: white against the muted bar in
     // light, near-black in dark, so the control reads as a well sunk
-    // into the chrome either way. The `dark:` copy is not redundant —
+    // into the chrome either way. The `dark:` copy is not redundant:
     // the primitives ship `dark:bg-input/30` at (0,2,0), a translucent
     // WHITE wash that leaves the field lighter than the bar. Only the
     // dark-scoped rule (0,3,0) outranks it, and without it the two
@@ -227,7 +227,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
         than on the top of the tallest label. Everything to the right of
         the filters is a bare control with no label of its own, so
         inheriting that baseline pinned it to the bottom of whatever the
-        filter area happened to measure — a "New" button sitting low
+        filter area happened to measure: a "New" button sitting low
         against a labelled select, moving as soon as a filter gained or
         lost its label.
 

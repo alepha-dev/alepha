@@ -66,7 +66,7 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
         {/*
           Hidden on a phone, and the size itself is untouched: `size` is
           persisted per table, so a reader who chose 50 on a desktop keeps
-          50 here — this drops the CONTROL, not the setting. Nobody picks
+          50 here: this drops the CONTROL, not the setting. Nobody picks
           100 rows on a 412px screen, and the picker plus the range text
           plus the numbered pages is exactly what made this bar wrap onto
           three lines (feedback #2106).
@@ -75,7 +75,7 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
           // The same `Control` the filter bar is built on, so the picker
           // is one component with every other select in this table. It
           // used to be the raw `Select` underneath it, because `Control`
-          // is form-bound and this is not a form — `sizeForm` (built in
+          // is form-bound and this is not a form; `sizeForm` (built in
           // `useDataTableData`) is
           // what closes that gap.
           <Control
@@ -135,7 +135,7 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
                       ],
                     })}`
               }`
-            : "—"}
+            : "-"}
         </p>
       </div>
       {meta && meta.totalPages && meta.totalPages > 1 ? (

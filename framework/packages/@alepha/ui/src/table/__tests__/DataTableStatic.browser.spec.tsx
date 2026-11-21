@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
@@ -7,6 +7,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DataTable } from "../DataTable.tsx";
+import type { DataTableFilterFields } from "../dataTableTypes.ts";
 
 interface Row {
   id: number;
@@ -21,8 +22,8 @@ const columns = {
  * DataTable's static-data mode: `data` instead of `fetch`.
  *
  * The contract that matters is that a table fed an array behaves like a
- * table fed a fetcher — paging, sorting and the empty state all keep
- * working — and that it tracks the array it was given, which is the one
+ * table fed a fetcher (paging, sorting and the empty state all keep
+ * working) and that it tracks the array it was given, which is the one
  * thing a `fetch`-shaped adapter around an in-memory list cannot do.
  */
 describe("DataTable (static data)", () => {
@@ -227,7 +228,7 @@ describe("DataTable (static data)", () => {
   it("steps back when the data shrinks out from under the current page", async () => {
     // Rows vanish under the reader in static mode: the caller detaches one
     // and the page they are on stops existing. Nothing fetches, so nothing
-    // else would notice — the table would sit on an empty page with no
+    // else would notice, and the table would sit on an empty page with no
     // visible cause.
     const four: Row[] = [
       { id: 1, title: "Alpha" },
@@ -296,5 +297,33 @@ describe("DataTable (static data)", () => {
     await waitFor(() =>
       expect(screen.getByText("Nothing attached")).toBeTruthy(),
     );
+  });
+
+  it("applies a field's preset operator to its static match", async () => {
+    // "Status: not Done" keeps the Open row. The operator key is not a row
+    // property, and read as one it matched everything while the value
+    // matched as plain membership: the opposite rows.
+    const fields = {
+      status: {
+        schema: z.array(z.enum(["done", "open"])),
+        operators: "is",
+      },
+    } satisfies DataTableFilterFields;
+    await mount(
+      <DataTable<Row & { status: string }, typeof fields>
+        data={[
+          { id: 1, title: "Alpha", status: "done" },
+          { id: 2, title: "Beta", status: "open" },
+        ]}
+        columns={columns}
+        filters={{
+          fields,
+          seedValues: { status: ["done"], statusOp: "not" },
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Beta")).toBeTruthy());
+    expect(screen.queryByText("Alpha")).toBeNull();
   });
 });

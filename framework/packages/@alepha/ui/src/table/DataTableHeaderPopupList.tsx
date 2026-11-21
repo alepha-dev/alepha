@@ -37,6 +37,14 @@ export const DataTableHeaderPopupList = (
 
   const toggle = (option: string) => {
     const input = model.inputs[field.key];
+    // Off the bar, the bar's "the operator leaves with the value" never runs
+    // for this filter: emptied here, the operator goes too, as the bar's
+    // clear does, or it narrows nothing and still counts as a filter.
+    const empties =
+      selected.includes(option) && (!multiple || selected.length === 1);
+    if (empties && operators) {
+      model.inputs[model.operatorKeyOf(field)]?.set(undefined);
+    }
     if (multiple) {
       const next = selected.includes(option)
         ? selected.filter((v) => v !== option)

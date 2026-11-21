@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 export interface DataTableFilterDialogProps {
   /**
    * The table's own filter form. The SAME instance the toolbar bar would
-   * render — this component never builds one of its own, or a filter set in
+   * render: this component never builds one of its own, or a filter set in
    * here would live in a model `fetch` does not read.
    */
   form: FormModel<any>;
@@ -57,19 +57,19 @@ export interface DataTableFilterDialogProps {
  * The filter bar, on a phone.
  *
  * Below `useIsMobile`'s breakpoint the bar's controls cost several rows of
- * height above a table the reader came for — three selects and a search box
- * stack at 412px — so they move behind this trigger and the bar itself is not
+ * height above a table the reader came for (three selects and a search box
+ * stack at 412px), so they move behind this trigger and the bar itself is not
  * rendered (feedback #2106).
  *
  * Three decisions worth stating, because each had a plausible opposite:
  *
  * - **Not rendered, not `hidden`.** The controls are form-bound `Control`s, so
- *   a CSS-hidden bar plus a dialog copy would put two inputs on every field —
+ *   a CSS-hidden bar plus a dialog copy would put two inputs on every field:
  *   duplicate ids, two labels pointing at one name. `DataTable` renders the
  *   filters in exactly one place at a time, which is why the switch is
  *   `useIsMobile()` and not a `max-md:hidden` class.
  * - **Applies on change, not on close.** The desktop bar refetches as you type
- *   (debounced, on the alepha event bus rather than on any DOM event — which
+ *   (debounced, on the alepha event bus rather than on any DOM event, which
  *   is what lets these controls work identically inside a portal). Apply /
  *   Cancel semantics here would be a second behaviour for the same controls,
  *   and would mean the reader's filters behave differently depending on the

@@ -421,13 +421,11 @@ export const DataTable = <
    * mechanism, so the refetch cannot be a side effect of the values moving.
    *
    * ⚠️ Adjusted during RENDER, not in an effect, and that is load-bearing.
-   * The sort effect (`useDataTableData`) and the column writes
-   * (`useDataTableColumns`) are keyed on `persistenceKey` too, so on the
-   * render where it changes they would fire in the same flush and write the
-   * OUTGOING scope's state under the INCOMING key - silently
-   * overwriting the project you just opened with the one you just left. React
-   * re-renders before committing this, so by the time those effects run the
-   * state is already the new scope's and they write back what was just read.
+   * React re-renders before committing this, so no frame, no fetch and no
+   * effect ever sees the OUTGOING scope's state under the INCOMING key. The
+   * sort used to be written by an effect keyed on `persistenceKey`, which
+   * would have stored the project you just left over the one you just
+   * opened; every write is now the reader's own act.
    *
    * ⚠️ `props.fetch` is still NOT a dependency of `load`. That is the loop
    * `fetchRef` exists to prevent, and several callers write a store atom from
@@ -457,6 +455,9 @@ export const DataTable = <
     // The panel's open state is the scope's like the size is, and its cards
     // are the scope's figures: they go now, and the bump below refetches.
     summary.resetScope(props.persistenceKey);
+    // The selection is the scope's rows: a bulk action after the switch must
+    // not receive rows of the project just left, off screen by now.
+    clearSelection();
     setRefreshKey((k) => k + 1);
   }
 
@@ -480,7 +481,7 @@ export const DataTable = <
   );
 
   /**
-   * How many filters currently narrow the list — a count rather than the
+   * How many filters currently narrow the list: a count rather than the
    * boolean this used to be, because on a phone the bar is behind a button
    * and the trigger's badge is the only thing that says the table is
    * filtered at all.

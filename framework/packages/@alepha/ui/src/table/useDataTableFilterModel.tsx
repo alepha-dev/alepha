@@ -12,6 +12,7 @@ import {
   DATA_TABLE_FILTER_OPERATORS,
   DataTableFilterOperator,
 } from "./DataTableFilterOperator.tsx";
+import { isEmptyFilterValue } from "./dataTablePresets.ts";
 import type { DataTableFilterMode } from "./dataTableTypes.ts";
 
 /**
@@ -35,10 +36,9 @@ export const useDataTableFilterModel = (form: FormModel<ZObject>) => {
   const modeOf = (field: DataTableFilterBarField): DataTableFilterMode =>
     field.mode ?? (field.preset === "search" ? "locked" : "optional");
 
-  const isSet = (key: string): boolean => {
-    const value = values[key];
-    return Array.isArray(value) ? value.length > 0 : Boolean(value);
-  };
+  // `0` and `false` are values like any other: the fetch, the badge and
+  // persistence all count them.
+  const isSet = (key: string): boolean => !isEmptyFilterValue(values[key]);
 
   const operatorKeyOf = (field: DataTableFilterBarField) =>
     field.operatorKey ?? `${field.key}Op`;

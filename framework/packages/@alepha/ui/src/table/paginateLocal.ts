@@ -8,7 +8,7 @@ export interface PaginateLocalOptions<T> {
   size: number;
   /**
    * Alepha's sort param: `"field"` ascending, `"-field"` descending.
-   * Only a single field is honoured — a static table has no server to
+   * Only a single field is honoured: a static table has no server to
    * hand a multi-column sort to.
    */
   sort?: string;
@@ -23,11 +23,22 @@ export interface PaginateLocalOptions<T> {
    */
   filters?: Record<string, any>;
   /**
+   * Each filter field's operator key, keyed by the field, for the fields
+   * whose `operators` is a preset (`is`, `any-none`, `any-all-none`). The
+   * operator read under that key shapes the field's match: `not` and `none`
+   * keep the rows that do NOT match, `all` needs every member of a
+   * multi-select, and `is` and `any` (the defaults) match as with no
+   * operator. An operator key is never matched against a row.
+   */
+  operators?: Record<string, string>;
+  /**
    * Predicate replacing the built-in field matching entirely.
    *
    * Reach for it as soon as a filter is not a field: a `search` box that
    * spans title and description, a range, a joined label. Only ever called
-   * with filter values that are actually set.
+   * with filter values that are actually set. A field with a custom
+   * `operators` list needs it too: only the preset operators are applied
+   * without it.
    */
   filter?: (item: T, filters: Record<string, any>) => boolean;
   /**
@@ -97,6 +108,28 @@ const matchesField = (item: unknown, key: string, value: unknown): boolean => {
 };
 
 /**
+ * `matchesField` under a preset operator: `not` and `none` negate it, `all`
+ * needs every member of a multi-select, anything else is the plain match.
+ */
+const matchesOperator = (
+  item: unknown,
+  key: string,
+  value: unknown,
+  operator: unknown,
+): boolean => {
+  // The unknown-key rule comes first, or a negation would turn "matches
+  // everything" into "matches nothing".
+  if (!(key in (item as object))) {
+    return true;
+  }
+  if (operator === "all" && Array.isArray(value)) {
+    return value.every((member) => matchesField(item, key, [member]));
+  }
+  const matched = matchesField(item, key, value);
+  return operator === "not" || operator === "none" ? !matched : matched;
+};
+
+/**
  * Compare two non-nullish cell values.
  *
  * Typed rather than stringified: `String(a) < String(b)` puts 10 before 2
@@ -150,10 +183,17 @@ export const paginateLocal = <T>(
 
   if (active.length > 0) {
     const values = Object.fromEntries(active);
+    const operators = options.operators ?? {};
+    const operatorKeys = new Set(Object.values(operators));
+    const fields = active.filter(([key]) => !operatorKeys.has(key));
     working = working.filter((item) =>
       options.filter
         ? options.filter(item, values)
-        : active.every(([key, value]) => matchesField(item, key, value)),
+        : fields.every(([key, value]) => {
+            const operatorKey = operators[key];
+            const operator = operatorKey ? values[operatorKey] : undefined;
+            return matchesOperator(item, key, value, operator);
+          }),
     );
   }
 
@@ -167,8 +207,8 @@ export const paginateLocal = <T>(
 
     // Copy `working`, not `items`: sorting the original array back over the
     // filtered one throws the filter away. Copy at all because `sort`
-    // mutates, and the array belongs to the caller — reordering their state
-    // in place would be a side effect they never asked for and cannot see.
+    // mutates and the array belongs to the caller: reordering their state in
+    // place would be a side effect they never asked for and cannot see.
     // `sort` is stable, so rows that compare equal keep the order the caller
     // put them in.
     working = [...working].sort((left, right) => {

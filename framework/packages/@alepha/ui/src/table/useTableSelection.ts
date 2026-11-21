@@ -7,7 +7,7 @@ export interface TableSelection<T> {
    */
   selection: ReadonlyMap<string, T>;
   /**
-   * The selected row objects across every page — always consistent with
+   * The selected row objects across every page, always consistent with
    * `selection.size`, so a bulk action can never receive fewer rows than
    * the count shown to the user.
    */

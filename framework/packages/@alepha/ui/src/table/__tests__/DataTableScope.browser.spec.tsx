@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
@@ -7,6 +7,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DataTable } from "../DataTable.tsx";
+import type { BulkAction } from "../dataTableTypes.ts";
 
 interface Row {
   id: number;
@@ -157,5 +158,37 @@ describe("DataTable (persistenceKey as scope)", () => {
     expect(JSON.parse(window.localStorage.getItem("proj.a.columns")!)).toEqual([
       "title",
     ]);
+  });
+
+  it("drops the outgoing key's selection", async () => {
+    // A bulk action fired after a project switch must not receive rows of
+    // the project just left, which are no longer on screen.
+    const actions: BulkAction<Row>[] = [
+      { label: "Archive", onClick: () => undefined },
+    ];
+    const scoped = (key: string, id: number) => (
+      <DataTable<Row>
+        persistenceKey={key}
+        columns={columns}
+        bulkActions={actions}
+        fetch={async () => pageOf([{ id, title: `row of ${key}` }])}
+      />
+    );
+
+    const { rerender } = await mount(scoped("proj.a", 1));
+    await waitFor(() => expect(screen.getByText("row of proj.a")).toBeTruthy());
+    // The first checkbox is the header's select-all; the row's follows.
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    expect(screen.getByText("1 selected")).toBeTruthy();
+
+    rerender(
+      <AlephaContext.Provider value={alepha!}>
+        {scoped("proj.b", 2)}
+      </AlephaContext.Provider>,
+    );
+    await waitFor(() => expect(screen.getByText("row of proj.b")).toBeTruthy());
+
+    expect(screen.queryByText("1 selected")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
   });
 });

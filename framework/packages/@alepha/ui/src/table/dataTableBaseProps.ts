@@ -222,7 +222,7 @@ export interface DataTableBaseProps<
   /**
    * Auto-refresh interval in ms (only when document is visible).
    *
-   * Meaningless in static-data mode — there is no request to repeat, and a
+   * Meaningless in static-data mode: there is no request to repeat, and a
    * changed `data` array is already on screen the render it changes.
    */
   pollMs?: number;
@@ -242,8 +242,8 @@ export interface DataTableBaseProps<
   refreshOnFocus?: boolean;
   /**
    * External refetch trigger. Bump this value (e.g. from a `useState`
-   * counter) after a mutation performed *outside* the table — such as a
-   * toolbar upload action — to make the table reload. Row/bulk actions
+   * counter) after a mutation performed *outside* the table (such as a
+   * toolbar upload action) to make the table reload. Row/bulk actions
    * already get `ctx.refresh()`; this is the escape hatch for everything
    * else. Changing it resets to page 0 and refetches; the initial value
    * is ignored (the table fetches on mount regardless).
@@ -290,7 +290,7 @@ export interface DataTableBaseProps<
   hideActionsMenu?: boolean;
   /**
    * Extra slot rendered to the right of the filter inputs in the
-   * toolbar — typically a "New" / "Create" button, or any page-level action
+   * toolbar, typically a "New" / "Create" button, or any page-level action
    * that is not a bare icon button (see the note on `DataTableProps`: it
    * belongs here rather than in a header above the table).
    *
@@ -481,7 +481,7 @@ export interface DataTableBaseProps<
    */
   noMatchState?: DataTableEmptyState;
   /**
-   * Rich empty-state node rendered when the page is empty — e.g. an icon +
+   * Rich empty-state node rendered when the page is empty, e.g. an icon +
    * message + optional call-to-action. Replaces the whole thing, both states
    * included, so it outranks every prop above.
    *

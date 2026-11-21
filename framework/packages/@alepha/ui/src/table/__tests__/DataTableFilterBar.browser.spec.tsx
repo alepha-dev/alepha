@@ -33,6 +33,7 @@ const filterFields = {
     ],
   },
   owner: { schema: z.string(), label: "Owner" },
+  priority: { schema: z.number(), label: "Priority" },
 } satisfies DataTableFilterFields;
 
 type Filters = DataTableFilterValues<typeof filterFields>;
@@ -186,5 +187,16 @@ describe("DataTableFilterBar", () => {
     expect(last()?.status).toBeUndefined();
     // Emptied, not removed: the reader is still looking at it.
     expect(slot("status")).toBeTruthy();
+  });
+
+  it("shows a filter holding a falsy value, and offers to clear it", async () => {
+    // `0` narrows the fetch like any other number: the bar must say so.
+    const { last } = await mount({ priority: 0 });
+
+    await waitFor(() => expect(slot("priority")).toBeTruthy());
+    expect(last()?.priority).toBe(0);
+    expect(
+      screen.getByRole("button", { name: "Clear value: Priority" }),
+    ).toBeTruthy();
   });
 });

@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import type { DataTableBaseProps } from "./dataTableBaseProps.ts";
+import { dataTableFilterOperatorKey } from "./dataTableFilterFields.ts";
 import { persistedSort, writePersisted } from "./dataTablePersistence.ts";
 import type {
   DataTableFilterFields,
@@ -94,9 +95,9 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   );
   const [fetchedData, setData] = useState<T[]>([]);
   const [fetchedMeta, setMeta] = useState<Page<T>["page"] | null>(null);
-  // The filters the fetched rows answer, copied when their request left:
-  // `form.currentValues` is mutated in place and already holds what the
-  // reader is typing now. Read by the cells through `rowFilters`.
+  // The filters the fetched rows answer, read when their request left: by
+  // the time it answers, `form.currentValues` holds what the reader is
+  // typing now. Read by the cells through `rowFilters`.
   const [fetchedFilters, setFetchedFilters] = useState<
     Record<string, unknown> | undefined
   >(undefined);
@@ -110,7 +111,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
 
   // Alepha's pagination parser reads "field" as asc and "-field" as desc.
   // Multiple comma-separated entries are multi-column sort, so we must
-  // NOT use `field,direction` syntax — that would treat "asc"/"desc" as
+  // NOT use `field,direction` syntax: that would treat "asc"/"desc" as
   // a second column name and 500 on the backend.
   const sortParam = sort
     ? sort.direction === "desc"
@@ -188,7 +189,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   }, [load]);
 
   /**
-   * Static mode's equivalent of `load` — derived, not stored.
+   * Static mode's equivalent of `load`: derived, not stored.
    *
    * Deliberately NOT routed through `load`: putting `props.data` in that
    * effect's dependencies reproduces the exact loop `fetchRef` exists to
@@ -205,6 +206,15 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
         sortValues[column.sortKey ?? key] = column.sortValue;
       }
     }
+    // The preset operators, which the static match applies; a custom list is
+    // the caller's `filter`.
+    const operators: Record<string, string> = {};
+    for (const [key, field] of Object.entries(props.filters?.fields ?? {})) {
+      const operatorKey = dataTableFilterOperatorKey(key, field);
+      if (operatorKey && typeof field.operators === "string") {
+        operators[key] = operatorKey;
+      }
+    }
     // `pagination={false}`: one page holding every row.
     const unpaged = props.pagination === false;
     return paginateLocal(props.data, {
@@ -213,18 +223,20 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
       sort: sortParam,
       sortValues,
       filters: form?.currentValues,
+      operators,
       filter: props.filter,
       group: props.groupBy
         ? { key: props.groupBy.key, order: props.groupBy.order }
         : undefined,
     });
     // `refreshKey` is what the filter-form subscriptions bump, so it is how
-    // a filter change reaches this memo — `form.currentValues` is mutated in
-    // place and its identity never changes.
+    // a filter change reaches this memo: `form` keeps its identity while
+    // its values change, and `currentValues` is read inside.
   }, [
     props.data,
     props.columns,
     props.filter,
+    props.filters?.fields,
     props.pagination,
     props.groupBy,
     page,
@@ -245,7 +257,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   /**
    * Rows vanish under the reader in static mode: the caller detaches one and
    * the page they are on stops existing. Nothing fetches, so nothing else
-   * would notice — the table would sit on an empty page with no visible
+   * would notice, and the table would sit on an empty page with no visible
    * cause. Fetch mode has the same hole, but there the server round-trip
    * needed to see it makes this the wrong place to close it.
    */
@@ -259,27 +271,35 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     }
   }
 
-  // Persist sort to localStorage on every change.
-  useEffect(() => {
-    if (!sortKey) return;
-    writePersisted(sortKey, "sort", sort);
-  }, [sortKey, sort]);
-
   // -- Sort ------------------------------------------------------------------
+
+  /**
+   * Apply a sort the reader chose, store it and report it.
+   *
+   * Stored here, on the reader's act, never on mount: a mount effect stamped
+   * `defaultSort` into storage for everyone who merely opened the table, so a
+   * later change of it never reached them (the rule the column writes in
+   * `useDataTableColumns` follow too). The callback runs outside a `setSort`
+   * updater, which StrictMode runs twice.
+   */
+  const applySort = (next: SortState | null) => {
+    setSort(next);
+    if (sortKey) {
+      writePersisted(sortKey, "sort", next);
+    }
+    props.onSortChange?.(next);
+  };
 
   const toggleSort = (col: string, def: ColumnDef<T>) => {
     if (!def.sortable) return;
     const field = def.sortKey ?? col;
-    setSort((s) => {
-      const next: SortState | null =
-        !s || s.field !== field
-          ? { field, direction: "asc" }
-          : s.direction === "asc"
-            ? { field, direction: "desc" }
-            : null;
-      props.onSortChange?.(next);
-      return next;
-    });
+    applySort(
+      !sort || sort.field !== field
+        ? { field, direction: "asc" }
+        : sort.direction === "asc"
+          ? { field, direction: "desc" }
+          : null,
+    );
   };
 
   /**
@@ -295,9 +315,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   ) => {
     if (!def.sortable) return;
     const field = def.sortKey ?? col;
-    const next: SortState | null = direction ? { field, direction } : null;
-    setSort(next);
-    props.onSortChange?.(next);
+    applySort(direction ? { field, direction } : null);
   };
 
   /**
