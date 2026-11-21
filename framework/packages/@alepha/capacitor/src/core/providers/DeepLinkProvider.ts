@@ -145,6 +145,12 @@ export class DeepLinkProvider {
       return undefined;
     }
 
+    // `//host/x` is a path here but another origin to the history API, which
+    // throws on it and would blank a cold start from that link.
+    if (url.pathname.startsWith("//")) {
+      return undefined;
+    }
+
     const path = url.pathname === "" ? "/" : url.pathname;
     return { kind: "route", path: `${path}${url.search}${url.hash}` };
   }

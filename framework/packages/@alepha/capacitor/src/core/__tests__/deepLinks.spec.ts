@@ -59,6 +59,15 @@ describe("DeepLinkProvider.parse", () => {
     expect(links.parse("not a url")).toBeUndefined();
   });
 
+  it("refuses a path starting with two slashes, which the history API reads as another host", ({
+    expect,
+  }) => {
+    const { links } = setup();
+
+    expect(links.parse("mobile://app//evil.example/x")).toBeUndefined();
+    expect(links.parse("mobile://app///evil.example/x")).toBeUndefined();
+  });
+
   it("answers only the selected variant's scheme", ({ expect }) => {
     const { links } = setup("mobile-pro");
 
