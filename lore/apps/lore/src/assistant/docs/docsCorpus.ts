@@ -2094,6 +2094,42 @@ export const docsCorpus: DocsSection[] = [
     text: "- [Agent prompts](/lore/docs/agents-prompts): hand work to your own coding\n  agent.\n- [Connecting an agent](/lore/docs/agents-connecting): give an agent the same\n  access over MCP.\n- [Self-hosting](/lore/docs/start-self-hosting): running your own Lore.",
   },
   {
+    guide: "Agent jobs",
+    section: "Agent jobs",
+    url: "https://alepha.dev/lore/docs/agents-jobs",
+    text: "An agent job is Claude Code run by Lore on one of your own hosts: it triages a\nfeedback item into quests, or works a quest and pushes a branch. You provide\nthe machine and the Claude credential; Lore writes the job, starts it, shows its\nlog, and keeps what it answered.\n\nThe credential never leaves your host. Lore asks the host to run a job, the\nhost pulls what to run, and Claude Code reads its credential from the host\nitself.",
+  },
+  {
+    guide: "Agent jobs",
+    section: "Claude Code on your host, by hand",
+    url: "https://alepha.dev/lore/docs/agents-jobs#claude-code-on-your-host-by-hand",
+    text: "An agent job runs on a host enrolled with Bay (see\n[Hosts](/lore/docs/ship-hosts)). Pick one that serves no production app and\nholds no other project's secrets: a job runs a repository's code there.\n\n**1. Mint a credential.** On any machine where you are signed in to Claude\nCode, run `claude setup-token`, which prints a long-lived OAuth token for your\nClaude subscription. An Anthropic API key works too, billed per token. Lore\nnever asks for either.\n\n**2. Tell Bay how to run jobs.** Bay has two ways, chosen on the host:\n\n- **In a container** (recommended). Each job runs in Lore's agent image, as a\n  non-root user, with no host directory mounted and a network whose only way\n  out is Bay's egress proxy. The credential is a host secret, set from stdin so\n  it lands in no shell history:\n\n  ```bash\n  sudo bay secret set CLAUDE_CODE_OAUTH_TOKEN - < token.txt\n  sudo bay config jobs --runner container --credential CLAUDE_CODE_OAUTH_TOKEN\n  ```\n\n  Add `--gvisor` when the host has the `runsc` runtime, for a kernel between\n  the job and the machine.\n\n- **As a host process.** Each job runs under a dedicated Unix user, signed in\n  to Claude Code by hand (`sudo -u bay-agent claude setup-token`, o...",
+  },
+  {
+    guide: "Agent jobs",
+    section: "What an agent does",
+    url: "https://alepha.dev/lore/docs/agents-jobs#what-an-agent-does",
+    text: "### Feedback to quests\n\n**Triage with Claude**, on a feedback item, runs the project's Triage prompt\n(see [Agent prompts](/lore/docs/agents-prompts)) on that one item. The agent\nreads the item and the code, then does one of three things: files a todo quest\nfor sound feedback, leaves a question for a member when it is unsure, or\nrejects what is not actionable. On the inbox, **Triage the pending feedback with\nClaude** starts one job per pending item.\n\nTo triage every new item as it arrives, turn on **Triage new feedback with\nClaude** in **Settings ▸ Plan ▸ Features**. Each item is triaged once.\n\n### A quest to a branch\n\n**Work it with Claude**, on an accepted quest, clones the repository, works the\nquest, can run the project's checks, and pushes the branch `lore/q<number>` to the\nproject's Lore repository. The branch is the job's whole output: it never\nwrites to any other branch, and it never merges. You review it as you would a\ncolleague's.\n\n### A branch to main\n\nOpening a pull request and merging it stay a person's acts for now.\n\n### Following a job\n\nEvery job shows on the subject it works on, with its log as it runs, its\nstatus, how many turns it took and what it cost. From the CL...",
+  },
+  {
+    guide: "Agent jobs",
+    section: "Profiles and rights",
+    url: "https://alepha.dev/lore/docs/agents-jobs#profiles-and-rights",
+    text: "A job runs one of two fixed profiles. Neither can be widened from a prompt.\n\n| profile | used by                 | Claude Code may                                               | turns | time   |\n| ------- | ----------------------- | ------------------------------------------------------------- | ----- | ------ |\n| `read`  | triage                  | read files, search, read git history                          | 30    | 15 min |\n| `push`  | **Work it with Claude** | edit files, run shell commands (`yarn`, git), push its branch | 100   | 60 min |\n\nEach job also gets its own Lore key, made when the host pulls the job and\nrevoked when it ends. The key holds only:\n\n- the Lore tools the job needs, for the one feedback item or quest it is\n  about;\n- read access to the one repository it cloned;\n- for a `push` job, write access to `lore/q<number>` and nothing else.\n\nA job never starts another agent job: whatever its output says, the next stage\nis started by a person or by the project's own settings.\n\n**Network.** On a container host, every job reaches the Anthropic API and your\nLore, and nothing else. A `push` job also reaches the npm and Yarn registries\nand GitHub, so it can install depe...",
+  },
+  {
+    guide: "Agent jobs",
+    section: "Untrusted input",
+    url: "https://alepha.dev/lore/docs/agents-jobs#untrusted-input",
+    text: "Feedback written by someone outside the project's team (a visitor of a public\nform or widget, a user who is not a member) is marked **Untrusted** when it is submitted, and\nstays so. Its text may be written to steer an agent, so Lore holds it to\nstricter rules:\n\n- A host that runs jobs **as a process** never gets it: Lore refuses to start\n  the job, and a member triages the item by hand.\n- A **container** host triages it with the `read` profile, whatever was asked:\n  no edit, no shell, no push.\n- A quest filed from it is marked **Untrusted** too. **Work it with Claude**\n  waits until a member has read its text and clicked **Confirm its text**,\n  which Lore records with their name.\n\nThe Triage prompt also tells the agent that the item's text is data, never\ninstructions. That sentence helps; the rules above are what hold.",
+  },
+  {
+    guide: "Agent jobs",
+    section: "What Lore never sees",
+    url: "https://alepha.dev/lore/docs/agents-jobs#what-lore-never-sees",
+    text: "- **The Claude credential.** It stays on the host: in a host secret, or in the\n  jobs user's own Claude Code sign-in. Lore sees only the secret's name, and\n  whether the check found an OAuth token or an API key.\n- **Your host's other secrets.** A job pulls its spec and nothing else; a\n  container job sees no host directory and no environment but its own.\n- **Your Claude account.** Usage and billing stay between you and Anthropic.\n  Lore shows the cost Claude Code reports at the end of each job.\n\nWhat Lore does keep: the prompt it sent, the job's log (up to a size cap), and\nClaude Code's final answer.",
+  },
+  {
     guide: "The lore CLI",
     section: "The lore CLI",
     url: "https://alepha.dev/lore/docs/reference-cli",
