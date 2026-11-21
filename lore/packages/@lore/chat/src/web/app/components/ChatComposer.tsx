@@ -277,7 +277,7 @@ const ChatComposer = (props: ChatComposerProps) => {
       {/* Discord's message bar: one filled block, the attach button on the
           left, Enter sends. The send button is kept for touch screens only,
           where there is no Enter to rely on. */}
-      <div className="bg-muted border-foreground/20 hover:border-foreground/35 focus-within:border-foreground/35 flex items-start gap-1 rounded-lg border pr-2 pl-1 transition-colors">
+      <div className="bg-background border-foreground/20 hover:border-foreground/35 focus-within:border-foreground/35 flex items-start gap-1 rounded-lg border pr-2 pl-1 transition-colors">
         <Button
           type="button"
           variant="minimal"
