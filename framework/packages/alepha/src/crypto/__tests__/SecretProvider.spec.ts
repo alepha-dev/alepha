@@ -9,7 +9,23 @@ import {
   SecretProvider,
 } from "../providers/SecretProvider.ts";
 
+class EnvReadingSecretProvider extends SecretProvider {
+  public get defaultedSecret(): string {
+    return this.env.APP_SECRET;
+  }
+}
+
 describe("SecretProvider", () => {
+  it("declares DEFAULT_SECRET_KEY_VALUE as the default of APP_SECRET", () => {
+    // The schema spells the literal out for the generated docs; an explicit
+    // undefined hides the shell's APP_SECRET so the schema default applies.
+    const alepha = Alepha.create({ env: { APP_SECRET: undefined } });
+
+    expect(alepha.inject(EnvReadingSecretProvider).defaultedSecret).toBe(
+      DEFAULT_SECRET_KEY_VALUE,
+    );
+  });
+
   describe("registration", () => {
     it("is not created by AlephaCrypto, so an app that only hashes boots in production", async () => {
       // The server and etag modules reach AlephaCrypto for hashes and request
@@ -37,16 +53,6 @@ describe("SecretProvider", () => {
 
       await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
     });
-  });
-
-  it("throws on start in production when APP_SECRET is the default", async () => {
-    const alepha = Alepha.create({
-      env: { NODE_ENV: "production", APP_SECRET: "" },
-    });
-    // Register the provider so its `configure` hook runs on start.
-    alepha.inject(SecretProvider);
-
-    await expect(alepha.start()).rejects.toThrow(/SecretProvider|APP_SECRET/);
   });
 
   it("starts in production when APP_SECRET is set to a non-default value", async () => {

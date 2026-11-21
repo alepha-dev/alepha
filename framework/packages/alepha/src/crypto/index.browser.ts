@@ -8,7 +8,7 @@ export { BrowserCryptoProvider as CryptoProvider } from "./providers/BrowserCryp
 
 /**
  * Cryptographic utilities: hashing, HMAC, AES-256-GCM encryption, and secure
- * random generation. Password hashing is server-only — the browser provider
+ * random generation. Password hashing is server-only: the browser provider
  * throws for `hashPassword` / `verifyPassword`.
  *
  * @module alepha.crypto

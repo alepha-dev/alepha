@@ -9,13 +9,6 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
   protected static readonly AES_ALGORITHM = "AES-GCM";
   protected static readonly AES_IV_LENGTH = 12;
 
-  /**
-   * UUIDv7 monotonic state — see {@link randomUUIDv7}.
-   */
-  protected uuidV7EmittedMs = -1;
-  protected uuidV7InputMs = -1;
-  protected uuidV7Counter = 0;
-
   public async hashPassword(_password: string): Promise<string> {
     throw new AlephaError("hashPassword is not supported in the browser");
   }
@@ -96,9 +89,9 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
 
   public async decrypt(ciphertext: string, key: string): Promise<string> {
     const [ivHex, tagHex, encryptedHex] = this.decodeCiphertext(ciphertext);
-    const iv = this.fromHex(ivHex!);
-    const tag = this.fromHex(tagHex!);
-    const encrypted = this.fromHex(encryptedHex!);
+    const iv = this.hexToBytes(ivHex!);
+    const tag = this.hexToBytes(tagHex!);
+    const encrypted = this.hexToBytes(encryptedHex!);
     // Web Crypto expects tag appended to ciphertext
     const combined = new Uint8Array(encrypted.length + tag.length);
     combined.set(encrypted);
@@ -130,56 +123,13 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
     return crypto.randomUUID();
   }
 
-  /**
-   * Generate an RFC 9562 UUIDv7 for the given unix-millisecond timestamp.
-   *
-   * Mirrors the Node `CryptoProvider.randomUUIDv7` contract: the caller
-   * supplies the timestamp, a 12-bit counter in `rand_a` keeps same-ms ids
-   * strictly increasing (seeded at or below 0x7ff, borrowing a millisecond
-   * on overflow), and a rewound clock is honored as-is.
-   */
-  public randomUUIDv7(timestampMs: number): string {
-    const ms = Math.floor(timestampMs);
-    if (ms < 0 || ms > 0xffff_ffff_ffff) {
-      throw new AlephaError(
-        `UUIDv7 timestamp out of range: ${timestampMs} (expected 0..2^48-1 unix ms)`,
-      );
-    }
-
-    if (ms < this.uuidV7InputMs || ms > this.uuidV7EmittedMs) {
-      this.uuidV7EmittedMs = ms;
-      this.uuidV7Counter = this.randomCounterSeed();
-    } else {
-      this.uuidV7Counter++;
-      if (this.uuidV7Counter > 0xfff) {
-        this.uuidV7EmittedMs++;
-        this.uuidV7Counter = this.randomCounterSeed();
-      }
-    }
-    this.uuidV7InputMs = ms;
-
-    const rand = crypto.getRandomValues(new Uint8Array(8));
-    const ts = this.uuidV7EmittedMs.toString(16).padStart(12, "0");
-    const seq = this.uuidV7Counter.toString(16).padStart(3, "0");
-    const tail = [
-      (rand[0]! & 0x3f) | 0x80,
-      rand[1]!,
-      rand[2]!,
-      rand[3]!,
-      rand[4]!,
-      rand[5]!,
-      rand[6]!,
-      rand[7]!,
-    ]
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("");
-
-    return `${ts.slice(0, 8)}-${ts.slice(8)}-7${seq}-${tail.slice(0, 4)}-${tail.slice(4)}`;
-  }
-
   protected randomCounterSeed(): number {
     const bytes = crypto.getRandomValues(new Uint8Array(2));
     return ((bytes[0]! << 8) | bytes[1]!) & 0x7ff;
+  }
+
+  protected randomUuidV7Tail(): Uint8Array {
+    return crypto.getRandomValues(new Uint8Array(8));
   }
 
   public randomText(length: number): string {
@@ -188,14 +138,15 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
   }
 
   public randomCode(length: number): string {
+    this.assertCodeLength(length);
     // Generated digit by digit: computing `10 ** length` first overflows the
     // Uint32 range at length >= 10, which floored the rejection-sampling
     // limit to 0 and made the loop unterminable (a hung tab). Drawing each
     // digit independently is uniform, allocation-cheap, and has no length
-    // ceiling — matching the Node provider, which handles long codes fine.
+    // ceiling, as on the Node provider, which draws digit by digit too.
     //
-    // 250 = 25 × 10, so bytes 0–249 map onto 0–9 with no modulo bias;
-    // 250–255 are rejected and redrawn.
+    // 250 = 25 × 10, so bytes 0 to 249 map onto 0 to 9 with no modulo bias;
+    // 250 to 255 are rejected and redrawn.
     const digits: string[] = [];
     const buffer = new Uint8Array(length);
     while (digits.length < length) {
@@ -243,14 +194,6 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
       .join("");
   }
 
-  protected fromHex(hex: string): Uint8Array {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
-    }
-    return bytes;
-  }
-
   protected toBase64Url(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     let binary = "";
@@ -278,7 +221,7 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
   /**
    * Derive an AES-GCM key from a low-entropy user passphrase using
    * PBKDF2-SHA-256. Use this in place of {@link deriveAesKey} whenever the
-   * key material is a human-chosen string — a single SHA-256 over a
+   * key material is a human-chosen string: a single SHA-256 over a
    * passphrase is brute-forceable by anyone with the ciphertext.
    *
    * OWASP 2023 recommends 600k iterations of PBKDF2-SHA-256 for password
@@ -301,7 +244,7 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
     return crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt: this.fromHex(saltHex).buffer as ArrayBuffer,
+        salt: this.hexToBytes(saltHex).buffer as ArrayBuffer,
         iterations,
         hash: "SHA-256",
       },
@@ -319,7 +262,7 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
    *     { v: 1, salt, iv, ciphertext, kdf }
    *
    * `salt` + `kdf` are echoed back so {@link decryptWithPassphrase} can
-   * reproduce the exact derivation. Each call generates a fresh IV — pass
+   * reproduce the exact derivation. Each call generates a fresh IV: pass
    * a stable salt across saves of the same protected blob so the
    * passphrase only has to be derived once per session.
    */
@@ -351,7 +294,7 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
 
   /**
    * Reverse of {@link encryptWithPassphrase}. Throws when the passphrase
-   * is wrong or the envelope is corrupt — both surface as the same
+   * is wrong or the envelope is corrupt: both surface as the same
    * `OperationError` from Web Crypto, which the UI presents as a generic
    * "wrong passphrase" without revealing which.
    */
@@ -383,10 +326,10 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
     const decrypted = await crypto.subtle.decrypt(
       {
         name: BrowserCryptoProvider.AES_ALGORITHM,
-        iv: this.fromHex(parsed.iv).buffer as ArrayBuffer,
+        iv: this.hexToBytes(parsed.iv).buffer as ArrayBuffer,
       },
       key,
-      this.fromHex(parsed.ciphertext).buffer as ArrayBuffer,
+      this.hexToBytes(parsed.ciphertext).buffer as ArrayBuffer,
     );
     return new TextDecoder().decode(decrypted);
   }

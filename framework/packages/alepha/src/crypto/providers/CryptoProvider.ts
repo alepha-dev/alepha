@@ -30,13 +30,6 @@ export class CryptoProvider extends CryptoProviderBase {
   protected static readonly AES_TAG_LENGTH = 16;
   protected static readonly AES_KEY_LENGTH = 32;
 
-  /**
-   * UUIDv7 monotonic state — see {@link randomUUIDv7}.
-   */
-  protected uuidV7EmittedMs = -1;
-  protected uuidV7InputMs = -1;
-  protected uuidV7Counter = 0;
-
   public async hashPassword(password: string): Promise<string> {
     const salt = randomBytes(this.passwordParameters.saltLength);
     const derivedKey = await this.scryptAsync(
@@ -166,68 +159,12 @@ export class CryptoProvider extends CryptoProviderBase {
     return randomUUID();
   }
 
-  /**
-   * Generate an RFC 9562 UUIDv7 for the given unix-millisecond timestamp.
-   *
-   * The caller supplies the timestamp (usually `DateTimeProvider.nowMillis()`)
-   * so this module stays free of any clock dependency and generated ids follow
-   * `travel()` in tests.
-   *
-   * Within a single millisecond, a 12-bit counter in `rand_a` keeps ids
-   * strictly increasing; it is seeded at or below 0x7ff on each new
-   * millisecond, guaranteeing at least 2048 increments before it overflows
-   * and borrows one millisecond from the timestamp. Lexicographic order of
-   * the canonical string therefore matches generation order as long as the
-   * supplied timestamps never decrease; a rewound clock is honored as-is.
-   */
-  public randomUUIDv7(timestampMs: number): string {
-    const ms = Math.floor(timestampMs);
-    if (ms < 0 || ms > 0xffff_ffff_ffff) {
-      throw new AlephaError(
-        `UUIDv7 timestamp out of range: ${timestampMs} (expected 0..2^48-1 unix ms)`,
-      );
-    }
-
-    if (ms < this.uuidV7InputMs || ms > this.uuidV7EmittedMs) {
-      this.uuidV7EmittedMs = ms;
-      this.uuidV7Counter = randomInt(0x800);
-    } else {
-      this.uuidV7Counter++;
-      if (this.uuidV7Counter > 0xfff) {
-        this.uuidV7EmittedMs++;
-        this.uuidV7Counter = randomInt(0x800);
-      }
-    }
-    this.uuidV7InputMs = ms;
-
-    return this.formatUuidV7(
-      this.uuidV7EmittedMs,
-      this.uuidV7Counter,
-      randomBytes(8),
-    );
+  protected randomCounterSeed(): number {
+    return randomInt(0x800);
   }
 
-  protected formatUuidV7(
-    timestampMs: number,
-    counter: number,
-    rand: Uint8Array,
-  ): string {
-    const ts = timestampMs.toString(16).padStart(12, "0");
-    const seq = counter.toString(16).padStart(3, "0");
-    const tail = [
-      (rand[0]! & 0x3f) | 0x80,
-      rand[1]!,
-      rand[2]!,
-      rand[3]!,
-      rand[4]!,
-      rand[5]!,
-      rand[6]!,
-      rand[7]!,
-    ]
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("");
-
-    return `${ts.slice(0, 8)}-${ts.slice(8)}-7${seq}-${tail.slice(0, 4)}-${tail.slice(4)}`;
+  protected randomUuidV7Tail(): Uint8Array {
+    return randomBytes(8);
   }
 
   public randomText(length: number): string {
@@ -235,9 +172,14 @@ export class CryptoProvider extends CryptoProviderBase {
   }
 
   public randomCode(length: number): string {
-    const max = 10 ** length;
-    const code = randomInt(max);
-    return String(code).padStart(length, "0");
+    this.assertCodeLength(length);
+    // Drawn digit by digit: `randomInt` refuses a bound above 2^48, which
+    // `10 ** length` passes at length 15, and each draw below 10 is uniform.
+    let code = "";
+    for (let i = 0; i < length; i++) {
+      code += randomInt(10);
+    }
+    return code;
   }
 
   /**
@@ -278,9 +220,9 @@ export class CryptoProvider extends CryptoProviderBase {
   }
 
   /**
-   * Web Crypto API parity with `BrowserCryptoProvider`. Node 18+ exposes
+   * Web Crypto API parity with `BrowserCryptoProvider`. Node exposes
    * `globalThis.crypto.subtle`, so the implementations are the same on
-   * both runtimes. Server-side use is unusual — passphrase-derived keys
+   * both runtimes. Server-side use is unusual: passphrase-derived keys
    * are a browser-only flow in Alepha, but the implementations are real
    * and exist so the type surface matches and shared call sites compile.
    */
@@ -368,13 +310,5 @@ export class CryptoProvider extends CryptoProviderBase {
       this.hexToBytes(parsed.ciphertext).buffer as ArrayBuffer,
     );
     return new TextDecoder().decode(decrypted);
-  }
-
-  protected hexToBytes(hex: string): Uint8Array {
-    const out = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      out[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
-    }
-    return out;
   }
 }

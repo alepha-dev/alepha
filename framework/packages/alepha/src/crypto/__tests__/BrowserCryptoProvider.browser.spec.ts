@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { BrowserCryptoProvider } from "../providers/BrowserCryptoProvider.ts";
@@ -163,13 +164,24 @@ describe("BrowserCryptoProvider", () => {
     expect(code).toMatch(/^\d$/);
   });
 
+  it("should refuse a code length that is not a positive integer", () => {
+    const crypto = new BrowserCryptoProvider();
+
+    for (const length of [0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => crypto.randomCode(length)).toThrow(
+        `randomCode needs a positive integer length, got ${length}`,
+      );
+      expect(() => crypto.randomCode(length)).toThrow(AlephaError);
+    }
+  });
+
   it("should generate long codes without hanging", () => {
     const crypto = new BrowserCryptoProvider();
 
     // For length >= 10, `10 ** length` exceeds 2^32, so the rejection-sampling
-    // limit floored to 0 and the loop could never exit — a hung tab. The Node
-    // impl handles these fine, so the providers must not diverge.
-    for (const length of [10, 12, 15]) {
+    // limit floored to 0 and the loop could never exit: a hung tab. The Node
+    // spec draws 15 and 32 too, so the providers cannot diverge.
+    for (const length of [10, 12, 15, 32]) {
       const code = crypto.randomCode(length);
       expect(code).toHaveLength(length);
       expect(code).toMatch(new RegExp(`^\\d{${length}}$`));
@@ -177,7 +189,7 @@ describe("BrowserCryptoProvider", () => {
   });
 
   describe("passphrase-based encryption (protected folios)", () => {
-    // Iteration count tuned down for tests — production paths use the
+    // Iteration count tuned down for tests: production paths use the
     // 600k default. Using the default here would push the suite well
     // past Vitest's per-test timeout in CI.
     const ITER = 1_000;
@@ -214,7 +226,7 @@ describe("BrowserCryptoProvider", () => {
         ITER,
       );
       // Web Crypto throws DOMException("OperationError") on auth-tag
-      // mismatch. We don't pin the exact class — just that it rejects.
+      // mismatch. We don't pin the exact class, just that it rejects.
       await expect(
         crypto.decryptWithPassphrase(envelope, "wrong one"),
       ).rejects.toThrow();

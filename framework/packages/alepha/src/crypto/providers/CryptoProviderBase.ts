@@ -20,6 +20,13 @@ export abstract class CryptoProviderBase {
   };
 
   /**
+   * UUIDv7 monotonic state, see {@link randomUUIDv7}.
+   */
+  protected uuidV7EmittedMs = -1;
+  protected uuidV7InputMs = -1;
+  protected uuidV7Counter = 0;
+
+  /**
    * Whether a stored password should be upgraded after successful verification.
    * Legacy hashes and parameters below the current policy need rehashing.
    */
@@ -120,6 +127,100 @@ export abstract class CryptoProviderBase {
       );
   }
 
+  /**
+   * Generate an RFC 9562 UUIDv7 for the given unix-millisecond timestamp.
+   *
+   * The caller supplies the timestamp (usually `DateTimeProvider.nowMillis()`)
+   * so this module stays free of any clock dependency and generated ids follow
+   * `travel()` in tests.
+   *
+   * Within a single millisecond, a 12-bit counter in `rand_a` keeps ids
+   * strictly increasing; it is seeded at or below 0x7ff on each new
+   * millisecond, guaranteeing at least 2048 increments before it overflows
+   * and borrows one millisecond from the timestamp. Lexicographic order of
+   * the canonical string therefore matches generation order as long as the
+   * supplied timestamps never decrease; a rewound clock is honored as-is.
+   */
+  public randomUUIDv7(timestampMs: number): string {
+    const ms = Math.floor(timestampMs);
+    if (ms < 0 || ms > 0xffff_ffff_ffff) {
+      throw new AlephaError(
+        `UUIDv7 timestamp out of range: ${timestampMs} (expected 0..2^48-1 unix ms)`,
+      );
+    }
+
+    if (ms < this.uuidV7InputMs || ms > this.uuidV7EmittedMs) {
+      this.uuidV7EmittedMs = ms;
+      this.uuidV7Counter = this.randomCounterSeed();
+    } else {
+      this.uuidV7Counter++;
+      if (this.uuidV7Counter > 0xfff) {
+        this.uuidV7EmittedMs++;
+        this.uuidV7Counter = this.randomCounterSeed();
+      }
+    }
+    this.uuidV7InputMs = ms;
+
+    return this.formatUuidV7(
+      this.uuidV7EmittedMs,
+      this.uuidV7Counter,
+      this.randomUuidV7Tail(),
+    );
+  }
+
+  protected formatUuidV7(
+    timestampMs: number,
+    counter: number,
+    rand: Uint8Array,
+  ): string {
+    const ts = timestampMs.toString(16).padStart(12, "0");
+    const seq = counter.toString(16).padStart(3, "0");
+    const tail = [
+      (rand[0]! & 0x3f) | 0x80,
+      rand[1]!,
+      rand[2]!,
+      rand[3]!,
+      rand[4]!,
+      rand[5]!,
+      rand[6]!,
+      rand[7]!,
+    ]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    return `${ts.slice(0, 8)}-${ts.slice(8)}-7${seq}-${tail.slice(0, 4)}-${tail.slice(4)}`;
+  }
+
+  /**
+   * The counter a new millisecond starts from, in `[0, 0x7ff]`.
+   */
+  protected abstract randomCounterSeed(): number;
+
+  /**
+   * The 8 random bytes that close a UUIDv7.
+   */
+  protected abstract randomUuidV7Tail(): Uint8Array;
+
+  /**
+   * Refuses a `randomCode` length that is not a positive safe integer: a
+   * silent empty or truncated one-time code is worse than a throw.
+   */
+  protected assertCodeLength(length: number): void {
+    if (!Number.isSafeInteger(length) || length < 1) {
+      throw new AlephaError(
+        `randomCode needs a positive integer length, got ${length}`,
+      );
+    }
+  }
+
+  protected hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes;
+  }
+
   public abstract hashPassword(password: string): Promise<string>;
   public abstract verifyPassword(
     password: string,
@@ -144,7 +245,6 @@ export abstract class CryptoProviderBase {
   public abstract decrypt(ciphertext: string, key: string): Promise<string>;
   public abstract equals(a: string, b: string): boolean;
   public abstract randomUUID(): string;
-  public abstract randomUUIDv7(timestampMs: number): string;
   public abstract randomText(length: number): string;
   public abstract randomCode(length: number): string;
   public abstract randomInt(maxExclusive: number): number;
