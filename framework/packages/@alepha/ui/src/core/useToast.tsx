@@ -6,7 +6,7 @@ import { toast as sonner } from "sonner";
 
 /**
  * Intent buckets for `Toast.show`. Maps internally to icon + colour
- * variants. Keep the vocabulary stable — call sites name *meaning*,
+ * variants. Keep the vocabulary stable: call sites name *meaning*,
  * not visual style.
  */
 export type ToastIntent = "primary" | "success" | "info" | "warning" | "danger";
@@ -70,22 +70,6 @@ export interface Toast {
   dismiss(id?: string | number): void;
 }
 
-/**
- * Imperative toast hook. Requires a `<Toaster />` mounted somewhere in
- * the tree (`Toaster`, from the same `@alepha/ui` module).
- *
- * The underlying library (currently sonner) is an implementation
- * detail — never exported from this module. Consumers depend on the
- * `Toast` interface, not on sonner's API. This keeps the door open to
- * swapping libraries or adding cross-cutting behavior (dedup,
- * rate-limit, branded icons) without rippling through call sites.
- *
- * @example
- * const toast = useToast();
- * toast.success("Saved");
- * toast.error(err.message, { description: "Please try again" });
- * toast.show(message, intent, { action: { label: "Undo", onClick } });
- */
 // Bridge our shape to sonner's. ToastOptions is intentionally a
 // strict subset; using sonner's own parameter type derives it without
 // importing the name, so this file's type surface stays sonner-free.
@@ -94,7 +78,7 @@ const toSonner = (options?: ToastOptions): SonnerOptions =>
   options as SonnerOptions;
 
 // A single module-level instance: the API closes over nothing per-render,
-// and consumers put it in useCallback/useEffect dependency arrays — a fresh
+// and consumers put it in useCallback/useEffect dependency arrays; a fresh
 // object each render would invalidate those deps every render, turning any
 // state-setting effect downstream into an infinite loop.
 const toast: Toast = {
@@ -104,7 +88,7 @@ const toast: Toast = {
     if (intent === "danger") return sonner.error(message, opts);
     if (intent === "warning") return sonner.warning(message, opts);
     if (intent === "info") return sonner.info(message, opts);
-    // Neutral "primary" — sonner exposes `.message` for the unflavoured toast.
+    // Neutral "primary": sonner exposes `.message` for the unflavoured toast.
     return sonner.message(message, opts);
   },
   success(message, options) {
@@ -124,6 +108,22 @@ const toast: Toast = {
   },
 };
 
+/**
+ * Imperative toast hook. Requires a `<Toaster />` mounted somewhere in
+ * the tree (`Toaster`, from the same `@alepha/ui` module).
+ *
+ * The underlying library (currently sonner) is an implementation
+ * detail, never exported from this module. Consumers depend on the
+ * `Toast` interface, not on sonner's API. This keeps the door open to
+ * swapping libraries or adding cross-cutting behavior (dedup,
+ * rate-limit, branded icons) without rippling through call sites.
+ *
+ * @example
+ * const toast = useToast();
+ * toast.success("Saved");
+ * toast.error(err.message, { description: "Please try again" });
+ * toast.show(message, intent, { action: { label: "Undo", onClick } });
+ */
 export function useToast(): Toast {
   return toast;
 }

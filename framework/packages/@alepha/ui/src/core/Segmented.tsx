@@ -11,7 +11,7 @@ export interface SegmentedOption {
    *
    * A field rather than something the caller folds into `label`, because the
    * colour has to follow the segment's state and only this component knows
-   * it. A count written into the label carries its own class — usually
+   * it. A count written into the label carries its own class, usually
    * `text-muted-foreground`, which is right on the three inactive segments
    * and nearly invisible on the active one, where the thumb paints
    * `bg-primary` underneath it.
@@ -46,7 +46,7 @@ export interface SegmentedProps extends Omit<
    */
   onChange?: (value: string) => void;
   /**
-   * Visual size — `xs`, `sm`, `md` (default), `lg`, or `xl`.
+   * Visual size: `xs`, `sm`, `md` (default), `lg`, or `xl`.
    */
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   /**
@@ -74,7 +74,7 @@ export interface SegmentedProps extends Omit<
   name?: string;
 }
 
-// Outer-box height + text per size — picked so the control lines up
+// Outer-box height + text per size, picked so the control lines up
 // pixel-for-pixel with a `<Button>` of the same size token (xs h-6, sm h-7,
 // md=Button-default h-8, lg h-9). The box owns the height (border-box, so the
 // `p-0.5` + 1px border are included) and the segments stretch to fill it.
@@ -156,13 +156,13 @@ export const Segmented = (props: SegmentedProps) => {
     //
     // `getBoundingClientRect()` measures the BORDER box, so this delta includes
     // the border. The thumb is `position: absolute`, whose containing block is
-    // the padding box — an origin that already starts inside that same border.
+    // the padding box, an origin that already starts inside that same border.
     // Applying a border-box delta from a padding-box origin adds it a second
     // time.
     //
     // At the default 1px border it is a 1px drift on both axes, which reads as
     // the active surface being off-centre: 4px of gap above it and 2px below.
-    // Visible, and easy to misdiagnose as missing padding — but padding cannot
+    // Visible, and easy to misdiagnose as missing padding, but padding cannot
     // be the fix, because the drift is equal on the horizontal axis where the
     // box is not symmetric to begin with.
     const parentStyle = getComputedStyle(container);
@@ -197,7 +197,7 @@ export const Segmented = (props: SegmentedProps) => {
   }, [activeIndex]);
 
   React.useLayoutEffect(() => {
-    // Measures the DOM after it has been committed — there is nothing to
+    // Measures the DOM after it has been committed: there is nothing to
     // derive during render, the geometry does not exist yet.
     // oxlint-disable-next-line react/set-state-in-effect -- measures committed DOM, nothing to derive during render
     measureThumb();
@@ -209,6 +209,13 @@ export const Segmented = (props: SegmentedProps) => {
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [measureThumb]);
+
+  // One Tab stop per group (WAI-ARIA radio group): the checked option, or
+  // the first enabled one when none is checked. The arrow keys move inside.
+  const tabStop =
+    activeIndex >= 0 && !options[activeIndex]?.disabled
+      ? activeIndex
+      : options.findIndex((opt) => !opt.disabled);
 
   const handleSelect = (next: string) => {
     if (controlled === undefined) setUncontrolled(next);
@@ -291,11 +298,11 @@ export const Segmented = (props: SegmentedProps) => {
           data-slot="segmented-thumb"
           className={cn(
             "bg-primary pointer-events-none absolute rounded-[calc(var(--radius)-2px)] shadow-sm",
-            // Animate only `transform` — it's GPU-composited in both browsers.
+            // Animate only `transform`: it's GPU-composited in both browsers.
             // Transitioning width/height forces a per-frame reflow + box-shadow
             // repaint on the main thread, which Firefox handles poorly (visible
             // jank); Chrome's fast-paths hide it. Width/height still update, but
-            // instantly — for equal-width segments they never change anyway, so
+            // instantly; for equal-width segments they never change anyway, so
             // only the slide animates.
             //
             // Only while `slide` is set - see `ThumbRect.slide`. This replaces
@@ -329,6 +336,7 @@ export const Segmented = (props: SegmentedProps) => {
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={index === tabStop ? 0 : -1}
             aria-disabled={itemDisabled || undefined}
             disabled={itemDisabled}
             data-state={active ? "active" : "inactive"}

@@ -124,8 +124,12 @@ export const PageOutline = (props: PageOutlineProps) => {
     if (!root) return;
 
     // The hash this page was opened on, held until it is reached for good.
-    let pendingHash: string | null =
-      decodeURIComponent(window.location.hash.slice(1)) || null;
+    // A hash that is not valid percent-encoding (`#100%`) is kept raw.
+    const rawHash = window.location.hash.slice(1);
+    let pendingHash: string | null = rawHash || null;
+    try {
+      pendingHash = decodeURIComponent(rawHash) || null;
+    } catch {}
     const deadline = performance.now() + 3000;
 
     const settleHash = () => {

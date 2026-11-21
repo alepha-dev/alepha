@@ -7,13 +7,13 @@ export interface FileImageProps extends Omit<
   /**
    * File id (uuid) served by the Alepha files module, or an absolute
    * `http(s)` URL drawn as-is. Absent → renders `fallback`. (Repurposes the
-   * `id` slot — the raw HTML `id` attribute isn't forwarded.)
+   * `id` slot: the raw HTML `id` attribute isn't forwarded.)
    *
-   * A URL is accepted because `user.picture` is one in three cases the
+   * A URL is accepted because `user.picture` is one in two cases the
    * framework itself allows: an account created before OAuth sign-up
-   * imported the provider's picture into the `avatars` bucket, a picture
-   * passed to the register endpoint, and a user from an external issuer,
-   * whose `picture` claim is a URL by the OpenID Connect spec. Building
+   * imported the provider's picture into the `avatars` bucket, and a user
+   * from an external issuer, whose `picture` claim is a URL by the OpenID
+   * Connect spec. Building
    * `/api/files/https://…` from one of those is a request that can only 404.
    */
   id?: string | null;
@@ -26,7 +26,7 @@ export interface FileImageProps extends Omit<
   public?: boolean;
   /**
    * Rendered when `id` is missing OR the image fails to load (deleted, 404,
-   * forbidden) — a placeholder icon/initials instead of a broken-image glyph.
+   * forbidden): a placeholder icon/initials instead of a broken-image glyph.
    */
   fallback?: ReactNode;
 }
@@ -36,7 +36,7 @@ export interface FileImageProps extends Omit<
  *
  * Resolves the src from `id` (`public` picks the anonymous edge-cacheable
  * route vs the authenticated one), lazy-loads, and renders `fallback` when
- * the id is missing or the image fails to load — so a deleted/forbidden
+ * the id is missing or the image fails to load, so a deleted/forbidden
  * file shows a placeholder instead of a broken-image glyph.
  *
  * An absolute `http(s)` URL is drawn from where it points, with no referrer,
@@ -44,7 +44,7 @@ export interface FileImageProps extends Omit<
  * page they were on.
  */
 export const FileImage = (props: FileImageProps) => {
-  const { id, public: isPublic, fallback = null, ...imgProps } = props;
+  const { id, public: isPublic, fallback = null, onError, ...imgProps } = props;
   // Track the id that failed so a later id change re-attempts the load.
   const [erroredId, setErroredId] = useState<string | null>(null);
 
@@ -64,8 +64,11 @@ export const FileImage = (props: FileImageProps) => {
       src={src}
       loading="lazy"
       referrerPolicy={external ? "no-referrer" : undefined}
-      onError={() => setErroredId(id)}
       {...imgProps}
+      onError={(event) => {
+        onError?.(event);
+        setErroredId(id);
+      }}
     />
   );
 };

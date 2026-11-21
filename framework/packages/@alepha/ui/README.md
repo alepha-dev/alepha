@@ -447,4 +447,5 @@ shell. Load the stylesheet once, at the app's entry: `@alepha/ui/styles.css`.
 
 - [`useDialog`](https://alepha.dev/docs/reference-react-hooks-usedialog) - Imperative dialog API. Returns an object with:
 - [`useIsMobile`](https://alepha.dev/docs/reference-react-hooks-useismobile) - The shadcn version this started from seeds `undefined` and fills it in from
+- [`useToast`](https://alepha.dev/docs/reference-react-hooks-usetoast) - Imperative toast hook. Requires a `<Toaster />` mounted somewhere in
 - [`useUndoable`](https://alepha.dev/docs/reference-react-hooks-useundoable) - Optimistic writes with an Undo toast.

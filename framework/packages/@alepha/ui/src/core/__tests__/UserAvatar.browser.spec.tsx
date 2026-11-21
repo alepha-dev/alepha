@@ -8,8 +8,7 @@ import { userAvatarTone } from "../userInitials.ts";
 /**
  * `user.picture` is a file id in the `avatars` bucket, or an absolute URL:
  * an account created before OAuth sign-up imported the provider's picture,
- * a picture passed to the register endpoint, or a user from an external
- * issuer. #Q2406: the URL was handed to the file route as an id, so a user
+ * or a user from an external issuer. #Q2406: the URL was handed to the file route as an id, so a user
  * who signed in with Google requested `/api/files/https://…`, got a 404,
  * and was drawn as the fallback glyph on every page.
  */
