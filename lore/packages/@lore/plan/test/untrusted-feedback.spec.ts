@@ -144,7 +144,7 @@ describe("untrusted feedback", () => {
     const filed = await submit(ctx, projectId, outsider, 1);
 
     await ctx.feedbackController.acceptFeedback.fetch(
-      { params: { projectId, feedbackId: filed.data.shortId } },
+      { params: { projectId, feedbackId: filed.data.id } },
       { user: owner },
     );
     expect((await rowOf(filed.data.id)).untrusted).toBe(true);

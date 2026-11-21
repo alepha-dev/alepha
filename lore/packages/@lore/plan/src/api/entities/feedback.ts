@@ -98,6 +98,13 @@ export const feedback = $entity({
      * once a member confirms its text.
      */
     untrusted: db.default(z.boolean(), false),
+    /**
+     * The last agent job that triaged this item (#Q3988), a host job id,
+     * and when it was started. Automatic triage starts at most one job per
+     * item: a set `agentTriagedAt` is the claim.
+     */
+    agentJobId: z.uuid().optional(),
+    agentTriagedAt: z.string().optional(),
   }),
   /**
    * ⚠️ `feedback` is a CASCADE parent since `feedback_comments` (#1281).

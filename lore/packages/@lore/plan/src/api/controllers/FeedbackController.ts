@@ -38,6 +38,7 @@ import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
 } from "../schemas/myFeedbackResourceSchema.ts";
+import { FeedbackAgentService } from "../services/FeedbackAgentService.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { WorkBuckets } from "../services/WorkBuckets.ts";
@@ -67,6 +68,7 @@ type MyFeedbackWithRelations = FeedbackWithRelations & {
  */
 export class FeedbackController {
   protected readonly eventSources = $inject(WorkEventSources);
+  protected readonly agentTriage = $inject(FeedbackAgentService);
   protected feedback = $repository(feedback);
   /**
    * The same table, with `include`. Reads that need a feedback row's
@@ -205,6 +207,10 @@ export class FeedbackController {
         description: created.title,
         metadata: { id: created.id },
       });
+
+      // Automatic triage by an agent, when the project asked for it
+      // (#Q3988): once per item, and never in the submit's way.
+      await this.agentTriage.onSubmitted(created);
 
       return { id: created.id, shortId: created.shortId };
     },
@@ -697,6 +703,59 @@ export class FeedbackController {
         size: file.size,
         data,
       };
+    },
+  });
+
+  /**
+   * Triage one pending item with Claude (#Q3988): an agent job on the
+   * project's Agent host runs the project's Triage prompt on it, with the
+   * read profile and a key pinned to this item. Answers the job, or why
+   * none started.
+   */
+  triageFeedbackWithAgent = $action({
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
+    method: "POST",
+    path: "/projects/:projectId/feedback/:feedbackId/agent-triage",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        feedbackId: z.integer(),
+      }),
+      response: z.object({
+        jobId: z.uuid().optional(),
+        skipped: z.string().optional(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.assertFeedbackOpen(params.projectId);
+      const item = await this.loadFeedback(params.projectId, params.feedbackId);
+      return this.agentTriage.triageItem(
+        params.projectId,
+        item.shortId,
+        user.id,
+      );
+    },
+  });
+
+  /**
+   * Triage the inbox with Claude (#Q3988): one agent job per pending item,
+   * oldest first. Untrusted items on a host that runs jobs as a process are
+   * skipped, each with a comment saying a member must triage it.
+   */
+  triageInboxWithAgent = $action({
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
+    method: "POST",
+    path: "/projects/:projectId/feedback/agent-triage",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({
+        started: z.array(z.uuid()),
+        skipped: z.array(z.integer()),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.assertFeedbackOpen(params.projectId);
+      return this.agentTriage.triageInbox(params.projectId, user.id);
     },
   });
 

@@ -1,4 +1,9 @@
-import { HostJobs, type HostJobSummary } from "@lore/core/api";
+import {
+  type AgentJobRequest,
+  AgentJobs,
+  HostJobs,
+  type HostJobSummary,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -11,7 +16,6 @@ import {
   AGENT_JOB_PROFILES,
   AGENT_MCP_SERVER,
   AGENT_PUSH_EGRESS,
-  type AgentJobProfile,
 } from "../schemas/agentJobProfiles.ts";
 import { CodeRepositoryService } from "./CodeRepositoryService.ts";
 
@@ -59,32 +63,19 @@ export class AgentJobService {
   protected readonly repositories = $inject(CodeRepositoryService);
   protected readonly projects = $repository(projects);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly launcher = $inject(AgentJobs);
+
+  constructor() {
+    // Plan starts agent jobs through core's port (#Q3988).
+    this.launcher.register((request) => this.start(request));
+  }
 
   /**
-   * Starts an agent job on the project's default Agent host.
+   * Starts an agent job on the project's default Agent host. With
+   * `untrusted` (#Q3987) it is refused on a host that runs jobs as a
+   * process, and runs the `read` profile whatever was asked.
    */
-  public async start(request: {
-    projectId: number;
-    profile: AgentJobProfile;
-    prompt: string;
-    /** Lore's MCP tools the job's key reaches, by their MCP names. */
-    tools: string[];
-    /** The repository's slug; the project's default repository when absent. */
-    repository?: string;
-    ref?: string;
-    questNumber?: number;
-    feedbackNumber?: number;
-    startedBy?: string;
-    startedByJobId?: string;
-    subjectType: string;
-    subjectId: string;
-    /**
-     * The input was written outside the team (#Q3987): refused on a host
-     * that runs jobs as a process, and run with the `read` profile whatever
-     * was asked.
-     */
-    untrusted?: boolean;
-  }): Promise<HostJobSummary> {
+  public async start(request: AgentJobRequest): Promise<HostJobSummary> {
     const host = await this.port.agentHostFor(request.projectId);
     if (!host) {
       throw new ForbiddenError(

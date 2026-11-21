@@ -62,6 +62,7 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
@@ -264,6 +265,8 @@ export const LoreCoreApi = $module({
     JobKeyService,
     // Untrusted input in an agent's prompt (#Q3987).
     AgentPromptGuard,
+    // The port agent jobs start through (#Q3988): Build registers it.
+    AgentJobs,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     CommitReferenceRegistry,
     McpProjectScope,
@@ -481,6 +484,11 @@ export {
   type CommitReferenceResult,
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
+export { AgentJobs } from "./services/AgentJobs.ts";
+export type {
+  AgentJobLauncher,
+  AgentJobRequest,
+} from "./services/AgentJobs.ts";
 export { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export { JobKeyService } from "./services/JobKeyService.ts";
