@@ -281,3 +281,66 @@ func (d *dockerAPI) stream(ctx context.Context, method, path string, query url.V
 	}
 	return res.Body, nil
 }
+
+/*
+EgressSidecar is a job's egress proxy (#Q3996): Bay's own static binary, bind
+mounted read-only into a minimal image and run as `bay egress-proxy`, on the
+default network (which routes) and attached to the job's internal network as
+`egress`, the one name a job's HTTPS_PROXY points at. Unlike a job step it is
+Bay's code, so it may mount Bay's binary; it runs non-root, with every
+capability dropped and a read-only root, all the same.
+*/
+type EgressSidecar struct {
+	Name    string
+	Image   string
+	Binary  string
+	Allow   []string
+	Network string
+}
+
+// EgressPort is where a job's egress proxy listens.
+const EgressPort = 3128
+
+// StartEgress starts a job's egress proxy and answers how to stop it; its
+// output (one JSON line per refusal) goes to out until it stops.
+func (d *Docker) StartEgress(ctx context.Context, s EgressSidecar, out io.Writer) (func(), error) {
+	if err := d.EnsureImage(s.Image); err != nil {
+		return nil, err
+	}
+	body := map[string]any{
+		"Image": s.Image,
+		"Cmd": []string{"/bay", "egress-proxy", "--listen", fmt.Sprintf("0.0.0.0:%d", EgressPort),
+			"--allow", strings.Join(s.Allow, ",")},
+		"User":   JobUser,
+		"Labels": map[string]string{jobLabel: s.Name},
+		"HostConfig": map[string]any{
+			"Mounts":         []map[string]any{{"Type": "bind", "Source": s.Binary, "Target": "/bay", "ReadOnly": true}},
+			"CapDrop":        []string{"ALL"},
+			"SecurityOpt":    []string{"no-new-privileges:true"},
+			"ReadonlyRootfs": true,
+			"Memory":         int64(128 << 20),
+			"PidsLimit":      int64(256),
+			"LogConfig":      containerLogConfig,
+		},
+	}
+	var created struct {
+		ID string `json:"Id"`
+	}
+	if err := d.api.do("POST", "/containers/create", url.Values{"name": {s.Name}}, body, &created, dockerCallTimeout); err != nil {
+		return nil, fmt.Errorf("create the egress proxy: %w", err)
+	}
+	stop := func() {
+		_ = d.api.do("DELETE", "/containers/"+created.ID, url.Values{"force": {"true"}}, nil, nil, dockerCallTimeout)
+	}
+	if err := d.api.do("POST", "/containers/"+created.ID+"/start", nil, nil, nil, dockerCallTimeout); err != nil {
+		stop()
+		return nil, fmt.Errorf("start the egress proxy: %w", err)
+	}
+	if err := d.ConnectNetwork(s.Network, created.ID, "egress"); err != nil {
+		stop()
+		return nil, fmt.Errorf("attach the egress proxy to the job's network: %w", err)
+	}
+	logs, cancel := context.WithCancel(ctx)
+	go func() { _ = d.follow(logs, created.ID, out, io.Discard) }()
+	return func() { cancel(); stop() }, nil
+}

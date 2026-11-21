@@ -41,15 +41,21 @@ type jobDocker interface {
 	RemoveJobVolume(name string) error
 	RunJob(ctx context.Context, c runner.JobContainer, stdout, stderr io.Writer) (int, error)
 	HasRuntime(name string) (bool, error)
+	StartEgress(ctx context.Context, s runner.EgressSidecar, out io.Writer) (func(), error)
 }
 
 type jobContainerRunner struct {
 	root   string
 	docker func() (jobDocker, error)
-	// egress, when set, attaches the job's network to the proxy and answers
-	// the proxy environment for the job (#Q3996).
-	egress func(ctx context.Context, network string, allow []string, jobID string) (env []string, stop func(), err error)
+	// binary is Bay's own executable as the egress proxy runs it: a Linux
+	// build. BAY_EGRESS_BINARY overrides it on a machine whose Bay is not one
+	// (a developer's Mac running the daemon tests).
+	binary func() (string, error)
 }
+
+// egressImage is what the proxy's binary runs in: anything with a libc-free
+// /bay works, since Bay is static; busybox is already pulled for the tests.
+const egressImage = "busybox:1.37"
 
 const (
 	jobMemoryBytes = 4 << 30
@@ -57,9 +63,15 @@ const (
 )
 
 func newJobContainerRunner(root string) *jobContainerRunner {
-	return &jobContainerRunner{root: root, docker: func() (jobDocker, error) {
-		return runner.NewDocker("")
-	}}
+	return &jobContainerRunner{root: root,
+		docker: func() (jobDocker, error) { return runner.NewDocker("") },
+		binary: func() (string, error) {
+			if override := os.Getenv("BAY_EGRESS_BINARY"); override != "" {
+				return override, nil
+			}
+			return os.Executable()
+		},
+	}
 }
 
 // jobNames are the Docker names a job uses, derived from its id.
@@ -113,14 +125,22 @@ func (r *jobContainerRunner) run(ctx context.Context, id string, spec jobSpec, l
 		return nil, fmt.Errorf("could not create the job's network: %w", err)
 	}
 	defer docker.RemoveJobNetwork(network)
-	if r.egress != nil {
-		proxyEnv, stop, err := r.egress(ctx, network, spec.Egress, id)
-		if err != nil {
-			return nil, fmt.Errorf("could not start the job's egress proxy: %w", err)
-		}
-		defer stop()
-		env = append(env, proxyEnv...)
+	// The job's one way out (#Q3996): its egress proxy, on its list only.
+	binary, err := r.binary()
+	if err != nil {
+		return nil, fmt.Errorf("could not find Bay's binary for the egress proxy: %w", err)
 	}
+	stop, err := docker.StartEgress(ctx, runner.EgressSidecar{
+		Name: network + "-egress", Image: egressImage, Binary: binary,
+		Allow: spec.Egress, Network: network,
+	}, egressLog{log})
+	if err != nil {
+		return nil, fmt.Errorf("could not start the job's egress proxy: %w", err)
+	}
+	defer stop()
+	proxy := fmt.Sprintf("http://egress:%d", runner.EgressPort)
+	env = append(env, "HTTPS_PROXY="+proxy, "HTTP_PROXY="+proxy,
+		"https_proxy="+proxy, "http_proxy="+proxy, "NO_PROXY=", "no_proxy=")
 	if err := docker.CreateJobVolume(workspace); err != nil {
 		return nil, fmt.Errorf("could not create the job's workspace: %w", err)
 	}
@@ -309,4 +329,20 @@ func cmdHostSecret(args []string, stdin io.Reader) error {
 		return nil
 	}
 	return errors.New(hostSecretUsage)
+}
+
+// egressLog turns the proxy's refusal lines into the job's own log, where
+// whoever reads the job sees what it tried to reach (#Q3996).
+type egressLog struct{ log *jobLog }
+
+func (e egressLog) Write(p []byte) (int, error) {
+	for _, line := range strings.Split(strings.TrimSpace(string(p)), "\n") {
+		var refused struct {
+			Event, Method, Host string
+		}
+		if json.Unmarshal([]byte(line), &refused) == nil && refused.Event == "egress.refused" {
+			e.log.Note(fmt.Sprintf("egress refused: %s %s is not on this job's list", refused.Method, refused.Host))
+		}
+	}
+	return len(p), nil
 }

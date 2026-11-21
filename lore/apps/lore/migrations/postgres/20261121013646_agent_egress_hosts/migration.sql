@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "agent_egress_hosts" text[];

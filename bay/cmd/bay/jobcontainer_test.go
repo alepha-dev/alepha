@@ -14,11 +14,12 @@ import (
 
 // fakeJobDocker records what the container runner asks of the daemon.
 type fakeJobDocker struct {
-	mu       sync.Mutex
-	steps    []runner.JobContainer
-	calls    []string
-	runsc    bool
-	exitWith map[string]int
+	mu        sync.Mutex
+	steps     []runner.JobContainer
+	calls     []string
+	runsc     bool
+	exitWith  map[string]int
+	egressOut io.Writer
 }
 
 func (f *fakeJobDocker) log(s string)                    { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -27,6 +28,13 @@ func (f *fakeJobDocker) RemoveJobNetwork(n string) error { f.log("network- " + n
 func (f *fakeJobDocker) CreateJobVolume(n string) error  { f.log("volume+ " + n); return nil }
 func (f *fakeJobDocker) RemoveJobVolume(n string) error  { f.log("volume- " + n); return nil }
 func (f *fakeJobDocker) HasRuntime(string) (bool, error) { return f.runsc, nil }
+func (f *fakeJobDocker) StartEgress(_ context.Context, s runner.EgressSidecar, out io.Writer) (func(), error) {
+	f.log("egress+ " + s.Network + " " + strings.Join(s.Allow, ","))
+	f.mu.Lock()
+	f.egressOut = out
+	f.mu.Unlock()
+	return func() { f.log("egress-") }, nil
+}
 func (f *fakeJobDocker) RunJob(_ context.Context, c runner.JobContainer, stdout, _ io.Writer) (int, error) {
 	f.mu.Lock()
 	f.steps = append(f.steps, c)
@@ -48,6 +56,7 @@ func containerWorld(t *testing.T) (*jobWorld, *fakeJobDocker) {
 	}
 	fake := &fakeJobDocker{exitWith: map[string]int{}}
 	w.acts.jobs.container.docker = func() (jobDocker, error) { return fake, nil }
+	w.acts.jobs.container.binary = func() (string, error) { return "/usr/local/bin/bay", nil }
 	return w, fake
 }
 
@@ -81,8 +90,34 @@ func TestContainerRunner(t *testing.T) {
 			t.Fatalf("the MCP config is not passed as a JSON string: %s", args)
 		}
 		calls := strings.Join(fake.calls, ",")
-		if !strings.Contains(calls, "network-") || !strings.Contains(calls, "volume- bay-job-") {
-			t.Fatalf("the job left its network or workspace: %s", calls)
+		if !strings.Contains(calls, "network-") || !strings.Contains(calls, "volume- bay-job-") || !strings.Contains(calls, "egress-") {
+			t.Fatalf("the job left its network, workspace or proxy: %s", calls)
+		}
+		// Its one way out: the proxy, on the spec's list, named in its env.
+		if !strings.Contains(calls, "egress+ bay-job-") || !strings.Contains(calls, "api.anthropic.com") {
+			t.Fatalf("the egress proxy was not started on the job's list: %s", calls)
+		}
+		for _, step := range fake.steps {
+			if !strings.Contains(strings.Join(step.Env, " "), "HTTPS_PROXY=http://egress:3128") {
+				t.Fatalf("a step has no proxy: %v", step.Env)
+			}
+		}
+	})
+
+	t.Run("a refused host is a line of the job's log", func(t *testing.T) {
+		w, fake := containerWorld(t)
+		fake.exitWith["claude"] = 0
+		done := w.run("job-c6", w.agentSpec(map[string]any{"image": agentImage})).last()
+		if done.Status != "done" {
+			t.Fatalf("ack = %+v", done)
+		}
+		log, err := openJobLog(t.TempDir(), "refusals")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = egressLog{log}.Write([]byte(`{"event":"egress.refused","method":"CONNECT","host":"evil.example","at":"x"}` + "\n"))
+		if tail := log.stderrTail(400); !strings.Contains(tail, "egress refused: CONNECT evil.example") {
+			t.Fatalf("the refusal reached the log as %q", tail)
 		}
 	})
 

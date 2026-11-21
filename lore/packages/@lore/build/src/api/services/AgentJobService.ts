@@ -151,7 +151,9 @@ export class AgentJobService {
           : {}),
         egress: [
           ...AGENT_BASE_EGRESS,
-          ...(request.profile === "push" ? AGENT_PUSH_EGRESS : []),
+          ...(request.profile === "push"
+            ? (project.agentEgressHosts ?? AGENT_PUSH_EGRESS)
+            : []),
         ],
         key: {
           tools: request.tools,

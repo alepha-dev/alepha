@@ -49,13 +49,16 @@ export const AGENT_JOB_PROFILES: Record<AgentJobProfile, AgentJobProfileSpec> =
   };
 
 /**
- * The hosts a `push` job reaches beyond Anthropic and Lore, until a project
- * setting replaces them (#Q3996): the package registries and GitHub, so the
- * agent can run `yarn` and `yarn v`. Carried in the spec; only a container
- * runner's proxy enforces it.
+ * The hosts a `push` job reaches beyond Anthropic and Lore by default: the
+ * package registries and GitHub, so the agent can run `yarn` and `yarn v`.
+ * A project replaces them with its own list (`projects.agentEgressHosts`,
+ * #Q3996). Carried in the spec; only a container runner's proxy enforces it.
  */
 export const AGENT_PUSH_EGRESS = [
   "registry.npmjs.org",
+  // Yarn's own default registry, which `yarn install` reaches first: found
+  // missing when an install was measured through the proxy (#Q3996).
+  "registry.yarnpkg.com",
   "repo.yarnpkg.com",
   "github.com",
   "codeload.github.com",
