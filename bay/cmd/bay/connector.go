@@ -250,6 +250,8 @@ func (s *server) connectorLoop(ctx context.Context) {
 	// reporting. One direction only: the client asks for an inventory, the
 	// executor asks for it to be sent, and neither holds the other's lock.
 	acts.kick = client.KickInventory
+	acts.sendFrame = client.Send
+	acts.generation = client.Generation
 	client.Run(ctx)
 }
 

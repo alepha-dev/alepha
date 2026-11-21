@@ -111,6 +111,19 @@ const (
 	// way `bay stack destroy` does without `--purge`: its volumes, variables
 	// and registry credentials are kept. Same switch, same rule on purge.
 	actionStackRemove actionKind = "stack-remove"
+	// actionJobRun runs one one-shot job to its end: Claude Code against a
+	// fresh clone for now, CI later (#Q3983, jobs.go). It carries nothing but
+	// its id: the spec is pulled by that id and validated, and Bay builds the
+	// command line itself. Refused unless the welcome frame said
+	// `jobsAllowed`, one at a time, and never under the machine mutex.
+	//
+	// ⚠️ On the process runner a job has the jobs user's shell on this host,
+	// so such a host does nothing else (jobs.go says why).
+	actionJobRun actionKind = "job-run"
+	// actionJobCancel stops the running job a `jobCommandId` names, by
+	// killing its process group. Its own ack is `done`; the job's says
+	// `cancelled`.
+	actionJobCancel actionKind = "job-cancel"
 	// actionUpgrade replaces Bay's own binary with a released version and
 	// hands over to it. The most powerful verb here; what bounds it is in
 	// upgrade.go, and it is refused while deployAllowed is off.
@@ -142,6 +155,14 @@ type actions struct {
 	// else - a CLI path with no connection has nothing to tell.
 	kick func()
 
+	// jobs holds the one job this machine may run at a time (jobs.go).
+	jobs *jobs
+	// sendFrame writes any frame on the connection, and generation counts
+	// its connections: a job's log streamer needs both, and neither exists
+	// on a CLI path with no connection.
+	sendFrame  func(any) error
+	generation func() uint64
+
 	// extras holds what a finished deploy says beside its status, by command
 	// id, from the deploy to its terminal ack: its address (#Q3155), where
 	// its APP_SECRET came from and its warning. A map rather than a fourth
@@ -156,7 +177,7 @@ func newActions(s *server) *actions {
 		// action running again, the cost of refusing is a machine off the air.
 		s.log.Warn("connector outcomes unreadable, starting empty", "err", err)
 	}
-	return &actions{s: s, outcomes: outcomes}
+	return &actions{s: s, outcomes: outcomes, jobs: newJobs(s.root)}
 }
 
 // Welcome keeps the latest switches Lore sent, for the actions that consult
@@ -189,7 +210,13 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	if prior, ok := a.outcomes.Get(cmd.ID); ok {
 		// Redelivered after a lost ack: say again what happened, run nothing.
 		log.Info("lore command redelivered, re-acking the stored outcome", "status", prior.Status)
+		if actionKind(cmd.Kind) == actionJobRun {
+			// A job whose log could not all reach Lore before it ended: the
+			// tail goes first, then the ack that closes it.
+			a.replayJobLog(ctx, cmd.ID)
+		}
 		ack := connector.NewAck(cmd.ID, prior.Status, prior.Step, prior.Reason)
+		ack.ExitCode = prior.ExitCode
 		ack.URL = prior.URL
 		ack.AppSecretSource = prior.AppSecretSource
 		ack.Warning = connector.CutWarning(prior.Warning)
@@ -200,14 +227,14 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	switch actionKind(cmd.Kind) {
 	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-		actionRemove, actionStackRemove, actionUpgrade:
+		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
 			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-			actionRemove, actionStackRemove, actionUpgrade)
+			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -239,6 +266,16 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	log.Info("lore command started")
 	var status, step, reason string
 	switch actionKind(cmd.Kind) {
+	case actionJobRun:
+		// Outside the machine mutex, by rule: a 30-minute agent run must not
+		// hold a deploy back. One job at a time is the jobs slot's rule.
+		var exit *int
+		status, step, reason, exit = a.jobRun(ctx, cmd)
+		if exit != nil {
+			a.extras.Store(cmd.ID, connector.Extra{ExitCode: exit})
+		}
+	case actionJobCancel:
+		status, step, reason = a.jobCancel(cmd)
 	case actionBackup:
 		// Outside the machine-wide mutex, deliberately. A snapshot, a verify
 		// and an upload is minutes on a real database, and holding that lock
@@ -264,6 +301,8 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 	if status == "done" {
 		log.Info("lore command done")
+	} else if status == connector.AckCancelled || status == connector.AckTimedOut {
+		log.Info("lore job ended", "status", status, "reason", reason)
 	} else {
 		log.Warn("lore command failed", "step", step, "reason", reason)
 	}
@@ -321,8 +360,12 @@ that shows the old state for up to half an hour after the click that changed it.
 */
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
 	extra := connector.Extra{}
-	if held, ok := a.extras.LoadAndDelete(id); ok && status == "done" {
-		extra = held.(connector.Extra)
+	if held, ok := a.extras.LoadAndDelete(id); ok {
+		if status == "done" {
+			extra = held.(connector.Extra)
+		}
+		// A job's exit code rides every terminal ack, a failed one most of all.
+		extra.ExitCode = held.(connector.Extra).ExitCode
 	}
 	out, err := a.outcomes.Finish(id, status, step, reason, extra, time.Now())
 	if err != nil {
@@ -332,6 +375,7 @@ func (a *actions) finish(id, status, step, reason string, send func(connector.Ac
 	ack.URL = out.URL
 	ack.AppSecretSource = out.AppSecretSource
 	ack.Warning = connector.CutWarning(out.Warning)
+	ack.ExitCode = out.ExitCode
 	if err := send(ack); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)

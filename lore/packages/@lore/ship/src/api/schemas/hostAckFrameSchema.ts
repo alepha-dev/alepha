@@ -9,7 +9,12 @@ import { type Infer, z } from "alepha";
 export const hostAckFrameSchema = z.object({
   type: z.literal("ack"),
   id: z.uuid(),
-  status: z.enum(["running", "done", "failed"]),
+  /**
+   * `timed_out` and `cancelled` end a `job-run` only (#Q3983): killed at its
+   * deadline, or by a `job-cancel`. The command row records either as
+   * `failed`; the job row keeps the distinction.
+   */
+  status: z.enum(["running", "done", "failed", "timed_out", "cancelled"]),
   step: z.string().max(32).optional(),
   reason: z.string().max(2000).optional(),
   /**
@@ -27,6 +32,11 @@ export const hostAckFrameSchema = z.object({
    * database, or on a key minted over restored data. Bounded like `reason`.
    */
   warning: z.string().max(2000).optional(),
+  /**
+   * A `job-run`'s exit status, on its terminal ack when the process ran to
+   * an exit.
+   */
+  exitCode: z.integer().optional(),
 });
 
 export type HostAckFrame = Infer<typeof hostAckFrameSchema>;

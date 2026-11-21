@@ -87,6 +87,10 @@ type Command struct {
 	Policy json.RawMessage `json:"policy,omitempty"`
 	// Restore says which backup a `restore` or `backup-verify` reads.
 	Restore *RestoreAsk `json:"restore,omitempty"`
+	// JobCommandID names the `job-run` command a `job-cancel` stops. The
+	// whole of what a cancel is told: the job itself is pulled by the run's
+	// own id, never carried in a frame.
+	JobCommandID string `json:"jobCommandId,omitempty"`
 }
 
 /*
@@ -149,7 +153,18 @@ type Ack struct {
 	// Optional, like URL: an older Lore drops them.
 	AppSecretSource string `json:"appSecretSource,omitempty"`
 	Warning         string `json:"warning,omitempty"`
+	// ExitCode is a `job-run`'s process exit status, on its terminal ack when
+	// the process ran to an exit (a timeout or a cancel kills it, and says so
+	// in Status instead). Optional, like URL.
+	ExitCode *int `json:"exitCode,omitempty"`
 }
+
+// The terminal statuses a `job-run` may end in beside `done` and `failed`:
+// killed at its deadline, or stopped by a `job-cancel`.
+const (
+	AckTimedOut  = "timed_out"
+	AckCancelled = "cancelled"
+)
 
 // MaxAckWarning is what Lore's ack schema accepts of a warning.
 const MaxAckWarning = 2000
@@ -204,6 +219,7 @@ type serverFrame struct {
 		Slug string `json:"slug"`
 	} `json:"estate,omitempty"`
 	DeployAllowed        bool     `json:"deployAllowed,omitempty"`
+	JobsAllowed          bool     `json:"jobsAllowed,omitempty"`
 	StatsIntervalSeconds int      `json:"statsIntervalSeconds,omitempty"`
 	Features             []string `json:"features,omitempty"`
 
@@ -224,6 +240,7 @@ type serverFrame struct {
 	Version     string          `json:"version,omitempty"`
 	Policy      json.RawMessage `json:"policy,omitempty"`
 	Restore     *RestoreAsk     `json:"restore,omitempty"`
+	JobCommand  string          `json:"jobCommandId,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -352,6 +369,11 @@ type Client struct {
 
 	inventoryMu   sync.Mutex
 	lastInventory time.Time
+
+	// generation counts the connections this client has held, so a job's log
+	// streamer can tell a socket that dropped and came back (and rewind what
+	// it sent into the dying one) from one that stayed up.
+	generation atomic.Uint64
 
 	// eventsOK is whether the Lore on the current connection said it takes
 	// event frames. Reset on every dial: a Lore rolled back to a version
@@ -489,6 +511,7 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 	}
 
 	c.eventsOK.Store(false)
+	c.generation.Add(1)
 	c.setConn(conn)
 	defer c.dropConn(conn)
 	// Cancelling closes the socket. Nothing else wakes the read below, which
@@ -583,6 +606,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			HostID:               frame.Host.ID,
 			Slug:                 frame.Host.Slug,
 			DeployAllowed:        frame.DeployAllowed,
+			JobsAllowed:          frame.JobsAllowed,
 			StatsIntervalSeconds: frame.StatsIntervalSeconds,
 			Features:             frame.Features,
 			ReceivedAt:           c.Now(),
@@ -591,7 +615,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			c.Log.Warn("could not cache the welcome frame", "err", err)
 		}
 		c.Log.Info("lore "+frame.Type, "host", w.Slug,
-			"deployAllowed", w.DeployAllowed, "statsIntervalSeconds", w.StatsIntervalSeconds)
+			"deployAllowed", w.DeployAllowed, "jobsAllowed", w.JobsAllowed, "statsIntervalSeconds", w.StatsIntervalSeconds)
 		if frame.StatsIntervalSeconds > 0 {
 			c.statsSeconds.Store(int64(frame.StatsIntervalSeconds))
 		}
@@ -610,7 +634,8 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			Project:     frame.Project,
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
 			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service,
-			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore, Version: frame.Version}
+			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore, Version: frame.Version,
+			JobCommandID: frame.JobCommand}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one
@@ -649,6 +674,10 @@ func (c *Client) Send(frame any) error {
 	}
 	return c.conn.WriteJSON(frame)
 }
+
+// Generation is the number of connections held so far: it moves on every
+// successful dial, and never otherwise.
+func (c *Client) Generation() uint64 { return c.generation.Load() }
 
 // Connected reports whether a socket is open right now.
 func (c *Client) Connected() bool {

@@ -164,6 +164,12 @@ export class HostSocketController {
         await this.events.record(host, message);
         return;
       }
+      if (message.type === "log") {
+        // A job's output (#Q3983). The job queue that stores and fans it out
+        // arrives with #Q3984; until then the frame is accepted and dropped,
+        // never mistaken for a stats push below.
+        return;
+      }
       await this.stats.record(host, message);
       // The heartbeat is also the redelivery: a command queued while the row
       // read offline was left `pending` by the transport, and would otherwise

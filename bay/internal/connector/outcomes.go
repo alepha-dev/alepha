@@ -30,9 +30,11 @@ type Outcome struct {
 	URL string `json:"url,omitempty"`
 	// AppSecretSource and Warning are what a deploy says of its key and what
 	// went wrong without failing it, kept for the same reason.
-	AppSecretSource string    `json:"appSecretSource,omitempty"`
-	Warning         string    `json:"warning,omitempty"`
-	At              time.Time `json:"at"`
+	AppSecretSource string `json:"appSecretSource,omitempty"`
+	Warning         string `json:"warning,omitempty"`
+	// ExitCode is a job's exit status, kept so a re-ack says it again.
+	ExitCode *int      `json:"exitCode,omitempty"`
+	At       time.Time `json:"at"`
 }
 
 // Extra is what a terminal outcome carries beside its status, a deploy's
@@ -41,6 +43,7 @@ type Extra struct {
 	URL             string
 	AppSecretSource string
 	Warning         string
+	ExitCode        *int
 }
 
 /*
@@ -124,7 +127,7 @@ func (o *Outcomes) Finish(id, status, step, reason string, extra Extra, at time.
 	defer o.mu.Unlock()
 	delete(o.running, id)
 	out := Outcome{ID: id, Status: status, Step: step, Reason: reason, URL: extra.URL,
-		AppSecretSource: extra.AppSecretSource, Warning: extra.Warning, At: at.UTC()}
+		AppSecretSource: extra.AppSecretSource, Warning: extra.Warning, ExitCode: extra.ExitCode, At: at.UTC()}
 	if _, known := o.done[id]; !known {
 		o.order = append(o.order, id)
 	}

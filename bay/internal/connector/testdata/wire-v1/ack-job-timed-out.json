@@ -1,0 +1,6 @@
+{
+  "type": "ack",
+  "id": "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
+  "status": "timed_out",
+  "reason": "the job ran past its 900 s timeout; the process group was killed"
+}

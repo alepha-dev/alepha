@@ -127,6 +127,16 @@ export const hostCommandPayloadSchema = z.object({
    * 0.40.0" once the host reports the new one.
    */
   fromVersion: z.string().max(100).optional(),
+  /**
+   * The `job-run` command a `job-cancel` stops, by id. The whole of what a
+   * cancel is told.
+   */
+  jobCommandId: z.uuid().optional(),
+  /**
+   * The `host_jobs` row a `job-run` carries. Lore's own, never sent to the
+   * machine: it is how the spec pull and the log frames find the job.
+   */
+  jobId: z.uuid().optional(),
   /** A label on a console `backup`, kept with the backup and by retention. */
   tag: z
     .string()
