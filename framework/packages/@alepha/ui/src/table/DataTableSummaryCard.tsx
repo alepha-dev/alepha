@@ -84,6 +84,8 @@ const DATA_TABLE_STAT_TONE: Record<BadgeTone, string> = {
   green:
     "border-emerald-500/40 bg-linear-to-b from-emerald-500/10 to-emerald-500/10",
   amber: "border-amber-500/40 bg-linear-to-b from-amber-500/10 to-amber-500/10",
+  orange:
+    "border-orange-500/40 bg-linear-to-b from-orange-500/10 to-orange-500/10",
   red: "border-red-500/40 bg-linear-to-b from-red-500/10 to-red-500/10",
   violet:
     "border-violet-500/40 bg-linear-to-b from-violet-500/10 to-violet-500/10",

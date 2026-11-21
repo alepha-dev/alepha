@@ -167,10 +167,12 @@ describe("AdminHosts", () => {
     expect(
       screen.getAllByTestId("host-last-seen").map((it) => it.textContent),
     ).toEqual(["never", "N/A"]);
-    // The type is a neutral tag pill, as an uncoloured quest tag (#Q3941).
+    // The type is a tag pill in its own hue (#Q4048): Bay blue,
+    // Cloudflare orange.
     const types = screen.getAllByTestId("host-type");
     expect(types.map((it) => it.textContent)).toEqual(["bay", "cloudflare"]);
-    expect(types[0].className).toContain("bg-muted");
+    expect(types[0].className).toContain("bg-blue-500/15");
+    expect(types[1].className).toContain("bg-orange-500/15");
   });
 
   it("reads Last seen relative to now, the exact date on hover (#Q4050)", async ({
