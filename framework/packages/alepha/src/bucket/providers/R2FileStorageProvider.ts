@@ -328,15 +328,6 @@ export class R2FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * MIME-derived, matching S3 and Local.
-   *
-   * It used to take everything after the last `.` of the user-controlled
-   * FILENAME, so `"x.png/../y"` produced the extension `"png/../y"` — an
-   * attacker-shaped, nested key (contained within the bucket prefix, but
-   * still not what anyone intended). Two backends also disagreed on the id
-   * scheme for the same upload.
-   */
-  /**
    * File ids and bucket names are path segments of the object key. A
    * separator or a dot-dot in either would read or delete outside the
    * bucket, so they are refused here, the
@@ -350,6 +341,15 @@ export class R2FileStorageProvider implements FileStorageProvider {
     }
   }
 
+  /**
+   * MIME-derived, matching S3 and Local.
+   *
+   * It used to take everything after the last `.` of the user-controlled
+   * FILENAME, so `"x.png/../y"` produced the extension `"png/../y"`: an
+   * attacker-shaped, nested key (contained within the bucket prefix, but
+   * still not what anyone intended). Two backends also disagreed on the id
+   * scheme for the same upload.
+   */
   protected createId(mimeType: string): string {
     // `getExtensionFromMimeType` always answers (it falls back to "bin").
     const ext = this.fileDetector.getExtensionFromMimeType(mimeType);

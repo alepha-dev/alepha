@@ -266,6 +266,22 @@ describe("R2FileStorageProvider", () => {
       ]);
     });
 
+    test("refuses a bucket name or a file id that would leave the key prefix", async () => {
+      const file = () => fileOf("x", "a.png", "image/png");
+
+      for (const bucket of ["../other", "a/b", "a\\b", ".."]) {
+        await expect(provider.upload(bucket, file())).rejects.toThrow(
+          /Invalid bucket name/,
+        );
+      }
+      for (const fileId of ["../other/x.png", "a/b.png", "a\\b.png", ".env"]) {
+        await expect(
+          provider.upload(TEST_IMAGES_BUCKET, file(), fileId),
+        ).rejects.toThrow(/Invalid file id/);
+      }
+      expect([...r2.objects.keys()]).toEqual([]);
+    });
+
     test("round-trips the original filename through customMetadata", async () => {
       const id = await provider.upload(
         TEST_IMAGES_BUCKET,

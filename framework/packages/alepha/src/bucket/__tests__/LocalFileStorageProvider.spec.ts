@@ -137,4 +137,38 @@ describe("LocalFileStorageProvider sidecars", () => {
       ),
     ).rejects.toThrow(AlephaError);
   });
+
+  // The bucket name goes into the path too. S3 and R2 refused a separator or
+  // a dot-dot in it; Local joined it as is, and `../../escaped` wrote outside
+  // the storage root.
+  test("should refuse a bucket name that would leave the storage root", async () => {
+    const { provider, fs } = boot();
+    const file = () => fs.createFile({ text: "x", name: "f.txt" });
+
+    for (const bucket of ["../../escaped", "a/b", "a\\b", ".."]) {
+      await expect(provider.upload(bucket, file())).rejects.toThrow(
+        /Invalid bucket name/,
+      );
+      await expect(provider.list(bucket)).rejects.toThrow(
+        /Invalid bucket name/,
+      );
+      await expect(provider.exists(bucket, "x.txt")).rejects.toThrow(
+        /Invalid bucket name/,
+      );
+    }
+  });
+
+  test("should refuse a file id that would leave its bucket", async () => {
+    const { provider, fs } = boot();
+
+    for (const fileId of ["../other/x.png", "a/b.png", "a\\b.png"]) {
+      await expect(
+        provider.upload(
+          "test-images",
+          fs.createFile({ text: "x", name: "x.txt" }),
+          fileId,
+        ),
+      ).rejects.toThrow(/Invalid file id/);
+    }
+  });
 });
