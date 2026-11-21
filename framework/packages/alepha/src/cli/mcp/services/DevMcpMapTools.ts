@@ -35,7 +35,7 @@ export class DevMcpMapTools {
       params: z.object({
         section: z
           .enum(
-            new AppMapRenderer().sections.filter(
+            this.renderer.sections.filter(
               (section) => section !== "routes",
             ) as [string, ...string[]],
           )
@@ -66,9 +66,7 @@ export class DevMcpMapTools {
     annotations: { readOnlyHint: true },
     schema: {
       params: z.object({
-        kind: z.enum(
-          Object.keys(new AppMapRenderer().kinds) as [string, ...string[]],
-        ),
+        kind: z.enum(Object.keys(this.renderer.kinds) as [string, ...string[]]),
         name: z.text({ size: "long" }),
       }),
     },

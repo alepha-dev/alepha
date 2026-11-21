@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 import { EnvUtils } from "../helpers/EnvUtils.ts";
 import { $command } from "../primitives/$command.ts";
@@ -33,7 +33,9 @@ describe("EnvUtils", () => {
       };
     };
 
-    it("creates .env from .env.example when .env is missing", async () => {
+    it("creates .env from .env.example when .env is missing", async ({
+      expect,
+    }) => {
       const { fs, envUtils } = setup();
       await fs.writeFile("/project/.env.example", "ADMIN_EMAIL=a@b.test\n");
 
@@ -44,7 +46,9 @@ describe("EnvUtils", () => {
       );
     });
 
-    it("writes it readable by its owner only, since it is where secrets go", async () => {
+    it("writes it readable by its owner only, since it is where secrets go", async ({
+      expect,
+    }) => {
       const { fs, envUtils } = setup();
       await fs.writeFile("/project/.env.example", "A=1\n");
 
@@ -53,7 +57,7 @@ describe("EnvUtils", () => {
       expect((await fs.stat("/project/.env")).mode).toBe(0o600);
     });
 
-    it("never overwrites an existing .env", async () => {
+    it("never overwrites an existing .env", async ({ expect }) => {
       const { fs, envUtils } = setup();
       await fs.writeFile("/project/.env.example", "A=example\n");
       await fs.writeFile("/project/.env", "A=mine\n");
@@ -63,7 +67,7 @@ describe("EnvUtils", () => {
       expect(await fs.readTextFile("/project/.env")).toBe("A=mine\n");
     });
 
-    it("does nothing when there is no .env.example", async () => {
+    it("does nothing when there is no .env.example", async ({ expect }) => {
       const { fs, envUtils } = setup();
 
       await expect(envUtils.ensureEnvFile("/project")).resolves.toBe(false);
@@ -71,7 +75,7 @@ describe("EnvUtils", () => {
       expect(await fs.exists("/project/.env")).toBe(false);
     });
 
-    it("leaves every other env file alone", async () => {
+    it("leaves every other env file alone", async ({ expect }) => {
       const { fs, envUtils } = setup();
       await fs.writeFile("/project/.env.example", "A=1\n");
       await fs.writeFile("/project/.env.local", "B=2\n");
@@ -84,7 +88,7 @@ describe("EnvUtils", () => {
   });
 
   describe("parseEnv", () => {
-    it("should strip double quotes from values", async () => {
+    it("should strip double quotes from values", async ({ expect }) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -98,7 +102,7 @@ describe("EnvUtils", () => {
       expect(result.FOO).toBe("bar");
     });
 
-    it("should strip single quotes from values", async () => {
+    it("should strip single quotes from values", async ({ expect }) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -112,7 +116,7 @@ describe("EnvUtils", () => {
       expect(result.FOO).toBe("bar");
     });
 
-    it("should preserve values without quotes", async () => {
+    it("should preserve values without quotes", async ({ expect }) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -126,7 +130,9 @@ describe("EnvUtils", () => {
       expect(result.FOO).toBe("bar");
     });
 
-    it("should preserve values with equals signs in quoted strings", async () => {
+    it("should preserve values with equals signs in quoted strings", async ({
+      expect,
+    }) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -145,7 +151,7 @@ describe("EnvUtils", () => {
       );
     });
 
-    it("should not strip mismatched quotes", async () => {
+    it("should not strip mismatched quotes", async ({ expect }) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -173,23 +179,25 @@ describe("EnvUtils", () => {
       return alepha.inject(EnvUtils).parseEnv("/project");
     };
 
-    it("strips an inline comment from an unquoted value", async () => {
+    it("strips an inline comment from an unquoted value", async ({
+      expect,
+    }) => {
       const result = await parse("FOO=bar # not part of the value\n");
       expect(result.FOO).toBe("bar");
     });
 
-    it("keeps a # that is inside quotes", async () => {
+    it("keeps a # that is inside quotes", async ({ expect }) => {
       const result = await parse('PASSWORD="p#ssw0rd" # the real comment\n');
       expect(result.PASSWORD).toBe("p#ssw0rd");
     });
 
-    it("accepts the `export KEY=value` form", async () => {
+    it("accepts the `export KEY=value` form", async ({ expect }) => {
       const result = await parse("export FOO=bar\n");
       expect(result.FOO).toBe("bar");
       expect(result["export FOO"]).toBeUndefined();
     });
 
-    it("ignores a bare key with no value", async () => {
+    it("ignores a bare key with no value", async ({ expect }) => {
       // "unset" and "set to the empty string" are different things to an
       // $env schema, so a line with no `=` must not create the key.
       const result = await parse("FOO\nBAR=ok\n");
@@ -197,7 +205,7 @@ describe("EnvUtils", () => {
       expect(result.BAR).toBe("ok");
     });
 
-    it("reads a quoted value that spans several lines", async () => {
+    it("reads a quoted value that spans several lines", async ({ expect }) => {
       const result = await parse(
         "PRIVATE_KEY='-----BEGIN-----\nline two\n-----END-----'\nAFTER=yes\n",
       );
@@ -207,13 +215,15 @@ describe("EnvUtils", () => {
       expect(result.AFTER).toBe("yes");
     });
 
-    it("skips comment lines and blank lines", async () => {
+    it("skips comment lines and blank lines", async ({ expect }) => {
       const result = await parse("# a comment\n\nFOO=bar\n");
       expect(result.FOO).toBe("bar");
       expect("#" in result).toBe(false);
     });
 
-    it("should not strip quotes from single-character values", async () => {
+    it("should not strip quotes from single-character values", async ({
+      expect,
+    }) => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -258,7 +268,7 @@ describe("EnvUtils", () => {
       };
     };
 
-    it("should load .env.<mode> on top of .env", async () => {
+    it("should load .env.<mode> on top of .env", async ({ expect }) => {
       const { cli, fs, command } = create();
       const root = process.cwd();
       await fs.writeFile(`${root}/.env`, "ENV_UTILS_SPEC_BASE=base\n");
@@ -273,7 +283,9 @@ describe("EnvUtils", () => {
       expect(process.env.ENV_UTILS_SPEC_STAGING).toBe("yes");
     });
 
-    it("should leave .env.<mode> alone without the flag", async () => {
+    it("should leave .env.<mode> alone without the flag", async ({
+      expect,
+    }) => {
       const { cli, fs, command } = create();
       const root = process.cwd();
       await fs.writeFile(`${root}/.env`, "ENV_UTILS_SPEC_BASE=base\n");
@@ -288,7 +300,7 @@ describe("EnvUtils", () => {
       expect(process.env.ENV_UTILS_SPEC_STAGING).toBeUndefined();
     });
 
-    it("should hand the mode to the handler", async () => {
+    it("should hand the mode to the handler", async ({ expect }) => {
       let seen: string | undefined;
 
       class App {

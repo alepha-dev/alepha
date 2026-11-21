@@ -1,11 +1,38 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { InspectorRegistry, InspectorRunProvider } from "alepha/inspector";
+import {
+  DevLogStoreProvider,
+  InspectorRegistry,
+  InspectorRunProvider,
+} from "alepha/inspector";
 import { afterEach, describe, it } from "vitest";
 
 import { DevMcpSession } from "../services/DevMcpSession.ts";
 import { NotesApp, startFixture } from "./fixtures/mcpFixtureApp.ts";
+
+class LoudNotesApp extends NotesApp {
+  public say(message: string): void {
+    this.log.info(message);
+  }
+}
+
+/**
+ * Gives a running store the history a restart would have restored: the
+ * store restores nothing under test.
+ */
+class SeededLogStore extends DevLogStoreProvider {
+  public static seed(store: DevLogStoreProvider, messages: string[]): void {
+    (store as SeededLogStore).history = messages.map((message, index) => ({
+      level: "INFO" as const,
+      message,
+      service: "s",
+      module: "m",
+      timestamp: 1,
+      seq: index - messages.length,
+    }));
+  }
+}
 
 describe("alepha mcp: logs, emails and SMS", () => {
   const stops: Array<() => Promise<void>> = [];
@@ -13,8 +40,8 @@ describe("alepha mcp: logs, emails and SMS", () => {
     for (const stop of stops.splice(0)) await stop();
   });
 
-  const fixture = async () => {
-    const f = await startFixture();
+  const fixture = async (services?: any[]) => {
+    const f = await startFixture(services);
     stops.push(f.stop);
     return f;
   };
@@ -51,32 +78,46 @@ describe("alepha mcp: logs, emails and SMS", () => {
     );
   });
 
-  it("says a live run's total counts the restored history", async ({
+  it("says a live run's total counts the restored history, only when some was restored and counted", async ({
     expect,
   }) => {
-    const { call, app } = await fixture();
-    const notes = app.inject(NotesApp);
-    for (let i = 0; i < 12; i++) {
-      (notes as any).log.info(`counted ${i}`);
-    }
+    const { call, app } = await fixture([LoudNotesApp]);
+    const notes = app.inject(LoudNotesApp);
+    for (let i = 0; i < 12; i++) notes.say(`counted ${i}`);
 
-    const capped = await call("logs_tail", { text: "counted", limit: 5 });
+    // Nothing was restored: all 12 are this run's.
+    expect(
+      (await call("logs_tail", { text: "counted", limit: 5 })).split("\n")[0],
+    ).toBe(
+      "Showing the newest 5 of 12 matching entries; raise `limit` or narrow the filters for the rest.",
+    );
 
-    expect(capped.split("\n")[0]).toBe(
-      "Showing the newest 5 of 12 matching entries (the total counts the previous run's restored history, numbered below zero); raise `limit` or narrow the filters for the rest.",
+    SeededLogStore.seed(app.inject(DevLogStoreProvider), [
+      "counted before the restart",
+      "something else",
+    ]);
+
+    expect(
+      (await call("logs_tail", { text: "counted", limit: 5 })).split("\n")[0],
+    ).toBe(
+      "Showing the newest 5 of 13 matching entries (the total counts the previous run's restored history, numbered below zero); raise `limit` or narrow the filters for the rest.",
+    );
+    // History exists, but none of it matches: the total is this run's alone.
+    expect(
+      (await call("logs_tail", { text: "counted 1", limit: 1 })).split("\n")[0],
+    ).toBe(
+      "Showing the newest 1 of 3 matching entries; raise `limit` or narrow the filters for the rest.",
     );
   });
 
   it("pages through a burst after a marker instead of keeping one page", async ({
     expect,
   }) => {
-    const { call, app } = await fixture();
+    const { call, app } = await fixture([LoudNotesApp]);
     const marker = Number(/Marker: (-?\d+)/.exec(await call("logs_mark"))?.[1]);
 
-    const notes = app.inject(NotesApp);
-    for (let i = 0; i < 260; i++) {
-      (notes as any).log.info(`burst ${i}`);
-    }
+    const notes = app.inject(LoudNotesApp);
+    for (let i = 0; i < 260; i++) notes.say(`burst ${i}`);
 
     const tail = await call("logs_tail", {
       since: marker,

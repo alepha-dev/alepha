@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import type { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const child = join(here, "fixtures", "exclusive-child.ts");
@@ -115,7 +115,7 @@ describe("exclusive across processes", () => {
       });
       proc.on("error", reject);
       proc.on("close", (code) => {
-        if (code !== 0 && code !== 143) {
+        if (code !== 0) {
           reject(new Error(`child exited ${code}: ${err}`));
           return;
         }
@@ -128,7 +128,9 @@ describe("exclusive across processes", () => {
       });
     });
 
-  it("never lets two processes hold the same key at once", async () => {
+  it("never lets two processes hold the same key at once", async ({
+    expect,
+  }) => {
     const dir = scratch();
 
     // Started together on purpose: without the queue they would overlap.
@@ -153,7 +155,7 @@ describe("exclusive across processes", () => {
     }
   }, 60_000);
 
-  it("lets different keys run at the same time", async () => {
+  it("lets different keys run at the same time", async ({ expect }) => {
     const dir = scratch();
 
     const started = Date.now();
@@ -164,7 +166,7 @@ describe("exclusive across processes", () => {
     expect(elapsed).toBeLessThan(4_000);
   }, 60_000);
 
-  it("keeps the slot while a live holder is stalled", async () => {
+  it("keeps the slot while a live holder is stalled", async ({ expect }) => {
     const dir = scratch();
 
     // The holder spins for well over any heartbeat interval, so no beat can
@@ -186,7 +188,9 @@ describe("exclusive across processes", () => {
     expect(entered!.at).toBeGreaterThanOrEqual(left!.at);
   }, 60_000);
 
-  it("frees the slot when the holder is killed outright", async () => {
+  it("frees the slot when the holder is killed outright", async ({
+    expect,
+  }) => {
     const dir = scratch();
 
     const holder = spawnChild(dir, "shared", 60_000, {
@@ -213,7 +217,9 @@ describe("exclusive across processes", () => {
     expect(tickets(dir)).toHaveLength(0);
   }, 60_000);
 
-  it("frees the slot when the holder is terminated", async () => {
+  it("removes its own ticket when the holder is terminated", async ({
+    expect,
+  }) => {
     const dir = scratch();
 
     const holder = spawnChild(dir, "shared", 60_000, {
@@ -229,11 +235,11 @@ describe("exclusive across processes", () => {
     });
 
     holder.kill("SIGTERM");
+    await new Promise<void>((resolve) => holder.on("close", () => resolve()));
 
-    // The signal handler unlinks the ticket, so the next arrival must get in
-    // well before the 15s stale window would have expired.
-    const started = Date.now();
-    await run(dir, "shared", 50);
-    expect(Date.now() - started).toBeLessThan(10_000);
+    // The signal handler unlinked the ticket on the way out. Without it the
+    // ticket stays, as after the SIGKILL above, until the next arrival's
+    // sweep finds its pid dead.
+    expect(tickets(dir)).toHaveLength(0);
   }, 60_000);
 });

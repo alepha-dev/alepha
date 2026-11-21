@@ -1,10 +1,10 @@
 import { $module } from "alepha";
 
-import { McpCommand } from "./commands/mcp.ts";
+import { McpCommand } from "./commands/McpCommand.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./commands/mcp.ts";
+export * from "./commands/McpCommand.ts";
 export * from "./services/DevMcpActionTools.ts";
 export * from "./services/DevMcpAppTools.ts";
 export * from "./services/DevMcpDataTools.ts";

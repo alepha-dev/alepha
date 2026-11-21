@@ -9,7 +9,7 @@ import { DevMcpSession } from "./DevMcpSession.ts";
  *
  * Rows go into a model's context, so every column the entity marks
  * `secret: true` comes back as `"[redacted]"`, with no opt-out, and cannot
- * be filtered on. The inspector has no route that writes a row.
+ * be filtered or sorted on. The inspector has no route that writes a row.
  */
 export class DevMcpDataTools {
   protected readonly session = $inject(DevMcpSession);
@@ -22,7 +22,7 @@ export class DevMcpDataTools {
   public readonly dbRows = $tool({
     name: "db_rows",
     description:
-      'Rows of one of the selected app\'s entities (app_map lists them), read only: an equality filter, a sort and a size. Columns the entity marks secret come back as "[redacted]" and cannot be filtered on.',
+      'Rows of one of the selected app\'s entities (app_map lists them), read only: an equality filter, a sort and a size. Columns the entity marks secret come back as "[redacted]" and cannot be filtered or sorted on.',
     annotations: { readOnlyHint: true },
     schema: {
       params: z.object({
@@ -57,6 +57,12 @@ export class DevMcpDataTools {
       );
       if (probed.length) {
         return `Refused: ${probed.join(", ")} ${probed.length > 1 ? "are" : "is"} secret, and a filter on a secret column would reveal its value.`;
+      }
+      const ordered = this.sortColumns(params.sort).filter((column) =>
+        secret.has(column),
+      );
+      if (ordered.length) {
+        return `Refused: ${ordered.join(", ")} ${ordered.length > 1 ? "are" : "is"} secret, and a sort on a secret column would reveal its order.`;
       }
 
       const response = await connection.request(
@@ -188,6 +194,17 @@ export class DevMcpDataTools {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The columns a `sort` names, read as the repository reads it: separated
+   * by commas, trimmed, a leading `-` for descending.
+   */
+  protected sortColumns(sort: string | undefined): string[] {
+    return (sort ?? "")
+      .split(",")
+      .map((field) => field.trim())
+      .map((field) => (field.startsWith("-") ? field.substring(1) : field));
+  }
 
   protected secretColumns(entity: DevEntityMetadata): Set<string> {
     return new Set(

@@ -21,8 +21,6 @@ export class DevMcpLogTools {
    */
   protected readonly maxCollected = 5000;
 
-  protected readonly levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
-
   public readonly logsTail = $tool({
     name: "logs_tail",
     description:
@@ -84,7 +82,9 @@ export class DevMcpLogTools {
         // before it, which is numbered below zero: "5 of 155" while the
         // newest seq is 45 otherwise reads as 110 entries gone missing.
         const history =
-          params.since === undefined && target.connection.run.status !== "dead"
+          params.since === undefined &&
+          target.connection.run.status !== "dead" &&
+          (await this.ownTotal(target.connection, params)) < total
             ? " (the total counts the previous run's restored history, numbered below zero)"
             : "";
         lines.unshift(
@@ -246,13 +246,7 @@ export class DevMcpLogTools {
       return { entries, total: entries.length };
     }
 
-    const filters = {
-      level: params.level,
-      module: params.logger,
-      search: params.text,
-      slowerThan:
-        params.slowerThan === undefined ? undefined : String(params.slowerThan),
-    };
+    const filters = this.filters(params);
 
     if (params.since === undefined) {
       const page = await connection.logs({ ...filters, limit: String(limit) });
@@ -277,6 +271,45 @@ export class DevMcpLogTools {
       if (!page.hasMore || !batch.length) break;
     }
     return { entries, total: entries.length };
+  }
+
+  /**
+   * How many matching entries a live run logged itself: restored history is
+   * numbered below zero, so it is everything after -1.
+   */
+  protected async ownTotal(
+    connection: InspectorConnection,
+    params: {
+      level?: string;
+      logger?: string;
+      text?: string;
+      slowerThan?: number;
+    },
+  ): Promise<number> {
+    const page = await connection.logs({
+      ...this.filters(params),
+      after: "-1",
+      limit: "1",
+    });
+    return page.total;
+  }
+
+  /**
+   * The tail's filters as the logs route names them.
+   */
+  protected filters(params: {
+    level?: string;
+    logger?: string;
+    text?: string;
+    slowerThan?: number;
+  }) {
+    return {
+      level: params.level,
+      module: params.logger,
+      search: params.text,
+      slowerThan:
+        params.slowerThan === undefined ? undefined : String(params.slowerThan),
+    };
   }
 
   /**

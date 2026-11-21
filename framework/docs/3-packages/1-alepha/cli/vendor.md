@@ -19,7 +19,7 @@ copy of Alepha for AI tooling, audits, documentation, or quick fixes.
 Commands:
 
 - `alepha vendor sync` - replace local packages with remote source
-- `alepha vendor diff` - compare local packages against remote HEAD
+- `alepha vendor diff` - compare local packages against the last synced commit
 
 Configuration in `alepha.config.ts`:
 

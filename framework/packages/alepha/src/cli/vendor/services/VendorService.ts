@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -164,7 +166,7 @@ export class VendorService {
    *
    * With `force` (or first sync): replaces local copies unconditionally.
    */
-  async sync(options: VendorSyncOptions): Promise<VendorSyncResult> {
+  public async sync(options: VendorSyncOptions): Promise<VendorSyncResult> {
     const synced: string[] = [];
     const errors: string[] = [];
 
@@ -237,7 +239,7 @@ export class VendorService {
    * Reads the commit hash from `<dir>/vendor.json`, clones at that commit,
    * and compares local files to detect modifications since last sync.
    */
-  async diff(options: VendorDiffOptions): Promise<VendorDiffResult> {
+  public async diff(options: VendorDiffOptions): Promise<VendorDiffResult> {
     const lock = await this.readLock(options.root, options.dir);
     if (!lock) {
       return { packages: [], totalChanges: 0 };
@@ -337,8 +339,9 @@ export class VendorService {
       // transform touches only the keys `publishConfig` names. The clone is
       // a throwaway temp directory, so mutating it costs nothing. A project
       // that syncs with `build: false` never transformed its copy, so its
-      // baseline is compared as committed.
-      if (build) {
+      // baseline is compared as committed, and so is a package with no
+      // `build` script, which `build()` skips before the transform.
+      if (build && (await this.readManifest(remotePkgDir))?.scripts?.build) {
         await this.applyPublishConfig(remotePkgDir);
       }
 
@@ -412,7 +415,7 @@ export class VendorService {
    * `alepha vendor sync` exits non-zero on it: its manifest still points at
    * `src`, which is the state this build exists to prevent.
    */
-  async build(options: VendorBuildOptions): Promise<VendorBuildResult> {
+  public async build(options: VendorBuildOptions): Promise<VendorBuildResult> {
     const built: string[] = [];
     const skipped: string[] = [];
     const errors: string[] = [];
@@ -546,7 +549,7 @@ export class VendorService {
    */
   protected async cloneRemote(remote: string, branch: string): Promise<string> {
     const tmpDir = this.fs.join(
-      process.env.TMPDIR || "/tmp",
+      tmpdir(),
       `.alepha-vendor-${this.dateTime.nowMillis()}`,
     );
 
@@ -582,7 +585,7 @@ export class VendorService {
     commit: string,
   ): Promise<string> {
     const tmpDir = this.fs.join(
-      process.env.TMPDIR || "/tmp",
+      tmpdir(),
       `.alepha-vendor-${this.dateTime.nowMillis()}`,
     );
 

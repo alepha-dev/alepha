@@ -84,7 +84,8 @@ export class DevMcpDocsTools {
           : `No page matches "${params.page}". Closest:`,
         "",
         ...candidates.map(
-          (page) => `- ${page.slug} (${page.title}): ${page.summary}`,
+          (page) =>
+            `- ${page.slug} (${page.title})${page.summary ? `: ${page.summary}` : ""}`,
         ),
       ].join("\n");
     },

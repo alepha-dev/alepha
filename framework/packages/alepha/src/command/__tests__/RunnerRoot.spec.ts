@@ -7,18 +7,18 @@ import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { Runner } from "../index.ts";
 
 /**
  * `RunOptions.root` was honoured for string shell commands and silently
  * dropped by `run.rm` / `run.cp`, which called `node:fs` with the caller's
- * path verbatim — so they resolved against `process.cwd()`. In a monorepo
+ * path verbatim, so they resolved against `process.cwd()`. In a monorepo
  * build task that means deleting relative to the wrong directory, or nothing
  * at all.
  */
-describe("Runner — RunOptions.root on rm/cp", () => {
+describe("Runner: RunOptions.root on rm/cp", () => {
   let alepha: Alepha;
   let runner: Runner;
   let root: string;
@@ -42,7 +42,7 @@ describe("Runner — RunOptions.root on rm/cp", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("removes a plain path relative to root, not cwd", async () => {
+  it("removes a plain path relative to root, not cwd", async ({ expect }) => {
     await mkdir(join(root, "dist"), { recursive: true });
     await writeFile(join(root, "dist", "app.js"), "x");
 
@@ -51,7 +51,7 @@ describe("Runner — RunOptions.root on rm/cp", () => {
     expect(await exists(join(root, "dist"))).toBe(false);
   });
 
-  it("removes a glob relative to root, not cwd", async () => {
+  it("removes a glob relative to root, not cwd", async ({ expect }) => {
     await mkdir(join(root, "build"), { recursive: true });
     await writeFile(join(root, "build", "a.map"), "x");
     await writeFile(join(root, "build", "b.map"), "x");
@@ -64,7 +64,7 @@ describe("Runner — RunOptions.root on rm/cp", () => {
     expect(await exists(join(root, "build", "keep.js"))).toBe(true);
   });
 
-  it("copies relative to root, not cwd", async () => {
+  it("copies relative to root, not cwd", async ({ expect }) => {
     await mkdir(join(root, "src"), { recursive: true });
     await writeFile(join(root, "src", "index.ts"), "export {};");
 
@@ -73,7 +73,9 @@ describe("Runner — RunOptions.root on rm/cp", () => {
     expect(await exists(join(root, "copy", "index.ts"))).toBe(true);
   });
 
-  it("leaves absolute paths alone even when root is given", async () => {
+  it("leaves absolute paths alone even when root is given", async ({
+    expect,
+  }) => {
     const outside = await mkdtemp(join(tmpdir(), "alepha-runner-abs-"));
     await writeFile(join(outside, "f.txt"), "x");
 
@@ -83,9 +85,7 @@ describe("Runner — RunOptions.root on rm/cp", () => {
     await rm(outside, { recursive: true, force: true });
   });
 
-  it("still resolves against cwd when no root is given", async () => {
-    // Nothing to assert about the filesystem — the point is that omitting
-    // `root` must not start resolving against some other directory.
+  it("removes an absolute path when no root is given", async ({ expect }) => {
     await mkdir(join(root, "nested"), { recursive: true });
     await runner.run.rm(join(root, "nested"));
 
@@ -93,7 +93,7 @@ describe("Runner — RunOptions.root on rm/cp", () => {
   });
 });
 
-describe("Runner — parallel task output", () => {
+describe("Runner: parallel task output", () => {
   let alepha: Alepha;
   let runner: Runner;
 
@@ -105,7 +105,9 @@ describe("Runner — parallel task output", () => {
     runner = alepha.inject(Runner);
   });
 
-  it("returns the output of parallel tasks instead of an empty string", async () => {
+  it("returns the output of parallel tasks instead of an empty string", async ({
+    expect,
+  }) => {
     const out = await runner.run([
       { name: "first", handler: () => "one" },
       { name: "second", handler: () => "two" },

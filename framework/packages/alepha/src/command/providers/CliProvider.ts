@@ -180,7 +180,7 @@ export class CliProvider {
       schema: z.boolean(),
     },
     verbose: {
-      // No `-v` alias — it collides with `--version` on the root command.
+      // No `-v` alias: it collides with `--version` on the root command.
       aliases: ["verbose"],
       description:
         "Verbose output: trace-level logs (framework internals) in pretty format, and task output streams live.",
@@ -209,8 +209,9 @@ export class CliProvider {
       try {
         return await this.dispatch(argv, command, consumedArgs, positionalArgs);
       } catch (error) {
-        // Nothing has run yet — the argv itself was rejected. Render it the way
-        // an unknown command is rendered, not as a crash.
+        // The argv was rejected, or a prompt met the end of stdin mid-run
+        // (`NoInputError` is a `UsageError`). Render it the way an unknown
+        // command is rendered, not as a crash.
         if (error instanceof UsageError) {
           return this.reportUsage(error.message, command);
         }
@@ -223,7 +224,7 @@ export class CliProvider {
       } finally {
         // The command is over, so no question can follow: release stdin.
         //
-        // A CLI has no `stop` — commands run on `ready` and the process is
+        // A CLI has no `stop`: commands run on `ready` and the process is
         // expected to exit once the event loop drains. An interactive command
         // left an open readline interface behind, which keeps a ref'd handle
         // on stdin, so the loop never drained: `alepha platform down` did all
@@ -309,7 +310,7 @@ export class CliProvider {
     // `resolveCommand` stops walking at the first word that matches no child
     // and returns the group it reached, so `alepha db bogus` resolves to `db`.
     // The group's own handler is `({ help }) => help()`, which prints usage and
-    // returns normally — exit 0. That makes `alepha db migreate` a green no-op
+    // returns normally, exit 0. That makes `alepha db migreate` a green no-op
     // in CI, which is exactly what the `Unknown command` guard above exists to
     // prevent; it just never fires here, because a nested typo always leaves
     // `command` truthy.
@@ -352,7 +353,7 @@ export class CliProvider {
    * A typo must not report success. Exit code rather than a throw: throwing
    * surfaces as "Alepha failed to start" plus a stack through `CliProvider`
    * internals, which reads as a crash when the right answer is a usage
-   * message. The `process` guard mirrors core/index.ts — there is no process
+   * message. The `process` guard mirrors core/index.ts: there is no process
    * in workerd or the browser.
    */
   protected reportUsage(
@@ -372,11 +373,11 @@ export class CliProvider {
    *
    * `UsageError`'s own doc justifies the split by saying a `CommandError` from
    * {@link Runner} means a task genuinely failed "and its stack is the useful
-   * part". That holds for the stack of whatever *threw* — but by the time this
+   * part". That holds for the stack of whatever *threw*, but by the time this
    * reaches the `ready` hook it has been wrapped, and what the user got
    * was ~30 lines under "Alepha failed to start", every frame of it inside
    * `alepha/dist/command/index.js`. None of those frames are the user's code,
-   * and the tool that actually failed — tsc, vitest, oxlint — has already
+   * and the tool that actually failed (tsc, vitest, oxlint) has already
    * printed its diagnostics above.
    *
    * So the default is the reason and nothing else, and the stack stays one
@@ -508,9 +509,6 @@ export class CliProvider {
 
           const runner = this.runner;
 
-          // Start command session for pretty print
-          runner.startCommand(this.name, command.name);
-
           const args = {
             flags: commandFlags,
             args: commandArgs,
@@ -637,7 +635,7 @@ export class CliProvider {
         result.push(arg);
         return;
       }
-      // A negative number is a VALUE, not a flag — `--count -5` used to fail
+      // A negative number is a VALUE, not a flag: `--count -5` used to fail
       // because any token starting with `-` was treated as a flag name.
       if (this.isFlagToken(arg)) {
         result.push(arg);
@@ -656,20 +654,12 @@ export class CliProvider {
   }
 
   /**
-   * Resolve a command from positional arguments.
-   *
-   * Supports:
-   * 1. Space-separated subcommands: `deploy vercel` -> finds deploy command, then vercel child
-   * 2. Colon notation (backwards compat): `deploy:vercel` -> finds command with name "deploy:vercel"
-   * 3. Simple commands: `build` -> finds command with name "build"
-   */
-  /**
    * Resolve a command from the raw argv, skipping argv slots that are flag
    * VALUES rather than positionals.
    *
    * `argv.filter(a => !a.startsWith("-"))` ran before any flag parsing, so
    * `cli deploy --target vercel` saw `vercel` as a positional and walked into
-   * a `vercel` subcommand — after which `--target` failed as "requires a
+   * a `vercel` subcommand, after which `--target` failed as "requires a
    * value". Flags before the command (`cli --mode production build`) made
    * `production` the resolved command → "Unknown command".
    *
@@ -677,21 +667,66 @@ export class CliProvider {
    * global ones: which command owns `--target` is exactly what we are trying
    * to work out, so the superset is the only thing available this early. A
    * value-taking flag anywhere in the app therefore consumes its next
-   * argument here — which is the behaviour a user expects from a CLI.
+   * argument here, which is the behaviour a user expects from a CLI.
+   *
+   * The superset only finds a candidate. Two commands may declare one flag
+   * name differently, a boolean here and a value there, and the superset
+   * reads it as whichever command was registered first. So the argv is read
+   * again with the flags of the command it resolved to, and of its parents,
+   * ahead of the superset, until the command no longer changes: a flag the
+   * invoked command declares is read the way IT declares it.
+   *
+   * That walk need not converge: a child that redeclares its parent's flag
+   * with another arity sends the parent's reading to the child and the
+   * child's reading back to the parent. A command met twice ends the walk
+   * with the superset's answer, whole (command, path and positionals).
    */
   protected resolveCommandFromArgv(argv: string[]): {
     command: CommandPrimitive<ZObject> | undefined;
     consumedArgs: string[];
     positionalArgs: string[];
   } {
-    const consumedIndices = this.getFlagConsumedIndices(
-      argv,
-      this.everyFlagDef(),
-    );
+    const every = this.everyFlagDef();
+    const resolve = (flagDefs: typeof every) => {
+      const positionalArgs = this.extractPositionals(
+        argv,
+        this.getFlagConsumedIndices(argv, flagDefs),
+      );
+      return { ...this.resolveCommand(positionalArgs), positionalArgs };
+    };
 
-    const positionalArgs = this.extractPositionals(argv, consumedIndices);
+    const first = resolve(every);
+    const visited = new Set([first.command]);
+    let resolved = first;
+    while (resolved.command) {
+      const next = resolve([...this.pathFlagDefs(resolved.command), ...every]);
+      if (next.command === resolved.command) return next;
+      if (visited.has(next.command)) return first;
+      visited.add(next.command);
+      resolved = next;
+    }
 
-    return { ...this.resolveCommand(positionalArgs), positionalArgs };
+    return resolved;
+  }
+
+  /**
+   * The flag definitions of a command and of its parents, the command's own
+   * first.
+   */
+  protected pathFlagDefs(command: CommandPrimitive<ZObject>): Array<{
+    key: string;
+    aliases: string[];
+    schema: ZType;
+  }> {
+    const defs: Array<{ key: string; aliases: string[]; schema: ZType }> = [];
+    for (
+      let current: CommandPrimitive<ZObject> | undefined = command;
+      current;
+      current = this.findParentCommand(current)
+    ) {
+      defs.push(...this.extractFlagDefs(current.flags));
+    }
+    return defs;
   }
 
   /**
@@ -754,6 +789,14 @@ export class CliProvider {
     return argv;
   }
 
+  /**
+   * Resolve a command from positional arguments.
+   *
+   * Supports:
+   * 1. Space-separated subcommands: `deploy vercel` -> finds deploy command, then vercel child
+   * 2. Colon notation (backwards compat): `deploy:vercel` -> finds command with name "deploy:vercel"
+   * 3. Simple commands: `build` -> finds command with name "build"
+   */
   protected resolveCommand(positionalArgs: string[]): {
     command: CommandPrimitive<ZObject> | undefined;
     consumedArgs: string[];
@@ -931,7 +974,7 @@ export class CliProvider {
   }
 
   /**
-   * Get global flags (help only, root command flags are NOT global)
+   * Get global flags (`help` and `verbose`; root command flags are NOT global)
    */
   protected getAllGlobalFlags(): Record<
     string,
@@ -1009,9 +1052,11 @@ export class CliProvider {
     }
 
     // Tolerate global flags (--help, --verbose) so strict command parsing
-    // doesn't reject them — they're consumed by the onReady global pass,
-    // not by the command. Skip any whose alias the command already claims
-    // (e.g. a command with its own `verbose` flag handles it directly).
+    // doesn't reject them: they're consumed by the global pass in `dispatch`,
+    // not by the command. Skip any whose alias the command already claims, so
+    // the command's own declaration parses it. The global pass still reads
+    // it first: a command's own `--verbose` also raises the log level, and
+    // its own `-h` still prints the help.
     const claimed = new Set(flagDefs.flatMap((d) => d.aliases));
     for (const [key, value] of Object.entries(this.getAllGlobalFlags())) {
       if (value.aliases.some((a: string) => claimed.has(a))) continue;
@@ -1091,7 +1136,7 @@ export class CliProvider {
         if (def !== undefined) {
           result[key] = def;
         } else if (z.schema.isOptional(propSchema)) {
-          // Optional with no default — leave undefined
+          // Optional with no default: leave undefined
         } else {
           missing.push(key);
         }
@@ -1118,27 +1163,33 @@ export class CliProvider {
   }
 
   /**
-   * Parse --mode or -m flag from argv for environment file loading
+   * Parse --mode or -m flag from argv for environment file loading.
+   *
+   * The token is split the way {@link parseFlags} splits it (one or two
+   * dashes, the value after the first `=`), so the two agree on which token
+   * is the mode flag: `--m production` is accepted there, and read here.
    */
   protected parseModeFlag(argv: string[]): string | undefined {
     const end = this.terminatorIndex(argv);
 
     for (let i = 0; i < end; i++) {
       const arg = argv[i];
+      if (!this.isFlagToken(arg)) continue;
+
+      const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
+      if (rawKey !== "mode" && rawKey !== "m") continue;
 
       // Handle --mode=value or -m=value
-      if (arg.startsWith("--mode=") || arg.startsWith("-m=")) {
-        return arg.split("=")[1];
+      if (valueParts.length > 0) {
+        return valueParts.join("=");
       }
 
       // Handle --mode value or -m value
-      if (arg === "--mode" || arg === "-m") {
-        const nextArg = argv[i + 1];
-        if (nextArg && !this.isFlagToken(nextArg)) {
-          return nextArg;
-        }
-        throw new UsageError("Flag --mode requires a value.");
+      const nextArg = argv[i + 1];
+      if (nextArg && !this.isFlagToken(nextArg)) {
+        return nextArg;
       }
+      throw new UsageError("Flag --mode requires a value.");
     }
 
     return undefined;
@@ -1226,8 +1277,12 @@ export class CliProvider {
           : true;
       } else if (isUnionWithBoolean && !value) {
         // Union with boolean: --flag without value → true
+        //
+        // `--flag=` is true as well, and never takes the next token:
+        // `getFlagConsumedIndices` sees the `=` and leaves that token a
+        // positional, so taking it here would bind one word twice.
         const nextArg = argv[i + 1];
-        if (nextArg && !this.isFlagToken(nextArg)) {
+        if (valueParts.length === 0 && nextArg && !this.isFlagToken(nextArg)) {
           // Has a value after space: --flag value
           result[def.key] = nextArg;
           i++; // consume next arg
@@ -1754,8 +1809,8 @@ export class CliProvider {
     // through the logger.
     //
     // It used to flip `alepha.logger.format` to `raw` and restore it
-    // afterwards, which worked but mutated global state that `help()` — handed
-    // to command handlers, who keep running after printing — could leak. It
+    // afterwards, which worked but mutated global state that `help()` (handed
+    // to command handlers, who keep running after printing) could leak. It
     // also could not make help pipeable: the format decides how a line looks,
     // not which stream it lands on.
     const out = (line = "") => this.output.print(line);
@@ -2011,8 +2066,8 @@ export class CliProvider {
    * Get top-level commands (commands that are not children of other commands).
    *
    * Deduplicated by name, keeping the LAST registration. A project that
-   * redefines a builtin in its `alepha.config.ts` — `clean` and `verify` in
-   * this repo — otherwise appeared twice in `--help`, with two contradictory
+   * redefines a builtin in its `alepha.config.ts` (`clean` and `verify` in
+   * this repo) otherwise appeared twice in `--help`, with two contradictory
    * descriptions, while only one of them could ever run. Last-wins is not a
    * choice made here: it is what {@link findCommand} already does with
    * `findLast`, so this makes the help agree with the resolution instead of

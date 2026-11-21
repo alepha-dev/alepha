@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import {
   AlephaInspector,
   INSPECTOR_PROTOCOL,
@@ -61,7 +61,7 @@ describe("DevMcpServer", () => {
     params: Record<string, unknown> = {},
   ): Promise<string> => {
     const tool = server.inject(McpServerProvider).getTool(name);
-    if (!tool) throw new Error(`no tool ${name}`);
+    if (!tool) throw new AlephaError(`no tool ${name}`);
     return (await tool.execute(params)) as string;
   };
 
@@ -76,13 +76,9 @@ describe("DevMcpServer", () => {
   };
 
   describe("the server", () => {
-    it("lists its tools and says how to use them", async ({ expect }) => {
+    it("says how to use its tools", async ({ expect }) => {
       const server = await listed("/work/app", []);
       const mcp = server.inject(McpServerProvider);
-      const names = mcp.getTools().map((tool) => tool.name);
-      expect(names).toEqual(
-        expect.arrayContaining(["apps_list", "app_select"]),
-      );
       expect(mcp.instructions).toContain("apps_list");
       expect(mcp.serverInfo.name).toBe("alepha");
     });

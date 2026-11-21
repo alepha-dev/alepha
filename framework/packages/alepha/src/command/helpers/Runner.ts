@@ -13,11 +13,6 @@ export type Task = {
   handler: () => any;
 };
 
-interface Timer {
-  name: string;
-  duration: string;
-}
-
 export interface RunOptions {
   /**
    * Rename the command for logging purposes.
@@ -59,7 +54,11 @@ export interface RunnerMethod {
 export class Runner {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected timers: Timer[] = [];
+
+  /**
+   * How many tasks finished since the last `end()`.
+   */
+  protected finished = 0;
   protected readonly startTime: number = this.dateTime.nowMillis();
   protected readonly alepha = $inject(Alepha);
   protected readonly shell = $inject(ShellProvider);
@@ -68,14 +67,6 @@ export class Runner {
   constructor() {
     this.run = this.createRunMethod();
   }
-
-  /**
-   * Start a new command session.
-   *
-   * Retained for API compatibility (the CLI calls it before each command);
-   * task lifecycle is now logged statelessly, so there is nothing to reset.
-   */
-  public startCommand(_cliName: string, _commandName: string): void {}
 
   protected createRunMethod() {
     const runFn: RunnerMethod = async (
@@ -127,7 +118,7 @@ export class Runner {
               `rm -rf ${Array.isArray(files) ? files.join(" ") : files}`,
             handler: async () => {
               // `glob` yields paths relative to its cwd, so re-anchor each match
-              // before deleting — otherwise a matched entry would be resolved
+              // before deleting: otherwise a matched entry would be resolved
               // against process.cwd() and silently miss (or hit the wrong tree).
               for await (const file of glob(files, root ? { cwd: root } : {})) {
                 const target = this.resolveIn(root, file);
@@ -176,8 +167,8 @@ export class Runner {
   /**
    * Anchor a caller-supplied path inside `root`.
    *
-   * Absolute paths are returned untouched — `root` scopes relative work, it
-   * does not confine it — and with no `root` the path keeps resolving against
+   * Absolute paths are returned untouched (`root` scopes relative work, it
+   * does not confine it), and with no `root` the path keeps resolving against
    * `process.cwd()`, which is the pre-existing behaviour.
    */
   protected resolveIn(root: string | undefined, path: string): string {
@@ -216,7 +207,7 @@ export class Runner {
    * Prints the total time once at least one task ran, then forgets them.
    */
   public end(): void {
-    if (this.timers.length === 0) return;
+    if (this.finished === 0) return;
 
     const totalTime = (
       (this.dateTime.nowMillis() - this.startTime) /
@@ -224,8 +215,7 @@ export class Runner {
     ).toFixed(1);
     this.log.info(`Total time: ${totalTime}s`);
 
-    // clear timers after rendering
-    this.timers = [];
+    this.finished = 0;
   }
 
   protected async executeTask(task: Task): Promise<string> {
@@ -240,7 +230,7 @@ export class Runner {
     } catch (error) {
       // Streamed tasks have already printed their output live and reject
       // without stdout/stderr attached; this surfaces output from captured
-      // tasks (capture: true — the default below DEBUG) before throwing.
+      // tasks (capture: true, the default below DEBUG) before throwing.
       const err = error as { stdout?: string; stderr?: string };
       const captured = [err?.stdout, err?.stderr]
         .filter(Boolean)
@@ -249,7 +239,15 @@ export class Runner {
       if (captured) {
         this.log.info(`\n\n${captured}`);
       }
-      throw new CommandError(`Task '${task.name}' failed`, { cause: error });
+      // The wrapper names the task and keeps the exit code its cause asked
+      // for, which is the only one the CLI reads.
+      throw new CommandError(
+        {
+          exitCode:
+            error instanceof CommandError ? error.data.exitCode : undefined,
+        },
+        { message: `Task '${task.name}' failed`, cause: error },
+      );
     }
 
     if (stdout) this.log.trace(stdout);
@@ -263,10 +261,7 @@ export class Runner {
     const suffix = message ? ` - ${message}` : "";
     this.log.info(`Finished '${task.name}' after ${duration}s${suffix}`);
 
-    this.timers.push({
-      name: task.name,
-      duration: `${duration}s`,
-    });
+    this.finished++;
 
     return stdout;
   }

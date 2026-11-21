@@ -113,8 +113,8 @@ export class ExclusiveProvider {
   /**
    * Join the queue for `key` and resolve once this process owns the slot.
    *
-   * The heartbeat starts before the wait loop, not after it: a waiter whose own
-   * ticket went stale would be swept by the others and lose its place.
+   * The heartbeat starts before the wait loop, not after it, so a waiter's
+   * ticket carries a fresh `heartbeatAt` for as long as it waits.
    */
   public async acquire(
     key: string,
@@ -157,7 +157,8 @@ export class ExclusiveProvider {
 
     // An `exit` handler must be synchronous to have any effect, and a default
     // SIGINT terminates the process without firing `exit` at all, so both are
-    // needed to hand the turn over instead of waiting out the stale window.
+    // needed to hand the turn over at once, instead of leaving the ticket for
+    // the next arrival's sweep.
     const cleanup = () => {
       try {
         unlinkSync(file);
@@ -284,8 +285,10 @@ export class ExclusiveProvider {
 
       const position = tickets.findIndex((it) => it.file === name);
       if (position === -1) {
-        // Our own ticket was swept while we were stalled. Rewrite it under the
-        // same name so we keep our place instead of going to the back.
+        // Our own ticket is gone or unreadable: the sweep never removes a
+        // live process's ticket, so the queue directory was cleared from
+        // outside. Rewrite it under the same name so we keep our place
+        // instead of going to the back.
         await this.writeTicket(file, {
           ...ticket,
           heartbeatAt: this.dateTime.nowMillis(),
@@ -302,7 +305,7 @@ export class ExclusiveProvider {
 
         // Then verify, because the claim above is a read-then-write and the
         // read can miss a ticket that had not landed yet. Two arrivals can
-        // therefore both see an unclaimed queue and both claim it — the
+        // therefore both see an unclaimed queue and both claim it: the
         // `holding` flag fixes a later arrival meeting an ALREADY claimed
         // slot, and says nothing about the window before the claim lands.
         //
@@ -480,8 +483,10 @@ export class ExclusiveProvider {
   ): string {
     const now = this.dateTime.nowMillis();
     const held = this.humanize(now - holder.startedAt);
+    // Position 0 is a holder whose ticket sorts after ours: it is still the
+    // only run in the way.
     const ahead =
-      position === 1 ? "you are next" : `${position} runs ahead of you`;
+      position <= 1 ? "you are next" : `${position} runs ahead of you`;
     const hint =
       now - own.startedAt >= this.settings.hintAfterMs
         ? " Set ALEPHA_NO_EXCLUSIVE=1 to bypass the queue."

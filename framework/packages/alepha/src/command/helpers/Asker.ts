@@ -164,12 +164,33 @@ export class Asker {
   /**
    * One interface for the whole session, created on the first question.
    *
-   * It used to be one per question, closed straight after. That silently broke
-   * piped input: readline buffers ahead, so the first `close()` took the rest
-   * of stdin with it and every later question met EOF. `printf 'a\nb\n' | cli`
-   * answered question one and lost question two.
+   * One per question, closed straight after, breaks piped input: readline
+   * buffers ahead, so the first `close()` takes the rest of stdin with it and
+   * every later question meets EOF.
    */
   protected rl?: Interface;
+
+  /**
+   * Lines a pipe delivered while no question was waiting for one.
+   *
+   * Readline emits every line of a chunk at once: `printf 'a\nb\n' | cli`
+   * answers question one with `a` and emits `b` straight after, before
+   * question two is asked. Kept here, `b` answers it.
+   */
+  protected unread: string[] = [];
+
+  /**
+   * How many unread lines are kept. `yes | cli` never stops delivering:
+   * past this many, a line is dropped, as every unread line used to be.
+   */
+  protected readonly maxUnread = 1000;
+
+  /**
+   * Set once the interface has closed on its own: stdin ended. A question
+   * asked on it afterwards would be refused by readline with
+   * `ERR_USE_AFTER_CLOSE`.
+   */
+  protected inputEnded = false;
 
   constructor() {
     this.ask = this.createAskMethods();
@@ -187,6 +208,8 @@ export class Asker {
   public close(): void {
     this.rl?.close();
     this.rl = undefined;
+    this.unread = [];
+    this.inputEnded = false;
   }
 
   protected readonly onStop = $hook({
@@ -241,7 +264,7 @@ export class Asker {
    *
    * `parse`'s return value distinguishes "here is a value" from "not valid,
    * ask again" without overloading `undefined`: returning `undefined` itself
-   * means retry, and returning `{ value }` accepts the answer — including
+   * means retry, and returning `{ value }` accepts the answer, including
    * `{ value: undefined }`, which is how a legitimate empty answer (an
    * optional field left blank) is accepted rather than mistaken for a retry.
    *
@@ -271,7 +294,7 @@ export class Asker {
       }
     } catch (error) {
       // The interface is shared for the whole session, so it is closed on
-      // `stop` rather than here — except on EOF, where there is nothing left
+      // `stop` rather than here, except on EOF, where there is nothing left
       // to read and holding it open only delays the exit.
       if (error instanceof NoInputError) {
         this.close();
@@ -292,7 +315,7 @@ export class Asker {
           if (options.schema) {
             // The terminal is a string-only boundary (like HTTP query/env), so
             // coerce the answer to the schema's scalar type before strict
-            // decoding — otherwise `z.number()` would reject the string "41".
+            // decoding: otherwise `z.number()` would reject the string "41".
             const raw = answer ? answer : undefined;
             value = this.alepha.codec.decode(
               options.schema,
@@ -416,8 +439,8 @@ export class Asker {
 
         // Number("1 2") is NaN, so a multi-number answer is rejected here
         // rather than quietly taking the first one. The digit check runs
-        // first so formats Number() would otherwise accept — hex ("0x2"),
-        // scientific notation ("2e0"), a leading "+" — are rejected too.
+        // first so formats Number() would otherwise accept (hex ("0x2"),
+        // scientific notation ("2e0"), a leading "+") are rejected too.
         //
         // Anything that is not plain digits may be the entry's value typed
         // out: people type `saas` at a list that shows `saas`. Digits stay
@@ -607,8 +630,29 @@ export class Asker {
   }
 
   protected getPromptInterface(): Interface {
-    this.rl ??= this.createPromptInterface();
+    if (!this.rl) {
+      const rl = this.createPromptInterface();
+      this.rl = rl;
+      rl.once("close", () => {
+        this.inputEnded = true;
+      });
+      // Only for input that is not a terminal: at a keyboard, a line typed
+      // while the command was busy must not answer the next question.
+      if (!this.inputIsTerminal()) {
+        const keep = (line: string) => {
+          if (this.unread.length < this.maxUnread) {
+            this.unread.push(line);
+          }
+          rl.once("line", keep);
+        };
+        rl.once("line", keep);
+      }
+    }
     return this.rl;
+  }
+
+  protected inputIsTerminal(): boolean {
+    return !!input.isTTY;
   }
 
   protected createPromptInterface(): Interface {
@@ -619,7 +663,7 @@ export class Asker {
    * Read one line, or fail loudly when stdin has ended.
    *
    * `rl.question()` on a closed stream returns a promise that never settles.
-   * Left alone, the event loop empties and node exits **0** — the command
+   * Left alone, the event loop empties and node exits **0**: the command
    * reports success having done nothing at all. Racing the interface's `close`
    * event turns that silent no-op into an error.
    */
@@ -637,6 +681,16 @@ export class Asker {
           ),
         );
       };
+
+      const unread = this.unread.shift();
+      if (unread !== undefined) {
+        resolve(unread);
+        return;
+      }
+      if (this.inputEnded) {
+        onClose();
+        return;
+      }
 
       rl.once("close", onClose);
       rl.question("> ").then(

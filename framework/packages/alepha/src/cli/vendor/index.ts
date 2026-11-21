@@ -15,7 +15,7 @@ import { VendorService } from "./services/VendorService.ts";
  *
  * Commands:
  * - `alepha vendor sync`  - replace local packages with remote source
- * - `alepha vendor diff`  - compare local packages against remote HEAD
+ * - `alepha vendor diff`  - compare local packages against the last synced commit
  *
  * Configuration in `alepha.config.ts`:
  *

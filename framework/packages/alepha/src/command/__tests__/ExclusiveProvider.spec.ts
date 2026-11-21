@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Alepha, AlephaError } from "alepha";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 import type { ExclusiveTicket } from "../index.ts";
 import { ExclusiveProvider, exclusiveOptions } from "../index.ts";
@@ -66,7 +66,7 @@ describe("ExclusiveProvider", () => {
       }
     }
 
-    throw new Error("could not find a pid that is provably dead");
+    throw new AlephaError("could not find a pid that is provably dead");
   };
 
   const provider = (): ExclusiveProvider => {
@@ -75,7 +75,7 @@ describe("ExclusiveProvider", () => {
   };
 
   describe("resolveKey", () => {
-    it("returns undefined when the command does not opt in", () => {
+    it("returns undefined when the command does not opt in", ({ expect }) => {
       expect(
         provider().resolveKey(undefined, process.cwd(), "verify"),
       ).toBeUndefined();
@@ -84,7 +84,9 @@ describe("ExclusiveProvider", () => {
       ).toBeUndefined();
     });
 
-    it("derives the key from the package name so worktrees share one slot", () => {
+    it("derives the key from the package name so worktrees share one slot", ({
+      expect,
+    }) => {
       const rootA = scratch();
       const rootB = scratch();
       writeFileSync(
@@ -105,7 +107,7 @@ describe("ExclusiveProvider", () => {
       );
     });
 
-    it("keeps different projects apart", () => {
+    it("keeps different projects apart", ({ expect }) => {
       const root = scratch();
       writeFileSync(
         join(root, "package.json"),
@@ -117,7 +119,7 @@ describe("ExclusiveProvider", () => {
       );
     });
 
-    it("lets an explicit string override the derived key", () => {
+    it("lets an explicit string override the derived key", ({ expect }) => {
       const root = scratch();
       writeFileSync(
         join(root, "package.json"),
@@ -129,7 +131,9 @@ describe("ExclusiveProvider", () => {
       );
     });
 
-    it("throws rather than falling back when no package name resolves", () => {
+    it("throws rather than falling back when no package name resolves", ({
+      expect,
+    }) => {
       const root = scratch();
 
       // A basename fallback would differ per worktree and silently defeat the
@@ -142,7 +146,9 @@ describe("ExclusiveProvider", () => {
       );
     });
 
-    it("names the root command instead of producing a trailing colon", () => {
+    it("names the root command instead of producing a trailing colon", ({
+      expect,
+    }) => {
       const root = scratch();
       writeFileSync(
         join(root, "package.json"),
@@ -154,19 +160,21 @@ describe("ExclusiveProvider", () => {
   });
 
   describe("queueDir", () => {
-    it("gives different keys different directories", () => {
+    it("gives different keys different directories", ({ expect }) => {
       const p = provider();
       expect(p.queueDir("a:verify")).not.toBe(p.queueDir("b:verify"));
     });
 
-    it("produces a filesystem-safe, readable directory name", () => {
+    it("produces a filesystem-safe, readable directory name", ({ expect }) => {
       const dir = provider().queueDir("alepha:verify");
       const base = dir.split(/[\\/]/).pop() ?? "";
 
       expect(base).toMatch(/^alepha-verify-[0-9a-f]{16}$/);
     });
 
-    it("honours ALEPHA_EXCLUSIVE_DIR so spawned children can share a scratch queue", () => {
+    it("honours ALEPHA_EXCLUSIVE_DIR so spawned children can share a scratch queue", ({
+      expect,
+    }) => {
       const dir = scratch();
       process.env.ALEPHA_EXCLUSIVE_DIR = dir;
       try {
@@ -193,7 +201,7 @@ describe("ExclusiveProvider", () => {
       return alepha.inject(ExclusiveProvider);
     };
 
-    it("gives two same-millisecond tickets distinct names", () => {
+    it("gives two same-millisecond tickets distinct names", ({ expect }) => {
       const p = fastProvider(scratch());
 
       // The pid is identical for every acquire inside one process, so a name
@@ -208,7 +216,9 @@ describe("ExclusiveProvider", () => {
       expect(p.ticketName(1).localeCompare(p.ticketName(2))).toBeLessThan(0);
     });
 
-    it("hands the slot to the first arrival and makes the second wait", async () => {
+    it("hands the slot to the first arrival and makes the second wait", async ({
+      expect,
+    }) => {
       const dir = scratch();
       const first = fastProvider(dir);
       const second = fastProvider(dir);
@@ -233,7 +243,9 @@ describe("ExclusiveProvider", () => {
       await secondHandle.release();
     });
 
-    it("serves waiters in arrival order, not in wake-up order", async () => {
+    it("serves waiters in arrival order, not in wake-up order", async ({
+      expect,
+    }) => {
       const dir = scratch();
       const held = await fastProvider(dir).acquire("k", {
         command: "held",
@@ -264,7 +276,9 @@ describe("ExclusiveProvider", () => {
       expect(order).toEqual(["first", "second", "third"]);
     });
 
-    it("yields to a claimed slot even when it sorts ahead of the holder", async () => {
+    it("yields to a claimed slot even when it sorts ahead of the holder", async ({
+      expect,
+    }) => {
       const dir = scratch();
       const p = fastProvider(dir);
       const queue = p.queueDir("k");
@@ -312,7 +326,7 @@ describe("ExclusiveProvider", () => {
       await handle.release();
     });
 
-    it("sweeps a ticket whose owner is gone", async () => {
+    it("sweeps a ticket whose owner is gone", async ({ expect }) => {
       const dir = scratch();
       const p = fastProvider(dir);
       const queue = p.queueDir("k");
@@ -353,7 +367,9 @@ describe("ExclusiveProvider", () => {
      * swept it was inside by then: two processes in the critical section, on
      * exactly the saturated machine the queue exists to protect.
      */
-    it("never sweeps a live pid, however old its heartbeat", async () => {
+    it("never sweeps a live pid, however old its heartbeat", async ({
+      expect,
+    }) => {
       const dir = scratch();
       const p = fastProvider(dir);
       const queue = p.queueDir("k");
@@ -395,7 +411,9 @@ describe("ExclusiveProvider", () => {
     });
 
     describe("reentrancy", () => {
-      it("lets a process re-enter a key it already holds", async () => {
+      it("lets a process re-enter a key it already holds", async ({
+        expect,
+      }) => {
         const dir = scratch();
         const p = fastProvider(dir);
         const queue = p.queueDir("k");
@@ -424,7 +442,9 @@ describe("ExclusiveProvider", () => {
         ).toHaveLength(0);
       });
 
-      it("counts depth, so only the outermost release frees the slot", async () => {
+      it("counts depth, so only the outermost release frees the slot", async ({
+        expect,
+      }) => {
         const dir = scratch();
         const p = fastProvider(dir);
         const queue = p.queueDir("k");
@@ -448,7 +468,9 @@ describe("ExclusiveProvider", () => {
         ).toHaveLength(0);
       });
 
-      it("does not double-count a handle released twice", async () => {
+      it("does not double-count a handle released twice", async ({
+        expect,
+      }) => {
         const dir = scratch();
         const p = fastProvider(dir);
         const queue = p.queueDir("k");
@@ -470,7 +492,7 @@ describe("ExclusiveProvider", () => {
         ).toHaveLength(0);
       });
 
-      it("keeps a different key in its own queue", async () => {
+      it("keeps a different key in its own queue", async ({ expect }) => {
         const dir = scratch();
         const p = fastProvider(dir);
 
@@ -489,7 +511,7 @@ describe("ExclusiveProvider", () => {
       });
     });
 
-    it("does nothing when ALEPHA_NO_EXCLUSIVE is set", async () => {
+    it("does nothing when ALEPHA_NO_EXCLUSIVE is set", async ({ expect }) => {
       const dir = scratch();
       process.env.ALEPHA_NO_EXCLUSIVE = "1";
       try {
@@ -516,6 +538,36 @@ describe("ExclusiveProvider", () => {
    * lands two async hops later, so an unlink issued in between deletes the
    * ticket first and the beat's rename puts it straight back.
    */
+  describe("the waiting line", () => {
+    class MessagingExclusiveProvider extends ExclusiveProvider {
+      public testWaitingMessage = this.waitingMessage.bind(this);
+      public now = () => this.dateTime.nowMillis();
+    }
+
+    it("says a waiter is next whenever only the holder is in its way, wherever the holder sorts", ({
+      expect,
+    }) => {
+      const p = Alepha.create().inject(MessagingExclusiveProvider);
+      const ticket = (command: string): ExclusiveTicket => ({
+        pid: process.pid,
+        key: "k",
+        command,
+        cwd: "/h",
+        startedAt: p.now(),
+        heartbeatAt: p.now(),
+        holding: command === "holder",
+      });
+      const line = (position: number) =>
+        p.testWaitingMessage(ticket("holder"), position, ticket("late"));
+
+      // Position 0 with a holder present: the holder's ticket sorts after the
+      // waiter's, the same-millisecond tie the `holding` flag exists for.
+      expect(line(0)).toMatch(/in \/h, you are next\.$/);
+      expect(line(1)).toMatch(/in \/h, you are next\.$/);
+      expect(line(2)).toMatch(/in \/h, 2 runs ahead of you\.$/);
+    });
+  });
+
   describe("release racing its own heartbeat", () => {
     /**
      * Records the live ticket, so a heartbeat tick can be replayed by hand.
@@ -539,7 +591,9 @@ describe("ExclusiveProvider", () => {
       }
     }
 
-    it("leaves no ticket behind when a beat is still in flight", async () => {
+    it("leaves no ticket behind when a beat is still in flight", async ({
+      expect,
+    }) => {
       const dir = scratch();
       const alepha = Alepha.create();
       alepha.store.mut(exclusiveOptions, (old) => ({ ...old, dir }));
@@ -570,8 +624,8 @@ describe("ExclusiveProvider", () => {
    * position 0, and starts its `holding: true` write; B lands, reads, sees A
    * still `holding: false`, and claims too. Both return.
    *
-   * `holding` was added for a different case — a later arrival meeting an
-   * ALREADY claimed slot — and says nothing about the window before the claim
+   * `holding` was added for a different case (a later arrival meeting an
+   * ALREADY claimed slot) and says nothing about the window before the claim
    * lands.
    *
    * Driven deterministically rather than by racing real processes.
@@ -624,7 +678,7 @@ describe("ExclusiveProvider", () => {
       return alepha.inject(GatedExclusiveProvider);
     };
 
-    it("lets exactly one in", async () => {
+    it("lets exactly one in", async ({ expect }) => {
       const base = scratch();
       const key = "k";
       const a = gated(base);

@@ -2,7 +2,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { $env, $inject, Alepha, type ServiceEntry, z } from "alepha";
+import {
+  $env,
+  $inject,
+  Alepha,
+  AlephaError,
+  type ServiceEntry,
+  z,
+} from "alepha";
 import { $job, AlephaApiJobs } from "alepha/api/jobs";
 import {
   EmailProvider,
@@ -114,7 +121,7 @@ export class NotesApp {
     description: "Fail with the given reason",
     schema: z.object({ reason: z.text() }),
     handler: async ({ payload }) => {
-      throw new Error(payload.reason);
+      throw new AlephaError(payload.reason);
     },
   });
 }
@@ -160,7 +167,7 @@ export const startFixture = async (
   const { McpServerProvider } = await import("alepha/mcp");
   const call = async (name: string, params: Record<string, unknown> = {}) => {
     const tool = server.inject(McpServerProvider).getTool(name);
-    if (!tool) throw new Error(`no tool ${name}`);
+    if (!tool) throw new AlephaError(`no tool ${name}`);
     return (await tool.execute(params)) as string;
   };
 

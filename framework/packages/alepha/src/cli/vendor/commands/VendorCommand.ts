@@ -156,6 +156,14 @@ export class VendorCommand {
 
       process.stdout.write("\n");
 
+      // A package the remote does not have was not copied: a typo in
+      // `packages` must not read as a completed sync.
+      if (result.errors.length > 0) {
+        throw new CommandError(
+          `${result.errors.length} vendored ${result.errors.length === 1 ? "package" : "packages"} could not be synced (see the errors above)`,
+        );
+      }
+
       // ⚠️ A failed build fails the sync. The copy is on disk, but its
       // manifest still points at `src`, so anything loading it outside Vite
       // gets raw TypeScript: the exact state the build exists to prevent.
@@ -174,14 +182,14 @@ export class VendorCommand {
 
   protected readonly diff = $command({
     name: "diff",
-    description: "Compare local packages against remote",
+    description: "Compare local packages against the last synced commit",
     handler: async ({ root, run }) => {
       const opts = this.resolveOptions();
 
       let result: VendorDiffResult = { packages: [], totalChanges: 0 };
 
       await run({
-        name: `Cloning ${opts.remote} at ${opts.branch}`,
+        name: `Cloning ${opts.remote} at the last synced commit`,
         handler: async () => {
           result = await this.vendorService.diff({
             root,
