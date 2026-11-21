@@ -51,7 +51,9 @@ export abstract class RedisSubscriberProvider {
    * Unsubscribe from a channel.
    *
    * @param channel The channel name.
-   * @param callback Optional specific callback to remove.
+   * @param callback The one callback to remove; the channel's other
+   * callbacks keep receiving. Without it, every callback of the channel is
+   * removed.
    */
   public abstract unsubscribe(
     channel: string,
@@ -62,7 +64,7 @@ export abstract class RedisSubscriberProvider {
    * Subscribe to a glob pattern (Redis PSUBSCRIBE).
    *
    * A pattern subscribed via plain SUBSCRIBE is treated as a literal channel
-   * name and never matches anything — parameterized topics MUST go through
+   * name and never matches anything: parameterized topics MUST go through
    * this method.
    *
    * @param pattern The channel pattern, wildcards allowed (e.g. a topic of

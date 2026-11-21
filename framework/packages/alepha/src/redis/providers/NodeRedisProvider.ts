@@ -58,7 +58,7 @@ export class NodeRedisProvider extends RedisProvider {
   protected client?: NodeRedisClient;
 
   /**
-   * Keys examined per SCAN round-trip. A hint, not a page size — Redis may
+   * Keys examined per SCAN round-trip. A hint, not a page size: Redis may
    * return more or fewer. Big enough to keep the round-trip count sane on a
    * large keyspace, small enough that no single call blocks the server long.
    */
@@ -220,7 +220,7 @@ export class NodeRedisProvider extends RedisProvider {
 
   public override async keys(pattern: string): Promise<string[]> {
     // Cursor traversal, not `KEYS`. `KEYS` walks the entire keyspace in one
-    // blocking call — on a shared or large Redis that stalls every other
+    // blocking call: on a shared or large Redis that stalls every other
     // client, and container flush / wildcard invalidate / clear() all land
     // here. SCAN may return duplicates across pages, hence the Set.
     const found = new Set<string>();
@@ -311,13 +311,17 @@ export class NodeRedisProvider extends RedisProvider {
     amount: number,
     ttl?: number,
   ): Promise<number> {
-    const result = await this.publisher.INCRBY(key, amount);
-    // INCRBY is atomic, so exactly one concurrent caller observes the
-    // "creation" value and arms the expiry (fixed window).
-    if (ttl && result === amount) {
-      await this.publisher.PEXPIRE(key, Math.ceil(ttl));
+    if (!ttl) {
+      return await this.publisher.INCRBY(key, amount);
     }
-    return result;
+
+    return Number(
+      await this.eval(
+        RedisProvider.INCR_WITH_TTL_SCRIPT,
+        [key],
+        [String(amount), String(Math.ceil(ttl))],
+      ),
+    );
   }
 
   // ---------------------------------------------------------

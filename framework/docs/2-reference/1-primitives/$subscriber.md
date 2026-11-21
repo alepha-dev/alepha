@@ -30,10 +30,10 @@ subscribers can react to the same events independently.
 
 ## Options
 
-| Option    | Type                | Required | Description                                                                |
-| --------- | ------------------- | -------- | -------------------------------------------------------------------------- |
-| `topic`   | `TopicPrimitive<T>` | Yes      | The topic primitive that this subscriber will listen to for messages       |
-| `handler` | `TopicHandler<T>`   | Yes      | Message handler function that processes individual messages from the topic |
+| Option    | Type                | Required | Description                                                          |
+| --------- | ------------------- | -------- | -------------------------------------------------------------------- |
+| `topic`   | `TopicPrimitive<T>` | Yes      | The topic primitive that this subscriber will listen to for messages |
+| `handler` | `TopicHandler<T>`   | Yes      | The handler run for every message published to the topic             |
 
 ## Examples
 

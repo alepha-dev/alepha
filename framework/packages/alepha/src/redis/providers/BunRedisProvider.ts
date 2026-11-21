@@ -47,7 +47,7 @@ export class BunRedisProvider extends RedisProvider {
   protected client?: Bun.RedisClient;
 
   /**
-   * Keys examined per SCAN round-trip — see NodeRedisProvider.SCAN_COUNT.
+   * Keys examined per SCAN round-trip, see NodeRedisProvider.SCAN_COUNT.
    */
   protected static readonly SCAN_COUNT = 500;
 
@@ -125,17 +125,15 @@ export class BunRedisProvider extends RedisProvider {
   }
 
   /**
-   * Create a duplicate connection for pub/sub or other isolated operations.
+   * A new, connected client on the same URL and options, for a connection
+   * that must stay apart (a subscriber).
    */
   public async duplicate(): Promise<Bun.RedisClient> {
-    if (typeof Bun === "undefined") {
+    if (!this.alepha.isBun()) {
       throw new AlephaError("BunRedisProvider requires the Bun runtime.");
     }
 
-    const client = new Bun.RedisClient(this.getUrl(), {
-      autoReconnect: true,
-      enableAutoPipelining: true,
-    });
+    const client = new Bun.RedisClient(this.getUrl(), this.getClientOptions());
 
     client.onclose = (error) => {
       if (this.alepha.isStarted() && error) {
@@ -183,10 +181,10 @@ export class BunRedisProvider extends RedisProvider {
 
     if (hasCondition && !buf.every((byte) => byte <= 0x7f)) {
       // The conditional path can only use `send` (the typed API has no
-      // combined NX/GET/PX overloads) — refuse loudly instead of silently
+      // combined NX/GET/PX overloads): refuse loudly instead of silently
       // corrupting the value.
       throw new AlephaError(
-        "Bun Redis: SET with NX/XX/GET options only supports ASCII-safe values — the raw command path UTF-8-encodes arguments and would corrupt binary data.",
+        "Bun Redis: SET with NX/XX/GET options only supports ASCII-safe values: the raw command path UTF-8-encodes arguments and would corrupt binary data.",
       );
     }
 
@@ -241,7 +239,7 @@ export class BunRedisProvider extends RedisProvider {
     // value, and the entire `$lock` protocol (`SET … NX GET`) depends on reading
     // it. Previously this discarded the reply and always returned the value it
     // just wrote, so under Bun every lock contender saw its own id back and
-    // believed it had acquired the lock — RedisLockProvider (and therefore every
+    // believed it had acquired the lock: RedisLockProvider (and therefore every
     // scheduler dedup / migration guard) became a silent no-op across instances.
     const resp =
       args.length === 2
@@ -258,7 +256,7 @@ export class BunRedisProvider extends RedisProvider {
 
   /**
    * Apply a SET with expiration options through the typed native overloads
-   * (binary-safe — values are passed as raw bytes, never re-encoded).
+   * (binary-safe: values are passed as raw bytes, never re-encoded).
    */
   protected async setWithExpiration(
     key: string,
@@ -331,7 +329,7 @@ export class BunRedisProvider extends RedisProvider {
   }
 
   public override async keys(pattern: string): Promise<string[]> {
-    // Cursor traversal, not `KEYS` — see NodeRedisProvider.keys for why.
+    // Cursor traversal, not `KEYS`, see NodeRedisProvider.keys for why.
     const found = new Set<string>();
     let cursor = "0";
 
@@ -432,15 +430,17 @@ export class BunRedisProvider extends RedisProvider {
     amount: number,
     ttl?: number,
   ): Promise<number> {
-    const result = Number(
-      await this.publisher.send("INCRBY", [key, String(amount)]),
-    );
-    // INCRBY is atomic, so exactly one concurrent caller observes the
-    // "creation" value and arms the expiry (fixed window).
-    if (ttl && result === amount) {
-      await this.publisher.send("PEXPIRE", [key, String(Math.ceil(ttl))]);
+    if (!ttl) {
+      return Number(await this.publisher.send("INCRBY", [key, String(amount)]));
     }
-    return result;
+
+    return Number(
+      await this.eval(
+        RedisProvider.INCR_WITH_TTL_SCRIPT,
+        [key],
+        [String(amount), String(Math.ceil(ttl))],
+      ),
+    );
   }
 
   // ---------------------------------------------------------

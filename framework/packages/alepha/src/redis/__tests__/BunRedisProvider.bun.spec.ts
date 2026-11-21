@@ -1,12 +1,35 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { randomUUID } from "node:crypto";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 
 import { BunRedisProvider } from "../providers/BunRedisProvider.ts";
 import { BunRedisSubscriberProvider } from "../providers/BunRedisSubscriberProvider.ts";
 import { RedisProvider } from "../providers/RedisProvider.ts";
 import { RedisSubscriberProvider } from "../providers/RedisSubscriberProvider.ts";
+
+/**
+ * Resolves once `condition` holds, and throws after two seconds: `bun:test`
+ * has no `expect.poll`.
+ */
+const until = async (condition: () => boolean): Promise<void> => {
+  for (let i = 0; i < 400; i++) {
+    if (condition()) {
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  throw new AlephaError("Condition not met within 2 seconds");
+};
+
+/**
+ * The message a promise rejects with, or undefined if it resolves.
+ */
+const rejection = (promise: Promise<unknown>): Promise<string | undefined> =>
+  promise.then(
+    () => undefined,
+    (error: unknown) => (error instanceof Error ? error.message : "rejected"),
+  );
 
 // -------------------------------------------------------------------------------------------------------------------
 
@@ -108,6 +131,90 @@ describe("BunRedisProvider", () => {
     await redis.del([key]);
   });
 
+  it("should run a Lua script atomically", async () => {
+    const key = `test:bun:eval:${randomUUID()}`;
+    await redis.set(key, "mine");
+
+    const script = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+end
+return 0
+`;
+
+    expect(Number(await redis.eval(script, [key], ["theirs"]))).toBe(0);
+    expect((await redis.get(key))?.toString()).toBe("mine");
+
+    expect(Number(await redis.eval(script, [key], ["mine"]))).toBe(1);
+    expect(await redis.get(key)).toBeUndefined();
+  });
+
+  describe("incr with a ttl (fixed window)", () => {
+    const pttl = async (key: string) =>
+      Number(await redis.eval(`return redis.call("PTTL", KEYS[1])`, [key], []));
+    // Stands for time passing: what is left of the window is now `ms`.
+    const shorten = async (key: string, ms: number) =>
+      redis.eval(
+        `return redis.call("PEXPIRE", KEYS[1], ARGV[1])`,
+        [key],
+        [String(ms)],
+      );
+
+    it("should arm the expiry when the counter is created", async () => {
+      const key = `test:bun:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1, 60_000)).toBe(1);
+
+      const left = await pttl(key);
+      expect(left).toBeGreaterThan(50_000);
+      expect(left).toBeLessThanOrEqual(60_000);
+
+      await redis.del([key]);
+    });
+
+    it("should not extend the window when the counter comes back to its first value", async () => {
+      const key = `test:bun:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1, 60_000)).toBe(1);
+      await shorten(key, 5_000);
+
+      expect(await redis.incr(key, -1, 60_000)).toBe(0);
+      expect(await redis.incr(key, 1, 60_000)).toBe(1);
+
+      expect(await pttl(key)).toBeLessThanOrEqual(5_000);
+
+      await redis.del([key]);
+    });
+
+    it("should arm the expiry of a counter that exists without one", async () => {
+      const key = `test:bun:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1)).toBe(1);
+      expect(await pttl(key)).toBe(-1);
+
+      expect(await redis.incr(key, 1, 60_000)).toBe(2);
+
+      const left = await pttl(key);
+      expect(left).toBeGreaterThan(50_000);
+      expect(left).toBeLessThanOrEqual(60_000);
+
+      await redis.del([key]);
+    });
+
+    it("should not extend the window on an increment of zero", async () => {
+      const key = `test:bun:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 0, 60_000)).toBe(0);
+      await shorten(key, 5_000);
+
+      expect(await redis.incr(key, 0, 60_000)).toBe(0);
+
+      expect(await pttl(key)).toBeLessThanOrEqual(5_000);
+
+      await redis.del([key]);
+    });
+  });
+
   it("should support queue operations (lpush/rpop)", async () => {
     const key = `test:bun:queue:${randomUUID()}`;
 
@@ -164,7 +271,7 @@ describe("BunRedisProvider", () => {
   it("should round-trip binary values with SET options intact", async () => {
     const key = `test:bun:binary:${randomUUID()}`;
 
-    // Bytes ≥ 0x80 — the shape of every compressed / Uint8Array / non-ASCII
+    // Bytes ≥ 0x80: the shape of every compressed / Uint8Array / non-ASCII
     // cache value. RedisCacheProvider always passes a PX expiration, so this
     // exact combination is the cache hot path on Bun.
     const binary = Buffer.from([0x00, 0x7f, 0x80, 0xc3, 0xff, 0xf0]);
@@ -183,9 +290,9 @@ describe("BunRedisProvider", () => {
   it("should round-trip non-ASCII text with EX option intact", async () => {
     const key = `test:bun:utf8:${randomUUID()}`;
 
-    await redis.set(key, "héllo wörld — émojis: 🚀", { EX: 10 });
+    await redis.set(key, "héllo wörld, émojis: 🚀", { EX: 10 });
     const result = await redis.get(key);
-    expect(result?.toString("utf-8")).toBe("héllo wörld — émojis: 🚀");
+    expect(result?.toString("utf-8")).toBe("héllo wörld, émojis: 🚀");
 
     await redis.del([key]);
   });
@@ -266,22 +373,165 @@ describe("BunRedisSubscriberProvider", () => {
     expect(received).toEqual(["before"]);
   });
 
-  it("should run a Lua script atomically", async () => {
-    const key = `test:bun:eval:${randomUUID()}`;
-    await redis.set(key, "mine");
+  it("should remove one callback and keep the channel's other callbacks", async () => {
+    const channel = `test:bun:unsub-one:${randomUUID()}`;
+    const sentinelChannel = `test:bun:unsub-one:sentinel:${randomUUID()}`;
+    const first: string[] = [];
+    const second: string[] = [];
+    const sentinel: string[] = [];
+    const firstCallback = (message: string) => {
+      first.push(message);
+    };
 
-    const script = `
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("DEL", KEYS[1])
-end
-return 0
-`;
+    await sub.subscribe(channel, firstCallback);
+    await sub.subscribe(channel, (message: string) => {
+      second.push(message);
+    });
+    await sub.subscribe(sentinelChannel, (message: string) => {
+      sentinel.push(message);
+    });
 
-    expect(Number(await redis.eval(script, [key], ["theirs"]))).toBe(0);
-    expect((await redis.get(key))?.toString()).toBe("mine");
+    await redis.publish(channel, "both");
+    await until(() => second.length === 1);
+    expect(first).toEqual(["both"]);
 
-    expect(Number(await redis.eval(script, [key], ["mine"]))).toBe(1);
-    expect(await redis.get(key)).toBeUndefined();
+    await sub.unsubscribe(channel, firstCallback);
+    // A second removal of the same callback removes nothing else.
+    await sub.unsubscribe(channel, firstCallback);
+
+    await redis.publish(channel, "second-only");
+    await until(() => second.length === 2);
+    expect(first).toEqual(["both"]);
+    expect(second).toEqual(["both", "second-only"]);
+
+    await sub.unsubscribe(channel);
+    // Nothing is left on the channel: a further removal does nothing.
+    await sub.unsubscribe(channel);
+
+    // One connection delivers in publish order: once the sentinel is in, a
+    // message still delivered on the channel would be in too.
+    await redis.publish(channel, "nobody");
+    await redis.publish(sentinelChannel, "done");
+    await until(() => sentinel.length === 1);
+    expect(second).toEqual(["both", "second-only"]);
+
+    await sub.unsubscribe(sentinelChannel);
+  });
+
+  describe("a subscribe or unsubscribe that fails", () => {
+    /**
+     * Fails every SUBSCRIBE and UNSUBSCRIBE while `broken`, as a client
+     * that lost its connection does.
+     */
+    class FailingSubscriberProvider extends BunRedisSubscriberProvider {
+      public broken = false;
+
+      public override get subscriber(): Bun.RedisClient {
+        const client = super.subscriber;
+        if (!this.broken) {
+          return client;
+        }
+
+        const fail = async () => {
+          throw new AlephaError("connection lost");
+        };
+        return { subscribe: fail, unsubscribe: fail } as any;
+      }
+    }
+
+    let app: Alepha;
+    let failing: FailingSubscriberProvider;
+    let publisher: RedisProvider;
+
+    beforeAll(async () => {
+      app = Alepha.create({
+        env: { REDIS_URL: "redis://localhost:16379" },
+      })
+        .with({ provide: RedisProvider, use: BunRedisProvider })
+        .with({
+          provide: RedisSubscriberProvider,
+          use: FailingSubscriberProvider,
+        });
+
+      publisher = app.inject(RedisProvider);
+      failing = app.inject(FailingSubscriberProvider);
+
+      await app.start();
+    });
+
+    afterAll(async () => {
+      await app?.stop().catch(() => {});
+    });
+
+    it("should subscribe a callback whose first subscribe failed", async () => {
+      const channel = `test:bun:retry-sub:${randomUUID()}`;
+      const received: string[] = [];
+      const callback = (message: string) => {
+        received.push(message);
+      };
+
+      failing.broken = true;
+      expect(await rejection(failing.subscribe(channel, callback))).toBe(
+        "connection lost",
+      );
+
+      failing.broken = false;
+      await failing.subscribe(channel, callback);
+
+      await publisher.publish(channel, "hello");
+      await until(() => received.length === 1);
+      expect(received).toEqual(["hello"]);
+
+      await failing.unsubscribe(channel);
+    });
+
+    it("should remove a callback whose first removal failed", async () => {
+      const channel = `test:bun:retry-unsub:${randomUUID()}`;
+      const received: string[] = [];
+      const other: string[] = [];
+      const callback = (message: string) => {
+        received.push(message);
+      };
+
+      await failing.subscribe(channel, callback);
+      await failing.subscribe(channel, (message: string) => {
+        other.push(message);
+      });
+
+      failing.broken = true;
+      expect(await rejection(failing.unsubscribe(channel, callback))).toBe(
+        "connection lost",
+      );
+
+      failing.broken = false;
+      await failing.unsubscribe(channel, callback);
+
+      await publisher.publish(channel, "after");
+      await until(() => other.length === 1);
+      expect(received).toEqual([]);
+
+      failing.broken = true;
+      expect(await rejection(failing.unsubscribe(channel))).toBe(
+        "connection lost",
+      );
+
+      failing.broken = false;
+      await failing.unsubscribe(channel);
+
+      // The channel is gone: this publish reaches nobody, and the one on a
+      // fresh subscription comes after it.
+      await publisher.publish(channel, "nobody");
+      const fresh: string[] = [];
+      await failing.subscribe(channel, (message: string) => {
+        fresh.push(message);
+      });
+      await publisher.publish(channel, "fresh");
+      await until(() => fresh.length === 1);
+      expect(other).toEqual(["after"]);
+      expect(fresh).toEqual(["fresh"]);
+
+      await failing.unsubscribe(channel);
+    });
   });
 
   it("should clean up connections on stop", async () => {

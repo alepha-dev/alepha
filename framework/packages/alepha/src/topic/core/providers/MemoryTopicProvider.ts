@@ -1,5 +1,4 @@
 import { $hook } from "alepha";
-import { $logger } from "alepha/logger";
 
 import {
   type SubscribeCallback,
@@ -9,8 +8,14 @@ import {
   type UnSubscribeFn,
 } from "./TopicProvider.ts";
 
+/**
+ * Topics in memory, inside one container.
+ *
+ * The provider of an app with no `REDIS_URL`, and of tests: a message
+ * reaches the subscribers of this instance only. A parameterized topic
+ * matches one level per placeholder.
+ */
 export class MemoryTopicProvider extends TopicProvider {
-  protected readonly log = $logger();
   protected readonly subscriptions: Record<string, SubscribeCallback[]> = {};
   protected readonly retained: Record<string, string> = {};
 
@@ -29,10 +34,6 @@ export class MemoryTopicProvider extends TopicProvider {
 
   /**
    * Publish a message to a topic.
-   *
-   * @param topic
-   * @param message
-   * @param options
    */
   public async publish(
     topic: string,
@@ -53,12 +54,10 @@ export class MemoryTopicProvider extends TopicProvider {
   }
 
   /**
-   * Subscribe to a topic.
-   *
-   * @param topic - The topic to subscribe to.
-   * @param callback
+   * Subscribe to a topic. The returned function removes this subscription
+   * and no other: a callback subscribed twice keeps its other registration,
+   * and calling the function again does nothing.
    */
-
   public async subscribe(
     topic: string,
     callback: SubscribeCallback,
@@ -79,26 +78,26 @@ export class MemoryTopicProvider extends TopicProvider {
       }
     }
 
+    let subscribed = true;
     return async () => {
+      if (!subscribed) {
+        return;
+      }
+      subscribed = false;
+
       const callbacks = this.subscriptions[topic];
-      if (!callbacks) {
+      const index = callbacks?.indexOf(callback) ?? -1;
+      if (!callbacks || index === -1) {
         return;
       }
 
-      this.subscriptions[topic] = callbacks.filter((cb) => cb !== callback);
+      // A new array, never a splice: a callback may unsubscribe while
+      // `publish` is iterating this one.
+      this.subscriptions[topic] = callbacks.filter((_, i) => i !== index);
       if (this.subscriptions[topic].length === 0) {
         delete this.subscriptions[topic];
       }
     };
-  }
-
-  /**
-   * Unsubscribe from a topic.
-   *
-   * @param topic - The topic to unsubscribe from.
-   */
-  public async unsubscribe(topic: string): Promise<void> {
-    delete this.subscriptions[topic];
   }
 
   /**

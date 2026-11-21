@@ -116,130 +116,89 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
   description?: string;
 
   /**
-   * Topic provider configuration for message storage and delivery.
+   * The provider that carries this topic's messages.
    *
-   * Options:
-   * - **"memory"**: In-memory provider (default for development, lost on restart)
-   * - **Service<TopicProvider>**: Custom provider class (e.g., RedisTopicProvider)
-   * - **undefined**: Uses the default topic provider from dependency injection
+   * - **undefined**: the container's `TopicProvider`, which is
+   *   `RedisTopicProvider` when `REDIS_URL` is set and `MemoryTopicProvider`
+   *   otherwise, unless the app substitutes its own.
+   * - **"memory"**: `MemoryTopicProvider`, whatever the container's provider
+   *   is. Messages stay inside this process and are lost on restart.
+   * - **Service<TopicProvider>**: that provider class, for one topic on
+   *   another transport than the rest of the app.
    *
-   * **Provider Selection Guidelines**:
-   * - **Development**: Use "memory" for fast, simple testing without external dependencies
-   * - **Production**: Use Redis or message brokers for persistence and scalability
-   * - **Distributed systems**: Use Redis/RabbitMQ for cross-service communication
-   * - **High-throughput**: Use specialized providers with connection pooling
-   * - **Real-time**: Ensure provider supports low-latency message delivery
+   * Topics are plain pub/sub: a message reaches the subscribers connected
+   * when it is published, and is stored nowhere (the one exception is
+   * `retain`). Work that must survive a restart belongs in a queue.
    *
-   * **Provider Capabilities**:
-   * - Message persistence and durability
-   * - Subscriber management and connection handling
-   * - Message ordering and delivery guarantees
-   * - Horizontal scaling and load distribution
-   *
-   * @default Uses injected TopicProvider
+   * @default The injected TopicProvider
    * @example "memory"
    * @example RedisTopicProvider
    */
   provider?: "memory" | Service<TopicProvider>;
 
   /**
-   * Zod schema defining the structure of messages published to this topic.
+   * Zod schemas of the messages published to this topic.
    *
-   * The schema must include:
-   * - **payload**: Required schema for the main message data
-   * - **params**: Optional schema for message parameters
-   *
-   * This schema:
-   * - Validates all messages published to the topic
-   * - Provides full TypeScript type inference for subscribers
-   * - Ensures type safety between publishers and subscribers
-   * - Enables automatic serialization/deserialization
-   *
-   * **Schema Design Best Practices**:
-   * - Keep payload schemas focused and cohesive
-   * - Use optional fields for data that might not always be present
-   * - Include timestamp fields for event ordering
-   * - Consider versioning for schema evolution
-   * - Use union types for different event types in the same topic
+   * - **payload**: required, the message data. It is encoded on publish and
+   *   decoded before a handler runs; a message that does not decode is
+   *   logged and dropped.
+   * - **params**: the `{name}` placeholders of the topic name, one text
+   *   field each. Declare it when the name is templated: `publish()` then
+   *   takes `{ params, payload }` and fills the placeholders, and a handler
+   *   reads the values of the topic the message arrived on from
+   *   `message.params`.
+   * - **response**: the reply's schema, for a topic used with `request()`.
    *
    * @example
    * ```ts
-   * {
-   *   payload: z.object({
-   *     eventId: z.text(),
-   *     eventType: z.enum(["created", "updated"]),
-   *     data: z.record(z.text(), z.any()),
-   *     timestamp: z.number(),
-   *     userId: z.text().optional()
-   *   }),
-   *   params: z.object({
-   *     source: z.text(),
-   *     correlationId: z.text()
-   *   }).optional()
-   * }
+   * $topic({
+   *   name: "devices/{deviceId}/status",
+   *   schema: {
+   *     params: z.object({ deviceId: z.text() }),
+   *     payload: z.object({
+   *       online: z.boolean(),
+   *       timestamp: z.number()
+   *     })
+   *   }
+   * });
    * ```
    */
   schema: T;
 
   /**
-   * Default subscriber handler function that processes messages published to this topic.
+   * A handler subscribed to this topic when the app starts.
    *
-   * This handler:
-   * - Automatically subscribes when the topic is initialized
-   * - Receives all messages published to the topic
-   * - Runs for every message without additional subscription setup
-   * - Can be supplemented with additional subscribers via `subscribe()` method
-   * - Should handle errors gracefully to avoid breaking other subscribers
+   * It runs for every message published to the topic; more handlers are
+   * added with `$subscriber` or `subscribe()`. Each message runs in a
+   * context of its own.
    *
-   * **Handler Design Guidelines**:
-   * - Keep handlers focused on a single responsibility
-   * - Use proper error handling and logging
-   * - Consider performance impact for high-frequency topics
-   * - Make handlers idempotent when possible
-   * - Validate business rules within the handler logic
-   * - Log important processing steps for debugging
+   * A handler that throws does not affect the other subscribers: the
+   * provider catches the error and logs it, so there is nothing to catch
+   * for that purpose. On a topic with a `response` schema, what the handler
+   * returns is the reply to a `request()`, and a handler that throws sends
+   * none (the requester times out): catching the error there and returning
+   * normally would send a reply.
    *
-   * **Error Handling Strategy**:
-   * - Log errors but don't re-throw to avoid affecting other subscribers
-   * - Use try-catch blocks for external service calls
-   * - Consider implementing circuit breakers for resilience
-   * - Monitor error rates and patterns for system health
+   * A topic does not redeliver: make the handler idempotent, and hand work
+   * that must not be lost to a queue.
    *
-   * @param message - The topic message with validated payload and params
-   * @param message.payload - The typed message data based on the schema
-   * @returns Promise that resolves when processing is complete
+   * @param message - The decoded message: `payload`, and `params` when the
+   * schema declares them
    *
    * @example
    * ```ts
    * handler: async (message) => {
-   *   const { eventType, data, timestamp } = message.payload;
+   *   const { eventType, data } = message.payload;
    *
-   *   try {
-   *     // Log message receipt
-   *     this.logger.info(`Processing ${eventType} event`, { timestamp, data });
-   *
-   *     // Process based on event type
-   *     switch (eventType) {
-   *       case "created":
-   *         await this.handleCreation(data);
-   *         break;
-   *       case "updated":
-   *         await this.handleUpdate(data);
-   *         break;
-   *       default:
-   *         this.logger.warn(`Unknown event type: ${eventType}`);
-   *     }
-   *
-   *     this.logger.info(`Successfully processed ${eventType} event`);
-   *
-   *   } catch (error) {
-   *     // Log error but don't re-throw to avoid affecting other subscribers
-   *     this.logger.error(`Failed to process ${eventType} event`, {
-   *       error: error.message,
-   *       eventType,
-   *       timestamp,
-   *       data
-   *     });
+   *   switch (eventType) {
+   *     case "created":
+   *       await this.handleCreation(data);
+   *       break;
+   *     case "updated":
+   *       await this.handleUpdate(data);
+   *       break;
+   *     default:
+   *       this.log.warn(`Unknown event type: ${eventType}`);
    *   }
    * }
    * ```

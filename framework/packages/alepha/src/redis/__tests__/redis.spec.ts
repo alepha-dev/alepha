@@ -20,10 +20,13 @@ const sub = alepha.inject(RedisSubscriberProvider);
 
 describe("Redis", () => {
   it("should set and get values", async ({ expect }) => {
+    const key = `test:${randomUUID()}`;
     const uuid = randomUUID();
-    await redis.set("test", uuid);
-    const value = await redis.get("test");
+    await redis.set(key, uuid);
+    const value = await redis.get(key);
     expect(value?.toString()).toBe(uuid);
+
+    await redis.del([key]);
   });
 
   it("should run a Lua script atomically", async ({ expect }) => {
@@ -45,40 +48,84 @@ return 0
   });
 
   it("should support pub/sub messaging", async ({ expect }) => {
+    const channel = `test:pubsub:${randomUUID()}`;
     const stack: string[] = [];
-    await sub.subscribe("test", (message: string) => {
+    await sub.subscribe(channel, (message: string) => {
       stack.push(message);
     });
-    await redis.publish("test", "hello");
+    await redis.publish(channel, "hello");
     await expect.poll(() => stack.length).toBe(1);
     expect(stack).toEqual(["hello"]);
+
+    await sub.unsubscribe(channel);
+  });
+
+  it("should remove one callback and keep the channel's other callbacks", async ({
+    expect,
+  }) => {
+    const channel = `test:unsub-one:${randomUUID()}`;
+    const first: string[] = [];
+    const second: string[] = [];
+    const firstCallback = (message: string) => {
+      first.push(message);
+    };
+
+    await sub.subscribe(channel, firstCallback);
+    await sub.subscribe(channel, (message: string) => {
+      second.push(message);
+    });
+
+    await redis.publish(channel, "both");
+    await expect.poll(() => second).toEqual(["both"]);
+    expect(first).toEqual(["both"]);
+
+    await sub.unsubscribe(channel, firstCallback);
+    // A second removal of the same callback removes nothing else.
+    await sub.unsubscribe(channel, firstCallback);
+
+    await redis.publish(channel, "second-only");
+    await expect.poll(() => second).toEqual(["both", "second-only"]);
+    expect(first).toEqual(["both"]);
+
+    await sub.unsubscribe(channel);
+    // Nothing is left on the channel: a further removal does nothing.
+    await sub.unsubscribe(channel);
   });
 
   it("should handle buffer values correctly", async ({ expect }) => {
     const uuid = randomUUID().replace(/-/g, "");
-    await redis.set("test:string", uuid);
-    await redis.set("test:buffer", Buffer.from(uuid, "hex"));
+    const stringKey = `test:string:${randomUUID()}`;
+    const bufferKey = `test:buffer:${randomUUID()}`;
+    await redis.set(stringKey, uuid);
+    await redis.set(bufferKey, Buffer.from(uuid, "hex"));
 
-    const buf1 = await redis.get("test:string");
+    const buf1 = await redis.get(stringKey);
     expect(buf1).toBeInstanceOf(Buffer);
     expect(buf1?.byteLength).toBe(32);
     expect(buf1?.toString("utf-8")).toBe(uuid);
 
-    const buf2 = await redis.get("test:buffer");
+    const buf2 = await redis.get(bufferKey);
     expect(buf2).toBeInstanceOf(Buffer);
     expect(buf2?.byteLength).toBe(16);
     expect(buf2?.toString("hex")).toBe(uuid);
+
+    await redis.del([stringKey, bufferKey]);
   });
 
-  it("should properly clean up connections on stop", async () => {
+  it("should properly clean up connections on stop", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaRedis);
     const redis = alepha.inject(RedisProvider);
     const sub = alepha.inject(RedisSubscriberProvider);
+    const id = randomUUID();
     await alepha.start();
-    await sub.subscribe("test", (_message: string) => {});
-    await redis.publish("test:a", "a");
-    await redis.lpush("test:b", "b");
+    await sub.subscribe(`test:stop:${id}`, (_message: string) => {});
+    await redis.publish(`test:stop:a:${id}`, "a");
+    await redis.lpush(`test:stop:b:${id}`, "b");
+    expect(await redis.rpop(`test:stop:b:${id}`)).toBe("b");
     await alepha.stop();
+
+    expect(redis.isReady).toBe(false);
+    expect(sub.isReady).toBe(false);
   });
 
   it("should support sorted-set operations (zadd/zrangebyscore/zrem)", async ({
@@ -121,5 +168,90 @@ return 0
 
     const val3 = await redis.incr(key, -2);
     expect(val3).toBe(4);
+  });
+
+  describe("incr with a ttl (fixed window)", () => {
+    const pttl = async (key: string) =>
+      Number(await redis.eval(`return redis.call("PTTL", KEYS[1])`, [key], []));
+    // Stands for time passing: what is left of the window is now `ms`.
+    const shorten = async (key: string, ms: number) =>
+      redis.eval(
+        `return redis.call("PEXPIRE", KEYS[1], ARGV[1])`,
+        [key],
+        [String(ms)],
+      );
+
+    it("should arm the expiry when the counter is created", async ({
+      expect,
+    }) => {
+      const key = `test:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1, 60_000)).toBe(1);
+
+      const left = await pttl(key);
+      expect(left).toBeGreaterThan(50_000);
+      expect(left).toBeLessThanOrEqual(60_000);
+
+      await redis.del([key]);
+    });
+
+    it("should not extend the window when the counter comes back to its first value", async ({
+      expect,
+    }) => {
+      const key = `test:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1, 60_000)).toBe(1);
+      await shorten(key, 5_000);
+
+      expect(await redis.incr(key, -1, 60_000)).toBe(0);
+      expect(await redis.incr(key, 1, 60_000)).toBe(1);
+
+      expect(await pttl(key)).toBeLessThanOrEqual(5_000);
+
+      await redis.del([key]);
+    });
+
+    it("should arm the expiry of a counter that exists without one", async ({
+      expect,
+    }) => {
+      const key = `test:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1)).toBe(1);
+      expect(await pttl(key)).toBe(-1);
+
+      expect(await redis.incr(key, 1, 60_000)).toBe(2);
+
+      const left = await pttl(key);
+      expect(left).toBeGreaterThan(50_000);
+      expect(left).toBeLessThanOrEqual(60_000);
+
+      await redis.del([key]);
+    });
+
+    it("should not extend the window on an increment of zero", async ({
+      expect,
+    }) => {
+      const key = `test:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 0, 60_000)).toBe(0);
+      await shorten(key, 5_000);
+
+      expect(await redis.incr(key, 0, 60_000)).toBe(0);
+
+      expect(await pttl(key)).toBeLessThanOrEqual(5_000);
+
+      await redis.del([key]);
+    });
+
+    it("should leave a counter incremented without ttl without expiry", async ({
+      expect,
+    }) => {
+      const key = `test:incr:${randomUUID()}`;
+
+      expect(await redis.incr(key, 1)).toBe(1);
+      expect(await pttl(key)).toBe(-1);
+
+      await redis.del([key]);
+    });
   });
 });
