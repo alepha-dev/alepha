@@ -9,7 +9,7 @@ import {
   PrettyFormatterProvider,
 } from "../index.ts";
 
-describe("SimpleFormatterProvider", () => {
+describe("PrettyFormatterProvider", () => {
   class App {
     log = $logger();
   }

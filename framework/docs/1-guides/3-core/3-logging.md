@@ -88,6 +88,29 @@ Wildcard patterns are supported:
 LOG_LEVEL=alepha.*:debug,*.test:silent,info
 ```
 
+An invalid level does not make a log call fail, with one exception at boot. It
+is reported as a `WARN` line by the first logger that meets it, once for each
+distinct refusal until the value of the level changes: setting `verbose`, then
+`loud`, then `verbose` again warns three times. A level of `error` or `silent`
+hides the warning.
+
+- **A `module:level` part with an invalid level** is ignored: the modules it
+  names follow the global level, so `LOG_LEVEL=my.app:verbose,warn` puts `my.app`
+  at `warn`.
+- **An invalid global level** refuses the value for every module no valid part
+  of it names. Those modules get the level the last valid value gives them, a
+  logger created afterwards included, or `info` when there has been no valid
+  value. A later valid value is applied as usual. The last valid value is the
+  last one a log call met while it was set: a level set and replaced with no log
+  call in between is never seen.
+- **An invalid global level in `LOG_LEVEL` itself**, before any valid one and
+  before the app has started, still throws: the first log call of each logger
+  fails with `Invalid global log level "..."`, and that logger then runs at
+  `info`.
+
+A `module` pattern is matched from the start of the module name: `*` stands for
+any run of characters and everything else is literal text.
+
 Defaults by environment:
 
 - **dev**: `info`
@@ -221,12 +244,13 @@ interface LogEntry {
 
 ## Redaction
 
-Credential-bearing values never reach a formatter, a destination, the breadcrumb
-buffer or the inspector. Before an entry is built, every key of `data`, at any
-depth, is compared with a short list, case-insensitively, ignoring `-` and `_`,
-as a substring: `authorization`, `cookie`, `password`, `passwd`, `secret`,
-`token`, `apikey`, `accesskey`, `privatekey`, `credential` and `sessionid`. A
-match replaces the value with `"[redacted]"`.
+The `data` of an entry is masked before the entry is built, so the formatter,
+the destination, the breadcrumb buffer, the inspector and every `log:entry`
+listener receive the same masked copy. Masking goes by key: each key met while
+copying `data` is compared with a short list, case-insensitively, ignoring `-`
+and `_`, as a substring: `authorization`, `cookie`, `password`, `passwd`,
+`secret`, `token`, `apikey`, `accesskey`, `privatekey`, `credential` and
+`sessionid`. A match replaces the value with `"[redacted]"`.
 
 ```typescript
 this.log.debug("Outgoing call", {
@@ -236,10 +260,42 @@ this.log.debug("Outgoing call", {
 // data: { url: "...", headers: { "x-api-key": "[redacted]", accept: "application/json" } }
 ```
 
-So `refreshToken`, `set-cookie` and `X-Api-Key` are all masked. An `Error` passed
-as `data` is kept as is, since formatters need the instance, and a cycle becomes
-`"[circular]"` rather than a crash. A secret under an innocent key (`{ value: token }`)
-is not detected: name the key for what it holds.
+So `refreshToken`, `set-cookie` and `X-Api-Key` are all masked. Only keys are
+matched, never the text of a value or of the message: a secret under an innocent
+key (`{ value: token }`) is not detected, so name the key for what it holds.
+
+What is copied, and what is not:
+
+- **An array** is copied member by member, and **any other object** as a plain
+  object of its own enumerable fields. A class instance therefore comes out as
+  its fields, and an object that keeps its content elsewhere comes out empty: a
+  `URL`, a `Map`, a `Set` or `Headers` is logged as `{}`. The copy does not
+  call a `toJSON()`, and one inherited from a class is lost with the instance.
+  A `toJSON` function that is an own field of an object is copied like any
+  field, so a formatter's `JSON.stringify` calls it, and what it returns is not
+  masked. Log `Object.fromEntries(map)`, `[...set]` or `url.href` to see the
+  content of the others.
+- **An `Error` or a `Date`** is passed on as the instance, wherever it sits in
+  `data`, and nothing inside it is masked: not a field of the `Error`, not its
+  `cause`. Keep credentials out of the fields of an error you log.
+- **A plain object none of whose values is an object or an array**, with no
+  secret key and at most 10 000 keys, is the shape of most log lines and is
+  passed on as it is, without a copy.
+
+What bounds a copy:
+
+- **A cycle** becomes `"[circular]"` where it closes. An object referenced twice
+  without a cycle is written in both places.
+- **Depth**: 100 levels of nested objects and arrays are written, `data` being
+  the first. An object or an array nested deeper is replaced by `"[truncated]"`.
+- **Size**: one log call copies about 10 000 values, every primitive, object
+  and array counting for one, and an object reached by two paths counting twice.
+  Once that is spent, each array still being copied ends with a `"[truncated]"`
+  member and each object with a `"[truncated]"` key, and the rest is left out.
+- **Data that cannot be read** is replaced entirely by
+  `{ redaction: "[unserializable]" }`: a getter that throws when the copy reads
+  it. One under a secret key is masked without being read, and one past a cut,
+  or inside an `Error` or a `Date`, is never reached.
 
 ## Log Events
 
@@ -278,7 +334,7 @@ class ErrorReporter {
 `snapshot()` returns the entries logged so far in the current context, oldest first, or `undefined` when no buffer is active. Two properties make it useful in production:
 
 - **Entries below the active `LOG_LEVEL` are captured.** Running at `info`, the `debug` and `trace` calls that explain the failure are still in the buffer even though they were never printed.
-- **Values are already redacted.** Credential-bearing keys are masked before the entry reaches the buffer, so a snapshot is safe to send off-box.
+- **Values are already redacted.** The buffer holds the same masked copy of `data` as every other sink: see [Redaction](#redaction) for what that covers.
 
 The ring keeps the **last** `size` entries. When it discards older ones, the snapshot opens with a `WARN` saying how many - a truncated buffer never passes itself off as complete.
 
