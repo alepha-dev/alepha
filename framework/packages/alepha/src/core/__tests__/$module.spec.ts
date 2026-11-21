@@ -1,8 +1,8 @@
 import { $inject, $module, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("$module", () => {
-  it("should create a module with services", () => {
+  it("should create a module with services", ({ expect }) => {
     class VeryRandomService {}
     class RandomService {
       very = $inject(VeryRandomService);
@@ -93,7 +93,7 @@ describe("$module", () => {
       services: [A, B],
     });
 
-    // substitute BEFORE the module registers — services[] is now eagerly injected
+    // substitute BEFORE the module registers: services[] is now eagerly injected
     // at registration time, so substitutions must be in place first.
     const alepha = Alepha.create()
       .with({

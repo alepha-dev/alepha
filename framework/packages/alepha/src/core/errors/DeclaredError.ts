@@ -51,7 +51,9 @@ export class DeclaredError extends AlephaError {
     const isMessage = typeof first === "string" || first === undefined;
     const data = isMessage ? {} : (first as Record<string, any>);
     const init = (
-      isMessage ? { ...(second as object | undefined), message: first } : second
+      typeof first === "string"
+        ? { ...(second as object | undefined), message: first }
+        : second
     ) as DeclaredErrorInit | undefined;
 
     const merged = { ...cls.defaults, ...data };

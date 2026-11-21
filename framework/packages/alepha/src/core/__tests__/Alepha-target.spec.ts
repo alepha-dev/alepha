@@ -1,8 +1,8 @@
 import { $hook, $inject, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("alepha.target", () => {
-  it("should only keep target class in the graph", async () => {
+  it("should only keep target class in the graph", async ({ expect }) => {
     class A {
       value = "a";
     }
@@ -14,7 +14,7 @@ describe("alepha.target", () => {
     const alepha = Alepha.create();
     alepha.with(A).with(B);
 
-    // Set target to A — B should be pruned
+    // Set target to A: B should be pruned
     alepha.set("alepha.target", A);
 
     await alepha.start();
@@ -24,7 +24,9 @@ describe("alepha.target", () => {
     expect(graph.B).toBeUndefined();
   });
 
-  it("should keep transitive dependencies of the target", async () => {
+  it("should keep transitive dependencies of the target", async ({
+    expect,
+  }) => {
     class Dep {
       value = "dep";
     }
@@ -50,7 +52,9 @@ describe("alepha.target", () => {
     expect(graph.Unrelated).toBeUndefined();
   });
 
-  it("should only fire hooks from target and its dependencies", async () => {
+  it("should only fire hooks from target and its dependencies", async ({
+    expect,
+  }) => {
     const stack: string[] = [];
 
     class Dep {
@@ -93,7 +97,9 @@ describe("alepha.target", () => {
     expect(stack).not.toContain("Pruned.start");
   });
 
-  it("should not fire configure/ready hooks from pruned services", async () => {
+  it("should not fire configure/ready hooks from pruned services", async ({
+    expect,
+  }) => {
     const stack: string[] = [];
 
     class Target {
@@ -137,7 +143,7 @@ describe("alepha.target", () => {
     expect(stack).toEqual(["Target.configure", "Target.ready"]);
   });
 
-  it("should not fire stop hooks from pruned services", async () => {
+  it("should not fire stop hooks from pruned services", async ({ expect }) => {
     const stack: string[] = [];
 
     class Target {
@@ -169,7 +175,9 @@ describe("alepha.target", () => {
     expect(stack).not.toContain("Pruned.stop");
   });
 
-  it("should preserve substitutions relevant to the target", async () => {
+  it("should preserve substitutions relevant to the target", async ({
+    expect,
+  }) => {
     class Base {
       value = "base";
     }
@@ -192,7 +200,7 @@ describe("alepha.target", () => {
     expect(target.dep.value).toBe("override");
   });
 
-  it("should work with deep dependency chains", async () => {
+  it("should work with deep dependency chains", async ({ expect }) => {
     const stack: string[] = [];
 
     class C {
@@ -247,7 +255,7 @@ describe("alepha.target", () => {
     expect(stack).not.toContain("Unrelated");
   });
 
-  it("should set alepha.target from a constructor", async () => {
+  it("should set alepha.target from a constructor", async ({ expect }) => {
     const stack: string[] = [];
 
     class Target {

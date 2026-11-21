@@ -38,7 +38,7 @@ export class StateManager<State extends object = AlephaState> {
    *
    * @param scope - Controls which store layer to read from:
    *   - `undefined` (default): Resolved value (walks fork tree then app store).
-   *   - `"current"`: Only the current ALS layer — intentionally does NOT walk
+   *   - `"current"`: Only the current ALS layer: intentionally does NOT walk
    *     the parent chain so that SSR serialisation captures exactly what the
    *     current request set, without leaking parent-fork state.
    *   - `"app"`: Only the root (app-level) store.
@@ -211,7 +211,7 @@ export class StateManager<State extends object = AlephaState> {
    * This is the order-independent way to discover atoms. The
    * `"state:registered"` event fires exactly once per key and `EventManager`
    * has no replay buffer, so a service instantiated after an atom registered
-   * never hears about it — a real hazard, since `$module.register()`
+   * never hears about it: a real hazard, since `$module.register()`
    * registers `atoms[]` BEFORE it wires `imports[]` and injects `services[]`.
    * Services that act on atoms (e.g. the cookie persistence adapter) must
    * read this registry on demand rather than build their own map from the
@@ -225,7 +225,7 @@ export class StateManager<State extends object = AlephaState> {
     if ((atom as unknown) instanceof Computed) {
       throw new AlephaError(
         `Cannot register computed value "${(atom as unknown as Computed).key}" as an atom. ` +
-          "Computed values are derived from their dependencies on every read — they are " +
+          "Computed values are derived from their dependencies on every read: they are " +
           "never stored, serialized, hydrated, or persisted. Register its dependency atoms instead.",
       );
     }
@@ -238,12 +238,12 @@ export class StateManager<State extends object = AlephaState> {
 
     this.atoms.set(key, atom);
 
-    // A value can land under an atom's key before the atom registers — an
+    // A value can land under an atom's key before the atom registers: an
     // SSR hydration payload, an `Alepha.create(seed)` value, or a
     // fork-scoped write (e.g. `$cookie` mirrors its value into the store
     // during `server:request:before`, ahead of the atom's first access). `get()`
     // resolves ALS (request-scoped fork) layers before the app store, so
-    // such a value must be decoded in the layer it physically lives in —
+    // such a value must be decoded in the layer it physically lives in,
     // decoding only `this.store` would let a raw, unvalidated ALS value
     // permanently shadow the decoded default.
     const layer = this.als?.getLayer(key as string);
@@ -256,8 +256,8 @@ export class StateManager<State extends object = AlephaState> {
     // exclusive: an atom whose first registration happens inside a fork that
     // already carries a value for its key (exactly what a cookie-seeded
     // request produces) would otherwise leave the app store empty forever,
-    // so every later, cookie-less request — which sees no fork value either
-    // — would resolve `undefined` instead of the default. One user's
+    // so every later, cookie-less request, which sees no fork value either,
+    // would resolve `undefined` instead of the default. One user's
     // cookied request would silently define what every cookie-less user
     // sees.
     if (key in this.store) {
@@ -276,7 +276,7 @@ export class StateManager<State extends object = AlephaState> {
     // the seed lands, so an SSR render started right after would see the
     // atom's default instead of the persisted value.
     //
-    // This event is a "an atom just appeared, act on it NOW" signal — it is
+    // This event is a "an atom just appeared, act on it NOW" signal: it is
     // NOT a discovery mechanism. It fires once, is never replayed, and an
     // atom may well register before the interested service even exists
     // (`$module.register()` registers `atoms[]` first, then `imports[]`,
@@ -295,18 +295,18 @@ export class StateManager<State extends object = AlephaState> {
    * Deliberately bypasses {@link set}, for two reasons:
    *
    * 1. `set()` short-circuits when the new value equals the currently
-   *    *resolved* value (`prevValue === value` for non-objects) — inside a
+   *    *resolved* value (`prevValue === value` for non-objects), inside a
    *    fork that already holds the same primitive value, the app-store write
    *    would simply never happen.
    * 2. A registration seed is initialisation, NOT a mutation, so it must not
    *    emit `state:mutated`. Persistence adapters listen on that event: an
    *    atom registering lazily mid-request would otherwise emit a mutation
    *    carrying its *default*, and the cookie adapter would dutifully write
-   *    it back as a `Set-Cookie` — overwriting the very cookie the request
+   *    it back as a `Set-Cookie`, overwriting the very cookie the request
    *    arrived with.
    *
    * A `undefined` default (only reachable for an optional schema) is not
-   * written at all, so the key stays absent from the store — matching the
+   * written at all, so the key stays absent from the store, matching the
    * previous behaviour of `set(key, undefined)`.
    */
   protected seedDefault(atom: Atom<any>, key: keyof State): void {
@@ -337,7 +337,7 @@ export class StateManager<State extends object = AlephaState> {
   /**
    * Decode a value that already exists under an atom's key at registration
    * time, in place, in whichever layer it physically lives (an ALS fork
-   * layer or the app store) — never flattening a fork-scoped value into the
+   * layer or the app store), never flattening a fork-scoped value into the
    * app-level store.
    *
    * On schema mismatch, falls back to the atom's default (written into that
@@ -371,7 +371,7 @@ export class StateManager<State extends object = AlephaState> {
   /**
    * Web-storage persistence (localStorage / sessionStorage) for atoms
    * declared with `persist`. Best-effort: quota errors and privacy modes
-   * are swallowed. Cookie persistence is NOT handled here — it needs the
+   * are swallowed. Cookie persistence is NOT handled here: it needs the
    * HTTP request cycle and lives in `alepha/server/cookies`
    * (AtomCookiePersistence), which discovers its atoms through
    * {@link listAtoms}. Both adapters are therefore registration-order
@@ -411,7 +411,7 @@ export class StateManager<State extends object = AlephaState> {
       }
     } catch {
       // `getWebStorage` only guards *resolving* the Storage object (e.g.
-      // `window.localStorage`) — in the very privacy mode its own JSDoc
+      // `window.localStorage`), in the very privacy mode its own JSDoc
       // claims to handle, the `getItem`/`JSON.parse` call above can throw
       // AND `storage.removeItem` can throw too. Route the recovery through
       // the same best-effort guard so persistence genuinely never escapes
@@ -437,14 +437,14 @@ export class StateManager<State extends object = AlephaState> {
 
   /**
    * Best-effort `Storage#removeItem`. Some privacy modes throw on every
-   * Storage method, including `removeItem` — this must never escape a
+   * Storage method, including `removeItem`: this must never escape a
    * recovery `catch`, or persistence stops being best-effort.
    */
   protected safeRemoveItem(storage: Storage, key: string): void {
     try {
       storage.removeItem(key);
     } catch {
-      // truly best-effort — nothing more we can do
+      // truly best-effort: nothing more we can do
     }
   }
 
@@ -472,7 +472,7 @@ export class StateManager<State extends object = AlephaState> {
    * depend on the logger module, so this reads the `"alepha.logger"` state
    * key directly (set by `Alepha.create()`, see `Alepha.ts`) instead of
    * injecting a logger service. May be `undefined` during early boot, before
-   * the logger is wired up — callers must stay null-safe.
+   * the logger is wired up: callers must stay null-safe.
    */
   protected get logger(): LoggerInterface | undefined {
     return this.get("alepha.logger" as keyof State) as
@@ -574,7 +574,7 @@ export class StateManager<State extends object = AlephaState> {
       return this.als.get(key as string, scope);
     }
 
-    return scope ? undefined : store[key];
+    return undefined;
   }
 
   /**
@@ -612,7 +612,13 @@ export class StateManager<State extends object = AlephaState> {
 
     // Untracked: comparing with the previous value is the store's own
     // business, not a read by the caller.
-    const prevValue = this.read(key, undefined, false);
+    // Under `skipContext` the write lands in the app store, so that is the
+    // value to compare: a fork holding the same value must not cancel it.
+    const prevValue = this.read(
+      key,
+      options?.skipContext === true ? "app" : undefined,
+      false,
+    );
     if (prevValue === value && typeof value !== "object") {
       return this;
     }
@@ -670,7 +676,7 @@ export class StateManager<State extends object = AlephaState> {
    * fresh, inside the mutating context); only `prevValue` can cross request
    * boundaries.
    *
-   * That is fine for `watch`'s intended use — app-level, non-React
+   * That is fine for `watch`'s intended use: app-level, non-React
    * observation of app-level state (React subscribes through `useComputed`,
    * which is per-component and browser-side, where there is only ever one
    * "request"). Do not build per-request logic on a computed's `prevValue`
@@ -760,7 +766,7 @@ export class StateManager<State extends object = AlephaState> {
   /**
    * Push a value to an array in the state
    */
-  public push<Key extends keyof OnlyArray<State>>(
+  public push<Key extends OnlyArray<State>>(
     key: Key,
     ...value: Array<NonNullable<State[Key]> extends Array<infer U> ? U : never>
   ): this {
@@ -780,8 +786,8 @@ export class StateManager<State extends object = AlephaState> {
 }
 
 type OnlyArray<T extends object> = {
-  [K in keyof T]: NonNullable<T[K]> extends Array<any> ? K : never;
-};
+  [K in keyof T]-?: NonNullable<T[K]> extends Array<any> ? K : never;
+}[keyof T];
 
 export interface ExportAtomsOptions {
   /**

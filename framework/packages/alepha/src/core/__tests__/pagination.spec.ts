@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
-import { createPagination, pageSchema, z } from "../index.ts";
+import {
+  createPagination,
+  pageMetadataSchema,
+  pageSchema,
+  z,
+} from "../index.ts";
 
 describe("Pagination (Core)", () => {
-  it("should create pagination from any array", () => {
+  it("should create pagination from any array", ({ expect }) => {
     const items = Array.from({ length: 25 }, (_, i) => ({
       id: i + 1,
       name: `Item ${i + 1}`,
@@ -24,7 +29,7 @@ describe("Pagination (Core)", () => {
     expect(page.page.isLast).toBe(false);
   });
 
-  it("should handle empty results", () => {
+  it("should handle empty results", ({ expect }) => {
     const page = createPagination([], 10, 0);
 
     expect(page.content.length).toBe(0);
@@ -34,7 +39,7 @@ describe("Pagination (Core)", () => {
     expect(page.page.numberOfElements).toBe(0);
   });
 
-  it("should handle last page correctly", () => {
+  it("should handle last page correctly", ({ expect }) => {
     const items = [{ id: 1 }, { id: 2 }, { id: 3 }]; // Last 3 items
 
     const page = createPagination(items, 10, 20);
@@ -47,7 +52,7 @@ describe("Pagination (Core)", () => {
     expect(page.page.isLast).toBe(true);
   });
 
-  it("should include sort metadata", () => {
+  it("should include sort metadata", ({ expect }) => {
     const items = [{ id: 1 }, { id: 2 }];
 
     const page = createPagination(items, 10, 0, [
@@ -63,7 +68,7 @@ describe("Pagination (Core)", () => {
     ]);
   });
 
-  it("should create page schema", () => {
+  it("should create page schema", ({ expect }) => {
     const itemSchema = z.object({
       id: z.integer(),
       name: z.text(),
@@ -71,8 +76,34 @@ describe("Pagination (Core)", () => {
 
     const schema = pageSchema(itemSchema);
 
-    expect(schema).toBeDefined();
     expect(z.schema.shape(schema).content).toBeDefined();
     expect(z.schema.shape(schema).page).toBeDefined();
+  });
+
+  it("should keep the sort metadata through z.page(), as pageSchema() does", ({
+    expect,
+  }) => {
+    const itemSchema = z.object({ id: z.integer() });
+    const page = createPagination([{ id: 1 }], 10, 0, [
+      { column: "id", direction: "asc" },
+    ]);
+    const sort = { sorted: true, fields: [{ field: "id", direction: "asc" }] };
+
+    expect(pageSchema(itemSchema).parse(page).page.sort).toEqual(sort);
+    expect(z.page(itemSchema).parse(page).page.sort).toEqual(sort);
+  });
+
+  it("should publish one page metadata schema from z.page() and pageSchema()", ({
+    expect,
+  }) => {
+    const itemSchema = z.object({ id: z.integer() });
+
+    expect(z.schema.shape(z.page(itemSchema)).page).toBe(pageMetadataSchema);
+    expect(z.schema.shape(pageSchema(itemSchema)).page).toBe(
+      pageMetadataSchema,
+    );
+    expect(z.toJSONSchema(z.page(itemSchema))).toEqual(
+      z.toJSONSchema(pageSchema(itemSchema)),
+    );
   });
 });

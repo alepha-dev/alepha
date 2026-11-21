@@ -118,7 +118,7 @@ describe("declared classes and the lock", () => {
     await alepha.stop();
   });
 
-  it("admits what a declared class creates while it is created late, at any depth, and refuses the same class from a handler", async ({
+  it("admits what a declared class creates while it is created late, at any depth, and refuses a class nothing declared", async ({
     expect,
   }) => {
     class Deep {}

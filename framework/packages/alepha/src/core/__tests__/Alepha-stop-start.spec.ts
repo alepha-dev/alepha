@@ -1,5 +1,5 @@
-import { $hook, Alepha, AlephaError, MissingContextError } from "alepha";
-import { describe, expect, it } from "vitest";
+import { $hook, Alepha, AlephaError } from "alepha";
+import { describe, it } from "vitest";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -12,7 +12,9 @@ class QuickAlepha extends Alepha {
 }
 
 describe("Alepha#stop", () => {
-  it("runs every stop hook when one throws, clears started and ready, then rejects naming the failure", async () => {
+  it("runs every stop hook when one throws, clears started and ready, then rejects naming the failure", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
     const stopped: string[] = [];
 
@@ -50,7 +52,9 @@ describe("Alepha#stop", () => {
     expect((error as Error).cause).toBeInstanceOf(Error);
   });
 
-  it("gives up after STOP_TIMEOUT, names the pending hooks and still clears the state", async () => {
+  it("gives up after STOP_TIMEOUT, names the pending hooks and still clears the state", async ({
+    expect,
+  }) => {
     const alepha = new QuickAlepha();
     let release: () => void = () => {};
 
@@ -73,7 +77,9 @@ describe("Alepha#stop", () => {
 });
 
 describe("Alepha#start", () => {
-  it("joins a slow boot in flight outside serverless, past STARTUP_TIMEOUT", async () => {
+  it("joins a slow boot in flight outside serverless, past STARTUP_TIMEOUT", async ({
+    expect,
+  }) => {
     const alepha = new QuickAlepha();
     let starts = 0;
 
@@ -97,7 +103,9 @@ describe("Alepha#start", () => {
     expect(alepha.isReady()).toBe(true);
   });
 
-  it("does not let a boot that was reset emit start or set ready when it resumes", async () => {
+  it("does not let a boot that was reset emit start or set ready when it resumes", async ({
+    expect,
+  }) => {
     const alepha = new QuickAlepha({ env: { ALEPHA_SERVERLESS: true } });
     const events: string[] = [];
     let call = 0;
@@ -132,11 +140,7 @@ describe("Alepha#start", () => {
 });
 
 describe("core exports", () => {
-  it("exports MissingContextError", () => {
-    expect(new MissingContextError()).toBeInstanceOf(Error);
-  });
-
-  it("detects Cloudflare through globalThis", () => {
+  it("detects Cloudflare through globalThis", ({ expect }) => {
     const alepha = Alepha.create();
     const scope = globalThis as { Cloudflare?: unknown };
     scope.Cloudflare = {};

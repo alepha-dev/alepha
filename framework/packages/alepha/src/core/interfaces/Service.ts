@@ -74,7 +74,7 @@ export type ServiceEntry<T extends object = any> =
 // ---------------------------------------------------------------------------------------------------------------------
 
 export function isClass(func: any): func is InstantiableClass {
-  // Classes have a non-writable prototype.constructor
+  // A class has a non-writable `prototype` property; a plain function does not.
   if (typeof func !== "function") return false;
 
   const descriptor = Object.getOwnPropertyDescriptor(func, "prototype");

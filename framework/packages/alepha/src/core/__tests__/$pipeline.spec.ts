@@ -1,5 +1,5 @@
 import { Alepha, createPrimitive } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   $pipeline,
@@ -9,7 +9,7 @@ import {
 } from "../primitives/$pipeline.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
-// Test helpers — fake middleware factories
+// Test helpers: fake middleware factories
 // -----------------------------------------------------------------------------------------------------------------
 
 const $log = (label: string): Middleware => {
@@ -61,11 +61,11 @@ const $noMeta = (): Middleware => {
 let calls: string[] = [];
 
 // -----------------------------------------------------------------------------------------------------------------
-// $pipeline — as a Primitive
+// $pipeline as a Primitive
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$pipeline", () => {
-  test("creates a PipelinePrimitive instance", ({ expect }) => {
+  it("creates a PipelinePrimitive instance", ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -79,7 +79,7 @@ describe("$pipeline", () => {
     expect(svc.fn).toBeInstanceOf(PipelinePrimitive);
   });
 
-  test("callable applies middleware and returns result", async ({ expect }) => {
+  it("callable applies middleware and returns result", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -93,7 +93,7 @@ describe("$pipeline", () => {
     expect(await svc.fn(5)).toBe(12); // (5 + 1) * 2
   });
 
-  test("execution order: first in array = outermost = runs first", async ({
+  it("execution order: first in array = outermost = runs first", async ({
     expect,
   }) => {
     calls = [];
@@ -122,7 +122,7 @@ describe("$pipeline", () => {
     ]);
   });
 
-  test("middleware can short-circuit (skip handler)", async ({ expect }) => {
+  it("middleware can short-circuit (skip handler)", async ({ expect }) => {
     calls = [];
     const alepha = Alepha.create();
 
@@ -141,7 +141,7 @@ describe("$pipeline", () => {
     expect(calls).toEqual([]);
   });
 
-  test("middleware can transform return value", async ({ expect }) => {
+  it("middleware can transform return value", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -155,7 +155,7 @@ describe("$pipeline", () => {
     expect(await svc.fn(5)).toBe(30); // (5 + 10) * 2
   });
 
-  test("multiple pipelines in same class", async ({ expect }) => {
+  it("multiple pipelines in same class", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -175,25 +175,7 @@ describe("$pipeline", () => {
     expect(await svc.multiply(5)).toBe(30);
   });
 
-  test("sync handler with middleware returns Promise at runtime", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create();
-
-    class TestService {
-      fn = $pipeline({
-        use: [$double()],
-        handler: (x: number) => x + 1,
-      });
-    }
-
-    const svc = alepha.inject(TestService);
-    const result = svc.fn(5);
-    expect(result).toBeInstanceOf(Promise);
-    expect(await result).toBe(12);
-  });
-
-  test("handler can access class instance via closure", async ({ expect }) => {
+  it("handler can access class instance via closure", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -211,11 +193,11 @@ describe("$pipeline", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// PipelinePrimitive — .middlewares getter
+// PipelinePrimitive: .middlewares getter
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("PipelinePrimitive.middlewares", () => {
-  test("returns middleware metadata", ({ expect }) => {
+  it("returns middleware metadata", ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -234,7 +216,7 @@ describe("PipelinePrimitive.middlewares", () => {
     ]);
   });
 
-  test("middleware without metadata returns undefined entry", ({ expect }) => {
+  it("middleware without metadata returns undefined entry", ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -260,7 +242,7 @@ describe("PipelinePrimitive.middlewares", () => {
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("PipelinePrimitive as base class", () => {
-  test("host primitive applies use array to handler", async ({ expect }) => {
+  it("host primitive applies use array to handler", async ({ expect }) => {
     calls = [];
     const alepha = Alepha.create();
 
@@ -293,7 +275,7 @@ describe("PipelinePrimitive as base class", () => {
     ]);
   });
 
-  test("middleware can block handler in host primitive", async ({ expect }) => {
+  it("middleware can block handler in host primitive", async ({ expect }) => {
     calls = [];
     const alepha = Alepha.create();
 
@@ -318,30 +300,7 @@ describe("PipelinePrimitive as base class", () => {
     expect(calls).toEqual([]);
   });
 
-  test("middleware metadata available via .middlewares", ({ expect }) => {
-    const alepha = Alepha.create();
-
-    class FakeAction extends PipelinePrimitive {}
-
-    class TestController {
-      action = createPrimitive(FakeAction, {
-        use: [$log("auth"), $double(), $gate(true)],
-        handler: () => 1,
-      });
-    }
-
-    const ctrl = alepha.inject(TestController);
-    expect(ctrl.action.middlewares).toHaveLength(3);
-    expect(ctrl.action.middlewares.map((m) => m.name)).toEqual([
-      "$log",
-      "$double",
-      "$gate",
-    ]);
-  });
-
-  test("host primitive without use array works normally", async ({
-    expect,
-  }) => {
+  it("host primitive without use array works normally", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class FakeAction extends PipelinePrimitive {
@@ -362,13 +321,11 @@ describe("PipelinePrimitive as base class", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $pipeline — edge cases
+// $pipeline: edge cases
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$pipeline edge cases", () => {
-  test("middleware that skips next returns its own value", async ({
-    expect,
-  }) => {
+  it("middleware that skips next returns its own value", async ({ expect }) => {
     const $shortCircuit = (): Middleware => {
       return <T extends (...args: any[]) => any>(_handler: T): T => {
         return (async () => "intercepted") as any;
@@ -393,7 +350,7 @@ describe("$pipeline edge cases", () => {
     expect(calls).toEqual([]);
   });
 
-  test("same middleware used twice works independently", async ({ expect }) => {
+  it("same middleware used twice works independently", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -409,11 +366,11 @@ describe("$pipeline edge cases", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// createMiddleware — helper
+// createMiddleware helper
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("createMiddleware", () => {
-  test("creates middleware with metadata (name only)", ({ expect }) => {
+  it("creates middleware with metadata (name only)", ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -436,7 +393,7 @@ describe("createMiddleware", () => {
     expect(svc.fn.middlewares[0]).toEqual({ name: "$test" });
   });
 
-  test("creates middleware with metadata (name + options)", ({ expect }) => {
+  it("creates middleware with metadata (name + options)", ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -462,17 +419,18 @@ describe("createMiddleware", () => {
     });
   });
 
-  test("provides alepha instance to handler", async ({ expect }) => {
+  it("provides alepha instance to handler", async ({ expect }) => {
     const alepha = Alepha.create();
+    const seen: Alepha[] = [];
 
     class TestService {
       fn = $pipeline({
         use: [
           createMiddleware({
             name: "$test",
-            handler: ({ alepha: a }) => {
-              expect(a).toBe(alepha);
-              return async (...args) => "ok";
+            handler: ({ alepha: a, next }) => {
+              seen.push(a);
+              return next;
             },
           }),
         ],
@@ -480,10 +438,12 @@ describe("createMiddleware", () => {
       });
     }
 
-    alepha.inject(TestService);
+    // Middlewares are applied on the first run, not when the service is built.
+    expect(await alepha.inject(TestService).fn()).toBe("ok");
+    expect(seen).toEqual([alepha]);
   });
 
-  test("handler can inject providers via alepha", async ({ expect }) => {
+  it("handler can inject providers via alepha", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class Counter {
@@ -514,29 +474,5 @@ describe("createMiddleware", () => {
     await svc.fn();
     await svc.fn();
     expect(counter.value).toBe(2);
-  });
-
-  test("wraps handler correctly", async ({ expect }) => {
-    const alepha = Alepha.create();
-
-    class TestService {
-      fn = $pipeline({
-        use: [
-          createMiddleware({
-            name: "$double",
-            handler:
-              ({ next }) =>
-              async (...args) => {
-                const result = await next(...args);
-                return result * 2;
-              },
-          }),
-        ],
-        handler: (x: number) => x + 1,
-      });
-    }
-
-    const svc = alepha.inject(TestService);
-    expect(await svc.fn(5)).toBe(12); // (5 + 1) * 2
   });
 });

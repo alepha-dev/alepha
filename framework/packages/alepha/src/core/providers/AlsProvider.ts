@@ -103,7 +103,7 @@ export class AlsProvider {
    *
    * The difference from {@link run} is what this layer does *not* mint: no new
    * correlation id, no new scoped registry. A nested scope is the same unit of
-   * work as its caller, and inventing either would break something — a fresh
+   * work as its caller, and inventing either would break something: a fresh
    * `context` detaches the callback's logs from the request that caused them,
    * and a fresh `registry` hands it different `scoped` instances than the
    * caller itself is holding.
@@ -112,12 +112,12 @@ export class AlsProvider {
    * the innermost layer, so a value stored here is invisible to siblings and
    * dies with the callback, while reads still walk up to the caller. That is
    * what lets two concurrent callers each keep a marker of their own under the
-   * same key — a database transaction, say.
+   * same key: a database transaction, say.
    *
    * With no ALS at all (browser builds) this is `callback()`, like {@link run}.
    * With no active parent it mints a correlation id and nothing else, because a
    * layer that does not register as a context is one that `StateManager` writes
-   * straight past into the app-wide store — which is the very thing the caller
+   * straight past into the app-wide store, which is the very thing the caller
    * asked to avoid.
    */
   public nest<R>(callback: () => R): R {
@@ -406,7 +406,7 @@ export class AlsProvider {
 
   /**
    * Return the raw ALS layer object that owns `key`, walking from the
-   * current layer up through parent forks — the same resolution order as
+   * current layer up through parent forks: the same resolution order as
    * the default-scope branch of {@link get}. Returns `undefined` when no
    * active ALS layer (current or any ancestor) has the key.
    *
@@ -431,7 +431,7 @@ export class AlsProvider {
   }
 
   /**
-   * Whether `key` is present for the given scope — the presence counterpart
+   * Whether `key` is present for the given scope: the presence counterpart
    * of {@link get}, resolving through exactly the same layers.
    *
    * A caller cannot use `get() !== undefined` for this: a layer may legally

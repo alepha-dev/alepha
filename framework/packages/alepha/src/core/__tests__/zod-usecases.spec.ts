@@ -1,8 +1,10 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("Zod use cases", () => {
-  it("should drop a property omitted from the schema when decoding", () => {
+  it("should drop a property omitted from the schema when decoding", ({
+    expect,
+  }) => {
     const entity = z.object({
       id: z.integer(),
       name: z.string(),

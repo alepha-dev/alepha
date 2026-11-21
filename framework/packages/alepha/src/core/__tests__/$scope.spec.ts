@@ -1,5 +1,5 @@
 import { Alepha, createPrimitive, PipelinePrimitive } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   $pipeline,
@@ -9,11 +9,11 @@ import {
 import { $scope } from "../primitives/$scope.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
-// $scope — core behavior
+// $scope: core behavior
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$scope", () => {
-  test("wraps handler in ALS context", async ({ expect }) => {
+  it("wraps handler in ALS context", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -31,7 +31,7 @@ describe("$scope", () => {
     expect(result).toBe("test-value");
   });
 
-  test("scope is isolated per invocation", async ({ expect }) => {
+  it("scope is isolated per invocation", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -53,7 +53,7 @@ describe("$scope", () => {
     expect(b).toBe("second");
   });
 
-  test("throws when already inside a scope", async ({ expect }) => {
+  it("throws when already inside a scope", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -73,7 +73,7 @@ describe("$scope", () => {
     });
   });
 
-  test("throws with helpful message mentioning host primitives", async ({
+  it("throws with helpful message mentioning host primitives", async ({
     expect,
   }) => {
     const alepha = Alepha.create();
@@ -94,7 +94,7 @@ describe("$scope", () => {
     });
   });
 
-  test("handler return value is preserved", async ({ expect }) => {
+  it("handler return value is preserved", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -108,7 +108,7 @@ describe("$scope", () => {
     expect(await svc.scoped()).toEqual({ data: [1, 2, 3] });
   });
 
-  test("handler errors propagate through scope", async ({ expect }) => {
+  it("handler errors propagate through scope", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -124,7 +124,7 @@ describe("$scope", () => {
     await expect(svc.scoped()).rejects.toThrow("Handler failed");
   });
 
-  test("handler arguments are passed through", async ({ expect }) => {
+  it("handler arguments are passed through", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -140,11 +140,11 @@ describe("$scope", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $scope — edge cases
+// $scope: edge cases
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$scope edge cases", () => {
-  test("double $scope in same pipeline throws on invocation", async ({
+  it("double $scope in same pipeline throws on invocation", async ({
     expect,
   }) => {
     const alepha = Alepha.create();
@@ -163,7 +163,7 @@ describe("$scope edge cases", () => {
     );
   });
 
-  test("scope does not leak state to outer context", async ({ expect }) => {
+  it("scope does not leak state to outer context", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -182,7 +182,7 @@ describe("$scope edge cases", () => {
     expect(alepha.context.exists()).toBe(false);
   });
 
-  test("works with sync handler", async ({ expect }) => {
+  it("works with sync handler", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -198,11 +198,11 @@ describe("$scope edge cases", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $scope — metadata
+// $scope: metadata
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$scope metadata", () => {
-  test("has middleware metadata", ({ expect }) => {
+  it("has middleware metadata", ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestService {
@@ -220,11 +220,11 @@ describe("$scope metadata", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $scope — composition with other middleware
+// $scope: composition with other middleware
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$scope composition", () => {
-  test("composes with other middleware in pipeline", async ({ expect }) => {
+  it("composes with other middleware in pipeline", async ({ expect }) => {
     const calls: string[] = [];
     const alepha = Alepha.create();
 
@@ -260,7 +260,7 @@ describe("$scope composition", () => {
     expect(calls).toEqual(["inner:before", "handler", "inner:after"]);
   });
 
-  test("context is available to inner middleware", async ({ expect }) => {
+  it("context is available to inner middleware", async ({ expect }) => {
     const alepha = Alepha.create();
 
     const $setKey: Middleware = <T extends (...args: any[]) => any>(
@@ -286,7 +286,7 @@ describe("$scope composition", () => {
     expect(result).toBe("by-middleware");
   });
 
-  test("works inside fake host primitive", async ({ expect }) => {
+  it("works inside fake host primitive", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class FakeAction extends PipelinePrimitive {}

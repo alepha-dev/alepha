@@ -29,7 +29,9 @@ export const run = (
 
   if (entry instanceof Alepha && opts?.env) {
     alepha.store.set("env", { ...alepha.env, ...opts.env });
-    // Explicit run options take precedence; refresh previously parsed env schemas.
+    // Explicit run options take precedence over the container's env, and
+    // apply to the `$env` reads made from here on: a service already built
+    // keeps the values it was given. `process.env` is not merged here.
     alepha.loadEnv({});
   }
 

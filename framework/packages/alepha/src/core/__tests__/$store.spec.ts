@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
 import { $atom } from "../primitives/$atom.ts";
@@ -26,14 +26,14 @@ describe("$store", () => {
       cart = $store(cart);
     }
 
-    it("should expose the current value", () => {
+    it("should expose the current value", ({ expect }) => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
 
       expect(app.cart.items).toEqual([]);
     });
 
-    it("should re-read on every access", () => {
+    it("should re-read on every access", ({ expect }) => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
 
@@ -48,7 +48,7 @@ describe("$store", () => {
       total = $store(total);
     }
 
-    it("should derive the value from its dependencies", () => {
+    it("should derive the value from its dependencies", ({ expect }) => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
 
@@ -60,7 +60,7 @@ describe("$store", () => {
      * computed has a `key` but no store entry under it, so a key-based lookup
      * would read `undefined` instead of deriving.
      */
-    it("should re-derive when a dependency changes", () => {
+    it("should re-derive when a dependency changes", ({ expect }) => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
 
@@ -69,12 +69,12 @@ describe("$store", () => {
       expect(app.total).toBe(15);
     });
 
-    it("should not register the computed as an atom", () => {
+    it("should not register the computed as an atom", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.inject(App);
 
       // A computed is derived on every read, never stored. Registering one
-      // throws by design — reaching this point proves `$store` skipped it.
+      // throws by design: reaching this point proves `$store` skipped it.
       expect(alepha.store.get(total)).toBe(0);
     });
   });

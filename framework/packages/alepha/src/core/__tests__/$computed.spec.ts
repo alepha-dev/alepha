@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
@@ -30,33 +30,33 @@ describe("$computed", () => {
     get: (t) => t * 2,
   });
 
-  it("computes from dependency defaults", () => {
+  it("computes from dependency defaults", ({ expect }) => {
     const alepha = Alepha.create();
     expect(alepha.store.get(total)).toBe(0);
   });
 
-  it("reflects dependency mutations", () => {
+  it("reflects dependency mutations", ({ expect }) => {
     const alepha = Alepha.create();
     alepha.store.set(cart, { items: [{ price: 10, qty: 2 }] });
     expect(alepha.store.get(total)).toBe(20);
   });
 
-  it("supports computed-on-computed", () => {
+  it("supports computed-on-computed", ({ expect }) => {
     const alepha = Alepha.create();
     alepha.store.set(cart, { items: [{ price: 5, qty: 1 }] });
     expect(alepha.store.get(doubled)).toBe(10);
   });
 
-  it("lists transitive dependency keys", () => {
+  it("lists transitive dependency keys", ({ expect }) => {
     expect(doubled.keys()).toEqual(["test.computed.cart"]);
   });
 
-  it("cannot be set", () => {
+  it("cannot be set", ({ expect }) => {
     const alepha = Alepha.create();
     expect(() => alepha.store.set(total as any, 5)).toThrow(AlephaError);
   });
 
-  it("is never exported for hydration", () => {
+  it("is never exported for hydration", ({ expect }) => {
     const alepha = Alepha.create();
     alepha.store.get(total);
     expect(Object.keys(alepha.store.exportAtoms())).not.toContain(
@@ -64,16 +64,16 @@ describe("$computed", () => {
     );
   });
 
-  it("is readable through alepha.get", () => {
+  it("is readable through alepha.get", ({ expect }) => {
     const alepha = Alepha.create();
     alepha.store.set(cart, { items: [{ price: 3, qty: 3 }] });
     expect(alepha.get(total)).toBe(9);
   });
 
   // "Keeps ALS fork-scoped deps correct for free" is the stated design
-  // rationale for $computed's no-cache decision (see this file's brief and
-  // $computed.ts's JSDoc) — exercise it directly instead of trusting code
-  // inspection. `AlsProvider.create` defaults to a no-op (`fork()` becomes a
+  // rationale for $computed's no-cache decision (see $computed.ts's JSDoc):
+  // exercise it directly instead of trusting code inspection.
+  // `AlsProvider.create` defaults to a no-op (`fork()` becomes a
   // plain function call); swap in a real `AsyncLocalStorage` for this block
   // only, mirroring `fork.spec.ts`.
   describe("inside a fork", () => {
@@ -87,7 +87,9 @@ describe("$computed", () => {
       AlsProvider.create = originalAlsCreate;
     });
 
-    it("resolves a dependency from the fork's own value, not the app store's", () => {
+    it("resolves a dependency from the fork's own value, not the app store's", ({
+      expect,
+    }) => {
       const alepha = new Alepha();
       alepha.store.set(cart, { items: [{ price: 10, qty: 1 }] });
       expect(alepha.store.get(total)).toBe(10);
@@ -103,7 +105,7 @@ describe("$computed", () => {
   });
 
   describe("circular dependencies", () => {
-    it("throws AlephaError instead of overflowing the stack", () => {
+    it("throws AlephaError instead of overflowing the stack", ({ expect }) => {
       const cycleA = $computed({
         name: "test.computed.cycleA",
         deps: [],
@@ -115,7 +117,7 @@ describe("$computed", () => {
         get: (v: number) => v + 1,
       });
 
-      // `deps` is `readonly` only at the type level — nothing stops a
+      // `deps` is `readonly` only at the type level: nothing stops a
       // caller from mutating the underlying array at runtime and building a
       // genuine cycle. That's exactly what this test does to exercise the
       // guard; there is no supported public API to construct a cycle any

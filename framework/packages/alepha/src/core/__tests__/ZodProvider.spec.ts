@@ -1,12 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
+import { SchemaValidationError } from "../errors/SchemaValidationError.ts";
 import { z } from "../providers/ZodProvider.ts";
 
 describe("ZodProvider", () => {
   describe("Primitive Types", () => {
     describe("string", () => {
-      it("should decode valid strings", async () => {
+      it("should decode valid strings", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.string();
@@ -16,7 +17,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "with spaces")).toBe("with spaces");
       });
 
-      it("should encode strings", async () => {
+      it("should encode strings", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.string();
@@ -24,19 +25,19 @@ describe("ZodProvider", () => {
         expect(alepha.codec.encode(schema, "test")).toBe("test");
       });
 
-      it("should reject non-strings (no coercion)", async () => {
+      it("should reject non-strings (no coercion)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.string();
 
-        // Strict zod: no value coercion — non-strings are rejected.
+        // Strict zod, no value coercion: non-strings are rejected.
         expect(() => alepha.codec.validate(schema, 123)).toThrow();
         expect(() => alepha.codec.validate(schema, true)).toThrow();
       });
     });
 
     describe("number", () => {
-      it("should decode valid numbers", async () => {
+      it("should decode valid numbers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.number();
@@ -47,7 +48,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, Math.PI)).toBe(Math.PI);
       });
 
-      it("should encode numbers", async () => {
+      it("should encode numbers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.number();
@@ -55,18 +56,18 @@ describe("ZodProvider", () => {
         expect(alepha.codec.encode(schema, 42)).toBe(42);
       });
 
-      it("should reject non-numbers (no coercion)", async () => {
+      it("should reject non-numbers (no coercion)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.number();
 
-        // Strict zod: no value coercion — strings/booleans are rejected.
+        // Strict zod, no value coercion: strings/booleans are rejected.
         expect(() => alepha.codec.validate(schema, "123")).toThrow();
         expect(() => alepha.codec.validate(schema, true)).toThrow();
         expect(() => alepha.codec.validate(schema, false)).toThrow();
       });
 
-      it("should validate constraints", async () => {
+      it("should validate constraints", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.number().min(0).max(100);
@@ -81,7 +82,7 @@ describe("ZodProvider", () => {
     });
 
     describe("boolean", () => {
-      it("should decode valid booleans", async () => {
+      it("should decode valid booleans", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.boolean();
@@ -90,7 +91,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, false)).toBe(false);
       });
 
-      it("should encode booleans", async () => {
+      it("should encode booleans", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.boolean();
@@ -99,12 +100,12 @@ describe("ZodProvider", () => {
         expect(alepha.codec.encode(schema, false)).toBe(false);
       });
 
-      it("should reject non-booleans (no coercion)", async () => {
+      it("should reject non-booleans (no coercion)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.boolean();
 
-        // Strict zod: no value coercion — strings/numbers are rejected.
+        // Strict zod, no value coercion: strings/numbers are rejected.
         expect(() => alepha.codec.validate(schema, "true")).toThrow();
         expect(() => alepha.codec.validate(schema, "false")).toThrow();
         expect(() => alepha.codec.validate(schema, 1)).toThrow();
@@ -113,7 +114,7 @@ describe("ZodProvider", () => {
     });
 
     describe("null", () => {
-      it("should decode null", async () => {
+      it("should decode null", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.null();
@@ -123,7 +124,7 @@ describe("ZodProvider", () => {
     });
 
     describe("undefined", () => {
-      it("should decode undefined", async () => {
+      it("should decode undefined", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.undefined();
@@ -133,7 +134,7 @@ describe("ZodProvider", () => {
     });
 
     describe("void", () => {
-      it("should decode void as undefined", async () => {
+      it("should decode void as undefined", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.void();
@@ -143,7 +144,7 @@ describe("ZodProvider", () => {
     });
 
     describe("any", () => {
-      it("should accept any value", async () => {
+      it("should accept any value", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.any();
@@ -151,7 +152,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "string")).toBe("string");
         expect(alepha.codec.decode(schema, 123)).toBe(123);
         expect(alepha.codec.decode(schema, true)).toBe(true);
-        // Strict zod: no null->undefined normalization — null stays null.
+        // Strict zod, no null->undefined normalization: null stays null.
         expect(alepha.codec.decode(schema, null)).toBe(null);
         expect(alepha.codec.decode(schema, undefined)).toBe(undefined);
         expect(alepha.codec.decode(schema, { key: "value" })).toEqual({
@@ -164,7 +165,7 @@ describe("ZodProvider", () => {
 
   describe("Text Types", () => {
     describe("text with default size (regular)", () => {
-      it("should accept text within 255 chars", async () => {
+      it("should accept text within 255 chars", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text();
@@ -173,7 +174,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, validText)).toBe(validText);
       });
 
-      it("should trim whitespace by default", async () => {
+      it("should trim whitespace by default", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text();
@@ -181,7 +182,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "  hello  ")).toBe("hello");
       });
 
-      it("should reject text over 255 chars", async () => {
+      it("should reject text over 255 chars", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text();
@@ -190,7 +191,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, tooLong)).toThrow();
       });
 
-      it("should encode text", async () => {
+      it("should encode text", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text();
@@ -200,7 +201,7 @@ describe("ZodProvider", () => {
     });
 
     describe("text with different sizes", () => {
-      it("should validate short text (64 chars max)", async () => {
+      it("should validate short text (64 chars max)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const shortSchema = z.text({ size: "short" });
@@ -213,7 +214,7 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should validate regular text (255 chars max)", async () => {
+      it("should validate regular text (255 chars max)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const regularSchema = z.text({ size: "regular" });
@@ -226,7 +227,7 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should validate long text (1024 chars max)", async () => {
+      it("should validate long text (1024 chars max)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const longSchema = z.text({ size: "long" });
@@ -239,7 +240,7 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should validate rich text (65535 chars max)", async () => {
+      it("should validate rich text (65535 chars max)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const richSchema = z.text({ size: "rich" });
@@ -257,7 +258,7 @@ describe("ZodProvider", () => {
     });
 
     describe("text helper methods", () => {
-      it("should validate shortText (64 chars)", async () => {
+      it("should validate shortText (64 chars)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const shortSchema = z.shortText();
@@ -270,7 +271,7 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should validate longText (1024 chars)", async () => {
+      it("should validate longText (1024 chars)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const longSchema = z.longText();
@@ -282,20 +283,10 @@ describe("ZodProvider", () => {
           alepha.codec.validate(longSchema, "a".repeat(1025)),
         ).toThrow();
       });
-
-      it("should validate richText (65535 chars)", async () => {
-        const alepha = Alepha.create();
-        await alepha.start();
-        const richSchema = z.richText();
-
-        expect(alepha.codec.decode(richSchema, "a".repeat(1000))).toBe(
-          "a".repeat(1000),
-        );
-      });
     });
 
     describe("text trimming option", () => {
-      it("should trim when enabled", async () => {
+      it("should trim when enabled", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const trimSchema = z.text({ trim: true });
@@ -304,7 +295,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(trimSchema, "\n\ttest\n\t")).toBe("test");
       });
 
-      it("should not trim when disabled", async () => {
+      it("should not trim when disabled", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const noTrimSchema = z.text({ trim: false });
@@ -316,7 +307,7 @@ describe("ZodProvider", () => {
     });
 
     describe("text lowercase option", () => {
-      it("should lowercase with z.text when enabled", async () => {
+      it("should lowercase with z.text when enabled", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ lowercase: true });
@@ -328,21 +319,25 @@ describe("ZodProvider", () => {
         );
       });
 
-      it("should not lowercase enum values (no coercion)", async () => {
+      it("should not lowercase enum values (no coercion)", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z
           .enum(["active", "inactive", "pending"])
           .meta({ lowercase: true });
 
-        // Strict zod: enum membership is exact — uppercase input is rejected,
+        // Strict zod, enum membership is exact: uppercase input is rejected,
         // not lowercased into a matching member.
         expect(alepha.codec.decode(schema, "active")).toBe("active");
         expect(() => alepha.codec.validate(schema, "ACTIVE")).toThrow();
         expect(() => alepha.codec.validate(schema, "INACTIVE")).toThrow();
       });
 
-      it("should combine trim and lowercase with z.text", async () => {
+      it("should combine trim and lowercase with z.text", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ trim: true, lowercase: true });
@@ -351,7 +346,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "\n\tTEST\n\t")).toBe("test");
       });
 
-      it("should not lowercase when not enabled", async () => {
+      it("should not lowercase when not enabled", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text();
@@ -362,7 +357,23 @@ describe("ZodProvider", () => {
     });
 
     describe("text pattern option (regex)", () => {
-      it("should accept values matching the pattern", async () => {
+      it("should publish a RegExp pattern as its source string in the JSON Schema", ({
+        expect,
+      }) => {
+        const fromRegExp = z.toJSONSchema(z.text({ pattern: /^a+$/ })) as {
+          pattern?: unknown;
+        };
+        const fromString = z.toJSONSchema(z.text({ pattern: "^a+$" })) as {
+          pattern?: unknown;
+        };
+
+        expect(fromRegExp.pattern).toBe("^a+$");
+        expect(fromString.pattern).toBe("^a+$");
+        expect(JSON.parse(JSON.stringify(fromRegExp)).pattern).toBe("^a+$");
+        expect(z.schema.meta(z.text({ pattern: /^a+$/ })).pattern).toBe("^a+$");
+      });
+
+      it("should accept values matching the pattern", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ pattern: "^[A-Z]{3}$" });
@@ -371,7 +382,9 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "XYZ")).toBe("XYZ");
       });
 
-      it("should reject values not matching the pattern", async () => {
+      it("should reject values not matching the pattern", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ pattern: "^[A-Z]{3}$" });
@@ -382,7 +395,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, "123")).toThrow();
       });
 
-      it("should work with alphanumeric pattern", async () => {
+      it("should work with alphanumeric pattern", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ pattern: "^[a-zA-Z0-9]+$" });
@@ -395,7 +408,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, "hello@test")).toThrow();
       });
 
-      it("should work with slug pattern", async () => {
+      it("should work with slug pattern", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" });
@@ -411,7 +424,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, "-hello")).toThrow();
       });
 
-      it("should combine pattern with maxLength", async () => {
+      it("should combine pattern with maxLength", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ pattern: "^[A-Z]+$", maxLength: 5 });
@@ -423,7 +436,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, "hello")).toThrow();
       });
 
-      it("should trim before pattern validation", async () => {
+      it("should trim before pattern validation", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.text({ pattern: "^[A-Z]+$", trim: true });
@@ -434,8 +447,8 @@ describe("ZodProvider", () => {
   });
 
   describe("Integer Types", () => {
-    describe("int (32-bit integer)", () => {
-      it("should decode valid 32-bit integers", async () => {
+    describe("integer (safe integer)", () => {
+      it("should decode valid integers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.integer();
@@ -447,16 +460,28 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, -2147483647)).toBe(-2147483647);
       });
 
-      it("should reject non-integers", async () => {
+      it("should reject non-integers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.integer();
 
-        // Strict zod: no truncation — a float is rejected, not floored.
+        // Strict zod, no truncation: a float is rejected, not floored.
+        expect(() => alepha.codec.decode(schema, 3.14)).toThrow();
+      });
+    });
+
+    describe("int32 (32-bit integer)", () => {
+      it("should decode valid 32-bit integers", async ({ expect }) => {
+        const alepha = Alepha.create();
+        await alepha.start();
+        const schema = z.int32();
+
+        expect(alepha.codec.decode(schema, 42)).toBe(42);
+        // Strict zod, no truncation: a float is rejected.
         expect(() => alepha.codec.decode(schema, 3.14)).toThrow();
       });
 
-      it("should reject values outside 32-bit range", async () => {
+      it("should reject values outside 32-bit range", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.int32();
@@ -466,20 +491,8 @@ describe("ZodProvider", () => {
       });
     });
 
-    describe("integer alias", () => {
-      it("should work as alias for int", async () => {
-        const alepha = Alepha.create();
-        await alepha.start();
-        const schema = z.int32();
-
-        expect(alepha.codec.decode(schema, 42)).toBe(42);
-        // Strict zod: no truncation — a float is rejected.
-        expect(() => alepha.codec.decode(schema, 3.14)).toThrow();
-      });
-    });
-
     describe("int64", () => {
-      it("should decode valid safe integers", async () => {
+      it("should decode valid safe integers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.int64();
@@ -493,7 +506,7 @@ describe("ZodProvider", () => {
         );
       });
 
-      it("should reject non-integers", async () => {
+      it("should reject non-integers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.int64();
@@ -501,7 +514,9 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, 3.14)).toThrow();
       });
 
-      it("should reject values outside safe integer range", async () => {
+      it("should reject values outside safe integer range", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.int64();
@@ -514,11 +529,9 @@ describe("ZodProvider", () => {
     });
   });
 
-  // Codec Types tests removed - z.bigint(), z.url(), z.binary() are now plain strings without transformation
-
   describe("Format Types", () => {
     describe("uuid", () => {
-      it("should accept valid UUIDs", async () => {
+      it("should accept valid UUIDs", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.uuid();
@@ -527,7 +540,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, validUuid)).toBe(validUuid);
       });
 
-      it("should encode UUIDs", async () => {
+      it("should encode UUIDs", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.uuid();
@@ -536,7 +549,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.encode(schema, validUuid)).toBe(validUuid);
       });
 
-      it("should reject invalid UUIDs", async () => {
+      it("should reject invalid UUIDs", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.uuid();
@@ -550,7 +563,7 @@ describe("ZodProvider", () => {
     });
 
     describe("email", () => {
-      it("should accept valid emails", async () => {
+      it("should accept valid emails", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.email();
@@ -563,23 +576,23 @@ describe("ZodProvider", () => {
         ).toBe("test.user+tag@subdomain.example.co.uk");
       });
 
-      it("should not trim emails (whitespace rejected)", async () => {
+      it("should not trim emails (whitespace rejected)", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.email();
 
-        // Strict zod: no auto-trim — surrounding whitespace makes it invalid.
+        // Strict zod, no auto-trim: surrounding whitespace makes it invalid.
         expect(() =>
           alepha.codec.validate(schema, "  user@example.com  "),
         ).toThrow();
       });
 
-      it("should not lowercase emails", async () => {
+      it("should not lowercase emails", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.email();
 
-        // Strict zod: no auto-lowercase — case is preserved as-is.
+        // Strict zod, no auto-lowercase: case is preserved as-is.
         expect(alepha.codec.decode(schema, "User@Example.COM")).toBe(
           "User@Example.COM",
         );
@@ -588,17 +601,7 @@ describe("ZodProvider", () => {
         );
       });
 
-      it("should not trim or lowercase emails (whitespace rejected)", async () => {
-        const alepha = Alepha.create();
-        await alepha.start();
-        const schema = z.email();
-
-        expect(() =>
-          alepha.codec.validate(schema, "  User@Example.COM  "),
-        ).toThrow();
-      });
-
-      it("should reject invalid emails", async () => {
+      it("should reject invalid emails", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.email();
@@ -611,7 +614,7 @@ describe("ZodProvider", () => {
     });
 
     describe("e164 phone number", () => {
-      it("should accept valid E.164 phone numbers", async () => {
+      it("should accept valid E.164 phone numbers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.e164();
@@ -625,7 +628,7 @@ describe("ZodProvider", () => {
         );
       });
 
-      it("should reject invalid E.164 phone numbers", async () => {
+      it("should reject invalid E.164 phone numbers", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.e164();
@@ -641,7 +644,7 @@ describe("ZodProvider", () => {
     });
 
     describe("bcp47 language tag", () => {
-      it("should accept valid BCP 47 language tags", async () => {
+      it("should accept valid BCP 47 language tags", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.bcp47();
@@ -653,7 +656,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "pt-BR")).toBe("pt-BR");
       });
 
-      it("should reject invalid BCP 47 tags", async () => {
+      it("should reject invalid BCP 47 tags", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.bcp47();
@@ -667,7 +670,7 @@ describe("ZodProvider", () => {
     });
 
     describe("constantCase", () => {
-      it("should accept valid constantCase strings", async () => {
+      it("should accept valid constantCase strings", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.constantCase();
@@ -678,7 +681,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "A_B_C_D")).toBe("A_B_C_D");
       });
 
-      it("should reject invalid constantCase", async () => {
+      it("should reject invalid constantCase", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.constantCase();
@@ -693,7 +696,7 @@ describe("ZodProvider", () => {
 
   describe("Complex Types", () => {
     describe("object", () => {
-      it("should decode valid objects", async () => {
+      it("should decode valid objects", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -707,7 +710,7 @@ describe("ZodProvider", () => {
         expect(decoded).toEqual(valid);
       });
 
-      it("should encode objects", async () => {
+      it("should encode objects", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -721,7 +724,7 @@ describe("ZodProvider", () => {
         expect(encoded).toEqual(valid);
       });
 
-      it("should reject missing required fields", async () => {
+      it("should reject missing required fields", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -735,7 +738,9 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should reject invalid field types (no coercion)", async () => {
+      it("should reject invalid field types (no coercion)", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -754,7 +759,7 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should fix additional properties by default", async () => {
+      it("should strip unknown keys by default", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -777,7 +782,7 @@ describe("ZodProvider", () => {
         });
       });
 
-      it("should support nested objects", async () => {
+      it("should support nested objects", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -807,7 +812,7 @@ describe("ZodProvider", () => {
     });
 
     describe("array", () => {
-      it("should decode valid arrays", async () => {
+      it("should decode valid arrays", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.array(z.text());
@@ -820,10 +825,12 @@ describe("ZodProvider", () => {
         ]);
       });
 
-      it("does not cap array length by default (native zod arrays are unbounded)", async () => {
+      it("does not cap array length by default (native zod arrays are unbounded)", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
-        // Native `z.array(...)` IS `zod.array(...)` — no implicit max-items cap.
+        // Native `z.array(...)` IS `zod.array(...)`: no implicit max-items cap.
         // Bounds must be set explicitly via `.max()` (see next test).
         const schema = z.array(z.text());
 
@@ -831,7 +838,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, big)).toEqual(big);
       });
 
-      it("should support custom maxItems", async () => {
+      it("should support custom maxItems", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.array(z.integer()).max(5);
@@ -844,7 +851,9 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should reject invalid item types (no coercion)", async () => {
+      it("should reject invalid item types (no coercion)", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.array(z.text());
@@ -855,7 +864,9 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should not auto-cast non-array values to a single-element array", async () => {
+      it("should not auto-cast non-array values to a single-element array", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.array(z.text());
@@ -864,7 +875,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, "not an array")).toThrow();
       });
 
-      it("should support array of objects", async () => {
+      it("should support array of objects", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.array(
@@ -884,7 +895,7 @@ describe("ZodProvider", () => {
     });
 
     describe("union", () => {
-      it("should accept any type in the union", async () => {
+      it("should accept any type in the union", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.union([z.text(), z.integer()]);
@@ -893,7 +904,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, 123)).toBe(123);
       });
 
-      it("should reject types not in the union", async () => {
+      it("should reject types not in the union", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.union([z.text(), z.integer()]);
@@ -901,7 +912,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, {})).toThrow();
       });
 
-      it("should support union of object types", async () => {
+      it("should support union of object types", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.union([
@@ -923,7 +934,7 @@ describe("ZodProvider", () => {
     });
 
     describe("record", () => {
-      it("should decode valid records", async () => {
+      it("should decode valid records", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.record(z.text(), z.integer());
@@ -932,7 +943,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, valid)).toEqual(valid);
       });
 
-      it("should accept empty records", async () => {
+      it("should accept empty records", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.record(z.text(), z.integer());
@@ -940,7 +951,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, {})).toEqual({});
       });
 
-      it("should reject invalid value types", async () => {
+      it("should reject invalid value types", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.record(z.text(), z.integer());
@@ -952,7 +963,7 @@ describe("ZodProvider", () => {
     });
 
     describe("json", () => {
-      it("should accept any JSON object", async () => {
+      it("should accept any JSON object", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.json();
@@ -970,7 +981,7 @@ describe("ZodProvider", () => {
     });
 
     describe("tuple", () => {
-      it("should decode valid tuples", async () => {
+      it("should decode valid tuples", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.tuple([z.text(), z.integer(), z.boolean()]);
@@ -982,7 +993,7 @@ describe("ZodProvider", () => {
         ]);
       });
 
-      it("should reject tuples with wrong length", async () => {
+      it("should reject tuples with wrong length", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.tuple([
@@ -1000,7 +1011,7 @@ describe("ZodProvider", () => {
         ).toThrow();
       });
 
-      it("should reject tuples with wrong types", async () => {
+      it("should reject tuples with wrong types", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.tuple([z.text(), z.integer(), z.boolean()]);
@@ -1014,7 +1025,7 @@ describe("ZodProvider", () => {
 
   describe("Modifier Types", () => {
     describe("optional", () => {
-      it("should make fields optional", async () => {
+      it("should make fields optional", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -1046,7 +1057,7 @@ describe("ZodProvider", () => {
     });
 
     describe("nullable", () => {
-      it("should allow null values", async () => {
+      it("should allow null values", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -1061,7 +1072,7 @@ describe("ZodProvider", () => {
         });
       });
 
-      it("should require field to be present", async () => {
+      it("should require field to be present", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -1073,7 +1084,7 @@ describe("ZodProvider", () => {
     });
 
     describe("optional nullable", () => {
-      it("should allow string, null, or omitted", async () => {
+      it("should allow string, null, or omitted", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.object({
@@ -1091,7 +1102,7 @@ describe("ZodProvider", () => {
     });
 
     describe("partial", () => {
-      it("should make all fields optional", async () => {
+      it("should make all fields optional", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = z.object({
@@ -1127,7 +1138,7 @@ describe("ZodProvider", () => {
     });
 
     describe("pick", () => {
-      it("should pick only specified fields", async () => {
+      it("should pick only specified fields", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = z.object({
@@ -1150,7 +1161,7 @@ describe("ZodProvider", () => {
         });
       });
 
-      it("should reject unpicked fields", async () => {
+      it("should strip unpicked fields", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = z.object({
@@ -1174,7 +1185,7 @@ describe("ZodProvider", () => {
         });
       });
 
-      it("should require all picked fields", async () => {
+      it("should require all picked fields", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = z.object({
@@ -1193,7 +1204,7 @@ describe("ZodProvider", () => {
     });
 
     describe("omit", () => {
-      it("should omit specified fields", async () => {
+      it("should omit specified fields", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = z.object({
@@ -1218,7 +1229,7 @@ describe("ZodProvider", () => {
         });
       });
 
-      it("should reject omitted fields", async () => {
+      it("should strip omitted fields", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const baseSchema = z.object({
@@ -1248,7 +1259,7 @@ describe("ZodProvider", () => {
 
   describe("Literal Types", () => {
     describe("enum", () => {
-      it("should accept valid enum values", async () => {
+      it("should accept valid enum values", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.enum(["ACTIVE", "INACTIVE", "PENDING"]);
@@ -1258,7 +1269,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "PENDING")).toBe("PENDING");
       });
 
-      it("should reject invalid enum values", async () => {
+      it("should reject invalid enum values", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.enum(["ACTIVE", "INACTIVE", "PENDING"]);
@@ -1270,7 +1281,7 @@ describe("ZodProvider", () => {
     });
 
     describe("const (literal)", () => {
-      it("should accept only the literal value", async () => {
+      it("should accept only the literal value", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.literal("FIXED_VALUE");
@@ -1278,7 +1289,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, "FIXED_VALUE")).toBe("FIXED_VALUE");
       });
 
-      it("should reject non-matching values", async () => {
+      it("should reject non-matching values", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.literal("FIXED_VALUE");
@@ -1287,7 +1298,7 @@ describe("ZodProvider", () => {
         expect(() => alepha.codec.validate(schema, "")).toThrow();
       });
 
-      it("should support number literals", async () => {
+      it("should support number literals", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.literal(42);
@@ -1300,7 +1311,7 @@ describe("ZodProvider", () => {
 
   describe("Helper Types", () => {
     describe("valueLabel", () => {
-      it("should decode valid valueLabel objects", async () => {
+      it("should decode valid valueLabel objects", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.valueLabel();
@@ -1312,7 +1323,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, valid)).toEqual(valid);
       });
 
-      it("should support optional description", async () => {
+      it("should support optional description", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.valueLabel();
@@ -1325,7 +1336,7 @@ describe("ZodProvider", () => {
         expect(alepha.codec.decode(schema, withDesc)).toEqual(withDesc);
       });
 
-      it("should validate value is constantCase", async () => {
+      it("should validate value is constantCase", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.valueLabel();
@@ -1342,17 +1353,18 @@ describe("ZodProvider", () => {
 
   describe("File Types", () => {
     describe("file", () => {
-      it("should create file schema with binary format", async () => {
+      it("should create file schema with binary format", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.file();
 
-        expect(schema).toBeDefined();
         // Format tag now lives in zod `.meta()`, read via `z.schema.format`.
         expect(z.schema.format(schema)).toBe("binary");
       });
 
-      it("carries maxBytes through to the schema's metadata", async () => {
+      it("carries maxBytes through to the schema's metadata", async ({
+        expect,
+      }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.file({ maxBytes: 1024 * 1024 });
@@ -1366,19 +1378,18 @@ describe("ZodProvider", () => {
     });
 
     describe("stream", () => {
-      it("should create stream schema", async () => {
+      it("should create stream schema", async ({ expect }) => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.stream();
 
-        expect(schema).toBeDefined();
         expect(z.schema.format(schema)).toBe("stream");
       });
     });
   });
 
   describe("Complex Scenarios", () => {
-    it("should handle complex nested structures", async () => {
+    it("should handle complex nested structures", async ({ expect }) => {
       const alepha = Alepha.create();
       await alepha.start();
 
@@ -1427,7 +1438,7 @@ describe("ZodProvider", () => {
       expect(alepha.codec.decode(schema, withNull)).toEqual(withNull);
     });
 
-    it("should handle encode/decode round trips", async () => {
+    it("should handle encode/decode round trips", async ({ expect }) => {
       const alepha = Alepha.create();
       await alepha.start();
 
@@ -1457,7 +1468,7 @@ describe("ZodProvider", () => {
       expect(decoded).toEqual(original);
     });
 
-    it("should provide validation error context", async () => {
+    it("should provide validation error context", async ({ expect }) => {
       const alepha = Alepha.create();
       await alepha.start();
 
@@ -1466,129 +1477,129 @@ describe("ZodProvider", () => {
         age: z.integer(),
       });
 
-      try {
-        alepha.codec.decode(schema, { name: "John", age: "not a number" });
-        expect.fail("Should have thrown");
-      } catch (error: any) {
-        expect(error).toBeDefined();
-      }
+      expect(() =>
+        alepha.codec.decode(schema, { name: "John", age: "not a number" }),
+      ).toThrow(SchemaValidationError);
+      expect(() =>
+        alepha.codec.decode(schema, { name: "John", age: "not a number" }),
+      ).toThrow(/age/);
     });
   });
 
-  describe("TypeGuard", () => {
-    it("should correctly identify string schemas", () => {
+  describe("z.schema type guards", () => {
+    it("should correctly identify string schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isString(z.text())).toBe(true);
       expect(schema.isString(z.integer())).toBe(false);
     });
 
-    it("should correctly identify number schemas", () => {
+    it("should correctly identify number schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isNumber(z.number())).toBe(true);
       expect(schema.isNumber(z.text())).toBe(false);
     });
 
-    it("should correctly identify integer schemas", () => {
+    it("should correctly identify integer schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isInteger(z.integer())).toBe(true);
       expect(schema.isInteger(z.number())).toBe(false);
     });
 
-    it("should correctly identify boolean schemas", () => {
+    it("should correctly identify boolean schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isBoolean(z.boolean())).toBe(true);
       expect(schema.isBoolean(z.text())).toBe(false);
     });
 
-    it("should correctly identify object schemas", () => {
+    it("should correctly identify object schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isObject(z.object({ key: z.text() }))).toBe(true);
       expect(schema.isObject(z.array(z.text()))).toBe(false);
     });
 
-    it("should correctly identify array schemas", () => {
+    it("should correctly identify array schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isArray(z.array(z.text()))).toBe(true);
       expect(schema.isArray(z.text())).toBe(false);
     });
 
-    it("should correctly identify union schemas", () => {
+    it("should correctly identify union schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isUnion(z.union([z.text(), z.integer()]))).toBe(true);
       expect(schema.isUnion(z.text())).toBe(false);
     });
 
-    it("should correctly identify optional schemas", () => {
+    it("should correctly identify optional schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isOptional(z.text().optional())).toBe(true);
       expect(schema.isOptional(z.text())).toBe(false);
     });
 
-    it("should correctly identify null schemas", () => {
+    it("should correctly identify null schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isNull(z.null())).toBe(true);
       expect(schema.isNull(z.undefined())).toBe(false);
     });
 
-    it("should correctly identify undefined schemas", () => {
+    it("should correctly identify undefined schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isUndefined(z.undefined())).toBe(true);
       expect(schema.isUndefined(z.null())).toBe(false);
     });
 
-    it("should correctly identify any schemas", () => {
+    it("should correctly identify any schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isAny(z.any())).toBe(true);
       expect(schema.isAny(z.text())).toBe(false);
     });
 
-    it("should correctly identify record schemas", () => {
+    it("should correctly identify record schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isRecord(z.record(z.text(), z.integer()))).toBe(true);
       expect(schema.isRecord(z.object({}))).toBe(false);
     });
 
-    it("should correctly identify tuple schemas", () => {
+    it("should correctly identify tuple schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isTuple(z.tuple([z.text(), z.integer()]))).toBe(true);
       expect(schema.isTuple(z.array(z.text()))).toBe(false);
     });
 
-    it("should correctly identify void schemas", () => {
+    it("should correctly identify void schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isVoid(z.void())).toBe(true);
       expect(schema.isVoid(z.undefined())).toBe(false);
     });
 
-    it("should correctly identify uuid schemas", () => {
+    it("should correctly identify uuid schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isUuid(z.uuid())).toBe(true);
       expect(schema.isUuid(z.text())).toBe(false);
     });
 
-    it("should correctly identify bigint schemas", () => {
+    it("should correctly identify bigint schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isBigInt(z.bigint())).toBe(true);
       expect(schema.isBigInt(z.integer())).toBe(false);
     });
 
-    it("should correctly identify scalar schemas", () => {
+    it("should correctly identify scalar schemas", ({ expect }) => {
       const { schema } = z;
 
       expect(schema.isScalar(z.string())).toBe(true);

@@ -15,7 +15,7 @@ import { StateManager } from "./providers/StateManager.ts";
  * - Dependency injection for services
  * - Service substitution/mocking
  * - Type-safe environment variable loading with Zod schemas
- * - Lifecycle hooks (start, stop, log, etc.)
+ * - Lifecycle hooks (configure, start, ready, stop, etc.)
  * - Module definitions and composition
  * - Request-scoped context access via Async Local Storage (ALS)
  * - Reactive state management with atoms

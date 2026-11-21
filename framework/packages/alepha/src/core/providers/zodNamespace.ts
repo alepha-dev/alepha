@@ -13,29 +13,24 @@ import { installZodChain } from "./zodChain.ts";
 zodConfig(enLocale());
 installZodChain();
 
-/**
- * Alepha's `z` — a thin, enhanceable wrapper over zod/mini that mirrors the
- * ergonomics of the legacy typebox `t` provider (same call-shapes, so existing
- * `t.*` call-sites become a near-mechanical rename), while delegating all
- * validation + static-type inference to zod.
- *
- * Design notes:
- * - Runs on zod/mini, typed as classic zod. `zodChain.ts` is what makes the two
- *   agree: every chained method a call site writes is defined there.
- * - No encode/decode. string -> string, number -> number. Validation is a plain
- *   `schema.parse(value)` — zod does NOT use `Function`/`eval`, so this is safe
- *   inside Cloudflare Workers (unlike typebox's `Compile`).
- * - Metadata (`title`, `description`, `format`, custom `~options`) rides on zod's
- *   native `.meta()` registry, so `z.toJSONSchema()` round-trips it for OpenAPI
- *   + form generation. Defaults use `.default()`.
- */
+// Alepha's `z`: a thin wrapper over zod/mini, typed as classic zod.
+//
+// - `zodChain.ts` is what makes the two agree: every chained method a call
+//   site writes is defined there.
+// - No encode/decode: string -> string, number -> number. Validation is
+//   `schema.parse(value)`. `z.object` compiles its parser with `new Function`
+//   where the runtime allows it (see `helpers/zodJitObject.ts`) and falls back
+//   to zod's interpreter on Cloudflare Workers and in the browser.
+// - Metadata (`title`, `description`, `format`) rides on zod's native
+//   `.meta()` registry, so `z.toJSONSchema()` publishes it for OpenAPI and
+//   form generation. Defaults use `.default()`.
 
 // ---------------------------------------------------------------------------
 // The type-level surface
 // ---------------------------------------------------------------------------
 
 /**
- * Alepha's `z` carries values only — `z.infer<T>` and `z.ZodString` do not
+ * Alepha's `z` carries values only: `z.infer<T>` and `z.ZodString` do not
  * resolve. So the type-level names have to be exported
  * standalone, which is what this block is for.
  *
@@ -48,7 +43,7 @@ installZodChain();
 export type ZType = zod.ZodType;
 export type ZObject<T extends zod.ZodRawShape = any> = zod.ZodObject<T>;
 /**
- * Extract the TypeScript type of a schema — `z.infer` is not reachable.
+ * Extract the TypeScript type of a schema: `z.infer` is not reachable.
  */
 export type Infer<T extends zod.ZodType> = zod.infer<T>;
 
@@ -71,7 +66,7 @@ export type {
  * conditional positions.
  *
  * Reads zod's `_zod.output` directly (a single shallow conditional) instead of
- * first testing `T extends TRequestBody` / `TResponseBody` — those tests compare
+ * first testing `T extends TRequestBody` / `TResponseBody`: those tests compare
  * `T` against 5-6 member unions of deeply-recursive zod class types, and that
  * structural assignability check is what trips TypeScript's instantiation-depth
  * limit (TS2589) inside `$action`'s generics. The extracted type is identical to
@@ -90,7 +85,8 @@ export interface SchemaOptions {
   default?: unknown;
   format?: string;
   /**
-   * Alepha string transforms, kept for JSON-Schema round-trip parity.
+   * The string transforms `z.text()` applies, recorded on the schema.
+   * Internal: `toJSONSchema` strips every `~` key.
    */
   "~options"?: { trim?: boolean; lowercase?: boolean };
   [key: string]: unknown;
@@ -123,7 +119,6 @@ export const Z_LIMITS = {
   regular: 255,
   long: 1024,
   rich: 65535,
-  arrayMaxItems: 1000,
 };
 
 /**
@@ -158,7 +153,7 @@ const nativeFmt = (s: any): string | undefined => {
 
 /**
  * Read the JSON-Schema-style format tag off a schema (drives ORM columns).
- * Prefers our normalized `.meta({ format })` (typebox vocab: `date-time`,
+ * Prefers our normalized `.meta({ format })` (JSON Schema vocabulary: `date-time`,
  * `int64`, `binary`, …) and falls back to zod's native `.format`.
  */
 const fmt = (s: any): string | undefined => {
@@ -200,8 +195,8 @@ const SCHEMA_MAP_KEYWORDS = new Set([
  *
  * `z.text()` stores its string transforms under `~options` so the schema
  * carries its own behaviour, but that key is implementation detail. Every
- * caller of `z.toJSONSchema` publishes the result on a wire — OpenAPI, MCP
- * `tools/list`, devtools metadata, the admin parameter forms — so stripping
+ * caller of `z.toJSONSchema` publishes the result on a wire (OpenAPI, MCP
+ * `tools/list`, devtools metadata, the admin parameter forms), so stripping
  * here rather than at each call site is what makes the key genuinely internal.
  * Nothing reads it back out: `jsonSchemaToZod`, the only inverse, ignores it.
  */
@@ -237,7 +232,7 @@ const stripInternalMeta = <T>(root: T): T => {
 /**
  * Export a schema to JSON Schema (OpenAPI / form generation).
  *
- * Alepha's internal `~`-prefixed metadata is stripped from the result — see
+ * Alepha's internal `~`-prefixed metadata is stripped from the result, see
  * {@link stripInternalMeta}. Callers publish this on a wire; none of them
  * should have to remember to clean it first.
  *
@@ -250,7 +245,7 @@ export const toJSONSchema = ((schema: any, params?: any) =>
   )) as typeof zod.toJSONSchema;
 
 // ---------------------------------------------------------------------------
-// The `z` provider — mirrors `t`'s surface.
+// The `z` namespace members.
 // ---------------------------------------------------------------------------
 
 /**
@@ -293,7 +288,7 @@ const literalSchema = mini.literal as unknown as typeof zod.literal;
 const enumSchema = mini.enum as unknown as typeof zod.enum;
 
 /**
- * Integer — native `z.int()` (format `safeint`, drives PG INT column).
+ * Integer: native `z.int()` (format `safeint`, drives PG INT column).
  */
 const integerSchema = mini.int as unknown as typeof zod.int;
 
@@ -307,7 +302,7 @@ const jsonSchema = () =>
   >;
 
 /**
- * A typed passthrough — carries a TypeScript type and validates nothing.
+ * A typed passthrough: carries a TypeScript type and validates nothing.
  *
  * The legitimate use is a value whose shape is already owned and checked at
  * its own boundary, held somewhere that requires a schema anyway: an `$atom`
@@ -317,12 +312,12 @@ const jsonSchema = () =>
  *
  * ⚠️ Never for anything crossing a trust boundary. A request body, a query
  * parameter, an env var or a database row declared this way is unvalidated
- * input wearing a type — which is worse than `z.any()`, because it reads as
+ * input wearing a type, which is worse than `z.any()`, because it reads as
  * if something checked it.
  *
  * Exposed here rather than left to `import { z } from "zod"` in the app: a
  * workspace importing zod directly resolves its own copy, and zod's branded
- * types treat two instances as structurally distinct — so the schema is
+ * types treat two instances as structurally distinct, so the schema is
  * rejected by every alepha primitive with a type error that names neither
  * cause nor cure.
  */
@@ -337,7 +332,7 @@ const textSchema = (options: TextOptions = {}) => {
     ...rest
   } = options;
   // An explicit `maxLength` overrides the size-based default cap (otherwise
-  // both `.max()` calls stack and zod keeps the smaller — silently capping
+  // both `.max()` calls stack and zod keeps the smaller: silently capping
   // a `maxLength: 1_000_000` field at 255).
   const max = maxLength ?? Z_LIMITS[size] ?? Z_LIMITS.regular;
   // One `.check()` for all of them: each chained call would build a copy.
@@ -347,14 +342,16 @@ const textSchema = (options: TextOptions = {}) => {
   if (trim) checks.push(mini.trim());
   if (lowercase) checks.push(mini.toLowerCase());
   if (rest.minLength != null) checks.push(mini.minLength(rest.minLength));
-  if (rest.pattern)
-    checks.push(
-      mini.regex(
-        typeof rest.pattern === "string"
-          ? new RegExp(rest.pattern)
-          : rest.pattern,
-      ),
-    );
+  if (rest.pattern) {
+    const pattern =
+      typeof rest.pattern === "string"
+        ? new RegExp(rest.pattern)
+        : rest.pattern;
+    checks.push(mini.regex(pattern));
+    // The metadata is what `toJSONSchema` publishes, and a RegExp object
+    // serializes as `{}`: JSON Schema takes the source, which has no flags.
+    rest.pattern = pattern.source;
+  }
   return meta(mini.string().check(...checks) as unknown as zod.ZodString, {
     ...rest,
     maxLength: max,
@@ -384,7 +381,7 @@ const datetimeSchema = () => strFmt(mini.iso.datetime(), "date-time");
  *
  * **Round-trip is asymmetric and the asymmetry matters.** SQLite stores
  * the column as epoch-milliseconds, but the ORM hydrates it back as a
- * date-only *string* — never a `Date`. So a value read from the
+ * date-only *string*, never a `Date`. So a value read from the
  * database is `"2026-01-01"`, and `new Date("2026-01-01")` parses it as
  * **UTC** midnight.
  *
@@ -392,7 +389,7 @@ const datetimeSchema = () => strFmt(mini.iso.datetime(), "date-time");
  * getters (`getMonth()`, `getFullYear()`): west of UTC the instant
  * belongs to the previous day, and month-bucketing silently shifts by
  * one. Derive calendar fields from the string, or build a local `Date`
- * from its parts — do not mix the two.
+ * from its parts: do not mix the two.
  */
 const dateSchema = () => strFmt(mini.iso.date(), "date");
 
@@ -478,7 +475,7 @@ const int64Schema = () =>
  *
  * The unit is in the name on purpose. `$storage({ maxSize })` next door is
  * declared in **megabytes**, and two fields sharing a name while meaning
- * different units is not a documentation problem — nobody re-reads a docblock
+ * different units is not a documentation problem: nobody re-reads a docblock
  * for a name they believe they know. The mistake is silent in both
  * directions: bytes read as megabytes accepts a million times too much, and
  * the reverse refuses everything.
@@ -508,41 +505,98 @@ const valueLabelSchema = () =>
     description: zod.ZodOptional<ReturnType<typeof textSchema>>;
   }>;
 
-/**
- * Pagination wrapper, mirrors `pageSchema(item)`.
- */
 type PageInt = ReturnType<typeof zod.int>;
+
+type PageMetadataSchema = zod.ZodObject<{
+  number: PageInt;
+  size: PageInt;
+  offset: PageInt;
+  numberOfElements: PageInt;
+  totalElements: zod.ZodOptional<PageInt>;
+  totalPages: zod.ZodOptional<PageInt>;
+  isEmpty: zod.ZodBoolean;
+  isFirst: zod.ZodBoolean;
+  isLast: zod.ZodBoolean;
+  sort: zod.ZodOptional<
+    zod.ZodObject<{
+      sorted: zod.ZodBoolean;
+      fields: zod.ZodArray<
+        zod.ZodObject<{
+          field: zod.ZodString;
+          direction: zod.ZodEnum<{ asc: "asc"; desc: "desc" }>;
+        }>
+      >;
+    }>
+  >;
+}>;
+
+let pageMetadata: PageMetadataSchema | undefined;
+
+/**
+ * The `page` object of a paginated response.
+ *
+ * One instance, built on first use: `z.page()` and `pageSchema()` both wrap
+ * it, so the two describe the same metadata and cannot drift apart.
+ */
+const pageMetadataSchema = (): PageMetadataSchema => {
+  pageMetadata ??= objectSchema({
+    number: integerSchema().describe("Page number, starting from 0"),
+    size: integerSchema().describe(
+      "Number of items per page (requested page size)",
+    ),
+    offset: integerSchema().describe("Offset in the dataset (page × size)"),
+    numberOfElements: integerSchema().describe(
+      "Number of elements in THIS page (content.length). Different from totalElements which is the total across all pages.",
+    ),
+    totalElements: integerSchema()
+      .describe(
+        "Total number of elements across all pages. Only available when counting is enabled.",
+      )
+      .optional(),
+    totalPages: integerSchema()
+      .describe(
+        "Total number of pages. Only available when `totalElements` is present.",
+      )
+      .optional(),
+    isEmpty: booleanSchema().describe(
+      "Indicates if the current page has no items (numberOfElements === 0)",
+    ),
+    isFirst: booleanSchema().describe(
+      "Indicates if this is the first page (number === 0)",
+    ),
+    isLast: booleanSchema().describe(
+      "Indicates if this is the last page (no more pages after this)",
+    ),
+    sort: objectSchema({
+      sorted: booleanSchema().describe("Whether the results are sorted"),
+      fields: arraySchema(
+        objectSchema({
+          field: textSchema({ description: "The field used for sorting" }),
+          direction: enumSchema(["asc", "desc"]).describe(
+            "The direction of the sort. Either 'asc' or 'desc'",
+          ),
+        }),
+      ),
+    }).optional(),
+  });
+  return pageMetadata;
+};
+
+/**
+ * Pagination wrapper: the items under `content`, and the page metadata
+ * (position, totals, sort) under `page`.
+ */
 const pageSchema = <T extends zod.ZodType>(item: T) =>
-  mini.object({
-    content: mini.array(item as any),
-    page: mini.object({
-      number: mini.int(),
-      size: mini.int(),
-      offset: mini.int(),
-      numberOfElements: mini.int(),
-      totalElements: mini.optional(mini.int()),
-      totalPages: mini.optional(mini.int()),
-      isEmpty: mini.boolean(),
-      isFirst: mini.boolean(),
-      isLast: mini.boolean(),
-    }),
+  objectSchema({
+    content: arraySchema(item),
+    page: pageMetadataSchema(),
   }) as unknown as zod.ZodObject<{
     content: zod.ZodArray<T>;
-    page: zod.ZodObject<{
-      number: PageInt;
-      size: PageInt;
-      offset: PageInt;
-      numberOfElements: PageInt;
-      totalElements: zod.ZodOptional<PageInt>;
-      totalPages: zod.ZodOptional<PageInt>;
-      isEmpty: zod.ZodBoolean;
-      isFirst: zod.ZodBoolean;
-      isLast: zod.ZodBoolean;
-    }>;
+    page: PageMetadataSchema;
   }>;
 
 /**
- * Runtime type guards (`z.schema.*`) — schema introspection for ORM + forms.
+ * Runtime type guards (`z.schema.*`): schema introspection for ORM + forms.
  */
 const schemaSchema = {
   isOptional: (s: any): s is zod.ZodOptional =>
@@ -565,7 +619,7 @@ const schemaSchema = {
   // Explicit `: boolean` (not an inferred type-predicate): the `s is ZodEnum`
   // / `s is ZodLiteral` predicates leak zod's non-exported `EnumValue` /
   // `Literal` internals into consumers' generated `.d.ts` (TS2883). No
-  // call-site relies on narrowing these — they read via `enumValues`/`.value`.
+  // call-site relies on narrowing these: they read via `enumValues`/`.value`.
   isEnum: (s: any): boolean => s instanceof (mini.ZodMiniEnum as any),
   isLiteral: (s: any): boolean => s instanceof (mini.ZodMiniLiteral as any),
   isAny: (s: any): s is zod.ZodAny => s instanceof (mini.ZodMiniAny as any),
@@ -589,7 +643,7 @@ const schemaSchema = {
   isEmail: (s: any) => fmt(s) === "email",
   isUrl: (s: any) => fmt(s) === "url",
   isBinary: (s: any) => fmt(s) === "binary",
-  // Explicit `: boolean` — ORs `ZodLiteral`/`ZodEnum` whose inferred predicate
+  // Explicit `: boolean`: ORs `ZodLiteral`/`ZodEnum` whose inferred predicate
   // would leak zod's non-exported `Literal`/`EnumValue` internals (TS2883).
   isScalar: (s: any): boolean =>
     s instanceof (mini.ZodMiniString as any) ||
@@ -614,7 +668,7 @@ const schemaSchema = {
    * Everything a schema was tagged with via `.meta()`.
    *
    * `format` above reads one key out of this; a walker that needs another -
-   * the `maxSize` a `fileSchema()` carries, say - would otherwise have to reach
+   * the `maxBytes` a `fileSchema()` carries, say - would otherwise have to reach
    * into zod's internals at the call site, which is exactly the coupling this
    * namespace exists to prevent.
    *
@@ -731,8 +785,8 @@ const schemaSchema = {
     // ⚠️ `hasOwn` alone is NOT the guard it reads as. zod 4 installs its
     // `.default()` METHOD as an own property the first time that method is
     // called on a schema, so any schema someone has chained `.default()` on
-    // anywhere — a shared enum with `.default("month")` in a settings atom,
-    // reused as an entity column — reports an own `default` that is the
+    // anywhere (a shared enum with `.default("month")` in a settings atom,
+    // reused as an entity column) reports an own `default` that is the
     // function. It was then read as a function-valued column default, which
     // breaks the schema sync.
     //

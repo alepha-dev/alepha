@@ -47,6 +47,13 @@ export class EventManager {
   protected cache = new Map<string, CompiledEventExecutor<any>>();
 
   /**
+   * The same executors compiled to report a hook's failure instead of
+   * throwing it, for `emit(event, payload, { catch: true })`. A map of its
+   * own, so no event name can collide with another event's caught executor.
+   */
+  protected catchCache = new Map<string, CompiledEventExecutor<any>>();
+
+  /**
    * Cache of resolved (topo-sorted) hook arrays per event.
    */
   protected sortedCache = new Map<string, Array<Hook>>();
@@ -58,6 +65,7 @@ export class EventManager {
   public clear(): void {
     this.events = {};
     this.cache.clear();
+    this.catchCache.clear();
     this.sortedCache.clear();
   }
 
@@ -104,7 +112,7 @@ export class EventManager {
 
   protected invalidateCache(event: string): void {
     this.cache.delete(event);
-    this.cache.delete(`${event}:catch`);
+    this.catchCache.delete(event);
     this.sortedCache.delete(event);
   }
 
@@ -156,7 +164,7 @@ export class EventManager {
   protected topoSort(hooks: Array<Hook>): Array<Hook> {
     if (hooks.length <= 1) return hooks;
 
-    // Check if any hook has constraints — skip sort if none
+    // Check if any hook has constraints: skip sort if none
     const hasConstraints = hooks.some(
       (h) =>
         (h.before && h.before.length > 0) || (h.after && h.after.length > 0),
@@ -335,12 +343,6 @@ export class EventManager {
   }
 
   /**
-   * Emits the specified event with the given payload.
-   *
-   * Auto-compiles and caches an optimized executor on first call per event.
-   * Use `{ log: true }` for startup events that need timing information.
-   */
-  /**
    * Report a listener that threw, without feeding the failure back into the
    * event it came from.
    *
@@ -384,17 +386,21 @@ export class EventManager {
     catchErrors?: boolean,
   ): void | Promise<void> {
     HookNamePolicy.assertCurrent(event);
-    const cacheKey = catchErrors
-      ? `${event as string}:catch`
-      : (event as string);
-    let executor = this.cache.get(cacheKey);
+    const cache = catchErrors ? this.catchCache : this.cache;
+    let executor = cache.get(event as string);
     if (!executor) {
       executor = this.compile(event, { catch: catchErrors });
-      this.cache.set(cacheKey, executor);
+      cache.set(event as string, executor);
     }
     return executor(payload);
   }
 
+  /**
+   * Emits the specified event with the given payload.
+   *
+   * Auto-compiles and caches an optimized executor on first call per event.
+   * Use `{ log: true }` for startup events that need timing information.
+   */
   public async emit<T extends keyof Hooks>(
     event: T,
     payload: Hooks[T],

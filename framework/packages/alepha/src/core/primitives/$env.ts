@@ -23,7 +23,7 @@ import { $context } from "./$context.ts";
  *     HELLO: z.text()
  *   }));
  *
- *   sayHello = () => this.log.info("Hello ${this.env.HELLO}")
+ *   sayHello = () => this.log.info(`Hello ${this.env.HELLO}`)
  * }
  *
  * run(alepha.with(App));
@@ -32,7 +32,7 @@ import { $context } from "./$context.ts";
 export const $env = <T extends ZObject>(type: T): Infer<T> => {
   const { alepha, service, module } = $context();
 
-  // allow to inject Zod schemas
+  // only an object schema maps onto environment variables
   if (!z.schema.isObject(type)) {
     throw new AlephaError("Type must be an ZObject");
   }

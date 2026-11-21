@@ -101,10 +101,6 @@ export class ContainerGraph {
    */
   protected readonly frames: number[] = [0];
 
-  public get classes(): ReadonlyMap<Service, ContainerClassRecord> {
-    return this.records;
-  }
-
   public clear(): void {
     this.records.clear();
     this.modulesBy.clear();
@@ -217,14 +213,9 @@ export class ContainerGraph {
   public purity(): PurityEntry[] {
     const records = [...this.records.values()];
     const tables = records.filter((it) => this.holds(it, "table"));
-    const own = new Map<Service, string[]>();
-    for (const record of tables) {
-      own.set(record.service, this.ownReasons(record));
-    }
-
     const reasons = new Map<Service, string[]>();
     for (const record of tables) {
-      reasons.set(record.service, [...own.get(record.service)!]);
+      reasons.set(record.service, this.ownReasons(record));
     }
     let pure = new Set(
       tables

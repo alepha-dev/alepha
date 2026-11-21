@@ -13,13 +13,11 @@ export interface PrimitiveArgs<T extends object = {}> {
   options: T;
   alepha: Alepha;
   service: InstantiableClass<Service>;
-  module?: Service;
 }
 
 export interface PrimitiveConfig {
   propertyKey: string;
   service: InstantiableClass<Service>;
-  module?: Service;
 }
 
 export abstract class Primitive<T extends object = {}> {
@@ -41,7 +39,6 @@ export abstract class Primitive<T extends object = {}> {
     this.config = {
       propertyKey: "",
       service: args.service,
-      module: args.module,
     };
   }
 
@@ -57,7 +54,7 @@ export abstract class Primitive<T extends object = {}> {
   /**
    * Override (partially) the options of this primitive.
    *
-   * Options are shallow-merged into the existing options — fields not present
+   * Options are shallow-merged into the existing options: fields not present
    * in `partial` are preserved. Must be called BEFORE `alepha.start()`;
    * throws once the container has started because options are consumed during
    * start-up (route registration, etc.) and later mutations would have no effect.

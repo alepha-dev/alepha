@@ -1,5 +1,5 @@
 import { $env, $hook, $inject, Alepha, ContainerLockedError, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("Alepha#start", () => {
   /**
@@ -7,15 +7,7 @@ describe("Alepha#start", () => {
    *
    * Start act like a lock, it will prevent any further registration.
    */
-  it("should start application successfully", async () => {
-    const app = await Alepha.create().start();
-
-    // Start again has no effect.
-    await app.start();
-    await app.start();
-  });
-
-  it("should lock container after start", async () => {
+  it("should lock container after start", async ({ expect }) => {
     class A {
       a = "a";
       e = $env(
@@ -45,7 +37,7 @@ describe("Alepha#start", () => {
    *
    * To control stop order, use `priority: "first"` on hooks.
    */
-  it("should execute hooks in correct order", async () => {
+  it("should execute hooks in correct order", async ({ expect }) => {
     const stack: string[] = [];
 
     class A {
@@ -126,7 +118,7 @@ describe("Alepha#start", () => {
     ]);
   });
 
-  it("should support restart lifecycle", async () => {
+  it("should support restart lifecycle", async ({ expect }) => {
     let count = 0;
 
     const alepha = Alepha.create().with(

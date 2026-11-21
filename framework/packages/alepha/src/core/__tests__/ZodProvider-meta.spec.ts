@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { z } from "../providers/ZodProvider.ts";
 
@@ -13,31 +13,31 @@ import { z } from "../providers/ZodProvider.ts";
  * names ("Item Count", "Rich") instead of the titles, silently.
  */
 describe("z.schema.meta", () => {
-  it("should read an annotation on a bare schema", () => {
+  it("should read an annotation on a bare schema", ({ expect }) => {
     const schema = z.string().meta({ title: "Name" });
 
     expect(z.schema.meta(schema).title).toBe("Name");
   });
 
-  it("should read an annotation written before .default()", () => {
+  it("should read an annotation written before .default()", ({ expect }) => {
     const schema = z.enum(["a", "b"]).meta({ title: "Letter" }).default("a");
 
     expect(z.schema.meta(schema).title).toBe("Letter");
   });
 
-  it("should read an annotation written after .default()", () => {
+  it("should read an annotation written after .default()", ({ expect }) => {
     const schema = z.enum(["a", "b"]).default("a").meta({ title: "Letter" });
 
     expect(z.schema.meta(schema).title).toBe("Letter");
   });
 
-  it("should read an annotation written after .optional()", () => {
+  it("should read an annotation written after .optional()", ({ expect }) => {
     const schema = z.string().optional().meta({ title: "Nickname" });
 
     expect(z.schema.meta(schema).title).toBe("Nickname");
   });
 
-  it("should read through a stack of wrappers", () => {
+  it("should read through a stack of wrappers", ({ expect }) => {
     const schema = z
       .string()
       .meta({ title: "Nickname" })
@@ -48,7 +48,7 @@ describe("z.schema.meta", () => {
     expect(z.schema.meta(schema).title).toBe("Nickname");
   });
 
-  it("should merge the layers rather than pick one", () => {
+  it("should merge the layers rather than pick one", ({ expect }) => {
     const schema = z
       .string()
       .meta({ title: "Nickname" })
@@ -61,7 +61,7 @@ describe("z.schema.meta", () => {
     });
   });
 
-  it("should let the outer layer win a contested key", () => {
+  it("should let the outer layer win a contested key", ({ expect }) => {
     const schema = z.string().meta({ title: "Inner" }).default("x").meta({
       title: "Outer",
     });
@@ -69,7 +69,9 @@ describe("z.schema.meta", () => {
     expect(z.schema.meta(schema).title).toBe("Outer");
   });
 
-  it("should answer an empty object for an unannotated schema", () => {
+  it("should answer an empty object for an unannotated schema", ({
+    expect,
+  }) => {
     expect(z.schema.meta(z.string().optional())).toEqual({});
   });
 });

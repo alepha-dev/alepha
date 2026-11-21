@@ -1,8 +1,8 @@
 import { $inject, Alepha, TooLateSubstitutionError } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
-describe("Alepha#with", () => {
-  it("should allow substitution", () => {
+describe("Alepha#with substitution", () => {
+  it("should allow substitution", ({ expect }) => {
     class A {
       value = "a";
     }
@@ -39,7 +39,7 @@ describe("Alepha#with", () => {
     a = $inject(A);
   }
 
-  it("should allow optional substitution", () => {
+  it("should allow optional substitution", ({ expect }) => {
     const T1 = Alepha.create().with(M);
     expect(T1.inject(M).a.a).toBe("a");
 
@@ -64,10 +64,12 @@ describe("Alepha#with", () => {
       use: C,
       optional: true,
     });
-    expect(T1.inject(M).a.a).toBe("a");
+    expect(T4.inject(M).a.a).toBe("a");
   });
 
-  it("should reject substitution of already registered service", () => {
+  it("should reject substitution of already registered service", ({
+    expect,
+  }) => {
     const T5 = Alepha.create();
     T5.with(M);
     expect(() =>

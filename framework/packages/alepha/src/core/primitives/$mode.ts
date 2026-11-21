@@ -8,7 +8,7 @@ export interface ModeOptions {
    * Environment variable to check for.
    *
    * The mode activates when:
-   * - The env variable is enabled (e.g. `MIGRATE=true` — but NOT `MIGRATE=false`,
+   * - The env variable is enabled (e.g. `MIGRATE=true`, but NOT `MIGRATE=false`,
    *   `MIGRATE=0` or `MIGRATE=`, see `Alepha#isEnvEnabled`), OR
    * - The `MODE` env equals this value (e.g. `MODE=MIGRATE`)
    *

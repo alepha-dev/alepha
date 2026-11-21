@@ -1,11 +1,12 @@
-import { Alepha, type RunOptions, z } from "alepha";
+import { $env, Alepha, type RunOptions, z } from "alepha";
 import { describe, expectTypeOf, it } from "vitest";
 
 import { run as nativeRun } from "../index.native.ts";
+import { run as nodeRun } from "../index.ts";
 import { run as workerdRun } from "../index.workerd.ts";
 
-describe("host-owned runtime entry points", () => {
-  it("advertises only environment options", () => {
+describe("run entry points", () => {
+  it("advertises only environment options on the host-owned ones", () => {
     expectTypeOf<Parameters<typeof nativeRun>[1]>().toEqualTypeOf<
       Pick<RunOptions, "env"> | undefined
     >();
@@ -15,6 +16,7 @@ describe("host-owned runtime entry points", () => {
   });
 
   for (const [name, run] of [
+    ["node", nodeRun],
     ["native", nativeRun],
     ["workerd", workerdRun],
   ] as const) {
@@ -22,6 +24,10 @@ describe("host-owned runtime entry points", () => {
       expect,
     }) => {
       const previous = Object.getOwnPropertyDescriptor(globalThis, "__alepha");
+      const hostKey = Symbol.for("alepha.run.host");
+      // The Node `run` schedules a start and traps signals unless a host owns
+      // the lifecycle: one is installed so this test only reads the env.
+      (globalThis as any)[hostKey] = { attach: () => {} };
       try {
         class App {}
         const created = run(App, { env: { RUN_MARKER: "created" } });
@@ -37,11 +43,55 @@ describe("host-owned runtime entry points", () => {
         expect(result.env.RUN_MARKER).toBe("after");
         expect(result.env.RUN_NUMBER).toBe(7);
         expect(result.env.RUN_BOOLEAN).toBe(true);
+        expect(existing.getEnvSchemas()).toEqual([
+          { schema, values: { RUN_MARKER: "after" }, owner: undefined },
+        ]);
         expect(existing.parseEnv(schema).RUN_MARKER).toBe("after");
-        if (name === "workerd") {
+        if (name !== "native") {
           expect((globalThis as { __alepha?: Alepha }).__alepha).toBe(existing);
         }
       } finally {
+        delete (globalThis as any)[hostKey];
+        if (previous) Object.defineProperty(globalThis, "__alepha", previous);
+        else Reflect.deleteProperty(globalThis, "__alepha");
+      }
+    });
+
+    it(`applies ${name} env to the $env reads made after run, not to a service already built`, ({
+      expect,
+    }) => {
+      const previous = Object.getOwnPropertyDescriptor(globalThis, "__alepha");
+      const hostKey = Symbol.for("alepha.run.host");
+      (globalThis as any)[hostKey] = { attach: () => {} };
+      const marker = "RUN_PROCESS_MARKER";
+      process.env[marker] = "process";
+      try {
+        const schema = () =>
+          z.object({
+            RUN_MARKER: z.text(),
+            [marker]: z.text().optional(),
+          });
+        class Early {
+          env = $env(schema());
+        }
+        class Late {
+          env = $env(schema());
+        }
+        const alepha = new Alepha({ env: { RUN_MARKER: "container" } });
+        const early = alepha.inject(Early);
+
+        run(alepha, { env: { RUN_MARKER: "opts" } });
+
+        expect(alepha.env.RUN_MARKER).toBe("opts");
+        expect(early.env.RUN_MARKER).toBe("container");
+        expect(alepha.inject(Late).env.RUN_MARKER).toBe("opts");
+        // An existing container keeps its own env: `process.env` is merged
+        // only when `run` creates the container.
+        expect(alepha.env[marker]).toBeUndefined();
+        expect(alepha.inject(Late).env[marker]).toBeUndefined();
+      } finally {
+        delete process.env[marker];
+        delete (globalThis as any)[hostKey];
         if (previous) Object.defineProperty(globalThis, "__alepha", previous);
         else Reflect.deleteProperty(globalThis, "__alepha");
       }

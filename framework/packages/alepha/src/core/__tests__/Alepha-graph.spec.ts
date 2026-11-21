@@ -1,8 +1,8 @@
 import { $inject, Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("Alepha#graph", () => {
-  it("should generate dependency graph", async () => {
+  it("should generate dependency graph", async ({ expect }) => {
     class A {
       value = "a";
     }

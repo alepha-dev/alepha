@@ -1,19 +1,16 @@
 import {
   $context,
-  $env,
   $inject,
   Alepha,
   CircularDependencyError,
-  SchemaValidationError,
   type Service,
-  z,
 } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { MissingContextError } from "../errors/MissingContextError.ts";
 
 describe("$inject", () => {
-  it("should inject dependencies correctly", () => {
+  it("should inject dependencies correctly", ({ expect }) => {
     class A {
       hello = "world";
     }
@@ -39,7 +36,7 @@ describe("$inject", () => {
     expect(c2.a.hello).toBe("test");
   });
 
-  it("should throw error when missing context", () => {
+  it("should throw error when missing context", ({ expect }) => {
     class A {}
 
     class B {
@@ -50,51 +47,14 @@ describe("$inject", () => {
   });
 });
 
-describe("$env", () => {
-  it("should inject environment variables correctly", () => {
-    class A {
-      env = $env(
-        z.object({
-          N1: z.text(),
-          N2: z.text({ default: "$N1" }),
-        }),
-      );
-    }
-
-    class B {
-      a = $inject(A);
-    }
-
-    class C {
-      b = $inject(B);
-    }
-
-    expect(
-      Alepha.create({ env: { N1: "abc" } }).inject(C).b.a.env,
-    ).toStrictEqual({
-      N1: "abc",
-      N2: "abc",
-    });
-
-    expect(
-      Alepha.create({ env: { N1: "abc", N2: "efg" } }).inject(C).b.a.env,
-    ).toStrictEqual({
-      N1: "abc",
-      N2: "efg",
-    });
-
-    expect(() => Alepha.create().inject(C)).toThrow(SchemaValidationError);
-  });
-});
-
 describe("$inject - circular dependencies", () => {
-  it("should detect circular dependencies", () => {
+  it("should detect circular dependencies", ({ expect }) => {
     const superInject = (type: Service) => {
       const { alepha } = $context();
-      alepha.inject(Module); // <- trying to "#get" during a tree walk is bad
+      alepha.inject(Module); // <- injecting during a tree walk is bad
 
-      // consider using "#register" instead
-      // register check if the type is already registered (or pending) before calling #get
+      // `with` is the fix: it checks whether the type is already registered
+      // (or pending) before it injects
 
       return alepha.inject(type);
     };
@@ -116,10 +76,12 @@ describe("$inject - circular dependencies", () => {
     );
   });
 
-  it("should fix circular dependencies with proper registration", () => {
+  it("should fix circular dependencies with proper registration", ({
+    expect,
+  }) => {
     const superInject = <T extends object>(type: Service<T>): T => {
       const { alepha } = $context();
-      alepha.with(Module); // <- replace .get by .with to fix circular dependency
+      alepha.with(Module); // <- `with` in place of `inject` avoids the circular dependency
       return alepha.inject(type);
     };
 
@@ -140,7 +102,7 @@ describe("$inject - circular dependencies", () => {
 });
 
 describe("$inject - inheritance", () => {
-  it("should handle class inheritance correctly", () => {
+  it("should handle class inheritance correctly", ({ expect }) => {
     const logs: string[] = [];
     class P1 {
       constructor() {
@@ -178,7 +140,9 @@ describe("$inject - inheritance", () => {
 });
 
 describe("$inject - throwing constructors", () => {
-  it("should report the original error on every retry, not a phantom cycle", () => {
+  it("should report the original error on every retry, not a phantom cycle", ({
+    expect,
+  }) => {
     class Boom {
       constructor() {
         throw new Error("boom-original");
@@ -192,7 +156,9 @@ describe("$inject - throwing constructors", () => {
     expect(() => alepha.inject(Boom)).toThrow("boom-original");
   });
 
-  it("should restore the $context cursor after a constructor throws", () => {
+  it("should restore the $context cursor after a constructor throws", ({
+    expect,
+  }) => {
     class Boom {
       constructor() {
         throw new Error("boom");
@@ -204,7 +170,9 @@ describe("$inject - throwing constructors", () => {
     expect(() => $context()).toThrow(MissingContextError);
   });
 
-  it("should keep injecting other services after a failed instantiation", () => {
+  it("should keep injecting other services after a failed instantiation", ({
+    expect,
+  }) => {
     class Boom {
       constructor() {
         throw new Error("boom");
@@ -221,7 +189,7 @@ describe("$inject - throwing constructors", () => {
 });
 
 describe("$inject - circular dependency reporting", () => {
-  it("should report the full cycle path in the error message", () => {
+  it("should report the full cycle path in the error message", ({ expect }) => {
     class A {
       b = $inject(B);
     }

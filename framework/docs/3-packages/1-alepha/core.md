@@ -24,6 +24,7 @@ and providing a unified interface for the application.
 
 - [`$atom`](/docs/reference-primitives-$atom) - Define an atom for state management.
 - [`$computed`](/docs/reference-primitives-$computed) - Define a derived, read-only value computed from one or more atoms
+- [`$context`](/docs/reference-primitives-$context) - Get Alepha instance and current service from the current context.
 - [`$env`](/docs/reference-primitives-$env) - Get typed values from environment variables.
 - [`$error`](/docs/reference-primitives-$error) - Declares an error: a name, and a schema for the data it carries.
 - [`$hook`](/docs/reference-primitives-$hook) - Registers a new hook.

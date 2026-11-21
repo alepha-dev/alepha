@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { $inject, Alepha, AlephaError, MissingContextError } from "alepha";
+import { describe, it } from "vitest";
 
 describe("Alepha#inject", () => {
   it("should handle transient lifetime", ({ expect }) => {
@@ -60,7 +60,7 @@ describe("Alepha#inject", () => {
    * substitution exactly as an inject-by-class does. The generated Cloudflare
    * worker entry injects `"alepha.websocket.WebSocketServerProvider"` by id while the
    * websocket module registers it as `{ provide: WebSocketServerProvider,
-   * use: CloudflareDurableObjectWebSocketServerProvider }` — without the
+   * use: CloudflareDurableObjectWebSocketServerProvider }`, without the
    * fallback every WebSocket upgrade on workerd died with
    * `Service not found: WebSocketServerProvider`.
    */
@@ -112,7 +112,7 @@ describe("Alepha#inject", () => {
     });
   });
 
-  it("should pass constructor args correctly", () => {
+  it("should pass constructor args correctly", ({ expect }) => {
     class Logger {
       public a: string;
 
@@ -127,9 +127,60 @@ describe("Alepha#inject", () => {
     expect(alepha.inject(Logger).a).toBe("a");
   });
 
-  it("should inject Alepha instance itself", () => {
+  it("should inject Alepha instance itself", ({ expect }) => {
     const alepha = new Alepha();
 
     expect(alepha.inject(Alepha)).toBe(alepha);
+  });
+
+  it("should keep building a service that creates another container in a field", ({
+    expect,
+  }) => {
+    class Dep {}
+    class Outer {
+      inner = new Alepha();
+      dep = $inject(Dep);
+    }
+    class Created {
+      inner = Alepha.create();
+      dep = $inject(Dep);
+    }
+
+    const alepha = new Alepha();
+    const outer = alepha.inject(Outer);
+    expect(outer.dep).toBe(alepha.inject(Dep));
+    expect(outer.inner).not.toBe(alepha);
+    expect(alepha.inject(Created).dep).toBe(alepha.inject(Dep));
+
+    // Once the outer construction is over, the cursor is cleared again.
+    expect(() => $inject(Dep)).toThrow(MissingContextError);
+  });
+
+  it("should hand the cursor back to the outer container when the inner one throws", ({
+    expect,
+  }) => {
+    class Dep {}
+    class Broken {
+      constructor() {
+        throw new AlephaError("broken");
+      }
+    }
+    class Outer {
+      failed = false;
+      dep: Dep;
+      constructor() {
+        try {
+          new Alepha().inject(Broken);
+        } catch {
+          this.failed = true;
+        }
+        this.dep = $inject(Dep);
+      }
+    }
+
+    const alepha = new Alepha();
+    const outer = alepha.inject(Outer);
+    expect(outer.failed).toBe(true);
+    expect(outer.dep).toBe(alepha.inject(Dep));
   });
 });

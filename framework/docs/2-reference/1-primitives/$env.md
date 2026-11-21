@@ -30,7 +30,7 @@ class App {
     }),
   );
 
-  sayHello = () => this.log.info("Hello ${this.env.HELLO}");
+  sayHello = () => this.log.info(`Hello ${this.env.HELLO}`);
 }
 
 run(alepha.with(App));

@@ -44,7 +44,7 @@ export const $atom = <T extends ZType, N extends string>(
       `Atom "${options.name}" declares both serverOnly and persist: "${options.persist}", ` +
         "which is a contradiction: serverOnly only guarantees exclusion from the SSR " +
         "hydration payload, while every persist adapter (cookie, localStorage, " +
-        "sessionStorage) targets the browser by definition — cookie persistence ships " +
+        "sessionStorage) targets the browser by definition: cookie persistence ships " +
         "the value in a Set-Cookie response header, and web-storage persistence IS the " +
         "browser. Combining them silently leaks the value through the persistence " +
         "channel instead of the hydration payload. Remove `serverOnly` or `persist` from " +
@@ -67,11 +67,11 @@ export type AtomOptions<T extends ZType, N extends string> = {
   /**
    * Persist this atom outside the in-memory store.
    *
-   * - `"cookie"` — synced to an HTTP cookie by the `alepha/server/cookies`
+   * - `"cookie"`: synced to an HTTP cookie by the `alepha/server/cookies`
    *   module. Works on the server AND in the browser, so it is the only
    *   correct adapter for SSR apps: the server reads it while rendering and
    *   the first paint matches the persisted state.
-   * - `"localStorage"` / `"sessionStorage"` — browser Web Storage. Fine for
+   * - `"localStorage"` / `"sessionStorage"`: browser Web Storage. Fine for
    *   pure SPA apps. The server cannot see these values; registering such
    *   an atom during SSR logs a warning.
    *
@@ -81,13 +81,13 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * **Security: cookie-persisted atoms are attacker-controlled.** The
    * cookie written by `persist: "cookie"` is unsigned, unencrypted, and
    * freely writable by any client-side script (`AtomCookiePersistence`'s
-   * `cookieOptions()` sets no `sign`, `encrypt`, or `httpOnly`) — a request
+   * `cookieOptions()` sets no `sign`, `encrypt`, or `httpOnly`): a request
    * can present any value it wants for it. Never persist trust-bearing
-   * state — user ids, roles, entitlements, permissions — in a
+   * state (user ids, roles, entitlements, permissions) in a
    * `persist: "cookie"` atom. If you need a signed, encrypted, and/or
    * `httpOnly` cookie, declare an explicit
    * `$cookie({ key: atom.key, sign: true, encrypt: true, httpOnly: true, ... })`
-   * binding instead — that is the escape hatch for trust-bearing values.
+   * binding instead: that is the escape hatch for trust-bearing values.
    */
   persist?: AtomPersist;
 
@@ -100,7 +100,7 @@ export type AtomOptions<T extends ZType, N extends string> = {
    *    the HTML payload.
    * 2. The inspector (`DevToolsMetadataProvider.getAtoms()`) omits
    *    `defaultValue` and `currentValue` from `/metadata`. The atom is
-   *    still listed with its name, description, and schema — a developer
+   *    still listed with its name, description, and schema: a developer
    *    can see that it exists and what shape it has, just not what is in
    *    it.
    *
@@ -108,8 +108,8 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * through: an `$action` that returns the value still returns it.
    *
    * **Only request-scoped writes were ever at risk.** `exportAtoms` is
-   * called with scope `"current"`, which reads the current ALS layer alone
-   * — no parent walk, no app-store fallback. An atom configured at boot
+   * called with scope `"current"`, which reads the current ALS layer alone,
+   * no parent walk, no app-store fallback. An atom configured at boot
    * (every `*Options` atom) therefore never reached the payload to begin
    * with, so adding the flag there changes no runtime behaviour; it
    * documents intent and closes the door on a future in-request
@@ -118,7 +118,7 @@ export type AtomOptions<T extends ZType, N extends string> = {
    *
    * **Cannot be combined with `persist`.** Every persistence adapter
    * (`"cookie"`, `"localStorage"`, `"sessionStorage"`) targets the browser
-   * by definition — cookie persistence ships the value in a `Set-Cookie`
+   * by definition: cookie persistence ships the value in a `Set-Cookie`
    * response header, and web-storage persistence IS the browser. Declaring
    * `serverOnly: true` together with any `persist` value throws
    * `AlephaError` at `$atom()` call time, because the persistence channel
@@ -131,7 +131,7 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * **Never make a `serverOnly` atom a dependency of a `$computed` that the
    * browser reads through `useComputed`.** A computed is re-derived, never
    * serialized: the server derives it from the atom's real value, and the
-   * browser — which never received that value — re-derives it from the
+   * browser, which never received that value, re-derives it from the
    * atom's default. The two disagree, producing a React hydration mismatch
    * and a silently wrong value from then on. Keep such a computed
    * server-side (`alepha.store.get`), or derive it from atoms that ship.

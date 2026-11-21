@@ -17,7 +17,7 @@ export const jsonSchemaToZod = (schema: any): ZType => {
   // Carry the documentation across the round trip. `title` and `description`
   // are the only human-facing parts of a JSON Schema, and dropping them means
   // a schema that documents itself (`z.number().describe("…")`) arrives at the
-  // form layer mute — no field label, no help text. `.meta()` is where the UI
+  // form layer mute: no field label, no help text. `.meta()` is where the UI
   // (parseField → FormField) reads them from.
   const doc: Record<string, unknown> = {};
   if (typeof schema?.title === "string") doc.title = schema.title;
@@ -61,7 +61,7 @@ const jsonSchemaToZodInner = (schema: any): ZType => {
 
   // `const` is how a literal survives serialization. Dropping it (falling
   // through to the plain `type` below) loses two things: the value stops being
-  // validated as that literal, and — worse — a DISCRIMINATED union round-trips
+  // validated as that literal, and, worse, a DISCRIMINATED union round-trips
   // into an undiscriminable one, so nothing downstream can tell which variant
   // a value belongs to.
   if (schema.const !== undefined) {
@@ -77,6 +77,20 @@ const jsonSchemaToZodInner = (schema: any): ZType => {
 
   switch (schema.type) {
     case "object": {
+      // A record: no declared property, and a schema (or `true`) for every
+      // key. Built as `z.object`, it would strip all of them.
+      const additional = schema.additionalProperties;
+      if (
+        Object.keys(schema.properties ?? {}).length === 0 &&
+        (additional === true ||
+          (typeof additional === "object" && additional !== null))
+      ) {
+        return z.record(
+          z.string(),
+          additional === true ? z.any() : jsonSchemaToZod(additional),
+        );
+      }
+
       const required: string[] = Array.isArray(schema.required)
         ? schema.required
         : [];

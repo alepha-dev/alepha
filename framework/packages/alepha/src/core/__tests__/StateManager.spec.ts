@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, it, vi } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
@@ -32,7 +32,7 @@ describe("StateManager", () => {
   });
 
   describe("Basic Operations", () => {
-    it("should set and get values with proper typing", () => {
+    it("should set and get values with proper typing", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
 
@@ -45,11 +45,11 @@ describe("StateManager", () => {
       expect(typedManager.get("active")).toBe(true);
     });
 
-    it("should return undefined for non-existent keys", () => {
+    it("should return undefined for non-existent keys", ({ expect }) => {
       expect(stateManager.get("nonExistent")).toBeUndefined();
     });
 
-    it("should check if keys exist", () => {
+    it("should check if keys exist", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
       typedManager.set("name", "John");
@@ -58,7 +58,7 @@ describe("StateManager", () => {
       expect(typedManager.has("age")).toBe(false);
     });
 
-    it("should handle different data types", () => {
+    it("should handle different data types", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
       typedManager.set("name", "hello");
@@ -72,7 +72,7 @@ describe("StateManager", () => {
       expect(typedManager.get("config")).toEqual({ theme: "dark" });
     });
 
-    it("should return all keys", () => {
+    it("should return all keys", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
       typedManager.set("name", "John");
@@ -85,7 +85,7 @@ describe("StateManager", () => {
   });
 
   describe("Mutation Listeners", () => {
-    it("should call listeners when values change", () => {
+    it("should call listeners when values change", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
       const listener = vi.fn();
@@ -100,7 +100,7 @@ describe("StateManager", () => {
       });
     });
 
-    it("should call listeners with previous values", () => {
+    it("should call listeners with previous values", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
 
@@ -118,7 +118,7 @@ describe("StateManager", () => {
       });
     });
 
-    it("should return unsubscribe function", () => {
+    it("should return unsubscribe function", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
       const listener = vi.fn();
@@ -134,7 +134,7 @@ describe("StateManager", () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it("should support multiple listeners for same key", async () => {
+    it("should support multiple listeners for same key", async ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
       const listener1 = vi.fn();
@@ -153,7 +153,7 @@ describe("StateManager", () => {
   });
 
   describe("Chaining", () => {
-    it("should support method chaining", () => {
+    it("should support method chaining", ({ expect }) => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
 
@@ -173,7 +173,9 @@ describe("StateManager", () => {
       stateManager = alepha.store as unknown as StateManager<TestState>;
     });
 
-    it("should use ALS when available and context exists", async () => {
+    it("should use ALS when available and context exists", async ({
+      expect,
+    }) => {
       // Set up ALS context with some initial state
       const testValue = alepha.context.run(
         () => {
@@ -185,7 +187,7 @@ describe("StateManager", () => {
       expect(testValue).toBe("ALS Value");
     });
 
-    it("should set and get values within ALS context", async () => {
+    it("should set and get values within ALS context", async ({ expect }) => {
       const result = alepha.context.run(
         () => {
           stateManager.set("name", "ALS Value");
@@ -197,32 +199,54 @@ describe("StateManager", () => {
       expect(result).toBe("ALS Value");
     });
 
-    it("should use local store when ALS context doesn't exist", () => {
+    it("should write the app value under skipContext even when the fork already holds that value", ({
+      expect,
+    }) => {
+      stateManager.set("name", "app");
+
+      alepha.context.run(
+        () => {
+          stateManager.set("name", "fork");
+          stateManager.set("name", "fork", { skipContext: true });
+          expect(stateManager.get("name")).toBe("fork");
+        },
+        { context: "test-context" },
+      );
+
+      expect(stateManager.get("name")).toBe("fork");
+    });
+
+    it("should skip an app write under skipContext that changes nothing", ({
+      expect,
+    }) => {
+      const listener = vi.fn();
+      stateManager.set("name", "app");
+      alepha.events.on("state:mutated", listener);
+
+      alepha.context.run(
+        () => {
+          stateManager.set("name", "fork");
+          listener.mockClear();
+          stateManager.set("name", "app", { skipContext: true });
+        },
+        { context: "test-context" },
+      );
+
+      expect(listener).not.toHaveBeenCalled();
+      expect(stateManager.get("name")).toBe("app");
+    });
+
+    it("should use local store when ALS context doesn't exist", ({
+      expect,
+    }) => {
       // Outside of ALS context, should use local store
       stateManager.set("name", "Local Value");
       expect(stateManager.get("name")).toBe("Local Value");
     });
 
-    it("should set values in ALS when context exists", async () => {
-      // Note: AlsProvider spreads the store object, so we check values inside the callback
-      const result = alepha.context.run(
-        () => {
-          stateManager.set("name", "ALS Value");
-          return stateManager.get("name");
-        },
-        { context: "test-context" },
-      );
-
-      expect(result).toBe("ALS Value");
-    });
-
-    it("should set values in local store when no ALS context", () => {
-      // Outside ALS context, values go to local store
-      stateManager.set("name", "Local Value");
-      expect(stateManager.get("name")).toBe("Local Value");
-    });
-
-    it("should emit events when setting values through ALS", async () => {
+    it("should emit events when setting values through ALS", async ({
+      expect,
+    }) => {
       const listener = vi.fn();
       alepha.events.on("state:mutated", listener);
 
@@ -238,7 +262,7 @@ describe("StateManager", () => {
       });
     });
 
-    it("should emit events with previous ALS values", async () => {
+    it("should emit events with previous ALS values", async ({ expect }) => {
       const listener = vi.fn();
       alepha.events.on("state:mutated", listener);
 
@@ -254,14 +278,9 @@ describe("StateManager", () => {
       });
     });
 
-    it("should handle state manager without ALS provider", () => {
-      const typedManager = Alepha.create().inject(StateManager<TestState>);
-
-      typedManager.set("name", "Value");
-      expect(typedManager.get("name")).toBe("Value");
-    });
-
-    it("should prefer ALS values over local store when both exist", async () => {
+    it("should prefer ALS values over local store when both exist", async ({
+      expect,
+    }) => {
       // Set value in local store first
       stateManager.set("name", "Local Value");
 
@@ -278,7 +297,9 @@ describe("StateManager", () => {
       expect(result).toBe("ALS Priority");
     });
 
-    it("should not skip event emission when values are the same", async () => {
+    it("should not emit an event when the value is the same", async ({
+      expect,
+    }) => {
       const listener = vi.fn();
       alepha.events.on("state:mutated", listener);
 
@@ -291,7 +312,9 @@ describe("StateManager", () => {
       expect(listener).not.toHaveBeenCalled();
     });
 
-    it("should delete values from ALS when context exists", async () => {
+    it("should delete values from ALS when context exists", async ({
+      expect,
+    }) => {
       // Note: AlsProvider spreads the store object, so we check values inside the callback
       const result = alepha.context.run(
         () => {
@@ -313,20 +336,22 @@ describe("StateManager", () => {
       default: { theme: "light", count: 0 },
     });
 
-    it("rejects a write that violates the schema", () => {
+    it("rejects a write that violates the schema", ({ expect }) => {
       const alepha = Alepha.create();
       expect(() =>
         alepha.store.set(prefs, { theme: "dark", count: "nope" } as any),
       ).toThrow(SchemaValidationError);
     });
 
-    it("strips unknown keys on write", () => {
+    it("strips unknown keys on write", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.store.set(prefs, { theme: "dark", count: 1, extra: true } as any);
       expect(alepha.store.get(prefs)).toEqual({ theme: "dark", count: 1 });
     });
 
-    it("validates writes made through the raw string key once registered", () => {
+    it("validates writes made through the raw string key once registered", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
       alepha.store.get(prefs); // registers the atom
       expect(() =>
@@ -334,7 +359,7 @@ describe("StateManager", () => {
       ).toThrow();
     });
 
-    it("skips validation when skipValidation is set", () => {
+    it("skips validation when skipValidation is set", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.store.get(prefs);
       alepha.store.set(
@@ -347,14 +372,9 @@ describe("StateManager", () => {
       expect(alepha.store.get(prefs).theme).toBe(1);
     });
 
-    it("falls back to the default when a pre-seeded value is invalid", () => {
-      const alepha = Alepha.create({
-        "test.validation.prefs": { theme: 42 },
-      });
-      expect(alepha.store.get(prefs)).toEqual({ theme: "light", count: 0 });
-    });
-
-    it("warns when a pre-seeded value is invalid and falls back to the default", () => {
+    it("warns when a pre-seeded value is invalid and falls back to the default", ({
+      expect,
+    }) => {
       const warn = vi.fn();
       const alepha = Alepha.create({
         "test.validation.prefs": { theme: 42 },
@@ -372,14 +392,14 @@ describe("StateManager", () => {
       expect(warn.mock.calls[0][0]).toContain("test.validation.prefs");
     });
 
-    it("decodes a valid pre-seeded value through the schema", () => {
+    it("decodes a valid pre-seeded value through the schema", ({ expect }) => {
       const alepha = Alepha.create({
         "test.validation.prefs": { theme: "dark", count: 2, junk: 1 },
       });
       expect(alepha.store.get(prefs)).toEqual({ theme: "dark", count: 2 });
     });
 
-    it("exposes registered atoms via getAtom", () => {
+    it("exposes registered atoms via getAtom", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.store.get(prefs);
       expect(alepha.store.getAtom("test.validation.prefs")).toBeDefined();
@@ -394,7 +414,9 @@ describe("StateManager", () => {
       default: { theme: "light", count: 0 },
     });
 
-    it("decodes a value written into a request-scoped ALS layer before the atom registers, in place", () => {
+    it("decodes a value written into a request-scoped ALS layer before the atom registers, in place", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
 
       const result = alepha.context.run(
@@ -429,7 +451,9 @@ describe("StateManager", () => {
       });
     });
 
-    it("still resolves the default outside the fork after an atom first registered inside one", () => {
+    it("still resolves the default outside the fork after an atom first registered inside one", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
 
       alepha.context.run(
@@ -454,7 +478,9 @@ describe("StateManager", () => {
       expect(alepha.store.get(settings)).toEqual({ theme: "light", count: 0 });
     });
 
-    it("falls back to the default inside the same ALS layer (not the app store) when the seeded value is invalid, and warns", () => {
+    it("falls back to the default inside the same ALS layer (not the app store) when the seeded value is invalid, and warns", ({
+      expect,
+    }) => {
       const warn = vi.fn();
       const alepha = Alepha.create({
         "alepha.logger": {
@@ -484,7 +510,9 @@ describe("StateManager", () => {
       });
     });
 
-    it("hands out a fresh copy of the default when a seeded value is invalid — never the shared declaration", () => {
+    it("hands out a fresh copy of the default when a seeded value is invalid, never the shared declaration", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
 
       const result = alepha.context.run(
@@ -502,14 +530,16 @@ describe("StateManager", () => {
       // `atom.options.default` is a module-level object shared by every
       // container in the process. If the fallback aliased it instead of
       // cloning it through the validator, that mutation would have rewritten
-      // the declaration itself — permanently, for every request.
+      // the declaration itself: permanently, for every request.
       expect(settings.options.default).toEqual({ theme: "light", count: 0 });
 
       const fresh = Alepha.create();
       expect(fresh.store.get(settings)).toEqual({ theme: "light", count: 0 });
     });
 
-    it("decodes a value that landed in a parent fork layer before a nested fork registers the atom", () => {
+    it("decodes a value that landed in a parent fork layer before a nested fork registers the atom", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
 
       const result = alepha.context.run(
@@ -520,7 +550,7 @@ describe("StateManager", () => {
           });
 
           // A nested fork (e.g. a batched sub-request) is the one that
-          // first accesses the atom — the raw value lives one layer up.
+          // first accesses the atom: the raw value lives one layer up.
           return alepha.context.run(() => alepha.store.get(settings), {
             context: "req-1-child",
           });
@@ -541,7 +571,9 @@ describe("StateManager", () => {
       stateManager = alepha.store as unknown as StateManager<TestState>;
     });
 
-    it("should handle transitions between ALS and non-ALS contexts", async () => {
+    it("should handle transitions between ALS and non-ALS contexts", async ({
+      expect,
+    }) => {
       // Start with no ALS context
       stateManager.set("name", "Local Value");
       expect(stateManager.get("name")).toBe("Local Value");
@@ -556,24 +588,6 @@ describe("StateManager", () => {
 
       // Outside ALS context, should see local value again
       expect(stateManager.get("name")).toBe("Local Value");
-    });
-
-    it("should handle has() method with local store", () => {
-      // Set in local store
-      stateManager.set("name", "Local");
-
-      // has() checks local store
-      expect(stateManager.has("name")).toBe(true);
-      expect(stateManager.has("age")).toBe(false);
-    });
-
-    it("should handle keys() method with local store", () => {
-      // Set in local store
-      stateManager.set("active", true);
-
-      // keys() returns local store keys
-      const keys = alepha.store.keys();
-      expect(keys).toEqual(["active"]);
     });
   });
 
@@ -609,21 +623,21 @@ describe("StateManager", () => {
       get: (c, o) => c.value + o.value,
     });
 
-    it("reset restores the declared default", () => {
+    it("reset restores the declared default", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.store.set(counter, { value: 99 });
       alepha.store.reset(counter);
       expect(alepha.store.get(counter)).toEqual({ value: 0 });
     });
 
-    it("reset is exposed on the Alepha instance", () => {
+    it("reset is exposed on the Alepha instance", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.store.set(counter, { value: 99 });
       alepha.reset(counter);
       expect(alepha.get(counter)).toEqual({ value: 0 });
     });
 
-    it("watch fires with value and previous value", async () => {
+    it("watch fires with value and previous value", async ({ expect }) => {
       const alepha = Alepha.create();
       const calls: Array<[unknown, unknown]> = [];
 
@@ -637,7 +651,7 @@ describe("StateManager", () => {
       expect(calls).toEqual([[{ value: 1 }, { value: 0 }]]);
     });
 
-    it("watch returns an unsubscribe function", async () => {
+    it("watch returns an unsubscribe function", async ({ expect }) => {
       const alepha = Alepha.create();
       const calls: unknown[] = [];
 
@@ -652,7 +666,7 @@ describe("StateManager", () => {
       expect(calls).toEqual([]);
     });
 
-    it("watch supports computed values", async () => {
+    it("watch supports computed values", async ({ expect }) => {
       const alepha = Alepha.create();
       const calls: Array<[unknown, unknown]> = [];
 
@@ -666,13 +680,15 @@ describe("StateManager", () => {
       expect(calls).toEqual([[10, 0]]);
     });
 
-    it("register refuses a Computed, so it can never reach exportAtoms", () => {
+    it("register refuses a Computed, so it can never reach exportAtoms", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
 
       // `reset()`/`register()` are the only atom entry points that took a
       // Computed without complaint. A registered Computed would land in the
       // atom registry and from there be serialized into the SSR hydration
-      // payload — breaking the "never stored, never serialized" contract.
+      // payload, breaking the "never stored, never serialized" contract.
       expect(() => alepha.store.reset(doubledCounter as any)).toThrow(
         AlephaError,
       );
@@ -683,7 +699,7 @@ describe("StateManager", () => {
       expect(alepha.store.exportAtoms()["test.extras.doubled"]).toBeUndefined();
     });
 
-    it("serverOnly atoms are excluded from exportAtoms", () => {
+    it("serverOnly atoms are excluded from exportAtoms", ({ expect }) => {
       const alepha = Alepha.create();
       alepha.store.set(counter, { value: 1 });
       alepha.store.set(secret, { token: "s3cret" });
@@ -693,7 +709,9 @@ describe("StateManager", () => {
       expect(exported["test.extras.secret"]).toBeUndefined();
     });
 
-    it("serverOnly atoms are excluded from exportAtoms('current') — the ALS/SSR branch", () => {
+    it("serverOnly atoms are excluded from exportAtoms('current'): the ALS/SSR branch", ({
+      expect,
+    }) => {
       // This is the branch ReactServerTemplateProvider.buildHydrationData()
       // actually calls during SSR (exportAtoms("current")), serializing the
       // result straight into the <script id="__ssr"> hydration payload. The
@@ -713,7 +731,9 @@ describe("StateManager", () => {
       expect(exported["test.extras.secret"]).toBeUndefined();
     });
 
-    it("watch on a computed tracks prevValue correctly across two different dependency keys", async () => {
+    it("watch on a computed tracks prevValue correctly across two different dependency keys", async ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
       const calls: Array<[unknown, unknown]> = [];
 
@@ -737,7 +757,9 @@ describe("StateManager", () => {
       ]);
     });
 
-    it("reset's clone of the default cannot corrupt future resets (zod parse always returns a fresh object)", () => {
+    it("reset's clone of the default cannot corrupt future resets (zod parse always returns a fresh object)", ({
+      expect,
+    }) => {
       const alepha = Alepha.create();
       alepha.store.set(counter, { value: 99 });
       alepha.store.reset(counter);
@@ -751,7 +773,7 @@ describe("StateManager", () => {
       // The atom's declared default itself must be untouched: `reset()` ->
       // `set()` -> `SchemaValidator.validate()` runs `schema.safeParse()`,
       // and zod's object parsing always returns a brand-new object, never
-      // the same reference as `atom.options.default` — even when the input
+      // the same reference as `atom.options.default`, even when the input
       // is already valid. So the mutation above can never reach here.
       expect(counter.options.default).toEqual({ value: 0 });
 
@@ -765,7 +787,7 @@ describe("StateManager", () => {
   });
 
   describe("del", () => {
-    it("should remove the key from the app-level store", () => {
+    it("should remove the key from the app-level store", ({ expect }) => {
       const alepha = new Alepha();
       alepha.store.set("foo", 1);
       expect(alepha.store.has("foo")).toBe(true);
@@ -776,7 +798,7 @@ describe("StateManager", () => {
       expect(alepha.store.get("foo")).toBeUndefined();
     });
 
-    it("should shadow the app-level value inside a fork", () => {
+    it("should shadow the app-level value inside a fork", ({ expect }) => {
       const alepha = new Alepha();
       alepha.store.set("foo", "app");
 

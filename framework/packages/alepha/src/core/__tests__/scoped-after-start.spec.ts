@@ -1,8 +1,10 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 describe("lifetime: scoped after start()", () => {
-  it("resolves a scoped service inside a request fork after start()", async () => {
+  it("resolves a scoped service inside a request fork after start()", async ({
+    expect,
+  }) => {
     class ScopedThing {
       marker = "scoped";
     }
@@ -24,7 +26,7 @@ describe("lifetime: scoped after start()", () => {
     expect(result.a).toBe(result.b);
   });
 
-  it("isolates scoped instances across different forks", async () => {
+  it("isolates scoped instances across different forks", async ({ expect }) => {
     class ScopedThing {}
 
     const alepha = Alepha.create();

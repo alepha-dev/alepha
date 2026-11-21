@@ -4,12 +4,6 @@ import { ZodJsonSerializer } from "../helpers/ZodJsonSerializer.ts";
 import { z } from "../index.ts";
 
 /**
- * The serializer must write exactly what the parse-then-stringify path wrote,
- * for every value that parse accepts, and decline (answer `undefined`) for
- * every value whose TYPES parse rejects. Only constraint checks may differ:
- * a value failing one is written as it is.
- */
-/**
  * The closures alone, as where eval is refused (workerd, the browser).
  */
 class InterpretedSerializer extends ZodJsonSerializer {
@@ -109,6 +103,12 @@ const cases: Array<[string, unknown, unknown[]]> = [
   ],
 ];
 
+/**
+ * The serializer must write exactly what the parse-then-stringify path wrote,
+ * for every value that parse accepts, and decline (answer `undefined`) for
+ * every value whose TYPES parse rejects. Only constraint checks may differ:
+ * a value failing one is written as it is.
+ */
 for (const [mode, serializer] of serializers) {
   describe(`ZodJsonSerializer, ${mode}`, () => {
     for (const [name, schema, values] of cases) {
@@ -133,6 +133,9 @@ for (const [mode, serializer] of serializers) {
               );
               if (typeIssue) {
                 expect(written).toBeUndefined();
+              } else {
+                // Only a constraint check refused it: written as it is.
+                expect(written).toBe(JSON.stringify(value));
               }
             }
           });
@@ -157,11 +160,7 @@ for (const [mode, serializer] of serializers) {
       const refused: Array<[string, unknown]> = [
         ["union", z.union([z.text(), z.integer()])],
         ["strict object", (z.object({ a: z.text() }) as any).strict()],
-        [
-          "transform",
-          (z.text() as any).transform?.((value: string) => value.length) ??
-            z.union([z.text(), z.integer()]),
-        ],
+        ["transform", z.text().transform((value: string) => value.length)],
         [
           "object holding a union",
           z.object({ a: z.union([z.text(), z.integer()]) }),

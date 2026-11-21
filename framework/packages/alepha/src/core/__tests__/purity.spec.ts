@@ -151,7 +151,7 @@ describe("Alepha.purity", () => {
     expect(entryOf(alepha, Api).pure).toBe(true);
   });
 
-  it("calls a controller injected by a service not pure, naming the service, and sticky", ({
+  it("calls a controller injected by a service not pure, naming the service", ({
     expect,
   }) => {
     class Api {
@@ -260,14 +260,13 @@ describe("Alepha.purity", () => {
       // registers the module first, which creates `Listed`.
       value = 1;
     }
-    const Mod = $module({ name: "test.pulled", services: [Listed, Shared] });
+    $module({ name: "test.pulled", services: [Listed, Shared] });
     class Caller {
       shared = $inject(Shared);
     }
     // The server module registered up front, as an app does: otherwise
     // `Listed`'s action alone would bring it in, which is not pure (#Q3485).
     const alepha = Alepha.create().with(AlephaServer).with(Caller);
-    expect(Mod).toBeDefined();
     expect(entryOf(alepha, Listed).pure).toBe(true);
   });
 

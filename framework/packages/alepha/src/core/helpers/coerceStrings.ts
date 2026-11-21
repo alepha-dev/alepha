@@ -5,8 +5,8 @@ import { z } from "../providers/ZodProvider.ts";
  * HTTP headers, environment variables) to the JS type its schema declares.
  *
  * This is the zod-standard `z.coerce` behavior applied only at the edges where
- * inputs are inherently strings. A JSON request body and the ORM stay strict —
- * both carry their own types — but the non-file parts of a MULTIPART body do
+ * inputs are inherently strings. A JSON request body and the ORM stay strict
+ * (both carry their own types), but the non-file parts of a MULTIPART body do
  * not, and are coerced here too: without it a `z.boolean()` or `z.integer()`
  * field is undeclarable in a form, since the wire can only ever deliver a
  * string for it.
@@ -82,7 +82,7 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
 
   // A structured value arriving down a string-only wire: an env var holding
   // JSON, a query parameter carrying an object. Without this, declaring
-  // `z.object()` for such a field can only ever fail — the schema wants an
+  // `z.object()` for such a field can only ever fail: the schema wants an
   // object and the boundary can only deliver a string, so the field is
   // undeclarable rather than merely awkward.
   //
@@ -90,7 +90,7 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
   // `JSON.parse` on the off-chance it parses: `"null"`, `"7"` and `"true"` are
   // all valid JSON documents, and a schema expecting an object should reject
   // them by their own type rather than be handed the wrong one. Malformed input
-  // is returned as it came, per this file's contract — which is what turns a
+  // is returned as it came, per this file's contract, which is what turns a
   // stray comma in a dashboard textarea into a validation error naming the
   // variable, instead of an exception thrown from a parser nobody called.
   if (z.schema.isObject(base) || z.schema.isArray(base)) {

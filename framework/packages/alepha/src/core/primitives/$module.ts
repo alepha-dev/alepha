@@ -110,7 +110,7 @@ export const $module = (options: ModulePrimitiveOptions): Service<Module> => {
     writable: false,
   });
 
-  // Attach MODULE metadata to services and variants alike — both "belong" to this module.
+  // Attach MODULE metadata to services and variants alike: both "belong" to this module.
   for (const service of [...services, ...variants]) {
     if (!Module.is(service)) {
       (service as WithModule)[MODULE] = $;
@@ -185,13 +185,13 @@ export interface ModulePrimitiveOptions {
 
   /**
    * Additive side-effect hook. Runs BEFORE `imports[]` are wired and
-   * `services[]` are auto-injected — so substitutions it records apply to
+   * `services[]` are auto-injected, so substitutions it records apply to
    * the subsequent injection. Use it for:
    * - variant substitution: `alepha.with({ provide, use })`
    * - env parsing: `alepha.parseEnv(schema)`
    * - state seeding: `alepha.store.set(...)`
    *
-   * It cannot suppress auto-registration — `services[]` are always injected.
+   * It cannot suppress auto-registration: `services[]` are always injected.
    */
   register?: (alepha: Alepha) => void;
 

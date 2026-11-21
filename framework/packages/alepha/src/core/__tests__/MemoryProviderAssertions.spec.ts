@@ -3,7 +3,7 @@ import { AlephaBucket, MemoryFileStorageProvider } from "alepha/bucket";
 import { MemoryEmailProvider } from "alepha/email";
 import { MemoryDestinationProvider } from "alepha/logger";
 import { AlephaQueue, MemoryQueueProvider } from "alepha/queue";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 /**
  * The `was…` assertion helpers on the memory providers (quest #142).
@@ -21,14 +21,14 @@ describe("memory provider assertions", () => {
       return alepha.inject(MemoryQueueProvider);
     };
 
-    it("reports a message that was pushed", async () => {
+    it("reports a message that was pushed", async ({ expect }) => {
       const queue = await setup();
       await queue.push("emails", '{"to":"a@b.c"}');
       expect(queue.wasEnqueued("emails")).toBe(true);
       expect(queue.wasEnqueued("other")).toBe(false);
     });
 
-    it("matches on the message body", async () => {
+    it("matches on the message body", async ({ expect }) => {
       const queue = await setup();
       await queue.push("emails", '{"to":"a@b.c"}');
       expect(queue.wasEnqueued("emails", "a@b.c")).toBe(true);
@@ -41,7 +41,9 @@ describe("memory provider assertions", () => {
      * `wasEnqueued` reading the queue would answer "no" for a message that was
      * enqueued and then consumed - which is the run most tests are about.
      */
-    it("still reports a message after it has been consumed", async () => {
+    it("still reports a message after it has been consumed", async ({
+      expect,
+    }) => {
       const queue = await setup();
       await queue.push("emails", "one");
       expect(await queue.pop("emails")).toBe("one");
@@ -61,7 +63,7 @@ describe("memory provider assertions", () => {
       return email;
     };
 
-    it("reports a send, and matches the subject", async () => {
+    it("reports a send, and matches the subject", async ({ expect }) => {
       const email = await provider();
       await email.send({
         to: "user@example.com",
@@ -79,7 +81,7 @@ describe("memory provider assertions", () => {
      * One record per recipient, so a single send to three addresses answers
      * for each of them - which is what "did this person get the mail" means.
      */
-    it("answers for every recipient of one send", async () => {
+    it("answers for every recipient of one send", async ({ expect }) => {
       const email = await provider();
       await email.send({
         to: ["a@example.com", "b@example.com"],
@@ -91,7 +93,7 @@ describe("memory provider assertions", () => {
       expect(email.wasSent("b@example.com")).toBe(true);
     });
 
-    it("matches the body, and the text alternative", async () => {
+    it("matches the body, and the text alternative", async ({ expect }) => {
       const email = await provider();
       await email.send({
         to: "user@example.com",
@@ -111,7 +113,7 @@ describe("memory provider assertions", () => {
   });
 
   describe("MemoryDestinationProvider.wasLogged", () => {
-    it("matches a message, and narrows by level", () => {
+    it("matches a message, and narrows by level", ({ expect }) => {
       const alepha = Alepha.create();
       const logs = alepha.inject(MemoryDestinationProvider);
       const write = (level: any, message: string) =>
@@ -143,7 +145,7 @@ describe("memory provider assertions", () => {
       return alepha.inject(MemoryFileStorageProvider);
     };
 
-    it("reports an upload, by bucket and by id", async () => {
+    it("reports an upload, by bucket and by id", async ({ expect }) => {
       const storage = await setup();
       const fileId = await storage.upload(
         "avatars",
@@ -161,7 +163,7 @@ describe("memory provider assertions", () => {
      * so it answers about what is STORED. A test that needs "was uploaded at
      * some point" has to assert before the delete.
      */
-    it("answers false once the file is deleted", async () => {
+    it("answers false once the file is deleted", async ({ expect }) => {
       const storage = await setup();
       const fileId = await storage.upload(
         "avatars",
