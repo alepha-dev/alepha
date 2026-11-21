@@ -112,6 +112,52 @@ class TestStripeProvider extends StripePaymentProvider {
     };
     return calls;
   }
+  /**
+   * Swap the session lookup and the PaymentIntent and refund APIs for
+   * recorders: `session` is what `checkout.sessions.retrieve` answers,
+   * `paymentIntent` what `paymentIntents.retrieve` answers, and every call
+   * lands in the returned array.
+   */
+  public stubSessionPayment(
+    session: Record<string, unknown>,
+    paymentIntent: Record<string, unknown> = {},
+  ): Array<{ call: string; id: unknown; options: unknown }> {
+    const calls: Array<{ call: string; id: unknown; options: unknown }> = [];
+    (this as unknown as { stripe: unknown }).stripe = {
+      checkout: {
+        sessions: {
+          retrieve: async (id: string, _params: unknown, options: unknown) => {
+            calls.push({ call: "session", id, options });
+            return { id, ...session };
+          },
+        },
+      },
+      paymentIntents: {
+        retrieve: async (id: string, _params: unknown, options: unknown) => {
+          calls.push({ call: "retrieve", id, options });
+          return { id, ...paymentIntent };
+        },
+        capture: async (id: string, _params: unknown, options: unknown) => {
+          calls.push({ call: "capture", id, options });
+          return { id };
+        },
+        cancel: async (id: string, _params: unknown, options: unknown) => {
+          calls.push({ call: "cancel", id, options });
+          return { id };
+        },
+      },
+      refunds: {
+        create: async (
+          params: { payment_intent: string },
+          options: unknown,
+        ) => {
+          calls.push({ call: "refund", id: params.payment_intent, options });
+          return { id: "re_1" };
+        },
+      },
+    };
+    return calls;
+  }
 }
 
 const make = (env: Record<string, string> = {}) =>
@@ -774,6 +820,95 @@ describe("StripePaymentProvider", () => {
       await provider.retrieveSessionStatus("cs_test_1");
 
       expect(calls).toEqual([{ id: "cs_test_1", requestOptions: undefined }]);
+    });
+
+    it("reports a completed manual-capture session as authorized", async () => {
+      const provider = make();
+      const calls = provider.stubSessionPayment(
+        {
+          status: "complete",
+          payment_status: "unpaid",
+          payment_intent: "pi_held",
+        },
+        { status: "requires_capture" },
+      );
+
+      await expect(
+        provider.retrieveSessionStatus("cs_test_1", {
+          stripeAccount: "acct_venue",
+        }),
+      ).resolves.toBe("authorized");
+      expect(calls).toContainEqual({
+        call: "retrieve",
+        id: "pi_held",
+        options: { stripeAccount: "acct_venue" },
+      });
+    });
+
+    it("leaves a completed session awaiting a delayed payment unmapped", async () => {
+      const provider = make();
+      provider.stubSessionPayment(
+        {
+          status: "complete",
+          payment_status: "unpaid",
+          payment_intent: "pi_sepa",
+        },
+        { status: "processing" },
+      );
+
+      await expect(provider.retrieveSessionStatus("cs_test_1")).resolves.toBe(
+        null,
+      );
+    });
+  });
+
+  describe("capture, void and refund on a checkout session ref", () => {
+    const session = { payment_intent: "pi_of_session" };
+    const account = { stripeAccount: "acct_venue" };
+
+    it("refunds the session's PaymentIntent, not the session id", async () => {
+      const provider = make();
+      const calls = provider.stubSessionPayment(session);
+
+      await provider.refundPayment("cs_test_1", 500, account);
+
+      expect(calls).toEqual([
+        { call: "session", id: "cs_test_1", options: account },
+        { call: "refund", id: "pi_of_session", options: account },
+      ]);
+    });
+
+    it("captures and voids the session's PaymentIntent", async () => {
+      const provider = make();
+      const calls = provider.stubSessionPayment(session);
+
+      await provider.capturePayment("cs_test_1", 500, account);
+      await provider.voidPayment("cs_test_2", account);
+
+      expect(calls).toEqual([
+        { call: "session", id: "cs_test_1", options: account },
+        { call: "capture", id: "pi_of_session", options: account },
+        { call: "session", id: "cs_test_2", options: account },
+        { call: "cancel", id: "pi_of_session", options: account },
+      ]);
+    });
+
+    it("uses a PaymentIntent ref as it is", async () => {
+      const provider = make();
+      const calls = provider.stubSessionPayment(session);
+
+      await provider.refundPayment("pi_direct", 500);
+
+      expect(calls).toEqual([{ call: "refund", id: "pi_direct", options: {} }]);
+    });
+
+    it("refuses a session that has no PaymentIntent yet", async () => {
+      const provider = make();
+      provider.stubSessionPayment({ payment_intent: null });
+
+      await expect(provider.refundPayment("cs_test_1", 500)).rejects.toThrow(
+        AlephaError,
+      );
     });
   });
 });
