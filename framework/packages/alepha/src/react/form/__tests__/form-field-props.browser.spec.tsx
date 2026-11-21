@@ -3,7 +3,7 @@ import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { useForm } from "../index.ts";
 
@@ -13,9 +13,11 @@ describe("form field props", () => {
       <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
     );
 
-  it("should carry typed input through to the submit handler", async () => {
+  it("should carry typed input through to the submit handler", async ({
+    expect,
+  }) => {
     // This is `useForm`'s own JSDoc example. `props` used to carry only id /
-    // name / type / validation attributes — no value, no onChange — so
+    // name / type / validation attributes (no value, no onChange), so
     // everything the user typed stayed in the DOM and the handler received an
     // empty object. Every real consumer had to reach for `useFieldValue`.
     const submitted: Array<Record<string, unknown>> = [];
@@ -57,7 +59,7 @@ describe("form field props", () => {
     });
   });
 
-  it("should seed the input from initialValues", async () => {
+  it("should seed the input from initialValues", async ({ expect }) => {
     const Form = () => {
       const form = useForm({
         schema: z.object({ username: z.text() }),
@@ -75,7 +77,9 @@ describe("form field props", () => {
     expect((ui.getByTestId("username") as HTMLInputElement).value).toBe("ada");
   });
 
-  it("should read a checkbox from `checked`, not `value`", async () => {
+  it("should read a checkbox from `checked`, not `value`", async ({
+    expect,
+  }) => {
     const submitted: Array<Record<string, unknown>> = [];
 
     const Form = () => {

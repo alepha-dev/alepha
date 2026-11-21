@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { ErrorBoundary } from "../components/ErrorBoundary.tsx";
 
@@ -12,7 +12,7 @@ const Fine = () => <div>fine</div>;
 describe("ErrorBoundary", () => {
   const fallback = (error: Error) => <div>caught: {error.message}</div>;
 
-  it("renders the fallback when a child throws", () => {
+  it("renders the fallback when a child throws", ({ expect }) => {
     render(
       <ErrorBoundary fallback={fallback}>
         <Boom />
@@ -26,7 +26,7 @@ describe("ErrorBoundary", () => {
    * Without this, a route that throws latches the fallback forever: navigating
    * to a healthy page still shows the old error until a full page reload.
    */
-  it("clears a caught error when a reset key changes", () => {
+  it("clears a caught error when a reset key changes", ({ expect }) => {
     const { rerender } = render(
       <ErrorBoundary fallback={fallback} resetKeys={["/broken"]}>
         <Boom />
@@ -45,7 +45,9 @@ describe("ErrorBoundary", () => {
     expect(screen.queryByText("caught: boom")).toBeNull();
   });
 
-  it("keeps showing the fallback while the reset keys are unchanged", () => {
+  it("keeps showing the fallback while the reset keys are unchanged", ({
+    expect,
+  }) => {
     const { rerender } = render(
       <ErrorBoundary fallback={fallback} resetKeys={["/broken"]}>
         <Boom />
@@ -61,7 +63,7 @@ describe("ErrorBoundary", () => {
     expect(screen.getByText("caught: boom")).toBeDefined();
   });
 
-  it("still exposes a manual reset to the fallback", () => {
+  it("still exposes a manual reset to the fallback", ({ expect }) => {
     let reset: (() => void) | undefined;
     const { rerender } = render(
       <ErrorBoundary

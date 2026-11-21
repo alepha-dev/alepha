@@ -103,7 +103,7 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 | `onReset`       | `() => void`                            | Called when the form is reset.                                                                                            |
 | `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.                                                                                     |
 
-The second argument to `useForm` is a dependency array (defaults to `[]`). When dependencies change, the form is re-created. To switch the form to another record (editing A, then B), put the record id in the dependencies rather than swapping `initialValues`. The latest `handler`, `onError`, `onChange`, `onReset` and `onCreateField` are always used, so a handler may close over render state.
+The second argument to `useForm` is a dependency array (defaults to `[]`). When dependencies change, the form is re-created. To switch the form to another record (editing A, then B), put the record id in the dependencies rather than swapping `initialValues`. The latest `handler`, `beforeSubmit`, `validate`, `onError`, `onChange`, `onReset` and `onCreateField` are always used, so a handler may close over render state.
 
 ## FormModel
 
@@ -259,12 +259,12 @@ const { values } = useFormState(form, ["values"]);
 
 **Return type:**
 
-| Property  | Type                  | Description                                                                                                                            |
-| --------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `loading` | `boolean`             | True during form submission.                                                                                                           |
-| `dirty`   | `boolean`             | True after any field change. Resets on successful submit and on reset.                                                                 |
-| `error`   | `Error \| undefined`  | With the form: the last failed submit's error. With `{ form, path }`: that field's entry of `form.errors`, as a `FormValidationError`. |
-| `values`  | `Record \| undefined` | Current form values (updated on change and submit).                                                                                    |
+| Property  | Type                  | Description                                                                                                                                                                                                                           |
+| --------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `loading` | `boolean`             | True during form submission.                                                                                                                                                                                                          |
+| `dirty`   | `boolean`             | True after any field change. Resets on reset, and on a successful submit when the form then holds what was sent or its baseline: an edit made while the submit was in flight keeps it dirty, a value the handler wrote back does not. |
+| `error`   | `Error \| undefined`  | With the form: the last failed submit's error. With `{ form, path }`: that field's entry of `form.errors`, as a `FormValidationError`.                                                                                                |
+| `values`  | `Record \| undefined` | Current form values (updated on change and submit).                                                                                                                                                                                   |
 
 ## When Fields Are Checked
 
@@ -325,7 +325,7 @@ Forms emit events on the Alepha event system:
 
 Forms also emit `react:action:begin`, `react:action:success`, `react:action:error`, and `react:action:end` events with `type: "form"`, so global action handlers apply to form submissions too.
 
-The `react:action:error` of a form carries `handled: true` in three cases, and `@alepha/ui`'s `ActionErrorToaster` does not toast it: the form was given an `onError`, the error is a `FormValidationError` with a field `path`, whose message is already shown under that field, or it is a server `ValidationError` whose every issue `useActionForm` placed under a field. Any other failure, including a `FormValidationError` with no path and a `400` naming a field the form does not have, still toasts.
+The `react:action:error` of a form carries `handled: true` in three cases, and `@alepha/ui`'s `ActionErrorToaster` does not toast it: the form was given an `onError`, the error is a `FormValidationError` whose every `path` names a field of the schema, so its message is already shown under that field, or it is a server `ValidationError` whose every issue `useActionForm` placed under a field. Any other failure still toasts: a `FormValidationError` with no path, one whose path names no field the form can show (a key of a `z.record`, a union variant, a key the schema does not have), and a `400` naming a field the form does not have.
 
 ## FormValidationError
 

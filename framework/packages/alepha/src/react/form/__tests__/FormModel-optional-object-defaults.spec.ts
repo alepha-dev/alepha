@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { FormModel } from "../services/FormModel.ts";
 
@@ -43,19 +43,19 @@ describe("FormModel defaults on nested objects", () => {
     return alepha;
   };
 
-  it("should leave an untouched optional object absent", async () => {
+  it("should leave an untouched optional object absent", async ({ expect }) => {
     const form = makeForm(await create());
 
     expect(form.currentValues).not.toHaveProperty("address");
   });
 
-  it("should leave an untouched nullable object absent", async () => {
+  it("should leave an untouched nullable object absent", async ({ expect }) => {
     const form = makeForm(await create());
 
     expect(form.currentValues).not.toHaveProperty("billing");
   });
 
-  it("should still seed a required nested object", async () => {
+  it("should still seed a required nested object", async ({ expect }) => {
     const form = makeForm(await create());
 
     expect(form.currentValues).toMatchObject({
@@ -64,7 +64,9 @@ describe("FormModel defaults on nested objects", () => {
     });
   });
 
-  it("should apply the inner defaults once the object is initialised", async () => {
+  it("should apply the inner defaults once the object is initialised", async ({
+    expect,
+  }) => {
     const form = makeForm(await create());
 
     form.input.address.set({});
@@ -72,7 +74,7 @@ describe("FormModel defaults on nested objects", () => {
     expect(form.currentValues.address).toEqual({ country: "FR" });
   });
 
-  it("should keep initial values over the defaults", async () => {
+  it("should keep initial values over the defaults", async ({ expect }) => {
     const form = makeForm(await create(), {
       address: { country: "BE", city: "Ghent" },
     });
@@ -83,11 +85,37 @@ describe("FormModel defaults on nested objects", () => {
     });
   });
 
-  it("should not resurrect the object after it is cleared", async () => {
+  it("should not resurrect the object after it is cleared", async ({
+    expect,
+  }) => {
     const form = makeForm(await create(), { address: { country: "BE" } });
 
     form.input.address.set(undefined);
 
     expect(form.currentValues.address).toBeUndefined();
+  });
+
+  it("should flatten an object default, so its nested inputs read it", async ({
+    expect,
+  }) => {
+    const alepha = await create();
+    const form = alepha.inject(FormModel, {
+      lifetime: "transient",
+      args: [
+        "f2",
+        {
+          id: "f2",
+          schema: z.object({
+            address: z.object({ country: z.text() }).default({ country: "FR" }),
+          }),
+          handler: () => {},
+        },
+      ],
+    }) as FormModel<any>;
+
+    const country = form.input.address.items.country;
+    expect(country.initialValue).toBe("FR");
+    expect(country.props.defaultValue).toBe("FR");
+    expect(form.currentValues).toEqual({ address: { country: "FR" } });
   });
 });

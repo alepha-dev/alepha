@@ -35,5 +35,8 @@ spec. Do not delete it for being unreferenced.
 
 ## Examples
 
-const form = useForm({ schema: z.object({ status: z.string(), q: z.string() }) });
+const form = useForm({
+schema: z.object({ status: z.string(), q: z.string() }),
+handler: () => {},
+});
 useFormQuerySync(form, { keys: ["status", "q"] });

@@ -3,7 +3,7 @@ import { Alepha, SchemaValidationError, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   FormModel,
@@ -50,7 +50,7 @@ describe("FormValidationError", () => {
     );
   };
 
-  it("routes the error to the field named by `path`", async () => {
+  it("routes the error to the field named by `path`", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLogger);
     await alepha.start();
     const ui = mount(alepha, <EmailForm />);
@@ -72,7 +72,7 @@ describe("FormValidationError", () => {
     await alepha.stop();
   });
 
-  it("clears the field error once the field changes", async () => {
+  it("clears the field error once the field changes", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLogger);
     await alepha.start();
     const ui = mount(alepha, <EmailForm />);
@@ -102,7 +102,9 @@ describe("FormValidationError", () => {
    * whoever listens to `react:action:error` can tell a person's input from a
    * fault (error #585, #Q2343). It still reaches the field.
    */
-  it("hands on the schema's own refusal as a FormValidationError", async () => {
+  it("hands on the schema's own refusal as a FormValidationError", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with(AlephaLogger);
     await alepha.start();
     const seen: Array<{ type: string; error: Error }> = [];
@@ -128,7 +130,9 @@ describe("FormValidationError", () => {
     await alepha.stop();
   });
 
-  it("leaves a SchemaValidationError thrown by the handler as it is", async () => {
+  it("leaves a SchemaValidationError thrown by the handler as it is", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with(AlephaLogger);
     await alepha.start();
     const seen: Error[] = [];
@@ -166,7 +170,9 @@ describe("FormValidationError", () => {
     await alepha.stop();
   });
 
-  it("carries the pointer on `value.path` so consumers can match it", () => {
+  it("carries the pointer on `data.path` so consumers can match it", ({
+    expect,
+  }) => {
     const error = new FormValidationError({
       message: "Email already in use",
       path: "/email",
@@ -176,7 +182,7 @@ describe("FormValidationError", () => {
     expect(error.data.message).toBe("Email already in use");
   });
 
-  it("supports nested pointers", () => {
+  it("supports nested pointers", ({ expect }) => {
     const error = new FormValidationError({
       message: "Unknown city",
       path: "/address/city",

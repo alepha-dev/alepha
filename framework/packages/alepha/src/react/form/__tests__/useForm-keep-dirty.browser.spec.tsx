@@ -1,9 +1,9 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
-import { useState } from "react";
-import { describe, it } from "vitest";
+import { useEffect, useState } from "react";
+import { describe, type ExpectStatic, it } from "vitest";
 
 import { useForm, useFormState, useFormValues } from "../index.ts";
 
@@ -186,5 +186,178 @@ describe("useForm keeps an edit that restores the previous value", () => {
     );
     // And the form knows it has something left to send.
     expect(getByTestId("dirty").textContent).toBe("dirty");
+  });
+});
+
+/**
+ * A submit's success says the values it SENT are saved. An edit made while it
+ * was in flight is not among them, so the form is still dirty when it lands:
+ * marked clean, a Save button gated on `dirty` could never send that edit.
+ */
+describe("useFormState dirty across a submit", () => {
+  it("stays dirty when a field was edited while the submit was in flight", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const sent: unknown[] = [];
+    let release: () => void = () => {};
+    let setName: (value: string) => void = () => {};
+    const Widget = () => {
+      const form = useForm({
+        schema: z.object({ name: z.text() }),
+        initialValues: { name: "a" },
+        handler: (values) => {
+          sent.push(values);
+          return new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        },
+      });
+      setName = form.input.name.set;
+      const { dirty, loading } = useFormState(form, ["dirty", "loading"]);
+      return (
+        <form {...form.props} data-testid="form">
+          <span data-testid="dirty">{dirty ? "dirty" : "clean"}</span>
+          <span data-testid="loading">{loading ? "loading" : "idle"}</span>
+        </form>
+      );
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <Widget />
+      </AlephaContext.Provider>,
+    );
+    const text = (id: string) => ui.getByTestId(id).textContent;
+
+    act(() => setName("b"));
+    fireEvent.submit(ui.getByTestId("form"));
+    await waitFor(() => expect(sent).toEqual([{ name: "b" }]));
+
+    act(() => setName("c"));
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(text("loading")).toBe("idle"));
+    expect(text("dirty")).toBe("dirty");
+  });
+
+  it("turns clean when nothing was edited during the submit", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    let setName: (value: string) => void = () => {};
+    const Widget = () => {
+      const form = useForm({
+        schema: z.object({ name: z.text() }),
+        initialValues: { name: "a" },
+        handler: async () => {},
+      });
+      setName = form.input.name.set;
+      const { dirty } = useFormState(form, ["dirty"]);
+      return (
+        <form {...form.props} data-testid="form">
+          <span data-testid="dirty">{dirty ? "dirty" : "clean"}</span>
+        </form>
+      );
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <Widget />
+      </AlephaContext.Provider>,
+    );
+
+    act(() => setName("b"));
+    await waitFor(() =>
+      expect(ui.getByTestId("dirty").textContent).toBe("dirty"),
+    );
+    fireEvent.submit(ui.getByTestId("form"));
+    await waitFor(() =>
+      expect(ui.getByTestId("dirty").textContent).toBe("clean"),
+    );
+  });
+
+  /**
+   * A write made by the handler itself is not an edit waiting to be sent.
+   * `write` is what the handler does with the model once it has "saved".
+   */
+  const mountWriting = (
+    alepha: Alepha,
+    write: (set: (value: string) => void, sent: string) => void,
+    expect: ExpectStatic,
+  ) => {
+    const sent: string[] = [];
+    const holder: { setName: (value: string) => void } = { setName: () => {} };
+    const Widget = () => {
+      const form = useForm({
+        schema: z.object({ name: z.text() }),
+        initialValues: { name: "a" },
+        handler: async (values) => {
+          sent.push(values.name);
+          write(form.input.name.set, values.name);
+        },
+      });
+      useEffect(() => {
+        holder.setName = form.input.name.set;
+      }, [form]);
+      const { dirty, loading } = useFormState(form, ["dirty", "loading"]);
+      const values = useFormValues(form);
+      return (
+        <form {...form.props} data-testid="form">
+          <span data-testid="dirty">{dirty ? "dirty" : "clean"}</span>
+          <span data-testid="loading">{loading ? "loading" : "idle"}</span>
+          <span data-testid="name">{String(values.name)}</span>
+        </form>
+      );
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <Widget />
+      </AlephaContext.Provider>,
+    );
+    const text = (id: string) => ui.getByTestId(id).textContent;
+    const submit = async (expected: number) => {
+      fireEvent.submit(ui.getByTestId("form"));
+      await waitFor(() => expect(sent).toHaveLength(expected));
+      await waitFor(() => expect(text("loading")).toBe("idle"));
+    };
+    return { holder, sent, text, submit };
+  };
+
+  it("turns clean when the handler writes back the value it sent", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const { holder, text, submit } = mountWriting(
+      alepha,
+      (set, sent) => set(sent.trim()),
+      expect,
+    );
+
+    act(() => holder.setName("  b  "));
+    await waitFor(() => expect(text("dirty")).toBe("dirty"));
+    await submit(1);
+    expect(text("name")).toBe("b");
+    expect(text("dirty")).toBe("clean");
+
+    // And stays clean over a second submit nobody typed before.
+    await submit(2);
+    expect(text("dirty")).toBe("clean");
+  });
+
+  it("turns clean when the handler puts the baseline back", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const { holder, text, submit } = mountWriting(
+      alepha,
+      (set) => set("a"),
+      expect,
+    );
+
+    act(() => holder.setName("b"));
+    await waitFor(() => expect(text("dirty")).toBe("dirty"));
+    await submit(1);
+    expect(text("name")).toBe("a");
+    expect(text("dirty")).toBe("clean");
   });
 });

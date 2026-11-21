@@ -2,6 +2,7 @@ import { $module } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export type { FormStateProps } from "./components/FormState.tsx";
 export { default as FormState } from "./components/FormState.tsx";
 export * from "./errors/FormValidationError.ts";
 export * from "./hooks/useActionForm.ts";

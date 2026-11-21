@@ -38,14 +38,19 @@ export const useFieldValue = (
   // it has to be re-seeded. `initialValue` is recomputed from live form state
   // on every render, so it is what this path holds now - not a mount-time
   // snapshot, despite the name.
-  const seededPath = useRef(path);
+  //
+  // Same for a model rebuilt through `useForm`'s `deps`: it keeps the path,
+  // and the id unless the caller changes it, and a new model emits nothing,
+  // so its identity is the only sign that this value belongs to another form.
+  const form = input?.form;
+  const seeded = useRef({ path, form });
   useEffect(() => {
-    if (seededPath.current === path) {
+    if (seeded.current.path === path && seeded.current.form === form) {
       return;
     }
-    seededPath.current = path;
+    seeded.current = { path, form };
     setValue(input?.initialValue);
-  }, [path, input?.initialValue]);
+  }, [path, form, input?.initialValue]);
 
   const setFieldValue = (newValue: any) => {
     input.set(newValue);

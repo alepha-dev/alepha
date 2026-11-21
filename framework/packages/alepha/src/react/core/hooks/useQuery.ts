@@ -27,8 +27,8 @@ import { useSelector } from "./useSelector.ts";
  * re-run the query on demand. For optimistic mutations and side-effects,
  * use {@link useAction} directly - `useQuery` is for the read path.
  *
- * Request deduplication and AbortSignal cancellation come from `useAction` +
- * `HttpClient`.
+ * AbortSignal cancellation comes from `useAction` and `HttpClient`. Request
+ * deduplication is the query cache's, so it applies to keyed queries only.
  *
  * Pass a `key` to opt into the shared query cache: components using the same
  * key read one entry rather than each fetching, `staleTime` serves a fresh
@@ -103,10 +103,14 @@ export function useQuery<Result>(
   // handler through a ref so it never closes over a stale render.
   const optionsRef = useRef(options);
   optionsRef.current = options;
-  // Tracks whether the auto-run has completed at least once, so we can keep
-  // `loading` true on the very first render — before `runOnInit`'s effect
-  // fires — instead of briefly reporting `loading: false` with no data.
-  const settledRef = useRef(false);
+  // The key whose run last completed (`undefined` inside the object for a
+  // keyless query), so `loading` stays true on the first render of a key,
+  // before `runOnInit`'s effect fires, instead of briefly reporting
+  // `loading: false` with no data. Per key: a first key that settled says
+  // nothing about the one the hook moved to.
+  const settledRef = useRef<{ key: string | undefined } | undefined>(undefined);
+  // The serialized key the current run started with, for `settledRef`.
+  const runKeyRef = useRef<string | undefined>(undefined);
   // Last value rendered for a *previous* key, retained across a key change so
   // `keepPreviousData` can render it while the new key loads.
   const previousDataRef = useRef<Result | undefined>(undefined);
@@ -161,7 +165,7 @@ export function useQuery<Result>(
   }
   const isFresh = freshnessRef.current!.fresh;
 
-  // A fresh cache hit means the initial fetch is skipped entirely — that is
+  // A fresh cache hit means the initial fetch is skipped entirely: that is
   // the point of `staleTime`. Invalidation removes the entry, which flips
   // this back to true and re-runs the effect below.
   //
@@ -189,11 +193,11 @@ export function useQuery<Result>(
       // request instead of both missing the not-yet-populated cache.
       //
       // The key is captured when the run STARTS, and the result is written
-      // under it here rather than in `onSuccess` (#Q2517). `onSuccess` reads
-      // the latest options: going K1, K2, then back to a still-fresh K1 starts
-      // no run for K1, so the K2 request finishing afterwards wrote K2's data
-      // under K1. Written here it lands under the key it was fetched for,
-      // which is always right, whatever the component shows by then.
+      // under it here rather than in `onSuccess`, which reads the latest
+      // options (#Q2517): a result always lands under the key it was fetched
+      // for. A run whose key the hook has left never gets that far: a newer
+      // run supersedes it, or the key-change effect below cancels it, and an
+      // aborted run returns before the write.
       //
       // The handler runs with the shared request's signal, not this run's:
       // the request outlives this component when another one joined it, and
@@ -212,6 +216,7 @@ export function useQuery<Result>(
       handler: options.key
         ? async (context) => {
             const key = optionsRef.current.key!;
+            runKeyRef.current = cache!.serialize(key);
             while (true) {
               const generation = cache!.generation(key);
               const result = await cache!.dedupe(
@@ -241,7 +246,7 @@ export function useQuery<Result>(
       debounce: options.debounce,
       onError: options.onError,
       onSuccess: async (result) => {
-        settledRef.current = true;
+        settledRef.current = { key: runKeyRef.current };
         // A keyed result is already in the cache, under the key its run
         // started with (see the handler above).
         if (!(options.key && cache)) {
@@ -263,6 +268,13 @@ export function useQuery<Result>(
   errorRef.current = action.error;
   const refetchRef = useRef(action.refetch);
   refetchRef.current = action.refetch;
+  // `silenced` is read during render and nothing re-renders this hook when
+  // the cache lifts it (a `clear()` after a `clear({ refetch: false })` finds
+  // no entry left to drop), so the cache asks for the render through `wake`.
+  // A render is all it takes, never a refetch: this hook starts its own run
+  // from it, by the gate reopening or by the entry it rendered being gone,
+  // and a refetch beside either would send the request twice.
+  const [, wake] = useState(0);
   useEffect(() => {
     if (!cache || !serializedKey || !enabled) {
       return;
@@ -270,6 +282,7 @@ export function useQuery<Result>(
     return cache.observe({
       key: optionsRef.current.key!,
       refetch: () => void refetchRef.current(),
+      wake: () => wake((count) => count + 1),
       failed: () => errorRef.current !== undefined,
       options: () => {
         const current = optionsRef.current;
@@ -283,6 +296,21 @@ export function useQuery<Result>(
       },
     });
   }, [cache, serializedKey, enabled, dateTime]);
+
+  // A key change that starts no run (the new key is fresh, silenced or
+  // disabled) lets go of the previous key's run. Nothing else would: with no
+  // new run to supersede it, its `loading`, its error, its toast and its
+  // `onSuccess` landed on the screen of a key that never asked for them.
+  const keyRef = useRef(serializedKey);
+  useEffect(() => {
+    if (keyRef.current === serializedKey) {
+      return;
+    }
+    keyRef.current = serializedKey;
+    if (!shouldRun) {
+      action.cancel();
+    }
+  }, [serializedKey, shouldRun, action.cancel]);
 
   const refetch = useCallback(async () => {
     const run = await action.refetch();
@@ -312,29 +340,36 @@ export function useQuery<Result>(
     hadEntryRef.current = entry !== undefined ? serializedKey : undefined;
   }, [entry, serializedKey, enabled, action.refetch, cache, gateOpened]);
 
+  // `undefined` is "no data"; `null` is a result like any other.
   const data = serializedKey
-    ? (cached ??
-      (options.keepPreviousData ? previousDataRef.current : undefined))
+    ? cached !== undefined
+      ? cached
+      : options.keepPreviousData
+        ? previousDataRef.current
+        : undefined
     : localData;
 
   if (serializedKey && cached !== undefined) {
     previousDataRef.current = cached;
   }
 
-  // `loading` is true while a fetch is in flight, AND during the initial gap
-  // between first render and the auto-run effect — so consumers can render a
-  // skeleton immediately instead of flashing an empty/not-found state. A
-  // cache hit settles it immediately: there is nothing to wait for.
+  // `loading` is true while a fetch is in flight, AND during the gap between
+  // the first render of a key and the auto-run effect, so consumers can
+  // render a skeleton immediately instead of flashing an empty or not-found
+  // state. A cache hit settles it immediately: there is nothing to wait for.
+  const settled =
+    settledRef.current !== undefined &&
+    settledRef.current.key === serializedKey;
   const loading =
     action.loading ||
     (shouldRun &&
       cached === undefined &&
       options.initialData === undefined &&
-      !settledRef.current &&
+      !settled &&
       action.error === undefined);
 
   return {
-    data: data ?? options.initialData,
+    data: data === undefined ? options.initialData : data,
     loading,
     error: action.error,
     refetch,
@@ -353,7 +388,7 @@ export interface UseQueryOptions<Result> {
   handler: (context: ActionContext) => Async<Result>;
 
   /**
-   * Cache key. Opt-in — omit it and the hook keeps its uncached behaviour.
+   * Cache key. Opt-in: omit it and the hook keeps its uncached behaviour.
    *
    * Keys are arrays so they compose: `["folios", campaignId]`. Invalidation
    * matches by prefix, so a mutation can drop `["folios"]` without knowing
@@ -363,7 +398,7 @@ export interface UseQueryOptions<Result> {
 
   /**
    * How long a cached entry stays fresh. While fresh, mounting the query
-   * renders from cache without fetching. Defaults to `0` — always revalidate.
+   * renders from cache without fetching. Defaults to `0`: always revalidate.
    *
    * Also a floor for eviction: an entry nobody reads is dropped `gcTime`
    * after its last reader left (`alepha.react.query.options`, 5 minutes by
@@ -467,7 +502,7 @@ export interface UseQueryReturn<Result> {
   data: Result | undefined;
 
   /**
-   * Loading state — `true` while a fetch is in flight, and also from the
+   * Loading state: `true` while a fetch is in flight, and also from the
    * first render until the initial auto-run settles (for enabled queries
    * with no `initialData`), so a skeleton can render without a flash.
    */

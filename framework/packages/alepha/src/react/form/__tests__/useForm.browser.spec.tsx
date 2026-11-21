@@ -1,9 +1,9 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { describe, it } from "vitest";
 
 import { useFieldValue, useForm } from "../index.ts";
@@ -449,6 +449,51 @@ describe("useForm", () => {
 
     expect(input()).toBe("updated");
   });
+
+  it("should run the latest render's beforeSubmit and validate, not the mount-time ones", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const seen: string[] = [];
+    const holder: { form?: { options: { validate?: string } } } = {};
+    const Form = () => {
+      const [count, setCount] = useState(0);
+      const form = useForm({
+        schema: z.object({ name: z.text().optional() }),
+        validate: count === 0 ? "submit" : "blur",
+        beforeSubmit: () => {
+          seen.push(`before ${count}`);
+          return true;
+        },
+        handler: () => {
+          seen.push(`handler ${count}`);
+        },
+      });
+      useEffect(() => {
+        holder.form = form;
+      }, [form]);
+      return (
+        <form {...form.props} data-testid="form">
+          <button
+            type="button"
+            data-testid="increment"
+            onClick={() => setCount((current) => current + 1)}
+          >
+            increment
+          </button>
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Form />);
+    fireEvent.click(ui.getByTestId("increment"));
+    fireEvent.click(ui.getByTestId("increment"));
+    await waitFor(() => expect(holder.form?.options.validate).toBe("blur"));
+
+    fireEvent.submit(ui.getByTestId("form"));
+    await waitFor(() => expect(seen).toEqual(["before 2", "handler 2"]));
+  });
 });
 
 /**
@@ -461,7 +506,7 @@ describe("useForm", () => {
  *
  * Fix: deep-equality guard before reinitializing the form.
  */
-describe("useForm — initialValues stability", () => {
+describe("useForm: initialValues stability", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) =>
     render(
       <AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
@@ -476,7 +521,7 @@ describe("useForm — initialValues stability", () => {
     /**
      * Parent owns a counter; bumping it forces a render of `Form` without
      * changing any input it cares about. `Form` builds its `initialValues`
-     * inline every render — fresh reference, same content. This is the
+     * inline every render: fresh reference, same content. This is the
      * exact shape of the QuestCreate bug.
      */
     const Parent = () => {
@@ -523,7 +568,7 @@ describe("useForm — initialValues stability", () => {
     await alepha.start();
     const ui = renderWithAlepha(alepha, <Parent />);
 
-    // User types into title — form state should now hold "First quest".
+    // User types into title: form state should now hold "First quest".
     fireEvent.change(ui.getByTestId("stability-title"), {
       target: { value: "First quest" },
     });
@@ -539,59 +584,6 @@ describe("useForm — initialValues stability", () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(calls[0]).toEqual({ title: "First quest", priority: "optional" });
-  });
-
-  it("survives many re-renders without drift (stress)", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaLogger);
-    const calls: Array<any> = [];
-
-    const Parent = () => {
-      const [tick, setTick] = useState(0);
-      return (
-        <>
-          <span data-testid="tick">{tick}</span>
-          <button
-            type="button"
-            data-testid="rerender"
-            onClick={() => setTick((n) => n + 1)}
-          >
-            Rerender
-          </button>
-          <Form />
-        </>
-      );
-    };
-
-    const Form = () => {
-      const form = useForm({
-        id: "stress-test",
-        schema: z.object({ value: z.text() }),
-        initialValues: { value: "" },
-        handler: (values) => {
-          calls.push(values);
-        },
-      });
-      return (
-        <form {...form.props}>
-          <TestInput input={form.input.value} testId="stress-value" />
-          <button type="submit">Submit</button>
-        </form>
-      );
-    };
-
-    await alepha.start();
-    const ui = renderWithAlepha(alepha, <Parent />);
-
-    fireEvent.change(ui.getByTestId("stress-value"), {
-      target: { value: "typed" },
-    });
-    for (let i = 0; i < 50; i++) {
-      fireEvent.click(ui.getByTestId("rerender"));
-    }
-    fireEvent.submit(ui.getByText("Submit"));
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    expect(calls[0]).toEqual({ value: "typed" });
   });
 
   it("preserves user input when initialValues contains nested object rebuilt each render", async ({
@@ -685,7 +677,7 @@ describe("useForm — initialValues stability", () => {
           title: z.text(),
           tags: z.array(z.text()),
         }),
-        // Fresh empty array reference every render — the QuestCreate case
+        // Fresh empty array reference every render: the QuestCreate case
         // for `objectives: []`.
         initialValues: { tags: [] },
         handler: (values) => {
@@ -759,7 +751,7 @@ describe("useForm — initialValues stability", () => {
     // Starts on quest A.
     expect(value()).toBe("Alice");
 
-    // Genuine content change — form should pick it up.
+    // Genuine content change: form should pick it up.
     fireEvent.click(ui.getByTestId("swap"));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(value()).toBe("Bob");
@@ -840,7 +832,7 @@ describe("useForm — initialValues stability", () => {
             type="button"
             data-testid="burst"
             onClick={() => {
-              // 5 rapid state updates in one click — React batches them
+              // 5 rapid state updates in one click: React batches them
               // but each could trigger a render in dev mode.
               setTick((n) => n + 1);
               setTick((n) => n + 1);

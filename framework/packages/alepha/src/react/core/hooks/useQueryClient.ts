@@ -66,7 +66,7 @@ export interface UseQueryClientReturn {
 
   /**
    * Write a value into the cache directly, without a fetch. Pass a function to
-   * derive the next value from the current one — that is the optimistic-update
+   * derive the next value from the current one: that is the optimistic-update
    * shape.
    */
   setData: <T>(
