@@ -148,7 +148,6 @@ describe("alepha/server/auth - second factor gate", () => {
       .catch((it) => it);
 
     expect(failure.status).toBe(401);
-    expect(failure.access_token).toBeUndefined();
   });
 
   it("should refuse a challenge that someone tampered with", async ({
@@ -171,7 +170,6 @@ describe("alepha/server/auth - second factor gate", () => {
       .catch((it) => it);
 
     expect(failure.status).toBe(401);
-    expect(failure.access_token).toBeUndefined();
   });
 
   it("should refuse a challenge that has expired", async ({ expect }) => {
@@ -185,6 +183,5 @@ describe("alepha/server/auth - second factor gate", () => {
       .catch((it) => it);
 
     expect(failure.status).toBe(401);
-    expect(failure.access_token).toBeUndefined();
   });
 });

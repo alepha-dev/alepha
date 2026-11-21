@@ -52,6 +52,10 @@ class Preferences {
 All three work during a request. Outside one they throw, unless you hand them a
 cookie jar with `{ cookies }`.
 
+`.get()` reads the cookie as it stands at that point of the request: after a
+`.set()` it answers the new value, and after a `.del()` it answers `undefined`,
+whatever the request carried.
+
 ## Options
 
 | Option          | Default                | What it does                                                                                                    |
@@ -181,12 +185,14 @@ is the session store, see
 
 ## In the browser
 
-`$cookie` also works in browser code, on `document.cookie`, with three differences:
+`$cookie` also works in browser code, on `document.cookie`, with two differences:
 
 - Signing, encrypting and compressing are server-only: `.get()` and `.set()` throw
   on a cookie declared with one of them.
-- `.get()` throws on a value it cannot read, rather than answering `undefined`.
-- `.set()` takes no `ttl` override, and never adds `Secure`.
+- `.set()` never adds `Secure`.
+
+As on the server, `.get()` answers `undefined` for a value it cannot read, and
+deletes the cookie.
 
 ⚠️ The browser reads the bare name and the server reads the prefixed one, so a
 plain `$cookie` is not shared between the two. For a value both sides read, use an

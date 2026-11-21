@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { $route, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $cookie } from "../primitives/$cookie.ts";
 
@@ -70,7 +70,9 @@ const pairs = (setCookie: string[]) =>
   setCookie.map((it) => it.split(";")[0]!).join("; ");
 
 describe("$cookie({ browserPrefix })", () => {
-  it("names the cookie with the prefix over https, with Secure", async () => {
+  it("names the cookie with the prefix over https, with Secure", async ({
+    expect,
+  }) => {
     const { call } = await boot();
 
     const { setCookie } = await call("/write", { https: true });
@@ -83,7 +85,9 @@ describe("$cookie({ browserPrefix })", () => {
     expect(setCookie[0]).not.toContain("Domain=");
   });
 
-  it("keeps the bare name over plain http, where Secure is not sent", async () => {
+  it("keeps the bare name over plain http, where Secure is not sent", async ({
+    expect,
+  }) => {
     const { call } = await boot();
 
     const { setCookie } = await call("/write");
@@ -92,7 +96,7 @@ describe("$cookie({ browserPrefix })", () => {
     expect(setCookie[0]).not.toContain("Secure");
   });
 
-  it("reads the name that matches the request's scheme", async () => {
+  it("reads the name that matches the request's scheme", async ({ expect }) => {
     const { call } = await boot();
 
     const https = await call("/write", { https: true });
@@ -115,7 +119,9 @@ describe("$cookie({ browserPrefix })", () => {
     );
   });
 
-  it("puts the prefix on every chunk, deletions included", async () => {
+  it("puts the prefix on every chunk, deletions included", async ({
+    expect,
+  }) => {
     const { call } = await boot();
 
     const { setCookie } = await call("/write?size=6000", { https: true });
@@ -143,7 +149,9 @@ describe("$cookie({ browserPrefix })", () => {
     );
   });
 
-  it("deletes with Secure and HttpOnly, which a browser requires of __Host-Http-", async () => {
+  it("deletes with Secure and HttpOnly, which a browser requires of __Host-Http-", async ({
+    expect,
+  }) => {
     const { call } = await boot();
 
     const { setCookie } = await call("/write", { https: true });
@@ -161,7 +169,9 @@ describe("$cookie({ browserPrefix })", () => {
     expect(dropped.setCookie[0]).not.toContain("Domain=");
   });
 
-  it("expires a bare-named leftover, chunks included, on an https request", async () => {
+  it("expires a bare-named leftover, chunks included, on an https request", async ({
+    expect,
+  }) => {
     const { call } = await boot();
 
     const leftover = await call("/write?size=6000");
@@ -178,7 +188,7 @@ describe("$cookie({ browserPrefix })", () => {
     expect(expired).toEqual(["app.session.0", "app.session.1"]);
   });
 
-  it("refuses the combinations a browser would reject", () => {
+  it("refuses the combinations a browser would reject", ({ expect }) => {
     const declare = (options: Record<string, unknown>) => {
       class Bad {
         cookie = $cookie({
@@ -207,7 +217,7 @@ describe("$cookie({ browserPrefix })", () => {
 });
 
 describe("cookie names from APP_NAME", () => {
-  it("replaces what is not a cookie-name character", async () => {
+  it("replaces what is not a cookie-name character", async ({ expect }) => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", APP_NAME: "My App" },
     });

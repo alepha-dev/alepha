@@ -93,10 +93,10 @@ export const $authFranceConnect = (
        * The standard grouped `profile` scope is NOT supported.
        */
       scope: "openid given_name family_name email",
+      ...options,
       /**
        * `acr_values=eidas1` is mandatory for all France Connect integrations.
        */
-      ...options,
       authorizationParameters: {
         acr_values: "eidas1",
         ...options.authorizationParameters,

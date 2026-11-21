@@ -30,7 +30,8 @@ import {
  * Apple requires the client secret to be a signed ES256 JWT generated from
  * your Apple private key, team ID, and key ID. This JWT is valid for up to 6
  * months; you must rotate it before expiration. Generate it out of band and
- * set it via `APPLE_CLIENT_SECRET`.
+ * set it via `APPLE_CLIENT_SECRET`. `signAppleClientSecret`, exported by
+ * `alepha/server/auth`, signs one from the private key.
  *
  * See: https://developer.apple.com/documentation/accountorganizationaldatasharing/creating-a-client-secret
  *
@@ -101,7 +102,7 @@ export const $authApple = (
  * Normalize Apple-specific profile quirks before handing off to the
  * user-provided link function.
  *
- * Why: Apple's ID token non-conformities — `email_verified` and
+ * Why: Apple's ID token non-conformities: `email_verified` and
  * `is_private_email` are delivered as the strings "true"/"false" rather than
  * booleans. Normalize so downstream code can rely on standard OIDC shapes.
  */

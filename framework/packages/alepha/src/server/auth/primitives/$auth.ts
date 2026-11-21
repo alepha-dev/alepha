@@ -104,7 +104,7 @@ export type AuthExternal = {
    *   anonymous = $serviceAccount(...);
    *   auth = $auth({
    *     // ... config ...
-   *     fallback: this.anonymous,
+   *     fallback: () => this.anonymous,
    *   })
    * }
    * ```
@@ -125,7 +125,8 @@ export type AuthInternal = {
       /**
        * The common username/password authentication.
        *
-       * - It uses the OAuth2 Client Credentials flow to obtain an access token.
+       * - The username and password are posted to `/_auth/token`, which answers
+       *   with the issuer's tokens.
        *
        * This is usually used with a custom login form on your website or mobile app.
        */
@@ -159,7 +160,7 @@ export type AuthInternal = {
        * OIDC is an identity layer on top of OAuth2, providing user authentication and profile information.
        *
        * - It uses the OAuth2 Authorization Code flow to obtain an access token and user information.
-       * - PCKE (Proof Key for Code Exchange) is recommended for security.
+       * - PKCE (Proof Key for Code Exchange) is recommended for security.
        *
        * This is usually used with a login button that redirects to the OIDC provider.
        */
@@ -210,7 +211,9 @@ export interface OidcOptions {
   useIdToken?: boolean;
 
   /**
-   * URI to redirect the user after logout.
+   * The provider's logout URL, used in place of the end-session endpoint its
+   * discovery advertises. `post_logout_redirect_uri` and `id_token_hint` are
+   * added to its query, beside any parameter it already has.
    */
   logoutUri?: string;
 
@@ -472,7 +475,7 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
    * This is used to create a user account from the access token.
    *
    * `externalProfile` carries extra profile fields that cannot be derived from the
-   * ID token or userinfo endpoint — e.g. Apple's `user` form field that is only
+   * ID token or userinfo endpoint, e.g. Apple's `user` form field that is only
    * delivered once, on first authorization. ID token / userinfo fields take
    * precedence; externalProfile only fills gaps.
    */
@@ -531,7 +534,7 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   // back-channel TLS connection directly from the IdP's token endpoint. TLS authenticates
   // the channel. openid-client/oauth4webapi validates claims (issuer, audience, nonce,
   // expiry) during the grant. Per OIDC spec, cryptographic signature verification is
-  // not required for back-channel token responses — only for implicit/hybrid flows.
+  // not required for back-channel token responses, only for implicit/hybrid flows.
   // See: openid-client index.d.ts enableNonRepudiationChecks() docs.
   protected getUserFromIdToken(idToken: string): OAuth2Profile {
     try {
@@ -577,8 +580,8 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
         );
       };
 
-      // OIDC discovery is always lazy (resolved on first auth-flow use via the
-      // `oauthConfiguration` getter). It must never be a hard boot dependency:
+      // OIDC discovery is always lazy (resolved on first auth-flow use by
+      // `getOAuth()`). It must never be a hard boot dependency:
       // a relying party has to boot even when its IdP is briefly unreachable
       // (cross-service start order, deploys), and deferring also avoids the
       // serverless cold-start fetch.
@@ -634,18 +637,6 @@ export interface WithLoginFn {
   ) => (creds: Credentials) => Async<UserAccount | undefined>;
 }
 
-/**
- * The seam through which an issuer declares that a password is not enough.
- *
- * Filled in by `$realm`, exactly like {@link WithLoginFn} and
- * {@link WithLinkFn}. It exists so the login route can ask "does this user
- * owe a second factor" without `alepha/server/auth` importing
- * `alepha/api/users`, which would couple the two modules and break the
- * `alepha` barrel.
- *
- * An issuer that fills none of these has no second factor, and the login
- * route behaves exactly as it did before.
- */
 /**
  * What a passkey ceremony is run for.
  */
@@ -704,6 +695,18 @@ export interface WithPasskeyFn {
   hasPasskey?: (user: UserAccount, context: { url: URL }) => Async<boolean>;
 }
 
+/**
+ * The seam through which an issuer declares that a password is not enough.
+ *
+ * Filled in by `$realm`, exactly like {@link WithLoginFn} and
+ * {@link WithLinkFn}. It exists so the login route can ask "does this user
+ * owe a second factor" without `alepha/server/auth` importing
+ * `alepha/api/users`, which would couple the two modules and break the
+ * `alepha` barrel.
+ *
+ * An issuer that fills none of these has no second factor: the login route
+ * mints the session as soon as the password checks out.
+ */
 export interface WithSecondFactorFn {
   /**
    * Which factors this user must clear. An empty list means the primary

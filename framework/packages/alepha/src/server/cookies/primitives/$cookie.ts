@@ -70,7 +70,10 @@ export interface CookiePrimitiveOptions<T extends ZType> {
   ttl?: DurationLike;
 
   /**
-   * If true, the cookie is only sent over HTTPS. Defaults to true in production.
+   * If true, the cookie carries `Secure` on a response sent over https, as the
+   * server sees it (`X-Forwarded-Proto` behind a proxy). Defaults to true in
+   * production. Over plain http the attribute is left out, or the browser
+   * would drop the cookie.
    */
   secure?: boolean;
 
@@ -118,12 +121,12 @@ export interface CookiePrimitiveOptions<T extends ZType> {
    *
    * Used by `AtomCookiePersistence` so the cookie name the server
    * reads/writes for a `persist: "cookie"` atom matches the bare name its
-   * browser variant uses — the server's runtime `APP_NAME` is not reachable
+   * browser variant uses: the server's runtime `APP_NAME` is not reachable
    * client-side (not bundled, not part of SSR hydration), so the browser can
    * only ever use the bare atom key.
    *
    * Application code declaring `$cookie(...)` directly should leave this
-   * unset — it defaults to `true` (prefixed), matching every other cookie.
+   * unset: it defaults to `true` (prefixed), matching every other cookie.
    */
   prefix?: boolean;
 
@@ -186,13 +189,20 @@ export class CookiePrimitive<T extends ZType>
       // atom itself says `personal: false` (#E78).
       this.alepha.store.markPersonal(this.options.key);
       this.alepha.events.on("state:mutated", ({ key, value }) => {
-        if (key === this.options.key) {
-          this.set(value);
+        if (key !== this.options.key) {
+          return;
         }
+        if (value === undefined) {
+          // The atom was cleared: expire the cookie, or the next request
+          // seeds the old value back from it.
+          this.del();
+          return;
+        }
+        this.set(value);
       });
       this.alepha.events.on("server:request:before", ({ request }) => {
         try {
-          const value = this.get(request);
+          const value = this.get({ cookies: request.cookies });
           if (value !== undefined) {
             this.alepha.store.set(this.options.key as any, value, {
               skipEvents: true,
@@ -259,7 +269,9 @@ export class CookiePrimitive<T extends ZType>
   }
 
   /**
-   * Gets the cookie value from the current request. Returns undefined if not found or invalid.
+   * Gets the cookie value as it stands in the current request: what the
+   * request carried, or what the response has set or deleted since. Returns
+   * undefined if not found or invalid.
    */
   public get(options?: { cookies?: Cookies }): Infer<T> | undefined {
     return this.serverCookiesProvider.getCookie(

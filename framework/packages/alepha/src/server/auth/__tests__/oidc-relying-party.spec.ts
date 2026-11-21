@@ -2,69 +2,16 @@ import { Alepha, z } from "alepha";
 import { $issuer, $secure } from "alepha/security";
 import { $route, ServerProvider } from "alepha/server";
 import { MockOidcServer } from "alepha/testing/oidc";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
+import { Browser } from "./Browser.ts";
 
 /**
  * `$auth({ oidc })` with no `issuer`: Alepha is the relying party, holds no
  * user table, and keeps the provider's own tokens in the session cookie.
  */
-
-/**
- * A browser for one origin, enough of one to follow a sign-in: it keeps the
- * cookies each response sets and follows redirects by hand, so every hop is
- * visible.
- */
-class Browser {
-  public readonly jar = new Map<string, string>();
-
-  public cookie(): string {
-    return [...this.jar].map(([k, v]) => `${k}=${v}`).join("; ");
-  }
-
-  public async fetch(url: string, init: RequestInit = {}): Promise<Response> {
-    const response = await fetch(url, {
-      ...init,
-      redirect: "manual",
-      headers: {
-        cookie: this.cookie(),
-        ...(init.headers as Record<string, string> | undefined),
-      },
-    });
-    for (const line of response.headers.getSetCookie()) {
-      const [pair, ...attributes] = line.split(";");
-      const index = pair!.indexOf("=");
-      const name = pair!.slice(0, index).trim();
-      const value = pair!.slice(index + 1).trim();
-      const expired = attributes.some((it) =>
-        /^(max-age=0|expires=thu, 01 jan 1970)/i.test(it.trim()),
-      );
-      if (expired || value === "") {
-        this.jar.delete(name);
-      } else {
-        this.jar.set(name, value);
-      }
-    }
-    return response;
-  }
-
-  /**
-   * Follow redirects until a non-3xx answer, returning every location seen.
-   */
-  public async follow(url: string, init: RequestInit = {}) {
-    const visited: string[] = [];
-    let response = await this.fetch(url, init);
-    while (response.status >= 300 && response.status < 400) {
-      const next = new URL(response.headers.get("location")!, url).toString();
-      visited.push(next);
-      url = next;
-      response = await this.fetch(next);
-    }
-    return { response, visited };
-  }
-}
 
 const boot = async (idp: MockOidcServer, other?: MockOidcServer) => {
   class App {
@@ -114,7 +61,9 @@ const boot = async (idp: MockOidcServer, other?: MockOidcServer) => {
 };
 
 describe("$auth({ oidc }) without an issuer", () => {
-  it("signs in with PKCE and answers a $secure route with no user table", async () => {
+  it("signs in with PKCE and answers a $secure route with no user table", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { hostname, browser, signIn } = await boot(idp);
 
@@ -161,7 +110,9 @@ describe("$auth({ oidc }) without an issuer", () => {
     ).toEqual(["authorization_code"]);
   });
 
-  it("answers 401 to the $secure route without a session", async () => {
+  it("answers 401 to the $secure route without a session", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { hostname } = await boot(idp);
 
@@ -169,7 +120,9 @@ describe("$auth({ oidc }) without an issuer", () => {
     expect(response.status).toBe(401);
   });
 
-  it("refreshes an expired access token before the request runs", async () => {
+  it("refreshes an expired access token before the request runs", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { hostname, browser, signIn } = await boot(idp);
 
@@ -191,7 +144,7 @@ describe("$auth({ oidc }) without an issuer", () => {
     ).not.toHaveLength(0);
   });
 
-  it("signs out when the provider refuses the refresh", async () => {
+  it("signs out when the provider refuses the refresh", async ({ expect }) => {
     const idp = await MockOidcServer.start();
     const { hostname, browser, signIn } = await boot(idp);
 
@@ -203,7 +156,9 @@ describe("$auth({ oidc }) without an issuer", () => {
     expect(browser.jar.has("app.tokens")).toBe(false);
   });
 
-  it("logs out at the provider's end-session endpoint with id_token_hint", async () => {
+  it("logs out at the provider's end-session endpoint with id_token_hint", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start();
     const { hostname, browser, signIn } = await boot(idp);
     await signIn();
@@ -234,7 +189,9 @@ describe("$auth({ oidc }) without an issuer", () => {
     expect(after.status).toBe(401);
   });
 
-  it("serves two providers at once, each looked up by its name", async () => {
+  it("serves two providers at once, each looked up by its name", async ({
+    expect,
+  }) => {
     const idp = await MockOidcServer.start({
       clients: [{ clientId: "alepha" }],
     });

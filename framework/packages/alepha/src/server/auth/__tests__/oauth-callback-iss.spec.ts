@@ -2,7 +2,7 @@ import { Alepha } from "alepha";
 import type { UserAccount } from "alepha/security";
 import { ServerProvider } from "alepha/server";
 import { MockOidcServer } from "alepha/testing/oidc";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -90,12 +90,16 @@ const signIn = async (oauthIssuer: string | undefined) => {
 };
 
 describe("$auth({ oauth }) and the callback's iss", () => {
-  it("signs in when the issuer names what the provider sends", async () => {
+  it("signs in when the issuer names what the provider sends", async ({
+    expect,
+  }) => {
     const { url } = await signIn(GITHUB_ISS);
     expect(new URL(url).pathname).toBe("/done");
   });
 
-  it("refuses the callback with the authorization URL as pseudo-issuer", async () => {
+  it("refuses the callback with the authorization URL as pseudo-issuer", async ({
+    expect,
+  }) => {
     const { status, url } = await signIn(undefined);
     expect(new URL(url).pathname).toBe("/oauth/callback");
     expect(status).toBe(403);

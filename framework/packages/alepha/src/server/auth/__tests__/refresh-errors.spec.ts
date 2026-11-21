@@ -12,7 +12,7 @@ import {
   ServerProvider,
   UnauthorizedError,
 } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -24,19 +24,21 @@ import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
  * instead of a 403 for everything.
  */
 describe("security error statuses", () => {
-  it("InvalidTokenError is a 401", () => {
+  it("InvalidTokenError is a 401", ({ expect }) => {
     const error = new InvalidTokenError("Token expired");
     expect(error).toBeInstanceOf(UnauthorizedError);
     expect(error.status).toBe(401);
   });
 
-  it("InvalidPermissionError is a 403", () => {
+  it("InvalidPermissionError is a 403", ({ expect }) => {
     const error = new InvalidPermissionError({ permission: "bad name" });
     expect(error).toBeInstanceOf(ForbiddenError);
     expect(error.status).toBe(403);
   });
 
-  it("RealmNotFoundError is a configuration error, not an HTTP one", () => {
+  it("RealmNotFoundError is a configuration error, not an HTTP one", ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with(AlephaSecurity);
     const security = alepha.inject(SecurityProvider);
 
@@ -85,14 +87,18 @@ describe("POST /_auth/refresh", () => {
       body: JSON.stringify({ refresh_token: "r", access_token: "a" }),
     });
 
-  it("answers 401 for an expired or revoked refresh token", async () => {
+  it("answers 401 for an expired or revoked refresh token", async ({
+    expect,
+  }) => {
     const hostname = await boot(
       () => new UnauthorizedError("Invalid refresh token"),
     );
     expect((await refresh(hostname)).status).toBe(401);
   });
 
-  it("lets a failure that is not about the token through as a 500", async () => {
+  it("lets a failure that is not about the token through as a 500", async ({
+    expect,
+  }) => {
     const hostname = await boot(() => new AlephaError("database is down"));
     expect((await refresh(hostname)).status).toBe(500);
   });

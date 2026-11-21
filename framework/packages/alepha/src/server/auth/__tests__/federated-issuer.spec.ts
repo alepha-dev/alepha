@@ -6,7 +6,7 @@ import {
 import { $issuer, $secure } from "alepha/security";
 import { $route, ServerProvider } from "alepha/server";
 import { MockOidcServer } from "alepha/testing/oidc";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $auth } from "../primitives/$auth.ts";
 import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
@@ -63,7 +63,9 @@ const twoClients = () =>
   });
 
 describe("$issuer({ oidc })", () => {
-  it("accepts a token whose azp names the client, the Keycloak default", async () => {
+  it("accepts a token whose azp names the client, the Keycloak default", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { get } = await bootOidc(idp);
 
@@ -74,7 +76,9 @@ describe("$issuer({ oidc })", () => {
     expect(await response.json()).toEqual({ id: "user-1" });
   });
 
-  it("refuses a token minted for another client of the same IdP", async () => {
+  it("refuses a token minted for another client of the same IdP", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { get } = await bootOidc(idp);
 
@@ -84,7 +88,9 @@ describe("$issuer({ oidc })", () => {
     expect(response.status).toBe(401);
   });
 
-  it("accepts a token whose aud carries the client, whatever its azp", async () => {
+  it("accepts a token whose aud carries the client, whatever its azp", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { get } = await bootOidc(idp);
 
@@ -96,7 +102,9 @@ describe("$issuer({ oidc })", () => {
     expect((await get("/me", token)).status).toBe(200);
   });
 
-  it("refuses a token whose iss is not the discovered issuer", async () => {
+  it("refuses a token whose iss is not the discovered issuer", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { get } = await bootOidc(idp);
 
@@ -108,7 +116,9 @@ describe("$issuer({ oidc })", () => {
     expect((await get("/me", token)).status).toBe(401);
   });
 
-  it("signs in end to end, the cookie path verified the same way", async () => {
+  it("signs in end to end, the cookie path verified the same way", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { hostname } = await bootOidc(idp);
 
@@ -137,7 +147,9 @@ describe("$issuer({ oidc })", () => {
     expect(await response.json()).toEqual({ id: "user-1" });
   });
 
-  it("boots with the IdP unreachable, refuses while discovery fails, and retries on the next request", async () => {
+  it("boots with the IdP unreachable, refuses while discovery fails, and retries on the next request", async ({
+    expect,
+  }) => {
     // A port nothing listens on, that the IdP will take later.
     const probe = await MockOidcServer.start({ realm: "late" });
     const port = Number(new URL(probe.issuer).port);
@@ -162,7 +174,9 @@ describe("$issuer({ oidc })", () => {
     expect(idp.calls.some((it) => it.endpoint === "discovery")).toBe(true);
   });
 
-  it("does not read an IdP's client_id claim as a machine credential", async () => {
+  it("does not read an IdP's client_id claim as a machine credential", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { get } = await bootOidc(idp);
 
@@ -179,20 +193,22 @@ describe("$issuer({ oidc })", () => {
 describe("$issuer({ jwks })", () => {
   const bootJwks = (
     idp: MockOidcServer,
-    expect: { issuer?: string; audience?: string } = {},
+    expected: { issuer?: string; audience?: string } = {},
     env: Record<string, any> = {},
   ) => {
     class App extends Routes {
       issuer = $issuer({
         name: "keycloak",
         jwks: () => `${idp.issuer}/protocol/openid-connect/certs`,
-        ...expect,
+        ...expected,
       });
     }
     return start(App, env);
   };
 
-  it("refuses another client's token once issuer and audience are set", async () => {
+  it("refuses another client's token once issuer and audience are set", async ({
+    expect,
+  }) => {
     const idp = await twoClients();
     const { get } = await bootJwks(idp, {
       issuer: idp.issuer,
@@ -206,7 +222,7 @@ describe("$issuer({ jwks })", () => {
     expect((await get("/me", theirs)).status).toBe(401);
   });
 
-  it("warns once at start when no issuer is expected", async () => {
+  it("warns once at start when no issuer is expected", async ({ expect }) => {
     const idp = await twoClients();
     const alepha = Alepha.create({ env: { LOG_LEVEL: "warn" } }).with({
       provide: LogDestinationProvider,
@@ -239,7 +255,7 @@ describe("$issuer({ jwks })", () => {
 });
 
 describe("$issuer forms", () => {
-  it("refuses more than one of secret, jwks and oidc", async () => {
+  it("refuses more than one of secret, jwks and oidc", async ({ expect }) => {
     class App {
       issuer = $issuer({
         name: "both",

@@ -1,6 +1,6 @@
 import { $atom, $inject, Alepha, z } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $cookie, AlephaServerCookies } from "../index.ts";
 
@@ -11,7 +11,7 @@ import { $cookie, AlephaServerCookies } from "../index.ts";
  * `$cookie({ key: atom.key })` writes the raw cookie into the request's ALS
  * layer during `server:request:before`, BEFORE anything ever reads the atom. So on
  * a request that carries the cookie, the atom's very first registration
- * happens inside a fork that already holds its key — and the app-level store
+ * happens inside a fork that already holds its key, and the app-level store
  * never received the declared default. Every later, cookie-LESS request then
  * resolved `undefined` (no fork value, no app value) instead of the default:
  * one user's cookied request permanently defined what every cookie-less user
@@ -45,6 +45,17 @@ class CookieBoundApp {
     // Lazy: the atom is first registered here, inside the request.
     handler: () => ({ theme: this.alepha.store.get(themeAtom).theme }),
   });
+
+  clear = $action({
+    path: "/clear",
+    method: "POST",
+    schema: { response: z.object({ ok: z.boolean() }) },
+    handler: () => {
+      // What `StateManager.del()` does: the atom goes back to "no value".
+      this.alepha.store.set(themeAtom.key, undefined);
+      return { ok: true };
+    },
+  });
 }
 
 const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCookies);
@@ -55,8 +66,10 @@ const cookieHeader = `app.test-cookie-binding-theme=${encodeURIComponent(
 )}`;
 
 describe("atom bound to a $cookie, first registered inside a request", () => {
-  it("serves the default to a cookie-less request that follows a cookied one", async () => {
-    // Request 1 — WITH the cookie. This is the request that registers the
+  it("serves the default to a cookie-less request that follows a cookied one", async ({
+    expect,
+  }) => {
+    // Request 1, WITH the cookie. This is the request that registers the
     // atom, from inside a fork that already carries its key.
     const first = await app.read.fetch(
       {},
@@ -67,7 +80,7 @@ describe("atom bound to a $cookie, first registered inside a request", () => {
     );
     expect(first.data.theme).toBe("dark");
 
-    // Request 2 — WITHOUT any cookie. Before the fix this resolved
+    // Request 2, WITHOUT any cookie. Before the fix this resolved
     // `undefined` (the app store never got the default), which then blew up
     // as a TypeError on any direct `.theme` read.
     const second = await app.read.fetch(
@@ -76,8 +89,23 @@ describe("atom bound to a $cookie, first registered inside a request", () => {
     );
     expect(second.data.theme).toBe("light");
 
-    // The app-level store holds the declared DEFAULT — not `undefined`, and
+    // The app-level store holds the declared DEFAULT, not `undefined`, and
     // not the first request's cookie value.
     expect(alepha.store.get(themeAtom, "app")).toEqual({ theme: "light" });
+  });
+
+  it("expires the cookie when the atom is cleared during a request", async ({
+    expect,
+  }) => {
+    const response = await app.clear.fetch(
+      {},
+      { request: { headers: { cookie: cookieHeader } } },
+    );
+
+    const setCookie = response.raw?.headers.get("set-cookie");
+    expect(setCookie).not.toBeNull();
+    expect(setCookie).toMatch(
+      /^app\.test-cookie-binding-theme=; Path=\/; Max-Age=0/,
+    );
   });
 });

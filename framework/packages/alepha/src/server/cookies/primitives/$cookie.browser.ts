@@ -8,7 +8,7 @@ import {
   Primitive,
   type ZType,
 } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 
 import { CookieParser } from "../services/CookieParser.ts";
@@ -80,9 +80,16 @@ export class BrowserCookiePrimitive<T extends ZType>
   protected onInit() {
     if (this.options.key) {
       this.alepha.events.on("state:mutated", ({ key, value }) => {
-        if (key === this.options.key) {
-          this.set(value);
+        if (key !== this.options.key) {
+          return;
         }
+        if (value === undefined) {
+          // The atom was cleared: without this the next load seeds the old
+          // value back from the cookie.
+          this.del();
+          return;
+        }
+        this.set(value);
       });
       this.alepha.events.on("configure", () => {
         try {
@@ -103,7 +110,10 @@ export class BrowserCookiePrimitive<T extends ZType>
     return this.options.name ?? `${this.config.propertyKey}`;
   }
 
-  public set(data: Infer<T>): void {
+  public set(
+    data: Infer<T>,
+    setOptions?: { cookies?: Cookies; ttl?: DurationLike },
+  ): void {
     const value = JSON.stringify(this.alepha.codec.decode(this.schema, data));
     const options = this.options;
 
@@ -128,8 +138,9 @@ export class BrowserCookiePrimitive<T extends ZType>
       domain: options.domain,
     };
 
-    if (options.ttl) {
-      cookie.maxAge = this.dateTimeProvider.duration(options.ttl).as("seconds");
+    const ttl = setOptions?.ttl ?? options.ttl;
+    if (ttl) {
+      cookie.maxAge = this.dateTimeProvider.duration(ttl).as("seconds");
     }
 
     document.cookie = this.cookieParser.cookieToString(this.name, cookie);
@@ -143,8 +154,6 @@ export class BrowserCookiePrimitive<T extends ZType>
       return undefined;
     }
 
-    const rawValue = decodeURIComponent(cookie);
-
     if (this.options.compress) {
       throw new AlephaError("Compression is not supported in browser cookies.");
     }
@@ -157,7 +166,18 @@ export class BrowserCookiePrimitive<T extends ZType>
       throw new AlephaError("Signing is not supported in browser cookies.");
     }
 
-    return this.alepha.codec.decode(this.schema, JSON.parse(rawValue));
+    try {
+      return this.alepha.codec.decode(
+        this.schema,
+        JSON.parse(decodeURIComponent(cookie)),
+      );
+    } catch {
+      // A value that does not decode, parse or match the schema: no value,
+      // and the cookie is cleared, as the server primitive does. Left in
+      // place it would fail every read until the user cleared it by hand.
+      this.del();
+      return undefined;
+    }
   }
 
   public del(): void {

@@ -76,8 +76,8 @@ export class ServerAuthProvider {
   protected readonly cryptoProvider = $inject(CryptoProvider);
 
   /**
-   * Validates that a redirect URI is a safe relative path, or — when
-   * COOKIE_PARENT_DOMAIN is configured — an https URL whose host is the
+   * Validates that a redirect URI is a safe relative path, or, when
+   * COOKIE_PARENT_DOMAIN is configured, an https URL whose host is the
    * parent domain or a subdomain of it. Used by SaaS deployments where the
    * OAuth callback dispatches users back to their tenant subdomain.
    *
@@ -266,17 +266,19 @@ export class ServerAuthProvider {
     },
     handler: async ({ user, headers, cookies }) => {
       // Prefer the REQUEST's resolved user (the currentUserAtom): global
-      // `server:request:before` hooks may have rewritten it , e.g. per-org role
+      // `server:request:before` hooks may have rewritten it, e.g. per-org role
       // resolution on a multi-tenant relying party. Re-deriving from the raw
       // tokens here would silently drop those roles, so the token path is
       // only a FALLBACK for sessions whose resolvers don't populate the atom
       // (plain external OAuth2/OIDC providers without an internal issuer).
       let resolved = user;
       if (!resolved) {
-        const tokens = await this.getTokens(cookies);
-        // `findProvider`: a cookie whose provider is gone has no user behind
-        // it. The request hook already dropped it; this read still sees the
-        // request's copy.
+        // `cookiesToTokens`, never a bare read of the cookie: the user below
+        // is built from tokens nothing else verifies, so the session has to
+        // pass every check the request hook makes (provider still there, not
+        // ended by a back-channel logout, not expired past its refresh). The
+        // hook skips the cookie on a request with its own `Authorization`.
+        const tokens = await this.cookiesToTokens(cookies);
         const provider = tokens && this.findProvider(tokens);
         if (tokens && provider && !("issuer" in provider.options)) {
           resolved = await provider.user(tokens);
@@ -328,7 +330,15 @@ export class ServerAuthProvider {
         realm: query.realm,
       });
 
-      const previous = await this.getTokens(cookies);
+      // Only a session that passes the request hook's gate, and that this
+      // provider minted, lends its `id_token` to the answer: the cookie is
+      // not tied to the refresh token in the body, and a request with its
+      // own `Authorization` reaches this route with the cookie unchecked.
+      const session = await this.cookiesToTokens(cookies);
+      const previous =
+        session && this.findProvider(session) === provider
+          ? session
+          : undefined;
       const result = await provider.refresh(
         body.refresh_token,
         body.access_token,
@@ -923,9 +933,8 @@ export class ServerAuthProvider {
   /**
    * Resolve an {@link AccessToken} to the string that goes in the header.
    *
-   * The type admits `{ token: () => Async<string> }` — the form the `fallback`
-   * JSDoc example uses, passing a `$serviceAccount` — but the value was
-   * interpolated directly, so the documented form produced
+   * The type admits `{ token: () => Async<string> }`, the form a
+   * `$serviceAccount` has: interpolated directly it would read
    * `Bearer [object Object]`.
    */
   protected async resolveAccessToken(
@@ -971,7 +980,7 @@ export class ServerAuthProvider {
     },
     handler: async ({ query, url, reply, headers }) => {
       // A Referer is attacker- and browser-controlled and is not guaranteed to
-      // be a URL — sandboxed origins legitimately send `null`. Parsing it
+      // be a URL: sandboxed origins legitimately send `null`. Parsing it
       // unguarded turned the whole login into a 500.
       const loginUri = this.refererPath(headers.referer);
 
@@ -1039,8 +1048,8 @@ export class ServerAuthProvider {
       // Security note: No state or nonce in the PKCE path is intentional.
       // PKCE provides equivalent CSRF protection to state: the code_verifier is bound
       // to the session cookie, and the authorization code is bound to the code_challenge.
-      // An attacker cannot forge the callback without the code_verifier. OAuth 2.1 (RFC 9126)
-      // makes PKCE mandatory and state optional. For OIDC nonce: the id_token is received
+      // An attacker cannot forge the callback without the code_verifier. OAuth 2.1
+      // (draft-ietf-oauth-v2-1) makes PKCE (RFC 7636) mandatory and state optional. For OIDC nonce: the id_token is received
       // over back-channel TLS from the token endpoint, making nonce replay irrelevant.
       // openid-client/oauth4webapi correctly validates that no state is in the response
       // when none was sent (expectNoState).
@@ -1309,13 +1318,20 @@ export class ServerAuthProvider {
       const redirect = this.validateRedirectUri(
         query.post_logout_redirect_uri ?? "/",
       );
-      const tokens = await this.getTokens(cookies);
+      // `cookiesToTokens`, never a bare read of the cookie: what follows
+      // sends the session's `id_token` to the browser and its refresh token
+      // to the provider, so the session has to pass the request hook's
+      // gate. The hook skips the cookie on a request with its own
+      // `Authorization`, and on one posted from another origin. A session
+      // that does not pass ends here, locally.
+      const tokens = await this.cookiesToTokens(cookies);
+
+      await this.deleteTokens(cookies);
+
       if (!tokens) {
         reply.redirect(redirect, 302);
         return;
       }
-
-      await this.deleteTokens(cookies);
 
       // A cookie whose provider is gone (see `findProvider`) has no session
       // or IdP to end: deleting it is the whole logout.
@@ -1375,7 +1391,17 @@ export class ServerAuthProvider {
           : undefined;
 
       if (customLogoutUri) {
-        reply.redirect(`${customLogoutUri}?${params}`, 302);
+        // A `logoutUri` may carry a query of its own, and may be a path.
+        const target = new URL(customLogoutUri, url);
+        for (const [name, value] of params) {
+          target.searchParams.set(name, value);
+        }
+        reply.redirect(
+          URL.canParse(customLogoutUri)
+            ? target.toString()
+            : target.pathname + target.search + target.hash,
+          302,
+        );
         return;
       }
 
@@ -1542,16 +1568,16 @@ export class ServerAuthProvider {
   }
 
   /**
-   * Resolve a bearer access token from a raw `Cookie` request header — the WebSocket upgrade
+   * Resolve a bearer access token from a raw `Cookie` request header: the WebSocket upgrade
    * path.
    *
    * Browsers cannot attach an `Authorization` header to a WebSocket handshake, so for a web
    * client the encrypted `tokens` cookie is the ONLY auth channel a socket upgrade carries.
-   * Ordinary HTTP requests get the cookie→authorization conversion from this provider's
+   * Ordinary HTTP requests get the cookie-to-authorization conversion from this provider's
    * `server:request:before` hook, but an upgrade never runs the server pipeline, so
    * `WebSocketServerProvider.resolveUserId` calls this directly. Refresh side effects (an
-   * updated or deleted cookie) cannot reach the client here — there is no HTTP response to
-   * carry a `Set-Cookie` — which is acceptable: the next ordinary HTTP request performs the
+   * updated or deleted cookie) cannot reach the client here (there is no HTTP response to
+   * carry a `Set-Cookie`), which is acceptable: the next ordinary HTTP request performs the
    * same refresh and persists it.
    */
   public async accessTokenFromCookieHeader(
@@ -1622,7 +1648,7 @@ export class ServerAuthProvider {
       return;
     }
 
-    // Non-constant-time comparison is fine here — this determines whether to update
+    // Non-constant-time comparison is fine here: this determines whether to update
     // the cookie, not whether to grant access. No authentication decision is made.
     if (refreshedTokens.access_token !== tokens.access_token) {
       await this.setTokens(refreshedTokens, cookies, { keepSession: true });
@@ -1683,14 +1709,14 @@ export class ServerAuthProvider {
    * How long the token cookie should live.
    *
    * The cookie carries the *refresh* token, so its lifetime is the refresh
-   * token's — not the access token's. Falling back to `expires_in` truncated
+   * token's, not the access token's. Falling back to `expires_in` truncated
    * the session to the access-token lifetime: Google reports only
    * `expires_in` (3600) alongside a long-lived refresh token, so users were
    * signed out after an hour despite a refresh token that was still good.
    *
    * When no refresh expiry is reported, `undefined` lets the `$cookie`
    * default apply. `expires_in` is only right when there is no refresh token
-   * at all — then the session really does end with the access token.
+   * at all: then the session really does end with the access token.
    */
   protected tokenCookieTtl(tokens: Tokens): Duration | undefined {
     const exp =
@@ -1756,7 +1782,7 @@ export class ServerAuthProvider {
 
   protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {
     // Note: concurrent requests refreshing with the same token is safe here because
-    // Alepha does not rotate refresh tokens — the same token is reused across refreshes
+    // Alepha does not rotate refresh tokens: the same token is reused across refreshes
     // (session-based: same UUID in the session row; token-based: same JWT).
     // If single-use rotation is ever added (e.g., for SPA/public clients per OAuth 2.1),
     // a reuse grace window (à la Auth0) should be implemented to avoid race conditions.

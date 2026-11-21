@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccount } from "alepha/security";
 import { $route, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { BrowserJar } from "../../cookies/__tests__/BrowserJar.ts";
 import { $auth } from "../primitives/$auth.ts";
@@ -81,7 +81,9 @@ const boot = async () => {
         body: JSON.stringify({ username: "agent", password: "secret" }),
       },
     );
-    expect(response.status).toBe(200);
+    if (response.status !== 200) {
+      throw new AlephaError(`Sign-in answered ${response.status}`);
+    }
     jar.apply(response.headers.getSetCookie());
   };
 
@@ -106,7 +108,7 @@ const boot = async () => {
 };
 
 describe("a session whose tokens pass 4 KB", () => {
-  it("keeps the session across a second request", async () => {
+  it("keeps the session across a second request", async ({ expect }) => {
     const { accessToken, jar, signIn, whoAmI } = await boot();
 
     await signIn();
@@ -118,7 +120,9 @@ describe("a session whose tokens pass 4 KB", () => {
     expect(await whoAmI()).toBe(`Bearer ${accessToken}`);
   });
 
-  it("reaches a WebSocket upgrade, which only has the raw Cookie header", async () => {
+  it("reaches a WebSocket upgrade, which only has the raw Cookie header", async ({
+    expect,
+  }) => {
     const { accessToken, alepha, jar, signIn } = await boot();
 
     await signIn();
@@ -128,7 +132,9 @@ describe("a session whose tokens pass 4 KB", () => {
     ).resolves.toBe(accessToken);
   });
 
-  it("leaves no stale chunk when a refresh shrinks the tokens", async () => {
+  it("leaves no stale chunk when a refresh shrinks the tokens", async ({
+    expect,
+  }) => {
     const { alepha, jar, signIn, whoAmI } = await boot();
     await signIn();
     const signedInChunks = jar.names.length;
@@ -143,7 +149,7 @@ describe("a session whose tokens pass 4 KB", () => {
     expect(await whoAmI()).toBe("Bearer refreshed");
   });
 
-  it("signs out of every chunk", async () => {
+  it("signs out of every chunk", async ({ expect }) => {
     const { jar, signIn, signOut, whoAmI } = await boot();
     await signIn();
 
