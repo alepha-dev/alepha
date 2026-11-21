@@ -37,6 +37,7 @@ import { EpicProgressService } from "./services/EpicProgressService.ts";
 import { EpicReviewService } from "./services/EpicReviewService.ts";
 import { EpicsInFlightMetric } from "./services/EpicsInFlightMetric.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
+import { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
@@ -104,6 +105,8 @@ export const LorePlanApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    // Feedback triaged by an agent job on the Agent host (#Q3988).
+    FeedbackAgentService,
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     WorkBuckets,
@@ -283,3 +286,4 @@ export {
 } from "./services/QuestFlowService.ts";
 export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
+export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
