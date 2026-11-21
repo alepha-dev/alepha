@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { AlephaLock, LockProvider, LockTopicProvider } from "alepha/lock";
+import { AlephaLock, LockProvider } from "alepha/lock";
 import { RedisProvider } from "alepha/redis";
-import { MemoryTopicProvider, RedisTopicProvider } from "alepha/topic";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { MemoryLockProvider, RedisLockProvider } from "../index.ts";
 import { testDelIfOwner, testLockBasic, testLockWait } from "./shared.ts";
@@ -66,19 +65,19 @@ describe("RedisLockProvider", () => {
     return lock;
   };
 
-  test("should lock without waiting", async () => {
+  it("should lock without waiting", async () => {
     await testLockBasic(Provider);
   });
 
-  test("should lock with waiting", async () => {
+  it("should let one caller at a time in when waiting", async () => {
     await testLockWait(Provider);
   });
 
-  test("delIfOwner only deletes the caller's own lock", async () => {
+  it("delIfOwner only deletes the caller's own lock", async () => {
     await testDelIfOwner(Provider);
   });
 
-  test("the two-step release deletes a lock taken over mid-release", async () => {
+  it("the two-step release deletes a lock taken over mid-release", async () => {
     const lock = (await boot(
       TwoStepRedisLockProvider,
     )) as TwoStepRedisLockProvider;
@@ -99,7 +98,7 @@ describe("RedisLockProvider", () => {
     expect(await lock.get(key)).toBeUndefined();
   });
 
-  test("delIfOwner releases in one command, leaving no window", async () => {
+  it("delIfOwner releases in one command, leaving no window", async () => {
     const lock = (await boot(
       CountingRedisLockProvider,
     )) as CountingRedisLockProvider;
@@ -122,7 +121,7 @@ describe("RedisLockProvider", () => {
     expect(deletes).toBe(0);
   });
 
-  test("delIfOwner leaves the lock alone once another owner holds it", async () => {
+  it("delIfOwner leaves the lock alone once another owner holds it", async () => {
     const lock = await boot(RedisLockProvider);
     const key = `lock-race-${randomUUID()}`;
 
@@ -136,31 +135,27 @@ describe("RedisLockProvider", () => {
 });
 
 describe("AlephaLock: REDIS_URL picks the provider", () => {
-  test("is Redis, lock and lock topic, when REDIS_URL is set", () => {
+  it("is Redis when REDIS_URL is set", () => {
     const alepha = Alepha.create({
       env: { REDIS_URL: process.env.REDIS_URL },
     }).with(AlephaLock);
 
     expect(alepha.inject(LockProvider)).toBeInstanceOf(RedisLockProvider);
-    expect(alepha.inject(LockTopicProvider)).toBeInstanceOf(RedisTopicProvider);
   });
 
-  test("is Memory without REDIS_URL, and registers no Redis client", async () => {
+  it("is Memory without REDIS_URL, and registers no Redis client", async () => {
     const alepha = Alepha.create({ env: { REDIS_URL: undefined } }).with(
       AlephaLock,
     );
     await alepha.start();
 
     expect(alepha.inject(LockProvider)).toBeInstanceOf(MemoryLockProvider);
-    expect(alepha.inject(LockTopicProvider)).toBeInstanceOf(
-      MemoryTopicProvider,
-    );
     expect(alepha.has(RedisProvider)).toBe(false);
 
     await alepha.stop();
   });
 
-  test("keeps an app's explicit substitution over REDIS_URL", () => {
+  it("keeps an app's explicit substitution over REDIS_URL", () => {
     const alepha = Alepha.create({ env: { REDIS_URL: process.env.REDIS_URL } })
       .with({ provide: LockProvider, use: MemoryLockProvider })
       .with(AlephaLock);

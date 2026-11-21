@@ -1,12 +1,13 @@
-import { $pipeline, Alepha } from "alepha";
-import { describe, test } from "vitest";
+import { $pipeline, Alepha, AlephaError } from "alepha";
+import { describe, it } from "vitest";
 
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { AlephaLock } from "../index.ts";
 import { $lock } from "../primitives/$lock.ts";
+import { LockProvider } from "../providers/LockProvider.ts";
 
 describe("$lock middleware", () => {
-  test("executes handler when lock is available", async ({ expect }) => {
+  it("executes handler when lock is available", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLock);
 
     class TestService {
@@ -24,7 +25,7 @@ describe("$lock middleware", () => {
     await alepha.stop();
   });
 
-  test("passes handler arguments through", async ({ expect }) => {
+  it("passes handler arguments through", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLock);
 
     class TestService {
@@ -42,7 +43,7 @@ describe("$lock middleware", () => {
     await alepha.stop();
   });
 
-  test("supports dynamic lock names", async ({ expect }) => {
+  it("supports dynamic lock names", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLock);
 
     class TestService {
@@ -60,11 +61,10 @@ describe("$lock middleware", () => {
     await alepha.stop();
   });
 
-  test("throws LockAcquireError when lock is held (wait=false)", async ({
+  it("throws LockAcquireError when lock is held (wait=false)", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaLock);
-    const { LockProvider } = await import("../providers/LockProvider.ts");
 
     class TestService {
       fn = $pipeline({
@@ -90,7 +90,42 @@ describe("$lock middleware", () => {
     await alepha.stop();
   });
 
-  test("has middleware metadata", ({ expect }) => {
+  it("releases the lock when a lock:acquired listener throws", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLock);
+    const released: string[] = [];
+    let ran = 0;
+
+    class TestService {
+      fn = $pipeline({
+        use: [$lock({ name: "listener-throws-lock" })],
+        handler: async () => {
+          ran++;
+        },
+      });
+    }
+
+    const lockProvider = alepha.inject(LockProvider);
+    const svc = alepha.inject(TestService);
+    alepha.events.on("lock:acquired", () => {
+      throw new AlephaError("listener failed");
+    });
+    alepha.events.on("lock:released", ({ name }) => {
+      released.push(name);
+    });
+    await alepha.start();
+
+    await expect(svc.fn()).rejects.toThrow("listener failed");
+
+    expect(ran).toBe(0);
+    expect(await lockProvider.get("listener-throws-lock")).toBeUndefined();
+    expect(released).toEqual(["listener-throws-lock"]);
+
+    await alepha.stop();
+  });
+
+  it("has middleware metadata", ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLock);
 
     class TestService {

@@ -6,7 +6,7 @@ import { $lock } from "../primitives/$lock.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { MemoryLockProvider } from "../providers/MemoryLockProvider.ts";
 
-describe("$lock middleware — same-process mutual exclusion", () => {
+describe("$lock middleware: same-process mutual exclusion", () => {
   it("lets only one of several concurrent calls enter the critical section", async () => {
     let inside = 0;
     let maxConcurrent = 0;
@@ -63,7 +63,7 @@ describe("$lock middleware — same-process mutual exclusion", () => {
     const svc = alepha.inject(Svc);
     await alepha.start();
 
-    // A holds the lock but outlives maxDuration (400ms) — its lock expires
+    // A holds the lock but outlives maxDuration (400ms): its lock expires
     // at t=400 while it keeps running until t=700.
     const a = svc.critical(700);
     await sleep(500);
@@ -74,7 +74,7 @@ describe("$lock middleware — same-process mutual exclusion", () => {
     await sleep(300);
 
     // t=800: A finished at t=700 and "released". B is still running and its
-    // lock is valid until t=900 — C must be refused.
+    // lock is valid until t=900, so C must be refused.
     const c = svc.critical(10);
 
     const results = await Promise.allSettled([a, b, c]);

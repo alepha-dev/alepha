@@ -1,18 +1,18 @@
 import { $inject } from "alepha";
 import { DateTimeProvider, type Timeout } from "alepha/datetime";
-import { $logger } from "alepha/logger";
 
 import { LockProvider } from "./LockProvider.ts";
 
 /**
- * A simple in-memory store provider.
+ * Locks held in this process's memory.
+ *
+ * They exclude callers of one container, not of another instance.
  */
 export class MemoryLockProvider extends LockProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly log = $logger();
 
   /**
-   * The in-memory store.
+   * The held locks, by key.
    */
   protected store: Record<string, string> = {};
 
@@ -99,10 +99,9 @@ export class MemoryLockProvider extends LockProvider {
     // drops it from does not outlive the process. Nothing awaits the expiry -
     // a contended caller polls or waits on its own timer - so it has no claim
     // on the event loop. Refed it had one, for the whole lease: `$lock`
-    // defaults to a 5-minute `maxDuration`, and a `gracePeriod` re-arms this
-    // for a window deliberately longer than the run, which is how a CLI
-    // command that finished in seconds sat idle waiting to expire a lock
-    // nothing would ever read again.
+    // defaults to a 5-minute `maxDuration`, which is how a CLI command that
+    // finished in seconds sat idle waiting to expire a lock nothing would
+    // ever read again.
     this.storeTimeout[key] = this.dateTimeProvider.createTimeout(
       () => {
         delete this.store[key];

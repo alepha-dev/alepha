@@ -1,5 +1,4 @@
 import { $inject, Alepha } from "alepha";
-import { $logger } from "alepha/logger";
 import { RedisProvider, type RedisSetOptions } from "alepha/redis";
 
 import { LockProvider } from "./LockProvider.ts";
@@ -13,7 +12,6 @@ import { LockProvider } from "./LockProvider.ts";
  * other's locks; set `APP_NAME` to separate two environments of one app.
  */
 export class RedisLockProvider extends LockProvider {
-  protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(RedisProvider);
 

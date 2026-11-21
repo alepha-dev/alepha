@@ -8,4 +8,6 @@ import { MemoryLockProvider } from "alepha/lock";
 
 ## Overview
 
-A simple in-memory store provider.
+Locks held in this process's memory.
+
+They exclude callers of one container, not of another instance.

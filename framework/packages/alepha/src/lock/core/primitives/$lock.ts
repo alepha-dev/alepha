@@ -53,7 +53,7 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
         // Per-invocation identity. The pipeline composes this middleware once
         // and memoizes the wrapped function, so an id created in the handler
         // body (outside this closure) would be shared by every concurrent
-        // invocation — `SET NX GET` would then hand each caller back that same
+        // invocation: `SET NX GET` would then hand each caller back that same
         // shared id, and every one would read `lockId === id` and enter the
         // critical section together. Generating it here, per call, is what makes
         // mutual exclusion actually hold within a single process.
@@ -64,7 +64,7 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
             : options.name;
         if (!name) {
           throw new AlephaError(
-            "$lock middleware requires a name option (no class context available)",
+            "$lock requires a name: a middleware has no property key to fall back on",
           );
         }
 
@@ -155,18 +155,21 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
           await acquire();
         }
 
-        // We hold the lock — execute handler
+        // We hold the lock from here on, so everything below sits inside the
+        // `try`: a `lock:acquired` listener that throws rejects the call
+        // without running the handler, and the key is released like any
+        // other failure rather than held until `maxDuration`.
         const acquiredAt = dateTimeProvider.nowMillis();
-        await alepha.events.emit("lock:acquired", {
-          name,
-          id,
-          maxDurationMs,
-        });
         try {
+          await alepha.events.emit("lock:acquired", {
+            name,
+            id,
+            maxDurationMs,
+          });
           return await next(...args);
         } finally {
           // Compare-and-delete: if the handler outlived maxDuration the key
-          // expired and another instance may hold the lock now — deleting
+          // expired and another instance may hold the lock now. Deleting
           // unconditionally would release the NEW holder's lock.
           await lockProvider.delIfOwner(name, id);
           await alepha.events.emit("lock:released", {
@@ -183,11 +186,11 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Options for $lock in middleware mode (no handler).
+ * Options for `$lock`.
  */
 export interface LockMiddlewareOptions {
   /**
-   * Lock key name. Required in middleware mode (no class context available).
+   * Lock key name. Required: a middleware has no property key to fall back on.
    * Can be a static string or a function that derives the key from handler args.
    */
   name: string | ((...args: any[]) => string);
