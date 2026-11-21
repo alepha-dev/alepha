@@ -93,12 +93,12 @@ export interface ControlDateRangeProps {
  *
  * So `pending` counts the gesture instead of reading its shape, and it
  * handles both behaviours: a genuinely half range holds, and a
- * DayPicker-completed first click holds too. `control-date-range.browser
+ * DayPicker-completed first click holds too. `ControlDateRange.browser
  * .spec.tsx` drives two real clicks, which is what found this.
  *
  * ⚠️ **Local parts, never `new Date(value)`.** A date-only string is a
  * calendar day; parsing it as an instant shifts it by one west of Greenwich.
- * The two helpers are `control-date`'s own, shared rather than copied.
+ * The two helpers are `dateOnly.ts`'s, shared with `ControlDatePopover`.
  */
 export const ControlDateRange = (props: ControlDateRangeProps) => {
   const { tr, l } = useI18n();
@@ -192,12 +192,15 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (next) setPending(false);
+          setPending(false);
+          // Closed on a half-made gesture: the trigger shows the range in
+          // force again, not the abandoned day.
+          if (!next) setDraft(stored);
           props.onPopupOpenChange?.(next);
         }}
       >
         {/* The kit's field trigger, and the kit's clear button positioned on
-            it - `control-base/field-trigger`, the same two the selects on the
+            it - `form/fieldTrigger.tsx`, the same two the selects on the
             filter bar beside this one draw (feedback #2197). The clear sits
             BESIDE the trigger rather than inside it because a button nested
             in a button is invalid, and Base UI's popover trigger would

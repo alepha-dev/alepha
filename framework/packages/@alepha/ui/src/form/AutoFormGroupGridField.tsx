@@ -69,7 +69,7 @@ export const AutoFormGroupGridField = (props: AutoFormGroupGridFieldProps) => {
         // Responsive grid: each field is one cell. Default: 12-col span from
         // width heuristics. A caller-supplied grid keeps its own column count
         // for scalars, but COMPLEX fields (an object card, a list of object
-        // editors) still claim the whole row — squeezing one into a third of a
+        // editors) still claim the whole row: squeezing one into a third of a
         // row is unreadable, and the heuristic already knows which those are
         // (width 100).
         props.gridClassName

@@ -21,7 +21,7 @@ void Calendar;
  * `z.dateRange()` renders as a range picker, and never as anything else.
  *
  * The trap this file mostly exists for is the dispatch ORDER: a range IS an
- * array, so `control.tsx`'s `meta.isArray` branch matches it and renders a
+ * array, so `Control.tsx`'s `meta.isArray` branch matches it and renders a
  * multi-select combobox - which looks like a deliberate control and is
  * silently the wrong one.
  */
@@ -100,7 +100,7 @@ describe("Control (date range)", () => {
     await mount(["2026-01-01", "2026-01-31"]);
 
     await waitFor(() => {
-      // Rendered through `toLocaleDateString`, so this asserts the shape
+      // Rendered through `l()`, in the page's language, so this asserts the shape
       // rather than a locale's punctuation: two dates, one separator.
       expect(trigger().textContent).toContain("-");
     });
@@ -204,6 +204,45 @@ describe("Control (date range)", () => {
       expect(value[1]! >= value[0]!).toBe(true);
       // Which is what `z.dateRange()` accepts, checked rather than assumed.
       expect(z.dateRange().safeParse(value).success).toBe(true);
+    });
+
+    it("shows the field again when the popover closes on a half-made range", async () => {
+      await mount();
+      await waitFor(() => expect(trigger()).not.toBeNull());
+      fireEvent.click(trigger());
+
+      fireEvent.click((await days())[3]!);
+      await waitFor(() =>
+        expect(trigger().textContent).not.toContain("Pick a date range"),
+      );
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+
+      await waitFor(() =>
+        expect(document.querySelector('[role="gridcell"] button')).toBeNull(),
+      );
+      // The abandoned day is not what the field holds: nothing was written.
+      expect(written).toBeUndefined();
+      expect(trigger().textContent).toContain("Pick a date range");
+    });
+
+    it("shows the stored range again when the popover closes on a half-made one", async () => {
+      await mount(["2026-01-01", "2026-01-31"]);
+      await waitFor(() => expect(trigger()).not.toBeNull());
+      const before = trigger().textContent;
+      fireEvent.click(trigger());
+
+      fireEvent.click((await days())[20]!);
+      await waitFor(() => expect(trigger().textContent).not.toBe(before));
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+
+      await waitFor(() =>
+        expect(document.querySelector('[role="gridcell"] button')).toBeNull(),
+      );
+      expect(trigger().textContent).toBe(before);
     });
   });
 });

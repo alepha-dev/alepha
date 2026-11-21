@@ -22,10 +22,6 @@ import {
 /**
  * A controlled tree: rows in, gestures out.
  *
- * ⚠️ This file is the DECLARATION only. The core lands in #Q1939, drag and
- * drop in #Q1940, rename and the menu slot in #Q1941. Every prop below says
- * which quest implements it.
- *
  * ## The contract, and why it is this one
  *
  * `TreeView` owns the row markup, the indent geometry and the memo. A
@@ -263,9 +259,8 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
    * The keyboard contract `role="tree"` claims, on the flat list of rows:
    * Up and Down move one row, Home and End to the ends, Right opens a closed
    * branch or steps into an open one, Left closes an open branch or steps
-   * out to the parent. Enter and Space stay the row's own (select).
-   *
-   * Arrows are read as `dir="ltr"`: right-to-left is a later epic's.
+   * out to the parent. Enter and Space stay the row's own (select). On a
+   * right-to-left page Right and Left swap (`inlineArrowKey`).
    */
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;

@@ -11,7 +11,7 @@ import { AutoForm, type AutoFormProps } from "../AutoForm.tsx";
 
 /**
  * `layout="row"` is not a near-miss of the settings-card shape, it is that
- * shape — so these pin the three things that make it one and are invisible in
+ * shape, so these pin the three things that make it one and are invisible in
  * a screenshot review: the action bar belongs to the card rather than to a
  * second bordered box under it, the heading comes from `SettingsHeading`, and
  * a text control takes the settings column width.
@@ -75,7 +75,7 @@ describe("AutoForm settings-card layout", () => {
 
     const card = container.querySelector(".divide-y");
     const rows = Array.from(card?.children ?? []);
-    // Field row, then action row — and both on the card's `px-4 py-3` rhythm,
+    // Field row, then action row, and both on the card's `px-4 py-3` rhythm,
     // or the rule above the buttons lands at a different inset than the ones
     // between fields.
     expect(rows).toHaveLength(2);
@@ -193,7 +193,7 @@ describe("AutoForm settings-card layout", () => {
     );
 
     // The asterisk is `aria-hidden`, so it never carried this to a screen
-    // reader — `aria-required` does, and it comes from the schema. If hiding
+    // reader: `aria-required` does, and it comes from the schema. If hiding
     // the marker ever took this with it, the prop would have quietly turned a
     // cosmetic choice into an accessibility regression.
     expect(

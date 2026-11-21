@@ -59,8 +59,8 @@ export const AutoFormBottomBar = (props: AutoFormBottomBarProps) => {
           disabled={props.disabled || !props.dirty}
         >
           {/* No icon, deliberately. The submit button next to it carries none
-              — a glyph would have to be either a dated floppy disk or a tick
-              that reads as "done" rather than "do it" — and a bar where only
+              (a glyph would have to be either a dated floppy disk or a tick
+              that reads as "done" rather than "do it") and a bar where only
               some buttons are decorated reads as unfinished rather than as a
               hierarchy. `Button` still shows a spinner while submitting,
               which is the one icon here that carries information. */}

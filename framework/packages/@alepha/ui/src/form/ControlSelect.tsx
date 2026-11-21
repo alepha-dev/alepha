@@ -43,7 +43,7 @@ export interface ControlSelectProps {
    */
   description?: string;
   /**
-   * Render as a `<Segmented>` control (best for 2–4 options).
+   * Render as a `<Segmented>` control (best for 2 to 4 options).
    */
   segmented?: boolean;
   /**
@@ -55,7 +55,7 @@ export interface ControlSelectProps {
   checkboxes?: boolean;
   /**
    * Force the search input on. Kept as the historical name for
-   * `searchable: true` — every select is a combobox now, the flag only
+   * `searchable: true`: every select is a combobox now, the flag only
    * decides whether it carries a search field.
    */
   combobox?: boolean;
@@ -108,7 +108,7 @@ export interface ControlSelectProps {
    * When true, the dropdown gets a synthetic "none" row at the top that
    * resets the field to `undefined`. Useful for optional filter chips
    * (e.g. an admin-table status filter) where the user needs an explicit
-   * "no filter" option — Base UI's `Select` reserves empty-string values
+   * "no filter" option: Base UI's `Select` reserves empty-string values
    * as its internal no-selection sentinel, so a regular `<SelectItem
    * value="">` can't be picked. With `clearable`, ControlSelect uses an
    * internal sentinel and translates it to `undefined` in `onChange`.
@@ -426,7 +426,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
     props.clearLabel ?? tr("controlSelect.none", { default: "None" });
 
   // One control for every list. The option count decides whether the popup
-  // carries a search field — it no longer decides which primitive renders.
+  // carries a search field; it no longer decides which primitive renders.
   // The native `Select` path this replaced silently dropped `description`,
   // `tag`, per-option `disabled` and `deselectable`, and styled its trigger
   // differently, purely because a list happened to be short.
@@ -489,12 +489,12 @@ export const ControlSelect = (props: ControlSelectProps) => {
         // An optional field must also be able to go back to empty without a
         // dedicated row: Base UI never emits `null`, so re-pressing the
         // selected row deselects (see `handleSingle` in
-        // `ControlSelectCombobox.tsx`). A required field keeps its value —
+        // `ControlSelectCombobox.tsx`). A required field keeps its value:
         // clearing it would only produce a validation error the user cannot
         // see yet.
         deselectable={props.clearable || !meta.required}
         // Multi shows this muted when nothing is picked, so it reaches the
-        // trigger whether or not the field is `clearable` — a multi-select
+        // trigger whether or not the field is `clearable`: a multi-select
         // has no clear ROW (it clears by deselecting), and without this its
         // empty trigger fell back to a bare "Select…".
         placeholder={
@@ -525,7 +525,7 @@ export type SelectOption =
        */
       icon?: ReactNode;
       /**
-       * When true, the row is non-interactive — can't be selected if
+       * When true, the row is non-interactive: can't be selected if
        * not selected, can't be deselected if selected. Useful for
        * default/mandatory entries (e.g. the base "user" role).
        */
@@ -539,14 +539,14 @@ type LoaderMode = "static" | "short" | "long";
  *
  * The kit's own scale, kept under this name because `Control` and a long tail
  * of callers already spell it `size="xs"` on a select. The table behind it,
- * and the trigger box it sizes, are `control-base/field-trigger`'s - shared
+ * and the trigger box it sizes, are `form/fieldTrigger.tsx`'s - shared
  * with the two calendar controls, which used to draw a button instead.
  */
 export type ControlSelectSize = ControlTriggerSize;
 
 /**
  * Static option count above which the dropdown grows a search input. Below it
- * the very same combobox renders without one — the threshold decides whether
+ * the very same combobox renders without one: the threshold decides whether
  * you can type, never which control you get.
  */
 // Past this many rows, scanning by eye stops being realistic and the popup

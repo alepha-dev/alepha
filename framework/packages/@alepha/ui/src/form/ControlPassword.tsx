@@ -1,3 +1,4 @@
+import { useI18n } from "alepha/react/i18n";
 import { Eye, EyeOff } from "lucide-react";
 import { type HTMLAttributes, useState } from "react";
 
@@ -31,11 +32,12 @@ export interface ControlPasswordProps {
 /**
  * Masked password field with a reveal toggle.
  *
- * Lives outside `Control` so a hand-built form — a dialog that is not driven by
- * a schema — gets the same field the schema path renders, rather than pairing a
+ * Lives outside `Control` so a hand-built form (a dialog that is not driven by
+ * a schema) gets the same field the schema path renders, rather than pairing a
  * bare `<Input type="password">` with no way to check what was typed.
  */
 export const ControlPassword = (props: ControlPasswordProps) => {
+  const { tr } = useI18n();
   const [reveal, setReveal] = useState(false);
   const Icon = props.icon;
   return (
@@ -86,7 +88,11 @@ export const ControlPassword = (props: ControlPasswordProps) => {
           size="icon"
           disabled={props.disabled}
           onClick={() => setReveal((r) => !r)}
-          aria-label={reveal ? "Hide password" : "Show password"}
+          aria-label={
+            reveal
+              ? tr("controlPassword.hide", { default: "Hide password" })
+              : tr("controlPassword.show", { default: "Show password" })
+          }
           className="text-muted-foreground hover:text-foreground absolute inset-y-0 end-1 my-auto size-7"
         >
           {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}

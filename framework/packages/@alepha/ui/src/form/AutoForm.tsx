@@ -103,13 +103,13 @@ export interface AutoFormProps<T extends ZObject> {
   /**
    * Show the red `*` next to the label of every required field.
    *
-   * Set `false` on a form where the marker is not news — one whose fields are
+   * Set `false` on a form where the marker is not news, one whose fields are
    * nearly all required, or where the one required field is self-evidently so
    * (a project's Name). A page of asterisks tells the reader nothing about
    * which field to be careful with, which is the only thing the marker is for.
    *
    * Purely visual. `aria-required` still comes from the schema, so a screen
-   * reader announces the field as required either way — the marker itself is
+   * reader announces the field as required either way: the marker itself is
    * `aria-hidden` and never carried that.
    *
    * @default true
@@ -117,7 +117,7 @@ export interface AutoFormProps<T extends ZObject> {
   requiredMarker?: boolean;
 
   /**
-   * Cancel button — hidden when omitted.
+   * Cancel button, hidden when omitted.
    */
   onCancel?: () => void;
   /**
@@ -149,8 +149,8 @@ export interface AutoFormProps<T extends ZObject> {
    * lay out on a fixed 12-column grid and each field's span is derived from
    * width heuristics (`$control.width`, type, …).
    *
-   * Pass responsive column classes — e.g.
-   * `"grid-cols-1 md:grid-cols-2 xl:grid-cols-3"` — to get N equal columns per
+   * Pass responsive column classes (e.g.
+   * `"grid-cols-1 md:grid-cols-2 xl:grid-cols-3"`) to get N equal columns per
    * breakpoint instead; when set, every field occupies a single cell and the
    * per-field width heuristics are ignored.
    */
@@ -181,8 +181,8 @@ export interface AutoFormProps<T extends ZObject> {
 
   /**
    * Visual layout for every nested Control.
-   * - `"stack"` (default): label on top, control below — the classic form look.
-   * - `"row"`: settings-style — each control sits on its own line with the
+   * - `"stack"` (default): label on top, control below, the classic form look.
+   * - `"row"`: settings-style: each control sits on its own line with the
    *   label/description on the left and the control on the right. Each
    *   group renders as a bordered card with horizontal dividers.
    *
@@ -192,7 +192,7 @@ export interface AutoFormProps<T extends ZObject> {
    * {@link SettingsHeading}, and the action bar as the card's own last
    * divided row. So a settings card whose rows are form fields should be an
    * `AutoForm`, and reach for `SettingsSection` only for the rows that are
-   * *not* fields — an avatar picker, a read-only value, a lone button.
+   * *not* fields: an avatar picker, a read-only value, a lone button.
    */
   layout?: "stack" | "row";
 
@@ -203,7 +203,7 @@ export interface AutoFormProps<T extends ZObject> {
    * and the bottom bar is hidden by default. Pass an options object to
    * customize the debounce delay (default 600ms).
    *
-   * The `handler` you pass to `useForm` is the auto-commit target — it
+   * The `handler` you pass to `useForm` is the auto-commit target: it
    * runs once per quiescent edit, and any thrown error stops the loop
    * until the user edits again.
    */
@@ -284,7 +284,7 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
       // Text fields (incl. optional/nullable wrappers) should NOT auto-commit
       // on keystroke; they commit via Enter or the inline tick button.
       // Uploads commit a uuid string when the upload finishes, and selects /
-      // comboboxes / segmented controls commit a discrete value on change —
+      // comboboxes / segmented controls commit a discrete value on change:
       // all of those MUST auto-save even though the field schema is a string.
       const rendersAsSelect =
         !!fieldConfig.select ||
@@ -292,9 +292,18 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
         !!fieldConfig.segmented ||
         fieldConfig.items != null ||
         isEnumSchema(fieldSchema);
+      // A date, time or month is a string too, but its picker has no Enter
+      // and no tick, so it commits on change like a select.
+      const rendersAsDate =
+        !!fieldConfig.date ||
+        !!fieldConfig.datetime ||
+        !!fieldConfig.time ||
+        !!fieldConfig.month ||
+        isDateSchema(fieldSchema);
       if (
         !fieldConfig.upload &&
         !rendersAsSelect &&
+        !rendersAsDate &&
         isStringSchema(fieldSchema)
       )
         return;
@@ -353,7 +362,7 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
   };
 
   // In row layout the action bar is the card's own last row, not a second
-  // bordered box floating under it — see the `layout` prop's note. `card`
+  // bordered box floating under it (see the `layout` prop's note). `card`
   // mode already owns its footer (`CardFooter`), and a form that resolved to
   // no groups at all has nothing to put the bar inside, so both fall back to
   // the standalone bar below.
@@ -444,7 +453,7 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
               // gives every named control a 1×1 hidden `<input>` positioned
               // `absolute` with no offsets, and a scroller that is not itself
               // a containing block neither clips those inputs nor scrolls
-              // them with the field they belong to — so a native validation
+              // them with the field they belong to, so a native validation
               // bubble would point at where the field used to be. #1849.
               props.fill && "relative min-h-0 flex-1 overflow-y-auto",
             )}
@@ -509,7 +518,7 @@ export interface AutoFormGroup {
    * One line under the title, for context the fields should not each repeat.
    *
    * Only rendered in `layout="row"`, where the heading sits above the card
-   * and there is room for it — the boxed group bar the grid layout uses is a
+   * and there is room for it: the boxed group bar the grid layout uses is a
    * single line by construction.
    */
   description?: string;
@@ -559,7 +568,7 @@ function isStringSchema(schema: unknown): boolean {
 /**
  * Detect an enum schema (incl. optional/nullable wrappers). Enum fields
  * render as a `<Select>`, so they must auto-commit on change like any
- * other select — never get lumped in with free-text string fields.
+ * other select, never get lumped in with free-text string fields.
  */
 function isEnumSchema(schema: unknown): boolean {
   if (!schema || typeof schema !== "object") return false;
@@ -572,8 +581,23 @@ function isEnumSchema(schema: unknown): boolean {
 }
 
 /**
+ * Detect a schema `Control` renders as a date or time picker: the formats its
+ * date branch reads, on the inner schema or on a wrapper's `.meta()`, the way
+ * `parseField` reads them.
+ */
+function isDateSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== "object") return false;
+  const native = z.schema.format(z.schema.unwrap(schema as ZType));
+  const format =
+    typeof native === "string"
+      ? native
+      : (z.schema.meta(schema as ZType) as { format?: unknown } | null)?.format;
+  return format === "date" || format === "date-time" || format === "time";
+}
+
+/**
  * Resolve the effective `<Control>` config for a field, merging the
- * `fields` map with any per-field override carried on a `groups` entry —
+ * `fields` map with any per-field override carried on a `groups` entry,
  * the same precedence `AutoFormGroupBlock` applies when rendering.
  */
 function resolveControlConfig(

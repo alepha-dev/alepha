@@ -52,7 +52,7 @@ export const AutoFormGroupBlock = (props: AutoFormGroupBlockProps) => {
       // i18nPrefix: fill label/description from the dictionary when neither
       // the override nor the schema already provides one. A missing key
       // makes `tr` echo the key back (an empty `default` is falsy, so the
-      // provider can't substitute it) — guard with `!== key` so an absent
+      // provider can't substitute it) so guard with `!== key` so an absent
       // entry leaves the Control to fall back to `schema.title ??
       // prettyName(field)`, preserving current behaviour.
       if (props.i18nPrefix && merged.label === undefined) {

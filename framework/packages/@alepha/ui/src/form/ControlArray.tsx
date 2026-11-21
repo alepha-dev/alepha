@@ -47,7 +47,7 @@ export interface ControlArrayProps {
   input: BaseInputField;
   /**
    * Dictionary prefix for the item fields: each reads `<prefix>.<field>` and
-   * `<prefix>.<field>.desc` (the index is not part of the key — every row of
+   * `<prefix>.<field>.desc` (the index is not part of the key: every row of
    * the list shares one label).
    */
   i18nPrefix?: string;
@@ -369,11 +369,11 @@ export const ControlArray = (props: ControlArrayProps) => {
   const schema = props.input.schema;
   // `isArray`, not `"items" in schema`: that spelling tested for a prototype
   // alias rather than for an array schema, so it answered false once the alias
-  // went away — and the whole control rendered nothing, Add button included.
+  // went away, and the whole control rendered nothing, Add button included.
   if (!z.schema.isArray(schema)) return null;
 
   // `z.schema.element`, not `.items`: the latter only ever resolved through a
-  // prototype alias on ZodArray, so it silently became `undefined` — and with
+  // prototype alias on ZodArray, so it silently became `undefined`, and with
   // no item schema the control renders neither fields nor tabs.
   const itemSchema = z.schema.element(schema) as ZType;
   const variants = objectVariants(itemSchema);
@@ -521,7 +521,7 @@ export const ControlArray = (props: ControlArrayProps) => {
             ),
             i18nPrefix: childI18nPrefix(props.i18nPrefix, name),
           };
-          // The discriminant decides the item's SHAPE — editing it would
+          // The discriminant decides the item's SHAPE: editing it would
           // invalidate every sibling field, so it is shown read-only.
           const isDiscriminant = !!variants && name === discriminant;
           const fieldInput = buildFieldInput(

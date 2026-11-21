@@ -8,7 +8,7 @@ import type { BaseInputField } from "alepha/react/form";
 /**
  * Decides the column-span (out of 12) for a control inside a 12-col grid.
  *
- * Rules (mirroring the legacy `CreateFormGroup.getBestSizeForInput`):
+ * Rules:
  * - explicit `$control.width` or per-field `width` override → use it
  * - `$control.area` / `file` / `upload` preset → 100% (full row)
  * - long text (`maxLength >= 256`) → 100%

@@ -70,7 +70,11 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
       return;
     }
     if (props.withTime) {
-      props.onChange(d.toISOString());
+      // The calendar hands back the day at local midnight: keep the time the
+      // field already holds.
+      const next = new Date(d);
+      if (date) next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+      props.onChange(next.toISOString());
     } else {
       props.onChange(formatDateOnly(d));
       setOpen(false);
@@ -96,7 +100,7 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {/* The kit's field trigger, and the kit's clear button positioned on it
-          - `control-base/field-trigger`, the same two a select draws. The
+          - `form/fieldTrigger.tsx`, the same two a select draws. The
           clear sits BESIDE the trigger rather than inside it: a button nested
           in a button is invalid, and Base UI's popover trigger would swallow
           its click anyway. */}

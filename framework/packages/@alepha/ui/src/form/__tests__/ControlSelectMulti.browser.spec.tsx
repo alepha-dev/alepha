@@ -48,7 +48,7 @@ describe("ControlSelect multi", () => {
     createNewEntry?: boolean;
   }) => {
     const form = useForm({
-      // An ARRAY field is the whole multi-select API — there is no `multi` prop.
+      // An ARRAY field is the whole multi-select API: there is no `multi` prop.
       schema: z.object({ status: z.array(z.text()).optional() }),
       handler: () => {},
     });
@@ -171,7 +171,7 @@ describe("ControlSelect multi", () => {
     expect(ui.queryByPlaceholderText("Search…")).not.toBeNull();
   });
 
-  it("offers no clear row — a multi clears by deselecting", async () => {
+  it("offers no clear row: a multi clears by deselecting", async () => {
     const alepha = await start();
     const ui = mount(alepha, <Probe />);
 

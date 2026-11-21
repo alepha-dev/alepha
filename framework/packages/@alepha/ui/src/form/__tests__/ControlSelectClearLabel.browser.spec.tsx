@@ -69,8 +69,8 @@ describe("ControlSelect clear label", () => {
     ui.queryByRole("button", { name: "Clear selection" });
 
   /**
-   * Both paths render their trigger as the field's only `combobox` role — the
-   * shadcn `SelectTrigger` and the Base UI `ComboboxTrigger` alike — so one
+   * Both paths render their trigger as the field's only `combobox` role (the
+   * shadcn `SelectTrigger` and the Base UI `ComboboxTrigger` alike), so one
    * query reaches whichever one the option count selected.
    */
   const trigger = (ui: ReturnType<typeof render>) =>
@@ -82,7 +82,7 @@ describe("ControlSelect clear label", () => {
    * flatten them: the combobox trigger takes `text-muted-foreground` outright,
    * while `SelectTrigger` always carries the conditional
    * `data-placeholder:text-muted-foreground` and only greys once Base UI
-   * stamps `data-placeholder` on it — which it does exactly when `SelectValue`
+   * stamps `data-placeholder` on it, which it does exactly when `SelectValue`
    * falls back to its placeholder instead of rendering a chosen value.
    */
   const readsAsPlaceholder = (el: HTMLElement) =>

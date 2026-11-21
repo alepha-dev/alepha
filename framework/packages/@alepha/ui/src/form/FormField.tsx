@@ -51,7 +51,7 @@ export interface FormFieldProps {
   /**
    * Layout variant.
    * - `"stack"` (default): label on top, control below, description under.
-   * - `"row"`: settings-style — label/description on the left, control on
+   * - `"row"`: settings-style: label/description on the left, control on
    *   the right. Stacks on narrow viewports.
    *
    * When omitted, falls back to the ambient `<FormFieldLayoutProvider>`.
@@ -255,19 +255,19 @@ export function formFieldAriaProps(props: {
       formFieldDescriptionId(props.id, props.description, props.error),
     // The visible marker is `aria-hidden`, so without this a required field
     // announced nothing at all. It is read from the schema, never from the
-    // marker flag — see `FormFieldRequiredMarkerProvider.tsx`.
+    // marker flag (see `FormFieldRequiredMarkerProvider.tsx`).
     "aria-required": props.required ? true : undefined,
   };
 }
 
 export interface FormFieldA11y {
   /**
-   * `true` when the surrounding FormField carries an error — mirror it
+   * `true` when the surrounding FormField carries an error; mirror it
    * onto the widget's `aria-invalid`.
    */
   invalid?: true;
   /**
-   * Id of the FormField's error (or description) element — mirror it
+   * Id of the FormField's error (or description) element; mirror it
    * onto the widget's `aria-describedby`.
    */
   describedBy?: string;
