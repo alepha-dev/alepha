@@ -1,7 +1,7 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 
-import { auditSeveritySchema } from "../entities/audits.ts";
+import { auditSeveritySchema } from "./auditSeveritySchema.ts";
 
 /**
  * Schema for creating a new audit log entry.

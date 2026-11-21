@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { $inject, Alepha, AlephaError } from "alepha";
+import { $cache } from "alepha/cache";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -16,10 +17,9 @@ import {
   oauthClientEntity,
 } from "../entities/oauthClientEntity.ts";
 import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
-import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
 
 /**
- * The user projection a realm's `loadUser` hands to the OAuth module —
+ * The user projection a realm's `loadUser` hands to the OAuth module:
  * a `UserAccount` plus the OIDC profile extras the id_token mints
  * (`email_verified`; `firstName`/`lastName` map to `given_name`/`family_name`).
  */
@@ -30,8 +30,9 @@ export interface OidcIssuerUser extends UserAccount {
 export interface RegisterClientOptions {
   realm: string;
   /**
-   * Explicit client id (OIDC clients registered by Platform). When omitted,
-   * a `mcp_<uuid>` id is generated (Dynamic Client Registration).
+   * Explicit client id (an OIDC client an application registers itself).
+   * When omitted, `mcp_` and 32 hex characters are generated (Dynamic
+   * Client Registration).
    */
   clientId?: string;
   clientName?: string;
@@ -43,7 +44,7 @@ export interface RegisterClientOptions {
    */
   type?: "public" | "confidential";
   /**
-   * First-party client — skip the consent screen (see the entity field).
+   * First-party client: skip the consent screen (see the entity field).
    */
   trusted?: boolean;
   /**
@@ -66,7 +67,8 @@ export interface RegisterClientOptions {
  *
  * Responsibilities:
  * - Client registration (RFC 7591 Dynamic Client Registration) and lookup,
- *   with exact-match redirect_uri validation.
+ *   with redirect_uri validation: exact, except that a registered `*`
+ *   matches one host label and a loopback URI matches on any port.
  * - Stateless PKCE authorization codes: minting short-lived signed JWTs that
  *   carry the grant, and verifying/consuming them (replay, expiry, client and
  *   redirect_uri checks, S256 PKCE).
@@ -82,17 +84,21 @@ export class OAuthClientService {
   protected readonly crypto = $inject(CryptoProvider);
 
   /**
-   * Codes already redeemed in this process. Single-use enforcement only
-   * needs to cover the ~60s code lifetime, so an in-memory guard is
-   * sufficient even on serverless — an expired code fails JWT verification
-   * regardless.
+   * Authorization codes already redeemed, one counter per code `jti`: the
+   * redemption that takes the counter from 0 to 1 spends the code, any
+   * other finds it spent.
    *
-   * A plain `Set` here was described as bounded and was not: nothing ever
-   * removed an entry, so a long-lived process accumulated one uuid per
-   * authorization code it had ever issued, forever. `JtiReplayGuard` prunes
-   * on expiry and caps its own size.
+   * In the cache, so single use holds wherever the instances share one
+   * (Redis, the database cache, which is the default on Workers with a
+   * database). With the in-memory default it holds per process, and with
+   * Cloudflare KV the counter is not atomic: there a code can be redeemed
+   * once per instance during its 60 s, by a caller that also holds the
+   * PKCE verifier. An entry outlives the code it guards and then ends.
    */
-  protected readonly usedCodes = new JtiReplayGuard();
+  protected readonly usedCodes = $cache<number>({
+    name: "oauth-code-used",
+    ttl: [120, "seconds"],
+  });
 
   /**
    * Stand-in label substituted for the `*` of a registered redirect_uri so the
@@ -264,8 +270,10 @@ export class OAuthClientService {
     access_token: string;
     expires_in?: number;
     refresh_token?: string;
-    /** Subject of the refreshed session — lets the token endpoint re-mint an
-     * OIDC `id_token` for relying parties that forward it as the Bearer. */
+    /**
+     * Subject of the refreshed session: it lets the token endpoint re-mint an
+     * OIDC `id_token` for relying parties that forward it as the Bearer.
+     */
     userId: string;
     /**
      * OAuth client the refreshed session was minted for, so the token endpoint
@@ -405,7 +413,7 @@ export class OAuthClientService {
    * ## ⚠️ Every guard below is load-bearing
    *
    * - **`options.clientId` given** means somebody registered a specific
-   *   client on purpose (Platform's OIDC seeder). Never dedupe those: the
+   *   client on purpose (an application's OIDC seeder). Never dedupe those: the
    *   id is the contract.
    * - **Confidential clients never dedupe.** The caller would receive a
    *   `client_id` whose secret it does not hold, and every token request
@@ -417,6 +425,11 @@ export class OAuthClientService {
    * - **`redirectUris` compare as a SET**, not as an ordered list: two
    *   registrations naming the same URIs in a different order are the same
    *   client, and one naming a URI the other does not is not.
+   * - **`scopes` compare as a set too, and `applicationType` exactly.** The
+   *   client handed back is the one the caller will authorize as: with other
+   *   scopes it would be refused the ones it registered for, or granted more
+   *   than it asked, and `applicationType` decides which redirects it may
+   *   use.
    *
    * Sharing one `client_id` between two installs of the same public client
    * is safe, and is the same reasoning that lets `token_endpoint_auth_method:
@@ -453,18 +466,21 @@ export class OAuthClientService {
     // `FilterOperators` has no set equality, and the column is JSON on both
     // sqlite and postgres.
     const wanted = this.redirectUriKey(options.redirectUris);
+    const scopes = this.redirectUriKey(options.scopes ?? ["openid"]);
     return candidates.find(
       (candidate) =>
         !candidate.revokedAt &&
         !candidate.clientSecretHash &&
-        this.redirectUriKey(candidate.redirectUris) === wanted,
+        this.redirectUriKey(candidate.redirectUris) === wanted &&
+        this.redirectUriKey(candidate.scopes) === scopes &&
+        (candidate.applicationType ?? undefined) === options.applicationType,
     );
   }
 
   /**
-   * Order-insensitive, duplicate-insensitive identity of a redirect_uri
-   * list, so two registrations naming the same set match however they
-   * spelled the order.
+   * Order-insensitive, duplicate-insensitive identity of a list of
+   * redirect_uris or of scopes, so two registrations naming the same set
+   * match however they spelled the order.
    */
   protected redirectUriKey(uris: string[]): string {
     return [...new Set(uris)].sort().join("\n");
@@ -472,7 +488,7 @@ export class OAuthClientService {
 
   /**
    * Idempotently align a registered client's redirect_uri allowlist with the
-   * given list. No-op when the client is unknown or the list already matches —
+   * given list. No-op when the client is unknown or the list already matches:
    * safe to call from post-deploy seeders (allowlist changes ship as code, and
    * `register` alone would leave existing rows stale).
    */
@@ -676,7 +692,8 @@ export class OAuthClientService {
        */
       enabled: boolean;
       /**
-       * Scopes a document that names none is registered with.
+       * Scopes a document that names none is registered with. Empty when
+       * the application has no default: such a document is refused.
        */
       defaultScopes: string[];
       /**
@@ -705,14 +722,21 @@ export class OAuthClientService {
       const { document, maxAgeSeconds } =
         await this.fetchMetadataDocument(clientId);
       const metadata = this.parseMetadataDocument(clientId, document);
+      const scopes = metadata.scopes?.length
+        ? (options.acceptScopes?.(metadata.scopes) ?? metadata.scopes)
+        : options.defaultScopes;
+      if (scopes.length === 0) {
+        // Registered with none, the client could be granted nothing and
+        // would not be told why.
+        throw new AlephaError(
+          "Client metadata document names no scope this server declares",
+        );
+      }
       const values = {
         clientName: metadata.clientName,
         redirectUris: metadata.redirectUris,
         applicationType: metadata.applicationType,
-        scopes:
-          (metadata.scopes &&
-            (options.acceptScopes?.(metadata.scopes) ?? metadata.scopes)) ||
-          options.defaultScopes,
+        scopes,
         metadataExpiresAt: new Date(now + maxAgeSeconds * 1000).toISOString(),
       };
       if (row) {
@@ -752,11 +776,15 @@ export class OAuthClientService {
    * fetch a URL any stranger hands it.
    *
    * Portable to workerd, where no DNS resolution is available: https only,
-   * the default port only, and a host that is not an IP literal, `localhost`
-   * or a `.localhost`, `.local` or `.internal` name. No redirect is followed
+   * the default port only, no credentials, and a host
+   * {@link isPrivateHost} does not refuse. No redirect is followed
    * (`redirect: "manual"`, any 3xx fails), the fetch times out after 5 s,
    * the body is capped at 5 KiB and must be JSON. Returns the document and
    * its freshness: the response's `max-age`, clamped to [5 min, 24 h].
+   *
+   * ⚠️ The guard reads the name, never the address it resolves to: a public
+   * name whose DNS answers a private address passes. Keeping such a fetch
+   * away from an internal network is the deployment's egress policy.
    *
    * The request itself is {@link requestMetadataDocument}.
    */
@@ -764,21 +792,16 @@ export class OAuthClientService {
     clientId: string,
   ): Promise<{ document: unknown; maxAgeSeconds: number }> {
     const url = new URL(clientId);
-    const host = url.hostname.toLowerCase();
     if (
       url.protocol !== "https:" ||
       url.port !== "" ||
       url.username !== "" ||
       url.password !== "" ||
-      host === "localhost" ||
-      host.endsWith(".localhost") ||
-      host.endsWith(".local") ||
-      host.endsWith(".internal") ||
-      host.startsWith("[") ||
-      /^\d+\.\d+\.\d+\.\d+$/.test(host) ||
-      !host.includes(".")
+      this.isPrivateHost(url.hostname)
     ) {
-      throw new AlephaError(`Refusing to fetch client metadata from ${host}`);
+      throw new AlephaError(
+        `Refusing to fetch client metadata from ${url.hostname}`,
+      );
     }
 
     const response = await this.requestMetadataDocument(url);
@@ -796,6 +819,32 @@ export class OAuthClientService {
       document: JSON.parse(text),
       maxAgeSeconds: this.metadataMaxAge(response.headers.get("cache-control")),
     };
+  }
+
+  /**
+   * Whether a URL's host may name something private, read the way a
+   * resolver reads it rather than as text.
+   *
+   * `hostname` comes from `new URL()`, which already writes an IPv4 address
+   * given in decimal, hex or octal, with or without a trailing dot, as a
+   * dotted quad, and brackets an IPv6 one (IPv4-mapped included). What is
+   * left to normalize is the name: case, and the trailing dot of a fully
+   * qualified name, which a resolver ignores (`localhost.` is `localhost`).
+   *
+   * Refused: any IP literal, a name of one label, a name with an empty
+   * label, `localhost`, and anything under `.localhost`, `.local` or
+   * `.internal`.
+   */
+  protected isPrivateHost(hostname: string): boolean {
+    const host = hostname.toLowerCase().replace(/\.$/, "");
+    const labels = host.split(".");
+    return (
+      host.startsWith("[") ||
+      /^\d+\.\d+\.\d+\.\d+$/.test(host) ||
+      labels.length < 2 ||
+      labels.some((label) => label === "") ||
+      ["localhost", "local", "internal"].includes(labels[labels.length - 1])
+    );
   }
 
   /**
@@ -955,7 +1004,7 @@ export class OAuthClientService {
   /**
    * Narrow the scopes a client asks for to those it is actually registered
    * for. The requested scope string is attacker-controlled, so it must never
-   * be trusted verbatim — a client registered for `["mcp"]` that asks for
+   * be trusted verbatim: a client registered for `["mcp"]` that asks for
    * `mcp admin` must only be granted `mcp`. When nothing (usable) is
    * requested, the client's full registered set is the default grant.
    * Requested order is preserved and duplicates are dropped.
@@ -1111,8 +1160,9 @@ export class OAuthClientService {
   }
 
   /**
-   * Verify and atomically consume an authorization code. Throws on expiry,
-   * replay, client/redirect mismatch, or PKCE failure.
+   * Verify and consume an authorization code. Throws on expiry, replay,
+   * client/redirect mismatch, or PKCE failure. Where single use holds is
+   * said on {@link usedCodes}.
    */
   public async consumeAuthorizationCode(
     realm: string,
@@ -1130,9 +1180,6 @@ export class OAuthClientService {
     const payload = result.payload as Record<string, unknown>;
 
     const jti = payload.jti as string;
-    if (this.usedCodes.wasUsed(jti, this.dateTime.nowMillis())) {
-      throw new AlephaError("Authorization code already used");
-    }
     if (payload.client_id !== check.clientId) {
       throw new AlephaError("client_id mismatch");
     }
@@ -1147,7 +1194,18 @@ export class OAuthClientService {
       throw new AlephaError("PKCE verification failed");
     }
 
-    this.usedCodes.check(jti, this.dateTime.nowMillis());
+    // Last, so a redemption refused above leaves the code to whoever holds
+    // the verifier. On the provider rather than through the primitive, which
+    // answers "first" to every caller once caching is switched off.
+    const redemptions = await this.usedCodes.provider.incr(
+      this.usedCodes.container,
+      jti,
+      1,
+      120_000,
+    );
+    if (redemptions !== 1) {
+      throw new AlephaError("Authorization code already used");
+    }
     return {
       userId: payload.sub as string,
       scopes: (payload.scopes as string[]) ?? [],

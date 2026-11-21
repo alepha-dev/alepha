@@ -5,7 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
@@ -77,7 +77,9 @@ const setup = async (expiryWarningDays?: number) => {
 };
 
 describe("API key status", () => {
-  it("derives one status per key, revoked winning over expired", async () => {
+  it("derives one status per key, revoked winning over expired", async ({
+    expect,
+  }) => {
     const { service, userId, seed } = await setup();
     const ids = await seed();
 
@@ -93,7 +95,9 @@ describe("API key status", () => {
     expect(byId.get(ids.revokedExpired)).toBe("revoked");
   });
 
-  it("reads a key an hour from expiry as active when expiryWarningDays is 0", async () => {
+  it("reads a key an hour from expiry as active when expiryWarningDays is 0", async ({
+    expect,
+  }) => {
     const { service, userId, at } = await setup(0);
 
     const { apiKey } = await service.create({
@@ -106,7 +110,9 @@ describe("API key status", () => {
     expect(service.statusOf(apiKey)).toBe("active");
   });
 
-  it("matches the same keys in a query as it derives on read", async () => {
+  it("matches the same keys in a query as it derives on read", async ({
+    expect,
+  }) => {
     const { app, service, userId, seed } = await setup();
     const ids = await seed();
 
@@ -139,7 +145,9 @@ describe("API key status", () => {
     expect(live).toHaveLength(4);
   });
 
-  it("matches nothing for 'expiring' when the warning is disabled", async () => {
+  it("matches nothing for 'expiring' when the warning is disabled", async ({
+    expect,
+  }) => {
     const { app, service, userId, seed } = await setup(0);
     await seed();
 
@@ -153,7 +161,9 @@ describe("API key status", () => {
 });
 
 describe("the API key list", () => {
-  it("returns expired and revoked keys, with description and revokedAt, through the controller", async () => {
+  it("returns expired and revoked keys, with description and revokedAt, through the controller", async ({
+    expect,
+  }) => {
     const { alepha, service, userId, seed } = await setup();
     const ids = await seed();
     await service.create({
@@ -176,7 +186,9 @@ describe("the API key list", () => {
     );
   });
 
-  it("never carries the token hash, over action.run() or HTTP", async () => {
+  it("never carries the token hash, over action.run() or HTTP", async ({
+    expect,
+  }) => {
     const { alepha, service, userId } = await setup();
     const { apiKey } = await service.create({ userId, name: "k", roles: [] });
     const admin = { id: randomUUID(), roles: ["admin"] };
@@ -215,7 +227,9 @@ describe("the API key list", () => {
 });
 
 describe("revoking an API key", () => {
-  it("does not move revokedAt when the key is revoked a second time", async () => {
+  it("does not move revokedAt when the key is revoked a second time", async ({
+    expect,
+  }) => {
     const { service, time, userId } = await setup();
     const { apiKey } = await service.create({ userId, name: "k", roles: [] });
 
@@ -228,7 +242,9 @@ describe("revoking an API key", () => {
     expect((await service.getById(apiKey.id)).revokedAt).toBe(first);
   });
 
-  it("frees the key's name, which a live or an expired key still holds", async () => {
+  it("frees the key's name, which a live or an expired key still holds", async ({
+    expect,
+  }) => {
     const { service, userId, at } = await setup();
 
     const live = await service.create({ userId, name: "CI", roles: [] });
@@ -256,7 +272,9 @@ describe("the admin API key listing", () => {
   const idsOf = (page: { content: Array<{ id: string }> }) =>
     page.content.map((key) => key.id).sort();
 
-  it("filters by status with the same rule each row's status is derived by", async () => {
+  it("filters by status with the same rule each row's status is derived by", async ({
+    expect,
+  }) => {
     const { alepha, userId, seed } = await setup();
     const ids = await seed();
     const admin = { id: randomUUID(), roles: ["admin"] };
@@ -278,7 +296,9 @@ describe("the admin API key listing", () => {
     expect(expiring.content[0].status).toBe("expiring");
   });
 
-  it("hides revoked keys by default and accepts every explicit status", async () => {
+  it("hides revoked keys by default and accepts every explicit status", async ({
+    expect,
+  }) => {
     const { alepha, userId, seed } = await setup();
     const ids = await seed();
     const admin = { id: randomUUID(), roles: ["admin"] };
@@ -301,7 +321,7 @@ describe("the admin API key listing", () => {
     expect(everything.content).toHaveLength(6);
   });
 
-  it("selects only explicitly requested statuses", async () => {
+  it("selects only explicitly requested statuses", async ({ expect }) => {
     const { alepha, userId, seed } = await setup();
     const ids = await seed();
     const admin = { id: randomUUID(), roles: ["admin"] };
@@ -316,7 +336,9 @@ describe("the admin API key listing", () => {
     expect(idsOf(page)).toEqual([ids.active, ids.farFuture].sort());
   });
 
-  it("reads one status or several from the query string over HTTP", async () => {
+  it("reads one status or several from the query string over HTTP", async ({
+    expect,
+  }) => {
     const { alepha, userId, seed } = await setup();
     const ids = await seed();
     const admin = { id: randomUUID(), roles: ["admin"] };

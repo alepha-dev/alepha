@@ -24,7 +24,7 @@ export const verifications = $entity({
     purpose: db.default(
       z.text({
         description:
-          "Logical purpose bucket (e.g. 'default', 'password-reset'). Scopes the cooldown and daily-limit checks so unrelated flows that share the same (type, target) — most notably email verification and password reset — don't collide.",
+          "Logical purpose bucket (e.g. 'default', 'password-reset'). Scopes the cooldown and daily-limit checks so unrelated flows that share the same (type, target), most notably email verification and password reset, don't collide.",
       }),
       "default",
     ),

@@ -1,19 +1,23 @@
 import { createHash } from "node:crypto";
 
 import { Alepha } from "alepha";
+import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { JwtProvider } from "alepha/security";
 import { describe, it } from "vitest";
 
-import { oauthClientEntity } from "../entities/oauthClientEntity.ts";
 import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
 
-describe("oauthClientEntity", () => {
-  it("declares the oauth_clients table", ({ expect }) => {
-    expect(oauthClientEntity.name).toBe("oauth_clients");
-  });
-});
+/**
+ * One store behind every instance that uses it: the cache two instances of
+ * one application share (Redis, the database).
+ */
+class SharedCacheProvider extends MemoryCacheProvider {
+  public static shared: MemoryCacheProvider["store"] = {};
+
+  protected override store = SharedCacheProvider.shared;
+}
 
 describe("OAuthClientService.register", () => {
   it("registers a public DCR client and returns a client_id", async ({
@@ -81,7 +85,7 @@ describe("OAuthClientService.register dedupe", () => {
         where: { clientId: { eq: clientId } },
       });
       await this.repo.updateById(row!.id, {
-        revokedAt: new Date().toISOString(),
+        revokedAt: this.dateTime.nowISOString(),
       });
     }
   }
@@ -128,6 +132,49 @@ describe("OAuthClientService.register dedupe", () => {
     });
 
     expect(second.clientId).toBe(first.clientId);
+  });
+
+  it("never hands a registration a client entitled to other scopes", async ({
+    expect,
+  }) => {
+    const oauth = await service();
+
+    const narrow = await oauth.register(claude);
+    const wide = await oauth.register({
+      ...claude,
+      scopes: ["mcp", "profile"],
+    });
+    const narrowAgain = await oauth.register(claude);
+    const wideReordered = await oauth.register({
+      ...claude,
+      scopes: ["profile", "mcp", "mcp"],
+    });
+
+    expect(wide.clientId).not.toBe(narrow.clientId);
+    expect(wide.scopes).toEqual(["mcp", "profile"]);
+    expect(narrowAgain.clientId).toBe(narrow.clientId);
+    expect(narrowAgain.scopes).toEqual(["mcp"]);
+    expect(wideReordered.clientId).toBe(wide.clientId);
+  });
+
+  it("never hands a web registration a native client, or the reverse", async ({
+    expect,
+  }) => {
+    const oauth = await service();
+
+    const untyped = await oauth.register(claude);
+    const web = await oauth.register({ ...claude, applicationType: "web" });
+    const native = await oauth.register({
+      ...claude,
+      applicationType: "native",
+    });
+
+    expect(
+      new Set([untyped.clientId, web.clientId, native.clientId]).size,
+    ).toBe(3);
+    expect(
+      (await oauth.register({ ...claude, applicationType: "web" })).clientId,
+    ).toBe(web.clientId);
   });
 
   it("REFUSES to dedupe a confidential client", async ({ expect }) => {
@@ -187,7 +234,7 @@ describe("OAuthClientService.register dedupe", () => {
   it("REFUSES when the caller named the client id itself", async ({
     expect,
   }) => {
-    // Platform's OIDC seeder registers a specific id on purpose, and the id
+    // An application's OIDC seeder registers a specific id on purpose, and the id
     // is the contract there.
     const oauth = await service();
 
@@ -528,6 +575,78 @@ describe("OAuthClientService authorization code", () => {
     ).rejects.toThrow("Authorization code already used");
   });
 
+  it("refuses on a second instance a code the first one spent", async ({
+    expect,
+  }) => {
+    SharedCacheProvider.shared = {};
+    const instance = async () => {
+      const alepha = Alepha.create().with({
+        provide: CacheProvider,
+        use: SharedCacheProvider,
+      });
+      alepha
+        .inject(JwtProvider)
+        .setKeyLoader("users", "test-secret-for-oauth-code-tests");
+      const service = alepha.inject(OAuthClientService);
+      await alepha.start();
+      return service;
+    };
+    const first = await instance();
+    const second = await instance();
+    const verifier = "a".repeat(64);
+    const check = {
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeVerifier: verifier,
+    };
+    const code = await first.createAuthorizationCode("users", {
+      userId: "user-1",
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeChallenge: createHash("sha256").update(verifier).digest("base64url"),
+      scopes: ["mcp"],
+    });
+
+    await first.consumeAuthorizationCode("users", code, check);
+
+    await expect(
+      second.consumeAuthorizationCode("users", code, check),
+    ).rejects.toThrow("Authorization code already used");
+  });
+
+  it("spends a code once when two redemptions arrive together", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
+    const jwt = alepha.inject(JwtProvider);
+    jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+    const verifier = "a".repeat(64);
+    const check = {
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeVerifier: verifier,
+    };
+    const code = await service.createAuthorizationCode("users", {
+      userId: "user-1",
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeChallenge: createHash("sha256").update(verifier).digest("base64url"),
+      scopes: ["mcp"],
+    });
+
+    const results = await Promise.allSettled([
+      service.consumeAuthorizationCode("users", code, check),
+      service.consumeAuthorizationCode("users", code, check),
+    ]);
+
+    expect(results.map((result) => result.status).sort()).toEqual([
+      "fulfilled",
+      "rejected",
+    ]);
+  });
+
   it("does not spend a code that fails PKCE", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const jwt = alepha.inject(JwtProvider);
@@ -562,68 +681,5 @@ describe("OAuthClientService authorization code", () => {
       codeVerifier: verifier,
     });
     expect(claims.userId).toBe("user-1");
-  });
-
-  it("does not grow its replay guard without bound", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
-    const jwt = alepha.inject(JwtProvider);
-    jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
-    const service = alepha.inject(OAuthClientService);
-    await alepha.start();
-
-    const guard = (
-      service as unknown as { usedCodes: { seen: Map<string, number> } }
-    ).usedCodes;
-
-    const verifier = "a".repeat(64);
-    const challenge = createHash("sha256").update(verifier).digest("base64url");
-
-    for (let i = 0; i < 40; i++) {
-      const code = await service.createAuthorizationCode("users", {
-        userId: `user-${i}`,
-        clientId: "mcp_x",
-        redirectUri: "https://claude.ai/cb",
-        codeChallenge: challenge,
-        scopes: ["mcp"],
-      });
-      await service.consumeAuthorizationCode("users", code, {
-        clientId: "mcp_x",
-        redirectUri: "https://claude.ai/cb",
-        codeVerifier: verifier,
-      });
-    }
-
-    // The plain Set this replaced kept every uuid it had ever seen, for the
-    // life of the process, while calling itself bounded.
-    expect(guard.seen.size).toBeLessThanOrEqual(10_000);
-    expect(guard.seen.size).toBe(40);
-  });
-
-  it("rejects a wrong PKCE verifier", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
-    const jwt = alepha.inject(JwtProvider);
-    jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
-    const service = alepha.inject(OAuthClientService);
-    await alepha.start();
-
-    const challenge = createHash("sha256")
-      .update("a".repeat(64))
-      .digest("base64url");
-    const code = await service.createAuthorizationCode("users", {
-      userId: "user-1",
-      clientId: "mcp_x",
-      redirectUri: "https://claude.ai/cb",
-      codeChallenge: challenge,
-      scopes: ["mcp"],
-      resource: "https://app.com/mcp",
-    });
-
-    await expect(
-      service.consumeAuthorizationCode("users", code, {
-        clientId: "mcp_x",
-        redirectUri: "https://claude.ai/cb",
-        codeVerifier: "b".repeat(64),
-      }),
-    ).rejects.toThrow();
   });
 });

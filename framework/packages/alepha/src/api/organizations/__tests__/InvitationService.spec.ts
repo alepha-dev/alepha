@@ -49,7 +49,7 @@ class InvitationRepositories {
   public readonly invitations = $repository(organizationInvitations);
 }
 
-const setup = async (options: { full?: boolean } = {}) => {
+const setup = async (options: { full?: boolean; verifies?: boolean } = {}) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
   if (options.full) {
     alepha.with({
@@ -74,6 +74,9 @@ const setup = async (options: { full?: boolean } = {}) => {
   });
   await alepha.start();
 
+  // A realm that verifies addresses, or (the default) one that does not.
+  alepha.inject(RealmProvider).getRealm().settings.verifyEmailRequired =
+    options.verifies === true;
   const users = alepha.inject(RealmProvider).userRepository();
   const ownerRow = await users.create({
     username: "invite-owner",
@@ -105,6 +108,7 @@ const setup = async (options: { full?: boolean } = {}) => {
 
   return {
     alepha,
+    users,
     owner,
     member,
     organization,
@@ -254,7 +258,7 @@ describe("alepha/api/organizations - InvitationService", () => {
     ).rejects.toThrow("Organization is full");
   });
 
-  it("names organizations in an inbox with two bulk reads", async ({
+  it("names the organization on each invitation of an inbox", async ({
     expect,
   }) => {
     const ctx = await setup();
@@ -384,7 +388,7 @@ describe("alepha/api/organizations - InvitationService", () => {
     ).resolves.toEqual({ emailVerified: false });
   });
 
-  it("keeps the invitation:<id> verification purpose across the move", async ({
+  it("resolves a link from its invitation:<id> verification purpose", async ({
     expect,
   }) => {
     const ctx = await setup();
@@ -414,5 +418,260 @@ describe("alepha/api/organizations - InvitationService", () => {
     await expect(
       ctx.tokens.resolve(`${id}.${verification.token}`),
     ).resolves.toMatchObject({ id });
+  });
+
+  /**
+   * An account registered with the invited address AFTER the invitation was
+   * created, never verified: the squatter, where the realm verifies.
+   */
+  const lateAccount = async (
+    ctx: Awaited<ReturnType<typeof setup>>,
+    emailVerified = false,
+  ) => {
+    const invitation = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: "ceo@corp.example" },
+      ctx.owner,
+    );
+    await ctx.alepha.inject(DateTimeProvider).travel([1, "minute"]);
+    const row = await ctx.users.create({
+      username: "late",
+      email: "ceo@corp.example",
+      emailVerified,
+    });
+    const account: UserAccountToken = {
+      id: row.id,
+      email: row.email,
+      roles: [],
+    };
+    return { invitation, account };
+  };
+
+  it("in a realm that verifies addresses, refuses an unverified account created after the invitation", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ verifies: true });
+    const { invitation, account } = await lateAccount(ctx);
+
+    expect(await ctx.invitations.listMine(account)).toEqual([]);
+    await expect(
+      ctx.invitations.accept(invitation.id, account),
+    ).rejects.toThrow("not addressed to you");
+    await expect(
+      ctx.invitations.decline(invitation.id, account),
+    ).rejects.toThrow("not addressed to you");
+    expect(await ctx.members.list(ctx.organization.id)).toHaveLength(1);
+  });
+
+  it("in a realm that verifies addresses, answers a verified account created after the invitation", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ verifies: true });
+    const { invitation, account } = await lateAccount(ctx, true);
+
+    expect(await ctx.invitations.listMine(account)).toHaveLength(1);
+    await expect(
+      ctx.invitations.accept(invitation.id, account),
+    ).resolves.toEqual({ organizationId: ctx.organization.id });
+  });
+
+  it("in a realm that verifies addresses, answers an unverified account that existed when it was invited", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ verifies: true });
+    await ctx.alepha.inject(DateTimeProvider).travel([1, "minute"]);
+    const invitation = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: ctx.member.email! },
+      ctx.owner,
+    );
+
+    expect(await ctx.invitations.listMine(ctx.member)).toHaveLength(1);
+    await expect(
+      ctx.invitations.accept(invitation.id, ctx.member),
+    ).resolves.toEqual({ organizationId: ctx.organization.id });
+  });
+
+  it("in a realm that does not verify addresses, answers an unverified account created after the invitation", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { invitation, account } = await lateAccount(ctx);
+
+    expect(await ctx.invitations.listMine(account)).toHaveLength(1);
+    await expect(
+      ctx.invitations.accept(invitation.id, account),
+    ).resolves.toEqual({ organizationId: ctx.organization.id });
+  });
+
+  it("neither lists nor answers an invitation for an account of another realm", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const invitation = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: "ceo@corp.example" },
+      ctx.owner,
+    );
+    const row = await ctx.users.create({
+      username: "elsewhere",
+      email: "ceo@corp.example",
+      realm: "other-realm",
+      emailVerified: true,
+    });
+    const elsewhere: UserAccountToken = {
+      id: row.id,
+      email: row.email,
+      realm: "other-realm",
+      roles: [],
+    };
+
+    expect(await ctx.invitations.listMine(elsewhere)).toEqual([]);
+    await expect(
+      ctx.invitations.accept(invitation.id, elsewhere),
+    ).rejects.toThrow("not addressed to you");
+    await expect(
+      ctx.invitations.decline(invitation.id, elsewhere),
+    ).rejects.toThrow("not addressed to you");
+    expect(await ctx.members.list(ctx.organization.id)).toHaveLength(1);
+  });
+
+  it("does not strand an invitation whose inviter's account is gone: the owner's realm answers for it", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const helperRow = await ctx.users.create({
+      username: "invite-helper",
+      email: "helper@example.com",
+    });
+    const helper: UserAccountToken = {
+      id: helperRow.id,
+      email: helperRow.email,
+      roles: [],
+    };
+    const invitation = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: ctx.member.email! },
+      helper,
+    );
+    const elsewhereRow = await ctx.users.create({
+      username: "elsewhere",
+      email: ctx.member.email!,
+      realm: "other-realm",
+      emailVerified: true,
+    });
+    const elsewhere: UserAccountToken = {
+      id: elsewhereRow.id,
+      email: elsewhereRow.email,
+      realm: "other-realm",
+      roles: [],
+    };
+    await ctx.users.deleteById(helperRow.id);
+
+    expect(await ctx.invitations.listMine(elsewhere)).toEqual([]);
+    await expect(
+      ctx.invitations.accept(invitation.id, elsewhere),
+    ).rejects.toThrow("not addressed to you");
+    expect(await ctx.invitations.listMine(ctx.member)).toHaveLength(1);
+    await expect(
+      ctx.invitations.accept(invitation.id, ctx.member),
+    ).resolves.toEqual({ organizationId: ctx.organization.id });
+  });
+
+  it("matches the invitation to the account's stored address, not the token's", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const invitation = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: "ceo@corp.example" },
+      ctx.owner,
+    );
+    const forged: UserAccountToken = {
+      ...ctx.member,
+      email: "ceo@corp.example",
+    };
+
+    expect(await ctx.invitations.listMine(forged)).toEqual([]);
+    await expect(ctx.invitations.accept(invitation.id, forged)).rejects.toThrow(
+      "not addressed to you",
+    );
+  });
+
+  it("says nothing about an invitation to a preview without its secret", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const accepted = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: ctx.member.email! },
+      ctx.owner,
+    );
+    const acceptedToken = (ctx.hooks.created[0] as { token: string }).token;
+    await ctx.invitations.accept(accepted.id, ctx.member);
+    const expired = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: "late@example.com" },
+      ctx.owner,
+    );
+    const expiredToken = (ctx.hooks.created[1] as { token: string }).token;
+    await ctx.repos.invitations.updateById(expired.id, {
+      expiresAt: ctx.alepha
+        .inject(DateTimeProvider)
+        .now()
+        .subtract(1, "minute")
+        .toISOString(),
+    });
+
+    expect(await ctx.tokens.inspect(`${accepted.id}.garbage`)).toEqual({
+      status: "invalid",
+    });
+    expect(await ctx.tokens.inspect(`${expired.id}.garbage`)).toEqual({
+      status: "invalid",
+    });
+    expect(await ctx.tokens.inspect(acceptedToken)).toMatchObject({
+      status: "accepted",
+      invitation: { id: accepted.id },
+    });
+    expect(await ctx.tokens.inspect(expiredToken)).toMatchObject({
+      status: "expired",
+      invitation: { id: expired.id },
+    });
+  });
+
+  it("answers invalid for a token whose id half is not an id", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+
+    expect(await ctx.tokens.inspect("abc.def")).toEqual({ status: "invalid" });
+    await expect(ctx.tokens.resolve("abc.def")).resolves.toBeUndefined();
+  });
+
+  it("keeps the real link working after any number of wrong secrets", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const invitation = await ctx.invitations.create(
+      ctx.organization.id,
+      { email: "second@corp.example" },
+      ctx.owner,
+    );
+    const token = (ctx.hooks.created[0] as { token: string }).token;
+
+    for (let i = 0; i < 5; i++) {
+      expect(await ctx.tokens.inspect(`${invitation.id}.wrong${i}`)).toEqual({
+        status: "invalid",
+      });
+    }
+
+    expect(await ctx.tokens.inspect(token)).toMatchObject({ status: "ok" });
+    await expect(
+      ctx.alepha.inject(InvitationRegistrationService).preAuthorize({
+        email: invitation.email,
+        method: "credentials",
+        token,
+      }),
+    ).resolves.toEqual({ emailVerified: true });
   });
 });

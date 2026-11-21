@@ -6,7 +6,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { ApiKeyController } from "../controllers/ApiKeyController.ts";
 import { AlephaApiKeys } from "../index.ts";
@@ -76,7 +76,9 @@ const setup = async (options: Partial<ApiKeyOptions> = {}) => {
 };
 
 describe("rotating an API key", () => {
-  it("kills the old token at once and hands back a new one for the same key", async () => {
+  it("kills the old token at once and hands back a new one for the same key", async ({
+    expect,
+  }) => {
     const { service, userId, apiKey, token } = await setup();
 
     // Cached, so a rotation that forgot the cache would be caught.
@@ -97,7 +99,9 @@ describe("rotating an API key", () => {
     expect(rotated.apiKey.tokenSuffix).toBe(rotated.token.slice(-8));
   });
 
-  it("does not let an in-flight validation of the old token resurrect it", async () => {
+  it("does not let an in-flight validation of the old token resurrect it", async ({
+    expect,
+  }) => {
     // The race revocation was hardened against, driven deterministically:
     // the validation reads the old row, the rotation lands, and the
     // validation resumes and would cache what it read.
@@ -116,7 +120,9 @@ describe("rotating an API key", () => {
     expect(await service.validate(rotated.token)).not.toBeNull();
   });
 
-  it("starts the usage history, the expiry and the rotation date again", async () => {
+  it("starts the usage history, the expiry and the rotation date again", async ({
+    expect,
+  }) => {
     const { service, time, background, userId, apiKey, token } = await setup();
 
     await service.validate(token);
@@ -142,7 +148,9 @@ describe("rotating an API key", () => {
     expect((await service.getById(apiKey.id)).usageCount).toBe(1);
   });
 
-  it("renews an expired key, and can rotate to no expiry while uncapped", async () => {
+  it("renews an expired key, and can rotate to no expiry while uncapped", async ({
+    expect,
+  }) => {
     const { service, time, userId, apiKey, token } = await setup();
 
     await time.travel(31, "days");
@@ -159,7 +167,7 @@ describe("rotating an API key", () => {
     expect(row.expiresAt).toBeUndefined();
   });
 
-  it("refuses a revoked key", async () => {
+  it("refuses a revoked key", async ({ expect }) => {
     const { service, userId, apiKey } = await setup();
 
     await service.revoke(apiKey.id, userId);
@@ -167,7 +175,9 @@ describe("rotating an API key", () => {
     await expect(service.rotate(apiKey.id, userId)).rejects.toThrow("revoked");
   });
 
-  it("refuses an expiresIn over maxExpiryDays, as creation does", async () => {
+  it("refuses an expiresIn over maxExpiryDays, as creation does", async ({
+    expect,
+  }) => {
     const { service, userId, apiKey } = await setup({ maxExpiryDays: 30 });
 
     await expect(
@@ -177,7 +187,7 @@ describe("rotating an API key", () => {
     await expect(service.rotate(apiKey.id, userId)).rejects.toThrow("30 days");
   });
 
-  it("refuses another owner's key", async () => {
+  it("refuses another owner's key", async ({ expect }) => {
     const { service, apiKey } = await setup();
 
     await expect(service.rotate(apiKey.id, randomUUID())).rejects.toThrow(
@@ -185,7 +195,9 @@ describe("rotating an API key", () => {
     );
   });
 
-  it("returns the new token once through the controller", async () => {
+  it("returns the new token once through the controller", async ({
+    expect,
+  }) => {
     const { alepha, service, userId, apiKey, token } = await setup();
 
     const response = await alepha

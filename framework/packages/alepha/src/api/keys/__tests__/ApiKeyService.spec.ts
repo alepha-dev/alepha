@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 
 import { $inject, Alepha, z } from "alepha";
 import { BackgroundTaskProvider } from "alepha/background";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
-import { $action, AlephaServer } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { $action, AlephaServer, ServerProvider } from "alepha/server";
+import { describe, it } from "vitest";
 
 import { users } from "../../users/entities/users.ts";
 import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
@@ -13,7 +14,7 @@ import { AlephaApiKeys } from "../index.ts";
 import { ApiKeyService } from "../services/ApiKeyService.ts";
 
 describe("ApiKeyService", () => {
-  it("should create an API key", async () => {
+  it("should create an API key", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -52,7 +53,7 @@ describe("ApiKeyService", () => {
     expect(apiKey.tokenSuffix).toBe(token.slice(-8));
   });
 
-  it("should validate an API key", async () => {
+  it("should validate an API key", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -89,7 +90,7 @@ describe("ApiKeyService", () => {
     expect(userInfo?.roles).toEqual(["admin"]);
   });
 
-  it("should return null for invalid token", async () => {
+  it("should return null for invalid token", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -117,7 +118,7 @@ describe("ApiKeyService", () => {
     expect(userInfo).toBeNull();
   });
 
-  it("should list API keys for a user", async () => {
+  it("should list API keys for a user", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -158,7 +159,7 @@ describe("ApiKeyService", () => {
     expect(keys.map((k) => k.name).sort()).toEqual(["Key 1", "Key 2"]);
   });
 
-  it("should revoke an API key", async () => {
+  it("should revoke an API key", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -200,7 +201,7 @@ describe("ApiKeyService", () => {
     expect(afterRevoke).toBeNull();
   });
 
-  it("should create resolver for issuer integration", async () => {
+  it("should create resolver for issuer integration", async ({ expect }) => {
     class TestApp {
       apiKeyService = $inject(ApiKeyService);
       issuer = $issuer({
@@ -246,16 +247,26 @@ describe("ApiKeyService", () => {
     // Register the API key resolver
     app.issuer.registerResolver(app.apiKeyService.createResolver());
 
-    // Access the protected action using API key
-    const userInfo = await app.apiKeyService.validate(token);
-    expect(userInfo?.id).toBe(userId);
+    // Access the protected action using the API key, over HTTP: the resolver
+    // is what turns the bearer token into the request's user.
+    const { hostname } = alepha.inject(ServerProvider);
+    const response = await fetch(`${hostname}/api/protected`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ userId });
+
+    const refused = await fetch(`${hostname}/api/protected`, {
+      headers: { authorization: `Bearer ${token}x` },
+    });
+    expect(refused.status).toBe(401);
   });
 
   // ---------------------------------------------------------------------------
   // Expired API keys validation
   // ---------------------------------------------------------------------------
 
-  it("should return null for expired API key", async () => {
+  it("should return null for expired API key", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -279,14 +290,18 @@ describe("ApiKeyService", () => {
       userId,
       name: "Expired Key",
       roles: ["admin"],
-      expiresAt: new Date(Date.now() - 60 * 60 * 1000),
+      expiresAt: alepha
+        .inject(DateTimeProvider)
+        .now()
+        .subtract(1, "hour")
+        .toDate(),
     });
 
     const userInfo = await service.validate(token);
     expect(userInfo).toBeNull();
   });
 
-  it("should validate API key that has not yet expired", async () => {
+  it("should validate API key that has not yet expired", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -310,7 +325,7 @@ describe("ApiKeyService", () => {
       userId,
       name: "Future Key",
       roles: ["admin"],
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      expiresAt: alepha.inject(DateTimeProvider).now().add(1, "hour").toDate(),
     });
 
     const userInfo = await service.validate(token);
@@ -322,10 +337,12 @@ describe("ApiKeyService", () => {
   // Concurrent revocation + validation
   // ---------------------------------------------------------------------------
 
-  it("should not resurrect a revoked key from an in-flight validation", async () => {
+  it("should not resurrect a revoked key from an in-flight validation", async ({
+    expect,
+  }) => {
     // The failure CI kept hitting, made deterministic. `revoke()` invalidated
     // the cache and then wrote the row, so a validation that had already read
-    // the pre-revocation row wrote it back afterwards — and the revoked key
+    // the pre-revocation row wrote it back afterwards, and the revoked key
     // kept authenticating for the full 15-minute TTL.
     class TestApp {
       issuer = $issuer({
@@ -391,7 +408,9 @@ describe("ApiKeyService", () => {
     expect(await service.validate(token)).toBeNull();
   });
 
-  it("should handle concurrent validation and revocation", async () => {
+  it("should handle concurrent validation and revocation", async ({
+    expect,
+  }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -429,89 +448,10 @@ describe("ApiKeyService", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Cache behavior
-  // ---------------------------------------------------------------------------
-
-  it("should use cache for repeated validations", async () => {
-    class TestApp {
-      issuer = $issuer({
-        secret: "test-secret",
-        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
-      });
-    }
-
-    const alepha = Alepha.create()
-      .with(AlephaOrmTestPostgres)
-      .with(AlephaServer)
-      .with(AlephaSecurity)
-      .with(AlephaApiKeys);
-    alepha.inject(TestApp);
-
-    const service = alepha.inject(ApiKeyService);
-    await alepha.start();
-
-    const userId = randomUUID();
-    const { token } = await service.create({
-      userId,
-      name: "Cache Test Key",
-      roles: ["admin"],
-    });
-
-    // First validation - cache miss
-    const first = await service.validate(token);
-    expect(first?.id).toBe(userId);
-
-    // Second validation - should hit cache
-    const second = await service.validate(token);
-    expect(second?.id).toBe(userId);
-
-    // Third validation - should still work
-    const third = await service.validate(token);
-    expect(third?.id).toBe(userId);
-  });
-
-  it("should invalidate cache on revocation", async () => {
-    class TestApp {
-      issuer = $issuer({
-        secret: "test-secret",
-        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
-      });
-    }
-
-    const alepha = Alepha.create()
-      .with(AlephaOrmTestPostgres)
-      .with(AlephaServer)
-      .with(AlephaSecurity)
-      .with(AlephaApiKeys);
-    alepha.inject(TestApp);
-
-    const service = alepha.inject(ApiKeyService);
-    await alepha.start();
-
-    const userId = randomUUID();
-    const { apiKey, token } = await service.create({
-      userId,
-      name: "Cache Invalidation Key",
-      roles: ["admin"],
-    });
-
-    // Populate cache
-    const before = await service.validate(token);
-    expect(before?.id).toBe(userId);
-
-    // Revoke should invalidate cache
-    await service.revoke(apiKey.id, userId);
-
-    // Validation should fail (cache was invalidated)
-    const after = await service.validate(token);
-    expect(after).toBeNull();
-  });
-
-  // ---------------------------------------------------------------------------
   // Invalid token formats
   // ---------------------------------------------------------------------------
 
-  it("should return null for token without underscore", async () => {
+  it("should return null for token without underscore", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -534,7 +474,7 @@ describe("ApiKeyService", () => {
     expect(result).toBeNull();
   });
 
-  it("should return null for empty token", async () => {
+  it("should return null for empty token", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -556,7 +496,7 @@ describe("ApiKeyService", () => {
     expect(result).toBeNull();
   });
 
-  it("should return null for token with only prefix", async () => {
+  it("should return null for token with only prefix", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -578,7 +518,7 @@ describe("ApiKeyService", () => {
     expect(result).toBeNull();
   });
 
-  it("should return null for JWT-like token", async () => {
+  it("should return null for JWT-like token", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -607,7 +547,7 @@ describe("ApiKeyService", () => {
   // Custom prefix
   // ---------------------------------------------------------------------------
 
-  it("should support custom token prefix", async () => {
+  it("should support custom token prefix", async ({ expect }) => {
     class TestApp {
       issuer = $issuer({
         secret: "test-secret",
@@ -643,7 +583,9 @@ describe("ApiKeyService", () => {
   // Usage tracking
   // ---------------------------------------------------------------------------
 
-  it("should record usage through the background task provider", async () => {
+  it("should record usage through the background task provider", async ({
+    expect,
+  }) => {
     // A bare fire-and-forget promise is cancelled on Workers once the response
     // is returned, and dropped on stop everywhere else. Routed through the
     // provider it gets `waitUntil` on Workers and is flushed on stop.
@@ -772,7 +714,7 @@ describe("ApiKeyService", () => {
       return { app, service, background, apiKey, token };
     };
 
-    it("should record the IP the request came from", async () => {
+    it("should record the IP the request came from", async ({ expect }) => {
       // The resolver runs in `server:request:before`, before the router stores the
       // request, so an IP read from the store is `undefined` on this path.
       const { app, service, background, apiKey, token } = await setup();
@@ -788,7 +730,9 @@ describe("ApiKeyService", () => {
       expect(row.lastUsedIp).toBe(response.data.ip);
     });
 
-    it("should fall back to the stored request for a caller inside a handler", async () => {
+    it("should fall back to the stored request for a caller inside a handler", async ({
+      expect,
+    }) => {
       // By the time a handler runs, the router has stored the request, so a
       // `validate()` called without an `ip` still records one.
       const { app, service, background, apiKey, token } = await setup();
@@ -803,7 +747,9 @@ describe("ApiKeyService", () => {
       expect(row.lastUsedIp).toBe(response.data.ip);
     });
 
-    it("should still record usage when the client IP does not fit the column", async () => {
+    it("should still record usage when the client IP does not fit the column", async ({
+      expect,
+    }) => {
       // With `TRUST_PROXY` on (the default) `X-Real-IP` becomes `request.ip`
       // verbatim, so the client chooses it. One character over the column's
       // `max(45)` must not fail the write and hide the key's usage.
@@ -832,9 +778,11 @@ describe("ApiKeyService", () => {
   // Admin listing owner enrichment
   // ---------------------------------------------------------------------------
 
-  it("embeds the owner summary when a users repository is registered", async () => {
+  it("embeds the owner summary when a users repository is registered", async ({
+    expect,
+  }) => {
     // Registering a users repository is what flips the best-effort join on
-    // (and creates the `users` table) — same mechanism as the files module's
+    // (and creates the `users` table): same mechanism as the files module's
     // uploader join. The other tests in this file run without it and confirm
     // findAll still works with `user` simply absent.
     class TestApp {
@@ -871,15 +819,14 @@ describe("ApiKeyService", () => {
     });
 
     // Through the controller rather than the service, so the response schema
-    // is exercised too — a summary the schema fails to declare would vanish
+    // is exercised too: a summary the schema fails to declare would vanish
     // silently from the payload.
     const page = await controller.findApiKeys.run(
       { query: {} },
       { user: { id: randomUUID(), name: "Admin", roles: ["admin"] } },
     );
 
-    // Matched by our own ids — the test database is shared across specs, so
-    // absolute counts would race with whatever other tests created.
+    expect(page.content).toHaveLength(2);
     const known = page.content.find((row) => row.userId === ownerId);
     const unknown = page.content.find((row) => row.userId === strangerId);
     expect(known?.user?.email).toBe("owner@example.com");

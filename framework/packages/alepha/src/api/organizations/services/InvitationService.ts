@@ -131,24 +131,36 @@ export class InvitationService {
     });
   }
 
-  public async listMine(user: {
-    email?: string;
-  }): Promise<InvitationInboxItem[]> {
-    if (!user.email) return [];
-    const rows = await this.invitations.findMany({
+  /**
+   * The pending invitations addressed to the signed-in account.
+   *
+   * Only those the account may answer: see {@link assertAddressedTo}.
+   */
+  public async listMine(
+    user: Pick<UserAccountToken, "id" | "realm">,
+  ): Promise<InvitationInboxItem[]> {
+    const invitee = await this.invitee(user);
+    if (!invitee) return [];
+    const addressed = await this.invitations.findMany({
       where: {
-        email: { eq: user.email.toLowerCase() },
+        email: { eq: invitee.email },
         status: { eq: "pending" },
       },
       orderBy: { column: "createdAt", direction: "desc" },
     });
+    const sent = await this.sentFrom(addressed, invitee.realm);
+    const rows = addressed.filter(
+      (row) => sent.has(row.id) && this.provesAddress(invitee, row),
+    );
     if (rows.length === 0) return [];
-    const organizations = await this.organizations.findMany({
-      where: {
-        id: { inArray: [...new Set(rows.map((row) => row.organizationId))] },
-      },
-    });
-    const names = new Map(organizations.map((item) => [item.id, item.name]));
+    const names = new Map<string, string>();
+    const organizationIds = [...new Set(rows.map((row) => row.organizationId))];
+    for (const ids of this.batches(organizationIds)) {
+      const organizations = await this.organizations.findMany({
+        where: { id: { inArray: ids } },
+      });
+      for (const item of organizations) names.set(item.id, item.name);
+    }
     return rows.map((row) => ({
       ...row,
       organizationName: names.get(row.organizationId),
@@ -160,7 +172,7 @@ export class InvitationService {
     acceptedBy: UserAccountToken,
   ): Promise<{ organizationId: string }> {
     const invitation = await this.invitations.getById(invitationId);
-    this.assertOwnedByEmail(invitation, acceptedBy);
+    await this.assertAddressedTo(invitation, acceptedBy);
     this.assertPending(invitation);
     const now = this.dateTime.now();
     if (now.isAfter(invitation.expiresAt)) {
@@ -211,7 +223,7 @@ export class InvitationService {
     declinedBy: UserAccountToken,
   ): Promise<void> {
     const invitation = await this.invitations.getById(invitationId);
-    this.assertOwnedByEmail(invitation, declinedBy);
+    await this.assertAddressedTo(invitation, declinedBy);
     this.assertPending(invitation);
     await this.invitations.updateById(invitation.id, {
       status: "declined",
@@ -241,22 +253,39 @@ export class InvitationService {
     });
   }
 
+  /**
+   * Mark the pending invitations past their date as expired, and say how
+   * many went.
+   *
+   * In batches, each one a bounded read then an update by id: the update
+   * binds one parameter per id, and Cloudflare D1 binds 100 per statement.
+   * A run stops at {@link maxExpireBatchesPerRun}; the next one takes the
+   * rest.
+   */
   public async expirePending(): Promise<number> {
     const now = this.dateTime.nowISOString();
-    const expired = await this.invitations.findMany({
-      where: { status: { eq: "pending" }, expiresAt: { lt: now } },
-    });
-    if (expired.length === 0) return 0;
-    await this.invitations.updateMany(
-      { id: { inArray: expired.map((item) => item.id) } },
-      { status: "expired", resolvedAt: now },
-    );
-    for (const invitation of expired) {
-      await this.alepha.events.emit("organization:invitation:expired", {
-        invitation,
+    const size = this.batchSize();
+    let count = 0;
+    for (let batch = 0; batch < this.maxExpireBatchesPerRun; batch++) {
+      const expired = await this.invitations.findMany({
+        where: { status: { eq: "pending" }, expiresAt: { lt: now } },
+        orderBy: { column: "expiresAt", direction: "asc" },
+        limit: size,
       });
+      if (expired.length === 0) break;
+      await this.invitations.updateMany(
+        { id: { inArray: expired.map((item) => item.id) } },
+        { status: "expired", resolvedAt: now },
+      );
+      for (const invitation of expired) {
+        await this.alepha.events.emit("organization:invitation:expired", {
+          invitation,
+        });
+      }
+      count += expired.length;
+      if (expired.length < size) break;
     }
-    return expired.length;
+    return count;
   }
 
   public async purgeResolved(): Promise<number> {
@@ -297,14 +326,168 @@ export class InvitationService {
     }
   }
 
-  protected assertOwnedByEmail(
+  /**
+   * Refuse an invitation the signed-in account may not answer. It may when
+   * all three hold:
+   *
+   * - the account's stored address is the invitation's ({@link invitee});
+   * - the invitation was sent from the account's realm ({@link sentFrom});
+   * - the account has a claim on the address ({@link provesAddress}).
+   *
+   * One message for every case, so the refusal says nothing about why.
+   */
+  protected async assertAddressedTo(
     invitation: OrganizationInvitation,
-    user: { email?: string },
-  ): void {
-    if (!user.email || user.email.toLowerCase() !== invitation.email) {
+    user: Pick<UserAccountToken, "id" | "realm">,
+  ): Promise<void> {
+    const invitee = await this.invitee(user);
+    if (
+      !invitee ||
+      invitee.email !== invitation.email ||
+      !this.provesAddress(invitee, invitation) ||
+      !(await this.sentFrom([invitation], invitee.realm)).has(invitation.id)
+    ) {
       throw new ForbiddenError("This invitation is not addressed to you");
     }
   }
+
+  /**
+   * The signed-in account as an invitee, or nothing when it has no address.
+   *
+   * Read from the account's row, never from the token: an invitation is
+   * matched by address alone, so the address is the one the realm stores.
+   * `verifies` is the realm's `verifyEmailRequired` setting, read as the
+   * realm reads it (a settings parameter wins over the declared value).
+   */
+  protected async invitee(
+    user: Pick<UserAccountToken, "id" | "realm">,
+  ): Promise<Invitee | undefined> {
+    const realm = this.realm.getRealm(user.realm);
+    const account = await this.realm.userRepository(realm.name).findOne({
+      where: { id: { eq: user.id }, realm: { eq: realm.name } },
+    });
+    if (!account?.email) return undefined;
+    return {
+      email: account.email.toLowerCase(),
+      realm: realm.name,
+      verified: account.emailVerified === true,
+      createdAt: account.createdAt,
+      verifies: (await realm.getSettings()).verifyEmailRequired === true,
+    };
+  }
+
+  /**
+   * Whether the account has a claim on the address an invitation was sent
+   * to, beyond having typed it at registration.
+   *
+   * - **A realm that verifies addresses**: the address is verified, or the
+   *   account already existed when the invitation was created. The inviter
+   *   then invited a known account, which is the only way in for one an
+   *   administrator created or one registered before mail was configured.
+   *   An unverified account created after the invitation is the case this
+   *   refuses: whoever registers an invited address to take the invitation.
+   * - **A realm that does not**: every account passes, since none can
+   *   verify. There, whoever registers an invited address first can answer
+   *   its invitations; turning `verifyEmailRequired` on is what closes that.
+   */
+  protected provesAddress(
+    invitee: Invitee,
+    invitation: OrganizationInvitation,
+  ): boolean {
+    return (
+      !invitee.verifies ||
+      invitee.verified ||
+      !this.dateTime.of(invitee.createdAt).isAfter(invitation.createdAt)
+    );
+  }
+
+  /**
+   * Which of these invitations were sent from `realm`, by id.
+   *
+   * An invitation belongs to its inviter's realm, the one `create` looked
+   * the invitee up in, and only an account of that realm may answer it: the
+   * same address in another realm is another person.
+   *
+   * An inviter whose account is gone answers for no realm. Their
+   * invitations are not stranded: the organization's owner answers instead,
+   * since an organization always has one and its members share a realm.
+   */
+  protected async sentFrom(
+    invitations: OrganizationInvitation[],
+    realm: string,
+  ): Promise<Set<string>> {
+    const users = this.realm.userRepository(realm);
+    const inviterRealms = new Map<string, string>();
+    const inviterIds = [...new Set(invitations.map((row) => row.invitedBy))];
+    for (const ids of this.batches(inviterIds)) {
+      const rows = await users.findMany({ where: { id: { inArray: ids } } });
+      for (const row of rows) inviterRealms.set(row.id, row.realm);
+    }
+    const sent = new Set<string>();
+    const orphans: OrganizationInvitation[] = [];
+    for (const invitation of invitations) {
+      const inviterRealm = inviterRealms.get(invitation.invitedBy);
+      if (inviterRealm === realm) sent.add(invitation.id);
+      else if (inviterRealm === undefined) orphans.push(invitation);
+    }
+    if (orphans.length === 0) return sent;
+
+    const owners = new Map<string, string>();
+    const organizationIds = [
+      ...new Set(orphans.map((row) => row.organizationId)),
+    ];
+    for (const ids of this.batches(organizationIds)) {
+      const rows = await this.memberRows.findMany({
+        where: {
+          organizationId: { inArray: ids },
+          rank: { eq: MemberService.OWNER },
+        },
+      });
+      for (const row of rows) owners.set(row.organizationId, row.userId);
+    }
+    const ownersInRealm = new Set<string>();
+    for (const ids of this.batches([...new Set(owners.values())])) {
+      const rows = await users.findMany({
+        where: { id: { inArray: ids }, realm: { eq: realm } },
+      });
+      for (const row of rows) ownersInRealm.add(row.id);
+    }
+    for (const invitation of orphans) {
+      const owner = owners.get(invitation.organizationId);
+      if (owner && ownersInRealm.has(owner)) sent.add(invitation.id);
+    }
+    return sent;
+  }
+
+  /**
+   * Batches an expiry run takes at most.
+   */
+  protected readonly maxExpireBatchesPerRun = 10;
+
+  /**
+   * Ids one statement names: 1000, or fewer when the driver binds fewer
+   * parameters per statement (90 on D1).
+   */
+  protected batchSize(): number {
+    return Math.min(1000, this.invitations.provider.maxBoundParameters - 10);
+  }
+
+  protected batches<T>(items: T[]): T[][] {
+    const size = this.batchSize();
+    const batches: T[][] = [];
+    for (let index = 0; index < items.length; index += size) {
+      batches.push(items.slice(index, index + size));
+    }
+    return batches;
+  }
+}
+
+interface Invitee {
+  email: string;
+  realm: string;
+  verified: boolean;
+  createdAt: string;
+  verifies: boolean;
 }
 
 export type InvitationInboxItem = OrganizationInvitation & {

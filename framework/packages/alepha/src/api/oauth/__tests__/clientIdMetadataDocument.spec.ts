@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaOAuth, oauthOptions } from "../index.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
@@ -28,7 +28,7 @@ class TestOAuthClientService extends OAuthClientService {
   protected async requestMetadataDocument(url: URL): Promise<Response> {
     this.requested.push(url.toString());
     const answer = this.responses.get(url.toString());
-    if (!answer) throw new Error("network unreachable");
+    if (!answer) throw new AlephaError("network unreachable");
     return answer();
   }
 
@@ -103,7 +103,9 @@ const boot = async (cimd?: boolean) => {
 };
 
 describe("CIMD: discovery", () => {
-  it("advertises client_id_metadata_document_supported by default", async () => {
+  it("advertises client_id_metadata_document_supported by default", async ({
+    expect,
+  }) => {
     const { alepha, hostname } = await boot();
 
     const as = (await (
@@ -118,7 +120,9 @@ describe("CIMD: discovery", () => {
     await alepha.stop();
   });
 
-  it("stops advertising and resolving when clientIdMetadataDocuments is false", async () => {
+  it("stops advertising and resolving when clientIdMetadataDocuments is false", async ({
+    expect,
+  }) => {
     const { alepha, service, hostname, authorize } = await boot(false);
     service.responses.set(CLIENT_ID, () => json(document()));
 
@@ -135,7 +139,9 @@ describe("CIMD: discovery", () => {
 });
 
 describe("CIMD: resolving a URL client id", () => {
-  it("registers the client from its document and shows its host on consent", async () => {
+  it("registers the client from its document and shows its host on consent", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
     service.responses.set(CLIENT_ID, () => json(document()));
 
@@ -153,7 +159,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("caches the document under max-age, clamped to at least 5 minutes", async () => {
+  it("caches the document under max-age, clamped to at least 5 minutes", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
     service.responses.set(CLIENT_ID, () =>
       json(document(), { "cache-control": "max-age=60" }),
@@ -169,7 +177,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("serves the stored copy when a refetch fails, for at most 24 h past expiry", async () => {
+  it("serves the stored copy when a refetch fails, for at most 24 h past expiry", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
     service.responses.set(CLIENT_ID, () => json(document()));
     await authorize();
@@ -184,7 +194,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("refuses a document whose client_id is not its URL, or that lacks a name or redirects", async () => {
+  it("refuses a document whose client_id is not its URL, or that lacks a name or redirects", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
 
     for (const bad of [
@@ -201,7 +213,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("requires the redirect to match the document exactly", async () => {
+  it("requires the redirect to match the document exactly", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
     service.responses.set(CLIENT_ID, () => json(document()));
 
@@ -212,7 +226,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("accepts a native client's port-less loopback redirects without application_type, on any port", async () => {
+  it("accepts a native client's port-less loopback redirects without application_type, on any port", async ({
+    expect,
+  }) => {
     // The shape Claude Code publishes: no application_type, loopback
     // redirects without a port, and a random port at authorize (RFC 8252).
     const { alepha, service, authorize } = await boot();
@@ -240,7 +256,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("accepts a native client's dot-less private-use scheme, as GitHub Copilot publishes", async () => {
+  it("accepts a native client's dot-less private-use scheme, as GitHub Copilot publishes", async ({
+    expect,
+  }) => {
     // GitHub Copilot desktop's document, as served on 2026-11-06: its
     // `github-app` scheme carries no dot, which RFC 8252 only recommends.
     const { alepha, service, authorize } = await boot();
@@ -279,7 +297,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("refuses a native document naming a script or local scheme", async () => {
+  it("refuses a native document naming a script or local scheme", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
     for (const uri of [
       "javascript:alert(1)",
@@ -296,7 +316,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("still refuses a loopback redirect when the document says web", async () => {
+  it("still refuses a loopback redirect when the document says web", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
     service.responses.set(CLIENT_ID, () =>
       json(
@@ -313,7 +335,9 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
-  it("refuses a redirect, a non-JSON answer and a body over 5 KiB", async () => {
+  it("refuses a redirect, a non-JSON answer and a body over 5 KiB", async ({
+    expect,
+  }) => {
     const { alepha, service, authorize } = await boot();
 
     for (const answer of [
@@ -337,7 +361,7 @@ describe("CIMD: resolving a URL client id", () => {
 });
 
 describe("CIMD: the fetch guard", () => {
-  it("never fetches a host that could be private", async () => {
+  it("never fetches a host that could be private", async ({ expect }) => {
     const { alepha, service } = await boot();
 
     for (const url of [
@@ -356,6 +380,43 @@ describe("CIMD: the fetch guard", () => {
     expect(service.requested).toEqual([]);
     await alepha.stop();
   });
+
+  it("reads the host as the resolver will: trailing dots, case, and every spelling of an address", async ({
+    expect,
+  }) => {
+    const { alepha, service } = await boot();
+
+    for (const url of [
+      "https://localhost./client.json",
+      "https://LOCALHOST./client.json",
+      "https://localhost../client.json",
+      "https://localhost%2e/client.json",
+      "https://app.localhost./client.json",
+      "https://db.internal./client.json",
+      "https://printer.local./client.json",
+      "https://intranet./client.json",
+      "https://app..example/client.json",
+      "https://127.0.0.1./client.json",
+      "https://2130706433/client.json",
+      "https://0x7f000001/client.json",
+      "https://017700000001/client.json",
+      "https://0x7f.0.0.1/client.json",
+      "https://127.1/client.json",
+      "https://[::ffff:127.0.0.1]/client.json",
+      "https://[::ffff:7f00:1]/client.json",
+    ]) {
+      await expect(service.testFetch(url), url).rejects.toThrow();
+    }
+    expect(service.requested).toEqual([]);
+
+    service.responses.set("https://app.example./client.json", () =>
+      json(document()),
+    );
+    await expect(
+      service.testFetch("https://APP.example./client.json"),
+    ).resolves.toMatchObject({ document: document() });
+    await alepha.stop();
+  });
 });
 
 describe("DCR: application_type", () => {
@@ -366,7 +427,7 @@ describe("DCR: application_type", () => {
       body: JSON.stringify({ client_name: `App ${randomUUID()}`, ...body }),
     });
 
-  it("stores it and echoes it", async () => {
+  it("stores it and echoes it", async ({ expect }) => {
     const { alepha, service, hostname } = await boot();
 
     const res = await register(hostname, {
@@ -383,7 +444,7 @@ describe("DCR: application_type", () => {
     await alepha.stop();
   });
 
-  it("refuses a loopback redirect for a web client", async () => {
+  it("refuses a loopback redirect for a web client", async ({ expect }) => {
     const { alepha, hostname } = await boot();
 
     const res = await register(hostname, {
@@ -396,7 +457,9 @@ describe("DCR: application_type", () => {
     await alepha.stop();
   });
 
-  it("accepts a private-use scheme for a native client only", async () => {
+  it("accepts a private-use scheme for a native client only", async ({
+    expect,
+  }) => {
     const { alepha, hostname } = await boot();
     const redirect_uris = ["com.example.app:/oauth/callback"];
 
@@ -416,7 +479,9 @@ describe("DCR: application_type", () => {
     await alepha.stop();
   });
 
-  it("keeps the general rule when absent, so older native clients still register", async () => {
+  it("keeps the general rule when absent, so older native clients still register", async ({
+    expect,
+  }) => {
     const { alepha, hostname } = await boot();
 
     const res = await register(hostname, {

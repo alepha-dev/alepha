@@ -2,6 +2,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import {
   type VerificationController,
   VerificationService,
+  VerificationThrottledError,
 } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
@@ -733,7 +734,8 @@ export class RegistrationService {
         params: { type: "code" },
         body: { target: email, token: code },
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error instanceof VerificationThrottledError) throw error;
         this.log.warn("Invalid email verification code", { email });
         throw new BadRequestError("Invalid or expired email verification code");
       });
@@ -758,7 +760,8 @@ export class RegistrationService {
         params: { type: "code" },
         body: { target: phoneNumber, token: code },
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error instanceof VerificationThrottledError) throw error;
         this.log.warn("Invalid phone verification code", { phoneNumber });
         throw new BadRequestError("Invalid or expired phone verification code");
       });

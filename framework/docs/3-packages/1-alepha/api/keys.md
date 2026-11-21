@@ -21,7 +21,8 @@ API key management module for programmatic access.
   `GET /api-keys/options`
 - A derived status (`active`, `expiring`, `expired`, `revoked`) on every
   read, and the same rule as a query for filtering
-- Rotation: a new secret on the same key, the old token dead at once
+- Rotation: a new secret on the same key, the old token dead at once on
+  the instance that rotated it and within 30 seconds on every other
 - Revocation that frees the key's name; a list that keeps dead keys until
   the daily purge job deletes them past their retention window
 - A one-time expiry notice to the owner (with a realm's notifications)
@@ -33,7 +34,9 @@ API key management module for programmatic access.
 - A key is a machine credential, not a session: routes declared
   `$secure({ sessionOnly: true })` refuse it, which includes creating,
   rotating and revoking keys
-- 15-minute validation caching, and query param (`?api_key=`) and Bearer
+- 30-second validation caching per instance, which is also how long a
+  revoked or rotated-away token can outlive the change on another
+  instance, and query param (`?api_key=`) and Bearer
   header support
 
 See the API keys guide (`docs/1-guides/5-security/3-api-keys.md`).

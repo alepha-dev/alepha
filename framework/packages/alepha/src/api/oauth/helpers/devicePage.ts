@@ -53,7 +53,9 @@ export interface DevicePageConfirmOptions {
   step: "confirm";
   userCode: string;
   userName: string;
-  /** Client-provided values, never a verified application identity. */
+  /**
+   * Client-provided values, never a verified application identity.
+   */
   clientId: string;
   clientName?: string;
   scopes: ConsentScope[];

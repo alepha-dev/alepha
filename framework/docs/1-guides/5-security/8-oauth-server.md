@@ -43,7 +43,8 @@ A client may use an https URL as its `client_id`, pointing at a JSON document th
 ```
 
 - **Validated.** `client_id` must equal the URL it was fetched from, `client_name` and `redirect_uris` are required, the redirect URIs follow the `application_type` rules below (no wildcard; a document that names no `application_type`, as native CLI clients often publish, takes the general rule, so `http://localhost/callback` is accepted and matches any port at authorize), and a `token_endpoint_auth_method` other than `none` is refused. At authorize, the redirect must match the document.
-- **Fetched carefully.** https only, the default port only, and never a host that is an IP literal, `localhost`, or a `.localhost`, `.local` or `.internal` name (workerd resolves no DNS, so the host name is what is checked). No redirect is followed, the fetch times out after 5 s, and the body must be JSON of at most 5 KiB.
+- **Fetched carefully.** https only, the default port only, no credentials in the URL, and never a host that is an IP literal (in any notation: dotted, decimal, hex, octal, or IPv6 including IPv4-mapped), a name of one label, a name with an empty label, `localhost`, or a `.localhost`, `.local` or `.internal` name. The name is read as a resolver reads it: case and a trailing dot make no difference, so `localhost.` and `db.internal.` are refused too. No redirect is followed, the fetch times out after 5 s, and the body must be JSON of at most 5 KiB. ⚠️ Only the name is checked (workerd resolves no DNS): a public name whose DNS answers a private address passes, so keep the server's egress away from internal networks if that matters to you.
+- **Scopes.** The document's `scope` is narrowed to the scopes the application declares. A document naming none is registered for `mcp` when the application declares it or declares no scope at all. A document left with no scope (it names only undeclared ones, or names none where `mcp` is not declared) is refused: the client is unknown.
 - **Cached on the row.** The response's `max-age`, clamped to between 5 minutes and 24 hours, decides when the document is fetched again. A refetch that fails falls back to the stored copy for at most 24 hours past its expiry.
 - **On by default.** Dynamic registration is already open to anyone, so accepting a self-hosted document widens no trust. `oauthOptions.clientIdMetadataDocuments: false` turns it off: a URL client id is then an ordinary lookup.
 
@@ -58,6 +59,15 @@ A client id is up to 512 characters, in `oauth_clients.clientId`, `sessions.clie
 | `web`              | https only                                                                                                                                                                      |
 | `native`           | https, http to the loopback (any port at authorize), and private-use schemes such as `com.example.app:/cb` or `myapp://cb` (never `javascript:`, `data:`, `file:` and the like) |
 | absent             | https, or http to the loopback: the rule from before the field, so older native clients keep registering                                                                        |
+
+A registration naming no `scope` is given `mcp`, when the application declares it or declares no scope at all. Where the application declares scopes and not `mcp`, there is no default: the registration is refused with `invalid_client_metadata` and has to name its scopes. The `201` answer carries `scope`, the space-separated scopes the client is registered for.
+
+Registration is deduplicated: the same name, redirect URIs (as a set), scopes (as a set) and `application_type`, with no secret, answers the client already registered. Any difference in what the client is entitled to registers another client, so a client never receives an id holding fewer or more scopes than it asked for.
+
+## Codes and Their Lifetimes
+
+- **Authorization codes** live 60 seconds and are single use. The redemption is counted in the application's cache, so it holds across every instance that shares one (Redis, or the database cache, which is the default on Workers with a database). With the in-memory cache of a single Node process it holds for that process, and Cloudflare KV has no atomic counter: there a code could be redeemed once per instance within its 60 seconds, by a caller that also holds the PKCE verifier.
+- **Device codes** live `expires_in` seconds (600) from the moment they are issued, whatever happens meanwhile. Polling does not extend a code, a code approved in its last seconds is not redeemable after them, and a device polling an expired code is told `expired_token`. An answer is taken once (of an Allow and a Deny arriving together, one wins and the other is refused), and an approved code hands over its grant to one poll only. Like the authorization itself, this state lives in the cache: several instances need a shared one.
 
 ## Challenges and Step-Up
 

@@ -23,8 +23,6 @@ describe("VerificationJobs", () => {
     const time = alepha.inject(DateTimeProvider);
     const jobs = alepha.inject(VerificationJobs);
 
-    await db.verifications.deleteMany({ target: { eq: "hello@mail.com" } });
-
     const entry = {
       type: "link",
       target: "hello@mail.com",
