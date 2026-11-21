@@ -568,6 +568,10 @@ export class OrderService {
    * what they cost the buyer, their share of any discount taken off, and
    * delivery is only reached by a refund of what is left.
    *
+   * A refund still `pending` counts as given back, its amount and its units:
+   * a second one started while the first waits on the rail (a double click)
+   * would otherwise pay the same unit twice.
+   *
    * @throws InvalidRefundError when it asks for more than the order has left
    */
   public async prepareRefund(
@@ -575,11 +579,23 @@ export class OrderService {
     input: { amount?: number; lines?: RefundLine[]; reason?: string } = {},
   ): Promise<OrderRefundEntity> {
     const order = await this.orderRepo.getById(id);
-    const left = order.total - order.refundedTotal;
+    const pending = await this.refundRepo.findMany({
+      where: { orderId: { eq: id }, status: { eq: "pending" } },
+    });
+    const left =
+      order.total -
+      order.refundedTotal -
+      pending.reduce((sum, it) => sum + it.amount, 0);
     const lines = input.lines ?? [];
 
     const amount =
-      lines.length > 0 ? await this.valueOf(id, lines) : (input.amount ?? left);
+      lines.length > 0
+        ? await this.valueOf(
+            id,
+            lines,
+            pending.flatMap((it) => it.lines),
+          )
+        : (input.amount ?? left);
 
     if (amount <= 0 || amount > left) {
       throw new InvalidRefundError(
@@ -625,11 +641,13 @@ export class OrderService {
   }
 
   /**
-   * What these units cost the buyer, and refuse any the order no longer has.
+   * What these units cost the buyer, and refuse any the order no longer has:
+   * those refunded, and those a pending refund is giving back.
    */
   protected async valueOf(
     orderId: string,
     lines: RefundLine[],
+    pending: RefundLine[] = [],
   ): Promise<number> {
     const items = await this.itemsOf(orderId);
     let amount = 0;
@@ -640,11 +658,13 @@ export class OrderService {
           `Order ${orderId} has no line ${line.orderItemId}.`,
         );
       }
-      if (line.quantity > item.quantity - item.refundedQuantity) {
+      const held = pending
+        .filter((it) => it.orderItemId === item.id)
+        .reduce((sum, it) => sum + it.quantity, 0);
+      const left = item.quantity - item.refundedQuantity - held;
+      if (line.quantity > left) {
         throw new InvalidRefundError(
-          `Cannot refund ${line.quantity} of '${item.name}': ${
-            item.quantity - item.refundedQuantity
-          } left.`,
+          `Cannot refund ${line.quantity} of '${item.name}': ${left} left.`,
         );
       }
       const paid = item.unitPrice * item.quantity - item.discount;
@@ -766,8 +786,7 @@ export class OrderService {
   /**
    * Mark items prepared. Optional step - a shop that packs and posts in one go
    * can move straight from `paid` to `shipped`.
-   */
-  /**
+   *
    * @public No caller in this package, and there should not be one: when an
    * order is fulfilled is a question only the application can answer. Covered
    * by `orderLifecycle.spec.ts` and `partialRefund.spec.ts`.

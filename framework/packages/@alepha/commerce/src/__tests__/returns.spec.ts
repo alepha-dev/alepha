@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { PaymentService } from "alepha/api/payments";
+import {
+  MemoryPaymentProvider,
+  PaymentProvider,
+  PaymentService,
+} from "alepha/api/payments";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
@@ -25,8 +29,34 @@ class Ledger {
   public readonly orders = $repository(orders);
 }
 
-const setup = async () => {
-  const alepha = Alepha.create()
+/**
+ * A PSP that takes its time over a refund, so a second one can start while
+ * the first is still with it.
+ */
+class SlowRefundProvider extends MemoryPaymentProvider {
+  override async refundPayment(
+    ...args: Parameters<MemoryPaymentProvider["refundPayment"]>
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return super.refundPayment(...args);
+  }
+}
+
+/**
+ * A PSP that turns every refund down.
+ */
+class RefusingRefundProvider extends MemoryPaymentProvider {
+  override async refundPayment(): Promise<never> {
+    throw new Error("rail said no");
+  }
+}
+
+const setup = async (options: { rail?: typeof MemoryPaymentProvider } = {}) => {
+  const alepha = Alepha.create();
+  if (options.rail) {
+    alepha.with({ provide: PaymentProvider, use: options.rail });
+  }
+  alepha
     .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceShipping)
     .with(AlephaCommerceAdmin);
@@ -307,6 +337,53 @@ describe("returns", () => {
       const order = await ctx.orders.getById(orderId);
       expect(order.status).toBe("refunded");
       expect(order.refundedTotal).toBe(20690);
+    });
+
+    it("refuses a second refund while the first waits on the rail", async ({
+      expect,
+    }) => {
+      const ctx = await setup({ rail: SlowRefundProvider });
+      const { orderId, item } = await buyAndDeliver(ctx);
+      const request = await ctx.returns.request(orderId, {
+        lines: [{ orderItemId: item.id, quantity: 1 }],
+      });
+      await ctx.returns.receive(request.id);
+      const refund = () =>
+        ctx.adminReturns.commerceAdminReturnRefund.fetch(
+          { params: { id: request.id }, body: {} },
+          { user: admin },
+        );
+
+      const first = refund();
+      while ((await ctx.orders.refundsOf(orderId)).length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      await expect(refund()).rejects.toThrow(/is 'refunded', not 'received'/);
+      await first;
+
+      const order = await ctx.orders.getById(orderId);
+      expect(order.refundedTotal).toBe(10000);
+      expect(await ctx.orders.refundsOf(orderId)).toHaveLength(1);
+      expect((await ctx.returns.getById(request.id)).status).toBe("refunded");
+    });
+
+    it("stays received when the rail refuses", async ({ expect }) => {
+      const ctx = await setup({ rail: RefusingRefundProvider });
+      const { orderId, item } = await buyAndDeliver(ctx);
+      const request = await ctx.returns.request(orderId, {
+        lines: [{ orderItemId: item.id, quantity: 1 }],
+      });
+      await ctx.returns.receive(request.id);
+
+      await expect(
+        ctx.adminReturns.commerceAdminReturnRefund.fetch(
+          { params: { id: request.id }, body: {} },
+          { user: admin },
+        ),
+      ).rejects.toThrow();
+
+      expect((await ctx.returns.getById(request.id)).status).toBe("received");
+      expect((await ctx.orders.getById(orderId)).refundedTotal).toBe(0);
     });
 
     it("refuses a return that has not come back", async ({ expect }) => {

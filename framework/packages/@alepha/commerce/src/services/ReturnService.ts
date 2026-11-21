@@ -112,13 +112,29 @@ export class ReturnService {
   }
 
   /**
-   * Say which refund closed a received return.
+   * Refund a received return, and say which refund closed it.
+   *
+   * The return is claimed before `refund` runs, by a conditional move out of
+   * `received`, and put back if it throws: a second refund started while the
+   * first waits on the payment rail (a double click) is refused before any
+   * money moves.
+   *
+   * @param refund gives the money back, and answers the refund's id
+   * @throws InvalidReturnError when it is not `received`
    */
   public async markRefunded(
     id: string,
-    refundId: string,
+    refund: () => Promise<string>,
   ): Promise<OrderReturnEntity> {
-    return this.move(id, "received", { status: "refunded", refundId });
+    await this.move(id, "received", { status: "refunded" });
+    let refundId: string;
+    try {
+      refundId = await refund();
+    } catch (error) {
+      await this.move(id, "refunded", { status: "received" });
+      throw error;
+    }
+    return this.repo.updateById(id, { refundId });
   }
 
   public async getById(id: string): Promise<OrderReturnEntity> {

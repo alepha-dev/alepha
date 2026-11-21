@@ -50,8 +50,10 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
   );
 
   const left = order.total - order.refundedTotal;
+  // A cancelled unit was refunded when it was cancelled, so it is already in
+  // `refundedQuantity`: what is left is what `OrderService.valueOf` allows.
   const items = (detail.data?.items ?? []).filter(
-    (it) => it.quantity > it.refundedQuantity + it.cancelledQuantity,
+    (it) => it.quantity > it.refundedQuantity,
   );
   const itemsKey = items.map((it) => it.id).join(",");
 
@@ -64,9 +66,7 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
             z
               .integer()
               .min(0)
-              .max(
-                item.quantity - item.refundedQuantity - item.cancelledQuantity,
-              )
+              .max(item.quantity - item.refundedQuantity)
               .meta({
                 title: item.variantLabel
                   ? `${item.name} (${item.variantLabel})`

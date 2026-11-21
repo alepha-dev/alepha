@@ -1,6 +1,7 @@
 import { $hook, $inject } from "alepha";
 import { $logger } from "alepha/logger";
 
+import { OrderService } from "../../services/OrderService.ts";
 import { CheckoutService } from "./CheckoutService.ts";
 
 /**
@@ -19,6 +20,7 @@ import { CheckoutService } from "./CheckoutService.ts";
 export class CheckoutSettlementListener {
   protected readonly log = $logger();
   protected readonly checkout = $inject(CheckoutService);
+  protected readonly orders = $inject(OrderService);
 
   protected readonly onCaptured = $hook({
     on: "payments:captured",
@@ -53,6 +55,10 @@ export class CheckoutSettlementListener {
    * Before this, any refund event whatsoever moved the order to `refunded` -
    * so a ten percent goodwill gesture read, in the back office and in the
    * customer's own history, exactly like a sale that had been undone.
+   *
+   * An order that never took the money (`pending`, or `cancelled` with a
+   * stray capture recorded against it) is left as it is: the refund gives
+   * back money the order never held.
    */
   protected readonly onRefunded = $hook({
     on: "payments:refunded",
@@ -64,21 +70,26 @@ export class CheckoutSettlementListener {
       }
 
       const session = await this.checkout.getById(sessionId);
-      if (session.orderId) {
-        await this.checkout.refundOrder(session.orderId, {
-          refundedTotal: event.refundedTotal,
-        });
+      if (!session.orderId) {
+        return;
       }
+      const order = await this.orders.getById(session.orderId);
+      if (order.status === "pending" || order.status === "cancelled") {
+        return;
+      }
+      await this.checkout.refundOrder(session.orderId, {
+        refundedTotal: event.refundedTotal,
+      });
     },
   });
 
   /**
    * A payment that failed or was abandoned must give its stock back at once.
    *
-   * The sweep would get there eventually, but "eventually" here means up to
-   * fifteen minutes during which the last ring is invisible to a buyer who would have
-   * paid for it. Releasing on the failure event costs nothing and closes that
-   * window.
+   * Every read already skips an expired hold, but a hold lives until its TTL,
+   * so without this the last ring stays invisible, up to that TTL, to a buyer
+   * who would have paid for it. Releasing on the failure event costs nothing
+   * and closes that window.
    */
   protected readonly onFailed = $hook({
     on: "payments:failed",

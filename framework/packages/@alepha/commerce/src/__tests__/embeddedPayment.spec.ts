@@ -205,6 +205,26 @@ describe("embedded payment", () => {
     expect(order.strayCaptures).toHaveLength(1);
   });
 
+  it("refunds a stray capture and leaves its cancelled order as it is", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { session, handoff } = await reachPayment(ctx);
+    const providerRef = await providerRefOf(ctx, handoff.intentId);
+    await ctx.payments.handleWebhook(pspWebhook(providerRef, "failed"));
+    await ctx.payments.handleWebhook(pspWebhook(providerRef, "captured"));
+
+    const intent = await ctx.payments.getIntent(handoff.intentId);
+    await ctx.payments.refund(handoff.intentId, intent.amount);
+
+    expect((await ctx.payments.getIntent(handoff.intentId)).status).toBe(
+      "refunded",
+    );
+    const order = await ctx.orders.getById(session.orderId!);
+    expect(order.status).toBe("cancelled");
+    expect(order.refundedTotal).toBe(0);
+  });
+
   it("refuses a second element session for the same intent", async ({
     expect,
   }) => {

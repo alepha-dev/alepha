@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { PaymentService } from "alepha/api/payments";
+import {
+  MemoryPaymentProvider,
+  PaymentProvider,
+  PaymentService,
+} from "alepha/api/payments";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { describe, it } from "vitest";
@@ -9,9 +13,11 @@ import { describe, it } from "vitest";
 import { AdminOrderController } from "../admin/controllers/AdminOrderController.ts";
 import { AdminProductController } from "../admin/controllers/AdminProductController.ts";
 import { AlephaCommerceAdmin } from "../admin/index.ts";
+import { OrderRefundService } from "../admin/services/OrderRefundService.ts";
 import { CartService } from "../cart/services/CartService.ts";
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
+import { InvalidRefundError } from "../errors/CommerceError.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
@@ -71,6 +77,39 @@ const setupWithRefusingRail = async () => {
     orders: alepha.inject(OrderService),
     stock: alepha.inject(StockService),
     payments: alepha.inject(PaymentService),
+  };
+  await alepha.start();
+  return ctx;
+};
+
+/**
+ * A PSP that takes its time over a refund, so a second one can start while
+ * the first is still with it.
+ */
+class SlowRefundProvider extends MemoryPaymentProvider {
+  override async refundPayment(
+    ...args: Parameters<MemoryPaymentProvider["refundPayment"]>
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return super.refundPayment(...args);
+  }
+}
+
+const setupWithSlowRail = async () => {
+  const alepha = Alepha.create()
+    .with({ provide: PaymentProvider, use: SlowRefundProvider })
+    .with(AlephaOrmTestPostgres)
+    .with(AlephaCommerceCheckout)
+    .with(AlephaCommerceAdmin);
+
+  const ctx = {
+    alepha,
+    catalog: alepha.inject(CatalogService),
+    carts: alepha.inject(CartService),
+    checkout: alepha.inject(CheckoutService),
+    orders: alepha.inject(OrderService),
+    payments: alepha.inject(PaymentService),
+    refunds: alepha.inject(OrderRefundService),
   };
   await alepha.start();
   return ctx;
@@ -276,6 +315,72 @@ describe("admin orders", () => {
     // No restock, and the order never moved: the domain never ran.
     expect(await ctx.stock.onHand(ring.id)).toBe(onHandBefore);
     expect((await ctx.orders.getById(orderId)).status).toBe("paid");
+  });
+
+  it("refuses a second refund of a unit the rail is still refunding", async ({
+    expect,
+  }) => {
+    const ctx = await setupWithSlowRail();
+    const aProduct = (price: number) =>
+      ctx.catalog.create({
+        slug: `ring-${randomUUID()}`,
+        name: "Bague Aurore",
+        price,
+        published: true,
+        config: { trackStock: false },
+      });
+    const small = await aProduct(3000);
+    const large = await aProduct(7000);
+    const cart = await ctx.carts.resolve(ctx.carts.newToken());
+    await ctx.carts.add(cart.id, small.id, 1);
+    await ctx.carts.add(cart.id, large.id, 1);
+    const opened = await ctx.checkout.start(cart.id);
+    const { session, handoff } = await ctx.checkout.pay(opened.id, {
+      returnUrl: "https://bijoux.example/merci",
+    });
+    await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
+    const orderId = session.orderId!;
+    const item = (await ctx.orders.itemsOf(orderId)).find(
+      (it) => it.productId === small.id,
+    )!;
+    const lines = [{ orderItemId: item.id, quantity: 1 }];
+
+    const first = ctx.refunds.refund(orderId, { lines });
+    while ((await ctx.orders.refundsOf(orderId)).length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    await expect(ctx.refunds.refund(orderId, { lines })).rejects.toThrow(
+      InvalidRefundError,
+    );
+    await first;
+
+    const order = await ctx.orders.getById(orderId);
+    expect(order.refundedTotal).toBe(3000);
+    const refunds = await ctx.orders.refundsOf(orderId);
+    expect(refunds.map((it) => it.status)).toEqual(["done"]);
+    expect(
+      (await ctx.orders.itemsOf(orderId)).find((it) => it.id === item.id)!
+        .refundedQuantity,
+    ).toBe(1);
+  });
+
+  it("refuses a refund of what is left while another waits on the rail", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const ring = await ctx.catalog.create({
+      slug: `ring-${randomUUID()}`,
+      name: "Bague Aurore",
+      price: 8900,
+      published: true,
+      config: { trackStock: false },
+    });
+    const orderId = await buy(ctx, ring.id);
+    await ctx.orders.prepareRefund(orderId, { amount: 8000 });
+
+    await expect(
+      ctx.orders.prepareRefund(orderId, { amount: 1000 }),
+    ).rejects.toThrow(InvalidRefundError);
   });
 
   it("is a no-op once there is nothing left to give back", async ({

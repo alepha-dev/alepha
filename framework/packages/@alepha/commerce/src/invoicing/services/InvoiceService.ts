@@ -436,10 +436,6 @@ export class InvoiceService {
   }
 
   /**
-   * `FA-2026-000001`. Zero-padded so a plain text sort matches issue order,
-   * which is what anyone reading a folder of invoices expects.
-   */
-  /**
    * Now, as an ISO instant carrying the seller's offset rather than `Z`.
    *
    * Both things this feeds are calendar facts in the seller's jurisdiction:
@@ -457,6 +453,10 @@ export class InvoiceService {
     return this.dateTime.now().tz(timezone).format();
   }
 
+  /**
+   * `FA-2026-000001`. Zero-padded so a plain text sort matches issue order,
+   * which is what anyone reading a folder of invoices expects.
+   */
   protected formatNumber(
     prefix: string,
     year: number,

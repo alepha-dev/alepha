@@ -5,7 +5,6 @@ import { $action } from "alepha/server";
 
 import { refundLineSchema } from "../../entities/orderRefunds.ts";
 import { orderReturns } from "../../entities/orderReturns.ts";
-import { InvalidReturnError } from "../../errors/CommerceError.ts";
 import { orderReturnStatusSchema } from "../../schemas/orderReturnStatusSchema.ts";
 import { ReturnService } from "../../services/ReturnService.ts";
 import { OrderRefundService } from "../services/OrderRefundService.ts";
@@ -110,18 +109,14 @@ export class AdminReturnController {
     },
     handler: async ({ params, body }) => {
       const returned = await this.returns.getById(params.id);
-      if (returned.status !== "received") {
-        throw new InvalidReturnError(
-          `Return ${returned.id} is '${returned.status}', not 'received'.`,
-        );
-      }
-
       const whole = await this.returns.coversOrder(returned);
-      const { refund } = await this.refunds.refund(returned.orderId, {
-        ...(whole ? {} : { lines: returned.lines }),
-        reason: body.reason ?? returned.reason,
+      return this.returns.markRefunded(returned.id, async () => {
+        const { refund } = await this.refunds.refund(returned.orderId, {
+          ...(whole ? {} : { lines: returned.lines }),
+          reason: body.reason ?? returned.reason,
+        });
+        return refund.id;
       });
-      return this.returns.markRefunded(returned.id, refund.id);
     },
   });
 }
