@@ -320,20 +320,27 @@ describe("RoomEngine — lifecycle callbacks", () => {
   });
 
   it("keeps the per-connection data bag identity across callbacks", async () => {
-    const engine = makeEngine({
-      onJoin: (_room, conn) => {
-        conn.data.heroId = "hero-9";
+    const clock = new FakeClock();
+    const engine = makeEngine(
+      {
+        onJoin: (_room, conn) => {
+          conn.data.heroId = "hero-9";
+        },
+        onTick: (room) => {
+          for (const c of room.connections) c.data.ticked = true;
+        },
+        tickHz: 20,
       },
-      onTick: (room) => {
-        for (const c of room.connections) c.data.ticked = true;
-      },
-      tickHz: 20,
-    });
+      { clock },
+    );
     const socket = fakeSocket();
 
     await engine.join(socket);
+    clock.advance(50);
 
+    // The bag onJoin wrote to is the one onTick reads and writes.
     expect(socket.data.heroId).toBe("hero-9");
+    expect(socket.data.ticked).toBe(true);
   });
 });
 

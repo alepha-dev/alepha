@@ -241,11 +241,8 @@ describe("WebSocketRoom hosting a $room engine", () => {
   });
 
   /**
-   * The watchdog rebuilds a `RoomSocket` from the deserialized attachment, not
-   * from the original `fetch` request, so the query hint an application relied
-   * on to identify the joining entity (e.g. a multiplayer game's `?hero=`)
-   * must survive that round-trip too  -  otherwise a room that outlives one
-   * isolate reset loses `conn.query` on every connection it rehydrates.
+   * An isolate reset loses what lived in memory (room state, data bags) and
+   * keeps what the hibernation attachment carries.
    */
   it("resets volatile room state and data bags while retaining attachment identity", async () => {
     const { room, ctx } = await setup();
@@ -263,6 +260,13 @@ describe("WebSocketRoom hosting a $room engine", () => {
     expect(recreated.socket(ws, attachment).query).toEqual({ hero: "h-42" });
   });
 
+  /**
+   * The watchdog rebuilds a `RoomSocket` from the deserialized attachment, not
+   * from the original `fetch` request, so the query hint an application relied
+   * on to identify the joining entity (e.g. a multiplayer game's `?hero=`)
+   * must survive that round-trip too  -  otherwise a room that outlives one
+   * isolate reset loses `conn.query` on every connection it rehydrates.
+   */
   it("still exposes the upgrade query on a connection rehydrated after an isolate reset", async () => {
     const { room, ctx, queries } = await setup();
     await join(room, ctx, "lobby", "c1", { hero: "h-42", roomId: "lobby" });

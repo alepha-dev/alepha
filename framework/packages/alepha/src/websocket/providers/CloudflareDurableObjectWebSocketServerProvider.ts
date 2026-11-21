@@ -22,7 +22,7 @@ export const WEBSOCKET_DEFAULT_BINDING = "ALEPHA_WEBSOCKET";
 interface WebSocketHostStub {
   broadcast(
     message: unknown,
-    criteria: { exceptConnectionIds?: string[] },
+    criteria: { exceptConnectionIds?: string[]; exceptUserIds?: string[] },
   ): Promise<void>;
   callRoom(
     channelPath: string,
@@ -89,6 +89,7 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
         const stub = ns.get(ns.idFromName(`${channelPath}:${roomId}`));
         await stub.broadcast(options.message, {
           exceptConnectionIds: options.exceptConnectionIds,
+          exceptUserIds: options.exceptUserIds,
         });
       }),
     );

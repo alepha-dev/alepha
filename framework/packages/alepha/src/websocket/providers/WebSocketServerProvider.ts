@@ -24,7 +24,7 @@ import type { TWSObject } from "../primitives/$channel.ts";
  * Abstract WebSocket server provider
  *
  * This class provides the base interface that must be implemented by
- * platform-specific providers (Node.js, Browser, etc.)
+ * platform-specific providers: Node, and Cloudflare Durable Objects.
  */
 export abstract class WebSocketServerProvider {
   public static readonly id: string =
@@ -325,7 +325,22 @@ export abstract class WebSocketServerProvider {
   }
 
   /**
-   * The rooms an upgrade URL asks for: every `?roomId=`, then the
+   * The room a socket on `url` lands in when admission named none: the first
+   * of {@link extractRoomIds}, so always one `canJoin` was asked about.
+   *
+   * Public for the generated Cloudflare worker entry, which routes the socket
+   * to that room's Durable Object: it used to parse the URL itself, by a rule
+   * of its own, and `?roomIds=,b` landed in `default`, which `canJoin` was
+   * never asked about.
+   */
+  public roomIdFor(url: URL | string): string {
+    return this.extractRoomIds(
+      typeof url === "string" ? new URL(url, "http://localhost") : url,
+    )[0];
+  }
+
+  /**
+   * The rooms an upgrade URL asks for: every non-blank `?roomId=`, then the
    * comma-separated `?roomIds=`, or `default` when it names none.
    *
    * On the base class because admission reads them on both engines, before
@@ -334,9 +349,12 @@ export abstract class WebSocketServerProvider {
   protected extractRoomIds(url: URL): string[] {
     const roomIds: string[] = [];
 
-    // Check for roomId parameter (can be multiple)
-    const roomIdParams = url.searchParams.getAll("roomId");
-    roomIds.push(...roomIdParams);
+    // Every `?roomId=`, verbatim, but never a blank one: `?roomId=` asked
+    // `canJoin` about "" and joined a room literally named "" on Node, while
+    // the Cloudflare entry routed the socket to `default`.
+    roomIds.push(
+      ...url.searchParams.getAll("roomId").filter((id) => id.trim() !== ""),
+    );
 
     // Check for roomIds parameter (comma-separated)
     const roomIdsParam = url.searchParams.get("roomIds");

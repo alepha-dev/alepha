@@ -187,11 +187,6 @@ describe("WebSocketServerProvider.resolveUserId with a session cookie", () => {
 // Node provider: handshake auth + multi-room dev warning
 // ---------------------------------------------------------------------------------------------------------------------
 
-class NodeTestProvider extends NodeWebSocketServerProvider {
-  public testResolveUserIdFromUpgrade = (request: any) =>
-    this.resolveUserIdFromUpgrade(request);
-}
-
 function waitForOpen(ws: WebSocket) {
   return new Promise<void>((resolve) => ws.on("open", resolve));
 }
@@ -259,43 +254,6 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
     provider.log.warn = (m: string) => warnings.push(m);
     provider.warnMultiRoom(["a"]);
     expect(warnings.length).toBe(0);
-    await alepha.stop();
-  });
-
-  it("resolves userId from a Node upgrade request via resolveUserIdFromUpgrade", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaWebSocket);
-    const jwt = alepha.inject(JwtProvider);
-    const provider = alepha.inject(NodeTestProvider);
-    await alepha.start();
-
-    const token = await jwt.create({ sub: "user-456" }, undefined, {
-      header: { typ: jwt.accessTokenTyp },
-    });
-
-    const userId = await provider.testResolveUserIdFromUpgrade({
-      url: "/ws",
-      headers: { host: "localhost", authorization: `Bearer ${token}` },
-    });
-
-    expect(userId).toBe("user-456");
-    await alepha.stop();
-  });
-
-  it("returns undefined from resolveUserIdFromUpgrade without credentials", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaWebSocket);
-    const provider = alepha.inject(NodeTestProvider);
-    await alepha.start();
-
-    const userId = await provider.testResolveUserIdFromUpgrade({
-      url: "/ws",
-      headers: { host: "localhost" },
-    });
-
-    expect(userId).toBeUndefined();
     await alepha.stop();
   });
 
@@ -489,6 +447,73 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
     expect(code).toBe(1008);
 
     ws1.close();
+    await alepha.stop();
+  });
+
+  it("counts maxConnectionsPerUser per endpoint, not across endpoints", async ({
+    expect,
+  }) => {
+    // A socket on another endpoint used to count against this one's cap: a
+    // user holding /ws/a was refused a first socket on /ws/b.
+    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaWebSocket);
+    const jwt = alepha.inject(JwtProvider);
+
+    class Controller {
+      a = $channel({
+        path: "/ws/per-endpoint-a",
+        schema: { in: chatInSchema, out: chatOutSchema },
+      });
+      b = $channel({
+        path: "/ws/per-endpoint-b",
+        schema: { in: chatInSchema, out: chatOutSchema },
+      });
+      wsA = $websocket({
+        channel: this.a,
+        handler: async () => {},
+        use: [$secure()],
+      });
+      wsB = $websocket({
+        channel: this.b,
+        handler: async () => {},
+        use: [$secure()],
+        maxConnectionsPerUser: 1,
+      });
+    }
+
+    alepha.inject(Controller);
+    await alepha.start();
+
+    const token = await jwt.create({ sub: "user-per-endpoint" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
+    const hostname = alepha
+      .inject(NodeHttpServerProvider)
+      .hostname.replace("http://", "ws://");
+    const open = (path: string) =>
+      new WebSocket(`${hostname}${path}`, {
+        headers: { authorization: `Bearer ${token}` },
+      } as any);
+
+    const onA = open("/ws/per-endpoint-a");
+    await waitForOpen(onA);
+    await delay(100);
+
+    const onB = open("/ws/per-endpoint-b");
+    let closedWith: number | undefined;
+    onB.on("close", (code) => {
+      closedWith = code;
+    });
+    await waitForOpen(onB);
+    await delay(100);
+    expect(closedWith).toBeUndefined();
+
+    // And the cap still holds on its own endpoint.
+    const second = open("/ws/per-endpoint-b");
+    const { code } = await waitForClose(second);
+    expect(code).toBe(1008);
+
+    onA.close();
+    onB.close();
     await alepha.stop();
   });
 });

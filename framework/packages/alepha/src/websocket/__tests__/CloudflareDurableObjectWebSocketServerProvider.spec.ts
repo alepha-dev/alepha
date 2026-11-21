@@ -41,12 +41,13 @@ describe("CloudflareDurableObjectWebSocketServerProvider.emit", () => {
       message: { t: 1 },
       roomId: "lobby",
       exceptConnectionIds: ["x"],
+      exceptUserIds: ["u1"],
     });
     expect(ns.calls).toEqual([
       {
         name: "/ws/chat:lobby",
         message: { t: 1 },
-        criteria: { exceptConnectionIds: ["x"] },
+        criteria: { exceptConnectionIds: ["x"], exceptUserIds: ["u1"] },
       },
     ]);
   });

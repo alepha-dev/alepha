@@ -1019,12 +1019,10 @@ const pageEdgeFresh = async (cache, key, at) => {
         const userId = admission.userId || "";
 
         // The room the credential named wins over the one the URL asked for,
-        // which is what keeps a client out of a room it does not own.
-        const roomId =
-          admission.roomId ||
-          url.searchParams.get("roomId") ||
-          (url.searchParams.get("roomIds") || "").split(",")[0].trim() ||
-          "default";
+        // which is what keeps a client out of a room it does not own. The
+        // URL's room comes from the provider, by the rule admission asked
+        // \`canJoin\` with, never from a parsing of this entry's own.
+        const roomId = admission.roomId || wsProvider.roomIdFor(url);
 
         const connectionId = "ws-" + crypto.randomUUID();
         const ns = hostRuntime.namespace("ALEPHA_WEBSOCKET");

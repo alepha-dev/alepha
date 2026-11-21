@@ -117,4 +117,75 @@ describe("WebSocketClient room dispatch", () => {
 
     await alepha.stop();
   });
+
+  const bootChannel = async (path: string) => {
+    const alepha = Alepha.create().with(AlephaWebSocket).with(WebSocketClient);
+    class Controller {
+      ch = $channel({ path, schema: { in: inSchema, out: outSchema } });
+      ws = $websocket({ channel: this.ch, handler: async () => {} });
+    }
+    const controller = alepha.inject(Controller);
+    await alepha.start();
+    const url = `${alepha
+      .inject(NodeHttpServerProvider)
+      .hostname.replace("http://", "ws://")}${path}`;
+    return { alepha, controller, client: alepha.inject(WebSocketClient), url };
+  };
+
+  test("joins a room subscribed while the socket is still connecting", async ({
+    expect,
+  }) => {
+    // Two components subscribing in one render: the second reused the
+    // pending connect, whose URL was built before its room existed, and
+    // never joined it.
+    const { alepha, controller, client, url } = await bootChannel(
+      "/ws/client-connecting",
+    );
+    const roomA: any[] = [];
+    const roomB: any[] = [];
+
+    client.subscribe("a", controller.ch, (m) => roomA.push(m), { url });
+    client.subscribe("b", controller.ch, (m) => roomB.push(m), { url });
+    await delay(300);
+
+    await controller.ws.emit({
+      roomIds: ["b"],
+      message: { type: "chat", content: "for b" },
+    });
+    await controller.ws.emit({
+      roomIds: ["a"],
+      message: { type: "chat", content: "for a" },
+    });
+    await delay(200);
+
+    expect(roomB).toEqual([{ type: "chat", content: "for b" }]);
+    expect(roomA).toEqual([{ type: "chat", content: "for a" }]);
+    await alepha.stop();
+  });
+
+  test("joins a room whose id holds a comma as that one room", async ({
+    expect,
+  }) => {
+    // `roomIds=x%2Cy` decodes to "x,y" and the server splits it on ",":
+    // the socket joined x and y, never "x,y".
+    const { alepha, controller, client, url } =
+      await bootChannel("/ws/client-comma");
+    const received: any[] = [];
+
+    client.subscribe("x,y", controller.ch, (m) => received.push(m), { url });
+    await delay(300);
+
+    await controller.ws.emit({
+      roomIds: ["x"],
+      message: { type: "chat", content: "for x" },
+    });
+    await controller.ws.emit({
+      roomIds: ["x,y"],
+      message: { type: "chat", content: "for x,y" },
+    });
+    await delay(200);
+
+    expect(received).toEqual([{ type: "chat", content: "for x,y" }]);
+    await alepha.stop();
+  });
 });
