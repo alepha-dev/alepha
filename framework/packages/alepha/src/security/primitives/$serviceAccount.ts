@@ -2,14 +2,14 @@ import { $context, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
-import type { AccessTokenResponse, IssuerPrimitive } from "./$issuer.ts";
+import type { IssuerPrimitive } from "./$issuer.ts";
 
 /**
  * Allow to get an access token for a service account.
  *
  * You have some options to configure the service account:
- * - a OAUTH2 URL using client credentials grant type
- * - a JWT secret shared between the services
+ * - an OAuth2 token URL, called with the client credentials grant
+ * - a local `$issuer` and the user to mint a token for
  *
  * @example
  * ```ts
@@ -35,35 +35,46 @@ export const $serviceAccount = (
 ): ServiceAccountPrimitive => {
   const { alepha } = $context();
   const store: {
-    cache?: AccessTokenResponse;
+    cache?: { access_token: string; expires_at: number };
   } = {};
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const gracePeriod = options.gracePeriod ?? 30;
 
+  /**
+   * Keeps a token until `issuedAt + expiresIn`, both in seconds.
+   *
+   * `expiresIn` is whatever the token endpoint sent: a number, or for some
+   * providers a numeric string, which must not be added to the issue time as
+   * text. A value that reaches here and is neither, or is not positive (a
+   * negative number, `"0"`, `"soon"`), gives no date to expire the token on,
+   * so it is not kept: the caller gets it, and the next call asks for a new
+   * one. A response with no `expires_in` at all, `0` or `""` never reaches
+   * here: the OAuth2 path refuses it as an invalid response.
+   */
   const cacheToken = (
-    response: Omit<AccessTokenResponse, "issued_at"> & { issued_at?: number },
+    accessToken: string,
+    expiresIn: unknown,
+    issuedAt: number = dateTimeProvider.now().unix(),
   ) => {
-    store.cache = {
-      // An OAuth2 response carries no issue time; a token minted by a local
-      // issuer already does, and that one wins.
-      issued_at: dateTimeProvider.now().unix(),
-      ...response,
-    };
+    const seconds =
+      typeof expiresIn === "number"
+        ? expiresIn
+        : typeof expiresIn === "string" && expiresIn.trim() !== ""
+          ? Number(expiresIn)
+          : Number.NaN;
+
+    store.cache =
+      Number.isFinite(seconds) && seconds > 0
+        ? { access_token: accessToken, expires_at: issuedAt + seconds }
+        : undefined;
   };
 
   const getTokenFromCache = () => {
-    if (store.cache) {
-      const { access_token, expires_in, issued_at } = store.cache;
-      if (!expires_in) {
-        return access_token;
-      }
-
-      const now = dateTimeProvider.now().unix();
-      const expires = issued_at + expires_in;
-
-      if (expires - gracePeriod > now) {
-        return access_token;
-      }
+    if (
+      store.cache &&
+      store.cache.expires_at - gracePeriod > dateTimeProvider.now().unix()
+    ) {
+      return store.cache.access_token;
     }
   };
 
@@ -124,7 +135,9 @@ export const $serviceAccount = (
         );
       }
 
-      cacheToken(json);
+      // An OAuth2 response carries no issue time this process can rely on
+      // (a provider that sends one picks its own unit): the clock here is it.
+      cacheToken(json.access_token, json.expires_in);
 
       return json.access_token;
     };
@@ -143,7 +156,7 @@ export const $serviceAccount = (
 
       const token = await options.issuer.createToken(options.user);
 
-      cacheToken(token);
+      cacheToken(token.access_token, token.expires_in, token.issued_at);
 
       return token.access_token;
     },

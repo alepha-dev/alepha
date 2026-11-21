@@ -34,14 +34,14 @@ export const $permission = (
 
 export interface PermissionPrimitiveOptions {
   /**
-   * Name of the permission. Use Property name is not provided.
+   * Name of the permission. The property name when not provided.
    *
    * ⚠️ Part of the permission's stable id - see the note on {@link $permission}.
    */
   name?: string;
 
   /**
-   * Group of the permission. Use Class name is not provided.
+   * Group of the permission. The class name when not provided.
    *
    * ⚠️ Part of the permission's stable id - see the note on {@link $permission}.
    */

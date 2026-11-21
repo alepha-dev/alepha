@@ -1,27 +1,17 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { InvalidPermissionError, SecurityProvider } from "../index.ts";
 
 /**
- * Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD
- *
- * Issue: The regex had incorrect operator precedence:
- * OLD: /^[\w-]+((:[\w-]+)+)?|(:\*)$/
- * This created two patterns: /^[\w-]+((:[\w-]+)+)?/ OR /(:\*)$/
- * The second part matched ":*" anywhere without start anchor.
- *
- * FIXED: /^[\w-]+((:[\w-]+)*:\*|(:[\w-]+)+)?$/
- * Now correctly matches: start, then word chars/hyphens, then optionally either:
- * - (zero or more groups):* (for wildcards like "admin:api:*")
- * - (one or more groups) (for exact permissions like "users:read")
- * - nothing (for simple permissions like "read")
- *
- * Expected: Invalid patterns like standalone ":*" should be rejected.
+ * The grammar of a permission name, as `createRole` and `createPermission`
+ * enforce it before start: word characters and hyphens in colon-separated
+ * segments, with one `*` allowed as the last segment of a role's grant
+ * (`admin:api:*`), and `*` alone for everything.
  */
-describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
+describe("permission grammar", () => {
   describe("Valid wildcard patterns (should pass)", () => {
-    it("should accept global wildcard", () => {
+    it("should accept global wildcard", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -34,7 +24,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept simple wildcard", () => {
+    it("should accept simple wildcard", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -46,7 +36,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept multi-layer wildcard", () => {
+    it("should accept multi-layer wildcard", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -62,7 +52,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept regular permissions with groups", () => {
+    it("should accept regular permissions with groups", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -78,7 +68,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept permissions with hyphens", () => {
+    it("should accept permissions with hyphens", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -94,7 +84,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept permissions with underscores", () => {
+    it("should accept permissions with underscores", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -111,7 +101,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
   });
 
   describe("Invalid wildcard patterns (should be rejected)", () => {
-    it("should reject standalone :*", () => {
+    it("should reject standalone :*", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -124,7 +114,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject pattern starting with colon", () => {
+    it("should reject pattern starting with colon", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -136,7 +126,9 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject pattern ending with colon (no wildcard)", () => {
+    it("should reject pattern ending with colon (no wildcard)", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -148,7 +140,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject pattern with double colons", () => {
+    it("should reject pattern with double colons", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -160,7 +152,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject empty string", () => {
+    it("should reject empty string", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -172,7 +164,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject just a colon", () => {
+    it("should reject just a colon", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -184,7 +176,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject special characters", () => {
+    it("should reject special characters", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -209,7 +201,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       }
     });
 
-    it("should reject pattern with multiple wildcards", () => {
+    it("should reject pattern with multiple wildcards", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -221,7 +213,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject wildcard not at the end", () => {
+    it("should reject wildcard not at the end", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -233,7 +225,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject pattern ending with multiple colons", () => {
+    it("should reject pattern ending with multiple colons", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -245,7 +237,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should reject pattern starting with multiple colons", () => {
+    it("should reject pattern starting with multiple colons", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -259,7 +251,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
   });
 
   describe("Edge cases for regex validation", () => {
-    it("should accept numbers in permission names", () => {
+    it("should accept numbers in permission names", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -275,7 +267,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept very long permission names", () => {
+    it("should accept very long permission names", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -288,7 +280,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should accept deeply nested permissions", () => {
+    it("should accept deeply nested permissions", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -301,7 +293,9 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).not.toThrow();
     });
 
-    it("should properly validate permission objects (not just strings)", () => {
+    it("should properly validate permission objects (not just strings)", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -319,7 +313,9 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       );
     });
 
-    it("should validate wildcards only appear in role permissions, not created permissions", () => {
+    it("should validate wildcards only appear in role permissions, not created permissions", ({
+      expect,
+    }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -340,7 +336,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
   });
 
   describe("Regex security validation", () => {
-    it("should ensure start anchor is enforced", () => {
+    it("should ensure start anchor is enforced", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -360,7 +356,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should ensure end anchor is enforced", () => {
+    it("should ensure end anchor is enforced", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 
@@ -380,7 +376,7 @@ describe("Bug #3: Regex Vulnerability in PERMISSION_REGEXP_WILDCARD", () => {
       ).toThrow(InvalidPermissionError);
     });
 
-    it("should not allow regex injection attempts", () => {
+    it("should not allow regex injection attempts", ({ expect }) => {
       const app = Alepha.create();
       const sec = app.inject(SecurityProvider);
 

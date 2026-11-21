@@ -348,12 +348,15 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
 
   /**
    * The user a `$secure` in `use` resolved: it publishes it in the
-   * `alepha.security.user` slot, and on the HTTP request it ran against.
+   * `alepha.security.user` slot for as long as the tool runs, which is the
+   * user of THIS tool's gate. The HTTP request's user is the fallback only:
+   * it may belong to a request the tool is merely called from, and carry
+   * another gate's answer.
    */
   protected currentUser(): unknown {
     return (
-      this.alepha.store.get("alepha.http.request")?.user ??
-      this.alepha.store.get("alepha.security.user")
+      this.alepha.store.get("alepha.security.user") ??
+      this.alepha.store.get("alepha.http.request")?.user
     );
   }
 

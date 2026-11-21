@@ -42,6 +42,22 @@ not narrowed to rows they own. Note this is deliberately strict - an
 `undefined` ownership does **not** bypass, because `undefined` only means
 "no permission check ran", not "this caller is privileged".
 
+The ownership read here is the answer to THIS gate's permissions (`requires`
+and `secure.permissions`). A gate that names none is never opened by a
+permission another gate checked, in the same `use` list, in the action that
+ran this one or earlier in the same context, and not by a copy of that
+gate's user either. Name the permission in `requires` to let an
+unrestricted grant skip the owner check.
+
+What does pass a gate with no permission is an identity BUILT with
+`ownership: false` (a hand-made operator, the system user), however it
+reaches the gate: `run(..., { user })`, `user: "system"`, a write to
+`currentUserAtom`. A user a permission check produced is not one, and
+`storeUserInContext` stores it without the check's unrestricted answer.
+⚠️ A decode of such a user through `userAccountInfoSchema`, or
+`alepha.store.set(currentUserAtom, user)`, which validates, reads the
+answer into a plain field: that is building an identity by hand.
+
 ```typescript
 class CampaignController {
   read = $action({

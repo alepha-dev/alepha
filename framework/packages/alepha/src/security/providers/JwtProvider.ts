@@ -49,7 +49,7 @@ export class JwtProvider {
   public readonly accessTokenTyp = "access";
 
   /**
-   * True when this process holds the signing key for `name` — i.e. every valid
+   * True when this process holds the signing key for `name`, i.e. every valid
    * token for that realm was minted here, so its `typ` header is ours to trust.
    */
   public isTokenIssuer(name: string): boolean {
@@ -64,7 +64,7 @@ export class JwtProvider {
    * kinds of JWT with the SAME key: access tokens, refresh tokens
    * (`typ: "refresh"`), OAuth authorization codes (`typ: "oauth_code"`) and
    * id_tokens (`typ: "JWT"`). Without this check every one of them
-   * authenticates as its subject — which deletes PKCE, because merely seeing a
+   * authenticates as its subject, which deletes PKCE, because merely seeing a
    * code (browser history, `Referer`, proxy logs) would be enough to act as
    * the user, with no `code_verifier` and without touching `/oauth/token`.
    *
@@ -168,7 +168,7 @@ export class JwtProvider {
         name,
         secretKey: secretKeyOrJwks,
         keyLoader: () => Promise.resolve(createSecretKey(secretKey)),
-        // We only ever sign symmetric tokens with HS256 — pin it so a future
+        // We only ever sign symmetric tokens with HS256: pin it so a future
         // key-loader change can't widen the accepted set.
         algorithms: ["HS256"],
       });
@@ -335,7 +335,7 @@ export class JwtProvider {
    *
    * `privateKey` is a PKCS#8 PEM (from env). When it is empty/undefined an
    * **ephemeral per-process keypair** is generated so dev/test work with no env
-   * key configured — the published JWKS still resolves; tokens just don't
+   * key configured: the published JWKS still resolves; tokens just don't
    * survive a restart. Additive: realms without a signing key keep the HS256
    * path untouched.
    */
@@ -388,11 +388,14 @@ export class JwtProvider {
   }
 
   /**
-   * Retrieves the payload from a JSON Web Token (JWT).
+   * Verifies a JSON Web Token (JWT) against the keystore.
    *
-   * @param token - The JWT to extract the payload from.
+   * @param token - The JWT to verify.
+   * @param keyName - The only key to try. Every key is tried when omitted.
+   * @param options - Claims to require, on top of the signature and expiry.
    *
-   * @return A Promise that resolves with the payload object from the token.
+   * @return The name of the key that verified the token and the verified
+   * result, header and payload. Throws `InvalidTokenError` when no key does.
    */
   public async parse(
     token: string,
@@ -447,11 +450,13 @@ export class JwtProvider {
   }
 
   /**
-   * Creates a JWT token with the provided payload and secret key.
+   * Signs a JWT with a key of the keystore.
    *
-   * @param payload - The payload to be encoded in the token.
-   * 	It should include the `realm_access` property which contains an array of roles.
-   * @param keyName - The name of the key to use when signing the token.
+   * @param payload - The payload to be encoded in the token. Roles go in
+   * `roles` (a Keycloak-style `realm_access.roles` is read too).
+   * @param keyName - The name of the key to sign with. The first key of the
+   * keystore when omitted.
+   * @param signOptions - Header fields to add, such as `typ`.
    *
    * @returns The signed JWT token.
    */

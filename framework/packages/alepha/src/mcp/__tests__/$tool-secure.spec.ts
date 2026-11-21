@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { $pipeline, Alepha, z } from "alepha";
 import { $secure, AlephaSecurity, currentUserAtom } from "alepha/security";
 import { ForbiddenError, UnauthorizedError } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -56,5 +56,47 @@ describe("$tool with use: [$secure()]", () => {
     });
 
     expect(result).toBe("u-2");
+  });
+
+  it("hands the handler the user its own gate published, not the enclosing request's", async () => {
+    class Scoped {
+      // Declares no permission: it makes no ownership decision of its own.
+      seen = $tool({
+        description: "What the handler is given",
+        use: [$secure()],
+        schema: { result: z.text() },
+        handler: async ({ user }) =>
+          `${user.id}:${user.ownership} atom=${alepha.store.get(currentUserAtom)?.ownership}`,
+      });
+
+      // A pipeline gated on an unrestricted permission, standing for the
+      // request the tool is called from.
+      enclosing = $pipeline({
+        use: [$secure({ permissions: ["report:read"] })],
+        handler: async () => {
+          const user = alepha.store.get(currentUserAtom);
+          // As `$ai` runs a tool: a fork seeded with the current user.
+          return alepha.fork(
+            () => alepha.inject(McpServerProvider).getTool("seen")!.execute({}),
+            { [currentUserAtom.key]: user },
+          );
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaMcp);
+    const scoped = alepha.inject(Scoped);
+    await alepha.start();
+
+    const result = await alepha.context.run(async () => {
+      // The HTTP request the whole call arrived on, as the server hook
+      // leaves it. The placeholder realm's `admin` holds `*`.
+      alepha.store.set("alepha.http.request", {
+        user: { id: "u1", realm: "default", roles: ["admin"] },
+      } as never);
+      return scoped.enclosing();
+    });
+
+    expect(result).toBe("u1:undefined atom=undefined");
   });
 });

@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   $issuer,
@@ -48,7 +48,7 @@ const user = (over: Partial<UserAccountToken> = {}): UserAccountToken =>
   ({ id: "u1", realm: "app", roles: ["member"], ...over }) as UserAccountToken;
 
 describe("EffectivePermissionsProvider", () => {
-  it("returns what the roles grant, in catalogue order", async () => {
+  it("returns what the roles grant, in catalogue order", async ({ expect }) => {
     const provider = await setup();
     expect(provider.resolve({ user: user() })).toEqual([
       "staff:quest:read",
@@ -59,7 +59,9 @@ describe("EffectivePermissionsProvider", () => {
     ]);
   });
 
-  it("applies every narrowing factor, and a factor may only remove", async () => {
+  it("applies every narrowing factor, and a factor may only remove", async ({
+    expect,
+  }) => {
     const provider = await setup();
     expect(
       provider.resolve({
@@ -77,7 +79,7 @@ describe("EffectivePermissionsProvider", () => {
     ).toEqual(["staff:quest:read"]);
   });
 
-  it("intersects several factors", async () => {
+  it("intersects several factors", async ({ expect }) => {
     const provider = await setup();
     expect(
       provider.resolve({
@@ -87,7 +89,7 @@ describe("EffectivePermissionsProvider", () => {
     ).toEqual(["staff:quest:read"]);
   });
 
-  it("excludes prefixes from the catalogue entirely", async () => {
+  it("excludes prefixes from the catalogue entirely", async ({ expect }) => {
     const provider = await setup();
     const admin = user({ roles: ["admin"] });
     expect(provider.resolve({ user: admin })).toContain("admin:ops:purge");
@@ -96,7 +98,9 @@ describe("EffectivePermissionsProvider", () => {
     ).not.toContain("admin:ops:purge");
   });
 
-  it("lets a privileged identity past the application's factors", async () => {
+  it("lets a privileged identity past the application's factors", async ({
+    expect,
+  }) => {
     const provider = await setup();
     const operator = user({ ownership: false, roles: [] });
     // No role grant at all, and a factor that refuses everything.
@@ -105,7 +109,9 @@ describe("EffectivePermissionsProvider", () => {
     );
   });
 
-  it("still applies a permission scope to a privileged identity", async () => {
+  it("still applies a permission scope to a privileged identity", async ({
+    expect,
+  }) => {
     const provider = await setup();
     const scoped = user({
       ownership: false,
@@ -117,7 +123,7 @@ describe("EffectivePermissionsProvider", () => {
     ]);
   });
 
-  it("honours exclude for a privileged identity too", async () => {
+  it("honours exclude for a privileged identity too", async ({ expect }) => {
     const provider = await setup();
     const operator = user({ ownership: false, roles: [] });
     expect(

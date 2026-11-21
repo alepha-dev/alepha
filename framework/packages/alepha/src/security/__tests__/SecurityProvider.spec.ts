@@ -1,5 +1,5 @@
 import { Alepha, ContainerLockedError } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   AlephaSecurity,
@@ -10,7 +10,7 @@ import {
 } from "../index.ts";
 
 describe("alepha.security.SecurityProvider", () => {
-  it("refuses the default APP_SECRET in production", async () => {
+  it("refuses the default APP_SECRET in production", async ({ expect }) => {
     // AlephaCrypto no longer creates SecretProvider on registration. This
     // module's injection of it is what brings the production guard along.
     const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
@@ -20,7 +20,7 @@ describe("alepha.security.SecurityProvider", () => {
     await expect(alepha.start()).rejects.toThrow(/APP_SECRET/);
   });
 
-  it("should check permissions with default role", () => {
+  it("should check permissions with default role", ({ expect }) => {
     const sec = Alepha.create().inject(SecurityProvider);
 
     sec.createPermission("hey");
@@ -35,7 +35,7 @@ describe("alepha.security.SecurityProvider", () => {
     expect(() => sec.can("noop", "hey")).toThrow(SecurityError);
   });
 
-  it("should resolve role names within the given realm only", () => {
+  it("should resolve role names within the given realm only", ({ expect }) => {
     const sec = Alepha.create().inject(SecurityProvider);
 
     // `default: true` rather than "whichever was declared first": with two
@@ -48,7 +48,7 @@ describe("alepha.security.SecurityProvider", () => {
     });
     sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
 
-    // Both realms define a role literally named "admin" — with very
+    // Both realms define a role literally named "admin": with very
     // different power. A realm-b admin must never inherit realm-a's "*".
     sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-a");
     sec.createRole(
@@ -77,7 +77,9 @@ describe("alepha.security.SecurityProvider", () => {
     );
   });
 
-  it("should not resolve a role that exists only in a non-default realm", () => {
+  it("should not resolve a role that exists only in a non-default realm", ({
+    expect,
+  }) => {
     const sec = Alepha.create().inject(SecurityProvider);
 
     sec.createRealm({
@@ -104,7 +106,9 @@ describe("alepha.security.SecurityProvider", () => {
     expect(sec.checkPermission("reports:read", "user").isAuthorized).toBe(true);
   });
 
-  it("should not fall back to other realms when the named realm has no roles", () => {
+  it("should not fall back to other realms when the named realm has no roles", ({
+    expect,
+  }) => {
     const sec = Alepha.create().inject(SecurityProvider);
 
     sec.createRealm({
@@ -135,7 +139,9 @@ describe("alepha.security.SecurityProvider", () => {
     ).toBe(true);
   });
 
-  it("should list permissions from the default realm when the user has none", () => {
+  it("should list permissions from the default realm when the user has none", ({
+    expect,
+  }) => {
     const sec = Alepha.create().inject(SecurityProvider);
 
     sec.createRealm({
@@ -165,7 +171,7 @@ describe("alepha.security.SecurityProvider", () => {
     );
   });
 
-  it("should handle duplicate permissions", () => {
+  it("should handle duplicate permissions", ({ expect }) => {
     const app = Alepha.create();
     const security = app.inject(SecurityProvider);
 
@@ -176,7 +182,7 @@ describe("alepha.security.SecurityProvider", () => {
     expect(security.getPermissions().length).toEqual(1);
   });
 
-  it("should throw error for invalid permissions", () => {
+  it("should throw error for invalid permissions", ({ expect }) => {
     const app = Alepha.create();
     const security = app.inject(SecurityProvider);
     const invalid = [
@@ -200,7 +206,7 @@ describe("alepha.security.SecurityProvider", () => {
     }
   });
 
-  it("should get permissions filtered by user roles", () => {
+  it("should get permissions filtered by user roles", ({ expect }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -231,7 +237,9 @@ describe("alepha.security.SecurityProvider", () => {
       { name: "hi" },
     ]);
 
-    expect(() => sec.getPermissions({ roles: ["xxx"] }).length).toThrow(Error);
+    expect(() => sec.getPermissions({ roles: ["xxx"] }).length).toThrow(
+      "Role 'xxx' not found",
+    );
 
     expect(sec.getPermissions({ roles: ["superuser"] }).length).toEqual(2);
 
@@ -246,7 +254,9 @@ describe("alepha.security.SecurityProvider", () => {
     expect(sec.getPermissions({ roles: [] }).length).toEqual(0);
   });
 
-  it("should check permissions with groups and wildcards", async () => {
+  it("should check permissions with groups and wildcards", async ({
+    expect,
+  }) => {
     const app = Alepha.create({
       env: {
         SERVER_SECURITY_ENABLED: true,
@@ -292,7 +302,7 @@ describe("alepha.security.SecurityProvider", () => {
     expect(sec.can("user", "noop")).toEqual(false);
   });
 
-  it("should check permission with ownership", async () => {
+  it("should check permission with ownership", async ({ expect }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -331,7 +341,9 @@ describe("alepha.security.SecurityProvider", () => {
     });
   });
 
-  it("should create user from JWT token with default realm", async () => {
+  it("should create user from JWT token with default realm", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
     const jwt = alepha.inject(JwtProvider);
     const sec = alepha.inject(SecurityProvider);
@@ -347,10 +359,18 @@ describe("alepha.security.SecurityProvider", () => {
 
     await alepha.start(); // lock!
 
-    const token = await jwt.create({
-      sub: "123",
-      roles: ["user"],
-    });
+    // What a request presents: an access token, which is the only kind
+    // `createUserFromToken` accepts for a realm this process signs.
+    const asAccessToken = { header: { typ: jwt.accessTokenTyp } };
+
+    const token = await jwt.create(
+      {
+        sub: "123",
+        roles: ["user"],
+      },
+      undefined,
+      asAccessToken,
+    );
 
     const user = await sec.createUserFromToken(token, {
       permission: userPermission,
@@ -376,7 +396,7 @@ describe("alepha.security.SecurityProvider", () => {
         },
         "noop",
       ),
-    ).rejects.toThrow(Error);
+    ).rejects.toThrow("No secret key found in the keystore");
 
     const emptyToken = await jwt.create(
       {
@@ -384,6 +404,7 @@ describe("alepha.security.SecurityProvider", () => {
         roles: [],
       },
       "default",
+      asAccessToken,
     );
 
     await expect(() =>
@@ -391,7 +412,34 @@ describe("alepha.security.SecurityProvider", () => {
     ).rejects.toThrow(SecurityError);
   });
 
-  it("should create roles and permissions in multiple realms", async () => {
+  it("names a role once in a realm-less payload, however many realms declare it", ({
+    expect,
+  }) => {
+    const sec = Alepha.create().inject(SecurityProvider);
+
+    sec.createRealm({ name: "realm-a", roles: [] });
+    sec.createRealm({ name: "realm-b", roles: [] });
+    sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-a");
+    sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-b");
+    sec.createRole({ name: "user", permissions: [] }, "realm-b");
+
+    expect(
+      sec.createUserFromPayload({
+        sub: "1",
+        roles: ["admin", "user", "admin", "ghost"],
+      }).roles,
+    ).toEqual(["admin", "user"]);
+    expect(
+      sec.createUserFromPayload(
+        { sub: "1", roles: ["admin", "user"] },
+        "realm-a",
+      ).roles,
+    ).toEqual(["admin"]);
+  });
+
+  it("should create roles and permissions in multiple realms", async ({
+    expect,
+  }) => {
     const app = Alepha.create();
     const sec = app.inject(SecurityProvider);
 
@@ -445,7 +493,7 @@ describe("alepha.security.SecurityProvider", () => {
         { name: "operator", permissions: [{ name: "@@@invalid" }] },
         "operators",
       ),
-    ).toThrow(Error);
+    ).toThrow(InvalidPermissionError);
 
     await app.start(); // lock!
 
@@ -455,10 +503,10 @@ describe("alepha.security.SecurityProvider", () => {
         { name: "operator", permissions: [{ name: "noop" }] },
         "operators",
       ),
-    ).toThrow(Error);
+    ).toThrow("Permission 'noop' not found");
   });
 
-  it("should support exclude permissions", () => {
+  it("should support exclude permissions", ({ expect }) => {
     const sec = Alepha.create().inject(SecurityProvider);
     const group = "message";
     sec.createPermission({ name: "new", group });

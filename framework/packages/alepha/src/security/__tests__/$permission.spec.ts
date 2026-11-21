@@ -1,10 +1,12 @@
 import { Alepha, AlephaError } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $issuer, $permission, $role } from "../index.ts";
 
 describe("$permission", () => {
-  it("should check if user has permission based on role", async () => {
+  it("should check if user has permission based on role", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     class App {
@@ -29,7 +31,9 @@ describe("$permission", () => {
     expect(app.hello.can(user)).toEqual(true);
   });
 
-  it("should refuse a permission the roles grant when the permission scope excludes it", async () => {
+  it("should refuse a permission the roles grant when the permission scope excludes it", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     class App {
@@ -55,7 +59,9 @@ describe("$permission", () => {
     expect(app.hello.can({ ...scoped, permissionScope: [] })).toEqual(false);
   });
 
-  it("should resolve the user's roles inside the user's own realm", async () => {
+  it("should resolve the user's roles inside the user's own realm", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     class App {
@@ -91,7 +97,7 @@ describe("$permission", () => {
     ).toEqual(false);
   });
 
-  it("should accept an issuer passed by reference", async () => {
+  it("should accept an issuer passed by reference", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class App {
@@ -126,7 +132,9 @@ describe("$permission", () => {
     ).toEqual(false);
   });
 
-  it("should refuse an issuer reference declared after the role", () => {
+  it("should refuse an issuer reference declared after the role", ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     class App {

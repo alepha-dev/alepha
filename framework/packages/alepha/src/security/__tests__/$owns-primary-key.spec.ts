@@ -1,7 +1,7 @@
 import { $inject, $pipeline, Alepha, z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
@@ -10,7 +10,7 @@ import { OwnedResourceProvider } from "../providers/OwnedResourceProvider.ts";
 
 /**
  * `$owns` accepts any repository, so it must resolve the primary key the way
- * the repository does — not assume the column is called `id`.
+ * the repository does, not assume the column is called `id`.
  */
 
 const docs = $entity({
@@ -83,19 +83,23 @@ const as = <R>(
   });
 
 describe("$owns resolves the entity's own primary key", () => {
-  it("should load a resource whose primary key is not named 'id'", async () => {
+  it("should load a resource whose primary key is not named 'id'", async ({
+    expect,
+  }) => {
     const { alepha, svc } = await boot();
     expect(await as(alepha, owner, "d1", () => svc.readDoc())).toBe("hello");
   });
 
-  it("should still deny a non-owner", async () => {
+  it("should still deny a non-owner", async ({ expect }) => {
     const { alepha, svc } = await boot();
     await expect(
       as(alepha, stranger, "d1", () => svc.readDoc()),
     ).rejects.toThrow(ForbiddenError);
   });
 
-  it("should coerce the route param to a numeric primary key", async () => {
+  it("should coerce the route param to a numeric primary key", async ({
+    expect,
+  }) => {
     const { alepha, svc } = await boot();
     // No `cast` declared: the repository knows the key is an integer.
     expect(await as(alepha, owner, "1", () => svc.readCounter())).toBe("ok");

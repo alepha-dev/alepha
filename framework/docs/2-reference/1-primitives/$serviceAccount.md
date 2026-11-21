@@ -12,8 +12,8 @@ Allow to get an access token for a service account.
 
 You have some options to configure the service account:
 
-- a OAUTH2 URL using client credentials grant type
-- a JWT secret shared between the services
+- an OAuth2 token URL, called with the client credentials grant
+- a local `$issuer` and the user to mint a token for
 
 ## Options
 

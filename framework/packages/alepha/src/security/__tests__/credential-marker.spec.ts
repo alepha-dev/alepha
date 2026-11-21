@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $issuer, JwtProvider, SecurityProvider } from "../index.ts";
 
@@ -29,7 +29,9 @@ const setup = async () => {
 };
 
 describe("the credential marker from an access token", () => {
-  it("maps a realm token's client_id claim to an oauth credential", async () => {
+  it("maps a realm token's client_id claim to an oauth credential", async ({
+    expect,
+  }) => {
     const { security } = await setup();
 
     const account = security.createUserFromPayload(
@@ -44,7 +46,7 @@ describe("the credential marker from an access token", () => {
     expect(security.isMachineCredential(account)).toBe(true);
   });
 
-  it("leaves a session token unmarked", async () => {
+  it("leaves a session token unmarked", async ({ expect }) => {
     const { security } = await setup();
 
     const account = security.createUserFromPayload({ sub: "u1" }, "plain");
@@ -53,7 +55,9 @@ describe("the credential marker from an access token", () => {
     expect(security.isMachineCredential(account)).toBe(false);
   });
 
-  it("does not interpret an external identity provider's claims", async () => {
+  it("does not interpret an external identity provider's claims", async ({
+    expect,
+  }) => {
     // Called without a realm, the payload is a third-party profile (an OIDC
     // id_token, a userinfo response), whose `client_id` is not ours.
     const { security } = await setup();
@@ -66,7 +70,9 @@ describe("the credential marker from an access token", () => {
     expect(account.credential).toBeUndefined();
   });
 
-  it("marks the identity even through a realm's custom profile mapping", async () => {
+  it("marks the identity even through a realm's custom profile mapping", async ({
+    expect,
+  }) => {
     const { security } = await setup();
 
     const account = security.createUserFromPayload(
@@ -80,7 +86,9 @@ describe("the credential marker from an access token", () => {
     });
   });
 
-  it("keeps client_id through a token-only refresh, with no session store", async () => {
+  it("keeps client_id through a token-only refresh, with no session store", async ({
+    expect,
+  }) => {
     const { app, jwt } = await setup();
 
     const first = await app.plain.createToken(
@@ -97,7 +105,9 @@ describe("the credential marker from an access token", () => {
     expect(result.payload.client_id).toBe("connected-app");
   });
 
-  it("signs no client_id into a token minted for a person", async () => {
+  it("signs no client_id into a token minted for a person", async ({
+    expect,
+  }) => {
     const { app, jwt } = await setup();
 
     const tokens = await app.plain.createToken({ id: "u1", roles: [] });
