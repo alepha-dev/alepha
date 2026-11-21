@@ -58,28 +58,31 @@ export const SwaggerTryIt = (props: SwaggerTryItProps) => {
 
   return (
     <section className="flex flex-col gap-3">
-      {model.mediaType && model.formable && (
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">
-            {tr("swagger.tryIt.body", { default: "Body" })}
-          </span>
-          <Segmented
-            size="sm"
-            value={mode}
-            onChange={(value) => setMode(value as SwaggerBodyMode)}
-            options={[
-              {
-                value: "form",
-                label: tr("swagger.tryIt.form", { default: "Form" }),
-              },
-              {
-                value: "json",
-                label: tr("swagger.tryIt.json", { default: "JSON" }),
-              },
-            ]}
-          />
-        </div>
-      )}
+      {model.mediaType &&
+        model.formable &&
+        // A multipart body is always one field per part: no JSON editor.
+        model.mediaType !== "multipart/form-data" && (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs">
+              {tr("swagger.tryIt.body", { default: "Body" })}
+            </span>
+            <Segmented
+              size="sm"
+              value={mode}
+              onChange={(value) => setMode(value as SwaggerBodyMode)}
+              options={[
+                {
+                  value: "form",
+                  label: tr("swagger.tryIt.form", { default: "Form" }),
+                },
+                {
+                  value: "json",
+                  label: tr("swagger.tryIt.json", { default: "JSON" }),
+                },
+              ]}
+            />
+          </div>
+        )}
       <SwaggerTryItForm
         key={`${props.entry.id}:${model.mode}`}
         builder={builder}

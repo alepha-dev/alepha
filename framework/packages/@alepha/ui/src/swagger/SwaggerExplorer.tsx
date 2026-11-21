@@ -82,7 +82,12 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
 
   useEffect(() => {
     const read = () => {
-      const hash = decodeURIComponent(window.location.hash.slice(1));
+      let hash = window.location.hash.slice(1);
+      try {
+        hash = decodeURIComponent(hash);
+      } catch {
+        // A hand-edited or truncated link (`#%`): used as it is.
+      }
       if (hash) setSelected(hash);
     };
     read();

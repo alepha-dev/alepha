@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
@@ -78,9 +78,30 @@ const document: OpenApiDocument = {
         responses: { "200": { description: "OK" } },
       },
     },
+    "/api/trees": {
+      post: {
+        operationId: "createTree",
+        tags: ["trees"],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/Node" },
+            },
+          },
+        },
+        responses: { "200": { description: "OK" } },
+      },
+    },
   },
   components: {
     schemas: {
+      Node: {
+        type: "object",
+        properties: {
+          left: { $ref: "#/components/schemas/Node" },
+          right: { $ref: "#/components/schemas/Node" },
+        },
+      },
       NOT_FOUND: {
         type: "object",
         properties: {
@@ -151,15 +172,34 @@ describe("SwaggerOperationView", () => {
     expect(screen.getByText("sku")).toBeTruthy();
     expect(screen.getByText("Product reference")).toBeTruthy();
     expect(screen.getByText("required")).toBeTruthy();
-    // `address` is an object: it opens, and its field is inside the details.
+    // `address` is an object: it opens, and its field shows once opened.
     const address = screen.getByText("address").closest("details");
     expect(address).toBeTruthy();
+    expect(address!.textContent).not.toContain("city");
+    openDetails(address!);
     expect(address!.textContent).toContain("city");
     expect(
       view.container.querySelector("[aria-label='Requires sign-in']"),
     ).toBeNull();
   });
+
+  it("renders a recursive schema one opened level at a time", async () => {
+    const view = await mount(
+      <SwaggerOperationView spec={spec} entry={spec.find("createTree")!} />,
+    );
+    // `left` and `right`, closed: nothing under them yet.
+    expect(view.container.querySelectorAll("details").length).toBe(2);
+    openDetails(view.container.querySelector("details")!);
+    expect(view.container.querySelectorAll("details").length).toBe(4);
+  });
 });
+
+const openDetails = (details: HTMLDetailsElement) => {
+  act(() => {
+    details.open = true;
+    fireEvent(details, new Event("toggle"));
+  });
+};
 
 describe("SwaggerNav", () => {
   let alepha: Alepha | undefined;

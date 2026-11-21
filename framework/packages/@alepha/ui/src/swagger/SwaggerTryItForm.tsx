@@ -19,7 +19,12 @@ export interface SwaggerTryItFormProps {
   entry: SwaggerEntry;
   origin?: string;
   prepare?: (request: SwaggerRequest) => SwaggerRequest;
-  onResult: (result: SwaggerResponseResult) => void;
+  /**
+   * Called with each state of the response as it arrives, and with
+   * `undefined` when a new send starts, so the previous response never reads
+   * as the answer to a request that failed before any headers.
+   */
+  onResult: (result: SwaggerResponseResult | undefined) => void;
 }
 
 /**
@@ -44,6 +49,7 @@ export const SwaggerTryItForm = (props: SwaggerTryItFormProps) => {
         abort.current?.abort();
         const controller = new AbortController();
         abort.current = controller;
+        props.onResult(undefined);
 
         let request = props.builder.request(
           props.entry,
@@ -56,19 +62,28 @@ export const SwaggerTryItForm = (props: SwaggerTryItFormProps) => {
         }
 
         const started = dateTime.nowMillis();
-        const res = await fetch(request.url, {
-          method: request.method,
-          headers: request.headers,
-          body: request.body,
-          credentials: "same-origin",
-          signal: controller.signal,
-        });
+        try {
+          const res = await fetch(request.url, {
+            method: request.method,
+            headers: request.headers,
+            body: request.body,
+            credentials: "same-origin",
+            signal: controller.signal,
+          });
 
-        await props.builder.read(
-          res,
-          () => dateTime.nowMillis() - started,
-          props.onResult,
-        );
+          await props.builder.read(
+            res,
+            () => dateTime.nowMillis() - started,
+            props.onResult,
+          );
+        } catch (error) {
+          // Aborted by the form itself (unmounted, or a newer send): nothing
+          // for the viewer to hear about.
+          if (controller.signal.aborted) {
+            return;
+          }
+          throw error;
+        }
       },
     },
     [],

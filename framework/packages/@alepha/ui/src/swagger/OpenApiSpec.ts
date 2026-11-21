@@ -291,10 +291,32 @@ export class OpenApiSpec {
           method,
           path,
           tag: operation.tags?.[0] ?? "default",
-          operation,
+          operation: this.withPathParameters(operation, item?.parameters),
         });
       }
     }
     return entries;
+  }
+
+  /**
+   * The operation with the parameters its path item declares for all of its
+   * operations (OpenAPI 3), the operation's own winning on `name` + `in`.
+   */
+  protected withPathParameters(
+    operation: OpenApiOperation,
+    shared: OpenApiOperation["parameters"] | undefined,
+  ): OpenApiOperation {
+    if (!Array.isArray(shared) || !shared.length) {
+      return operation;
+    }
+    const own = operation.parameters ?? [];
+    const taken = new Set(own.map((it) => `${it.in}:${it.name}`));
+    return {
+      ...operation,
+      parameters: [
+        ...own,
+        ...shared.filter((it) => !taken.has(`${it.in}:${it.name}`)),
+      ],
+    };
   }
 }
