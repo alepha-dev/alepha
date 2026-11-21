@@ -76,7 +76,12 @@ describe("CredentialSealService", () => {
     // environment: a staging or self-hosted Lore would otherwise seal real
     // cloud tokens under a constant published in this repository and look
     // healthy doing it.
-    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    // `APP_SECRET: ""` and not an absent key (#Q4012): an absent key reads
+    // the shell's, and a developer who exported one turned this red. Empty
+    // reads as unset, the default.
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", APP_SECRET: "" },
+    });
     const service = alepha.inject(CredentialSealService);
     await alepha.start();
 
