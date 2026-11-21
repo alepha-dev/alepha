@@ -1,9 +1,11 @@
+import { request } from "node:http";
+import { connect, type Socket } from "node:net";
 import { brotliCompressSync, deflateSync, gzipSync } from "node:zlib";
 
 import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
 
-import { $action, HttpError } from "../index.ts";
+import { $action, $route, HttpError, ServerProvider } from "../index.ts";
 import {
   bodyParserOptions,
   ServerBodyParserProvider,
@@ -32,11 +34,11 @@ describe("ServerBodyParserProvider", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    expect(
-      await app.json.run({
-        body: { message: "Hello, World!" },
-      }),
-    ).toEqual({
+    // Over HTTP: `run()` hands the body to the handler and parses nothing.
+    const response = await app.json.fetch({
+      body: { message: "Hello, World!" },
+    });
+    expect(response.data).toEqual({
       received: "Hello, World!",
     });
 
@@ -63,11 +65,10 @@ describe("ServerBodyParserProvider", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    expect(
-      await app.text.run({
-        body: "Hello, World!",
-      }),
-    ).toEqual({
+    const response = await app.text.fetch({
+      body: "Hello, World!",
+    });
+    expect(response.data).toEqual({
       received: "Hello, World!",
     });
 
@@ -168,7 +169,7 @@ describe("ServerBodyParserProvider", () => {
     const result = await parser.parseJson(makeStream(), "br");
     expect(result).toEqual({ brotli: true });
 
-    // "brotli" is not a valid encoding name — only "br" is
+    // "brotli" is not a valid encoding name, only "br" is
     await expect(
       parser.parseJson(makeStream(), "brotli" as string),
     ).rejects.toThrow("Unsupported Content-Encoding: brotli");
@@ -366,5 +367,216 @@ describe("ServerBodyParserProvider", () => {
       z.object({}),
     );
     expect(result).toBeUndefined();
+  });
+
+  it("should read media types and encodings whatever their case", async ({
+    expect,
+  }) => {
+    class TestApp {
+      echo = $route({
+        method: "POST",
+        path: "/echo",
+        schema: { body: z.object({ a: z.text() }) },
+        handler: ({ body }) => `got ${body.a}`,
+      });
+    }
+
+    const alepha = Alepha.create().with(TestApp);
+    await alepha.start();
+    const url = `${alepha.inject(ServerProvider).hostname}/echo`;
+    const post = async (headers: Record<string, string>, body: BodyInit) => {
+      const response = await fetch(url, { method: "POST", headers, body });
+      return [response.status, await response.text()];
+    };
+
+    expect(
+      await post(
+        { "content-type": "Application/JSON; charset=utf-8" },
+        '{"a":"x"}',
+      ),
+    ).toEqual([200, "got x"]);
+    expect(
+      await post(
+        { "content-type": "APPLICATION/X-WWW-FORM-URLENCODED" },
+        "a=y",
+      ),
+    ).toEqual([200, "got y"]);
+    expect(
+      await post(
+        { "content-type": "application/json", "content-encoding": "GZIP" },
+        new Uint8Array(gzipSync('{"a":"z"}')),
+      ),
+    ).toEqual([200, "got z"]);
+  });
+
+  describe("an oversized body with no Content-Length", () => {
+    // A chunked body declares no length, so it is refused part-way through
+    // and the rest of it is still on the wire. The 413 goes out at once and
+    // the rest is discarded, within a budget of bytes and of time; past the
+    // budget the connection is closed.
+    class TestApp {
+      echo = $route({
+        method: "POST",
+        path: "/echo",
+        schema: { body: z.object({ a: z.text({ maxLength: 100_000_000 }) }) },
+        handler: () => "ok",
+      });
+
+      ping = $route({ path: "/ping", handler: () => "pong" });
+    }
+
+    /**
+     * The discard budget, small enough for a spec to pass it.
+     */
+    class SmallDiscard extends ServerBodyParserProvider {
+      protected override readonly discardMaxBytes = 256 * 1024;
+      protected override readonly discardMaxMillis = 150;
+      protected override readonly discardLingerMillis = 150;
+    }
+
+    const start = async () => {
+      const alepha = Alepha.create()
+        .with({ provide: ServerBodyParserProvider, use: SmallDiscard })
+        .with(TestApp);
+      await alepha.start();
+      return new URL(alepha.inject(ServerProvider).hostname);
+    };
+
+    const head =
+      "POST /echo HTTP/1.1\r\nhost: localhost\r\ncontent-type: application/json\r\ntransfer-encoding: chunked\r\n\r\n";
+
+    /**
+     * One raw connection: `write` sends its bytes once connected, and the
+     * outcome says how the connection ended after the 413 arrived and a
+     * second request was written on it.
+     */
+    const raw = (url: URL, write: (socket: Socket) => void) =>
+      new Promise<{ received: string; end: "answered" | "closed" | "hung" }>(
+        (resolve) => {
+          const socket = connect(Number(url.port), url.hostname);
+          let received = "";
+          let asked = false;
+          const finish = (end: "answered" | "closed" | "hung") => {
+            clearTimeout(timer);
+            socket.destroy();
+            resolve({ received, end });
+          };
+          const timer = setTimeout(() => finish("hung"), 3000);
+          socket.on("data", (data) => {
+            received += data.toString();
+            if (!asked && /size limit/.test(received)) {
+              asked = true;
+              socket.write("GET /ping HTTP/1.1\r\nhost: localhost\r\n\r\n");
+            }
+            if (received.includes("pong")) {
+              finish("answered");
+            }
+          });
+          socket.on("close", () => finish("closed"));
+          socket.on("error", () => finish("closed"));
+          socket.on("connect", () => write(socket));
+        },
+      );
+
+    it("should keep the connection usable when the rest fits the discard budget", async ({
+      expect,
+    }) => {
+      const url = await start();
+      // 200 KB against the 100 KB limit, in several chunks.
+      const piece = "x".repeat(50_000);
+
+      const outcome = await raw(url, (socket) => {
+        socket.write(head);
+        for (let i = 0; i < 4; i++) {
+          socket.write(`${piece.length.toString(16)}\r\n${piece}\r\n`);
+        }
+        socket.write("0\r\n\r\n");
+      });
+
+      expect(outcome.received).toContain("HTTP/1.1 413");
+      // The request written after it on the same connection is answered.
+      expect(outcome.end).toBe("answered");
+    });
+
+    it("should close the connection once the rest passes the discard budget", async ({
+      expect,
+    }) => {
+      const url = await start();
+      const piece = "x".repeat(64 * 1024);
+
+      const outcome = await raw(url, (socket) => {
+        socket.write(head);
+        // 1 MB and no end: four times the budget.
+        for (let i = 0; i < 16; i++) {
+          socket.write(`${piece.length.toString(16)}\r\n${piece}\r\n`);
+        }
+      });
+
+      expect(outcome.received).toContain("HTTP/1.1 413");
+      expect(outcome.end).toBe("closed");
+    });
+
+    it("should close the connection when the rest never comes", async ({
+      expect,
+    }) => {
+      const url = await start();
+      const piece = "x".repeat(150_000);
+
+      const outcome = await raw(url, (socket) => {
+        socket.write(head);
+        // Past the limit, under the byte budget, then silence.
+        socket.write(`${piece.length.toString(16)}\r\n${piece}\r\n`);
+      });
+
+      expect(outcome.received).toContain("HTTP/1.1 413");
+      expect(outcome.end).toBe("closed");
+    });
+
+    it("should answer 413 to a client still uploading far more than the budget, every time", async ({
+      expect,
+    }) => {
+      const url = await start();
+      // 4 MB: sixteen times the discard budget of this spec.
+      const body = Buffer.alloc(4 * 1024 * 1024, "x");
+
+      const upload = () =>
+        new Promise<number | string>((resolve) => {
+          const req = request(
+            {
+              host: url.hostname,
+              port: url.port,
+              path: "/echo",
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "transfer-encoding": "chunked",
+              },
+            },
+            (res) => {
+              resolve(res.statusCode ?? "no status");
+              // Answered: stop uploading, as a client does.
+              res.on("error", () => {});
+              req.destroy();
+            },
+          );
+          req.on("error", (error: NodeJS.ErrnoException) =>
+            resolve(error.code ?? error.message),
+          );
+          req.write('{"a":"');
+          req.write(body);
+          req.end('"}');
+        });
+
+      const statuses: Array<number | string> = [];
+      for (let i = 0; i < 20; i++) {
+        statuses.push(await upload());
+      }
+
+      expect(statuses).toEqual(Array.from({ length: 20 }, () => 413));
+
+      // The server itself is unharmed.
+      const ping = await fetch(`${url.origin}/ping`);
+      expect(await ping.text()).toBe("pong");
+    });
   });
 });

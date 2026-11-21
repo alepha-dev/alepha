@@ -10,7 +10,7 @@ import { $action, AlephaServer, BadRequestError } from "../index.ts";
 
 /**
  * A handler that throws a bare `Error` for a business rule looks correct
- * in development — the message is passed straight through — and then
+ * in development (the message is passed straight through) and then
  * silently degrades to a generic "Internal Server Error" in production,
  * because 5xx messages are sanitised. The author never sees the
  * difference locally, so the mistake ships.

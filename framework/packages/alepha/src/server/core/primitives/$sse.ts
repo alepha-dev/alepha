@@ -17,6 +17,7 @@ import {
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
+import { serverApiOptions } from "../atoms/serverApiOptions.ts";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import { SseFetchResponse, SseStream } from "../helpers/SseStreams.ts";
@@ -26,7 +27,6 @@ import type {
 } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "../providers/ServerProvider.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
-import { serverApiOptions } from "./$action.ts";
 
 // ----------------------------------------------------------------------------------------------------------
 
@@ -100,8 +100,8 @@ export interface SseHandlerContext<TConfig extends SseConfigSchema> {
   /**
    * Emit an SSE event to the client.
    *
-   * Returns `false` once the stream is over — the client disconnected or
-   * {@link close} was called — and the event was dropped. Long-running
+   * Returns `false` once the stream is over (the client disconnected or
+   * {@link close} was called) and the event was dropped. Long-running
    * handlers should stop when it does.
    */
   emit: (
@@ -190,15 +190,20 @@ export interface SsePrimitiveOptions<
   disabled?: boolean;
 
   /**
-   * Main SSE handler. Receives context with emit/close functions.
-   */
-  /**
    * Middlewares wrapping the handler, as on `$action`: `use: [$secure()]`
    * refuses an anonymous caller before the stream opens and hands the
    * handler a non-optional `user`.
    */
   use?: TUse;
 
+  /**
+   * Main SSE handler. Receives context with emit/close functions.
+   *
+   * When it throws once the stream is open, the consumer receives the events
+   * emitted so far and then its iteration throws: `run()` rejects with the
+   * error, and over HTTP, where the `200` is already sent, the connection is
+   * cut.
+   */
   handler: SseHandler<TConfig, TUse>;
 }
 

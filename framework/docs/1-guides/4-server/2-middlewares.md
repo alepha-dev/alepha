@@ -153,7 +153,7 @@ What it does not cover: a chunk loaded later by an `import()` (a client navigati
 
 ### Body Parser
 
-JSON, plain text and URL-encoded bodies are parsed for any route with a `body` schema, and a body over the limit answers 413 before the handler runs. Multipart has its own limits, below.
+JSON, plain text and URL-encoded bodies are parsed for any route with a `body` schema, and a body over the limit answers 413 before the handler runs. A body sent with no `Content-Length` is refused once it passes the limit: the 413 goes out at once and the rest of the upload is read and dropped, up to 4 MB or 5 seconds, after which the connection is closed. Multipart has its own limits, below.
 
 Configure via the `bodyParserOptions` atom:
 
@@ -435,8 +435,8 @@ whose response varies by something _other_ than those two headers, such as an
 ### Path-Scoped Middleware
 
 Everything above is either global (a module) or per-action (`use: [...]`).
-`$middleware` is the level in between: middleware applied to every route under a
-path prefix.
+`$middleware` is the level in between: middleware applied to the route at a
+path prefix and to every route under it.
 
 ```typescript check
 import { $secure } from "alepha/security";
@@ -457,7 +457,7 @@ class Gateway {
 | `method`  | Restrict to one HTTP method, or a list                                        |
 | `exclude` | Route paths to leave alone, each with everything under it                     |
 
-It covers every route under the prefix, `$route` and `$page` included, whether it was declared before or after the `$middleware`. Its middleware runs outside the action's own `use`, so a `$secure()` here has already refused the caller before any per-action middleware sees the call. It joins the action's own pipeline, so it also runs when the action is called in process, through `run()` or a local `$client`. [OpenAPI](/docs/guides-server-openapi) reads the action's own `use` alone, so a gate declared here is enforced but not documented.
+It covers the route at the prefix itself and every route under it, `$route` and `$page` included, whether it was declared before or after the `$middleware`: `path: "/admin"` covers `/admin` and `/admin/users`, and leaves `/administrator` alone. Its middleware runs outside the action's own `use`, so a `$secure()` here has already refused the caller before any per-action middleware sees the call. It joins the action's own pipeline, so it also runs when the action is called in process, through `run()` or a local `$client`. [OpenAPI](/docs/guides-server-openapi) reads the action's own `use` alone, so a gate declared here is enforced but not documented.
 
 Use it for a cross-cutting concern that belongs to a whole path family, and keep
 per-action `use` for behaviour that belongs to one action. The test is whether

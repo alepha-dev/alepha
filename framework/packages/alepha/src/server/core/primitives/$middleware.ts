@@ -6,10 +6,11 @@ import type { RouteMethod } from "../constants/routeMethods.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
 
 /**
- * Applies middleware functions to every route whose path starts with a prefix.
+ * Applies middleware functions to the route at a path prefix and to every
+ * route under it.
  *
  * Use it for cross-cutting behavior (auth headers, logging, shaping) that
- * should cover a whole path family rather than one action - per-action
+ * should cover a whole path family rather than one action: per-action
  * middleware belongs in the action's own `use: [...]`.
  *
  * @example
@@ -28,9 +29,10 @@ export const $middleware = (options: ServerMiddlewarePrimitiveOptions) => {
 
 export interface ServerMiddlewarePrimitiveOptions {
   /**
-   * Path prefix. Middleware applies to all routes starting with this path.
+   * Path prefix. Middleware applies to the route at this path and to every
+   * route under it.
    *
-   * @example "/api" — matches "/api/users", "/api/orders", etc.
+   * @example "/api" matches "/api", "/api/users" and "/api/orders", not "/apis".
    */
   path: string;
 
@@ -60,7 +62,8 @@ export class ServerMiddlewarePrimitive extends Primitive<ServerMiddlewarePrimiti
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
   protected onInit() {
-    const path = this.options.path.replace(/\/+$/, "");
+    // `/admin/*` names the same prefix as `/admin`.
+    const path = this.options.path.replace(/\/\*$/, "").replace(/\/+$/, "");
     this.serverRouterProvider.pushMiddleware(`${path}/*`, this.options.use, {
       method: this.options.method,
       exclude: this.options.exclude,

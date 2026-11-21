@@ -70,7 +70,7 @@ export class ServerHealthProvider {
     silent: true,
     handler: ({ reply }) => {
       if (!this.alepha.isReady() || this.alepha.isStopping()) {
-        reply.headers["Retry-After"] = "5";
+        reply.headers["retry-after"] = "5";
         throw new HttpError(
           { status: 503 },
           {

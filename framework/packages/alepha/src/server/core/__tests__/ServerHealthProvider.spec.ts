@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaServer, ServerProvider } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 const alepha = Alepha.create().with(AlephaServer);
 
@@ -10,7 +10,9 @@ describe("ServerHealthProvider", () => {
    * a supervisor starting an app cannot ask it to opt into being checkable, so
    * `/health` has to be there for an app whose author never thought about it.
    */
-  it("should expose /health on a plain server, with no module opted in", async () => {
+  it("should expose /health on a plain server, with no module opted in", async ({
+    expect,
+  }) => {
     const srv = alepha.inject(ServerProvider);
 
     const ping = await fetch(`${srv.hostname}/health`);
@@ -23,7 +25,9 @@ describe("ServerHealthProvider", () => {
     });
   });
 
-  it("should expose /healthz too, for probes that expect that spelling", async () => {
+  it("should expose /healthz too, for probes that expect that spelling", async ({
+    expect,
+  }) => {
     const srv = alepha.inject(ServerProvider);
 
     const ping = await fetch(`${srv.hostname}/healthz`);

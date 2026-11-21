@@ -1,10 +1,10 @@
 import { Alepha, createMiddleware, z } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { $route, ServerProvider } from "../index.ts";
 
 describe("$route", () => {
-  test("should return the correct route", async ({ expect }) => {
+  it("should return the correct route", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestApp {
@@ -20,9 +20,7 @@ describe("$route", () => {
     expect(await resp.text()).toBe("OK");
   });
 
-  test("should return the correct route with queryParams", async ({
-    expect,
-  }) => {
+  it("should return the correct route with queryParams", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestApp {
@@ -64,9 +62,7 @@ describe("$route", () => {
     });
   });
 
-  test("should apply per-route middleware via use option", async ({
-    expect,
-  }) => {
+  it("should apply per-route middleware via use option", async ({ expect }) => {
     const log: string[] = [];
     const $track = () =>
       createMiddleware({

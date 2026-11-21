@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { describe, it, test } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   $action,
@@ -11,7 +11,7 @@ import {
 } from "../index.ts";
 
 describe("HttpClient", () => {
-  test("should fetch a URL", async ({ expect }) => {
+  it("should fetch a URL", async ({ expect }) => {
     const alepha = Alepha.create();
     class TestApp {
       root = $route({
@@ -30,7 +30,7 @@ describe("HttpClient", () => {
     expect(resp.data).toBe("Hello, World!");
   });
 
-  test("should throw on Error", async ({ expect }) => {
+  it("should throw on Error", async ({ expect }) => {
     const alepha = Alepha.create();
     class TestApp {
       root = $route({
@@ -55,7 +55,7 @@ describe("HttpClient", () => {
     });
   });
 
-  test("should handle empty query params", async ({ expect }) => {
+  it("should handle empty query params", async ({ expect }) => {
     const alepha = Alepha.create();
     const client = alepha.inject(HttpClient);
     await alepha.start();
@@ -63,7 +63,7 @@ describe("HttpClient", () => {
     expect(client.queryParams("", {}, {})).toEqual("");
   });
 
-  test("should handle simple query params", async ({ expect }) => {
+  it("should handle simple query params", async ({ expect }) => {
     const alepha = Alepha.create();
     const client = alepha.inject(HttpClient);
     await alepha.start();
@@ -82,7 +82,7 @@ describe("HttpClient", () => {
     ).toEqual("?hello=world&a=b");
   });
 
-  test("should handle undefined query params", async ({ expect }) => {
+  it("should handle undefined query params", async ({ expect }) => {
     const alepha = Alepha.create();
     const client = alepha.inject(HttpClient);
     await alepha.start();
@@ -199,7 +199,7 @@ describe("HttpClient", () => {
     });
   });
 
-  test("should handle json", async ({ expect }) => {
+  it("should handle json", async ({ expect }) => {
     const alepha = Alepha.create();
     const client = alepha.inject(HttpClient);
     await alepha.start();
@@ -218,6 +218,193 @@ describe("HttpClient", () => {
     ).toEqual(
       `?tags=${encodeURIComponent(JSON.stringify(["a", "b"]))}&user=${encodeURIComponent(JSON.stringify({ name: "john" }))}`,
     );
+  });
+
+  it("should leave the caller's query object as it was", async ({ expect }) => {
+    const alepha = Alepha.create();
+    const client = alepha.inject(HttpClient);
+    await alepha.start();
+
+    const query: Record<string, unknown> = { tags: ["a"], gone: undefined };
+    const url = client.queryParams("/x", {}, { query });
+
+    expect(url).toBe(`/x?tags=${encodeURIComponent('["a"]')}`);
+    expect(query).toStrictEqual({ tags: ["a"], gone: undefined });
+  });
+
+  it("should read a response's media type whatever its case", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    class TestApp {
+      json = $route({
+        path: "/json",
+        handler: ({ reply }) => {
+          reply.setHeader("content-type", "Application/JSON; charset=utf-8");
+          reply.body = '{"a":1}';
+        },
+      });
+      text = $route({
+        path: "/text",
+        handler: ({ reply }) => {
+          reply.setHeader("content-type", "TEXT/Plain");
+          reply.body = "hello";
+        },
+      });
+      image = $route({
+        path: "/image",
+        handler: ({ reply }) => {
+          reply.setHeader("content-type", "IMAGE/PNG");
+          reply.body = Buffer.from([1, 2, 3]);
+        },
+      });
+      failing = $route({
+        path: "/failing",
+        handler: ({ reply }) => {
+          reply.setStatus(409);
+          reply.setHeader("content-type", "Application/Json");
+          reply.body = '{"error":"taken"}';
+        },
+      });
+    }
+    const client = alepha.with(TestApp).inject(HttpClient);
+    await alepha.start();
+    const hostname = alepha.inject(ServerProvider).hostname;
+
+    expect((await client.fetch(`${hostname}/json`)).data).toEqual({ a: 1 });
+    expect((await client.fetch(`${hostname}/text`)).data).toBe("hello");
+    const image = (await client.fetch(`${hostname}/image`)).data as any;
+    expect(image.type).toBe("IMAGE/PNG");
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(
+      new Uint8Array([1, 2, 3]),
+    );
+    const error = await client
+      .fetch(`${hostname}/failing`)
+      .catch((caught) => caught);
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.message).toBe("taken");
+  });
+
+  describe("a downloaded file's name", () => {
+    class TestHttpClient extends HttpClient {
+      public testFileName = (disposition: string | null) =>
+        this.createFileLike(
+          new Response("x", {
+            headers: disposition
+              ? { "content-disposition": disposition }
+              : undefined,
+          }),
+          "fallback.bin",
+        ).name;
+    }
+
+    it("should round-trip a name the server had to escape", async ({
+      expect,
+    }) => {
+      class TestApp {
+        download = $action({
+          method: "GET",
+          path: "/download",
+          schema: { response: z.file() },
+          handler: () =>
+            new File(["x"], 'a"b.txt', { type: "text/plain" }) as any,
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(TestApp);
+      await alepha.start();
+
+      const response = await app.download.fetch();
+
+      expect(response.data.name).toBe('a"b.txt');
+    });
+
+    it("should stop at the closing quote, whatever follows", ({ expect }) => {
+      const client = Alepha.create().inject(TestHttpClient);
+
+      expect(
+        client.testFileName('attachment; filename="report.pdf"; size="12"'),
+      ).toBe("report.pdf");
+      expect(client.testFileName("attachment; filename=plain.txt; x=1")).toBe(
+        "plain.txt",
+      );
+      expect(client.testFileName('attachment; FileName="Upper.txt"')).toBe(
+        "Upper.txt",
+      );
+    });
+
+    it("should prefer filename* when the server sends it", ({ expect }) => {
+      const client = Alepha.create().inject(TestHttpClient);
+
+      expect(
+        client.testFileName(
+          "attachment; filename=\"resume.pdf\"; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf",
+        ),
+      ).toBe("résumé.pdf");
+      // An encoding this client cannot read falls back to the plain name.
+      expect(
+        client.testFileName(
+          "attachment; filename*=UTF-8''bad%ZZ.pdf; filename=\"plain.pdf\"",
+        ),
+      ).toBe("plain.pdf");
+    });
+
+    it("should keep an apostrophe inside a filename* value", ({ expect }) => {
+      const client = Alepha.create().inject(TestHttpClient);
+
+      expect(client.testFileName("attachment; filename*=UTF-8''it's.txt")).toBe(
+        "it's.txt",
+      );
+      expect(
+        client.testFileName("attachment; filename*=utf-8'en'it%27s%20here.txt"),
+      ).toBe("it's here.txt");
+    });
+
+    it("should not read a parameter out of a quoted name", ({ expect }) => {
+      const client = Alepha.create().inject(TestHttpClient);
+
+      expect(
+        client.testFileName(
+          "attachment; filename=\"x; filename*=UTF-8''evil.exe\"",
+        ),
+      ).toBe("x; filename*=UTF-8''evil.exe");
+      expect(client.testFileName('attachment; name="a; filename=b.txt"')).toBe(
+        "fallback.bin",
+      );
+    });
+
+    it("should reduce a name to its base name, whatever path it carries", ({
+      expect,
+    }) => {
+      const client = Alepha.create().inject(TestHttpClient);
+
+      expect(
+        client.testFileName(
+          "attachment; filename*=UTF-8''..%2F..%2Fetc%2Fpasswd",
+        ),
+      ).toBe("passwd");
+      expect(
+        client.testFileName('attachment; filename="..\\\\..\\\\boot.ini"'),
+      ).toBe("boot.ini");
+      expect(client.testFileName('attachment; filename="/tmp/a.txt"')).toBe(
+        "a.txt",
+      );
+      // Nothing left once the path is gone: the default name.
+      expect(client.testFileName('attachment; filename="../.."')).toBe(
+        "fallback.bin",
+      );
+      expect(client.testFileName('attachment; filename="dir/"')).toBe(
+        "fallback.bin",
+      );
+    });
+
+    it("should fall back to the default name", ({ expect }) => {
+      const client = Alepha.create().inject(TestHttpClient);
+
+      expect(client.testFileName(null)).toBe("fallback.bin");
+      expect(client.testFileName("attachment")).toBe("fallback.bin");
+    });
   });
 });
 

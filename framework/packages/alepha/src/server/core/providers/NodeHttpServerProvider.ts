@@ -128,7 +128,6 @@ export class NodeHttpServerProvider extends ServerProvider {
     if (this.alepha.isViteDev() && existing) {
       server = existing;
       server.removeAllListeners("request");
-      // --> server.removeAllListeners("connection");
     } else {
       server = createServer({
         // nov 25 - keep connections alive for better performance, cuz we http/1.1 by default
@@ -177,7 +176,7 @@ export class NodeHttpServerProvider extends ServerProvider {
         if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
           reject(
             new AlephaError(
-              `Port ${port} is already in use — another process is listening on ${this.env.SERVER_HOST}:${port}. ` +
+              `Port ${port} is already in use: another process is listening on ${this.env.SERVER_HOST}:${port}. ` +
                 `Stop it, or set SERVER_PORT to a free port.`,
               { cause: err },
             ),
@@ -202,7 +201,7 @@ export class NodeHttpServerProvider extends ServerProvider {
     // which runs this hook against a server that never opened. `close()` then
     // rejects with ERR_SERVER_NOT_RUNNING, and because the stop hooks are
     // reported before the start failure, "Server is not running." became the
-    // first and most visible line of a port conflict — a symptom of the
+    // first and most visible line of a port conflict, a symptom of the
     // cleanup path, logged above its own cause. Nothing to close is a
     // successful close.
     if (!this.server?.listening) {

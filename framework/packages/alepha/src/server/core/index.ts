@@ -131,6 +131,7 @@ export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
 export * from "./providers/ServerBodyParserProvider.ts";
 export * from "./providers/ServerCompressProvider.ts";
+export * from "./atoms/serverApiOptions.ts";
 export * from "./atoms/versionOptions.ts";
 export * from "./providers/ServerHealthProvider.ts";
 export * from "./providers/ServerVersionProvider.ts";
@@ -155,7 +156,7 @@ export * from "./services/UserAgentParser.ts";
  * - Type-safe API endpoints with schema validation
  * - Lower-level HTTP route definitions
  * - Automatic request/response validation via Zod
- * - Convention-based URL generation (`/api/{ActionName}`)
+ * - API actions under one configurable prefix (`/api` by default)
  * - Direct invocation (`run()`) or HTTP (`fetch()`)
  * - Built-in authentication integration
  * - Multipart file upload handling

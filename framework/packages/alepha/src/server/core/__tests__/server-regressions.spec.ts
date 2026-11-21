@@ -1,15 +1,17 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $route, ServerProvider } from "../index.ts";
 
-describe("server batch", () => {
+describe("server regressions", () => {
   describe("requestId", () => {
-    it("should be stable across accesses within one request", async () => {
+    it("should be stable across accesses within one request", async ({
+      expect,
+    }) => {
       // The getter called getRequestId() unmemoized, so every access minted a
       // fresh randomUUID: the id logged, the id in the error body and the ids
       // read by middleware were all different, and none matched the ALS
-      // context id — correlating a request across logs was impossible.
+      // context id, so correlating a request across logs was impossible.
       class App {
         ids = $route({
           path: "/ids",
@@ -29,7 +31,7 @@ describe("server batch", () => {
       expect(first).toBe(second);
     });
 
-    it("should honour an inbound x-request-id", async () => {
+    it("should honour an inbound x-request-id", async ({ expect }) => {
       class App {
         id = $route({
           path: "/id",
@@ -51,11 +53,31 @@ describe("server batch", () => {
     });
   });
 
+  describe("host", () => {
+    it("should be the Host header the client sent", async ({ expect }) => {
+      class App {
+        host = $route({
+          path: "/host",
+          handler: (request) => String(request.host),
+        });
+      }
+
+      const alepha = Alepha.create().with(App);
+      await alepha.start();
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      const body = await (await fetch(`${hostname}/host`)).text();
+
+      expect(body).toBe(new URL(hostname).host);
+    });
+  });
+
   describe("HSTS", () => {
-    it("should emit HSTS for a request forwarded as https", async () => {
-      // The check read `x-forwarded-proto` off the RESPONSE, which never
-      // carries it — so it collapsed to isProduction(): HSTS went out over
-      // plain HTTP in production and never went out over HTTPS anywhere else.
+    it("should emit HSTS for a request forwarded as https", async ({
+      expect,
+    }) => {
+      // The scheme is read off the REQUEST: `x-forwarded-proto` is on no
+      // response, and a check made there never saw an HTTPS request.
       class App {
         ping = $route({ path: "/ping", handler: () => "ok" });
       }
@@ -72,12 +94,32 @@ describe("server batch", () => {
       const plain = await fetch(`${hostname}/ping`);
       expect(plain.headers.get("strict-transport-security")).toBeNull();
     });
+
+    it("should emit HSTS on every response in production", async ({
+      expect,
+    }) => {
+      // A production app is reached over HTTPS, and a proxy that forwards no
+      // `x-forwarded-proto` must not cost it the header. A browser ignores
+      // HSTS received over plain HTTP.
+      class App {
+        ping = $route({ path: "/ping", handler: () => "ok" });
+      }
+
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "test-secret" },
+      }).with(App);
+      await alepha.start();
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      const plain = await fetch(`${hostname}/ping`);
+      expect(plain.headers.get("strict-transport-security")).toBeTruthy();
+    });
   });
 
   describe("query parsing", () => {
-    it("should keep a valueless key as an empty string", async () => {
+    it("should keep a valueless key as an empty string", async ({ expect }) => {
       // The hand-rolled Node parser only recorded a pair when it saw `=`, so
-      // `?flag` vanished — while URLSearchParams on Bun/workerd yields
+      // `?flag` vanished, while URLSearchParams on Bun/workerd yields
       // `{ flag: "" }`. The same request reached different handlers on
       // different runtimes.
       class App {

@@ -1,11 +1,11 @@
 import { Alepha, z } from "alepha";
 import { FileSystemProvider } from "alepha/system";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { $action } from "../index.ts";
 
 describe("$action", () => {
-  test("serves the declared method and path, nothing derived", ({ expect }) => {
+  it("serves the declared method and path, nothing derived", ({ expect }) => {
     class App {
       read = $action({
         method: "GET",
@@ -22,7 +22,7 @@ describe("$action", () => {
     expect(app.read.route.path).toBe("/api/items/:id");
   });
 
-  test("refuses an untyped action missing its method or path", ({ expect }) => {
+  it("refuses an untyped action missing its method or path", ({ expect }) => {
     class NoMethod {
       bare = $action({ path: "/bare", handler: () => "ok" } as any);
     }
@@ -38,7 +38,7 @@ describe("$action", () => {
     );
   });
 
-  test("should expose api", async ({ expect }) => {
+  it("should expose api", async ({ expect }) => {
     class Api {
       hello = $action({
         path: "/hello/:name",
@@ -101,7 +101,7 @@ describe("$action", () => {
     });
   });
 
-  test("should not be exposed when disabled", async ({ expect }) => {
+  it("should not be exposed when disabled", async ({ expect }) => {
     const alepha = Alepha.create();
     class TestApp {
       a1 = $action({ path: "/a1", method: "GET", handler: () => "ok:a1" });
@@ -121,7 +121,7 @@ describe("$action", () => {
     await expect(app.a2.run({})).rejects.toThrow("Action 'a2' is disabled.");
   });
 
-  test("should return nothing", async ({ expect }) => {
+  it("should return nothing", async ({ expect }) => {
     const alepha = Alepha.create();
     class TestApp {
       test = $action({
@@ -145,7 +145,7 @@ describe("$action", () => {
     expect(response.status).toBe(204); // No Content
   });
 
-  test("should return an object", async ({ expect }) => {
+  it("should return an object", async ({ expect }) => {
     const alepha = Alepha.create();
     class TestApp {
       test = $action({
@@ -169,7 +169,7 @@ describe("$action", () => {
     });
   });
 
-  test("should return a file", async ({ expect }) => {
+  it("should return a file", async ({ expect }) => {
     const alepha = Alepha.create();
     const fileSystem = alepha.inject(FileSystemProvider);
     class TestApp {
@@ -199,7 +199,7 @@ describe("$action", () => {
     expect(file.type).toBe("text/plain");
   });
 
-  test("should filter fields", async ({ expect }) => {
+  it("should filter fields", async ({ expect }) => {
     const alepha = Alepha.create();
     alepha.inject(FileSystemProvider);
     class TestApp {

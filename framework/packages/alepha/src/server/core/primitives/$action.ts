@@ -1,12 +1,10 @@
 import type { PrimitiveSide } from "alepha";
 import {
-  $atom,
   $inject,
   $store,
   AlephaError,
   type Async,
   createPrimitive,
-  type Infer,
   isTypeFile,
   type Middleware,
   type MiddlewareProvides,
@@ -23,6 +21,7 @@ import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import { Tracer } from "alepha/tracing";
 
+import { serverApiOptions } from "../atoms/serverApiOptions.ts";
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { HttpError, HttpErrorClass } from "../errors/HttpError.ts";
 import { InternalServerError } from "../errors/InternalServerError.ts";
@@ -162,12 +161,12 @@ export interface ActionPrimitiveOptions<
     | undefined,
 >
   extends
-    Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams">,
+    Omit<ServerRoute, "handler" | "path" | "schema">,
     PipelinePrimitiveOptions {
   /**
    * Name of the action.
    *
-   * - It will be used to generate the permission name if `security` is enabled.
+   * - It will be used to generate the permission name of a `$secure()` in `use`.
    */
   name?: string;
 
@@ -176,7 +175,7 @@ export interface ActionPrimitiveOptions<
    *
    * - If not provided, the service name containing the route will be used.
    * - It will be used as Tag for documentation purposes.
-   * - It will be used for permission name generation if `security` is enabled.
+   * - It will be used to generate the permission name of a `$secure()` in `use`.
    *
    * @example
    * ```ts
@@ -342,38 +341,6 @@ export interface ActionPrimitiveOptions<
    * Main route handler. This is where the route logic is implemented.
    */
   handler: ServerActionHandler<TConfig, TUse>;
-}
-
-// ----------------------------------------------------------------------------------------------------------
-
-/**
- * Server API configuration atom.
- */
-export const serverApiOptions = $atom({
-  name: "alepha.server.api.options",
-  schema: z.object({
-    prefix: z.text({
-      default: "/api",
-      description: "Prefix for all API routes (e.g. $action).",
-    }),
-    timeout: z
-      .integer()
-      .describe(
-        "Milliseconds every $action may run before it answers 503 (TimeoutError). Unset or 0: no timeout. An action's own `timeout` wins.",
-      )
-      .optional(),
-  }),
-  default: {
-    prefix: "/api",
-  },
-});
-
-export type ServerApiOptions = Infer<typeof serverApiOptions.schema>;
-
-declare module "alepha" {
-  interface State {
-    [serverApiOptions.key]: ServerApiOptions;
-  }
 }
 
 // ----------------------------------------------------------------------------------------------------------

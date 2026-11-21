@@ -1,7 +1,7 @@
-import { Alepha } from "alepha";
+import { $hook, Alepha } from "alepha";
 import { describe, it } from "vitest";
 
-import { $action, HttpError, ServerProvider } from "../index.ts";
+import { $action, $route, HttpError, ServerProvider } from "../index.ts";
 
 class TestApp {
   internalError = $action({
@@ -13,7 +13,7 @@ class TestApp {
   });
 
   /**
-   * A 5xx HttpError carrying an internal cause — the branch that bypassed
+   * A 5xx HttpError carrying an internal cause: the branch that bypassed
    * sanitization entirely, shipping `cause` (name + message) to the client.
    */
   wrappedInternalError = $action({
@@ -31,7 +31,7 @@ class TestApp {
   });
 
   /**
-   * A 4xx HttpError — its cause is intentional, client-facing context and
+   * A 4xx HttpError: its cause is intentional, client-facing context and
    * must survive sanitization.
    */
   badRequest = $action({
@@ -117,6 +117,78 @@ describe("ServerRouterProvider - errorHandler", () => {
       expect(json.message).toBe("Internal Server Error");
       expect(json.message).not.toContain("secret_table");
       expect(json.name).toBe("INTERNAL_SERVER_ERROR");
+
+      await alepha.stop();
+    });
+  });
+
+  describe("a throw that is not an Error", () => {
+    class ThrowApp {
+      text = $route({
+        path: "/text",
+        handler: () => {
+          throw "plain string";
+        },
+      });
+
+      nothing = $route({
+        path: "/nothing",
+        handler: () => {
+          throw null;
+        },
+      });
+    }
+
+    it("should hand the error hook the thrown value as the cause", async ({
+      expect,
+    }) => {
+      const causes: unknown[] = [];
+      class Watcher {
+        onError = $hook({
+          on: "server:request:error",
+          handler: ({ error }) => {
+            causes.push((error as Error).cause);
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(ThrowApp).with(Watcher);
+      await alepha.start();
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      await fetch(`${hostname}/text`);
+      await fetch(`${hostname}/nothing`);
+
+      // `null` and the string "null" both read "null" as a message.
+      expect(causes).toEqual(["plain string", null]);
+
+      await alepha.stop();
+    });
+
+    it("should answer the usual JSON 500, through the response hooks", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create().with(ThrowApp);
+      await alepha.start();
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      for (const [path, message] of [
+        ["/text", "plain string"],
+        ["/nothing", "null"],
+      ]) {
+        const response = await fetch(`${hostname}${path}`);
+
+        expect(response.status).toBe(500);
+        expect(response.headers.get("content-type")).toBe("application/json");
+        // Set by a `server:response:after` hook: the response went the
+        // normal way out.
+        expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+        expect(await response.json()).toEqual({
+          name: "INTERNAL_SERVER_ERROR",
+          message,
+          data: { status: 500, requestId: expect.any(String) },
+        });
+      }
 
       await alepha.stop();
     });

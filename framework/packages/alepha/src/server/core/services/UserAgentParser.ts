@@ -36,6 +36,24 @@ export interface UserAgentInfo {
  * a security decision.
  */
 export class UserAgentParser {
+  /**
+   * `ios` standing alone in any case, or `iOS` in that exact case at the end
+   * of a token (`CriOS`, `FxiOS`, `EdgiOS`, `OPiOS`, `MyApp_iOS`). Never the
+   * three letters inside an ordinary word (`kiosk`, `BIOS`, `radios`).
+   */
+  protected static readonly IOS_TOKEN = /(?:^|[^a-z])ios(?![a-z])/i;
+  protected static readonly IOS_SUFFIX = /iOS(?![A-Za-z])/;
+
+  /**
+   * Whether a user agent names iOS.
+   */
+  protected namesIos(userAgent: string): boolean {
+    return (
+      UserAgentParser.IOS_TOKEN.test(userAgent) ||
+      UserAgentParser.IOS_SUFFIX.test(userAgent)
+    );
+  }
+
   public parse(userAgent: string = ""): UserAgentInfo {
     const ua = userAgent.toLowerCase();
 
@@ -60,7 +78,7 @@ export class UserAgentParser {
       ua.includes("iphone") ||
       ua.includes("ipad") ||
       ua.includes("ipod") ||
-      (ua.includes("ios") && !ua.includes("android"))
+      (this.namesIos(userAgent) && !ua.includes("android"))
     ) {
       os = "iOS";
     } else if (

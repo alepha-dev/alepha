@@ -99,7 +99,7 @@ describe("ServerLoggerProvider", () => {
     expect(log.logs.map((l) => l.message)).toEqual(["!!", "Request completed"]);
   });
 
-  // An expected 4xx is the server working correctly — a missing session,
+  // An expected 4xx is the server working correctly: a missing session,
   // a role the caller lacks, a malformed body. Logging those at `error`
   // with a stack buries genuine faults: on a public app the error channel
   // fills with ordinary unauthenticated traffic and alerting on it is
