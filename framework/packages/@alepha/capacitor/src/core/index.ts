@@ -98,7 +98,7 @@ declare module "alepha" {
  * - {@link CapacitorConfigProvider}: the shell's public configuration, and
  *   every host-less `$client` pointed at its API;
  * - {@link WebContentProvider}: which web layer is running (bundled, dev, or
- *   a live update through a substituted {@link ContentInspector});
+ *   a live update, through a source added to {@link ContentInspector});
  * - {@link HapticsProvider}, {@link AppStateProvider}, {@link DeviceProvider},
  *   {@link StatusBarProvider};
  * - {@link DeepLinkProvider}: `<scheme>://app/<path>` links, cold and warm;

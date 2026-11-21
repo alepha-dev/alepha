@@ -19,7 +19,7 @@ the same app code runs on both, and app code never imports `@capacitor/*`.
 - `CapacitorConfigProvider`: the shell's public configuration, and
   every host-less `$client` pointed at its API;
 - `WebContentProvider`: which web layer is running (bundled, dev, or
-  a live update through a substituted `ContentInspector`);
+  a live update, through a source added to `ContentInspector`);
 - `HapticsProvider`, `AppStateProvider`, `DeviceProvider`,
   `StatusBarProvider`;
 - `DeepLinkProvider`: `<scheme>://app/<path>` links, cold and warm;
@@ -57,7 +57,7 @@ The shell and its native projects are made by `@alepha/capacitor/cli`.
 - [`MemoryAppStateProvider`](/docs/reference-providers-memoryappstateprovider) - An app state a spec moves by hand.
 - [`MemoryBackButtonProvider`](/docs/reference-providers-memorybackbuttonprovider) - Records the exits a spec's presses caused, instead of closing anything.
 - [`MemoryCapacitorConfigProvider`](/docs/reference-providers-memorycapacitorconfigprovider) - A shell configuration set by hand, for specs. `undefined` is a web build.
-- [`MemoryContentInspector`](/docs/reference-providers-memorycontentinspector) - An inspector answering whatever a spec sets, `ota` included: the seam a
+- [`MemoryContentInspector`](/docs/reference-providers-memorycontentinspector) - An inspector answering whatever a spec sets, `ota` included, for specs
 - [`MemoryDeepLinkProvider`](/docs/reference-providers-memorydeeplinkprovider) - Deep links a spec plays: a launch URL, and links opened later.
 - [`MemoryDeviceProvider`](/docs/reference-providers-memorydeviceprovider) - A device a spec describes.
 - [`MemoryHapticsProvider`](/docs/reference-providers-memoryhapticsprovider) - Records every haptic a spec triggered.
