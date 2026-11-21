@@ -1,0 +1,9 @@
+#!/bin/sh
+# Prints what a check or an agent run streams, and what it could reach.
+echo '{"type":"system","subtype":"init","model":"claude-stub-1","apiKeySource":"none","claude_code_version":"9.9.9"}'
+if wget -q -T 2 -O /dev/null http://1.1.1.1 2>/dev/null; then echo "net: online"; else echo "net: offline"; fi
+if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "credential: present"; else echo "credential: absent"; fi
+if touch /etc/stub 2>/dev/null; then echo "rootfs: writable"; else echo "rootfs: read-only"; fi
+echo "user: $(id -u)"
+echo "cwd: $(pwd)"
+echo '{"type":"result","subtype":"success","is_error":false,"result":"OK"}'

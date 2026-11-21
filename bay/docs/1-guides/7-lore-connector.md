@@ -195,6 +195,29 @@ Claude credential you can rotate (an API key with a spend limit, or a token from
 `claude setup-token`). The host tells Lore it runs jobs as a process, and Lore
 refuses to give such a host a job whose input came from outside the project.
 
+### The container runner
+
+`bay config jobs --runner container` runs each job in the agent image instead,
+a container per step (the clone, then Claude Code), with no host mount but the
+job's own workspace volume and its repository's dependency cache, no Docker
+socket, every capability dropped, a read-only root filesystem, memory and
+process limits, and a network with no route out but Bay's egress proxy. Add
+`--gvisor` to run them under gVisor (`runsc`), which Bay refuses when the
+daemon has no such runtime.
+
+The Claude credential is a **host-local secret**: set it from stdin and name it
+in the config.
+
+```bash
+sudo bay secret set CLAUDE_CODE_OAUTH_TOKEN - < token.txt
+sudo bay config jobs --runner container --credential CLAUDE_CODE_OAUTH_TOKEN
+```
+
+The value stays on the machine, `0600` under Bay's root, and goes into the
+Claude Code step's environment only. Lore sees the secret's name in the host's
+report, never its value. A host on the container runner is the one Lore lets
+read feedback written outside the project's team, with read rights only.
+
 ## The console
 
 Once the machine has said hello, `/<project>/hosts/<host>` in Lore shows,
