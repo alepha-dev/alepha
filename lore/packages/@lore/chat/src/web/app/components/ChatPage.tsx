@@ -271,10 +271,28 @@ const ChatPage = () => {
     [messagesApi, projectId, conversation.add, refreshLists],
   );
 
-  // The composer keeps its text when the send failed: the toast says why,
-  // and the words are not lost.
-  const send = async (body: string, attachments: string[]): Promise<boolean> =>
-    room ? (await sendMessage.run(room.id, body, attachments)).ok : false;
+  // The message shows as pending at once (#Q4112). The composer gets its
+  // text back when the send failed: the toast says why, and the words are
+  // not lost.
+  const send = async (
+    body: string,
+    files: ChatPendingFile[],
+  ): Promise<boolean> => {
+    if (!room) return false;
+    const local = conversation.pend({
+      roomId: room.id,
+      authorId: me,
+      body,
+      files,
+    });
+    const result = await sendMessage.run(
+      room.id,
+      body,
+      files.map((file) => file.id),
+    );
+    conversation.settle(local);
+    return result.ok;
+  };
 
   const uploadFile = useAction<[file: File], ChatPendingFile>(
     {
@@ -420,6 +438,7 @@ const ChatPage = () => {
       users={users}
       members={(memberPage?.items ?? []).map((member) => member.userId)}
       messages={conversation.messages}
+      sending={conversation.sending}
       hasMore={conversation.hasMore}
       loading={conversation.loading}
       canWrite={messagesApi.sendChatMessage.can()}

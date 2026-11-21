@@ -47,17 +47,45 @@ describe("chat messages", () => {
       )
     ).data.items.find((it) => it.name === "general")!;
 
+  // The frames go after the response (#Q4112): a spec reading them waits
+  // for the send's own frame.
   const send = async (
     user: { id: string; roles: string[] },
     roomId: string,
     body: string,
-  ) =>
-    (
-      await messages.sendChatMessage.fetch(
-        { params: { projectId: kit.projectId, roomId }, body: { body } },
-        { user },
-      )
-    ).data;
+  ) => {
+    const { data } = await messages.sendChatMessage.fetch(
+      { params: { projectId: kit.projectId, roomId }, body: { body } },
+      { user },
+    );
+    await kit.alepha.inject(RecordingChatLive).created(data.id);
+    return data;
+  };
+
+  it("answers the sender before the frames reach the room", async ({
+    expect,
+  }) => {
+    const room = await general();
+    const live = kit.alepha.inject(RecordingChatLive);
+    let release!: () => void;
+    live.gate = new Promise((resolve) => {
+      release = resolve;
+    });
+
+    const sent = await messages.sendChatMessage.fetch(
+      {
+        params: { projectId: kit.projectId, roomId: room.id },
+        body: { body: "quick" },
+      },
+      { user: kit.member },
+    );
+    expect(sent.data.body).toBe("quick");
+    expect(frames).toEqual([]);
+
+    release();
+    await live.created(sent.data.id);
+    expect(frames.map((it) => it.message.type)).toContain("message.created");
+  });
 
   it("pages a room backwards from the newest message", async ({ expect }) => {
     const room = await general();

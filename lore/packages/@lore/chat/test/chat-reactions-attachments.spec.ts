@@ -78,6 +78,8 @@ describe("chat reactions and attachments", () => {
       },
       { user: kit.member },
     );
+    // The send's own frame goes after its response (#Q4112).
+    await kit.alepha.inject(RecordingChatLive).created(sent.data.id);
     const params = {
       projectId: kit.projectId,
       roomId: room.id,

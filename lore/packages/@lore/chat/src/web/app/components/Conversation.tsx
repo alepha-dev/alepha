@@ -77,7 +77,12 @@ export interface ConversationProps {
   /**
    * Resolves `true` when the message was sent, and the composer empties.
    */
-  onSend: (body: string, attachments: string[]) => Promise<boolean>;
+  onSend: (body: string, files: ChatPendingFile[]) => Promise<boolean>;
+  /**
+   * The messages this tab sent that the server has not answered yet: drawn
+   * as pending, with no actions.
+   */
+  sending?: ReadonlySet<string>;
   /**
    * Every room the reader can see, for the jump list.
    */
@@ -190,10 +195,12 @@ const Conversation = (props: ConversationProps) => {
       Date.parse(message.createdAt) - Date.parse(previous.createdAt) <
         GROUP_WITHIN_MS;
     const own = !!props.me && message.authorId === props.me;
+    const pending = !!props.sending?.has(message.id);
     return (
       <ChatMessageRow
         key={message.id}
         message={message}
+        pending={pending}
         author={authorOf(message)}
         user={message.authorId ? userById.get(message.authorId) : undefined}
         continued={continued}

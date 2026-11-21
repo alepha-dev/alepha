@@ -1,5 +1,5 @@
 import { I18n } from "@lore/core/web";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -39,7 +39,10 @@ describe("ChatComposer", () => {
     alepha = undefined;
   });
 
-  const mount = async (sent: string[] = []) => {
+  const mount = async (
+    sent: string[] = [],
+    answer: () => Promise<boolean> = async () => true,
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -56,7 +59,7 @@ describe("ChatComposer", () => {
           onUpload={async () => undefined}
           onSend={async (body) => {
             sent.push(body);
-            return true;
+            return answer();
           }}
         />
       </AlephaContext.Provider>,
@@ -137,5 +140,32 @@ describe("ChatComposer", () => {
 
     type(input, "mail ada@ex");
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("empties on Enter before the send answers, and gets the text back when it fails", async ({
+    expect,
+  }) => {
+    let answer!: (ok: boolean) => void;
+    const sent: string[] = [];
+    const input = await mount(
+      sent,
+      () =>
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+    );
+
+    type(input, "hello there");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(sent).toEqual(["hello there"]);
+    expect(input.value).toBe("");
+
+    await act(async () => answer(false));
+    expect(input.value).toBe("hello there");
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input.value).toBe("");
+    await act(async () => answer(true));
+    expect(input.value).toBe("");
   });
 });

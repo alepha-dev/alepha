@@ -39,9 +39,10 @@ export interface ChatComposerProps {
   room: ChatRoomResource;
   candidates: ChatMentionCandidate[];
   /**
-   * Resolves `true` when the message was sent, and the composer empties.
+   * Resolves `true` when the message was sent. The composer empties at
+   * once and gets its text and files back when this resolves `false`.
    */
-  onSend: (body: string, attachments: string[]) => Promise<boolean>;
+  onSend: (body: string, files: ChatPendingFile[]) => Promise<boolean>;
   /**
    * Uploads one file for the next message; `undefined` when it failed (the
    * toast says why).
@@ -74,7 +75,6 @@ const ChatComposer = (props: ChatComposerProps) => {
   const input = useRef<HTMLTextAreaElement>(null);
   const caretAfter = useRef<number | undefined>(undefined);
   const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
   const [mention, setMention] = useState<
     { start: number; query: string } | undefined
   >(undefined);
@@ -141,18 +141,21 @@ const ChatComposer = (props: ChatComposerProps) => {
     setMention(undefined);
   };
 
+  // Empty on Enter, not when the server answers (#Q4112): the page shows
+  // the message as pending meanwhile. A failed send gives the words and
+  // files back, unless the member has started the next message.
   const send = async () => {
     const body = value.trim();
-    if ((!body && pending.length === 0) || busy || uploading > 0) return;
-    setBusy(true);
-    const sent = await props.onSend(
-      body,
-      pending.map((file) => file.id),
-    );
-    setBusy(false);
-    if (sent) {
-      setValue("");
-      setPending([]);
+    if ((!body && pending.length === 0) || uploading > 0) return;
+    const text = value;
+    const files = pending;
+    setValue("");
+    setPending([]);
+    setMention(undefined);
+    const sent = await props.onSend(body, files);
+    if (!sent) {
+      setValue((current) => (current ? current : text));
+      setPending((current) => (current.length ? current : files));
     }
   };
 
@@ -336,9 +339,7 @@ const ChatComposer = (props: ChatComposerProps) => {
           className="my-2 md:hidden"
           aria-label={tr("chat.composer.send")}
           disabled={
-            busy ||
-            uploading > 0 ||
-            (value.trim().length === 0 && pending.length === 0)
+            uploading > 0 || (value.trim().length === 0 && pending.length === 0)
           }
         >
           <ArrowUp className="size-4" />

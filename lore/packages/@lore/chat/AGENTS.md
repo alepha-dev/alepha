@@ -19,6 +19,7 @@ Both 404 when the project has chat off or the rank lacks `chat:read`. A room is 
 
 - **One socket per member**, `/ws/chat?roomId=<own user id>`, declared once in `src/schemas/ChatChannels.ts` for both sides: `ChatSocketController` serves it (`$secure` plus `canJoin` on the user's own id), `useChatFeed` subscribes to it. The browser module imports `AlephaWebSocket` and registers `ChatChannels` at boot: a page that injects either later meets a locked container.
 - **Every frame is addressed by the server** (`ChatLive.send`) to `ChatAudience.of(room)`, read at send time: the privacy rule, and why a removed member stops receiving at once on Node and on Workers.
+- **A send answers before its frames go** (#Q4112): on Workers each recipient is a Durable Object call, seconds for a project, so `ChatMessageService.send` stores the message and returns it, then sends `message.created` (and starts an `@lore` run) through `BackgroundTaskProvider`. The page shows the message as pending meanwhile. A spec reading a send's frames waits for `RecordingChatLive.created(id)`.
 - **A frame is a hint.** The page's messages are one `useInfiniteQuery` entry (`["chat-messages", projectId, roomId]`) that frames are written into; the room list and unread counts are invalidated, at most once per half second. On every reconnection after the first, the page invalidates all three and reads the database again.
 
 ## Permissions
