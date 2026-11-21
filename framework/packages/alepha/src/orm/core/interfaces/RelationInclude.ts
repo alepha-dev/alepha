@@ -38,7 +38,7 @@ export type TargetOf<R> = R extends Relation<any, infer T> ? T : never;
  * Everything that can be asked of a relation: filter it, order it, cap it,
  * project it, and nest further.
  *
- * This is the same shape as a root query, which is deliberate — a relation is
+ * This is the same shape as a root query, which is deliberate: a relation is
  * a query, and there is no reason to learn two vocabularies.
  */
 export interface RelationArgs<
@@ -52,7 +52,7 @@ export interface RelationArgs<
    * Read rows the repository would normally hide.
    *
    * Today that means soft-deleted ones: `deletedAt` is filtered out of every
-   * read, and some views want the history anyway — an error inbox still shows
+   * read, and some views want the history anyway: an error inbox still shows
    * crashes reported by a sigil that has since been revoked. It is the same
    * flag the plain repository takes, and it applies to this level only, so a
    * parent can ask for deleted rows without its relations doing the same.
@@ -63,7 +63,7 @@ export interface RelationArgs<
    * Cap the rows returned **per parent**, not across the batch.
    *
    * Prisma's `take` means the same thing, and here it is a real `limit` on
-   * the relation's own subquery rather than a slice taken afterwards — so a
+   * the relation's own subquery rather than a slice taken afterwards, so a
    * capped relation reads only what it returns.
    */
   limit?: number;
@@ -79,7 +79,7 @@ export interface RelationArgs<
  *
  * Column filters are unchanged; a key that matches a declared relation takes
  * a nested `where` describing the related rows, and compiles to an `EXISTS`.
- * `{}` is meaningful — it means "has at least one", scoped by whatever the
+ * `{}` is meaningful: it means "has at least one", scoped by whatever the
  * target entity hides.
  *
  * Only the top level accepts relation keys. Inside `and` / `or` / `not` they
@@ -144,7 +144,7 @@ export type Projected<TRow, TArgs> = TArgs extends {
   : TRow;
 
 /**
- * The row type — projected if `select` was given — plus exactly the relations
+ * The row type, projected if `select` was given, plus exactly the relations
  * that were included, recursively.
  *
  * A relation you did not ask for is absent from the type, so reading it is a

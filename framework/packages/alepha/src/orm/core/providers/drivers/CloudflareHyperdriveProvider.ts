@@ -108,9 +108,9 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
     }
 
     // Memoised for the lifetime of the REQUEST, not the process and not the
-    // access. A fresh client per request is deliberate — Workers refuse to
+    // access. A fresh client per request is deliberate: Workers refuse to
     // reuse an I/O object across request contexts ("Cannot perform I/O on
-    // behalf of a different request") — but this getter is touched at least
+    // behalf of a different request"), but this getter is touched at least
     // once per repository call, so a handler running five queries used to
     // open five postgres clients that could not share a statement cache.
     //
@@ -133,7 +133,7 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
 
     const client = this.postgresFn(binding.connectionString, pgOptions);
     // drizzle-orm/postgres-js v1's `drizzle()` no longer binds an
-    // already-connected client when passed positionally — only the object
+    // already-connected client when passed positionally: only the object
     // form does (see NodePostgresProvider for the same fix). Passing the
     // client positionally here would compile (both args are `any`) but
     // silently open a *new*, unconfigured connection instead of reusing
@@ -155,7 +155,7 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
   ): Promise<Array<Record<string, unknown>>> {
     // On the open transaction's handle when there is one, like every
     // repository method: on the pool, a raw statement inside
-    // \`$transactional\` committed on its own connection and survived the
+    // `$transactional` committed on its own connection and survived the
     // rollback.
     return await this.executor.execute(query);
   }

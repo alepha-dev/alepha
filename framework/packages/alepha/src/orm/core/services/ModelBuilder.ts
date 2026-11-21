@@ -139,20 +139,6 @@ export abstract class ModelBuilder {
   }
 
   /**
-   * Resolve a column the entity's `indexes` / `foreignKeys` / `constraints`
-   * refer to, failing loudly when it does not exist.
-   *
-   * Every one of those builder paths used to guard with a truthiness check and
-   * *skip* the config when the lookup missed: a typo'd column produced no
-   * index, no foreign key, no constraint — and no error. Migration generation
-   * then emitted a schema quietly missing it, which is a data-integrity
-   * hazard that only surfaces as a duplicate row or an orphan much later.
-   *
-   * TypeScript already rejects the typo at the call site; this covers the
-   * paths where the types are bypassed (`as any`, dynamically built entities,
-   * JavaScript consumers).
-   */
-  /**
    * A partial index's condition as SQL.
    *
    * A raw `SQL` is taken as written. A where-object is compiled against the
@@ -240,6 +226,20 @@ export abstract class ModelBuilder {
     visit(where);
   }
 
+  /**
+   * Resolve a column the entity's `indexes` / `foreignKeys` / `constraints`
+   * refer to, failing loudly when it does not exist.
+   *
+   * Every one of those builder paths used to guard with a truthiness check and
+   * *skip* the config when the lookup missed: a typo'd column produced no
+   * index, no foreign key, no constraint, and no error. Migration generation
+   * then emitted a schema quietly missing it, which is a data-integrity
+   * hazard that only surfaces as a duplicate row or an orphan much later.
+   *
+   * TypeScript already rejects the typo at the call site; this covers the
+   * paths where the types are bypassed (`as any`, dynamically built entities,
+   * JavaScript consumers).
+   */
   protected resolveConfigColumn(
     self: any,
     entity: EntityPrimitive,
@@ -270,7 +270,7 @@ export abstract class ModelBuilder {
    * against the entity's schema, at build time.
    *
    * The per-column resolution below runs inside the config closure, and
-   * drizzle does not call that closure when the table is constructed — it
+   * drizzle does not call that closure when the table is constructed: it
    * stores it and invokes it later, during migration generation. Waiting
    * until then to report a typo is too late to be useful, so the same check
    * runs eagerly here against the declared schema.

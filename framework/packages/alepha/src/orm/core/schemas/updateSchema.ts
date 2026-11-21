@@ -37,7 +37,7 @@ export const updateSchema = <T extends ZObject>(
   for (const key in schema.shape) {
     const prop = schema.shape[key];
 
-    // Skip generated columns — they are computed by the database
+    // Skip generated columns: they are computed by the database
     if (hasAttr(prop, PG_GENERATED)) {
       continue;
     }

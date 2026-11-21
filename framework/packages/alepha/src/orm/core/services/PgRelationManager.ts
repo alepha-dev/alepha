@@ -17,8 +17,6 @@ export class PgRelationManager {
   public buildJoins(
     provider: DatabaseProvider,
     // rc.4 added a required 4th type param (TSelectMode) to PgSelectBase.
-    // This file is slated for removal in favor of Drizzle v1's
-    // `defineRelations` (see follow-up spec) — minimal arity fix only.
     builder: PgSelectBase<any, any, any, any>,
     joins: Array<PgJoin>,
     withRelations: PgRelationMap<ZObject>,
@@ -152,7 +150,7 @@ export class PgRelationManager {
       }
 
       // Make the join optional (left joins may return null).
-      // Writes into the shape in place — `z.schema.shape` hands back the very
+      // Writes into the shape in place: `z.schema.shape` hands back the very
       // object zod holds, so this is the same mutation it always was, just
       // without going through the patched alias.
       z.schema.shape(schema)[join.key] = joinSchema.optional();

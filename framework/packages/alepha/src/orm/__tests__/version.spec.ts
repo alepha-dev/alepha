@@ -6,6 +6,7 @@ import {
   $entity,
   $repository,
   db,
+  DbEntityNotFoundError,
   DbVersionMismatchError,
 } from "../core/index.ts";
 
@@ -106,6 +107,23 @@ const suite = (create: () => Alepha) => {
     // so this retry matched the concurrent writer's version.
     await expect(app.docs.save(loaded)).rejects.toThrow(DbVersionMismatchError);
     expect((await app.docs.getById(created.id)).title).toBe("concurrent");
+  });
+
+  it("save({ force }) on a soft-deleted row reports a stale version as a mismatch, not as a missing row", async ({
+    expect,
+  }) => {
+    const app = await setup();
+    const created = await app.docs.create({ title: "a" });
+    const loaded = await app.docs.getById(created.id);
+    await app.docs.updateById(created.id, { title: "concurrent" });
+    await app.docs.deleteById(created.id);
+
+    loaded.title = "stale";
+    await expect(app.docs.save(loaded, { force: true })).rejects.toThrow(
+      DbVersionMismatchError,
+    );
+    // Without `force` the row is hidden: it is missing for this caller.
+    await expect(app.docs.save(loaded)).rejects.toThrow(DbEntityNotFoundError);
   });
 };
 

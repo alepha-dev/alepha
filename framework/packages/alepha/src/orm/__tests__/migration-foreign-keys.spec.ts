@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
  * A generated table-rebuild must not take its children with it.
  *
  * SQLite ignores `PRAGMA foreign_keys` **inside a transaction**, and
- * drizzle wraps migrations in one — so the `PRAGMA foreign_keys=OFF`
+ * drizzle wraps migrations in one, so the `PRAGMA foreign_keys=OFF`
  * drizzle-kit emits at the top of a rebuild is a no-op. Constraints stay
  * live, and because `DROP TABLE` performs an implicit `DELETE FROM`,
  * every `ON DELETE CASCADE` fires: rebuilding a parent silently empties
@@ -72,7 +72,7 @@ describe("migration foreign key handling", () => {
     const db = seed();
     db.exec("BEGIN");
     db.exec("PRAGMA foreign_keys=OFF");
-    // Still 1 — this is the whole reason the in-SQL pragma cannot be
+    // Still 1: this is the whole reason the in-SQL pragma cannot be
     // trusted, and why the fix lives in the provider.
     expect((db.prepare("PRAGMA foreign_keys").get() as any).foreign_keys).toBe(
       1,
@@ -107,7 +107,7 @@ describe("migration foreign key handling", () => {
 
   it("defer_foreign_keys does NOT prevent the cascade", ({ expect }) => {
     // Worth pinning: `defer_foreign_keys` is the obvious candidate because
-    // it *does* apply inside a transaction — but it defers violation
+    // it *does* apply inside a transaction, but it defers violation
     // checking, not the ON DELETE CASCADE action. It is not a fix.
     const db = seed();
     db.exec("BEGIN");

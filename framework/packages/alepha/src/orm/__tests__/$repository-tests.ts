@@ -1099,7 +1099,7 @@ export const testUpsert = async (alepha: Alepha) => {
 
   expect(gadget.name).toBe("Gadget");
 
-  // Upsert on sku conflict — new id is ignored, existing row is updated
+  // Upsert on sku conflict: new id is ignored, existing row is updated
   const gadgetUpdated = await app.products.upsert(
     {
       id: "00000000-0000-0000-0000-000000000099",
@@ -1637,7 +1637,7 @@ export const testPagination = async (alepha: Alepha) => {
 };
 
 // ============================================================================
-// testPaginationWithQueryLimit — the `+1` sentinel row that
+// testPaginationWithQueryLimit: the `+1` sentinel row that
 // `createPagination` uses to detect a next page must survive a page size the
 // caller sets; spreading `query` over the computed `limit + 1` used to erase
 // it, which made `isLast` always true. (`query.limit` itself is refused by
@@ -1685,7 +1685,7 @@ export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
 };
 
 // ============================================================================
-// testConditionsWithSiblings — `or`/`and` keys must AND-combine with their
+// testConditionsWithSiblings: `or`/`and` keys must AND-combine with their
 // sibling field conditions, not short-circuit the whole where (the early
 // `return or(...)` in QueryManager used to DROP every other key).
 // ============================================================================

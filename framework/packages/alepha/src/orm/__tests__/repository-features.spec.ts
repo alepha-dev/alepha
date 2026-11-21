@@ -3,11 +3,8 @@ import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
-  testAggregateBasic,
   testAggregateHaving,
-  testAggregateMinMaxCount,
   testAggregateOrderByDotNotation,
-  testExistsSubquery,
   testGeneratedColumnExcludedFromInsertSchema,
   testGeneratedColumnPostgres,
   testGeneratedColumnSqlite,
@@ -15,15 +12,11 @@ import {
   testPartialIndex,
   testQueryCache,
   testQueryCacheCustomKey,
-} from "./orm-next-tests.ts";
+} from "./repository-features-tests.ts";
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
 const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
-
-// =============================================================================
-// Feature 1: Partial Indexes
-// =============================================================================
 
 describe("partial indexes", () => {
   it("should support partial unique index (sqlite)", async () => {
@@ -40,36 +33,7 @@ describe("partial indexes", () => {
   });
 });
 
-// =============================================================================
-// Feature 2: Subqueries (exists / notExists)
-// =============================================================================
-
-describe("subqueries", () => {
-  it("should support exists and notExists (sqlite)", async () => {
-    await testExistsSubquery(sqlite());
-  });
-  it("should support exists and notExists (postgres)", async () => {
-    await testExistsSubquery(postgres());
-  });
-});
-
-// =============================================================================
-// Feature 4: Aggregate Functions
-// =============================================================================
-
 describe("aggregates", () => {
-  it("should compute sum and avg grouped by column (sqlite)", async () => {
-    await testAggregateBasic(sqlite());
-  });
-  it("should compute sum and avg grouped by column (postgres)", async () => {
-    await testAggregateBasic(postgres());
-  });
-  it("should compute min, max, and count (sqlite)", async () => {
-    await testAggregateMinMaxCount(sqlite());
-  });
-  it("should compute min, max, and count (postgres)", async () => {
-    await testAggregateMinMaxCount(postgres());
-  });
   it("should filter groups with having clause (sqlite)", async () => {
     await testAggregateHaving(sqlite());
   });
@@ -84,10 +48,6 @@ describe("aggregates", () => {
   });
 });
 
-// =============================================================================
-// Feature 6: Generated Columns
-// =============================================================================
-
 describe("generated columns", () => {
   it("should compute virtual generated column (sqlite)", async () => {
     await testGeneratedColumnSqlite(sqlite());
@@ -99,10 +59,6 @@ describe("generated columns", () => {
     await testGeneratedColumnExcludedFromInsertSchema(sqlite());
   });
 });
-
-// =============================================================================
-// Feature 7: Query Caching
-// =============================================================================
 
 describe("query caching", () => {
   it("should cache and invalidate on write (sqlite)", async () => {

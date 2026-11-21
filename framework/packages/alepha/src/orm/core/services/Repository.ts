@@ -454,11 +454,19 @@ export abstract class Repository<T extends ZObject> {
       builder = builder.offset(opts.offset) as any;
     }
 
-    const result = sql`${builder}`;
-    Object.defineProperty(result, Repository.SUBQUERY_ALIAS, {
-      value: aliasName,
+    return this.markSubquery(sql`${builder}`);
+  }
+
+  /**
+   * Record on a fragment that it holds a subquery of this table, for
+   * {@link assertNoNestedSubquery}. `exists()` and `notExists()` wrap the
+   * subquery in a fragment of their own, which carries the mark too.
+   */
+  protected markSubquery(fragment: SQL): SQL {
+    Object.defineProperty(fragment, Repository.SUBQUERY_ALIAS, {
+      value: `${this.tableName}_sq`,
     });
-    return result;
+    return fragment;
   }
 
   /**
@@ -498,18 +506,18 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * True when every column of `this.pgTable` is excluded from INSERT column
-   * lists — i.e. an identity ("always") or generated-always column, the
+   * lists: i.e. an identity ("always") or generated-always column, the
    * only shape drizzle-orm allows to make a column non-insertable.
    *
    * Mirrors drizzle-orm's internal `Column.shouldDisableInsert()` (not part
-   * of its public API — this reads the same information from the public
+   * of its public API: this reads the same information from the public
    * `generated` / `generatedIdentity` getters instead of calling it).
    *
    * drizzle-orm 1.0.0-rc.4's postgres dialect has no special case for a row
    * with zero insertable columns: `db.insert(table).values({})` still
    * builds `insert into "table" () values ()`, which both Postgres and
    * SQLite reject as a syntax error. Verified with a minimal drizzle-orm +
-   * postgres-js reproduction outside Alepha — this is upstream, not
+   * postgres-js reproduction outside Alepha: this is upstream, not
    * something introduced by Repository's insert building.
    */
   protected hasNoInsertableColumns(): boolean {
@@ -533,14 +541,14 @@ export abstract class Repository<T extends ZObject> {
    *
    * Postgres-only. `this.db`'s static type is `PgAsyncDatabase<any>`, but
    * every sqlite provider actually hands back a `SQLiteAsyncDatabase` cast
-   * to that type (see e.g. `NodeSqliteProvider.db`) — the cast hides it
+   * to that type (see e.g. `NodeSqliteProvider.db`): the cast hides it
    * from the type checker, but `SQLiteAsyncDatabase` has no `.execute()`
    * (its API is `all/delete/get/insert/run/select/selectDistinct/
    * transaction/update/values/with`), so calling it here would throw
    * `TypeError: db.execute is not a function` at runtime.
    *
    * Reachable only for a sqlite entity whose *every* column is declared
-   * `generatedAlwaysAs` — `SqliteModelBuilder` maps identity/autoincrement
+   * `generatedAlwaysAs`: `SqliteModelBuilder` maps identity/autoincrement
    * primary keys to `.primaryKey({ autoIncrement: true })`, which sets
    * neither `generated` nor `generatedIdentity`, so a plain identity-only
    * sqlite entity never reaches `hasNoInsertableColumns() === true` in the
@@ -552,8 +560,8 @@ export abstract class Repository<T extends ZObject> {
    * `returning()` decode (e.g. a bigint identity column arrives as the raw
    * driver string, not the JS number the entity schema expects). Rather
    * than reimplement that decode pipeline, this re-reads the row through
-   * `getById()` — the same structured, decode-aware path a normal insert's
-   * `.returning(this.pgTable)` uses — keyed by the raw primary key value the
+   * `getById()`, the same structured, decode-aware path a normal insert's
+   * `.returning(this.pgTable)` uses, keyed by the raw primary key value the
    * insert returned.
    */
   protected async insertDefaultValues(
@@ -596,7 +604,7 @@ export abstract class Repository<T extends ZObject> {
 
     if (this.provider.usesSyncTransactions) {
       // Drizzle's sync SQLite session commits as soon as the callback
-      // returns — an async callback would run its awaited statements OUTSIDE
+      // returns: an async callback would run its awaited statements OUTSIDE
       // the transaction and rollback could never happen. Route through the
       // provider's awaited implementation instead; statements participate via
       // the shared connection, so the db itself acts as the tx handle.
@@ -623,9 +631,6 @@ export abstract class Repository<T extends ZObject> {
     return db.select().from(this.pgTable as PgTable);
   }
 
-  /**
-   * Start a SELECT DISTINCT query on the table.
-   */
   /**
    * SELECT of only the requested columns. The primary key is always included
    * so downstream mapping and caching keep working.
@@ -745,7 +750,7 @@ export abstract class Repository<T extends ZObject> {
 
       if (query.distinct && query.with) {
         // `rawSelectDistinct` selects a FLAT field map, while the join
-        // post-processing below expects drizzle's nested per-table row shape —
+        // post-processing below expects drizzle's nested per-table row shape:
         // `row[this.tableName]` is undefined and the mapping quietly produces
         // junk. Refuse rather than return garbage.
         throw new AlephaError(
@@ -760,7 +765,7 @@ export abstract class Repository<T extends ZObject> {
         ? this.rawSelectDistinct(opts, query.distinct)
         : // Narrow the SQL projection too, not just the schema `clean()` uses.
           // `columns` only affected the returned shape, so a wide table still
-          // paid full row I/O for a two-column read. Joins keep SELECT * — the
+          // paid full row I/O for a two-column read. Joins keep SELECT *: the
           // join mapper needs every table's columns to reassemble the row.
           query.columns && !query.with
           ? this.rawSelectColumns(opts, query.columns)
@@ -791,12 +796,13 @@ export abstract class Repository<T extends ZObject> {
         // SQLite requires LIMIT when OFFSET is used. Use an effectively
         // unbounded limit so the dialects stay equivalent (a fixed cap would
         // silently truncate), without mutating the caller's query object.
-        if (this.provider.dialect === "sqlite" && !limit) {
+        if (this.provider.dialect === "sqlite" && limit == null) {
           limit = Number.MAX_SAFE_INTEGER;
         }
       }
 
-      if (limit) {
+      // `limit: 0` is a limit: no row.
+      if (limit != null) {
         builder.limit(limit);
       }
 
@@ -841,7 +847,7 @@ export abstract class Repository<T extends ZObject> {
         }
 
         // Build joinedSchema once per query (not per row) to avoid SchemaValidator
-        // cache growth — each buildSchemaWithJoins() produces a fresh schema object.
+        // cache growth: each buildSchemaWithJoins() produces a fresh schema object.
         const joinedSchema = joins.length
           ? this.relationManager.buildSchemaWithJoins(schema, joins)
           : null;
@@ -1021,7 +1027,7 @@ export abstract class Repository<T extends ZObject> {
     return this.guard("read", "select", opts, async () => {
       // Same db resolution as `count()`: `this.db` ignored an explicit
       // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
-      // OUTSIDE the transaction — reading rows the transaction had not
+      // OUTSIDE the transaction: reading rows the transaction had not
       // committed, or missing rows it had written.
       const db = this.connection(opts);
 
@@ -1074,7 +1080,7 @@ export abstract class Repository<T extends ZObject> {
   /**
    * Find an entity by ID. Returns `undefined` if not found.
    *
-   * Pass `with` to eager-load relations on the result — same `with` map
+   * Pass `with` to eager-load relations on the result: same `with` map
    * shape as `findOne` / `paginate`. Without `with`, returns the plain
    * row.
    *
@@ -1103,7 +1109,7 @@ export abstract class Repository<T extends ZObject> {
   /**
    * Find an entity by ID. Throws `DbEntityNotFoundError` if not found.
    *
-   * Pass `with` to eager-load relations — see {@link findById}.
+   * Pass `with` to eager-load relations: see {@link findById}.
    */
   public async getById<R extends PgRelationMap<T>>(
     id: string | number,
@@ -1279,7 +1285,9 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T>,
     opts: { force?: boolean } = {},
   ): SQL {
-    return sql`EXISTS ${this.subquery(where, undefined, opts)}`;
+    return this.markSubquery(
+      sql`EXISTS ${this.subquery(where, undefined, opts)}`,
+    );
   }
 
   /**
@@ -1289,7 +1297,9 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T>,
     opts: { force?: boolean } = {},
   ): SQL {
-    return sql`NOT EXISTS ${this.subquery(where, undefined, opts)}`;
+    return this.markSubquery(
+      sql`NOT EXISTS ${this.subquery(where, undefined, opts)}`,
+    );
   }
 
   /**
@@ -1369,7 +1379,7 @@ export abstract class Repository<T extends ZObject> {
 
       try {
         // A table whose only column(s) are identity/generated-always has
-        // nothing for `.values()` to insert — see `hasNoInsertableColumns`.
+        // nothing for `.values()` to insert: see `hasNoInsertableColumns`.
         const entity = this.hasNoInsertableColumns()
           ? await this.insertDefaultValues(opts)
           : await this.rawInsert(opts)
@@ -1401,7 +1411,7 @@ export abstract class Repository<T extends ZObject> {
    *
    * **Order is guaranteed**: the returned array is index-aligned with
    * `values`, across batch boundaries. Callers rely on this to map
-   * generated ids back onto their source rows — a data importer, for
+   * generated ids back onto their source rows: a data importer, for
    * example, rebuilds its old-id → new-id table by zipping the two
    * arrays, and silently corrupts every foreign key if the order drifts.
    * Batching changes must preserve it; `createMany preserves input order`
@@ -1503,7 +1513,7 @@ export abstract class Repository<T extends ZObject> {
     // JavaScript one: drizzle calls `defaultFn()`, or takes a plain `default`
     // value, and pushes the result as a parameter. Only an SQL default is
     // inlined into the statement, and only a column with no default at all
-    // falls back to the `default` keyword — neither of those binds.
+    // falls back to the `default` keyword: neither of those binds.
     //
     // A generated uuid primary key (`defaultFn`) and `version` (a plain `0`)
     // are both bound, so sizing from the provided keys alone under-counted by
@@ -1607,7 +1617,7 @@ export abstract class Repository<T extends ZObject> {
       }
 
       // Always inject updatedAt into the conflict SET clause. This ensures that even
-      // with `set: {}`, the ON CONFLICT path touches the row — making it possible to
+      // with `set: {}`, the ON CONFLICT path touches the row: making it possible to
       // distinguish inserts from no-ops by comparing createdAt vs updatedAt.
       const updatedAtField = getAttrFields(
         this.entity.schema,
@@ -1622,7 +1632,7 @@ export abstract class Repository<T extends ZObject> {
       // With no `updatedAt` column and nothing left after removing the conflict
       // target and the PK, the SET clause is empty and drizzle rejects the
       // statement ("No values to set"). Setting the target to itself is a no-op
-      // UPDATE that keeps ON CONFLICT DO UPDATE valid — and, unlike DO NOTHING,
+      // UPDATE that keeps ON CONFLICT DO UPDATE valid: and, unlike DO NOTHING,
       // still RETURNs the conflicting row, which the caller expects.
       if (Object.keys(setData).length === 0) {
         const source = (data ?? {}) as Record<string, unknown>;
@@ -1633,7 +1643,7 @@ export abstract class Repository<T extends ZObject> {
 
       // The ON CONFLICT payload goes through the same validation and codec
       // encoding as every other write path. Skipping it let a value of the wrong
-      // type reach the driver — and sqlite, being dynamically typed, stored it,
+      // type reach the driver, and sqlite, being dynamically typed, stored it,
       // so the row could only be read back as a validation error afterwards.
       // `cast` lifts raw SQL expressions out before validating and re-attaches
       // them, so `set: { hits: sql\`hits + 1\` }` still works.
@@ -1719,7 +1729,7 @@ export abstract class Repository<T extends ZObject> {
    *
    * @param values The rows to insert. Empty array is a no-op.
    * @param opts.target The column(s) to detect conflicts on. Defaults to the primary key.
-   * @param opts.set The fields to update on conflict. Defaults to each row's own insert data (minus conflict target columns) — note that with a shared `set` this is one clause for every row, which is why counters have to go through `excluded`.
+   * @param opts.set The fields to update on conflict. Defaults to each row's own insert data (minus conflict target columns): rows that provide different columns go in separate statements, each updating its own, and the result follows that grouping rather than the order of `values`. With a shared `set` this is one clause for every row, which is why counters have to go through `excluded`.
    * @returns The created or updated entities.
    *
    * @example
@@ -1757,21 +1767,26 @@ export abstract class Repository<T extends ZObject> {
       const targetKeys = opts.target ?? [this.id.key];
       const targetColumns = targetKeys.map((key) => this.col(key as string));
 
-      let setData: any;
+      // Without an explicit clause there is no per-row `set` to build: one
+      // statement carries exactly one `DO UPDATE`, written with `excluded` so
+      // each conflicting row is updated from the values it arrived with. The
+      // clause names the columns of the rows it covers, so rows that provide
+      // different columns go in different statements: built from the first
+      // row alone, it left a column only a later row provides unwritten.
+      const groups: Array<Array<Record<string, unknown>>> = [];
       if (opts.set) {
-        // Copy rather than stamp in place — same reasoning as `upsert`.
-        setData = { ...(opts.set as Record<string, unknown>) };
+        groups.push(values as Array<Record<string, unknown>>);
       } else {
-        // Without an explicit clause there is no per-row `set` to build: one
-        // statement carries exactly one `DO UPDATE`. Fall back to `excluded`, so
-        // each conflicting row is updated from the values it arrived with rather
-        // than from whichever row of the batch happened to be first.
-        setData = {};
-        const sample = values[0] as Record<string, unknown>;
-        for (const key of Object.keys(sample)) {
-          if (targetKeys.includes(key as keyof Infer<T>)) continue;
-          if (key === this.id.key) continue;
-          setData[key] = this.excluded(key);
+        const bySignature = new Map<string, Array<Record<string, unknown>>>();
+        for (const value of values as Array<Record<string, unknown>>) {
+          const signature = JSON.stringify(Object.keys(value ?? {}).sort());
+          let group = bySignature.get(signature);
+          if (!group) {
+            group = [];
+            bySignature.set(signature, group);
+            groups.push(group);
+          }
+          group.push(value);
         }
       }
 
@@ -1780,56 +1795,75 @@ export abstract class Repository<T extends ZObject> {
         PG_UPDATED_AT,
       )?.[0];
 
-      if (updatedAtField) {
-        setData[updatedAtField.key] =
-          opts.now ?? this.dateTimeProvider.nowISOString();
-      }
-
-      // Same empty-SET guard as `upsert`: drizzle rejects a `DO UPDATE` with
-      // nothing to set, and `DO NOTHING` would not return the conflicting rows.
-      if (Object.keys(setData).length === 0) {
-        for (const key of targetKeys) {
-          setData[key as string] = this.excluded(key);
-        }
-      }
-
-      setData = this.cast(setData, false) as any;
-      this.withVersionBump(setData);
-
       const setWhere = this.deletedAt()
         ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
         : undefined;
 
-      const statement = (batch: Array<Record<string, unknown>>) =>
-        this.rawInsert(opts)
-          .values(batch as never)
-          .onConflictDoUpdate({
-            target: targetColumns,
-            set: setData,
-            ...(setWhere ? { setWhere } : {}),
-          });
+      const setFor = (sample: Record<string, unknown>) => {
+        let setData: any;
+        if (opts.set) {
+          // Copy rather than stamp in place, same reasoning as `upsert`.
+          setData = { ...(opts.set as Record<string, unknown>) };
+        } else {
+          setData = {};
+          for (const key of Object.keys(sample ?? {})) {
+            if (targetKeys.includes(key as keyof Infer<T>)) continue;
+            if (key === this.id.key) continue;
+            setData[key] = this.excluded(key);
+          }
+        }
+
+        if (updatedAtField) {
+          setData[updatedAtField.key] =
+            opts.now ?? this.dateTimeProvider.nowISOString();
+        }
+
+        // Same empty-SET guard as `upsert`: drizzle rejects a `DO UPDATE` with
+        // nothing to set, and `DO NOTHING` would not return the conflicting rows.
+        if (Object.keys(setData).length === 0) {
+          for (const key of targetKeys) {
+            setData[key as string] = this.excluded(key);
+          }
+        }
+
+        setData = this.cast(setData, false) as any;
+        this.withVersionBump(setData);
+        return setData;
+      };
 
       try {
-        const casted = values.map((value) => this.cast(value ?? {}, true));
-
-        // What the SET and WHERE clauses bind on their own, read off the real
-        // statement for one row rather than guessed: an `excluded.<col>`
-        // reference binds nothing, a plain value or the `updatedAt` stamp binds
-        // one, and only drizzle knows which is which once `cast` has run.
-        const oneRow = (statement([casted[0]]) as any).toSQL().params.length;
-        const reserved = Math.max(
-          0,
-          oneRow - this.boundPerRow([casted[0]], this.generatedColumns()),
-        );
-        const batchSize = this.insertBatchSize(casted, undefined, reserved);
-
         const rows: any[] = [];
-        for (let i = 0; i < casted.length; i += batchSize) {
-          rows.push(
-            ...(await statement(casted.slice(i, i + batchSize)).returning(
-              this.pgTable,
-            )),
+        for (const group of groups) {
+          const setData = setFor(group[0]);
+          const statement = (batch: Array<Record<string, unknown>>) =>
+            this.rawInsert(opts)
+              .values(batch as never)
+              .onConflictDoUpdate({
+                target: targetColumns,
+                set: setData,
+                ...(setWhere ? { setWhere } : {}),
+              });
+
+          const casted = group.map((value) => this.cast(value ?? {}, true));
+
+          // What the SET and WHERE clauses bind on their own, read off the real
+          // statement for one row rather than guessed: an `excluded.<col>`
+          // reference binds nothing, a plain value or the `updatedAt` stamp binds
+          // one, and only drizzle knows which is which once `cast` has run.
+          const oneRow = (statement([casted[0]]) as any).toSQL().params.length;
+          const reserved = Math.max(
+            0,
+            oneRow - this.boundPerRow([casted[0]], this.generatedColumns()),
           );
+          const batchSize = this.insertBatchSize(casted, undefined, reserved);
+
+          for (let i = 0; i < casted.length; i += batchSize) {
+            rows.push(
+              ...(await statement(casted.slice(i, i + batchSize)).returning(
+                this.pgTable,
+              )),
+            );
+          }
         }
 
         const entities = rows.map((row: any) =>
@@ -1888,7 +1922,7 @@ export abstract class Repository<T extends ZObject> {
 
       // Shallow-copy before stamping, same as `updateMany`: writing `updatedAt`
       // into the caller's object hands back a patch carrying a column it never
-      // declared — which bites when the patch is a shared constant, is reused
+      // declared, which bites when the patch is a shared constant, is reused
       // across calls, or is validated/audited by the caller afterwards.
       let row: any = { ...(data as Record<string, unknown>) };
 
@@ -2008,7 +2042,10 @@ export abstract class Repository<T extends ZObject> {
         // Verify entity still exists to differentiate between not-found vs version mismatch
         try {
           // If getById succeeds, entity exists and this was a version mismatch
-          await this.getById(id);
+          // In the write's own transaction and with its `force`, or a row
+          // the write could see (soft-deleted, or written in `opts.tx`)
+          // reads as missing.
+          await this.getById(id, { tx: opts.tx, force: opts.force });
           throw new DbVersionMismatchError({ table: this.tableName, id });
         } catch (lookupError) {
           // If it's still not found, propagate the original not found error
@@ -2183,7 +2220,7 @@ export abstract class Repository<T extends ZObject> {
       // nulling it and resurrecting the row (`save` nulls undefined fields).
       // `testNoUpdateIfAlreadyDeleted` depends on exactly this.
       //
-      // The caller's OPTIONS object is a different matter — it belongs to them,
+      // The caller's OPTIONS object is a different matter: it belongs to them,
       // and a reused `StatementOptions` that silently acquired a `now` would
       // pin every later statement to this instant. Resolve into a local copy.
       const now = opts.now ?? this.dateTimeProvider.nowISOString();
@@ -2242,7 +2279,7 @@ export abstract class Repository<T extends ZObject> {
       // Announced like `findMany`, and for the reason that matters to a
       // listener: a count is a full round trip to the database. A counter
       // wired to this event was blind to every `count()` in the app, so the
-      // shape it exists to catch — one count per row of a page — read as zero
+      // shape it exists to catch, one count per row of a page, read as zero
       // reads.
       await this.alepha.events.emit("repository:read:before", {
         tableName: this.tableName,
@@ -2255,8 +2292,8 @@ export abstract class Repository<T extends ZObject> {
         return await db.$count(this.pgTable, this.toSQL(where));
       } catch (error) {
         // Wrapped like every sibling statement, and this one was not. A raw
-        // drizzle error carries the SQL and its BOUND VALUES in the message —
-        // `Failed query: select count(*) from "quests" where ... params: 1,1` —
+        // drizzle error carries the SQL and its BOUND VALUES in the message,
+        // `Failed query: select count(*) from "quests" where ... params: 1,1`,
         // so on a filtered query it publishes whatever the caller filtered on
         // into error reporting. That text reached Lore's error inbox
         // (#326, beside #325 which is the same incident through `findMany`,
@@ -2423,7 +2460,7 @@ export abstract class Repository<T extends ZObject> {
 
         // ⚠️ Re-attach the column's decoder. drizzle's `min` / `max` map with
         // the column only when the expression IS a column, and fall back to
-        // `String` otherwise — so wrapping in a CASE turned an integer max into
+        // `String` otherwise, so wrapping in a CASE turned an integer max into
         // "30" and a timestamp into whatever the driver printed. `count` /
         // `sum` / `avg` are unaffected: they are coerced with Number() when the
         // row is re-nested, the way they always were.
@@ -2457,7 +2494,7 @@ export abstract class Repository<T extends ZObject> {
           const expr = aggExpr(key, op, spec);
           // ⚠️ ALIAS every aggregate. A raw SQL expression in a select list is
           // emitted verbatim, so the driver names that result column after the
-          // expression TEXT — and two conditioned aggregates over the same
+          // expression TEXT, and two conditioned aggregates over the same
           // column render to the very same text, their conditions differing
           // only in a bound parameter. They then collapse into one field on the
           // way back: two sums split by direction came back 0 and null instead
@@ -2569,11 +2606,12 @@ export abstract class Repository<T extends ZObject> {
 
         // Same guard as findMany: SQLite rejects OFFSET without LIMIT, so use
         // an effectively unbounded limit rather than truncating or failing.
-        if (this.provider.dialect === "sqlite" && !limit) {
+        if (this.provider.dialect === "sqlite" && limit == null) {
           limit = Number.MAX_SAFE_INTEGER;
         }
       }
-      if (limit) {
+      // `limit: 0` is a limit: no row.
+      if (limit != null) {
         builder = builder.limit(limit) as any;
       }
 
@@ -2814,7 +2852,7 @@ export abstract class Repository<T extends ZObject> {
 
     // Column before table: on a write, postgres reports a missing column as
     // `column "x" of relation "y" does not exist`, which contains both "does
-    // not exist" and "relation" and so matched the table branch — the one
+    // not exist" and "relation" and so matched the table branch: the one
     // message that names the column was reported as a missing table. No
     // table-not-found message mentions a column, so this order is safe.
     if (hasPattern(this.errorPatterns.columnNotFound)) {
@@ -2958,7 +2996,7 @@ export abstract class Repository<T extends ZObject> {
       ? this.entity.insertSchema // insert
       : (this.entity.updateSchema.partial() as ZObject); // update
 
-    // Extract raw SQL expressions before codec validation — the schema
+    // Extract raw SQL expressions before codec validation: the schema
     // would reject them since they aren't plain values of the declared type
     // (e.g. `sql\`count + 1\`` for an integer column). They're re-attached
     // after encoding so Drizzle still receives them as live SQL.
@@ -2995,8 +3033,8 @@ export abstract class Repository<T extends ZObject> {
     >;
 
     // On UPDATE, only persist the fields the caller explicitly provided.
-    // Validating against a (partial) schema re-applies every field's default —
-    // zod's `ZodDefault` fills in its default whenever the key is ABSENT — which
+    // Validating against a (partial) schema re-applies every field's default,
+    // zod's `ZodDefault` fills in its default whenever the key is ABSENT, which
     // would clobber unrelated existing columns (e.g. an unrelated `status` update
     // resetting `dunningAttempt` back to its default 0). Inserts still want the
     // injected defaults, so the filtering is update-only.
@@ -3123,11 +3161,6 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
-   * Whether a statement with these options runs inside a transaction: an
-   * explicit `opts.tx`, or the ambient one `transactional()` set. `tx: null`
-   * opts out of the ambient one.
-   */
-  /**
    * Run one statement under its signal: a read inherits the unit's signal,
    * a write only an explicit one, nothing inside a transaction is cut short
    * (#E85). See `DatabaseProvider.statement`.
@@ -3169,6 +3202,11 @@ export abstract class Repository<T extends ZObject> {
     );
   }
 
+  /**
+   * Whether a statement with these options runs inside a transaction: an
+   * explicit `opts.tx`, or the ambient one `transactional()` set. `tx: null`
+   * opts out of the ambient one.
+   */
   protected inTransaction(opts: StatementOptions): boolean {
     if (opts.tx === null) {
       return false;
@@ -3268,7 +3306,7 @@ export abstract class Repository<T extends ZObject> {
       // `.returning(this.pgTable)` (no PK touched) so creates worked
       // silently, then every delete blew up.
       throw new AlephaError(
-        `Primary key not found on table '${this.tableName}' — mark a column with db.primaryKey(). Required for deleteMany / deleteById / save / getWhereId.`,
+        `Primary key not found on table '${this.tableName}': mark a column with db.primaryKey(). Required for deleteMany / deleteById / save / getWhereId.`,
       );
     }
 
@@ -3288,9 +3326,6 @@ export abstract class Repository<T extends ZObject> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/**
- * The options for a statement.
- */
 /**
  * Options of the update methods (`updateOne`, `updateMany`, `updateById`,
  * `save`).
@@ -3321,9 +3356,9 @@ export interface StatementOptions {
   /**
    * Transaction to use.
    *
-   * - `undefined` — auto-detect from `alepha.store` (implicit transactional context)
-   * - a `DbTransaction` — use this specific transaction (explicit)
-   * - `null` — force no transaction, bypass implicit context
+   * - `undefined`: auto-detect from `alepha.store` (implicit transactional context)
+   * - a `DbTransaction`: use this specific transaction (explicit)
+   * - `null`: force no transaction, bypass implicit context
    */
   tx?: DbTransaction | null;
 

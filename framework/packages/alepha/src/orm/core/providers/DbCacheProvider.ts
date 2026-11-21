@@ -25,7 +25,7 @@ import { DateTimeProvider } from "alepha/datetime";
  */
 export class DbCacheProvider {
   /**
-   * Hard cap on retained entries. Sized so an ordinary app never reaches it —
+   * Hard cap on retained entries. Sized so an ordinary app never reaches it:
    * this is a leak backstop, not a tuning knob.
    */
   public static readonly MAX_ENTRIES = 5_000;

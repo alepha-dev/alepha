@@ -47,8 +47,8 @@ import { RqbExecutor } from "./RqbExecutor.ts";
  * no relations behaves exactly as before.
  *
  * `create` additionally understands nested writes, and `update` / `upsert`
- * accept `include` on their results. Writes that relations do not change —
- * `updateMany`, `deleteMany`, and the rest — are also available directly, or
+ * accept `include` on their results. Writes that relations do not change,
+ * `updateMany`, `deleteMany`, and the rest, are also available directly, or
  * through `.base`, the fully typed plain repository.
  */
 export class RelationalRepository<
@@ -85,7 +85,7 @@ export class RelationalRepository<
 
   /**
    * The underlying relation-unaware repository, fully typed. Every existing
-   * escape hatch — `create`, `upsert`, `aggregate`, raw `query` — still works.
+   * escape hatch, `create`, `upsert`, `aggregate`, raw `query`, still works.
    */
   public get base(): Repository<EntityOf<ZType, TKey>> {
     return this.repositories.getRepository(this.entity);
@@ -112,7 +112,7 @@ export class RelationalRepository<
   /**
    * First match, or `undefined`.
    *
-   * `limit: 1` applies to the *parent* only — relations are still resolved in
+   * `limit: 1` applies to the *parent* only: relations are still resolved in
    * full, which is what a join cannot do without either truncating children or
    * de-duplicating parents afterwards.
    */
@@ -250,7 +250,7 @@ export class RelationalRepository<
   /**
    * Row count for a filter.
    *
-   * No relations are resolved — a count does not need them. A filter that
+   * No relations are resolved: a count does not need them. A filter that
    * *names* one is refused rather than silently counted without it: the
    * relational engine has no `count`, so the predicate cannot be pushed into
    * a `COUNT(*)` without rebuilding the `EXISTS` by hand.
@@ -267,7 +267,7 @@ export class RelationalRepository<
     if (!this.namesRelation(where)) return;
 
     throw new AlephaError(
-      `Counting '${this.key}' with a filter on a relation is not supported — the count would silently ignore it. Filter on columns, or count the rows a findMany returns.`,
+      `Counting '${this.key}' with a filter on a relation is not supported: the count would silently ignore it. Filter on columns, or count the rows a findMany returns.`,
     );
   }
 
@@ -275,7 +275,7 @@ export class RelationalRepository<
   //
   // Shaped as a single options object, matching the read side. That symmetry
   // is the point: `where` always means the same thing, and `include` /
-  // `select` work on a written row exactly as on a read one — which the
+  // `select` work on a written row exactly as on a read one, which the
   // positional form had no room for.
 
   /**
@@ -290,7 +290,7 @@ export class RelationalRepository<
   /**
    * Update the first row matching `where`.
    *
-   * `where` is mandatory — an optional filter here would let a forgotten
+   * `where` is mandatory: an optional filter here would let a forgotten
    * clause rewrite the whole table.
    */
   public async update<const TArgs extends UpdateArgs<ZType, TMap, TKey>>(
@@ -329,7 +329,7 @@ export class RelationalRepository<
    * Omitting `update` does *not* skip the write: the underlying statement
    * still sets the columns from `create`, so the row ends up with the values
    * you passed either way. That is idempotent, which is usually what a toggle
-   * wants — but it is a write, not a no-op, and it bumps `updatedAt`.
+   * wants, but it is a write, not a no-op, and it bumps `updatedAt`.
    *
    * `target` needs a matching unique constraint. Without one there is nothing
    * for ON CONFLICT to match and the statement fails at the database.
@@ -431,7 +431,7 @@ export class RelationalRepository<
   } {
     if (!this.delegates(query)) {
       throw new AlephaError(
-        `toSQL() on '${this.key}' needs a query with relations — without them the read goes through the plain repository.`,
+        `toSQL() on '${this.key}' needs a query with relations: without them the read goes through the plain repository.`,
       );
     }
 
@@ -491,12 +491,14 @@ export class RelationalRepository<
    * - a **to-many** child is created *after*, because its foreign key points
    *   back here.
    *
-   * Everything runs inside one transaction, so a failure part-way through
-   * leaves no half-built graph behind.
+   * Everything runs inside one transaction where the driver has one, so a
+   * failure part-way through leaves no half-built graph behind. Cloudflare D1
+   * has no interactive transaction: there the writes run one after the other,
+   * and a failure part-way through leaves the rows already written.
    *
    * Opened through the *provider* rather than `base.transaction()`, which
    * hands its callback drizzle's transaction handle but leaves the ambient
-   * marker unset — so repositories inside it keep writing on pooled
+   * marker unset, so repositories inside it keep writing on pooled
    * connections, outside the `BEGIN`. Every write here goes through a
    * repository, so that distinction is the whole difference between atomic
    * and not.
@@ -587,7 +589,7 @@ export class RelationalRepository<
         }
 
         // The child's link column is filled from the parent, so a value passed
-        // for it would be silently overridden — the type omits it for exactly
+        // for it would be silently overridden: the type omits it for exactly
         // that reason.
         await this.createDeep(relation.target, {
           ...item,
@@ -602,8 +604,9 @@ export class RelationalRepository<
   /**
    * Write the junction row that links a many-to-many child to its parent.
    *
-   * Runs inside `create()`'s transaction like every other write here, so a
-   * child inserted without its link never survives.
+   * Runs inside `create()`'s transaction like every other write here, so
+   * where the driver has one a child inserted without its link never
+   * survives.
    */
   protected async linkThrough(
     relation: ResolvedRelation,
@@ -632,8 +635,8 @@ export class RelationalRepository<
    *
    * With relations to resolve, this goes to Drizzle's relational query builder
    * and the whole tree arrives in one statement. Without them there is nothing
-   * to gain and something to lose — caching, `groupBy`, `distinct`, row locks
-   * all live on the plain repository — so a relation-free query stays exactly
+   * to gain and something to lose, caching, `groupBy`, `distinct`, row locks
+   * all live on the plain repository, so a relation-free query stays exactly
    * the read it was before relations existed.
    */
   protected async rows(
@@ -688,7 +691,7 @@ export class RelationalRepository<
    * Whether a where mentions a declared relation anywhere, including inside
    * `and` / `or` / `not`.
    *
-   * The buried case is not supported, but it has to be *detected* here — left
+   * The buried case is not supported, but it has to be *detected* here: left
    * to the plain repository it would surface as "unknown column 'author'",
    * which says nothing about why. Routing it to the relational path lets the
    * translation explain itself.

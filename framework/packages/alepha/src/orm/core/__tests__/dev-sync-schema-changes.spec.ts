@@ -162,14 +162,6 @@ describe("development schema sync against an existing database", () => {
   });
 
   /**
-   * drizzle-kit's programmatic `pushSchema` resolves a rename with the prompt
-   * its CLI uses, which throws `resolver(column) was called without a
-   * HintsHandler` when there is no terminal. A development push means "make
-   * the database look like the entities", so the column it no longer
-   * declares is dropped and the push runs again on a diff with only
-   * additions in it.
-   */
-  /**
    * Since drizzle-kit 1.0.0-rc.5 a push that loses data (here a column of a
    * table that has rows) throws a `confirm_data_loss` question instead of
    * running with a warning. A development push answers it and applies.
@@ -189,6 +181,14 @@ describe("development schema sync against an existing database", () => {
     expect(await columnsOf(second.provider, "widgets")).toEqual(["id", "name"]);
   });
 
+  /**
+   * drizzle-kit's programmatic `pushSchema` resolves a rename with the prompt
+   * its CLI uses, which throws `resolver(column) was called without a
+   * HintsHandler` when there is no terminal. A development push means "make
+   * the database look like the entities", so the column it no longer
+   * declares is dropped and the push runs again on a diff with only
+   * additions in it.
+   */
   it("resolves a renamed column as a drop and a create", async () => {
     const first = await boot(AppV2);
     await first.kit.synchronize(first.provider);

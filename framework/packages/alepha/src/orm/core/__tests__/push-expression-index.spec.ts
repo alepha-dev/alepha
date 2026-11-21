@@ -86,8 +86,8 @@ describe("push with a case-insensitive unique index", () => {
    * `unexpected unique index '...' with expression value` for any MULTI-column
    * unique index carrying an expression (a single-column one is skipped
    * outright). Every Alepha app with the identity surface has exactly that
-   * index on `users`, so `push` — and the dev-mode `DATABASE_SYNC` that runs
-   * it — could never apply a schema change to a database that already
+   * index on `users`, so `push`, and the dev-mode `DATABASE_SYNC` that runs
+   * it, could never apply a schema change to a database that already
    * existed.
    */
   it("can push twice against the same database", async () => {

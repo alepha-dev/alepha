@@ -17,6 +17,7 @@ The `db` object is an instance of `DatabaseTypeProvider`.
 db.primaryKey(); // UUID, app-generated time-ordered UUIDv7 - default
 db.primaryKey(z.uuid()); // UUID, same app-side UUIDv7 generation
 db.primaryKey(z.integer()); // integer with identity (auto-increment)
+db.primaryKey(z.int64()); // 64-bit integer with identity, read as a JS number
 db.primaryKey(z.bigint()); // bigint with identity
 db.primaryKey(z.text()); // natural key (a slug, an external id): no default
 ```

@@ -6,7 +6,7 @@ import { NodePostgresProvider } from "../providers/drivers/NodePostgresProvider.
 class TestPostgresProvider extends NodePostgresProvider {
   /**
    * In test mode `PostgresProvider` generates a throwaway schema per run, so
-   * `schema` is never "public" — clear it to exercise the plain path.
+   * `schema` is never "public": clear it to exercise the plain path.
    */
   public clearTestSchema(): void {
     this.schemaForTesting = undefined;
@@ -36,7 +36,7 @@ describe("NodePostgresProvider migrations", () => {
     it("should run migrations on a single dedicated connection", async () => {
       // `SET search_path` followed by `migrate()` is two statements on a
       // POOL: postgres.js is free to hand the second one a different
-      // connection, one that never saw the SET — so the migration creates its
+      // connection, one that never saw the SET, so the migration creates its
       // tables in `public` while the app reads them from the configured
       // schema. Pinning the migration to `max: 1` makes the SET and the
       // migration provably the same session.
@@ -56,7 +56,7 @@ describe("NodePostgresProvider migrations", () => {
     });
 
     it("should keep the connection details of the configured database", async () => {
-      // The dedicated client must reach the SAME database — an options object
+      // The dedicated client must reach the SAME database: an options object
       // rebuilt from scratch would quietly migrate somewhere else.
       const provider = boot({ POSTGRES_SCHEMA: "tenant" });
 

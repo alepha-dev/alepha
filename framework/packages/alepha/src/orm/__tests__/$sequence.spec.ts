@@ -119,7 +119,7 @@ describe("$sequence inside $transactional", () => {
       }),
     ).rejects.toThrow("boom");
 
-    // Counter unchanged — rolled back with the outer tx.
+    // Counter unchanged: rolled back with the outer tx.
     expect(await app.seq.current("tx-rollback")).toBeNull();
     // Next call hands out the same value the rolled-back call saw.
     expect(await app.seq.next("tx-rollback")).toBe(1);

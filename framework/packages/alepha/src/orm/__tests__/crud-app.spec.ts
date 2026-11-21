@@ -67,7 +67,7 @@ class UserCrudApp {
         );
       }
 
-      // Don't generate UUID - db.primaryKey(z.integer()) handles it automatically
+      // No id here: db.primaryKey(z.uuid()) generates it.
       // Don't need to set isActive - db.default() handles it
       return await this.users.create({
         email: body.email,
@@ -262,7 +262,6 @@ describe("CRUD Application - Complete Integration Tests", () => {
   let app: UserCrudApp;
 
   beforeEach(async () => {
-    // Let Alepha use the default database configuration
     alepha = Alepha.create().with(AlephaOrmTestPostgres);
     app = alepha.inject(UserCrudApp);
     await alepha.start();
@@ -972,7 +971,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
       ).rejects.toThrow();
     });
 
-    test("rejects a string age (bodies are strict — no coercion)", async ({
+    test("rejects a string age (bodies are strict: no coercion)", async ({
       expect,
     }) => {
       // Strict zod: a JSON body string is NOT coerced to a number. Coercion

@@ -9,7 +9,7 @@ import { customType } from "drizzle-orm/pg-core";
  * and failed schema validation in `Repository.clean()`, so a `z.binary()`
  * column could not be written at all on postgres.
  *
- * Bytes are still stored as real `bytea` — only the JS-side representation is
+ * Bytes are still stored as real `bytea`: only the JS-side representation is
  * the base64 string the schema declares, which also matches what sqlite hands
  * back for the same entity.
  */

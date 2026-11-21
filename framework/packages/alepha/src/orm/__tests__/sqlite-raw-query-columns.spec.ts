@@ -7,7 +7,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 /**
  * The `node:sqlite` driver shim rewrites every SELECT-with-JOIN to positional
  * aliases (`__c0`, `__c1`, …) so drizzle's `.raw()` path survives duplicate
- * column names. It did that inside `db.prepare`, i.e. for EVERY statement —
+ * column names. It did that inside `db.prepare`, i.e. for EVERY statement:
  * including a user's own `repository.query()`, which then came back keyed
  * `__c0…` instead of by the columns the query actually named.
  *
@@ -37,7 +37,7 @@ class App {
 
 const setup = async () => {
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", DATABASE_URL: "sqlite://:memory:" },
+    env: { DATABASE_URL: "sqlite://:memory:" },
   });
   const app = alepha.inject(App);
   await alepha.start();
@@ -113,7 +113,7 @@ describe("node:sqlite raw query with colliding column names", () => {
 
     // The precondition the shim's rewrite keys on: a JOIN whose column list
     // has duplicate BASE names. The rewrite is there for drizzle's `.raw()`
-    // positional path, but it ran inside `db.prepare` — so a user's own query
+    // positional path, but it ran inside `db.prepare`, so a user's own query
     // came back keyed `__c0`, `__c1` instead of by its columns.
     const rows = await app.pets.query(
       sql`SELECT p.name, o.name

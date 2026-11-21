@@ -40,6 +40,8 @@ Inject it and write the expression once. Each helper returns a typed `SQL` fragm
 | `dateDiff(end, start, unit)` | number, `NULL` propagates  | `EXTRACT(EPOCH ...)` as double      | epoch-millisecond arithmetic       |
 | `ago(amount, unit)`          | a timestamp bound          | `NOW() - interval`                  | `STRFTIME('%s', 'now')` arithmetic |
 
+`dateDay`, `dateHour` and `dateWeek` bucket in UTC on every dialect: on Postgres the column is read `AT TIME ZONE 'UTC'`, whatever the session's time zone.
+
 `unit` is one of `"seconds"`, `"minutes"`, `"hours"` or `"days"`. The examples below read this entity:
 
 ```typescript filename="quests.ts" check

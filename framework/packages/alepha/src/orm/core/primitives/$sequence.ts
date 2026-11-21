@@ -40,7 +40,7 @@ export interface SequencePrimitiveOptions {
   /**
    * Sequence name. Defaults to the primitive's property key. Two primitives
    * sharing the same name share the same counter table rows, which is rarely
-   * what you want — prefer letting the property key drive the name.
+   * what you want: prefer letting the property key drive the name.
    */
   name?: string;
 

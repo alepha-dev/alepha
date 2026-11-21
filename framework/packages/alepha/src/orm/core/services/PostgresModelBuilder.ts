@@ -67,7 +67,7 @@ export class PostgresModelBuilder extends ModelBuilder {
    * Create a primary key column with an app-generated UUIDv7.
    *
    * Generated app-side (not `DEFAULT uuidv7()`): the native function needs
-   * PostgreSQL 18+, while this works on every version — and the timestamp
+   * PostgreSQL 18+, while this works on every version, and the timestamp
    * comes from DateTimeProvider, so ids follow `travel()` in tests.
    */
   protected getPrimaryKeyUUID(key: string) {
@@ -330,7 +330,7 @@ export class PostgresModelBuilder extends ModelBuilder {
         return pg.bigint(key, { mode: "number" });
       }
 
-      // Native float column — drizzle returns a JS number. `numeric` would
+      // Native float column: drizzle returns a JS number. `numeric` would
       // hand back a string, which strict `z.number()` validation rejects.
       return pg.doublePrecision(key);
     }
@@ -407,7 +407,7 @@ export class PostgresModelBuilder extends ModelBuilder {
 
       // SQL Enum (default for z.enum unless mode: "text", which asks for a
       // plain TEXT column instead). `name` overrides the generated type name
-      // so several tables can share one PG ENUM type — the conflict check
+      // so several tables can share one PG ENUM type: the conflict check
       // below is what makes that sharing safe.
       if (enumMeta.mode !== "text") {
         const enumName = enumMeta.name ?? `${tableName}_${key}_enum`;

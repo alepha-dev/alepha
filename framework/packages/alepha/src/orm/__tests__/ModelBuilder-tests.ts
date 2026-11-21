@@ -3,7 +3,12 @@ import { z } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
 
-import { $entity, $repository } from "../core/index.ts";
+import {
+  $entity,
+  $repository,
+  DbConflictError,
+  DbError,
+} from "../core/index.ts";
 import { db } from "../core/providers/DatabaseTypeProvider.ts";
 
 // ---------------------------------------------------------------------------
@@ -62,9 +67,9 @@ const userEntity = $entity({
       name: "valid_age_range",
     },
     {
-      columns: ["email", "username"],
+      columns: ["email", "status"],
       unique: true,
-      name: "unique_email_username",
+      name: "unique_email_status",
     },
   ],
 });
@@ -118,6 +123,26 @@ class TestApp {
   posts = $repository(postEntity);
 }
 
+/**
+ * A check constraint has no error of its own: the write fails with a
+ * `DbError` whose cause chain carries the driver's message, which names the
+ * constraint on both dialects.
+ */
+const expectCheckViolation = async (write: Promise<unknown>, name: string) => {
+  const error = await write.then(
+    () => undefined,
+    (reason: unknown) => reason,
+  );
+  expect(error).toBeInstanceOf(DbError);
+  expect(error).not.toBeInstanceOf(DbConflictError);
+  const messages: string[] = [];
+  for (let at: any = error; at; at = at.cause) {
+    messages.push(String(at.message));
+  }
+  expect(messages.join("\n")).toMatch(/check/i);
+  expect(messages.join("\n")).toContain(name);
+};
+
 // ---------------------------------------------------------------------------
 // testModelBuilderFeatures
 // ---------------------------------------------------------------------------
@@ -141,16 +166,12 @@ export const testModelBuilderFeatures = async (alepha: Alepha) => {
   expect(userRole.id).toBeDefined();
 
   // Test unique constraint violation
-  try {
-    await app.roles.create({
+  await expect(
+    app.roles.create({
       name: "admin", // Duplicate name
       description: "Another admin",
-    });
-    expect.fail("Should have thrown unique constraint error");
-  } catch (error: any) {
-    // Expected: unique constraint violation
-    expect(error).toBeDefined();
-  }
+    }),
+  ).rejects.toThrow(DbConflictError);
 
   // Test 2: Create users (tests foreign key, check constraint, and unique indexes)
   const user1 = await app.users.create({
@@ -173,49 +194,47 @@ export const testModelBuilderFeatures = async (alepha: Alepha) => {
   expect(user2.id).toBeDefined();
 
   // Test unique index on username
-  try {
-    await app.users.create({
+  await expect(
+    app.users.create({
       email: "charlie@example.com",
       username: "alice", // Duplicate username
       age: 28,
       roleId: userRole.id,
       status: "active",
-    });
-    expect.fail("Should have thrown unique constraint error on username");
-  } catch (error: any) {
-    // Expected: unique constraint violation
-    expect(error).toBeDefined();
-  }
+    }),
+  ).rejects.toThrow(DbConflictError);
 
   // Test check constraint (age must be >= 18)
-  try {
-    await app.users.create({
+  await expectCheckViolation(
+    app.users.create({
       email: "young@example.com",
       username: "younguser",
       age: 15, // Below minimum age
       roleId: userRole.id,
       status: "pending",
-    });
-    expect.fail("Should have thrown check constraint error for age");
-  } catch (error: any) {
-    // Expected: check constraint violation
-    expect(error).toBeDefined();
-  }
+    }),
+    "valid_age_range",
+  );
 
-  // Test composite unique constraint (email + username)
-  try {
-    await app.users.create({
+  // Test composite unique constraint (email + status): neither column is
+  // unique alone, so only the pair can refuse this row.
+  await expect(
+    app.users.create({
       email: "alice@example.com", // Same email as user1
-      username: "alice", // Same username as user1
+      username: "alice-again",
       age: 22,
       roleId: userRole.id,
-      status: "inactive",
-    });
-    expect.fail("Should have thrown composite unique constraint error");
-  } catch (error: any) {
-    // Expected: composite unique constraint violation
-    expect(error).toBeDefined();
-  }
+      status: "active", // Same status as user1
+    }),
+  ).rejects.toThrow(DbConflictError);
+  const sameEmail = await app.users.create({
+    email: "alice@example.com",
+    username: "alice-inactive",
+    age: 22,
+    roleId: userRole.id,
+    status: "inactive",
+  });
+  await app.users.deleteById(sameEmail.id);
 
   // Test 3: Create posts (tests multiple indexes and foreign key)
   const post1 = await app.posts.create({
@@ -240,36 +259,27 @@ export const testModelBuilderFeatures = async (alepha: Alepha) => {
   expect(post2.tags).toEqual(["tech", "tutorial"]);
 
   // Test check constraint (views must be >= 0)
-  try {
-    await app.posts.create({
+  await expectCheckViolation(
+    app.posts.create({
       userId: user2.id,
       title: "Invalid Post",
       content: "This post has negative views",
       published: true,
       views: -10, // Negative views
-    });
-    expect.fail("Should have thrown check constraint error for views");
-  } catch (error: any) {
-    // Expected: check constraint violation
-    expect(error).toBeDefined();
-  }
+    }),
+    "positive_views",
+  );
 
   // Test unique index on (userId, views) - only for testing unique composite index
-  try {
-    await app.posts.create({
+  await expect(
+    app.posts.create({
       userId: user1.id,
       title: "Duplicate Views Post",
       content: "This has the same userId and views",
       published: true,
       views: 100, // Same views as post1 for same user
-    });
-    expect.fail(
-      "Should have thrown unique constraint error on (userId, views)",
-    );
-  } catch (error: any) {
-    // Expected: unique constraint violation
-    expect(error).toBeDefined();
-  }
+    }),
+  ).rejects.toThrow(DbConflictError);
 
   // Test 4: Query using indexes (verify they improve query performance)
   // Find users by email (uses email index)
@@ -375,17 +385,14 @@ export const testComplexRelationships = async (alepha: Alepha) => {
   expect(laptop.price).toBe(999.99);
 
   // Test constraint
-  try {
-    await app.products.create({
+  await expectCheckViolation(
+    app.products.create({
       name: "Invalid Product",
       categoryId: electronics.id,
       price: -10, // Invalid price
-    });
-    expect.fail("Should have thrown check constraint error");
-  } catch (error) {
-    // Expected
-    expect(error).toBeDefined();
-  }
+    }),
+    "positive_price",
+  );
 
   // Clean up
   await app.products.clear({ force: true });
@@ -424,12 +431,9 @@ export const testExpressionIndex = async (alepha: Alepha) => {
   await app.users.create({ realm: "default", username: "JohnDoe" });
 
   // Same username different case in same realm should fail (unique LOWER index)
-  try {
-    await app.users.create({ realm: "default", username: "johndoe" });
-    expect.fail("Should have thrown unique constraint error");
-  } catch (error) {
-    expect(error).toBeDefined();
-  }
+  await expect(
+    app.users.create({ realm: "default", username: "johndoe" }),
+  ).rejects.toThrow(DbConflictError);
 
   // Same username different realm should succeed
   await app.users.create({ realm: "other", username: "JohnDoe" });

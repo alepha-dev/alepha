@@ -31,7 +31,7 @@ const testBinaryRoundTrip = async (alepha: Alepha) => {
   const rows = await app.repository.findMany();
 
   // The same entity and the same input must produce the same value on every
-  // dialect — postgres stored it as bytea (Buffer out) while sqlite stored it
+  // dialect: postgres stored it as bytea (Buffer out) while sqlite stored it
   // as JSON text (string out).
   expect(rows[0].payload).toBe(PAYLOAD);
 };

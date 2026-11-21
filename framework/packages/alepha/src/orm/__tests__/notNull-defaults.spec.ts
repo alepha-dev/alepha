@@ -32,7 +32,7 @@ class App {
 describe("NOT NULL on a defaulted column", () => {
   it("should keep NOT NULL on defaulted columns and drop it on optional ones", async () => {
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", DATABASE_URL: "sqlite://:memory:" },
+      env: { DATABASE_URL: "sqlite://:memory:" },
     });
     const app = alepha.inject(App);
     await alepha.start();

@@ -18,7 +18,7 @@ class App {
   users = $repository(userEntity);
 }
 
-export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
+export const testQueryBasicSql = async (alepha: Alepha) => {
   const app = alepha.inject(App);
   await alepha.start();
 

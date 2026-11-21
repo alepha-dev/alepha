@@ -220,7 +220,7 @@ const testExistsGuard = async (alepha: Alepha) => {
 };
 
 /**
- * The attention report's `blocked_quests`: a quest whose dependency is still
+ * The attention report's `blockedQuests`: a quest whose dependency is still
  * open, a subquery of the outer query's own table.
  */
 const testSelfReferencing = async (alepha: Alepha) => {
@@ -243,6 +243,19 @@ const testSelfReferencing = async (alepha: Alepha) => {
       exists: app.quests.subquery({ id: { eq: 1 } }),
     }),
   ).toThrow(/cannot nest another subquery/);
+
+  // The same nesting spelled with exists() / notExists(), which wrap the
+  // subquery in a fragment of their own.
+  expect(() =>
+    app.quests.subquery({ and: [app.quests.exists({ id: { eq: 1 } })] }),
+  ).toThrow(/cannot nest another subquery/);
+  expect(() =>
+    app.quests.subquery({ and: [app.quests.notExists({ id: { eq: 1 } })] }),
+  ).toThrow(/cannot nest another subquery/);
+  // Another table's is no nesting.
+  expect(() =>
+    app.quests.subquery({ and: [app.epics.exists({ id: { eq: 1 } })] }),
+  ).not.toThrow();
 };
 
 /**

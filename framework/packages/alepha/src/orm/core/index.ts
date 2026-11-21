@@ -185,8 +185,8 @@ export const AlephaOrm = $module({
     DbMigrationMode,
   ],
   // - DatabaseProvider is abstract; one of the driver variants is substituted in via register().
-  // - Repository is a base class instantiated per-entity via Repository.of(entity).
-  // Both listed for module tagging only — never auto-injected.
+  // - Repository is a base class instantiated per-entity via $repository(entity).
+  // Both listed for module tagging only: never auto-injected.
   variants: [
     DatabaseProvider,
     Repository,

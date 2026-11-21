@@ -13,6 +13,7 @@ import {
   QuestFlowService,
   ReleaseForecast,
 } from "../src/api/index.ts";
+import { ProjectFlowReportService } from "../src/api/services/ProjectFlowReportService.ts";
 import { WorkTestEntities } from "../src/testing/index.ts";
 
 const day = 86_400_000;
@@ -172,6 +173,7 @@ describe("QuestFlowService", () => {
     const now = alepha.inject(DateTimeProvider).nowMillis();
     const iso = (ago: number) => new Date(now - ago * day).toISOString();
     return {
+      alepha,
       flow: alepha.inject(QuestFlowService),
       repos,
       projectId: project.id,
@@ -225,6 +227,31 @@ describe("QuestFlowService", () => {
       [1, false],
       [7, true],
     ]);
+  });
+
+  it("answers no point for an empty axis, without reading the snapshot", async ({
+    expect,
+  }) => {
+    const { flow, projectId, quest } = await setup();
+    await quest({});
+
+    // An axis is empty when its range ends before it starts. Its bounds
+    // would be undefined, which a where-filter refuses.
+    expect(await flow.points(projectId, [], {})).toEqual([]);
+    expect(await flow.points(projectId, [], { tag: "bug" })).toEqual([]);
+  });
+
+  it("gives the flow report an empty series when from is after to", async ({
+    expect,
+  }) => {
+    const { alepha, projectId, quest, iso } = await setup();
+    await quest({ createdAt: iso(5) });
+
+    const report = await alepha
+      .inject(ProjectFlowReportService)
+      .report(projectId, { from: iso(1), to: iso(3) });
+
+    expect(report.cumulative).toEqual([]);
   });
 
   it("reconstructs a query no snapshot can answer", async ({ expect }) => {

@@ -124,7 +124,7 @@ export class NodePostgresProvider extends PostgresProvider {
     // postgres.js is free to hand the migration a different connection, one
     // that never saw the SET, and the tables land in `public` while the app
     // reads them from the configured schema. Migrations run once at boot and
-    // are not a hot path, so they get their own single-connection client —
+    // are not a hot path, so they get their own single-connection client:
     // `max: 1` makes "the session that was SET" and "the session that
     // migrates" provably the same one.
     const client = postgres(this.migrationClientOptions());
@@ -159,7 +159,7 @@ export class NodePostgresProvider extends PostgresProvider {
   }
 
   /**
-   * Whether migrations need a session-pinned connection — i.e. whether there
+   * Whether migrations need a session-pinned connection: i.e. whether there
    * is a `search_path` to set at all.
    */
   protected needsDedicatedMigrationClient(): boolean {
@@ -169,7 +169,7 @@ export class NodePostgresProvider extends PostgresProvider {
   /**
    * Client options for the migration-only connection: the app's connection
    * details, pinned to a single session. `max: 1` overrides any configured
-   * `POOL_MAX` — that setting sizes the app's pool, and a pool is precisely
+   * `POOL_MAX`: that setting sizes the app's pool, and a pool is precisely
    * what must not be used here.
    */
   protected migrationClientOptions(): postgres.Options<any> {
@@ -238,7 +238,7 @@ export class NodePostgresProvider extends PostgresProvider {
       },
     };
 
-    // Pool options — only set when explicitly configured via env vars
+    // Pool options: only set when explicitly configured via env vars
     if (this.pgEnv.POOL_MAX != null) options.max = this.pgEnv.POOL_MAX;
     if (this.pgEnv.POOL_IDLE_TIMEOUT != null)
       options.idle_timeout = this.pgEnv.POOL_IDLE_TIMEOUT;

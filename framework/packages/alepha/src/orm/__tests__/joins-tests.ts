@@ -822,7 +822,7 @@ export const testPostWithAuthorCommentsAndCommentAuthors = async (
 
   const { posts: testPosts } = await setupTestData(app);
 
-  // This requires multiple separate queries since we don't support one-to-many yet
+  // A plain join reads one row per side: the many side is a second query.
   const post = await app.posts.getOne({
     where: { id: { eq: testPosts.post1.id } },
     with: {

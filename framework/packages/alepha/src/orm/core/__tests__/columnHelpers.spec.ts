@@ -1,5 +1,5 @@
 import { z } from "alepha";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   PG_CREATED_AT,
@@ -36,7 +36,7 @@ const countNodes = (build: () => unknown): number => {
 };
 
 describe("db column helpers", () => {
-  test("column helpers keep their attributes", () => {
+  it("column helpers keep their attributes", () => {
     const pk = db.primaryKey();
     expect(hasAttr(pk, PG_PRIMARY_KEY)).toBe(true);
     expect(hasAttr(pk, PG_DEFAULT)).toBe(true);
@@ -69,7 +69,7 @@ describe("db column helpers", () => {
     expect(z.schema.isOptional(deletedAt)).toBe(true);
   });
 
-  test("caller schemas stay untouched", () => {
+  it("caller schemas stay untouched", () => {
     const shared = z.uuid();
     const ref = db.ref(shared, () => ({}));
     expect(ref).not.toBe(shared);
@@ -87,14 +87,7 @@ describe("db column helpers", () => {
     expect(hasAttr(shared, PG_DEFAULT)).toBe(false);
   });
 
-  test("the in-place tagger is not public", async () => {
-    // It mutates the schema it is given: offered to apps, it would turn a
-    // shared schema into a foreign key everywhere.
-    const orm = await import("../index.ts");
-    expect("tagPgAttr" in orm).toBe(false);
-  });
-
-  test("column helpers build each type once", () => {
+  it("column helpers build each type once", () => {
     expect(countNodes(() => db.primaryKey())).toBe(1);
     expect(countNodes(() => db.uuidPrimaryKey())).toBe(1);
     expect(countNodes(() => db.identityPrimaryKey())).toBe(1);

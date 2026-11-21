@@ -67,7 +67,7 @@ export class DatabaseTypeProvider {
     );
 
   /**
-   * Creates a primary key with a big identity column. (default)
+   * Creates a primary key with a big identity column.
    */
   public readonly bigIdentityPrimaryKey = (identity?: PgIdentityOptions) =>
     DatabaseTypeProvider.tag(
@@ -93,6 +93,7 @@ export class DatabaseTypeProvider {
    * - no argument -> UUID, generated app-side as a time-ordered UUIDv7 (default)
    * - `z.uuid()` -> UUID, same app-side UUIDv7 generation
    * - `z.integer()` -> PG INT identity
+   * - `z.int64()` -> PG BIGINT identity, read as a number
    * - `z.bigint()` -> PG BIGINT identity
    */
   public primaryKey(): PgAttr<PgAttr<ZodString, PgPrimaryKey>, PgDefault>;
@@ -100,11 +101,6 @@ export class DatabaseTypeProvider {
     type: ZodString,
     options?: StringOptions,
   ): PgAttr<PgAttr<ZodString, PgPrimaryKey>, PgDefault>;
-  public primaryKey(
-    type: ZodNumber,
-    options?: NumberOptions,
-    identity?: PgIdentityOptions,
-  ): PgAttr<PgAttr<ZodNumber, PgPrimaryKey>, PgDefault>;
   public primaryKey(
     type: ZodNumber,
     options?: NumberOptions,
@@ -128,9 +124,12 @@ export class DatabaseTypeProvider {
     }
 
     if (z.schema.isInteger(type)) {
+      // `z.int64()` is an integer too: it keeps its format, which is what
+      // makes the column 64-bit, as `bigIdentityPrimaryKey` does.
+      const key = z.schema.format(type) === "int64" ? z.int64() : z.integer();
       return DatabaseTypeProvider.tag(
         DatabaseTypeProvider.tag(
-          DatabaseTypeProvider.tag(z.integer(), PG_PRIMARY_KEY),
+          DatabaseTypeProvider.tag(key, PG_PRIMARY_KEY),
           PG_IDENTITY,
           identity,
         ),
@@ -141,17 +140,6 @@ export class DatabaseTypeProvider {
     if (z.schema.isString(type) && z.schema.format(type) === "uuid") {
       return DatabaseTypeProvider.tag(
         DatabaseTypeProvider.tag(z.uuid(), PG_PRIMARY_KEY),
-        PG_DEFAULT,
-      );
-    }
-
-    if (z.schema.isNumber(type) && z.schema.format(type) === "int64") {
-      return DatabaseTypeProvider.tag(
-        DatabaseTypeProvider.tag(
-          DatabaseTypeProvider.tag(z.number(), PG_PRIMARY_KEY),
-          PG_IDENTITY,
-          identity,
-        ),
         PG_DEFAULT,
       );
     }
@@ -173,7 +161,7 @@ export class DatabaseTypeProvider {
     // and strip its identity default.
     //
     // No PG_DEFAULT: `insertSchema` turns every PG_DEFAULT column optional
-    // because the database fills it in, and nothing fills in a slug — the
+    // because the database fills it in, and nothing fills in a slug: the
     // caller does. Marking it default made `create({ label })` pass
     // validation and hand the driver a NULL primary key.
     //
@@ -182,7 +170,7 @@ export class DatabaseTypeProvider {
     // cannot distinguish them and still promises `PgDefault` (right for the
     // 26 uuid PKs in tree, wrong here). A slug PK that omits its id therefore
     // still compiles; it now fails validation instead of reaching the driver.
-    // Closing the gap needs a nominal uuid type — tracked in Lore folio #14
+    // Closing the gap needs a nominal uuid type: tracked in Lore folio #14
     // (Alepha campaign), under "deliberate non-fixes".
     if (z.schema.isString(type)) {
       return pgAttr(type, PG_PRIMARY_KEY) as PgAttr<
@@ -216,10 +204,10 @@ export class DatabaseTypeProvider {
    *
    * This is used to track the version of a row in the database.
    *
-   * You can use it for optimistic concurrency control (OCC) with {@link RepositoryPrimitive#save}.
+   * You can use it for optimistic concurrency control (OCC) with {@link Repository#save}.
    *
-   * @see {@link RepositoryPrimitive#save}
-   * @see {@link PgVersionMismatchError}
+   * @see {@link Repository#save}
+   * @see {@link DbVersionMismatchError}
    */
   public readonly version = () => {
     const type = DatabaseTypeProvider.tag(

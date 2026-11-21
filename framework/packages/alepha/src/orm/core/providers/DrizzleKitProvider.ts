@@ -129,7 +129,7 @@ export class DrizzleKitProvider {
    * Push-based synchronization using Drizzle Kit's introspection API.
    *
    * Reads the actual database state, diffs against current entity definitions,
-   * and applies changes. No stored snapshots — no drift, no corruption.
+   * and applies changes. No stored snapshots: no drift, no corruption.
    *
    * - SQLite: uses `pushSchema` (requires a sync driver: node-sqlite or bun-sqlite)
    * - PostgreSQL: uses `pushSchema` with schema filters
@@ -139,7 +139,7 @@ export class DrizzleKitProvider {
    * creates the tables that are missing and the result says, as does the
    * log, whether existing tables were left behind.
    *
-   * Does nothing in production mode — use file-based migrations instead.
+   * Does nothing in production mode: use file-based migrations instead.
    */
   public async synchronize(
     provider: DatabaseProvider,
@@ -270,13 +270,13 @@ export class DrizzleKitProvider {
    *
    * v7 snapshots carry a `ddl` array; v6 ones (persisted by every
    * `migrations/*\/meta/*.json` generated before this upgrade) don't have
-   * one at all — `generateMigration` dereferences it unconditionally and
+   * one at all: `generateMigration` dereferences it unconditionally and
    * throws `prev.ddl is not iterable` on anything older. Detected on the
    * snapshot's own shape (absence of `ddl`) rather than trusting a
    * `version` field, since the missing array is precisely what crashes.
    *
    * Both dialect payloads export `up` for this conversion, so this needs no
-   * dialect branch — only a shape normalization, since postgres's `up`
+   * dialect branch: only a shape normalization, since postgres's `up`
    * wraps the result as `{ snapshot, hints }` while sqlite's returns the
    * snapshot directly.
    *
@@ -820,10 +820,9 @@ export class DrizzleKitProvider {
   /**
    * Surface drizzle-kit's own risk assessment before running the statements.
    *
-   * `push` destructured only `statementsToExecute` and ran everything, so a
-   * dev-mode `synchronize()` could drop and recreate a column — wiping local
-   * data — without a single line of output. drizzle-kit already computes
-   * `hasDataLoss` and `warnings`; they were only being read by `dryRunPush`.
+   * A dev-mode `synchronize()` can drop and recreate a column, wiping local
+   * data: the caller passes what drizzle-kit reported for the push (its
+   * `hints` since v1) so that never happens without a line of output.
    */
   protected reportPushRisks(
     warnings: string[] | undefined,
@@ -896,7 +895,7 @@ export class DrizzleKitProvider {
    * fragment of driver text.
    *
    * drizzle rc.4 wraps driver errors in `DrizzleQueryError`, whose own message
-   * is `Failed query: <sql>` — the driver's actual text ("table X already
+   * is `Failed query: <sql>`: the driver's actual text ("table X already
    * exists") moved down into `cause`. Matching only the top-level message
    * therefore stopped working silently at the upgrade, which turned a
    * recoverable "already exists" into a hard startup failure against any
@@ -957,7 +956,7 @@ export class DrizzleKitProvider {
    *
    * Drizzle Kit's pushSchema expects execute() to return { rows: T[] }
    * (node-postgres/pg format), but postgres.js returns a Result that
-   * extends Array directly — no .rows property.
+   * extends Array directly: no .rows property.
    */
   protected wrapDbForDrizzleKit(db: any): any {
     return new Proxy(db, {

@@ -7,7 +7,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 /**
  * Identifier lookups were written with `ilike`, which is a PATTERN match: `_`
  * matches any single character and `%` any run of them. A raw user-supplied
- * value therefore acted as a wildcard expression — `admi_` matched `admin`.
+ * value therefore acted as a wildcard expression: `admi_` matched `admin`.
  * `eqInsensitive` is equality with case folding and no metacharacters.
  */
 const people = $entity({
@@ -23,9 +23,7 @@ class App {
 }
 
 const setup = async () => {
-  const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with(
-    AlephaOrmTestPostgres,
-  );
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   const app = alepha.inject(App);
   await alepha.start();
   await app.people.createMany([

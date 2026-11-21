@@ -13,7 +13,7 @@ import { db } from "../providers/DatabaseTypeProvider.ts";
  *   per-campaign / per-anything counters off the same primitive.
  * - `value` is the current counter value. Incremented atomically by
  *   `SequenceProvider.advance()` through an `INSERT ... ON CONFLICT DO UPDATE`
- *   on `(name, scope)` — works identically on Postgres, SQLite, and D1.
+ *   on `(name, scope)`: works identically on Postgres, SQLite, and D1.
  */
 export const alephaSequences = $entity({
   name: "alepha_sequences",

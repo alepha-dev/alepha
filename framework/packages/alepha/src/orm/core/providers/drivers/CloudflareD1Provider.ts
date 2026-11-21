@@ -256,7 +256,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
   protected override async executeStatement(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    // Use `.all()` — it returns the row array directly, exactly like
+    // Use `.all()`: it returns the row array directly, exactly like
     // NodeSqliteProvider / BunSqliteProvider's `execute`. `.run()` returns
     // drizzle's D1 result envelope (`{ results, success, meta }`), which
     // has no `.rows` property: the previous `const { rows } = …run(query)`
@@ -401,7 +401,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
   });
 
   /**
-   * D1 **is** affected by the migration foreign-key problem — an earlier
+   * D1 **is** affected by the migration foreign-key problem: an earlier
    * revision of this comment claimed otherwise and was wrong.
    *
    * The mistake was testing `wrangler d1 execute --file`, which runs
@@ -420,7 +420,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
    * applies migrations with `execute --file` and keeps wrangler's
    * `d1_migrations` bookkeeping itself. This provider only runs when the
    * app boots against D1 directly (non-serverless), which is not the
-   * deploy path, so it needs no pragma handling of its own — but do not
+   * deploy path, so it needs no pragma handling of its own, but do not
    * assume D1 is immune.
    */
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
