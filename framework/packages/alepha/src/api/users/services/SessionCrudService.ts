@@ -53,6 +53,20 @@ export class SessionCrudService {
   }
 
   /**
+   * The ids of the realm's users, as a subquery. Sessions carry no realm
+   * column and the table is shared between realms, so every listing, count
+   * and delete here narrows on the owner with it, in the query itself: a
+   * filter applied to the rows afterwards leaves the page, its total and a
+   * bulk delete reaching the other realms.
+   */
+  protected realmUserIds(userRealmName?: string) {
+    const realm = this.realmProvider.getRealm(userRealmName);
+    return this.realmProvider
+      .userRepository(userRealmName)
+      .subquery({ realm: { eq: realm.name } }, "id");
+  }
+
+  /**
    * The country codes actually present on sessions, for the admin filter.
    *
    * Read from the rows rather than a country list, the same way the audit log
@@ -61,6 +75,7 @@ export class SessionCrudService {
    */
   public async getSessionCountries(userRealmName?: string): Promise<string[]> {
     const rows = await this.sessions(userRealmName).findMany({
+      where: { userId: { inArray: this.realmUserIds(userRealmName) } },
       distinct: ["country"],
     });
     return rows
@@ -81,9 +96,10 @@ export class SessionCrudService {
 
     const where = this.sessions(userRealmName).createQueryWhere();
 
-    if (q.userId) {
-      where.userId = { eq: q.userId };
-    }
+    const realmUsers = this.realmUserIds(userRealmName);
+    where.userId = q.userId
+      ? { eq: q.userId, inArray: realmUsers }
+      : { inArray: realmUsers };
 
     if (q.country) {
       where.country = { eq: q.country.toUpperCase() };
@@ -106,9 +122,8 @@ export class SessionCrudService {
     if (q.search?.trim()) {
       const needle = q.search.trim();
       // The owner lives in a JOINed table, and this repository cannot filter
-      // a paginated COUNT on a joined column (see the realm note below, which
-      // is the same limitation). So the users are resolved to ids first and
-      // the session query stays entirely on its own table.
+      // a paginated COUNT on a joined column. So the users are resolved to
+      // ids first and the session query stays entirely on its own table.
       //
       // An IP is matched on the session row directly, and the two are OR'd:
       // an admin looking a session up has one string in hand and should not
@@ -118,6 +133,7 @@ export class SessionCrudService {
         .findMany({
           columns: ["id"],
           where: {
+            realm: { eq: this.realmProvider.getRealm(userRealmName).name },
             or: [
               { email: { ilike: `%${needle}%` } },
               { username: { ilike: `%${needle}%` } },
@@ -147,19 +163,9 @@ export class SessionCrudService {
       total: result.page.totalElements,
     });
 
-    // The listing joins the owner; rows of other realms' users are dropped
-    // here rather than in SQL, because the paginated count cannot filter on
-    // a joined column yet.
-    const realm = this.realmProvider.getRealm(userRealmName);
     return {
       ...result,
-      content: result.content
-        .filter(
-          (session) =>
-            (session as { user?: { realm?: string } }).user?.realm ===
-            realm.name,
-        )
-        .map((session) => this.toView(session)),
+      content: result.content.map((session) => this.toView(session)),
     };
   }
 
@@ -215,8 +221,11 @@ export class SessionCrudService {
   ): Promise<string[]> {
     if (ids.length === 0) return [];
     this.log.trace("Deleting sessions", { count: ids.length, userRealmName });
+    // Like the single delete: a session of another realm's user is not
+    // this admin's to revoke, and its id deletes nothing.
     const deleted = await this.sessions(userRealmName).deleteMany({
       id: { inArray: ids },
+      userId: { inArray: this.realmUserIds(userRealmName) },
     });
     this.log.info("Sessions deleted", { count: deleted.length });
     return deleted.map(String);

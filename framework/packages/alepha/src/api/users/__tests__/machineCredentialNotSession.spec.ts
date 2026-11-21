@@ -119,6 +119,7 @@ const SESSION_ONLY_ROUTES: Array<[string, string, unknown?]> = [
     "/api/users/me/password",
     { currentPassword: "x", newPassword: "y" },
   ],
+  ["DELETE", "/api/users/me/password", { currentPassword: "x" }],
   ["POST", "/api/users/me/identities/password", { password: "x" }],
   ["DELETE", `/api/users/me/identities/${randomUUID()}`],
   ["POST", "/api/users/me/mfa/totp/enroll", {}],

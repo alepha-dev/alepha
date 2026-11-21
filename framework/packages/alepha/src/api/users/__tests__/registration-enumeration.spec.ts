@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmTestPostgres } from "alepha/orm";
@@ -30,7 +30,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
 
   const realmProvider = alepha.inject(RealmProvider);
   if (realmSettings) {
-    realmProvider.register("default", {
+    realmProvider.register("users", {
       // Verification and the owner-warning both go out as notifications.
       features: { notifications: true },
       settings: realmSettings,
@@ -136,12 +136,32 @@ describe("alepha/api/users - registration enumeration", () => {
         password: "SecurePassword123!",
       });
 
-      await expect.poll(() => emailProvider.records.length).toBe(1);
+      // Sent inline: the mail is out when the call answers, as the
+      // verification code of a fresh address is.
+      expect(emailProvider.records).toHaveLength(1);
       const sent = emailProvider.records[0];
       // The owner is warned...
-      expect(JSON.stringify(sent)).toMatch(/taken@example\.com/);
-      // ...but no six-digit verification code was minted for the attacker.
-      expect(JSON.stringify(sent)).not.toMatch(/\b\d{6}\b/);
+      expect(sent.to).toBe("taken@example.com");
+      expect(sent.subject).toBe(
+        "Someone tried to sign up with your email address",
+      );
+      // ...and no six-digit verification code was minted for the stranger.
+      expect(sent.body).not.toMatch(/\d{6}/);
+    });
+
+    it("sends a fresh address its code, which is what the warning must not be", async ({
+      expect,
+    }) => {
+      const { registrationService, emailProvider } = await setup(settings);
+
+      await registrationService.createRegistrationIntent({
+        email: "fresh@example.com",
+        password: "SecurePassword123!",
+      });
+
+      expect(emailProvider.records).toHaveLength(1);
+      expect(emailProvider.records[0].to).toBe("fresh@example.com");
+      expect(emailProvider.records[0].body).toMatch(/\d{6}/);
     });
 
     it("refuses to complete the decoy intent", async ({ expect }) => {
@@ -163,7 +183,32 @@ describe("alepha/api/users - registration enumeration", () => {
           intentId: intent.intentId,
           emailCode: "000000",
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow("Invalid or expired email verification code");
+    });
+
+    it("does not send a verification code to an address on file", async ({
+      expect,
+    }) => {
+      const { registrationService, userService, emailProvider } =
+        await setup(settings);
+      await userService.users().create({
+        username: "owner",
+        email: "taken@example.com",
+        roles: ["user"],
+      });
+      emailProvider.records = [];
+
+      await registrationService.createRegistrationIntent({
+        email: "taken@example.com",
+        password: "SecurePassword123!",
+      });
+
+      expect(
+        emailProvider.records.filter(
+          (mail) =>
+            mail.subject !== "Someone tried to sign up with your email address",
+        ),
+      ).toEqual([]);
     });
   });
 
@@ -209,7 +254,7 @@ describe("alepha/api/users - registration enumeration", () => {
         } catch (error) {
           return (error as Error).message;
         }
-        throw new Error("expected a conflict");
+        throw new AlephaError("expected a conflict");
       };
 
       const byUsername = await messageOf({

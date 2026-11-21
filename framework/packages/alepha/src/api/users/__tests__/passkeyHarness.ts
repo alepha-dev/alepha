@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaReactAuth, PasskeyClient } from "alepha/react/auth";
@@ -154,7 +154,7 @@ export class PasskeyHarness {
       },
     );
     if (!response.ok) {
-      throw new Error(
+      throw new AlephaError(
         `Sign-in failed: ${response.status} ${await response.text()}`,
       );
     }
@@ -253,7 +253,7 @@ export class PasskeyBrowser {
       "/api/users/me/passkeys/proof/options",
     );
     if (options.status !== 200) {
-      throw new Error(`proof options: ${options.status}`);
+      throw new AlephaError(`proof options: ${options.status}`);
     }
     return this.harness.device.get(options.body, knobs);
   }

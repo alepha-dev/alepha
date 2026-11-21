@@ -22,9 +22,10 @@ export interface AccountPasskeyProofDialogProps {
 
   /**
    * What is being proved: decides the copy, and for an add with a passkey,
-   * that two prompts follow one another.
+   * that two prompts follow one another. `change` is any other change to
+   * how the account signs in (a second factor, the password).
    */
-  purpose: "add" | "remove";
+  purpose: "add" | "remove" | "change";
 
   /**
    * A step-up assertion from one of the account's passkeys, for `passkey`.
@@ -41,8 +42,10 @@ export interface AccountPasskeyProofDialogProps {
 }
 
 /**
- * The proof adding or removing a passkey asks for: the current password, or
- * a confirmation with a passkey the account already holds. An account that
+ * The proof a change to how the account signs in asks for (adding or
+ * removing a passkey, turning two-factor on, removing the password): the
+ * current password, or a confirmation with a passkey the account already
+ * holds. An account that
  * owes nothing never opens it. A dismissed prompt closes nothing and writes
  * nothing.
  */

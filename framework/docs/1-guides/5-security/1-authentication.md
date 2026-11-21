@@ -496,6 +496,44 @@ setup before the instance is publicly reachable.
 > container gates the option on `!alepha.isServerless()` and grants its
 > administrator through `adminEmails` on the Worker.
 
+**What `adminEmails` grants depends on whether the realm verifies addresses**
+(`verifyEmailRequired`):
+
+- **The realm verifies addresses** (`verifyEmailRequired: true`, which needs
+  `features.notifications`). `adminEmails` promotes an account only once its
+  address is verified (`emailVerified`): by the registration code, by
+  `POST /users/email-verification/verify`, or by an identity provider that
+  sends `email_verified: true`. On a closed realm an `adminEmails` address gets
+  through only on that explicit claim.
+- **The realm does not verify addresses** (the default). It has no verified
+  address to ask for, so the address alone counts: the first account that
+  registers an `adminEmails` address is promoted, on an open or a closed
+  realm, whether it registers with a password or arrives from a provider that
+  says the address is unverified.
+
+⚠️ On a realm that does not verify addresses, whoever registers an
+`adminEmails` address first becomes the administrator: set `ADMIN_EMAIL` and
+register that account before the app is reachable by anyone else, or turn
+verification on, which closes it.
+
+**A provider sign-in is linked to the account holding its email**, when the
+provider says the address is verified. This holds in every realm, one that
+verifies addresses included, and the account keeps what it had: an existing
+account whose address was never verified is linked without removing its
+password, passkeys, second factor or sessions. The link itself changes neither
+`emailVerified` nor the account's roles: on a realm that verifies addresses,
+`adminEmails` promotes the account only once its address is verified by code.
+An address registered with a password can therefore be claimed before its
+owner arrives: when the owner later signs in with a provider, the two share
+the account and the first password still opens it.
+
+`adminUsernames` promotes whoever holds the name. ⚠️ The first account to
+register one of these names gets the role: register it first, or close
+registration. Nobody comes by one otherwise: a rename into it is refused like a
+blocklisted name, and a username derived from an email or a provider profile
+steps around it. A realm with `username: "none"` accepts no username change
+at all.
+
 ### Passkeys
 
 Beside a password and the identity providers below, a realm with `passkeys: "optional"` in its settings lets a user add a passkey and sign in with it alone: no username, no password, through a button on the login page or the browser's autofill. See [Passkeys](/docs/guides-security-passkeys).
@@ -705,7 +743,7 @@ Declared paths are shown; as `$action`s they serve under the `/api` prefix
 | `MyProfileController`    | `GET`/`PATCH /users/me`                                                                                                                                          |
 | `MyAvatarController`     | `POST`/`DELETE /users/me/avatar`                                                                                                                                 |
 | `MyIdentityController`   | `GET /users/me/identities`, `POST /users/me/identities/password`, `DELETE /users/me/identities/:id`                                                              |
-| `MyPasswordController`   | `POST /users/me/password`                                                                                                                                        |
+| `MyPasswordController`   | `POST /users/me/password`, `DELETE /users/me/password`                                                                                                           |
 | `MySessionController`    | `GET /users/me/sessions`, `DELETE /users/me/sessions/:id`, `POST /users/me/sessions/revoke-others`                                                               |
 | `MyConnectionController` | `GET /users/me/connections`, `DELETE /users/me/connections/:id`                                                                                                  |
 | `MyAccountController`    | `DELETE /users/me`                                                                                                                                               |
@@ -714,7 +752,7 @@ Declared paths are shown; as `$action`s they serve under the `/api` prefix
 The second-factor endpoints are covered in
 [Two-factor authentication](/docs/guides-security-two-factor-authentication).
 
-Two rules are worth knowing before you wire a UI to them:
+A few rules are worth knowing before you wire a UI to them:
 
 - **Setting a first password and changing one are different endpoints.**
   `setMyFirstPassword` trusts the session and refuses once a `credentials`
@@ -724,6 +762,26 @@ Two rules are worth knowing before you wire a UI to them:
 - **Unlinking the last identity is refused.** An account with no sign-in method
   is not locked, it is unreachable - and password reset cannot recover it,
   because that needs a `credentials` identity to reset.
+- **Removing the password asks for it.** `DELETE /users/me/password` takes
+  `{ currentPassword }`, refuses the last way to sign in, and signs the other
+  sessions out. `DELETE /users/me/identities/:id` unlinks a provider identity
+  without proof and refuses the `credentials` one. Setting a first password
+  on an account that holds a usable passkey takes `{ proof: { assertion } }`,
+  and also signs the other sessions out.
+- **A current password is a login attempt.** Changing or removing the
+  password, deleting the account and every `proof.currentPassword` spend the
+  account's
+  `loginRateLimit` budget: after `accountMaxAttempts` wrong ones the right
+  password is refused too for the window, at the sign-in page and here, where
+  the answer is a `429`.
+- **An admin password reset signs the account out everywhere.**
+- **The proof is what the account holds, and two cases follow from that.** An
+  account whose only proof is a passkey of this host that it has lost cannot
+  give it: an administrator revokes the passkey first, and then the account
+  changes how it signs in. An account that holds no usable proof (it signs in
+  through a provider only, or its only passkey was made for another host)
+  turns two-factor on and sets a first password with its session alone, and
+  setting the password signs out every other session.
 
 `@alepha/ui` provides the matching UI as `AccountDialog`, the account as a
 settings dialog over the page - see the

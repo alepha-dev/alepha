@@ -14,7 +14,7 @@ import { type Infer, z } from "alepha";
  *   it is worse than leaking this account: it is a credential for a
  *   *different* service.
  *
- * `providerUserId` stays — the account holder already knows which GitHub
+ * `providerUserId` stays, the account holder already knows which GitHub
  * user they are, and it is what lets the UI distinguish two identities from
  * the same provider.
  */

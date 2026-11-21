@@ -95,7 +95,7 @@ describe("alepha/api/users - /realms/config authentication methods", () => {
     const { alepha, config } = await boot();
 
     // A leak rather than a broken button, and the projection that prevents
-    // it (`publicRealmSettingsSchema`) omits exactly these two — which is
+    // it (`publicRealmSettingsSchema`) omits exactly these two, which is
     // why `bootstrapFirstUser` is a $realm option and not a setting.
     expect(config.settings).not.toHaveProperty("adminEmails");
     expect(config.settings).not.toHaveProperty("adminUsernames");

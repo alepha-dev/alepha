@@ -27,9 +27,8 @@ export const registerRequestSchema = z.object({
   // Optional user profile fields
   firstName: z.string().describe("User's first name").optional(),
   lastName: z.string().describe("User's last name").optional(),
-  picture: z.string().describe("User's profile picture URL").optional(),
 
-  // Captcha token — required when the realm has `captchaRequired: true`.
+  // Captcha token, required when the realm has `captchaRequired: true`.
   // Validated at intent creation (before any verification email is sent).
   captchaToken: z
     .string()

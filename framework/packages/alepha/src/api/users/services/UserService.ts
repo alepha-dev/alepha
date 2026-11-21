@@ -172,7 +172,7 @@ export class UserService {
     this.log.trace("Verifying email", { email, userRealmName });
 
     // Detect verification type based on token format: links are UUIDs,
-    // codes are digit strings of the realm's configured length.
+    // codes are digit strings (`code.codeLength` of `alepha/api/verifications`).
     const isLink =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         token,
@@ -514,7 +514,7 @@ export class UserService {
     const realm = this.realmProvider.getRealm(userRealmName);
     const users = this.users(userRealmName);
 
-    // Conflict checks — surface a friendly 409 instead of letting the
+    // Conflict checks, surface a friendly 409 instead of letting the
     // unique constraint blow up the SQL driver with a generic error.
     if (
       data.username !== undefined &&
@@ -542,7 +542,7 @@ export class UserService {
       if (existing && existing.id !== id) {
         throw new ConflictError("User with this email already exists");
       }
-      // Changing the email invalidates the verified flag — never trust
+      // Changing the email invalidates the verified flag, never trust
       // the client-passed value when email changes.
       data.emailVerified = false;
     }
@@ -582,7 +582,7 @@ export class UserService {
   /**
    * Set (or reset) a user's password. Upserts a "credentials" identity
    * with the new hash. Used by admin password-set flows; does NOT
-   * verify any old password or token — the caller is responsible for
+   * verify any old password or token, the caller is responsible for
    * authorization.
    *
    * `mustChangePassword` marks the new password as temporary: the user is
@@ -646,6 +646,35 @@ export class UserService {
         ? "Temporary password set, to be changed at next sign-in"
         : "Password set",
     });
+  }
+
+  /**
+   * Sign a user out: delete their sessions, all of them or all but `except`
+   * (the session the caller is standing on). Returns how many went.
+   *
+   * What every change of password ends with, so that a session opened with
+   * the old one, or by whoever made the change necessary, stops at its next
+   * refresh.
+   */
+  public async revokeSessions(
+    id: string,
+    userRealmName?: string,
+    options: { except?: string } = {},
+  ): Promise<number> {
+    const sessions = this.realmProvider.sessionRepository(userRealmName);
+    const rows = await sessions.findMany({
+      where: { userId: { eq: id } },
+      columns: ["id"],
+    });
+    // Compared here, not in SQL: `except` comes from the caller's token.
+    const ids = rows
+      .map((row) => row.id)
+      .filter((sessionId) => sessionId !== options.except);
+    if (ids.length === 0) {
+      return 0;
+    }
+    await sessions.deleteMany({ id: { inArray: ids } });
+    return ids.length;
   }
 
   /**

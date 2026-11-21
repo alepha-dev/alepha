@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, ConflictError } from "alepha/server";
 
-import { DEFAULT_USER_REALM_NAME, type UserEntity } from "../entities/users.ts";
+import type { UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { myProfileSchema } from "../schemas/myProfileSchema.ts";
 import { updateMyProfileBodySchema } from "../schemas/updateMyProfileBodySchema.ts";
@@ -10,7 +10,7 @@ import { UsernameSlugger } from "../services/UsernameSlugger.ts";
 import { UserProfileMapper } from "../services/UserProfileMapper.ts";
 
 /**
- * Self-service profile — the "who am I" page of an account area.
+ * Self-service profile, the "who am I" page of an account area.
  *
  * Counterpart of {@link AdminUserController}, scoped to the CALLER. There is
  * no id parameter anywhere in this class, and that is what makes the whole
@@ -76,17 +76,21 @@ export class MyProfileController {
         index and translating the driver error would work, but the error text
         differs per backend (sqlite/postgres phrase it differently), so the
         translation is the fragile part rather than the check. Reading first
-        is racy in principle — two people can claim the same name in the same
-        millisecond — and that is fine here: the index is still the authority
+        is racy in principle, two people can claim the same name in the same
+        millisecond, and that is fine here: the index is still the authority
         and the loser gets a 500 instead of a 409, on a collision that needs
         two strangers picking one name at the same instant.
       */
       if (body.username !== undefined) {
         // The same rules registration applies: the format and the blocklist
         // are realm settings, not this endpoint's.
-        const settings = await this.realmProvider
-          .getRealm(user.realm)
-          .getSettings();
+        const realm = this.realmProvider.getRealm(user.realm);
+        const settings = await realm.getSettings();
+        // A realm with no usernames has none to change: the column still
+        // exists, and `adminUsernames` still reads it.
+        if (settings.username === "none") {
+          throw new BadRequestError("Usernames are not used on this realm");
+        }
         if (
           settings.usernameRegExp &&
           !new RegExp(settings.usernameRegExp).test(body.username)
@@ -95,13 +99,22 @@ export class MyProfileController {
             "Username does not meet the required format",
           );
         }
-        if (await this.usernameSlugger.isBlocked(user.realm, body.username)) {
+        // A blocklisted name, or one in `adminUsernames` (it grants the
+        // admin role at the next refresh), is not there for the taking,
+        // free or not. Whoever already holds it keeps it: a profile form
+        // sends the username back unchanged.
+        const current = await repo.getOne({ where: { id: { eq: user.id } } });
+        if (
+          current.username?.toLowerCase() !== body.username.toLowerCase() &&
+          ((await this.usernameSlugger.isBlocked(user.realm, body.username)) ||
+            (await this.usernameSlugger.isAdminName(user.realm, body.username)))
+        ) {
           throw new BadRequestError("This username is not available");
         }
 
         const taken = await repo.findOne({
           where: {
-            realm: { eq: user.realm ?? DEFAULT_USER_REALM_NAME },
+            realm: { eq: realm.name },
             // Case-insensitive, like the unique index it mirrors.
             username: { eqInsensitive: body.username },
           },

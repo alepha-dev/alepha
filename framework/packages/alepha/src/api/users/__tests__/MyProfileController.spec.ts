@@ -18,6 +18,8 @@ const setup = async (username: string) => {
   await alepha.start();
 
   const realmProvider = alepha.inject(RealmProvider);
+  // A realm with usernames: one with `username: "none"` refuses the change.
+  realmProvider.register("users", { settings: { username: "optional" } });
   // Shared Postgres across runs: a leftover row with the same username would
   // be found by the uniqueness check and read as somebody else's claim.
   await realmProvider.userRepository().deleteMany({});
@@ -66,7 +68,7 @@ describe("alepha/api/users - MyProfileController", () => {
     /*
       The reason this controller has its own schema instead of returning
       `users.schema`: `realm`, `enabled` and `version` are the operator's
-      business. But the real risk is not today's three — it is that returning
+      business. But the real risk is not today's three, it is that returning
       the row wholesale publishes every column added to `users` in future, on
       the day it lands, with nobody deciding that it should be.
 
@@ -75,8 +77,8 @@ describe("alepha/api/users - MyProfileController", () => {
       deliberate act the allowlist exists to force. Verified by mutation:
       swapping the response schema for `users.schema` turns this red.
 
-      The response schema is what enforces it — `$action` validates and strips
-      on the way out — so the projection in `toMyProfile` is a second layer,
+      The response schema is what enforces it, `$action` validates and strips
+      on the way out, so the projection in `toMyProfile` is a second layer,
       not the guard. Assert against the endpoint, not the helper.
     */
     const ctx = await setup("prof-leak");
@@ -168,7 +170,7 @@ describe("alepha/api/users - MyProfileController", () => {
 
     Only the first two ever worked. `undefined` is dropped from an ORM patch,
     so an account area mapping "the box is empty" to `undefined` could set a
-    first name and never unset one — the request succeeded, the response
+    first name and never unset one, the request succeeded, the response
     echoed the old value, and the UI toasted success. Nothing failed; the edit
     simply did not happen. It stayed invisible for as long as the profile page
     had no way to empty a filled box, which is exactly how long it lasted.

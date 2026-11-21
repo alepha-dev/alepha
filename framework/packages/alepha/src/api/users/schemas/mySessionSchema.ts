@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 /**
- * A session as exposed to ITS OWNER — `refreshToken` is deliberately
+ * A session as exposed to ITS OWNER, `refreshToken` is deliberately
  * omitted (returning it would let any XSS exfiltrate a long-lived
  * credential); `current` flags the session backing the calling request.
  */

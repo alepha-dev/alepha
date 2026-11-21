@@ -8,7 +8,7 @@ export const registerQuerySchema = z.object({
   userRealmName: z
     .text({
       description:
-        "The user realm to register the user in (defaults to 'default')",
+        "The user realm to register the user in (defaults to the application's default realm)",
     })
     .optional(),
 });

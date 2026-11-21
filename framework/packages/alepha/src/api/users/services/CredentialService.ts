@@ -22,8 +22,13 @@ import type { PasswordResetIntentResponse } from "../schemas/passwordResetIntent
  */
 interface PasswordResetIntent {
   email: string;
-  userId: string;
-  identityId: string;
+  /**
+   * The account and its password identity. Both absent on the intent of an
+   * address with no account, or with no password to reset: it is stored all
+   * the same, so that completing it answers what a wrong code answers.
+   */
+  userId?: string;
+  identityId?: string;
   realmName?: string;
   expiresAt: string;
 }
@@ -101,7 +106,7 @@ export class CredentialService {
    *
    * The per-target cooldown and daily limit are scoped to
    * `(type, target, purpose)`, so one IP could request resets for thousands
-   * of DISTINCT real addresses without ever tripping them — an email-bombing
+   * of DISTINCT real addresses without ever tripping them, an email-bombing
    * primitive pointed at other people's inboxes. Registration already has
    * `registrationIpMaxAttempts`; this is the same idea for the reset flow.
    *
@@ -122,6 +127,22 @@ export class CredentialService {
     limit: this.completeIpMaxAttempts,
     window: [15, "minutes"],
   });
+
+  /**
+   * Which per-IP bucket a request is counted against. A request with no
+   * client address (no `TRUST_PROXY` on a runtime with no socket) shares one
+   * bucket, as `SessionService.ipBucket` does for the login: no address is
+   * not a reason to skip the budget. A call with no HTTP request at all (a
+   * script, a spec) is not counted.
+   */
+  protected ipBucket(request: { ip?: string } | undefined): string | undefined {
+    if (!request) return undefined;
+    if (request.ip) return request.ip;
+    this.log.warn(
+      "Password reset with no client address; counting it against the shared bucket. Set TRUST_PROXY if this app is behind a proxy.",
+    );
+    return "unknown";
+  }
 
   public users(userRealmName?: string) {
     return this.realmProvider.userRepository(userRealmName);
@@ -176,7 +197,9 @@ export class CredentialService {
    * @param email - User's email address
    * @param userRealmName - Optional realm name
    * @param captchaToken - Captcha response, required when the realm sets `captchaRequired`
-   * @returns Intent response with intentId and expiration (always returns for security)
+   * @returns Intent response with intentId and expiration, the same whether
+   * or not the address has an account. Throws on a refused captcha and on a
+   * counter store outage (503).
    */
   public async createPasswordResetIntent(
     email: string,
@@ -195,8 +218,9 @@ export class CredentialService {
     // Per-IP cap, before any work. See `resetIp` for why the per-target
     // limits are not enough on their own.
     const request = this.alepha.store.get("alepha.http.request");
-    if (request?.ip) {
-      const attempt = await this.resetIp.consume(request.ip);
+    const bucket = this.ipBucket(request);
+    if (bucket) {
+      const attempt = await this.resetIp.consume(bucket);
       // An outage answers 503: a silent "success" would lie to a real user,
       // and a 503 says nothing about the address.
       if (attempt.reason === "store" && !attempt.allowed)
@@ -205,7 +229,7 @@ export class CredentialService {
           { message: "Password reset is temporarily unavailable" },
         );
       if (!attempt.allowed) {
-        this.log.warn("Password reset rate limit exceeded", { ip: request.ip });
+        this.log.warn("Password reset rate limit exceeded", { ip: bucket });
         // Same shape as the success path: never reveal whether the address
         // exists, and do not tell a prober they hit a limit either.
         return { intentId, expiresAt };
@@ -218,7 +242,7 @@ export class CredentialService {
 
     // Validate captcha before the user lookup and the email send. The per-IP
     // cap above bounds a single origin, but says nothing about a botnet
-    // spreading one request per address — and every accepted request here
+    // spreading one request per address, and every accepted request here
     // sends mail in our name. Rejecting loudly leaks nothing: the answer
     // depends on the request shape, never on whether the account exists.
     if (realmSettings.captchaRequired === true) {
@@ -250,32 +274,42 @@ export class CredentialService {
       },
     });
 
-    if (!user) {
-      // Silent fail - don't reveal that email doesn't exist
-      this.log.debug("Password reset requested for non-existent email", {
-        email,
-      });
-      return { intentId, expiresAt };
-    }
+    // The credentials identity of this user, if any.
+    const identity = user
+      ? await this.identities(userRealmName).findOne({
+          where: {
+            userId: { eq: user.id },
+            provider: { eq: "credentials" },
+          },
+        })
+      : undefined;
 
-    // Find the credentials identity for this user
-    const identity = await this.identities(userRealmName).findOne({
-      where: {
-        userId: { eq: user.id },
-        provider: { eq: "credentials" },
-      },
+    // An intent is stored in every case from here on: for an address with no
+    // account, an account with no password, and a verification that could
+    // not be created (cooldown, daily cap). Completing an intent that was
+    // never stored answers 410, and that status used to tell an existing
+    // account from an unknown address.
+    await this.intentCache.set(intentId, {
+      email,
+      userId: identity ? user?.id : undefined,
+      identityId: identity?.id,
+      realmName: userRealmName,
+      expiresAt,
     });
 
-    if (!identity) {
-      // User doesn't have credentials identity (maybe OAuth only)
-      this.log.debug("Password reset requested for user without credentials", {
-        userId: user.id,
-      });
+    if (!user || !identity) {
+      // No mail and no code: completing this intent fails on the code check.
+      this.log.debug(
+        "Password reset requested for an address with no password",
+        {
+          email,
+        },
+      );
       return { intentId, expiresAt };
     }
 
-    // Create verification using verification controller
-    // This handles: token generation, expiration, rate limiting, cooldown
+    // Create the verification through `VerificationService`, which handles
+    // token generation, expiration, rate limiting and cooldown.
     try {
       const verification = await this.verificationService.createVerification({
         type: "code",
@@ -307,17 +341,6 @@ export class CredentialService {
         inline: true,
       });
 
-      // Store intent in cache
-      const intent: PasswordResetIntent = {
-        email,
-        userId: user.id,
-        identityId: identity.id,
-        realmName: userRealmName,
-        expiresAt,
-      };
-
-      await this.intentCache.set(intentId, intent);
-
       this.log.info("Password reset intent created", {
         intentId,
         userId: user.id,
@@ -346,8 +369,9 @@ export class CredentialService {
 
     // Per-IP cap, before any work. See `completeIp`.
     const request = this.alepha.store.get("alepha.http.request");
-    if (request?.ip) {
-      const attempt = await this.completeIp.consume(request.ip);
+    const bucket = this.ipBucket(request);
+    if (bucket) {
+      const attempt = await this.completeIp.consume(bucket);
       if (attempt.reason === "store" && !attempt.allowed)
         throw new HttpError(
           { status: 503 },
@@ -355,7 +379,7 @@ export class CredentialService {
         );
       if (!attempt.allowed) {
         this.log.warn("Password reset completion rate limit exceeded", {
-          ip: request.ip,
+          ip: bucket,
         });
         throw new HttpError(
           { status: 429 },
@@ -378,7 +402,9 @@ export class CredentialService {
       );
     }
 
-    // Validate password against realm policy before consuming the verification code
+    // Validate the password against the realm policy before consuming the
+    // verification code, so a refused password does not cost the code. Every
+    // address has an intent, so this answers the same for all of them.
     const realm = this.realmProvider.getRealm(intent.realmName);
     const realmSettings = await realm.getSettings();
     this.validatePasswordPolicy(body.newPassword, realmSettings.passwordPolicy);
@@ -408,6 +434,11 @@ export class CredentialService {
         email: intent.email,
       });
       throw new BadRequestError("Verification code has already been used");
+    }
+
+    // An intent that names no password identity can never complete.
+    if (!intent.userId || !intent.identityId) {
+      throw new BadRequestError("Invalid or expired verification code");
     }
 
     // Hash the new password

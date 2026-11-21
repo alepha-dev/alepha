@@ -2,7 +2,9 @@ import * as React from "react";
 
 void React;
 
+import { z } from "alepha";
 import { type MfaChallenge, useAuth } from "alepha/react/auth";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { HttpError } from "alepha/server";
 import { AlertCircle, Fingerprint } from "lucide-react";
@@ -10,6 +12,7 @@ import { useState } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { Button } from "../core/Button.tsx";
+import { Control } from "../form/Control.tsx";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
 
 export interface AuthMfaStepProps {
@@ -33,6 +36,11 @@ export interface AuthMfaStepProps {
  * The same component serves both factors. Only the wording and the resend
  * affordance differ, because to the user the act is identical: read a code,
  * type it in.
+ *
+ * An authenticator-app step also takes a recovery code, in a text field of
+ * its own: a recovery code is longer than six digits and holds letters, so
+ * the six-slot field cannot carry one. The server takes it wherever it takes
+ * the code, in either format it has issued.
  */
 export const AuthMfaStep = (props: AuthMfaStepProps) => {
   const auth = useAuth();
@@ -45,6 +53,7 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
   const [sentTo, setSentTo] = useState(props.challenge.sentTo);
 
   const isEmail = props.challenge.methods.includes("emailCode");
+  const [recovery, setRecovery] = useState(false);
 
   /**
    * Clear the step with a passkey instead of the code. Offered beside the
@@ -105,6 +114,24 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
     }
   };
 
+  const recoveryForm = useForm({
+    schema: z.object({
+      code: z
+        .string()
+        .min(1)
+        .meta({
+          requiredMessage: tr("auth.mfa.recoveryRequired", {
+            default: "Enter one of your recovery codes",
+          }),
+        }),
+    }),
+    // `submit` reports its own failure in the alert above the field.
+    onError: () => {},
+    handler: async (data) => {
+      await submit(data.code.trim());
+    },
+  });
+
   const resend = async () => {
     setResending(true);
     setError(undefined);
@@ -141,9 +168,14 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
               : tr("auth.mfa.emailHintGeneric", {
                   default: "Enter the code we sent to your email address.",
                 })
-            : tr("auth.mfa.totpHint", {
-                default: "Enter the code from your authenticator app.",
-              })}
+            : recovery
+              ? tr("auth.mfa.recoveryHint", {
+                  default:
+                    "Enter one of the recovery codes you saved when you turned two-step verification on. Each works once.",
+                })
+              : tr("auth.mfa.totpHint", {
+                  default: "Enter the code from your authenticator app.",
+                })}
         </p>
       </div>
 
@@ -154,39 +186,73 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
         </Alert>
       )}
 
-      <div className="flex justify-center">
-        <InputOTP
-          maxLength={6}
-          aria-label={tr("auth.mfa.codeLabel", {
-            default: "Verification code",
-          })}
-          value={code}
+      {recovery ? (
+        <form {...recoveryForm.props} className="flex flex-col gap-4">
+          <Control
+            label={tr("auth.mfa.recoveryLabel", { default: "Recovery code" })}
+            input={recoveryForm.input.code}
+            autoComplete="off"
+          />
+          <Button type="submit" loading={loading}>
+            {tr("auth.mfa.submit", { default: "Verify" })}
+          </Button>
+        </form>
+      ) : (
+        <>
+          <div className="flex justify-center">
+            <InputOTP
+              maxLength={6}
+              aria-label={tr("auth.mfa.codeLabel", {
+                default: "Verification code",
+              })}
+              value={code}
+              disabled={loading}
+              onChange={(value: string) => {
+                setCode(value);
+                // Submitting on the sixth digit spares the user a button press
+                // they would otherwise always have to make.
+                if (value.length === 6) {
+                  void submit(value);
+                }
+              }}
+            >
+              <InputOTPGroup>
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <InputOTPSlot key={index} index={index} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+
+          <Button
+            type="button"
+            loading={loading}
+            disabled={code.length !== 6}
+            onClick={() => submit(code)}
+          >
+            {tr("auth.mfa.submit", { default: "Verify" })}
+          </Button>
+        </>
+      )}
+
+      {!isEmail && (
+        <Button
+          type="button"
+          variant="minimal"
           disabled={loading}
-          onChange={(value: string) => {
-            setCode(value);
-            // Submitting on the sixth digit spares the user a button press
-            // they would otherwise always have to make.
-            if (value.length === 6) {
-              void submit(value);
-            }
+          onClick={() => {
+            setError(undefined);
+            setCode("");
+            setRecovery(!recovery);
           }}
         >
-          <InputOTPGroup>
-            {[0, 1, 2, 3, 4, 5].map((index) => (
-              <InputOTPSlot key={index} index={index} />
-            ))}
-          </InputOTPGroup>
-        </InputOTP>
-      </div>
-
-      <Button
-        type="button"
-        loading={loading}
-        disabled={code.length !== 6}
-        onClick={() => submit(code)}
-      >
-        {tr("auth.mfa.submit", { default: "Verify" })}
-      </Button>
+          {recovery
+            ? tr("auth.mfa.useCode", {
+                default: "Use a code from your authenticator app",
+              })
+            : tr("auth.mfa.useRecovery", { default: "Use a recovery code" })}
+        </Button>
+      )}
 
       {props.challenge.passkey && (
         <Button

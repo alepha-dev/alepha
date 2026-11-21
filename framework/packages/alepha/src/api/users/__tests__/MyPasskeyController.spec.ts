@@ -1,3 +1,4 @@
+import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
 
 import { publicRealmSettingsSchema } from "../schemas/realmConfigSchema.ts";
@@ -191,7 +192,7 @@ describe.each(drivers)(
           backedUp: false,
           rpId: "other.example.test",
           name: "Old host",
-          createdAt: new Date().toISOString(),
+          createdAt: h.alepha.inject(DateTimeProvider).nowISOString(),
         },
       });
 
@@ -199,6 +200,42 @@ describe.each(drivers)(
       expect(list.proof).toBe("none");
       expect(list.items[0]).toMatchObject({ name: "Old host", usable: false });
       expect((await browser.addPasskey()).status).toBe(200);
+    });
+
+    it("answers 429 to a passkey removal once the password budget is spent", async ({
+      expect,
+    }) => {
+      const h = await boot({
+        settings: {
+          loginRateLimit: { accountMaxAttempts: 3 },
+        } as never,
+      });
+      const browser = await h.signIn(await h.user());
+      await browser.addPasskey({ currentPassword: "Secret-123" });
+      const [passkey] = (await browser.list()).items;
+      const remove = (currentPassword: string) =>
+        browser.call("DELETE", `/api/users/me/passkeys/${passkey.id}`, {
+          proof: { currentPassword },
+        });
+
+      for (let i = 0; i < 3; i++) {
+        const wrong = await remove(`guess-${i}`);
+        expect(wrong.status).toBe(400);
+        expect(wrong.body.name).toBe("PASSKEY_PASSWORD_PROOF");
+      }
+
+      // The right password now meets the spent budget, said as such.
+      expect((await remove("Secret-123")).status).toBe(429);
+      expect(
+        (
+          await browser.addPasskey(
+            { currentPassword: "Secret-123" },
+            "Phone",
+            h.newDevice(),
+          )
+        ).status,
+      ).toBe(429);
+      expect((await browser.list()).items).toHaveLength(1);
     });
 
     it("never removes the last way to sign in, and counts a usable passkey as one", async ({
@@ -220,11 +257,16 @@ describe.each(drivers)(
           .status,
       ).toBe(404);
 
-      // The password may go: the passkey is a way in.
-      const unlinked = await browser.call(
+      // The password may go, since the passkey is a way in, but only on
+      // proof of the password itself, which the unlink route does not take.
+      const unproven = await browser.call(
         "DELETE",
         `/api/users/me/identities/${identities.body[0].id}`,
       );
+      expect(unproven.status).toBe(400);
+      const unlinked = await browser.call("DELETE", "/api/users/me/password", {
+        currentPassword: "Secret-123",
+      });
       expect(unlinked.status).toBe(200);
 
       // Now the passkey is the last one.

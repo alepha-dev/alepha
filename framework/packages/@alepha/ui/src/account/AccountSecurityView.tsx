@@ -4,9 +4,12 @@ import type {
   MyIdentityController,
   MyMfaController,
   MyMfaStatus,
+  MyPasswordController,
+  PasskeyProof,
+  PasskeyProofKind,
   RealmConfig,
 } from "alepha/api/users";
-import { useAction, useClient, useQuery } from "alepha/react";
+import { type RunResult, useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -16,9 +19,10 @@ import {
   ShieldOff,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
+import { usePasskey } from "../auth/usePasskey.ts";
 import { Button } from "../core/Button.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
@@ -28,6 +32,7 @@ import { SettingsSection } from "../settings/SettingsSection.tsx";
 import { AccountDeleteDialog } from "./AccountDeleteDialog.tsx";
 import { AccountMfaDialog } from "./AccountMfaDialog.tsx";
 import { AccountPage } from "./AccountPage.tsx";
+import { AccountPasskeyProofDialog } from "./AccountPasskeyProofDialog.tsx";
 import { AccountPasskeys } from "./AccountPasskeys.tsx";
 import { AccountPasswordDialog } from "./AccountPasswordDialog.tsx";
 import { AccountRecoveryCodesDialog } from "./AccountRecoveryCodesDialog.tsx";
@@ -56,6 +61,8 @@ export interface AccountSecurityViewProps extends AccountSecurityProps {
 export const AccountSecurityView = (props: AccountSecurityViewProps) => {
   const api = useClient<MyIdentityController>();
   const mfaApi = useClient<MyMfaController>();
+  const passwordApi = useClient<MyPasswordController>();
+  const passkey = usePasskey();
   const auth = useAuth();
   const dialog = useDialog();
   const toaster = useToast();
@@ -66,6 +73,7 @@ export const AccountSecurityView = (props: AccountSecurityViewProps) => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [mfaOpen, setMfaOpen] = useState(false);
   const [passkeys, setPasskeys] = useState<MyPasskeyList>();
+  const [removingPassword, setRemovingPassword] = useState(false);
 
   const { data: mfa, refetch: reloadMfa } = useQuery<MyMfaStatus>(
     { handler: () => mfaApi.getMyMfa() as Promise<MyMfaStatus> },
@@ -73,6 +81,14 @@ export const AccountSecurityView = (props: AccountSecurityViewProps) => {
   );
 
   const hasPassword = identities.some((it) => it.provider === "credentials");
+
+  /**
+   * The proof a change to how the account signs in asks for. The server
+   * says it with the passkey list; until that answers, a password is owed
+   * by an account that has one.
+   */
+  const proofKind: PasskeyProofKind =
+    passkeys?.proof ?? (hasPassword ? "password" : "none");
 
   /**
    * A TOTP enrollment is stored as an identity row, but it is not a way to
@@ -198,12 +214,34 @@ export const AccountSecurityView = (props: AccountSecurityViewProps) => {
         if (!ok) {
           return;
         }
+        // The password goes through its own route, which asks for it.
+        if (identity.provider === "credentials") {
+          setRemovingPassword(true);
+          return;
+        }
         await api.unlinkMyIdentity({ params: { id: identity.id } });
         await reload();
       },
     },
     [api, dialog, tr],
   );
+
+  // A wrong password is shown on the proof dialog's own field, not toasted.
+  const removePassword = useAction<[currentPassword: string]>(
+    {
+      handler: async (_ctx, currentPassword) => {
+        await passwordApi.removeMyPassword({ body: { currentPassword } });
+        await reload();
+      },
+      onError: useCallback(() => {}, []),
+    },
+    [passwordApi],
+  );
+
+  const removePasswordWith = (
+    proof: PasskeyProof,
+  ): Promise<RunResult<unknown>> =>
+    removePassword.run(proof.currentPassword ?? "");
 
   return (
     <AccountPage variant="form">
@@ -373,8 +411,18 @@ export const AccountSecurityView = (props: AccountSecurityViewProps) => {
       <AccountPasswordDialog
         open={passwordOpen}
         hasPassword={hasPassword}
+        proof={proofKind}
+        prove={passkey.prove}
         onOpenChange={setPasswordOpen}
         onDone={reload}
+      />
+
+      <AccountPasskeyProofDialog
+        kind={removingPassword ? "password" : undefined}
+        purpose="change"
+        prove={passkey.prove}
+        onProof={removePasswordWith}
+        onClose={() => setRemovingPassword(false)}
       />
 
       <AccountRecoveryCodesDialog
@@ -384,6 +432,8 @@ export const AccountSecurityView = (props: AccountSecurityViewProps) => {
 
       <AccountMfaDialog
         open={mfaOpen}
+        proof={proofKind}
+        prove={passkey.prove}
         onOpenChange={setMfaOpen}
         onDone={async () => {
           await reloadMfa();

@@ -4,8 +4,8 @@ import { $audit } from "alepha/api/audits";
  * Authentication & session-security audit events.
  *
  * Holds two audit types:
- * - `auth` — login / logout / token refresh / MFA.
- * - `security` — rate limiting, session invalidation, and related guards.
+ * - `auth`, login / logout / token refresh / MFA.
+ * - `security`, rate limiting, session invalidation, and related guards.
  *
  * Failed events are logged with `success: false`; severity (`warning`) is
  * derived centrally in `AuditService.create`. Register as a module variant

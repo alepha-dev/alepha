@@ -100,7 +100,7 @@ describe("alepha/api/users - MyIdentityController", () => {
   }) => {
     /*
       `providerData` routinely holds the OAuth provider's access and refresh
-      tokens — leaking it is worse than leaking this account, because it is a
+      tokens, leaking it is worse than leaking this account, because it is a
       working credential for a *different* service. `password` is the hash.
       Neither has any use in a UI.
     */
@@ -136,7 +136,7 @@ describe("alepha/api/users - MyIdentityController", () => {
     expect,
   }) => {
     /*
-      This endpoint asks for no current password — defensible only while
+      This endpoint asks for no current password, defensible only while
       there is nothing to prove knowledge of. Letting it through here would
       turn any unlocked, signed-in browser into a full account takeover with
       no credential needed. Changing goes through MyPasswordController.
@@ -181,8 +181,8 @@ describe("alepha/api/users - MyIdentityController", () => {
     expect,
   }) => {
     /*
-      Removing it leaves the account unreachable forever — not locked, not
-      disabled, just with no way in — from one click on a page with no undo.
+      Removing it leaves the account unreachable forever, not locked, not
+      disabled, just with no way in, from one click on a page with no undo.
       Password reset cannot recover it either: that needs a credentials
       identity to reset.
     */

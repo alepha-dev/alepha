@@ -29,7 +29,7 @@ const setup = async () => {
     username: `conn-${crypto.randomUUID().slice(0, 8)}`,
   });
 
-  // Never `Date.now()` — the clock is injected so `travel()` / `pause()` work.
+  // Never `Date.now()`, the clock is injected so `travel()` / `pause()` work.
   const expiresAt = alepha
     .inject(DateTimeProvider)
     .now()
@@ -58,7 +58,7 @@ const setup = async () => {
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
 const caller = (ctx: Ctx, sessionId: string) => ({
-  user: { id: ctx.user.id, realm: "default", sessionId },
+  user: { id: ctx.user.id, realm: "users", sessionId },
 });
 
 const list = (ctx: Ctx, sessionId: string) =>
@@ -91,7 +91,7 @@ describe("alepha/api/users - MyConnectionController", () => {
     // Registered through the module's own service rather than by writing the
     // row: this is the shape a real client registration actually produces.
     await ctx.alepha.inject(OAuthClientService).register({
-      realm: "default",
+      realm: "users",
       clientId: "claude-mcp",
       clientName: "Claude",
       redirectUris: ["https://example.com/callback"],
@@ -118,7 +118,7 @@ describe("alepha/api/users - MyConnectionController", () => {
       clientId,
       clientName: "Example App",
       redirectUris: ["https://app.example/callback"],
-      realm: "default",
+      realm: "users",
       source: "cimd",
     });
 
@@ -209,7 +209,7 @@ describe("alepha/api/users - MyConnectionController", () => {
   }) => {
     /*
       Without the `clientId: isNotNull` condition, "revoke a connected app"
-      would happily delete the browser session the caller is sitting in —
+      would happily delete the browser session the caller is sitting in,
       that belongs to the sessions page and its own confirmation.
     */
     const ctx = await setup();

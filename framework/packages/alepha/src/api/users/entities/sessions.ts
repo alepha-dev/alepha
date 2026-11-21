@@ -14,7 +14,7 @@ export const sessions = $entity({
     userId: db.ref(z.uuid(), () => users.cols.id),
     /**
      * OAuth client this session was minted for, when it was created via the
-     * OAuth 2.1 authorization flow — the `client_id` of an `oauth_clients`
+     * OAuth 2.1 authorization flow, the `client_id` of an `oauth_clients`
      * row. Null for first-party logins. Deliberately NOT a DB-level foreign
      * key: `sessions` is a core entity and must not depend on the optional
      * OAuth module's table; the join to `oauth_clients` is done at query time.
