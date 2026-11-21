@@ -2,13 +2,14 @@ import { Alepha, z } from "alepha";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { $entity, $repository, db } from "../core/index.ts";
+import { $entity, $repository, db, DbError } from "../core/index.ts";
 
 /**
  * A pattern is text for SQL, never encoded as a column value: `%abc%` is no
  * uuid or enum member. Value operators keep comparing the value as given.
- * On Postgres a uuid, a real enum, an array and a jsonb column are not text:
- * every pattern operator reads them as text there, as SQLite stores them.
+ * On Postgres a uuid, a real enum, an array and a json column are not text:
+ * every pattern operator reads those four as text there, as SQLite stores
+ * them. No other type is cast.
  */
 
 const tickets = $entity({
@@ -19,6 +20,10 @@ const tickets = $entity({
     title: z.text(),
     tags: db.default(z.array(z.text()), []),
     meta: z.object({ kind: z.text() }).optional(),
+    openedAt: z.datetime().optional(),
+    dueOn: z.date().optional(),
+    urgent: z.boolean().optional(),
+    rank: z.integer().optional(),
   }),
 });
 
@@ -45,6 +50,10 @@ for (const [dialect, create] of dialects) {
         title: "first",
         tags: ["bug", "ui"],
         meta: { kind: "held" },
+        openedAt: "2026-01-01T10:00:00.000Z",
+        dueOn: "2026-01-02",
+        urgent: false,
+        rank: 7,
       });
       return { app, row };
     };
@@ -134,6 +143,29 @@ for (const [dialect, create] of dialects) {
       expect(await ids({ tags: { endsWith: '"ui"]' } })).toEqual([row.id]);
       expect(await ids({ meta: { contains: "held" } })).toEqual([row.id]);
       expect(await ids({ meta: { contains: "gone" } })).toEqual([]);
+    });
+
+    it("refuses a pattern on a timestamp, a date, a boolean and a number on postgres", async ({
+      expect,
+    }) => {
+      // Their text differs between the dialects (a timestamp's also with the
+      // session's time zone), so Postgres keeps its own refusal rather than
+      // answer something SQLite would not.
+      if (dialect !== "postgres") return;
+      const { app } = await boot();
+
+      for (const where of [
+        { openedAt: { like: "2026-01-01%" } },
+        { openedAt: { contains: "2026" } },
+        { dueOn: { startsWith: "2026" } },
+        { urgent: { ilike: "f%" } },
+        { rank: { endsWith: "7" } },
+      ]) {
+        await expect(
+          app.tickets.findMany({ where: where as never }),
+          JSON.stringify(where),
+        ).rejects.toThrow(DbError);
+      }
     });
   });
 }

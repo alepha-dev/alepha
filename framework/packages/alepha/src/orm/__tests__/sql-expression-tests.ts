@@ -105,6 +105,68 @@ export const testDateBucketsAreUtc = async (alepha: Alepha) => {
   ]);
 };
 
+const sqlxDays = $entity({
+  name: "sqlx_days",
+  schema: z.object({
+    id: db.primaryKey(z.text()),
+    onDay: z.date(),
+    at: z.datetime(),
+  }),
+});
+
+class SqlxDaysFixture {
+  readonly days = $repository(sqlxDays);
+  readonly database = $inject(DatabaseProvider);
+  readonly sqlx = $inject(SqlExpressionProvider);
+}
+
+/**
+ * Postgres only: a `date` column has no zone and keeps its day whatever the
+ * session's, while a `timestamptz` beside it is read in UTC. Both as a column
+ * and as a raw fragment, whose type the statement asks Postgres for.
+ */
+export const testDateColumnKeepsItsDay = async (alepha: Alepha) => {
+  const app = alepha.inject(SqlxDaysFixture);
+  await alepha.start();
+
+  await app.days.create({
+    id: "d1",
+    onDay: "2026-01-02",
+    at: "2026-01-04T20:00:00.000Z",
+  });
+
+  const { onDay, at } = app.days.table;
+  const [row] = await app.database.transactional(async () => {
+    await app.database.execute(sql`SET LOCAL TIME ZONE 'Asia/Tokyo'`);
+    return app.database.run(
+      sql`SELECT ${app.sqlx.dateDay(onDay)} AS "dateColumn",
+                 ${app.sqlx.dateDay(sql`(${onDay})`)} AS "dateFragment",
+                 ${app.sqlx.dateWeek(onDay)} AS "dateWeek",
+                 ${app.sqlx.dateDay(at)} AS "stampColumn",
+                 ${app.sqlx.dateDay(sql`(${at})`)} AS "stampFragment",
+                 ${app.sqlx.dateHour(sql`(${at})`)} AS "stampHour"
+          FROM ${app.days.table}`,
+      z.object({
+        dateColumn: z.text(),
+        dateFragment: z.text(),
+        dateWeek: z.text(),
+        stampColumn: z.text(),
+        stampFragment: z.text(),
+        stampHour: z.text(),
+      }),
+    );
+  });
+
+  expect(row).toEqual({
+    dateColumn: "2026-01-02",
+    dateFragment: "2026-01-02",
+    dateWeek: "2026-W01",
+    stampColumn: "2026-01-04",
+    stampFragment: "2026-01-04",
+    stampHour: "2026-01-04T20",
+  });
+};
+
 /**
  * The exact shape a cycle-time metric needs: elapsed hours between two
  * timestamp columns, averaged. 36 hours apart must read as 36 on both

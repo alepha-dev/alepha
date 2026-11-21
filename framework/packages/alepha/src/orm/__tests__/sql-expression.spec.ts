@@ -5,6 +5,7 @@ import { describe, it } from "vitest";
 import {
   testAgo,
   testDateBucketsAreUtc,
+  testDateColumnKeepsItsDay,
   testDateDay,
   testDateDiff,
   testDateWeek,
@@ -32,6 +33,14 @@ describe("SqlExpressionProvider", () => {
     });
     it("should bucket in UTC under a session in another time zone (postgres)", async () => {
       await testDateBucketsAreUtc(Alepha.create().with(AlephaOrmTestPostgres));
+    });
+  });
+
+  describe("a date column beside a timestamp", () => {
+    it("should keep a date's day and read a timestamp in UTC under a session in another time zone (postgres)", async () => {
+      await testDateColumnKeepsItsDay(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 

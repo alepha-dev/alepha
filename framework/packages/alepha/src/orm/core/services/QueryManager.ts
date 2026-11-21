@@ -415,17 +415,26 @@ export class QueryManager {
     // it against the column would refuse every such search. Passed as is.
     const patternValue = (value: any): any => value;
 
-    // A pattern is matched against text. On Postgres a column that is not
-    // text is read as text, which is what it holds on SQLite: a structured
-    // column (jsonb, json, an array) by its JSON text, so one
+    // A pattern is matched against text. On Postgres four kinds of column
+    // are not text and hold the same text on SQLite: a structured column
+    // (jsonb, json, an array) holds its JSON text there, so one
     // `like: '%"bug"%'` means the same on both dialects, and a uuid or a
-    // real enum by its value, where Postgres refused each outright
-    // (`operator does not exist: text[] ~~ unknown`). `jsonb::text` puts a
-    // space after each `:` and `,`, so a pattern can name a key or a value,
-    // not a `"key":"value"` pair.
+    // real enum holds its value. Those are read as text, where Postgres
+    // refused each outright (`operator does not exist: text[] ~~ unknown`).
+    // `jsonb::text` puts a space after each `:` and `,`, so a pattern can
+    // name a key or a value, not a `"key":"value"` pair.
+    //
+    // Nothing else is cast: the text of a timestamp, a date, a boolean or a
+    // number is not the same on the two dialects (and a timestamp's depends
+    // on the session's time zone), so a pattern on one keeps failing on
+    // Postgres rather than answering differently per dialect.
     const patternTarget = (): SQL | PgColumn => {
       if (dialect !== "postgresql") return column;
-      const meta = column as { getSQLType?: () => string; dimensions?: number };
+      const meta = column as {
+        getSQLType?: () => string;
+        dimensions?: number;
+        columnType?: string;
+      };
       // drizzle marks an array by its `dimensions`; the SQL type is the
       // element's (`text` for a `text[]`).
       if ((meta.dimensions ?? 0) > 0) {
@@ -433,10 +442,16 @@ export class QueryManager {
       }
       const type =
         typeof meta.getSQLType === "function" ? meta.getSQLType() : "";
-      if (type === "" || /^(text|varchar|char|citext)\b/i.test(type)) {
-        return column;
+      if (
+        type === "jsonb" ||
+        type === "json" ||
+        type === "uuid" ||
+        meta.columnType === "PgEnumColumn" ||
+        meta.columnType === "PgEnumObjectColumn"
+      ) {
+        return sql`${column}::text`;
       }
-      return sql`${column}::text`;
+      return column;
     };
 
     // Helper function to encode array values

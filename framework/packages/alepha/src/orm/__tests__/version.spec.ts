@@ -125,6 +125,28 @@ const suite = (create: () => Alepha) => {
     // Without `force` the row is hidden: it is missing for this caller.
     await expect(app.docs.save(loaded)).rejects.toThrow(DbEntityNotFoundError);
   });
+
+  it("save({ tx }) on a row written in that transaction reports a stale version as a mismatch", async ({
+    expect,
+  }) => {
+    const app = await setup();
+
+    // The row exists only inside the open transaction: a lookup made outside
+    // it would not see the row and would call it missing.
+    const error = await app.docs
+      .transaction(async (tx) => {
+        const created = await app.docs.create({ title: "a" }, { tx });
+        await app.docs.updateById(created.id, { title: "concurrent" }, { tx });
+        await app.docs.save({ ...created, title: "stale" }, { tx });
+      })
+      .then(
+        () => undefined,
+        (reason: unknown) => reason,
+      );
+
+    expect(error).toBeInstanceOf(DbVersionMismatchError);
+    expect(await app.docs.count()).toBe(0);
+  });
 };
 
 describe("db.version()", () => {
