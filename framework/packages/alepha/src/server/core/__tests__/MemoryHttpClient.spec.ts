@@ -104,6 +104,23 @@ describe("MemoryHttpClient", () => {
     expect(post.headers["content-type"]).toBe("application/json");
   });
 
+  it("decodes a JSON request body whatever the case of its media type", async ({
+    expect,
+  }) => {
+    const { alepha, http } = create();
+    http.on("POST", `${API}/customers`, () => ({ id: "c3" }));
+
+    await alepha.inject(HttpClient).fetch(`${API}/customers`, {
+      method: "POST",
+      headers: { "content-type": "Application/JSON; charset=utf-8" },
+      body: JSON.stringify({ name: "Lin" }),
+    });
+
+    expect(http.calls("POST", `${API}/customers`)[0].body).toEqual({
+      name: "Lin",
+    });
+  });
+
   it("lets the latest route win, matches a trailing * and any method with *", async ({
     expect,
   }) => {

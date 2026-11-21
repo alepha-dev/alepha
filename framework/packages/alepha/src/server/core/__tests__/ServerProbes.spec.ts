@@ -1,10 +1,10 @@
-import { $hook, Alepha } from "alepha";
+import { $hook, Alepha, AlephaError } from "alepha";
 import {
   AlephaServer,
   ServerNotReadyProvider,
   ServerProvider,
 } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 /**
  * A promise the spec resolves by hand, to hold a lifecycle hook open.
@@ -29,7 +29,7 @@ const firstAnswer = async (url: () => string): Promise<Response> => {
       await new Promise((r) => setTimeout(r, 10));
     }
   }
-  throw new Error(`${url()} never answered`);
+  throw new AlephaError(`${url()} never answered`);
 };
 
 /**
@@ -38,7 +38,9 @@ const firstAnswer = async (url: () => string): Promise<Response> => {
  * without it would prove nothing about the 503s it answers.
  */
 describe("liveness and readiness probes", () => {
-  it("answers /livez while a start hook still runs, when /readyz and /health answer 503", async () => {
+  it("answers /livez while a start hook still runs, when /readyz and /health answer 503", async ({
+    expect,
+  }) => {
     const starting = gate();
 
     class SlowMigrations {
@@ -79,7 +81,9 @@ describe("liveness and readiness probes", () => {
     }
   });
 
-  it("answers /readyz 503 from the moment stop() begins, while /livez still answers", async () => {
+  it("answers /readyz 503 from the moment stop() begins, while /livez still answers", async ({
+    expect,
+  }) => {
     const stopping = gate();
     let stopReached!: () => void;
     const reached = new Promise<void>((resolve) => {

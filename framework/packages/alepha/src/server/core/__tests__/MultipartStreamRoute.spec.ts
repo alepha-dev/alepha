@@ -8,7 +8,7 @@ const BOUNDARY = "----AlephaBoundary";
 /**
  * A body of `megabytes` megabytes, produced as it is asked for.
  *
- * Never materialised on the sending side either — a test that builds a 100 MB
+ * Never materialised on the sending side either: a test that builds a 100 MB
  * buffer to prove nothing is buffered would prove the opposite about itself.
  */
 const bodyOf = (megabytes: number): ReadableStream<Uint8Array> => {
@@ -38,7 +38,7 @@ const bodyOf = (megabytes: number): ReadableStream<Uint8Array> => {
 describe("a z.stream() field reaches the handler as bytes in flight", () => {
   const setup = async (maxBytes: number) => {
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
+      env: { SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
     });
 
     let peak = 0;

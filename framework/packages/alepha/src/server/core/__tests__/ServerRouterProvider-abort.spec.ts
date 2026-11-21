@@ -91,10 +91,10 @@ describe("ServerRouterProvider aborted requests", () => {
     // http://localhost:<port>/" matches the bare number whenever the random
     // port holds it, and failed this test in CI once.
     const isAbortLine = (message: string) => message.includes(" 499 (aborted");
-    const deadline = Date.now() + 2000;
-    while (
-      Date.now() < deadline &&
-      !entries.some((it) => isAbortLine(it.message))
+    for (
+      let attempt = 0;
+      attempt < 200 && !entries.some((it) => isAbortLine(it.message));
+      attempt++
     ) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }

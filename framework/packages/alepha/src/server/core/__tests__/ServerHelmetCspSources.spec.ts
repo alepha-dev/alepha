@@ -16,7 +16,7 @@ class TestApp {
 
 const appWith = (options?: Partial<HelmetOptions>) => {
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+    env: { SERVER_PORT: 0 },
   })
     .with(AlephaServer)
     .with(TestApp);

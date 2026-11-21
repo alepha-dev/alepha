@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AlephaServerLinks } from "alepha/server/links";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $action, $route, ServerProvider } from "../index.ts";
 
@@ -37,7 +37,9 @@ describe("a $route under /api", () => {
     return alepha.inject(ServerProvider).hostname;
   };
 
-  it("answers, beside the actions it shares the prefix with", async () => {
+  it("answers, beside the actions it shares the prefix with", async ({
+    expect,
+  }) => {
     const host = await boot();
 
     const action = await fetch(`${host}/api/hello`);

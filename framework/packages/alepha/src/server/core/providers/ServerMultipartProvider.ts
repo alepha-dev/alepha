@@ -16,12 +16,6 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
-  HttpError,
-  isMultipart,
-  type ServerRequest,
-  type ServerRoute,
-} from "alepha/server";
-import {
   type MultipartCap,
   MultipartCapProvider,
   MultipartLimitError,
@@ -29,6 +23,13 @@ import {
   type MultipartPart,
   MultipartStreamParser,
 } from "alepha/server/multipart";
+
+import { HttpError } from "../errors/HttpError.ts";
+import { isMultipart } from "../helpers/isMultipart.ts";
+import type {
+  ServerRequest,
+  ServerRoute,
+} from "../interfaces/ServerRequest.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -54,7 +55,7 @@ export const multipartOptions = $atom({
       .integer()
       .meta({ min: 1 })
       .describe(
-        "Maximum number of parts in a single request — text fields count too, not only files.",
+        "Maximum number of parts in a single request: text fields count too, not only files.",
       )
       .default(10),
   }),
@@ -142,7 +143,7 @@ export class ServerMultipartProvider {
       // A courtesy, not a guard: `Content-Length` is the sender's claim, and a
       // chunked body carries none at all. Checking it saves an obviously
       // oversized upload the trip, while the parser below is what actually
-      // enforces the budget — by counting.
+      // enforces the budget, by counting.
       const contentLength = request.headers["content-length"];
       if (contentLength) {
         const size = Number.parseInt(contentLength, 10);
@@ -159,7 +160,7 @@ export class ServerMultipartProvider {
         }
       }
 
-      if (!contentType?.startsWith("multipart/form-data")) {
+      if (!contentType?.toLowerCase().startsWith("multipart/form-data")) {
         if (!isMultipart(route)) {
           return;
         }
@@ -175,7 +176,7 @@ export class ServerMultipartProvider {
       // Built here, not at the top of the hook. Wrapping the node request in a
       // web `Request` takes ownership of the underlying `Readable`, and doing
       // it for *every* route with a body schema meant a JSON request got one
-      // wrapper here — immediately abandoned — and a second in the body parser,
+      // wrapper here, immediately abandoned, and a second in the body parser,
       // two owners of one stream. Nothing broke, which is exactly what makes it
       // worth removing: it worked by luck of hook order, not by design.
       let webRequest: Request | undefined;
@@ -216,7 +217,7 @@ export class ServerMultipartProvider {
   /**
    * Decides this request's size budget, most specific level last.
    *
-   * A level may raise the ceiling, not only lower it — which is the point.
+   * A level may raise the ceiling, not only lower it, which is the point.
    * Raising `maxFileBytes` also lifts `maxTotalBytes` to match, because a
    * 100 MB file inside a 10 MB message is a limit that reads as granted and
    * refuses anyway.
@@ -326,7 +327,7 @@ export class ServerMultipartProvider {
       }
 
       // Driven by hand rather than with `for await`, because leaving that loop
-      // calls `return()` on the generator — which runs its `finally`, cancels
+      // calls `return()` on the generator, which runs its `finally`, cancels
       // the reader, and closes the very stream a `z.stream()` field is about to
       // hand to the handler. Suspending the iterator instead keeps it alive.
       parts = parser.parse(request.body, boundary)[Symbol.asyncIterator]();
@@ -355,7 +356,7 @@ export class ServerMultipartProvider {
 
         if (isTypeStream(schema)) {
           // Handed over untouched, and the walk stops here. The handler pulls
-          // these bytes — after `$secure`, after validation — which is what
+          // these bytes (after `$secure`, after validation), which is what
           // makes a large ceiling cost bandwidth instead of memory, and what
           // keeps an unauthenticated caller from spending it at all.
           //
@@ -395,7 +396,7 @@ export class ServerMultipartProvider {
    * Ends the walk, which is what cancels the request body.
    *
    * `parse` cancels its reader in a `finally`, and a suspended generator does
-   * not run one — it is not garbage collection that resumes it, it is
+   * not run one: it is not garbage collection that resumes it, it is
    * `return()`. The success path completes the loop and so needs nothing; the
    * two paths that matter, a refused limit and a streamed handoff, both leave
    * the generator parked mid-message and have to say so.
@@ -444,7 +445,7 @@ export class ServerMultipartProvider {
           : `File exceeds size limit. Maximum allowed: ${error.data.limit} bytes`;
       case "total":
         // The same sentence the `Content-Length` check above uses. It is one
-        // condition — the body is bigger than the budget — and it used to
+        // condition (the body is bigger than the budget) and it used to
         // carry two different messages depending on which guard happened to
         // notice first, which made the same refusal look like two.
         return `Request body size limit exceeded. Maximum allowed: ${error.data.limit} bytes`;
@@ -460,7 +461,7 @@ export class ServerMultipartProvider {
    *
    * With a materialised field the parser throws inside {@link parseMultipart},
    * where the refusal is translated. A streamed one is drained by the handler,
-   * long after that `catch` has returned — so the same overflow surfaced as a
+   * long after that `catch` has returned, so the same overflow surfaced as a
    * 500 and told the caller nothing. The translation has to travel with the
    * bytes.
    */
@@ -480,7 +481,7 @@ export class ServerMultipartProvider {
           } catch (error) {
             throw self.asHttpError(error, field);
           } finally {
-            // The handler is done with the bytes — drained, or given up on —
+            // The handler is done with the bytes (drained, or given up on)
             // so the walk that was deliberately left open can end. This is the
             // other half of the hand-driven loop in `parseMultipart`: it keeps
             // the source alive past the handoff, and something has to close it.
@@ -497,7 +498,7 @@ export class ServerMultipartProvider {
    * This is where the bytes stop streaming, and it is deliberate: `FileLike`
    * lets a handler call `arrayBuffer()` after `text()`, so the content has to
    * survive being read twice. The budget resolved above is what keeps that
-   * honest — the parser refuses at the first byte past it, so nothing larger
+   * honest: the parser refuses at the first byte past it, so nothing larger
    * than the route was granted ever reaches this method.
    */
   protected async materialise(

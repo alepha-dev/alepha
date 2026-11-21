@@ -39,6 +39,51 @@ describe("UserAgentParser", () => {
     expect(result.device).toBe("MOBILE");
   });
 
+  describe("iOS, named by a token and not by three letters", () => {
+    const cases: Array<[string, string, string]> = [
+      // The desktop-site user agent of an iPad browser says Macintosh, and
+      // only its browser token still names iOS.
+      [
+        "Chrome on iPad, desktop site",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.0.0 Mobile/15E148 Safari/604.1",
+        "iOS",
+      ],
+      [
+        "Firefox on iPad, desktop site",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/133.0 Safari/605.1.15",
+        "iOS",
+      ],
+      [
+        "Edge on iPad, desktop site",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/131.0.2903.68 Version/17.0 Safari/605.1.15",
+        "iOS",
+      ],
+      [
+        "Opera on iPad, desktop site",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) OPiOS/16.0.15 Safari/605.1.15",
+        "iOS",
+      ],
+      ["an app token", "MyApp/3.1 (iOS 17.5; Scale/3.00)", "iOS"],
+      ["an app named with an underscore", "MyApp_iOS/3.1", "iOS"],
+      ["an app named in one word", "MyAppiOS/3.1", "iOS"],
+      ["lower case, alone", "myapp ios/3.1", "iOS"],
+      [
+        "a kiosk on Linux",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Kiosk",
+        "Linux",
+      ],
+      ["a word that contains the letters", "Biostar-Updater/2.0", "Unknown"],
+      ["an upper-case word that ends with them", "BIOS/1.2", "Unknown"],
+      ["a lower-case word that ends with them", "radios/1.0", "Unknown"],
+    ];
+
+    for (const [name, ua, os] of cases) {
+      it(`should read ${os} for ${name}`, ({ expect }) => {
+        expect(parser.parse(ua).os).toBe(os);
+      });
+    }
+  });
+
   it("should parse iOS user agent", ({ expect }) => {
     const ua =
       "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 MOBILE/15E148 Safari/604.1";

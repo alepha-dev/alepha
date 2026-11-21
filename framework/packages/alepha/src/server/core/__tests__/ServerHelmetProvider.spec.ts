@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
-import { describe, expect, test } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   type HelmetOptions,
@@ -14,7 +14,7 @@ class TestApp {
 describe("alepha.server.ServerHelmetProvider", () => {
   const setupServer = async (options?: HelmetOptions) => {
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+      env: { SERVER_PORT: 0 },
     })
       .with(AlephaServer)
       .with(TestApp);
@@ -35,7 +35,9 @@ describe("alepha.server.ServerHelmetProvider", () => {
     };
   };
 
-  test("should add default security headers to the response", async () => {
+  it("should add default security headers to the response", async ({
+    expect,
+  }) => {
     const { hostname, stop } = await setupServer({
       isSecure: true, // fake secure context
     });
@@ -55,7 +57,9 @@ describe("alepha.server.ServerHelmetProvider", () => {
     await stop();
   });
 
-  test("should allow disabling a header by setting its option to undefined", async () => {
+  it("should allow disabling a header by setting its option to undefined", async ({
+    expect,
+  }) => {
     const { hostname, stop } = await setupServer({
       xFrameOptions: undefined,
     });
@@ -68,7 +72,7 @@ describe("alepha.server.ServerHelmetProvider", () => {
     await stop();
   });
 
-  test("should allow configuring HSTS", async () => {
+  it("should allow configuring HSTS", async ({ expect }) => {
     const { hostname, stop } = await setupServer({
       isSecure: true, // fake secure context
       strictTransportSecurity: { maxAge: 31536000, preload: true },
@@ -83,7 +87,9 @@ describe("alepha.server.ServerHelmetProvider", () => {
     await stop();
   });
 
-  test("should apply a Content Security Policy when configured", async () => {
+  it("should apply a Content Security Policy when configured", async ({
+    expect,
+  }) => {
     const { hostname, stop } = await setupServer({
       contentSecurityPolicy: {
         directives: {
@@ -106,7 +112,9 @@ describe("alepha.server.ServerHelmetProvider", () => {
   // The built-in policy used to be unreachable: the branch selecting it tested
   // `Object.keys(csp).length === 0` on the OPTION object, which always carries
   // its `directives` key, so no configuration could ever produce it.
-  test("should send the built-in policy when directives are omitted", async () => {
+  it("should send the built-in policy when directives are omitted", async ({
+    expect,
+  }) => {
     const { hostname, stop } = await setupServer({
       contentSecurityPolicy: {},
     });
@@ -125,7 +133,9 @@ describe("alepha.server.ServerHelmetProvider", () => {
   // it. That is not a permissive policy - it is a policy with no directives,
   // and the absent `default-src` is the strictest answer there is, so the
   // "off" switch was the most restrictive setting available.
-  test("should send no CSP header at all for an empty directive map", async () => {
+  it("should send no CSP header at all for an empty directive map", async ({
+    expect,
+  }) => {
     const { hostname, stop } = await setupServer({
       contentSecurityPolicy: { directives: {} },
     });
@@ -135,6 +145,30 @@ describe("alepha.server.ServerHelmetProvider", () => {
     expect(response.headers.get("content-security-policy")).toBeNull();
     // The rest of helmet is untouched: this disables CSP, not the headers.
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+
+    await stop();
+  });
+
+  // `sandbox false` is not "no sandbox": a browser reads it as the `sandbox`
+  // directive with a token it does not know, which sandboxes everything.
+  it("should leave a directive set to false out of the policy", async ({
+    expect,
+  }) => {
+    const { hostname, stop } = await setupServer({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          sandbox: false,
+          upgradeInsecureRequests: true,
+        },
+      },
+    });
+
+    const response = await fetch(`${hostname}/api/ping`);
+
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'self'; upgrade-insecure-requests",
+    );
 
     await stop();
   });

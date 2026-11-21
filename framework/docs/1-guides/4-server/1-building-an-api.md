@@ -297,6 +297,10 @@ for await (const chunk of stream) {
 }
 ```
 
+Leaving the loop early (`break`, `return`, a throw) cancels the response, so the handler's `signal` fires on the server.
+
+A handler that throws once the stream is open cannot change the status, which is already `200`: the events emitted so far arrive, then the connection is cut and the loop throws, so a failed stream is never read as a complete one. Catch around the loop. A handler that fails at once, before the response has started, answers a `500`, and a middleware that refuses (`$secure()`) answers its own status, both before any stream opens.
+
 Key differences from `$action`:
 
 - Method is always POST

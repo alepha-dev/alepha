@@ -1,8 +1,17 @@
-import { Readable } from "node:stream";
+import type { Duplex, Readable, Writable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 
 import type { ZType } from "alepha";
-import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
+import {
+  $atom,
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  AlephaError,
+  type Infer,
+  z,
+} from "alepha";
 import { $logger } from "alepha/logger";
 
 import { HttpError } from "../errors/HttpError.ts";
@@ -46,6 +55,24 @@ export class ServerBodyParserProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly options = $store(bodyParserOptions);
+
+  /**
+   * How much of a refused body is read and dropped after its 413, in bytes,
+   * before the connection is closed instead. See {@link discardRest}.
+   */
+  protected readonly discardMaxBytes: number = 4 * 1024 * 1024;
+
+  /**
+   * How long a refused body is read and dropped after its 413, in
+   * milliseconds, before the connection is closed instead.
+   */
+  protected readonly discardMaxMillis: number = 5000;
+
+  /**
+   * How long a connection closed over an unfinished upload keeps its read
+   * side, in milliseconds, so the client reads the 413 before the reset.
+   */
+  protected readonly discardLingerMillis: number = 1000;
 
   public readonly onRequest = $hook({
     on: "server:request:before",
@@ -99,7 +126,7 @@ export class ServerBodyParserProvider {
 
         if (nodeReq.body !== undefined) {
           // Body was pre-consumed by the runtime (e.g., Vercel serverless).
-          // The original stream is already drained — reconstruct from pre-parsed body.
+          // The original stream is already drained: reconstruct from pre-parsed body.
           if (typeof nodeReq.body === "string") {
             stream = new ReadableStream({
               start(controller) {
@@ -120,7 +147,7 @@ export class ServerBodyParserProvider {
             nodeReq.body !== null &&
             typeof nodeReq.body === "object"
           ) {
-            // Already parsed as a JSON object — assign directly
+            // Already parsed as a JSON object: assign directly
             request.body = nodeReq.body;
             return;
           }
@@ -129,7 +156,13 @@ export class ServerBodyParserProvider {
           // `Readable.toWeb` cost a Web Streams adapter, a promise per chunk
           // and a copy, which made POST the slowest path next to Express.
           return this.readAndParse(
-            () => this.nodeStreamToBuffer(nodeReq as Readable),
+            () =>
+              this.nodeStreamToBuffer(nodeReq as Readable, () =>
+                this.discardRest(
+                  nodeReq as Readable,
+                  request.raw.node?.res as Writable | undefined,
+                ),
+              ),
             request,
             route,
           );
@@ -143,9 +176,9 @@ export class ServerBodyParserProvider {
       if (route.schema?.body) {
         const contentType = request.headers["content-type"] ?? "";
 
-        // Skip body size check for multipart requests — ServerMultipartProvider
+        // Skip body size check for multipart requests: ServerMultipartProvider
         // handles its own limits (multipartOptions.limit / fileLimit).
-        if (!contentType.startsWith("multipart/")) {
+        if (!contentType.toLowerCase().startsWith("multipart/")) {
           const contentLength = request.headers["content-length"];
           if (contentLength) {
             const size = Number.parseInt(contentLength, 10);
@@ -198,7 +231,7 @@ export class ServerBodyParserProvider {
     }
 
     const contentType = request.headers["content-type"] ?? "";
-    if (!contentType.startsWith("multipart/")) {
+    if (!contentType.toLowerCase().startsWith("multipart/")) {
       const contentLength = request.headers["content-length"];
       if (contentLength) {
         const size = Number.parseInt(contentLength, 10);
@@ -246,7 +279,7 @@ export class ServerBodyParserProvider {
     headers: Record<string, string>,
     schema: ZType,
   ): "text" | "json" | "urlencoded" | undefined {
-    const contentType = headers["content-type"];
+    const contentType = headers["content-type"]?.toLowerCase();
     if (!contentType) return undefined;
     if (contentType.startsWith("text/plain") || z.schema.isString(schema)) {
       return "text";
@@ -280,8 +313,14 @@ export class ServerBodyParserProvider {
   /**
    * A Node stream read to the end into one Buffer, refused past the size
    * limit like {@link streamToBuffer}.
+   *
+   * `onRefused` runs when the limit is passed with the rest of the body
+   * unread, and takes over the stream: see {@link discardRest}.
    */
-  protected nodeStreamToBuffer(stream: Readable): Promise<Buffer> {
+  protected nodeStreamToBuffer(
+    stream: Readable,
+    onRefused?: () => void,
+  ): Promise<Buffer> {
     const limit = this.options.limit;
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
@@ -305,8 +344,13 @@ export class ServerBodyParserProvider {
         total += buffer.length;
         if (total > limit) {
           this.log.warn(`Body size limit exceeded: ${total} > ${limit}`);
-          // Stop reading; the rest of the upload is discarded with the request.
-          stream.pause();
+          // Nothing more is kept. The stream is left flowing for whoever
+          // discards the rest; with nobody to, it stops here.
+          if (onRefused) {
+            onRefused();
+          } else {
+            stream.pause();
+          }
           fail(
             new HttpError(
               { status: 413 },
@@ -326,7 +370,7 @@ export class ServerBodyParserProvider {
       const onError = (error: Error) => fail(error);
       // A client that aborts mid-upload closes without `end`.
       const onClose = () =>
-        fail(new Error("Request closed before its body ended"));
+        fail(new AlephaError("Request closed before its body ended"));
 
       stream.on("data", onData);
       stream.on("end", onEnd);
@@ -335,12 +379,79 @@ export class ServerBodyParserProvider {
     });
   }
 
+  /**
+   * Reads and drops what is left of a refused request body, so the 413 that
+   * answers it reaches a client still uploading, and the connection can serve
+   * its next request.
+   *
+   * Leaving the body unread does neither: a connection kept alive holds a
+   * half-read request and never answers the next one, and one closed with
+   * unread bytes is reset, which a client busy writing sees as a socket error
+   * in place of the 413.
+   *
+   * The discard is bounded by {@link discardMaxBytes} and
+   * {@link discardMaxMillis}, so a refused upload cannot hold the server
+   * reading for ever. Past either bound nothing more is read and the
+   * connection is closed: its write side first, once the response is
+   * written, and the rest {@link discardLingerMillis} later. Closing at once
+   * would reset it, and the reset can overtake a 413 the client has not read
+   * yet.
+   */
+  protected discardRest(stream: Readable, response?: Writable): void {
+    let discarded = 0;
+
+    const stop = () => {
+      clearTimeout(timer);
+      stream.off("data", onData);
+      stream.off("end", stop);
+      stream.off("close", stop);
+    };
+    const close = () => {
+      const socket = (stream as Readable & { socket?: Duplex }).socket;
+      if (!socket || socket.destroyed) {
+        stream.destroy();
+        return;
+      }
+      socket.end();
+      const linger = setTimeout(
+        () => stream.destroy(),
+        this.discardLingerMillis,
+      );
+      linger.unref();
+      socket.once("close", () => clearTimeout(linger));
+    };
+    const giveUp = () => {
+      stop();
+      stream.pause();
+      if (!response || response.writableFinished || response.destroyed) {
+        close();
+      } else {
+        response.once("finish", close);
+      }
+    };
+    const onData = (chunk: Buffer | string) => {
+      discarded += chunk.length;
+      if (discarded > this.discardMaxBytes) {
+        giveUp();
+      }
+    };
+    const timer = setTimeout(giveUp, this.discardMaxMillis);
+    timer.unref();
+
+    stream.on("data", onData);
+    stream.once("end", stop);
+    stream.once("close", stop);
+    // A request that fails while it is being discarded has nothing to report.
+    stream.once("error", stop);
+    stream.resume();
+  }
+
   public async parse(
     stream: ReadableStream,
     headers: Record<string, string>,
     schema: ZType,
   ): Promise<object | string | undefined> {
-    const contentType = headers["content-type"];
+    const contentType = headers["content-type"]?.toLowerCase();
     const contentEncoding = headers["content-encoding"];
 
     if (!contentType) return undefined;
@@ -411,7 +522,7 @@ export class ServerBodyParserProvider {
       );
     }
 
-    switch (encoding) {
+    switch (encoding?.toLowerCase()) {
       case "gzip":
         return this.decompressBuffer(buffer, createGunzip());
       case "deflate":

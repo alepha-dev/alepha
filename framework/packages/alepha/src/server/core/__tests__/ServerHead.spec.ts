@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -5,11 +6,11 @@ import { join } from "node:path";
 import { Alepha } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { $serve, AlephaServerStatic } from "alepha/server/static";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { $route, ServerProvider } from "../index.ts";
 
-const staticDir = join(tmpdir(), `alepha-head-static-${Date.now()}`);
+const staticDir = join(tmpdir(), `alepha-head-static-${randomUUID()}`);
 
 beforeAll(async () => {
   await mkdir(staticDir, { recursive: true });
@@ -33,7 +34,7 @@ afterAll(async () => {
  * describes the body, have to be the ones GET would have sent.
  */
 describe("HEAD on a GET route", () => {
-  it("answers a $route the way GET does, with no body", async () => {
+  it("answers a $route the way GET does, with no body", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestApp {
@@ -60,7 +61,9 @@ describe("HEAD on a GET route", () => {
     );
   });
 
-  it("answers /health, which is the reason this matters", async () => {
+  it("answers /health, which is the reason this matters", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with(AlephaServer);
     await alepha.start();
     const host = alepha.inject(ServerProvider).hostname;
@@ -70,7 +73,7 @@ describe("HEAD on a GET route", () => {
     expect(await head.text()).toBe("");
   });
 
-  it("carries the handler's own status and headers", async () => {
+  it("carries the handler's own status and headers", async ({ expect }) => {
     const alepha = Alepha.create();
 
     class TestApp {
@@ -93,7 +96,9 @@ describe("HEAD on a GET route", () => {
     expect(await head.text()).toBe("");
   });
 
-  it("lets an explicitly declared HEAD route win over the fallback", async () => {
+  it("lets an explicitly declared HEAD route win over the fallback", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     class TestApp {
@@ -119,7 +124,7 @@ describe("HEAD on a GET route", () => {
     expect(head.headers.get("x-source")).toBe("declared");
   });
 
-  it("still 404s a path that answers nothing", async () => {
+  it("still 404s a path that answers nothing", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer);
     await alepha.start();
     const host = alepha.inject(ServerProvider).hostname;
@@ -128,7 +133,9 @@ describe("HEAD on a GET route", () => {
     expect(head.status).toBe(404);
   });
 
-  it("does not reach a route declared for another method", async () => {
+  it("does not reach a route declared for another method", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
 
     class TestApp {
@@ -148,7 +155,9 @@ describe("HEAD on a GET route", () => {
     expect(head.status).toBe(404);
   });
 
-  it("reaches a static asset, which registers no method of its own", async () => {
+  it("reaches a static asset, which registers no method of its own", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with(AlephaServerStatic);
 
     class TestApp {
@@ -169,7 +178,9 @@ describe("HEAD on a GET route", () => {
     );
   });
 
-  it("drains a streamed body instead of leaving the producer running", async () => {
+  it("cancels a streamed body instead of leaving the producer running", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create();
     let cancelled = false;
 

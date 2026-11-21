@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { describe, it } from "vitest";
 
-import { CryptoProvider } from "../../../crypto/index.ts";
 import type { ServerRequestData } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 
@@ -412,7 +412,7 @@ describe("ServerRequestParser", () => {
         "cf-visitor": "invalid-json",
       });
 
-      // Should fall back to URL scheme (http since mock URL is https)
+      // Falls back to the URL scheme: the mock URL is https
       expect(parser.getProtocol(request)).toBe("https");
     });
 

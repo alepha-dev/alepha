@@ -41,7 +41,7 @@ const bodyOf = (): Blob => {
  * ends read that tag: the client to build a FormData, the server to parse one.
  * `.optional()` returns a NEW ZodOptional whose own `.meta()` is empty, so
  * reading the wrapper answered `undefined` and the two ends agreed to do
- * nothing — the upload went out as JSON and came back decoded as text, with no
+ * nothing: the upload went out as JSON and came back decoded as text, with no
  * error anywhere to say so.
  */
 describe("an optional file field is still multipart", () => {
@@ -71,7 +71,7 @@ describe("an optional file field is still multipart", () => {
     expect,
   }) => {
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
+      env: { SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
     });
 
     class ReportApi {
@@ -135,7 +135,7 @@ describe("an optional file field is still multipart", () => {
     expect,
   }) => {
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
+      env: { SERVER_PORT: 0, SERVER_HOST: "127.0.0.1" },
     });
 
     class ReportApi {

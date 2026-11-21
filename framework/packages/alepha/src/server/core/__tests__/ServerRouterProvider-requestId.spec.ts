@@ -108,22 +108,15 @@ describe("ServerRouterProvider - requestId", () => {
   it("should properly handle error with requestId through HttpClient", async ({
     expect,
   }) => {
-    try {
-      await client.fetch(`${hostname}/api/httpError`, {
+    const error = await client
+      .fetch(`${hostname}/api/httpError`, {
         headers: {
           "x-request-id": "test-request-client",
         },
-      });
-      // Should not reach here
-      expect(true).toBe(false);
-    } catch (error) {
-      if (error instanceof HttpError) {
-        const errorJson = HttpError.toJSON(error);
-        expect(errorJson.data?.requestId).toBe("test-request-client");
-      } else {
-        // For now, let's see what we actually get
-        expect(error).toBeInstanceOf(Error);
-      }
-    }
+      })
+      .catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect(HttpError.toJSON(error).data?.requestId).toBe("test-request-client");
   });
 });

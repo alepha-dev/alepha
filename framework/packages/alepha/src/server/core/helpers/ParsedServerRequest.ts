@@ -96,6 +96,14 @@ export class ParsedServerRequest {
     return this.parser.getRequestIp(this.data);
   }
 
+  /**
+   * The `Host` header as the client sent it, which is also what `url` is
+   * built from on a Node server.
+   */
+  public get host(): string | undefined {
+    return this.data.headers.host;
+  }
+
   public get userAgent(): UserAgentInfo {
     return this.parser.getRequestUserAgent(this.data);
   }

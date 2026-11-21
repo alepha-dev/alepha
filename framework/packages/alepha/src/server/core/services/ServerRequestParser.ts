@@ -97,7 +97,7 @@ export class ServerRequestParser {
    * Resolving it here rather than minting a second id matters: `requestId` is
    * handed to the client in the error JSON, and it is the only handle a user
    * can quote back. Before this, absent a proxy-set `x-request-id`, the router
-   * and the parser each called `randomUUID()` independently — so the id in the
+   * and the parser each called `randomUUID()` independently, so the id in the
    * response indexed nothing in the logs.
    *
    * The fallbacks cover callers that build a request outside any context

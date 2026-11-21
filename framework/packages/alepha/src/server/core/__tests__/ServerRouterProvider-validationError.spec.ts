@@ -196,7 +196,7 @@ describe("ServerRouterProvider - request validation error", () => {
         },
       }).with(TestApp);
 
-      // `limit` is required — omitting it must be a 400, not a handler
+      // `limit` is required: omitting it must be a 400, not a handler
       // running with `query.limit === undefined`.
       const { response, json } = await fetchAndStop(alepha, (host) => ({
         url: `${host}/users`,
@@ -321,7 +321,7 @@ describe("ServerRouterProvider - request validation error", () => {
     }) => {
       const seen: { version?: unknown } = {};
       class CaseApp {
-        // Schema declares keys with mixed case — Node lowercases incoming
+        // Schema declares keys with mixed case: Node lowercases incoming
         // header names, so the framework must lowercase schema keys when
         // matching values.
         check = $route({
