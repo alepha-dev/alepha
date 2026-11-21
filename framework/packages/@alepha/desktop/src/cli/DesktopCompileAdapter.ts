@@ -128,9 +128,10 @@ export class DesktopCompileAdapter {
     );
     await this.fs.writeFile(
       this.fs.join(input.dist, this.entries.supervisor),
-      `${header}import { DesktopSupervisorWorker, NativeLoopTerminator } from ${shell};\n\n` +
+      `${header}import { DesktopLogRotator, DesktopSupervisorWorker, NativeLoopTerminator } from ${shell};\n\n` +
         "const terminator = new NativeLoopTerminator();\n" +
-        "new DesktopSupervisorWorker(self, (handle) => terminator.terminate(handle)).listen();\n" +
+        "const rotator = new DesktopLogRotator();\n" +
+        "new DesktopSupervisorWorker(self, (handle) => terminator.terminate(handle), undefined, (file) => rotator.rotate(file)).listen();\n" +
         "void terminator.load();\n",
     );
     await this.fs.writeFile(

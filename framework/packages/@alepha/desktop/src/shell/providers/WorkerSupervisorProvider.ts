@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 
+import { DesktopProtocol } from "../../core/DesktopProtocol.ts";
 import type { DesktopStartResult } from "../../core/DesktopSupervisor.ts";
 import type { DesktopSupervisorEvent } from "../services/DesktopSupervisorWorker.ts";
 import {
@@ -15,6 +16,10 @@ import {
  * A crash message can arrive while the main thread is blocked in the window
  * loop: it is queued, and delivered once the loop returns, before the answer
  * to {@link stop}. So {@link stop} always learns about it.
+ *
+ * The supervisor Worker dying (a module that throws at load, an uncaught
+ * error, an exit) fails a pending {@link start}, and makes {@link stop}
+ * report a crash, so neither waits for an answer that never comes.
  */
 export class WorkerSupervisorProvider extends SupervisorProvider {
   /**
@@ -23,6 +28,8 @@ export class WorkerSupervisorProvider extends SupervisorProvider {
   public supervisorUrl?: string;
   protected worker?: Worker;
   protected crashed?: string;
+  protected exited?: string;
+  protected readonly protocol = new DesktopProtocol();
   protected waiters: Array<(event: DesktopSupervisorEvent) => boolean> = [];
 
   public start(
@@ -42,6 +49,17 @@ export class WorkerSupervisorProvider extends SupervisorProvider {
       }
       this.waiters = this.waiters.filter((waiter) => !waiter(data));
     });
+    worker.addEventListener("error", (event: ErrorEvent) => {
+      event.preventDefault();
+      this.onExit(
+        `the supervisor failed: ${this.protocol.sanitize(event.error ?? event.message)}`,
+      );
+    });
+    worker.addEventListener("close", (event: Event) =>
+      this.onExit(
+        `the supervisor exited (code ${(event as CloseEvent).code ?? "unknown"})`,
+      ),
+    );
     const started = this.next((event) =>
       event.type === "started" ? event.result : undefined,
     );
@@ -61,6 +79,9 @@ export class WorkerSupervisorProvider extends SupervisorProvider {
         message: "The server was never started.",
       };
     }
+    if (this.exited) {
+      return { kind: "crashed", message: this.crashed ?? this.exited };
+    }
     const stopped = this.next((event) =>
       event.type === "stopped" ? event : undefined,
     );
@@ -75,6 +96,24 @@ export class WorkerSupervisorProvider extends SupervisorProvider {
       graceful: event.result.graceful,
       message: event.result.message,
     };
+  }
+
+  /**
+   * The supervisor Worker is gone: answer every waiter as a failure.
+   */
+  protected onExit(message: string): void {
+    if (this.exited) {
+      return;
+    }
+    this.exited = message;
+    this.crashed ??= message;
+    const failures: DesktopSupervisorEvent[] = [
+      { type: "started", result: { ok: false, message } },
+      { type: "stopped", result: { graceful: false, message } },
+    ];
+    for (const failure of failures) {
+      this.waiters = this.waiters.filter((waiter) => !waiter(failure));
+    }
   }
 
   protected next<T>(
