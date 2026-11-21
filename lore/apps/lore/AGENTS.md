@@ -8,9 +8,9 @@ Alepha Lore is the **only public Alepha app** and exists in large part to **dogf
 
 ## The Lore of Lore (start here)
 
-The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.app/alepha`**, **project id `1`** over MCP, shared with the framework and Bay since 2026-10-27 (#E94): Lore's work is the `lore/*` areas. It was project `74` (`Lore`) between 2026-10-01, when Lore left the Alepha monorepo (#E72), and that merge; project `74` is archived, and a number it used that project `1` already held was renumbered (folio #F1422 maps them: `#Q2683` there is `#Q2884` here). Before 2026-10-01 it was project `1` too, and before 2026-08-18 project `2` (an older note's quest `#208` is `#1208` since that merge). The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title ("Alepha", so `/alepha`), via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
+The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.app/alepha`**, **project id `1`** (slug `alepha`), shared with the framework and Bay since 2026-10-27 (#E94): Lore's work is the `lore/*` areas. It was project `74` (`Lore`) between 2026-10-01, when Lore left the Alepha monorepo (#E72), and that merge; project `74` is archived, and a number it used that project `1` already held was renumbered (folio #F1422 maps them: `#Q2683` there is `#Q2884` here). Before 2026-10-01 it was project `1` too, and before 2026-08-18 project `2` (an older note's quest `#208` is `#1208` since that merge). The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title ("Alepha", so `/alepha`), via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP and CLI surfaces — every agent session working on this repo should treat that project as a first-class input, not background trivia.
 
-**Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, project id `1`):
+**Before non-trivial work, orient via Lore** (project id `1` over MCP, or `-p alepha` via the `lore` CLI — every MCP tool maps 1:1 to a CLI command, e.g. `project_context` → `lore project context`):
 
 1. `project_context` — one-shot orientation (project metadata + active quests + folio index, ~2K tokens).
 2. `folio_get` on the folios that look relevant — folios are the shared memory between you and the user across sessions. The user relies on them heavily, so **read first, write often**.
@@ -389,9 +389,9 @@ Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subje
 
 End-to-end testing has its own workspace, `apps/e2e`: read `apps/e2e/AGENTS.md` for the Playwright suite (one Lore instance per worker, ports, one file per feature) and the CLI suite.
 
-## Manual testing via Playwright (Claude)
+## Manual testing in a browser
 
-When you need to drive the app yourself with the Playwright MCP, use these shortcuts.
+When you need to drive the app yourself in a browser (via a browser agent, Playwright MCP, etc.), use these shortcuts.
 
 ### Servers
 
@@ -465,4 +465,4 @@ Clears all projects, members, sessions, etc. Migrations auto-apply on boot. Opti
 - Hostname is `localhost`, no HTTPS in dev/prod-like.
 - The session cookie persists across reloads; if you need a clean slate, clear cookies via `context.clearCookies()` rather than relaunching the browser.
 - Pages load lazily — wait for the visible text of a known route element (e.g. "Projects") before asserting.
-- `claude-in-chrome` MCP works fine; the deferred `playwright` MCP is what most of the existing e2e specs target.
+- Any browser automation tool (browser agent, Playwright MCP, etc.) works; the existing e2e specs target Playwright.

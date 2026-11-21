@@ -18,7 +18,7 @@ For verbose CLI output: `LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/ui bui
 
 **One quest is one commit, always**, and every pull request is **rebase-merged**: `main` receives each quest's commit as it is, so a bad quest is reverted alone. Never squash an epic.
 
-1. **One branch, one worktree.** Cut the branch from the latest main: `git fetch && git worktree add -b <branch> .claude/worktrees/<branch> origin/main`, under `.claude/worktrees/` at the repository root (gitignored), never as a sibling folder such as `../alepha-<branch>`. Never edit the primary checkout: parallel sessions share it.
+1. **One branch, one worktree.** Cut the branch from the latest main: `git fetch && git worktree add -b <branch> .worktrees/<branch> origin/main`, under `.worktrees/` at the repository root (gitignored), never as a sibling folder such as `../alepha-<branch>`. Never edit the primary checkout: parallel sessions share it.
 2. **One commit per quest, naming it.** Staged by explicit path (never `git add -A`), its message in commit form naming the Lore quest as `#Q<n>` (and the epic as `#E<n>`, in an epic): see "Every commit belongs to a quest". A later fix to a quest goes into that quest's commit, never into the next one's: `git commit --fixup=<sha>` then `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/main`, and push with `--force-with-lease`.
 3. **Push and open a pull request.** `gh pr create --base main`, its body linking the quest, or the epic and its quests. An epic or a run opens it **as a draft** (`--draft`) after its first quest and pushes after every quest, so CI runs while the next quest is worked; read each run as it lands and fix a red one before going on. Post the pull request's link on each quest with `quest_comment_add`.
 4. **Turn on auto-merge: `gh pr merge --auto --rebase`**, for an epic or a run only once its last quest is pushed and the draft is marked ready (`gh pr ready`). Once the required checks are green the pull request joins the merge queue, which runs them again on top of `main` and of every pull request queued ahead of it, and merges only if that is green too (#Q3688): two pull requests green alone can be red together. A red run, on the pull request or in the queue: fix, push again, and the pull request waits. Never merge by hand past a red check, never merge `main` into the branch (rebase it onto `origin/main` when it conflicts), never update it just to catch up with `main` (the queue does that), and never push to `main`.
@@ -82,9 +82,11 @@ This folder is the framework. Lore (`../lore`) and Bay (`../bay`) sit beside it 
 
 `main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: every push to `main` starts **Deploy** (`deploy.yml`), which ships them after Lore's own deploy, whatever the commit touched; the merge queue's **Verify** (`verify.yml`) ran on that commit first. The docs site lives in `../docs` since #Q2766 and deploys the same way (target `docs`) and from **Release**: its framework section is always built from the latest release tag, so `main` never publishes an unreleased API. `yarn gen` and `check:docs` here still run the site's generators, which write this folder's `docs/`. A deploy replaced while waiting by a newer push leaves that commit undeployed; the newer one ships both.
 
-### Lore MCP: the planning memory
+### Lore: the planning memory
 
-Decisions, plans and bug reports for the framework, this repository, live in the **Alepha project, id `1`**. Lore's and Bay's work live there too since #E94 (2026-10-27), told apart by area (`lore/*`, `bay`); their old projects `74` and `75` are archived, and folios #F1422 and #F1427 map their renumbered post-split numbers. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
+Decisions, plans and bug reports for the framework, this repository, live in the **Alepha project, id `1`** (slug `alepha`). Lore's and Bay's work live there too since #E94 (2026-10-27), told apart by area (`lore/*`, `bay`); their old projects `74` and `75` are archived, and folios #F1422 and #F1427 map their renumbered post-split numbers. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
+
+Use Lore over MCP when connected, or via the `lore` CLI (`-p alepha`): every MCP tool maps 1:1 to a CLI command (`project_context` → `lore project context`, `quest_create` → `lore quest create`, etc.).
 
 - Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note.
@@ -98,7 +100,7 @@ A session that commits works under a quest, named or not, a session started from
 3. **Name it in every commit** as `#Q<n>` and record each sha with `quest_commit_add`.
 4. **Complete it in the turn you push it** (`quest_complete`), noting what shipped and what was left out: never "after the merge", which lands once you are gone (see "The workflow", step 5).
 
-One piece of work is one quest, never a quest per commit. **Before raising a background task** (`spawn_task`), file its quest and put its `#Q<n>` in the task's prompt, so the session that takes it accepts that quest instead of filing a second one.
+One piece of work is one quest, never a quest per commit. **Before raising a background task** (a subagent, worker, or spawned session), file its quest and put its `#Q<n>` in the task's prompt, so the session that takes it accepts that quest instead of filing a second one.
 
 #### Filing folios
 
@@ -106,7 +108,7 @@ One piece of work is one quest, never a quest per commit. **Before raising a bac
 
 **Lifecycle.** When work ships, the outcome folio survives and the spec moves to `trash`. `folio_delete` is permanent, so nothing is deleted outright, and `trash` is never emptied without being asked.
 
-⚠️ **superpowers plans and specs are also persisted as folios.** `docs/superpowers/` is gitignored, so a plan there dies with its worktree. File it under its subject with a `summary` naming it a plan or a spec: what is being built, the constraints, the decisions taken with their reasons. Update it when the plan changes materially, and mark it done or superseded when the work ships.
+⚠️ **Session plans and specs are also persisted as folios.** Local plan files (such as gitignored `docs/superpowers/` notes or agent-local artifacts) die with their worktree or session. File them under their subject with a `summary` naming them a plan or a spec: what is being built, the constraints, the decisions taken with their reasons. Update them when the plan changes materially, and mark them done or superseded when the work ships.
 
 ## Testing
 

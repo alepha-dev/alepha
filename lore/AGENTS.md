@@ -57,7 +57,7 @@ The agent is not in the package: `ChatResponderRegistry` (server) and `ChatAgent
 
 ⚠️ **CI on the pull request is the gate. A green terminal is not. Nothing reaches `main` except through a pull request (#Q3633).**
 
-The repository's workflow is "The workflow" in `../framework/AGENTS.md` (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, naming its `#Q<n>`; `gh pr merge --auto --rebase` through the merge queue, so `main` receives every quest's commit; the commit `main` received recorded with `quest_commit_add` after the merge. A worktree goes under `.claude/worktrees/` at the repository root, never in a sibling folder such as `../alepha-<name>`. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
+The repository's workflow is "The workflow" in `../framework/AGENTS.md` (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, naming its `#Q<n>`; `gh pr merge --auto --rebase` through the merge queue, so `main` receives every quest's commit; the commit `main` received recorded with `quest_commit_add` after the merge. A worktree goes under `.worktrees/` at the repository root, never in a sibling folder such as `../alepha-<name>`. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
 
 Every pull request runs Lore's jobs of **Verify** (`.github/workflows/verify.yml` at the root: `lore-checks`, `lore-test` x6, `lore-test-postgres` x3, `lore-e2e` x6, `lore-e2e-cli`, `lore-docker`, closed by `gate (lore)`).
 
@@ -76,9 +76,11 @@ Every pull request runs Lore's jobs of **Verify** (`.github/workflows/verify.yml
 
 Lore ships in the repository's one release (#Q2776): `release.yml` at the root sets `apps/lore` and `@alepha/lore` to the release version on its runner (never committed, #Q3640), publishes the package to npm (trusted publishing, which names `release.yml`), pushes `ghcr.io/alepha-dev/lore`, records the artifact and image in project `alepha`, and publishes the Lore release of that version there, all under one bare `x.y.z` tag. The changelog is Lore's own release feature: the quests attached to the release.
 
-## Lore MCP: the planning memory
+## Lore: the planning memory
 
-Decisions, plans and bug reports live in the Lore project **Alepha** (`https://lore.alepha.app/alepha`, project id `1`), with the framework's and Bay's: one project since #E94 (2026-10-27), each product told apart by its quests' `area` (`lore/*` for Lore). Projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number they used after 2026-10-01 that project 1 already held was renumbered, and folio #F1422 maps the old number to the new one.
+Decisions, plans and bug reports live in the Lore project **Alepha** (`https://lore.alepha.app/alepha`, project id `1`, slug `alepha`), with the framework's and Bay's: one project since #E94 (2026-10-27), each product told apart by its quests' `area` (`lore/*` for Lore). Projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number they used after 2026-10-01 that project 1 already held was renumbered, and folio #F1422 maps the old number to the new one.
+
+Use Lore over MCP when connected, or via the `lore` CLI (`-p alepha`), which has 1:1 parity with MCP (`quest_create` → `lore quest create`).
 
 - Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio whenever a session produces a non-obvious decision.
