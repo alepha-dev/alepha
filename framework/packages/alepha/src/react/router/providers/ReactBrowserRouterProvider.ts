@@ -85,9 +85,18 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
     const state = entry as ReactRouterState;
 
+    // The page being opened names the transition in the action events,
+    // read without adopting the URL's locale yet: that happens below.
+    const target = this.match(
+      this.localeProvider.enabled
+        ? this.localeProvider.detect(pathname).pathname
+        : pathname,
+    ).route?.page.name;
+
     // Emit both action and transition events
     await this.alepha.events.emit("react:action:begin", {
       type: "transition",
+      id: target,
     });
     await this.alepha.events.emit("react:transition:begin", {
       previous: this.alepha.store.get("alepha.react.router.state")!,
@@ -162,6 +171,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
       await this.alepha.events.emit("react:action:success", {
         type: "transition",
+        id: state.name ?? target,
       });
       await this.alepha.events.emit("react:transition:success", { state });
     } catch (e) {
@@ -196,6 +206,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
       await this.alepha.events.emit("react:action:error", {
         type: "transition",
+        id: state.name ?? target,
         error: e as Error,
       });
       await this.alepha.events.emit("react:transition:error", {
@@ -252,6 +263,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
     await this.alepha.events.emit("react:action:end", {
       type: "transition",
+      id: state.name ?? target,
     });
     await this.alepha.events.emit("react:transition:end", {
       state: next,

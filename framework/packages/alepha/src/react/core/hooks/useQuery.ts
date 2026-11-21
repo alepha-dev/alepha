@@ -187,7 +187,10 @@ export function useQuery<Result>(
 
   const action = useAction<[], Result>(
     {
-      id: options.id,
+      // A read is told apart from a click in the action events, and named
+      // by its key when it has no id of its own.
+      type: "query",
+      id: options.id ?? serializedKey,
       // Keyed queries route through the cache's in-flight map, so two
       // components mounting on the same key in one tick share a single
       // request instead of both missing the not-yet-populated cache.
@@ -455,6 +458,8 @@ export interface UseQueryOptions<Result> {
 
   /**
    * Optional identifier (used in lifecycle events for debugging/analytics).
+   * Without one, a keyed query's `react:action:*` events carry its
+   * serialized key; their `type` is `query`.
    */
   id?: string;
 

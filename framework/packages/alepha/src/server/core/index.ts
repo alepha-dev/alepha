@@ -98,6 +98,15 @@ declare module "alepha" {
       headers: Record<string, string>;
       request: RequestInit;
     };
+    // A `fetchAction` call settled, answered or not: the end of what
+    // `client:request:before` began. `status` is absent when no response
+    // came back (a network failure, an abort).
+    "client:request:after": {
+      route: HttpAction;
+      status?: number;
+      ok: boolean;
+      durationMs: number;
+    };
     "client:fetch:before": {
       url: string;
       options: ResolvedFetchOptions;

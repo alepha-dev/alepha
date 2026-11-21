@@ -198,7 +198,8 @@ export function useInfiniteQuery<Page, Param>(
   // refetch the invalidation started reloads the list.
   const more = useAction<[], void>(
     {
-      id: options.id,
+      type: "query",
+      id: options.id ?? serializedKey,
       onError: options.onError,
       handler: async (context) => {
         const key = optionsRef.current.key;
@@ -352,7 +353,8 @@ export interface UseInfiniteQueryOptions<Page, Param> {
   onError?: (error: Error) => void | Promise<void>;
 
   /**
-   * Identifier carried by the `react:action:*` events.
+   * Identifier carried by the `react:action:*` events, the serialized key
+   * when absent; their `type` is `query`.
    */
   id?: string;
 }

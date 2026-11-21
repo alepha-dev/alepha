@@ -107,15 +107,38 @@ export class HttpClient {
       ...headers,
     };
 
-    return await this.fetch(url, {
-      ...request,
-      schema: route.schema,
-      ...options,
-      // The default outbound timeout is for third parties. An action of the
-      // app is bounded server-side by its own deadline, and a client-side cut
-      // would abandon a long action the server is still running.
-      timeout: options.timeout ?? false,
-    });
+    // `client:request:after` closes what `client:request:before` opened,
+    // whatever the outcome: a debugging trail sees every named call end.
+    const startedAt = this.dateTime.nowMillis();
+    let status: number | undefined;
+    try {
+      const response = await this.fetch(url, {
+        ...request,
+        schema: route.schema,
+        ...options,
+        // The default outbound timeout is for third parties. An action of the
+        // app is bounded server-side by its own deadline, and a client-side cut
+        // would abandon a long action the server is still running.
+        timeout: options.timeout ?? false,
+      });
+      status = response.status;
+      return response;
+    } catch (error) {
+      const failed = (error as { status?: unknown } | undefined)?.status;
+      status = typeof failed === "number" ? failed : undefined;
+      throw error;
+    } finally {
+      await this.alepha.events.emit(
+        "client:request:after",
+        {
+          route,
+          ...(status !== undefined ? { status } : {}),
+          ok: status !== undefined && status < 400,
+          durationMs: this.dateTime.nowMillis() - startedAt,
+        },
+        { catch: true },
+      );
+    }
   }
 
   /**
