@@ -242,7 +242,9 @@ describe("StreamableHttpMcpTransport — SSE responses", () => {
 
     // Give the request time to reach the handler and park.
     await new Promise((resolve) => setTimeout(resolve, 50));
-    alepha.inject(McpServerProvider).cancelRequest(5, "session:sess-5");
+    alepha
+      .inject(McpServerProvider)
+      .cancelRequest(5, JSON.stringify(["session", "sess-5"]));
     release!();
 
     const events = await readEvents(await pending);

@@ -113,7 +113,7 @@ export class McpServerProvider {
 
   /**
    * Requests currently being handled, so `notifications/cancelled` can reach
-   * them. Keyed by `clientKey:id` — see {@link McpContext.clientKey}.
+   * them. Keyed by `[clientKey, id]`, see {@link McpContext.clientKey}.
    */
   protected readonly inFlight = new Map<string, AbortController>();
 
@@ -1093,7 +1093,10 @@ export class McpServerProvider {
     clientKey: string | undefined,
     id: string | number,
   ): string | undefined {
-    return clientKey ? `${clientKey}:${id}` : undefined;
+    // Structured, not `${clientKey}:${id}`: both parts may carry ":", and a
+    // joined string let `user:a:b` + 3 and `user:a` + "b:3" share a slot. The
+    // id keeps its type too, so 3 and "3" stay two requests.
+    return clientKey ? JSON.stringify([clientKey, id]) : undefined;
   }
 
   /**
@@ -1673,7 +1676,7 @@ export class McpServerProvider {
    * audio, resource, resource_link). Returns the normalized
    * {@link McpToolCallResult} when matched, or `undefined` to fall back to the
    * default JSON/text encoding. Only ever consulted for tools that did NOT
-   * declare an output schema (see {@link handleToolCall}).
+   * declare an output schema (see {@link handleToolsCall}).
    */
   protected asRawToolContent(result: unknown): McpToolCallResult | undefined {
     if (!result || typeof result !== "object") {

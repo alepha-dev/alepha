@@ -5,6 +5,7 @@ import type {
   McpToolAnnotations,
   McpToolDescriptor,
 } from "../interfaces/McpTypes.ts";
+import { securePermissionNames } from "./securePermissionNames.ts";
 
 /**
  * An `$action({ mcp })` as the MCP server lists and calls it.
@@ -63,22 +64,7 @@ export class McpActionTool {
    * for a `$tool`.
    */
   public get requiredPermissions(): string[] {
-    const names: string[] = [];
-    for (const meta of this.action.handler.metadata) {
-      if (meta.name !== "$secure") continue;
-      const permissions = (meta.options as { permissions?: unknown[] })
-        ?.permissions;
-      for (const it of permissions ?? []) {
-        const name =
-          typeof it === "string"
-            ? it
-            : (it as { name?: unknown } | undefined)?.name;
-        if (typeof name === "string" && !names.includes(name)) {
-          names.push(name);
-        }
-      }
-    }
-    return names;
+    return securePermissionNames(this.action.handler.metadata);
   }
 
   /**
