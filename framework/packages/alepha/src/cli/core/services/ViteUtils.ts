@@ -587,19 +587,16 @@ export class ViteUtils {
   // HTML template
   // ---------------------------------------------------------------------------------------------------------------
 
-  public generateIndexHtml(entry: AppEntry, opts?: { pwa?: boolean }): string {
+  public generateIndexHtml(entry: AppEntry): string {
     const style = entry.style;
     const browser = entry.browser ?? entry.server;
-    const manifestLink = opts?.pwa
-      ? '\n<link rel="manifest" href="/manifest.webmanifest" />'
-      : "";
     return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <title>App</title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>${manifestLink}
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
 </head>
 <body>

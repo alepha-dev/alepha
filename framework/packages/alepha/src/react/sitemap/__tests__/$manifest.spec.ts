@@ -43,6 +43,36 @@ describe("$manifest", () => {
     });
   });
 
+  it("writes id, scope, lang, categories and shortcuts (#Q4066)", ({
+    expect,
+  }) => {
+    class Full {
+      manifest = $manifest({
+        name: "My App",
+        id: "/?app",
+        scope: "/",
+        lang: "en",
+        categories: ["productivity"],
+        shortcuts: [{ name: "New quest", shortName: "New", url: "/new" }],
+      });
+    }
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaReactSitemap)
+      .with(Full);
+
+    expect(JSON.parse(alepha.inject(Full).manifest.prerender().body)).toEqual({
+      id: "/?app",
+      name: "My App",
+      lang: "en",
+      scope: "/",
+      display: "standalone",
+      start_url: "/",
+      categories: ["productivity"],
+      shortcuts: [{ name: "New quest", short_name: "New", url: "/new" }],
+    });
+  });
+
   it("is what the build snapshots", ({ expect }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)

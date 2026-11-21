@@ -17,7 +17,6 @@ import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
-import { BuildPwaTask } from "../tasks/BuildPwaTask.ts";
 import { BuildSbomTask } from "../tasks/BuildSbomTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
@@ -86,7 +85,6 @@ export class BuildPipeline {
   protected readonly tasks: BuildTask[] = [
     $inject(BuildClientTask),
     $inject(BuildServerTask),
-    $inject(BuildPwaTask),
     $inject(BuildPrerenderTask),
     // Before the target-specific config tasks: `dist/` exists by now, and
     // anything generating deploy config may want to read what was captured.

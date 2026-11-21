@@ -149,4 +149,4 @@ class AppRouter {
 }
 ```
 
-Options are the manifest's own fields, in camel case, plus `path` (`/manifest.webmanifest`) and `static`. It is prerendered by default, since nothing in it depends on the environment, and answers `application/manifest+json`.
+Options are the manifest's own fields, in camel case (`name`, `shortName`, `description`, `id`, `scope`, `lang`, `display`, `startUrl`, colors, `orientation`, `icons`, `screenshots`, `categories`, `shortcuts`), plus `path` (`/manifest.webmanifest`) and `static`. This is the one way to ship a manifest: the build writes none of its own, and lists no icon you did not name. It is prerendered by default, since nothing in it depends on the environment, and answers `application/manifest+json`.
