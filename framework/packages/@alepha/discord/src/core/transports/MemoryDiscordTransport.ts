@@ -1,3 +1,5 @@
+import { AlephaError } from "alepha";
+
 import {
   DiscordTransport,
   type DiscordWebhookPayload,
@@ -24,9 +26,9 @@ export class MemoryDiscordTransport extends DiscordTransport {
   }> = [];
 
   /**
-   * When set, the next post throws with this message. For the spec that
-   * proves a refused send reaches the notification job's retry rather than
-   * being swallowed.
+   * When set, every post throws with this message until it is unset again.
+   * For the spec that proves a refused send reaches the notification job's
+   * retry rather than being swallowed.
    */
   public failWith?: string;
 
@@ -35,7 +37,7 @@ export class MemoryDiscordTransport extends DiscordTransport {
     payload: DiscordWebhookPayload,
   ): Promise<void> {
     if (this.failWith) {
-      throw new Error(this.failWith);
+      throw new AlephaError(this.failWith);
     }
     this.posts.push({ webhook, payload });
   }

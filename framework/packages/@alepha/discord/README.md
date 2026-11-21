@@ -80,9 +80,9 @@ than by care: the channel carries the resolved webhook in its own private
 rendered type, and the preview controller returns only `NotificationRendered`'s
 base fields.
 
-> One caveat that is not this package's to fix: `HttpClient` logs the request
-> url at `DEBUG`. Running an app at `LOG_LEVEL=debug` therefore writes webhook
-> urls into its own logs.
+The transport goes around `HttpClient` and hands the url to `fetch` alone, so
+it reaches no log line at any level, no event and no error: an app running at
+`LOG_LEVEL=debug` does not write its webhook urls into its logs.
 
 ## Boot checks
 
@@ -110,7 +110,7 @@ expect(transport.last()?.payload.content).toBe("shipped v1.2.3");
 ```
 
 `posts`, `wasPostedTo()`, `wasPostedMatching()`, `last()`, `clear()` and a
-`failWith` switch that makes the next post throw.
+`failWith` switch that makes every post throw until it is unset.
 
 ## Retries
 
@@ -118,8 +118,8 @@ None here. `sendNotification` already retries three times, and a second
 backoff inside the transport would multiply the first. A refused post throws,
 the sender writes a `failed` receipt, and the job retries.
 
-`Retry-After` is not honoured: `HttpClient` throws before returning a
-response, so the header is out of reach without dropping to raw `fetch`.
+`Retry-After` is deliberately not read: the notification job owns the retry
+schedule, and honouring the header would add a second backoff on top of it.
 
 ## Not in scope
 
