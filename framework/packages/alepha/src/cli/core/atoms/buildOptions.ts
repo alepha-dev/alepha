@@ -227,56 +227,6 @@ export const buildOptions = $atom({
         source: z.string().optional(),
       })
       .optional(),
-
-    /**
-     * PWA (Progressive Web App) configuration.
-     *
-     * Generates a web app manifest and enables installability.
-     * Requires a client-side bundle (React).
-     */
-    pwa: z
-      .object({
-        /**
-         * Full application name displayed on the splash screen
-         * and in the OS app switcher.
-         */
-        name: z.string(),
-
-        /**
-         * Short name displayed on the home screen icon.
-         * Falls back to `name` if omitted.
-         */
-        shortName: z.string().optional(),
-
-        /**
-         * Theme color used for the browser toolbar and OS chrome.
-         *
-         * @default "#ffffff"
-         */
-        themeColor: z.string().optional(),
-
-        /**
-         * Background color for the splash screen.
-         *
-         * @default "#ffffff"
-         */
-        backgroundColor: z.string().optional(),
-
-        /**
-         * Display mode for the installed PWA.
-         *
-         * - `standalone` - Looks like a native app (default)
-         * - `fullscreen` - Uses entire screen (games, immersive)
-         * - `minimal-ui` - Like standalone with minimal browser UI
-         * - `browser` - Standard browser tab
-         *
-         * @default "standalone"
-         */
-        display: z
-          .enum(["standalone", "fullscreen", "minimal-ui", "browser"])
-          .optional(),
-      })
-      .optional(),
   }),
   default: {},
   serverOnly: true,

@@ -46,10 +46,45 @@ export interface ManifestScreenshot {
   label?: string;
 }
 
+export interface ManifestShortcut {
+  name: string;
+  shortName?: string;
+  description?: string;
+  url: string;
+  icons?: ManifestIcon[];
+}
+
 export interface ManifestPrimitiveOptions {
   name: string;
   shortName?: string;
   description?: string;
+
+  /**
+   * The app's identity, which stays the same when `startUrl` moves.
+   * Defaults, in the browser, to the start URL.
+   */
+  id?: string;
+
+  /**
+   * The paths the installed app covers. Defaults, in the browser, to the
+   * start URL's directory.
+   */
+  scope?: string;
+
+  /**
+   * The language of `name` and `description`, a BCP 47 tag (`en`, `fr-CA`).
+   */
+  lang?: string;
+
+  /**
+   * Store categories, from the W3C list (`productivity`, `business`, ...).
+   */
+  categories?: string[];
+
+  /**
+   * Entries an installed app offers on its icon's menu.
+   */
+  shortcuts?: ManifestShortcut[];
 
   /**
    * @default "standalone"
@@ -129,9 +164,12 @@ export class ManifestPrimitive extends Primitive<ManifestPrimitiveOptions> {
   protected build(): string {
     const { options } = this;
     return JSON.stringify({
+      id: options.id,
       name: options.name,
       short_name: options.shortName,
       description: options.description,
+      lang: options.lang,
+      scope: options.scope,
       display: options.display ?? "standalone",
       start_url: options.startUrl ?? "/",
       background_color: options.backgroundColor,
@@ -141,6 +179,11 @@ export class ManifestPrimitive extends Primitive<ManifestPrimitiveOptions> {
       screenshots: options.screenshots?.map(({ formFactor, ...rest }) => ({
         ...rest,
         form_factor: formFactor,
+      })),
+      categories: options.categories,
+      shortcuts: options.shortcuts?.map(({ shortName, ...rest }) => ({
+        ...rest,
+        short_name: shortName,
       })),
     });
   }

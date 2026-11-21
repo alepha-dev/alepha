@@ -9,6 +9,7 @@ export type {
   ManifestIcon,
   ManifestPrimitiveOptions,
   ManifestScreenshot,
+  ManifestShortcut,
 } from "./$manifest.ts";
 
 /**

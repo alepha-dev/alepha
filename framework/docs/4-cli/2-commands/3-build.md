@@ -38,8 +38,7 @@ flowchart TD
   A[Clean dist] --> B[Build client]
   B --> C[Build server, once per runtime]
   C --> D[Copy assets]
-  D --> E[PWA manifest]
-  E --> F[Prerender]
+  D --> F[Prerender]
   F --> G[dist/manifest.json]
   G --> H{Deploy config}
   H -->|workerd slice| I[wrangler.jsonc]
@@ -54,12 +53,11 @@ flowchart TD
 2. **Builds the client**: Compiles React, bundles assets, optimizes for browsers
 3. **Builds the server**: one slice per declared runtime, and only this step repeats
 4. **Copies assets**: Moves static files to the right places
-5. **Generates the PWA manifest**: If `pwa` is configured
-6. **Prerenders pages**: Sitemap and static pages, when applicable
-7. **Writes the build manifest**: `dist/manifest.json`
-8. **Generates deployment configs**: `wrangler.jsonc` when a workerd slice was built, the static site files for `runtime: ["static"]`
-9. **Writes `dist/public/_headers`**: security and cache headers for hosts that serve files without the app (see [Static File Headers](/docs/guides-deployment-headers))
-10. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets. Skipped when `workerd` is the only slice: Cloudflare compresses at the edge and never serves a `.br` sidecar
+5. **Prerenders pages**: Sitemap, web app manifest and static pages, when applicable
+6. **Writes the build manifest**: `dist/manifest.json`
+7. **Generates deployment configs**: `wrangler.jsonc` when a workerd slice was built, the static site files for `runtime: ["static"]`
+8. **Writes `dist/public/_headers`**: security and cache headers for hosts that serve files without the app (see [Static File Headers](/docs/guides-deployment-headers))
+9. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets. Skipped when `workerd` is the only slice: Cloudflare compresses at the edge and never serves a `.br` sidecar
 
 ## Output Structure
 
@@ -265,10 +263,6 @@ export default defineConfig({
   build: {
     runtime: ["bun"],
     stats: true,
-    pwa: {
-      name: "My App",
-      themeColor: "#0f172a",
-    },
   },
 });
 ```
@@ -281,7 +275,6 @@ Build options include `stats`, `inspect`, `runtime` and `sbom`, plus the section
 | `preload`    | `allowUnresolved`: source paths of pages allowed to resolve to no preloaded chunks (refused by default)                        |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
 | `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
-| `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |
 
 ## Software Bill of Materials
 

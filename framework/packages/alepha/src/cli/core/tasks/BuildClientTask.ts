@@ -65,9 +65,7 @@ export class BuildClientTask extends BuildTask {
     const isCI = this.alepha.isCI();
 
     // Write index.html template for Vite to consume
-    const template = this.viteUtils.generateIndexHtml(ctx.entry, {
-      pwa: !!ctx.options.pwa,
-    });
+    const template = this.viteUtils.generateIndexHtml(ctx.entry);
     await this.fs.mkdir(this.fs.join(ctx.root, "node_modules/.alepha"));
     const indexHtmlPath = this.fs.join(
       ctx.root,

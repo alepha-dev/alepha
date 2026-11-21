@@ -65,7 +65,6 @@ import { BuildCompressTask } from "./tasks/BuildCompressTask.ts";
 import { BuildHeadersTask } from "./tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "./tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "./tasks/BuildPrerenderTask.ts";
-import { BuildPwaTask } from "./tasks/BuildPwaTask.ts";
 import { BuildServerTask } from "./tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "./tasks/BuildStaticTask.ts";
 
@@ -134,7 +133,6 @@ export * from "./tasks/BuildCompressTask.ts";
 export * from "./tasks/BuildHeadersTask.ts";
 export * from "./tasks/BuildManifestTask.ts";
 export * from "./tasks/BuildPrerenderTask.ts";
-export * from "./tasks/BuildPwaTask.ts";
 export * from "./tasks/BuildServerTask.ts";
 export * from "./tasks/BuildStaticTask.ts";
 export * from "./tasks/BuildTask.ts";
@@ -211,7 +209,6 @@ export const AlephaCliServices = $module({
     BuildManifestTask,
     BuildPrerenderTask,
     BuildServerTask,
-    BuildPwaTask,
     BuildStaticTask,
   ],
 });
