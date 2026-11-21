@@ -14,3 +14,7 @@ import { WorkerSupervisorProvider } from "@alepha/desktop/shell";
 A crash message can arrive while the main thread is blocked in the window
 loop: it is queued, and delivered once the loop returns, before the answer
 to `stop`. So `stop` always learns about it.
+
+The supervisor Worker dying (a module that throws at load, an uncaught
+error, an exit) fails a pending `start`, and makes `stop`
+report a crash, so neither waits for an answer that never comes.

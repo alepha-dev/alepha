@@ -91,4 +91,46 @@ describe("WorkerSupervisorProvider with real supervisor and server Workers", () 
     if (shutdown.kind === "crashed")
       expect(shutdown.message).toContain("injected runtime crash");
   });
+
+  it("fails the start when the supervisor Worker throws at load", async () => {
+    const provider = new WorkerSupervisorProvider();
+    provider.supervisorUrl = new URL(
+      "./fixtures/supervisor-throws.ts",
+      import.meta.url,
+    ).href;
+
+    const started = await Promise.race([
+      provider.start(init, workerUrl),
+      Bun.sleep(3_000).then(() => "pending" as const),
+    ]);
+
+    expect(started).not.toBe("pending");
+    if (started === "pending") return;
+    expect(started.ok).toBe(false);
+    if (!started.ok)
+      expect(started.message).toContain("injected supervisor load failure");
+  });
+
+  it("reports a crash when the supervisor Worker dies with the window open", async () => {
+    const provider = new WorkerSupervisorProvider();
+    provider.supervisorUrl = new URL(
+      "./fixtures/supervisor-dies.ts",
+      import.meta.url,
+    ).href;
+
+    const started = await provider.start(init, workerUrl);
+    expect(started.ok).toBe(true);
+    provider.attachWindow(11);
+    await Bun.sleep(300);
+
+    const shutdown = await Promise.race([
+      provider.stop(),
+      Bun.sleep(3_000).then(() => "pending" as const),
+    ]);
+    expect(shutdown).not.toBe("pending");
+    if (shutdown === "pending") return;
+    expect(shutdown.kind).toBe("crashed");
+    if (shutdown.kind === "crashed")
+      expect(shutdown.message).toContain("injected supervisor crash");
+  });
 });

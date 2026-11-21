@@ -136,8 +136,13 @@ describe("DesktopCompileAdapter.writeEntries", () => {
     );
 
     const supervisor = fs.getFileContent("/s/dist/desktop-supervisor.js")!;
+    expect(supervisor).toMatch(
+      /import \{ DesktopLogRotator, DesktopSupervisorWorker, NativeLoopTerminator \} from "\/.+\/src\/shell\/index\.ts";/,
+    );
+    expect(supervisor).toContain("const rotator = new DesktopLogRotator();");
+    // The 4th argument starts the once-a-minute rotation while the app runs.
     expect(supervisor).toContain(
-      "new DesktopSupervisorWorker(self, (handle) => terminator.terminate(handle)).listen();",
+      "new DesktopSupervisorWorker(self, (handle) => terminator.terminate(handle), undefined, (file) => rotator.rotate(file)).listen();",
     );
 
     const worker = fs.getFileContent("/s/dist/desktop-worker.js")!;
