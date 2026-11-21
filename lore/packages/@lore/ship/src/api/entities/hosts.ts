@@ -197,6 +197,46 @@ export const hosts = $entity({
      */
     deployAllowed: db.default(z.boolean(), false),
     /**
+     * Whether one-shot jobs (#Q3983, #Q3984) may run on this host: agent
+     * jobs now, CI later. Off by default, like deploys, and separate from
+     * them: a job runs code of a repository on the machine. Bay refuses a
+     * `job-run` without it, from the `welcome` frame.
+     */
+    jobsAllowed: db.default(z.boolean(), false),
+    /**
+     * An **Agent host** (#Q3985): this host runs Claude Code jobs, with a
+     * credential its operator set up by hand for Bay's jobs user. Lore never
+     * configures Claude Code nor sees the credential; it checks the capability
+     * with a trivial prompt (`agentStatus` and the fields below). Requires
+     * `jobsAllowed`. Lent like everything else on a host.
+     */
+    agentHost: db.default(z.boolean(), false),
+    /**
+     * How the machine runs jobs, from its inventory (#Q3983): `process` (a
+     * Unix user on the host) or `container`. Absent when it reported no jobs
+     * user. Lore refuses untrusted input on anything but `container`
+     * (#Q3987).
+     */
+    jobsRunner: z.string().max(20).optional(),
+    /**
+     * The last capability check: `checking` while one runs, then `available`
+     * or `unavailable` with the CLI's message in `agentError` (an expired
+     * token, a reached usage limit). A usage limit clears itself at the next
+     * passing check. Absent until the first check.
+     */
+    agentStatus: z
+      .enum(["checking", "available", "unavailable"])
+      .meta({ mode: "text" })
+      .optional(),
+    agentCheckedAt: z.string().optional(),
+    agentError: z.string().max(2000).optional(),
+    /** The Claude Code version the check ran, as the CLI reports it. */
+    agentCliVersion: z.string().max(100).optional(),
+    /** The model the check answered with, from `modelUsage` or the init line. */
+    agentModel: z.string().max(100).optional(),
+    /** `oauth` (a login or a setup-token) or `api_key`. */
+    agentCredential: z.string().max(20).optional(),
+    /**
      * How often the connector pushes its gauge, in seconds. Reaches the
      * machine in the `welcome` frame (#1782). A UX choice, not a cost one.
      */

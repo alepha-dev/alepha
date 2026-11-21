@@ -5,7 +5,13 @@ import {
   I18n,
   ElementReferenceRegistry,
 } from "@lore/core/web";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -17,6 +23,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import { useCaseGroupingAtom } from "../../atoms/useCaseGroupingAtom.ts";
 import UseCasesPage from "../pages/UseCasesPage.tsx";
 import UseCasePage from "./UseCasePage.tsx";
 
@@ -142,10 +149,62 @@ describe("Use cases screens", () => {
       </AlephaContext.Provider>,
     );
 
+  it("groups by persona on a first visit, and restores the last pick for the project (#Q3979)", async ({
+    expect,
+  }) => {
+    const app = await boot(["usecase:read"]);
+    const view = mount(app, <UseCasesPage />);
+    await screen.findByText("Order as a guest");
+    const groups = () =>
+      [...document.querySelectorAll('[data-slot="data-table-group"]')].map(
+        (row) => row.getAttribute("data-group"),
+      );
+    expect(groups()).toEqual(["persona:2"]);
+
+    // A pick is kept for this project, and the page reopens on it.
+    app.store.set(useCaseGroupingAtom, { byProject: { "1": "status" } });
+    view.unmount();
+    mount(app, <UseCasesPage />);
+    await screen.findByText("Order as a guest");
+    expect(groups()).toEqual(["draft", "ready"]);
+  });
+
+  it("remembers the group-by picked in the toolbar, for this project only (#Q3979)", async ({
+    expect,
+  }) => {
+    const app = await boot(["usecase:read"]);
+    app.store.set(useCaseGroupingAtom, { byProject: { "9": "none" } });
+    mount(app, <UseCasesPage />);
+    await screen.findByText("Order as a guest");
+    // The toolbar's grouping select, the one showing the grouping in use.
+    const trigger = await waitFor(() => {
+      const found = [
+        ...document.querySelectorAll<HTMLElement>('[role="combobox"]'),
+      ].find(
+        (it) => !it.getAttribute("aria-label") && it.textContent === "Persona",
+      );
+      if (!found) throw new Error("no group-by select");
+      return found;
+    });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const option = await waitFor(() =>
+      screen.getByRole("option", { name: /Status/ }),
+    );
+    await act(async () => fireEvent.click(option));
+    await waitFor(() =>
+      expect(app.store.get(useCaseGroupingAtom).byProject).toEqual({
+        "9": "none",
+        "1": "status",
+      }),
+    );
+  });
+
   it("groups the use cases by epic, the uncovered ones last, and collapses a group", async ({
     expect,
   }) => {
-    mount(await boot(["usecase:read", "usecase:write"]), <UseCasesPage />);
+    const app = await boot(["usecase:read", "usecase:write"]);
+    app.store.set(useCaseGroupingAtom, { byProject: { "1": "epic" } });
+    mount(app, <UseCasesPage />);
 
     await screen.findByText("Order as a guest");
     // DataTable's group rows (`groupBy`), each folding its use cases.
@@ -218,5 +277,33 @@ describe("Use cases screens", () => {
     expect(
       await screen.findByRole("menuitem", { name: /Request changes/ }),
     ).toBeTruthy();
+  });
+
+  it("shows each actor's persona role as the persona card's badge, and nothing for an actor without one (#Q3967)", async ({
+    expect,
+  }) => {
+    mount(
+      await boot(["usecase:read"]),
+      <UseCasePage
+        useCase={aUseCase({
+          actors: [
+            {
+              personaId: 10,
+              number: 4,
+              name: "Karim",
+              role: "primary",
+              alephaRole: "control_room",
+            },
+            { personaId: 11, number: 5, name: "Léa", role: "beneficiary" },
+          ],
+        })}
+      />,
+    );
+    await screen.findByTestId("scenario-steps");
+    const badges = screen.getAllByTestId("persona-alepha-role");
+    expect(badges).toHaveLength(1);
+    expect(badges[0].textContent).toBe("Control room");
+    expect(badges[0].closest("li")?.textContent).toContain("Karim");
+    expect(document.body.textContent).not.toContain("control_room");
   });
 });

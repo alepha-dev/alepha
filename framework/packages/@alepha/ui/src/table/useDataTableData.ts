@@ -214,6 +214,9 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
       sortValues,
       filters: form?.currentValues,
       filter: props.filter,
+      group: props.groupBy
+        ? { key: props.groupBy.key, order: props.groupBy.order }
+        : undefined,
     });
     // `refreshKey` is what the filter-form subscriptions bump, so it is how
     // a filter change reaches this memo — `form.currentValues` is mutated in
@@ -223,6 +226,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     props.columns,
     props.filter,
     props.pagination,
+    props.groupBy,
     page,
     size,
     sortParam,
@@ -235,6 +239,8 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   // Static rows are derived in this render from the current values, so those
   // ARE the filters they answer.
   const rowFilters = staticPage ? form?.currentValues : fetchedFilters;
+  // Each group's rows over every page, for its header's count.
+  const groupCounts = staticPage?.groupCounts;
 
   /**
    * Rows vanish under the reader in static mode: the caller detaches one and
@@ -311,6 +317,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     data,
     meta,
     rowFilters,
+    groupCounts,
     loading,
     refreshKey,
     setRefreshKey,

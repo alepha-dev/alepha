@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import {
   CommitReferenceRegistry,
   type CommitReferenceInput,
+  JobKeyService,
   ProjectCapabilityController,
   ProjectController,
 } from "@lore/core/api";
@@ -129,7 +130,13 @@ describe("git smart HTTP", () => {
           { user: owner },
         );
     }
-    return { owner, projectId, slug, cloneUrl: repo.data.cloneUrl };
+    return {
+      owner,
+      projectId,
+      slug,
+      cloneUrl: repo.data.cloneUrl,
+      repositoryId: repo.data.id,
+    };
   };
 
   /**
@@ -423,6 +430,43 @@ describe("git smart HTTP", () => {
     await git(["push", "--quiet", remote, ":other"], source);
   });
 
+  it("refuses a non-fast-forward push of the default branch, and lets a feature branch be force-pushed (#Q3953)", async ({
+    expect,
+  }) => {
+    const { owner, cloneUrl } = await aProject();
+    const source = await aCheckout();
+    const remote = withKey(cloneUrl, owner.key);
+    await git(["push", "--quiet", remote, "main"], source);
+    const { stdout: pushed } = await git(["rev-parse", "HEAD"], source);
+
+    // History rewritten: the amended commit is not a descendant of main's.
+    await git(["commit", "--quiet", "--amend", "-m", "rewritten"], source);
+    const refused = await git(
+      ["push", "--force", remote, "main"],
+      source,
+    ).catch((error) => error as { stderr: string });
+    expect(String((refused as { stderr: string }).stderr)).toMatch(
+      /default branch main refuses a non-fast-forward push/,
+    );
+    await git(["clone", "--quiet", remote, "after"]);
+    const { stdout: kept } = await git(
+      ["rev-parse", "HEAD"],
+      join(ctx.work, "after"),
+    );
+    expect(kept.trim()).toBe(pushed.trim());
+
+    // Any other branch takes a force-push, and main a fast-forward.
+    await git(["push", "--quiet", remote, "HEAD:feature"], source);
+    await git(["commit", "--quiet", "--amend", "-m", "again"], source);
+    await git(["push", "--quiet", "--force", remote, "HEAD:feature"], source);
+    await git(["fetch", "--quiet", remote, "main"], source);
+    await git(["reset", "--quiet", "--hard", "FETCH_HEAD"], source);
+    await writeFile(join(source, "next.md"), "next\n");
+    await git(["add", "next.md"], source);
+    await git(["commit", "--quiet", "-m", "next"], source);
+    await git(["push", "--quiet", remote, "main"], source);
+  });
+
   it("lets a Viewer clone and refuses its push with 403", async ({
     expect,
   }) => {
@@ -472,5 +516,102 @@ describe("git smart HTTP", () => {
     );
     expect(read.status).toBe(404);
     expect(write.status).toBe(400);
+  });
+
+  describe("with a job key (#Q3995)", () => {
+    const mint = async (
+      project: Awaited<ReturnType<typeof aProject>>,
+      scope: { repositoryId?: string; writeRefPrefix?: string },
+    ) => {
+      const jobId = crypto.randomUUID();
+      const token = await ctx.alepha.inject(JobKeyService).mint(
+        {
+          id: jobId,
+          projectId: project.projectId,
+          kind: "agent",
+          status: "running",
+          startedBy: project.owner.id,
+          queuedAt: new Date().toISOString(),
+          input: { profile: "push", maxTurns: 10, timeoutSeconds: 600 },
+        },
+        { tools: [], ...scope },
+      );
+      return { jobId, token };
+    };
+
+    it("pushes below its prefix only, and never to the default branch", async ({
+      expect,
+    }) => {
+      const project = await aProject();
+      const source = await aCheckout();
+      await git(
+        [
+          "push",
+          "--quiet",
+          withKey(project.cloneUrl, project.owner.key),
+          "main",
+        ],
+        source,
+      );
+      const { token } = await mint(project, {
+        repositoryId: String(project.repositoryId),
+        writeRefPrefix: "lore/q12",
+      });
+      const remote = withKey(project.cloneUrl, token);
+
+      await git(["clone", "--quiet", remote, "job-clone"]);
+      await git(["push", "--quiet", remote, "main:lore/q12"], source);
+      // A new commit, so a push of main is a real update and not up to date.
+      await writeFile(join(source, "README.md"), "second\n");
+      await git(["commit", "--quiet", "-am", "second"], source);
+      for (const ref of ["main", "main:lore/q13", "main:other"]) {
+        const refused = await git(["push", remote, ref], source).catch(
+          (error) => error as { stderr: string },
+        );
+        expect(String((refused as { stderr?: string }).stderr)).toMatch(
+          /job key pushes to refs\/heads\/lore\/q12 only/,
+        );
+      }
+    });
+
+    it("reads one repository of one project, and pushes nothing without a prefix", async ({
+      expect,
+    }) => {
+      const project = await aProject();
+      const other = await aProject({ repo: "web" });
+      const { token } = await mint(project, {
+        repositoryId: String(project.repositoryId),
+      });
+      const auth = `Basic ${btoa(`x:${token}`)}`;
+      const elsewhere = await fetch(
+        `${new URL(other.cloneUrl).origin}${new URL(other.cloneUrl).pathname}/info/refs?service=git-upload-pack`,
+        { headers: { authorization: auth } },
+      );
+      expect(elsewhere.status).toBe(404);
+      const push = await fetch(
+        `${project.cloneUrl}/info/refs?service=git-receive-pack`,
+        { headers: { authorization: auth } },
+      );
+      expect(push.status).toBe(403);
+    });
+
+    it("is refused on any route but MCP and git, and dead once revoked", async ({
+      expect,
+    }) => {
+      const project = await aProject();
+      const { jobId, token } = await mint(project, {
+        repositoryId: String(project.repositoryId),
+      });
+      const api = await fetch(`${ctx.baseUrl}/api/getMyProjects`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      expect(api.status).toBe(403);
+      await ctx.alepha.inject(JobKeyService).revoke(jobId);
+      const clone = await fetch(
+        `${project.cloneUrl}/info/refs?service=git-upload-pack`,
+        { headers: { authorization: `Basic ${btoa(`x:${token}`)}` } },
+      );
+      expect(clone.status).toBe(401);
+    });
   });
 });

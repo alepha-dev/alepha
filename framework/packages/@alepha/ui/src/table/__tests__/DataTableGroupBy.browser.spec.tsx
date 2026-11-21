@@ -142,6 +142,55 @@ describe("DataTable groups and filtering tiles", () => {
     });
   });
 
+  describe("groupBy over pages (static rows)", () => {
+    it("pages the whole set group by group, and counts each group over every page", async () => {
+      await mount(
+        <DataTable<Row>
+          data={ROWS}
+          defaultSize={2}
+          columns={columns}
+          groupBy={{ key: (row) => row.state }}
+        />,
+      );
+      await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+
+      // Page 1: both passed rows, not a passed and a failed one.
+      expect(titles()).toEqual(["Alpha", "Gamma"]);
+      expect(document.querySelector('[data-group="passed"]')?.textContent).toBe(
+        "passed2",
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => expect(titles()).toEqual(["Beta", "Delta"]));
+      expect(
+        [...document.querySelectorAll('[data-slot="data-table-group"]')].map(
+          (row) => row.textContent,
+        ),
+      ).toEqual(["failed1", "never_run1"]);
+    });
+  });
+
+  describe("onPage", () => {
+    it("reports the page on screen and the page count, on mount and on every move", async () => {
+      const seen: Array<{ page: number; totalPages: number }> = [];
+      await mount(
+        <DataTable<Row>
+          data={ROWS}
+          defaultSize={2}
+          columns={columns}
+          onPage={(state) => seen.push(state)}
+        />,
+      );
+      await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+      expect(seen.at(-1)).toEqual({ page: 0, totalPages: 2 });
+
+      fireEvent.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() =>
+        expect(seen.at(-1)).toEqual({ page: 1, totalPages: 2 }),
+      );
+    });
+  });
+
   describe("isRowActive", () => {
     it("marks the row the page has open, and only that one", async () => {
       await mount(
@@ -164,6 +213,37 @@ describe("DataTable groups and filtering tiles", () => {
   });
 
   describe("a summary tile with a filter", () => {
+    it("clears a filter from a tile whose value is undefined, drawn pressed while it is clear", async () => {
+      await mount(
+        <DataTable<Row, typeof filterFields>
+          data={ROWS}
+          pagination={false}
+          columns={columns}
+          filters={{ fields: filterFields }}
+          summary={{
+            cards: [
+              { label: "All", value: "4", filter: { state: undefined } },
+              { label: "Failed", value: "1", filter: { state: ["failed"] } },
+            ],
+          }}
+        />,
+      );
+      await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+
+      const all = screen.getByRole("button", { name: "All" });
+      expect(all.getAttribute("aria-pressed")).toBe("true");
+
+      fireEvent.click(screen.getByRole("button", { name: "Failed" }));
+      await waitFor(() => expect(titles()).toEqual(["Beta"]));
+      expect(all.getAttribute("aria-pressed")).toBe("false");
+
+      fireEvent.click(all);
+      await waitFor(() =>
+        expect(titles()).toEqual(["Alpha", "Beta", "Gamma", "Delta"]),
+      );
+      expect(all.getAttribute("aria-pressed")).toBe("true");
+    });
+
     it("filters the rows on a click, shows it pressed, and clears on a second", async () => {
       await mount(
         <DataTable<Row, typeof filterFields>

@@ -44,9 +44,9 @@ them.
 - **Lists are paged** on the tools that say so. `feedback_list` answers at most
   50 rows and `hasMore`, and `quest_list` hides shelved quests and draft epics'
   quests unless asked.
-- **Attachments move no bytes.** `quest_attachment_add` and
-  `folio_attachment_add` check the target and answer a `lore attachments push`
-  command to run in a shell.
+- **Attachments move no bytes.** `quest_attachment_add`,
+  `folio_attachment_add` and `usecase_run_attachment_add` check the target and
+  answer a `lore attachments push` command to run in a shell.
 - **Diagrams.** Most tools that write Markdown answer `diagramWarnings` when a
   ` ```mermaid ` fence will not draw as meant.
 - **Untrusted text.** What an error or a feedback item carries comes from
@@ -169,14 +169,16 @@ See [Folios](/lore/docs/remember-folios) and
 
 See [Feedback](/lore/docs/plan-feedback).
 
-| Tool                      | What it does                                         |
-| ------------------------- | ---------------------------------------------------- |
-| `feedback_list`           | The inbox, pending by default.                       |
-| `feedback_get`            | One report with its context, attachments and thread. |
-| `feedback_attachment_get` | One attachment's content.                            |
-| `feedback_comment_add`    | Comment on the thread the reporter shares.           |
-| `feedback_accept`         | Accept a pending report.                             |
-| `feedback_reject`         | Reject a report.                                     |
+| Tool                      | What it does                                          |
+| ------------------------- | ----------------------------------------------------- |
+| `feedback_list`           | The inbox, pending by default.                        |
+| `feedback_get`            | One report with its context, attachments and thread.  |
+| `feedback_attachment_get` | One attachment's content.                             |
+| `feedback_comment_add`    | Comment on the thread the reporter shares.            |
+| `feedback_accept`         | Accept a pending report.                              |
+| `feedback_reject`         | Reject a report.                                      |
+| `feedback_targets`        | The projects you may file a feedback into.            |
+| `feedback_submit`         | File a feedback, in this project or another of yours. |
 
 ## Personas, use cases and requirements
 
@@ -195,6 +197,7 @@ and [Traceability](/lore/docs/plan-traceability).
 | `usecase_link_epic`                                              | Make an epic cover a use case, or stop.                                          |
 | `usecase_validate`                                               | Answer a use case's validation.                                                  |
 | `usecase_run_record`                                             | Record a run: one result per criterion.                                          |
+| `usecase_run_attachment_add`                                     | How to attach a screenshot or a recording to a run, on the criterion it shows.   |
 | `usecase_prompt`                                                 | The Verify prompt: test, spec, demo, explore, import or draft.                   |
 | `requirement_list`, `requirement_get`                            | A project's requirements, and one with its criteria, epics, release and measure. |
 | `requirement_create`, `requirement_update`, `requirement_delete` | Write a requirement; `metric_*` parameters set a measure.                        |

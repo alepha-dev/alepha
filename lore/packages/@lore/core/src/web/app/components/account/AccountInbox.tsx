@@ -1,4 +1,4 @@
-import { TimeAgo, Button } from "@alepha/ui";
+import { TimeAgo } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
@@ -10,15 +10,17 @@ import {
   useClient,
   useInfiniteQuery,
   useInject,
+  useQueryClient,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { CheckCheck, FolderKanban } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { DOCK_UNREAD_KEY } from "../project/useDockUnread.ts";
 import { useUserProjects } from "./useUserProjects.ts";
 
 interface InboxRow {
@@ -72,8 +74,9 @@ const PAGE_SIZE = 25;
  * Every page loaded so far lives in one `useInfiniteQuery` entry, flattened
  * into one array which the table sorts and searches in memory.
  * The list is append-heavy, which is exactly why the controller pages by
- * cursor rather than offset, and why "Load more" adds to what is on screen
- * instead of replacing it.
+ * cursor rather than offset. The table pages what is loaded, and reaching its
+ * last page loads the next batch (`onPage`, #Q3969): the footer's pager is
+ * the one paging control.
  */
 const AccountInbox = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -82,6 +85,7 @@ const AccountInbox = () => {
   const router = useRouter<any>();
   const api = useClient<NotificationInboxController>();
   const dateTime = useInject(DateTimeProvider);
+  const queries = useQueryClient();
 
   // The Project filter's options: the projects this account belongs to.
   useUserProjects();
@@ -158,6 +162,23 @@ const AccountInbox = () => {
   );
   const busy = inbox.loading || inbox.loadingMore;
 
+  // Where the table's pager stands (#Q3969). On its last page, with more on
+  // the server, the next cursor batch is fetched; run again once that batch
+  // lands, in case it still fits on the same last page.
+  const [paging, setPaging] = useState({ page: 0, totalPages: 0 });
+  const onLastPage =
+    paging.totalPages > 0 && paging.page >= paging.totalPages - 1;
+  // The number of messages loaded when the last batch was asked for: one
+  // request per batch, so a failed one is not retried in a loop.
+  const loadedCount = items.length;
+  const askedAt = useRef(-1);
+  useEffect(() => {
+    if (!onLastPage || !inbox.hasMore || busy) return;
+    if (askedAt.current === loadedCount) return;
+    askedAt.current = loadedCount;
+    void inbox.loadMore();
+  }, [onLastPage, inbox, busy, loadedCount]);
+
   /**
    * Mark one row read, optimistically. Quiet on failure (`onError`): the row
    * stays marked on screen. Re-reading it is cheap and being wrong the other
@@ -172,6 +193,8 @@ const AccountInbox = () => {
         }));
         await api.markInboxRead({ params: { id: row.id } });
       },
+      // The dock's badges count unread messages too (#Q3981).
+      invalidates: [[DOCK_UNREAD_KEY]],
       onError: () => {},
     },
     [api, dateTime],
@@ -195,6 +218,7 @@ const AccountInbox = () => {
         }));
         try {
           await api.markAllInboxRead({ query: scope ? { scope } : {} });
+          queries.invalidate([DOCK_UNREAD_KEY]);
         } finally {
           // Same rule as the first page: zero is the whole inbox's answer
           // only when the whole inbox is what was marked.
@@ -204,7 +228,7 @@ const AccountInbox = () => {
         }
       },
     },
-    [api, dateTime, scope],
+    [api, dateTime, scope, queries],
   );
 
   const unreadOnScreen = rows.filter((it) => !it.readAt).length;
@@ -248,6 +272,10 @@ const AccountInbox = () => {
           data={rows}
           defaultSort={{ field: "createdAt", direction: "desc" }}
           rowKey={(row) => row.id}
+          // One paging control (#Q3969): the footer's pager. Reaching its
+          // last page fetches the next cursor batch, so the pager grows a
+          // page instead of a "Load more" button sitting under it.
+          onPage={setPaging}
           onRowClick={(row) => void open(row)}
           actions={[
             {
@@ -347,19 +375,6 @@ const AccountInbox = () => {
             },
           }}
         />
-
-        {inbox.hasMore && (
-          <div className="flex justify-center pt-3">
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={busy}
-              onClick={() => void inbox.loadMore()}
-            >
-              {tr("inbox.loadMore")}
-            </Button>
-          </div>
-        )}
       </div>
     </AccountPage>
   );

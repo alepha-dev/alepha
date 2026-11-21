@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "43060347-3f36-4de1-87de-b7024a5c4f39",
+  "prevIds": ["0e0ee8f3-f19b-4f8a-9363-890462afb3c2"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "feedback", "agent_job_id"],
+      "writes": [
+        "s|col|public.feedback.agent_job_id",
+        "n|col|public.feedback.agent_job_id",
+        "e|col|public.feedback.agent_job_id"
+      ],
+      "reads": ["n|tbl|public.feedback", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "feedback", "agent_triaged_at"],
+      "writes": [
+        "s|col|public.feedback.agent_triaged_at",
+        "n|col|public.feedback.agent_triaged_at",
+        "e|col|public.feedback.agent_triaged_at"
+      ],
+      "reads": ["n|tbl|public.feedback", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "feedback",
+        "name": "agent_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "feedback",
+        "name": "agent_triaged_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

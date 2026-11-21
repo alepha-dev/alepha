@@ -1,14 +1,15 @@
 import {
-  formatReference,
-  lazyPart,
+  AssistantSuggestionRegistry,
+  canInProject,
   DashboardPickerRegistry,
   DocumentSinkRegistry,
   ElementReferenceRegistry,
+  formatReference,
+  hasCapability,
+  lazyPart,
   ProjectShellRegistry,
   ReportsTabRegistry,
   ResourceTabRegistry,
-  hasCapability,
-  canInProject,
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
@@ -34,9 +35,20 @@ export class KnowledgeShell {
   protected readonly tabs = $inject(ResourceTabRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
   protected readonly dashboardPickers = $inject(DashboardPickerRegistry);
+  protected readonly suggestions = $inject(AssistantSuggestionRegistry);
   protected readonly folioApi = $client<FolioController>();
 
   constructor() {
+    // The assistant's prompts on a folio (#Q3972), which the dock reads
+    // through the folio's page context.
+    this.suggestions.register({
+      routes: (name) => name === "projectFoliosFolio",
+      keys: [
+        "assistant.suggest.folio.summary",
+        "assistant.suggest.folio.decisions",
+        "assistant.suggest.folio.quests",
+      ],
+    });
     // The Folio card's own filter step (#E144, #Q3520): a folio picker and
     // a Show choice that fits the folio. Loaded when the step opens.
     this.dashboardPickers.registerFilterEditor(

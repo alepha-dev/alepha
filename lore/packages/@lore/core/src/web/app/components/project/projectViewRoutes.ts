@@ -86,6 +86,8 @@ export const ROUTES_FULL_WIDTH = new Set([
   // the space they are given.
   "projectStacks",
   "projectStackEnvironment",
+  // Host jobs (#Q3984): a table, laid out from the space it is given.
+  "projectJobs",
   // A host's console (#E126): a plate over route tabs, as an app's is.
   ...ROUTES_HOST,
   // The project's landing page since #Q2104. Full width because it is a grid
@@ -191,6 +193,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectApps"
   | "projectArtifacts"
   | "projectStacks"
+  | "projectJobs"
   | "projectReleases"
   | "projectSettingsHosts"
   | "projectRequirements"
@@ -214,6 +217,8 @@ export const SECTION_HREF_ROUTES: Record<
   projectMonitor: "projectApps",
   // A stack environment's crumb climbs back to the Stacks list (#E79).
   projectStackEnvironment: "projectStacks",
+  // A host job's crumb climbs back to the project's jobs (#Q3984).
+  projectJob: "projectJobs",
   projectApp: "projectApps",
   projectAppRedirect: "projectApps",
   app: "projectApps",
@@ -239,6 +244,8 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectMonitor: "project.menu.apps",
   projectStacks: "stacks.title",
   projectStackEnvironment: "stacks.title",
+  projectJobs: "jobs.title",
+  projectJob: "jobs.title",
   // ⚠️ A leaf and the whole section, so it is deliberately absent from
   // `SECTION_HREF_ROUTES` above: an href there would link the page to itself.
   // Same reading as `projectActivity` below.

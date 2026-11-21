@@ -35,6 +35,7 @@ import {
   type OwnedHostResource,
   ownedHostResourceSchema,
 } from "../schemas/ownedHostResourceSchema.ts";
+import { AgentHostService } from "../services/AgentHostService.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostCommandTransport } from "../services/HostCommandTransport.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
@@ -79,6 +80,7 @@ export class HostController {
   protected readonly tokens = $inject(HostTokenService);
   protected readonly cloudflare = $inject(HostCloudflareService);
   protected readonly transport = $inject(HostCommandTransport);
+  protected readonly agents = $inject(AgentHostService);
   protected readonly inventories = $inject(HostInventoryService);
   protected readonly stats = $inject(HostStatsService);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -395,6 +397,12 @@ export class HostController {
         label: z.string().max(100).optional(),
         collectSeries: z.boolean().optional(),
         deployAllowed: z.boolean().optional(),
+        jobsAllowed: z.boolean().optional(),
+        /**
+         * Make it an Agent host, which runs Claude Code jobs (#Q3985). On
+         * needs jobs allowed, and starts a capability check.
+         */
+        agentHost: z.boolean().optional(),
         statsIntervalSeconds: z.integer().min(60).max(86_400).optional(),
         /**
          * How long from now the host is meant to live, in seconds (#Q3138);
@@ -423,6 +431,9 @@ export class HostController {
         ...(body.deployAllowed === undefined
           ? {}
           : { deployAllowed: body.deployAllowed }),
+        ...(body.jobsAllowed === undefined
+          ? {}
+          : { jobsAllowed: body.jobsAllowed }),
         ...(body.statsIntervalSeconds === undefined
           ? {}
           : { statsIntervalSeconds: body.statsIntervalSeconds }),
@@ -447,24 +458,36 @@ export class HostController {
         metadata: { fields: Object.keys(body) },
       });
 
-      const updated = await this.reread(host.id);
+      const switched = await this.reread(host.id);
       // The machine caches what `welcome` told it, so a switch it acts on
-      // (deploys, the gauge interval) is pushed as `config` the moment it
-      // changes. Best effort: an offline machine learns it from its next
+      // (deploys, jobs, the gauge interval) is pushed as `config` the moment
+      // it changes. Best effort: an offline machine learns it from its next
       // `welcome`, and the label is nothing the machine reads.
       // A cloudflare host has no machine and no socket, so there is
       // nothing to tell: offering the transport a row it can never reach
       // would queue a push against a host that has no connector.
+      // ⚠️ Before the Agent host switch below: turning it on queues a check
+      // job, and the machine must hold `jobsAllowed` before the job-run
+      // arrives on the same socket, or it refuses it (#Q3986's e2e found it).
       if (
-        updated.type === "bay" &&
+        switched.type === "bay" &&
         (body.deployAllowed !== undefined ||
+          body.jobsAllowed !== undefined ||
           body.statsIntervalSeconds !== undefined)
       ) {
         await this.transport.push(
-          updated,
-          this.service.welcomeFrame(updated, "config"),
+          switched,
+          this.service.welcomeFrame(switched, "config"),
         );
       }
+      if (body.agentHost !== undefined) {
+        // After the switches above, so jobs allowed in the same request
+        // counts; turning jobs off turns the Agent host off with them.
+        await this.agents.setAgentHost(switched, body.agentHost, user?.id);
+      } else if (body.jobsAllowed === false && host.agentHost) {
+        await this.agents.setAgentHost(switched, false, user?.id);
+      }
+      const updated = await this.reread(host.id);
       return this.presentOne(updated, user);
     },
   });

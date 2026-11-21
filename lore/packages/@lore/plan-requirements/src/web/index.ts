@@ -5,6 +5,7 @@ import { RequirementsDashboardMetrics } from "../api/services/RequirementsDashbo
 import { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
 import { requirementsCountsAtom } from "./app/atoms/requirementsCountsAtom.ts";
+import { useCaseGroupingAtom } from "./app/atoms/useCaseGroupingAtom.ts";
 import { RequirementsProjectLoader } from "./app/loaders/RequirementsProjectLoader.ts";
 import { RequirementsRouter } from "./app/RequirementsRouter.ts";
 import { RequirementsShell } from "./app/shell/RequirementsShell.ts";
@@ -26,7 +27,12 @@ export const LorePlanRequirementsWeb = $module({
   // Plan first: Requirements extends Plan's sidebar, so booting this module
   // alone boots the shell it extends.
   imports: [LorePlanWeb],
-  atoms: [currentPersonaAtom, currentUseCaseAtom, requirementsCountsAtom],
+  atoms: [
+    currentPersonaAtom,
+    currentUseCaseAtom,
+    requirementsCountsAtom,
+    useCaseGroupingAtom,
+  ],
   register(alepha) {
     // Injected rather than listed in `services`, as `LorePlanWeb` does: a
     // listed service is tagged with this module, and injecting it anywhere

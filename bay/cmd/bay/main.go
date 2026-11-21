@@ -172,8 +172,10 @@ func main() {
 			err = cmdConfigBackup(os.Args[3:])
 		case len(os.Args) > 2 && os.Args[2] == "registry-mirror":
 			err = cmdConfigMirror(os.Args[3:])
+		case len(os.Args) > 2 && os.Args[2] == "jobs":
+			err = cmdConfigJobs(os.Args[3:])
 		default:
-			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket … | bay config backup " + policyFlagsUsage + " | bay config registry-mirror (HOST|--clear)")
+			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket … | bay config backup " + policyFlagsUsage + " | bay config registry-mirror (HOST|--clear) | bay config jobs (--user NAME|--clear)")
 		}
 	case "storage":
 		if len(os.Args) > 2 && os.Args[2] == "migrate" {
@@ -182,10 +184,14 @@ func main() {
 			err = errors.New("usage: bay storage migrate <name/env>")
 		}
 	case "secret":
-		if len(os.Args) > 2 && os.Args[2] == "replace" {
+		switch {
+		case len(os.Args) > 2 && os.Args[2] == "replace":
 			err = cmdSecretReplace(os.Args[3:])
-		} else {
-			err = errors.New(secretReplaceUsage)
+		case len(os.Args) > 2 && (os.Args[2] == "set" || os.Args[2] == "list" || os.Args[2] == "delete"):
+			// Host-local secrets, the Claude credential first (#Q3999).
+			err = cmdHostSecret(os.Args[2:], os.Stdin)
+		default:
+			err = errors.New(secretReplaceUsage + "\n" + hostSecretUsage)
 		}
 	case "env":
 		switch {
@@ -198,6 +204,9 @@ func main() {
 		}
 	case "connector":
 		err = cmdConnector(os.Args[2:])
+	case "egress-proxy":
+		// Run by Bay itself, in a job's egress sidecar (#Q3996).
+		err = cmdEgressProxy(os.Args[2:])
 	case "backup":
 		if len(os.Args) > 2 && (os.Args[2] == "list" || os.Args[2] == "restore") {
 			err = cmdStackBackup(os.Args[2], os.Args[3:])
@@ -351,6 +360,22 @@ func usageText() string {
   bay config registry-mirror (HOST|--clear)
                 # a pull-through mirror for Docker Hub images (rate limits,
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
+  bay config jobs (--user NAME|--clear) [--runner process|container]
+                [--credential NAME] [--gvisor|--no-gvisor]
+                # the Unix user one-shot jobs from Lore run as (agent jobs:
+                # claude -p in a fresh clone). Never root, never bay's own user;
+                # claude must be on its PATH, logged in by hand as that user.
+                # Lore must also allow jobs on the host. ⚠ A host that runs
+                # jobs this way does NOTHING else: no production app, no other
+                # project's secrets, since the job has that user's shell here.
+                # --runner container runs each job in the agent image instead:
+                # no host mount, no socket, every capability dropped, a network
+                # whose only way out is Bay's egress proxy, and the Claude
+                # credential from "bay secret set NAME -" (--credential NAME).
+                # Lore lets untrusted input reach an agent on that runner only.
+  bay secret (set NAME -|list|delete NAME)
+                # host-local secrets: values read from stdin and kept here, 0600;
+                # only their names reach Lore, in the inventory
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
   bay secret replace <name/env> APP_SECRET - [--yes]

@@ -68,6 +68,7 @@ const pendingFeedback: FeedbackResource = {
   description: "Clicking Save is a no-op.",
   status: "pending",
   createdAt: "2026-08-26T10:00:00.000Z",
+  untrusted: false,
   attachments: [],
   tags: [],
 };

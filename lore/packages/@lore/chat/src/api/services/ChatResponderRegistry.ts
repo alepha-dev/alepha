@@ -26,13 +26,6 @@ export class ChatResponderRegistry {
     return this.responders.get(name);
   }
 
-  /**
-   * The agent a personal room talks to, if one is registered.
-   */
-  public personal(): ChatResponder | undefined {
-    return [...this.responders.values()].find((it) => it.personal);
-  }
-
   public names(): string[] {
     return [...this.responders.keys()];
   }
@@ -90,10 +83,6 @@ export interface ChatResponder {
    * Shown in the `@` popup.
    */
   label: string;
-  /**
-   * The agent a member's personal room talks to (#Q3942): one at most.
-   */
-  personal?: boolean;
   respond: (request: ChatAgentRequest) => AsyncIterable<ChatAgentEvent>;
   /**
    * Continue a run paused on a write the mentioner must decide.

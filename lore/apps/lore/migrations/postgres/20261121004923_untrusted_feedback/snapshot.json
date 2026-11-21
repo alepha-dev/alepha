@@ -1,0 +1,186 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "0e0ee8f3-f19b-4f8a-9363-890462afb3c2",
+  "prevIds": ["501b92bb-7bbb-407f-8f94-00dde9ca57e4"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "feedback", "untrusted"],
+      "writes": [
+        "s|col|public.feedback.untrusted",
+        "n|col|public.feedback.untrusted",
+        "e|col|public.feedback.untrusted"
+      ],
+      "reads": ["n|tbl|public.feedback", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_runner"],
+      "writes": [
+        "s|col|public.hosts.jobs_runner",
+        "n|col|public.hosts.jobs_runner",
+        "e|col|public.hosts.jobs_runner"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "untrusted"],
+      "writes": [
+        "s|col|public.quests.untrusted",
+        "n|col|public.quests.untrusted",
+        "e|col|public.quests.untrusted"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "quests",
+        "untrusted_confirmed_at"
+      ],
+      "writes": [
+        "s|col|public.quests.untrusted_confirmed_at",
+        "n|col|public.quests.untrusted_confirmed_at",
+        "e|col|public.quests.untrusted_confirmed_at"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "quests",
+        "untrusted_confirmed_by"
+      ],
+      "writes": [
+        "s|col|public.quests.untrusted_confirmed_by",
+        "n|col|public.quests.untrusted_confirmed_by",
+        "e|col|public.quests.untrusted_confirmed_by"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "quests"],
+      "writes": [
+        "s|fk|public.quests.quests_untrusted_confirmed_by_users_id_fkey",
+        "n|fk|public.quests.quests_untrusted_confirmed_by_users_id_fkey",
+        "e|fk|public.quests.quests_untrusted_confirmed_by_users_id_fkey",
+        "n|con|public.quests.quests_untrusted_confirmed_by_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.quests",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.quests.untrusted_confirmed_by",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "feedback",
+        "name": "untrusted",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "jobs_runner",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "untrusted",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "untrusted_confirmed_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "untrusted_confirmed_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "quests_untrusted_confirmed_by_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["untrusted_confirmed_by"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    }
+  ]
+}

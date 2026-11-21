@@ -62,6 +62,8 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AgentJobs } from "./services/AgentJobs.ts";
+import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -72,7 +74,9 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
+import { HostJobs } from "./services/HostJobs.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
+import { JobKeyService } from "./services/JobKeyService.ts";
 import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
@@ -254,6 +258,15 @@ export const LoreCoreApi = $module({
     // Which deployed copy runs a quest's commits (#E154): Plan registers the
     // recorded commits, Ship the reads.
     LiveQuestRegistry,
+    // The port host jobs start through (#Q3984): Ship registers the queue.
+    HostJobs,
+    // Job keys (#Q3995): the credential a host job holds, its pins checked on
+    // every MCP call and git request it makes. Registers the port's issuer.
+    JobKeyService,
+    // Untrusted input in an agent's prompt (#Q3987).
+    AgentPromptGuard,
+    // The port agent jobs start through (#Q3988): Build registers it.
+    AgentJobs,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     CommitReferenceRegistry,
     McpProjectScope,
@@ -471,6 +484,24 @@ export {
   type CommitReferenceResult,
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
+export { AgentJobs } from "./services/AgentJobs.ts";
+export type {
+  AgentJobLauncher,
+  AgentJobRequest,
+} from "./services/AgentJobs.ts";
+export { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
+export { HostJobs } from "./services/HostJobs.ts";
+export { JobKeyService } from "./services/JobKeyService.ts";
+export type {
+  AgentHostDirectory,
+  AgentHostRef,
+  HostJobInput,
+  HostJobKeyIssuer,
+  HostJobKeyScope,
+  HostJobQueue,
+  HostJobRequest,
+  HostJobSummary,
+} from "./services/HostJobs.ts";
 export {
   type LiveQuestInstance,
   type LiveQuestReader,

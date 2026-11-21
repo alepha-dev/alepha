@@ -222,6 +222,7 @@ export const DataTable = <
     data: serverData,
     meta,
     rowFilters,
+    groupCounts,
     loading,
     loadedRequestId,
     lastRequestId,
@@ -240,6 +241,15 @@ export const DataTable = <
     form,
     alepha,
   });
+
+  // `onPage`: the page on screen and how many there are, whenever either
+  // moves. Through a ref so an inline callback does not re-fire it.
+  const onPageRef = useRef(props.onPage);
+  onPageRef.current = props.onPage;
+  const totalPages = meta?.totalPages ?? 0;
+  useEffect(() => {
+    onPageRef.current?.({ page, totalPages });
+  }, [page, totalPages]);
 
   const {
     refresh,
@@ -650,8 +660,10 @@ export const DataTable = <
       return;
     }
     for (const key of keys) inputs[key]?.set?.(card.filter[key]);
+    // A key the tile clears (`undefined`) adds no chip to the bar.
+    const setting = keys.filter((key) => card.filter?.[key] !== undefined);
     filterVisibility.setShown(
-      [...new Set([...filterVisibility.shown, ...keys])].filter(
+      [...new Set([...filterVisibility.shown, ...setting])].filter(
         (key) => filterDefinition.modes[key] !== "locked",
       ),
       true,
@@ -870,6 +882,7 @@ export const DataTable = <
             emptyState={props.emptyState}
             noMatchState={props.noMatchState}
             groupBy={props.groupBy}
+            groupCounts={groupCounts}
           />
         </Table>
       </div>
@@ -912,7 +925,9 @@ export const DataTable = <
 
 /**
  * Whether every filter value a summary tile stands for holds now. Compared
- * as JSON, so an array value matches the same members in the same order.
+ * as JSON, so an array value matches the same members in the same order; an
+ * `undefined` value (the tile clears that filter) holds while the field is
+ * empty: unset, `""` or an emptied multi-select.
  */
 const isCardActive = (
   card: DataTableStatCard,
@@ -920,10 +935,17 @@ const isCardActive = (
 ): boolean => {
   if (!card.filter) return false;
   const entries = Object.entries(card.filter);
+  const empty = (value: unknown) =>
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0);
   return (
     entries.length > 0 &&
-    entries.every(
-      ([key, value]) => JSON.stringify(values[key]) === JSON.stringify(value),
+    entries.every(([key, value]) =>
+      value === undefined
+        ? empty(values[key])
+        : JSON.stringify(values[key]) === JSON.stringify(value),
     )
   );
 };

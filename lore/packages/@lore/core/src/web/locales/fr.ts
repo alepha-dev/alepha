@@ -642,10 +642,6 @@ export default {
     "Tapez @ pour mentionner quelqu'un. @lore répond dans le salon, pour tout le monde.",
   "chat.composer.hintPersonal": "Lore répond à chaque message de ce salon.",
   "chat.composer.send": "Envoyer",
-  "chat.rooms.personal": "Lore",
-  "chat.room.personalEmpty":
-    "Seulement vous et Lore. Chaque message ici est une demande.",
-  "assistant.room.open": "Demander à Lore",
   "chat.agent.tag": "agent",
   "chat.agent.trace.read": "A lu $1",
   "chat.agent.trace.changed": "A modifié $1",
@@ -838,6 +834,8 @@ export default {
     "La sélection contient latest : les déploiements qui ne nomment aucun tag échouent tant que la CI ne l'a pas publié à nouveau.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Paramètres",
+  "project.rail.unread": "$1 non lus",
+  "project.rail.unread.one": "1 non lu",
   "project.rail.label": "Projets",
 
   "quest.create.submit": "Créer la quête",
@@ -3063,6 +3061,73 @@ export default {
   "account.hosts.secretPrefix": "secret $1…",
   "account.hosts.gauge": "CPU $1 % · mémoire $2 %",
   "account.hosts.gauge.none": "pas encore de statistiques",
+  "jobs.title": "Tâches",
+  "jobs.empty": "Aucune tâche n'a encore tourné ici",
+  "jobs.empty.description":
+    "Les tâches d'agent et les vérifications des hôtes d'agent s'affichent ici dès qu'un hôte en exécute une.",
+  "jobs.col.when": "En file",
+  "jobs.col.kind": "Tâche",
+  "jobs.col.status": "Statut",
+  "jobs.col.host": "Hôte",
+  "jobs.col.by": "Lancée par",
+  "jobs.cancel": "Annuler",
+  "jobs.field.host": "Hôte",
+  "jobs.field.profile": "Profil",
+  "jobs.field.subject": "Objet",
+  "jobs.field.queued": "En file",
+  "jobs.field.ended": "Terminée",
+  "jobs.field.exit": "Code de sortie",
+  "jobs.field.reason": "Raison",
+  "jobs.log": "Journal",
+  "jobs.log.empty": "Rien d'affiché pour l'instant.",
+  "jobs.log.truncated":
+    "L'hôte a cessé de garder la sortie de cette tâche à sa taille maximale.",
+  "hosts.agent.switch": "Hôte d'agent",
+  "hosts.agent.switch.description":
+    "Exécute des tâches Claude Code pour ses projets, avec un identifiant configuré à la main pour l'utilisateur de tâches de Bay. Lore ne le voit jamais, et vérifie l'hôte chaque jour avec une requête en un tour.",
+  "hosts.agent.switch.needsJobs":
+    "Autorisez d'abord les tâches sur cet hôte : un hôte d'agent exécute Claude Code comme une tâche.",
+  "hosts.agent.status.unknown": "Pas encore vérifié",
+  "hosts.agent.status.checking": "Vérification",
+  "hosts.agent.status.available": "Disponible",
+  "hosts.agent.status.unavailable": "Indisponible",
+  "hosts.agent.check": "Vérifier",
+  "hosts.agent.credential.oauth": "Jeton OAuth",
+  "hosts.agent.credential.api_key": "Clé d'API",
+  "hosts.agent.default": "Hôte d'agent par défaut",
+  "hosts.agent.default.description":
+    "L'hôte d'agent sur lequel tournent les tâches d'agent de ce projet. Sans lui, les boutons d'agent sont masqués.",
+  "hosts.agent.default.none":
+    "Aucun hôte d'agent n'est disponible pour ce projet : faites de l'un de ses hôtes un hôte d'agent, ou empruntez-en un.",
+  "hosts.agent.default.label": "Hôte d'agent",
+  "hosts.agent.default.empty": "Aucun",
+  "hosts.agent.default.save": "Enregistrer",
+  "feedback.untrusted": "Non fiable",
+  "feedback.untrusted.description":
+    "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne la traite tant que l'hôte d'agent exécute les tâches comme un processus de l'hôte ; sur un hôte à conteneurs, un agent ne fait que la lire.",
+  "project.capability.plan.option.agentTriage.label":
+    "Trier les nouveaux retours avec Claude",
+  "project.capability.plan.option.agentTriage.description":
+    "Chaque nouveau retour est trié une fois par une tâche d'agent sur l'hôte d'agent du projet : un retour fondé devient une quête à faire, un retour douteux reçoit une question pour un humain, un retour invalide est rejeté.",
+  "feedback.agent.triage": "Trier avec Claude",
+  "feedback.agent.triageInbox": "Trier les retours en attente avec Claude",
+  "feedback.agent.started": "Claude trie ce retour sur l'hôte d'agent",
+  "feedback.agent.startedMany":
+    "$1 tâches de tri lancées ; $2 laissées à un membre",
+  "feedback.agent.job": "Tâche d'agent",
+  "quest.agent.work": "Travailler avec Claude",
+  "quest.agent.started":
+    "Claude travaille sur cette quête sur l'hôte d'agent : il pousse sa propre branche",
+  "quest.untrusted": "Non fiable",
+  "quest.untrusted.confirm": "Confirmer son texte",
+  "quest.untrusted.confirm.description":
+    "Cette quête est née d'un retour écrit hors de l'équipe. Lisez son texte, puis confirmez-le : un agent ne la traite qu'après la confirmation d'un membre.",
+  "hosts.agent.egress.label": "Hôtes qu'une tâche de push peut joindre",
+  "hosts.agent.egress.description":
+    "En plus d'Anthropic et de Lore, imposé sur un hôte d'agent à conteneurs. Vide : les registres npm et Yarn et GitHub. Un point initial couvre tous les sous-domaines.",
+  "account.hosts.switch.jobs": "Autoriser les tâches",
+  "account.hosts.switch.jobs.description":
+    "Les tâches ponctuelles que Lore lance sur cette machine, comme les tâches d'agent. Une tâche exécute ici le code d'un dépôt, sous l'utilisateur de tâches configuré dans Bay.",
   "account.hosts.switch.deploys": "Autoriser les déploiements",
   "account.hosts.switch.deploys.description":
     "Désactivé signifie statistiques seules : aucun projet ne peut déployer via cet hôte, quel que soit le prêt.",
@@ -3093,7 +3158,6 @@ export default {
   "account.hosts.toast.rotated": "Secret changé",
   "account.hosts.toast.deleted": "Hôte supprimé",
 
-  "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
   "feedback.empty.pending": "Aucun retour en attente.",
   "feedback.empty.status": "Aucun retour $1.",
@@ -3168,7 +3232,6 @@ export default {
   "inbox.table.project": "Projet",
   "inbox.table.when": "Quand",
   "inbox.unread": "Non lu",
-  "inbox.loadMore": "Charger plus",
   "inbox.scope.all": "Tous les projets",
   "inbox.filter.project": "Projet",
   "inbox.markAllRead": "Tout marquer comme lu",
@@ -3358,7 +3421,7 @@ export default {
   "requirements.verify.mission.demo": "Démo",
   "requirements.verify.mission.explore": "Explorer",
   "requirements.verify.mission.import": "Importer",
-  "requirements.verify.mission.spec": "Écrire le test",
+  "requirements.verify.mission.spec": "Écrire le test e2e",
   "requirements.verify.mission.test": "Tester",
   "requirements.verify.staleOnly": "Seulement ses cas périmés",
   "requirements.verify.title.allStale": "Vérifier tous les cas périmés",
@@ -3374,6 +3437,11 @@ export default {
     "Jamais joué. Vérifiez-le pour enregistrer un premier passage.",
   "requirements.run.result.failed": "Échoué",
   "requirements.run.result.not_run": "Non joué",
+  "requirements.run.verdict.passed": "Tous les critères sont passés",
+  "requirements.run.verdict.failed": "$1 en échec : $2",
+  "requirements.run.verdict.notRun": "$1 non joué(s)",
+  "requirements.run.score": "$1 critères sur $2 passés",
+  "requirements.run.observation": "Observation",
   "requirements.run.result.passed": "Réussi",
   "requirements.run.stale": "Périmé",
   "requirements.run.staleBanner":
@@ -3490,6 +3558,7 @@ export default {
   "requirements.usecase.col.useCase": "Cas d’usage",
   "requirements.usecase.coverage": "Couverture du développement",
   "requirements.usecase.coverage.done": "Tout développé",
+  "requirements.usecase.coverage.epicProgress": "$1 / $2 terminées",
   "requirements.usecase.coverage.help":
     "Un critère en échec n’ouvre une erreur qu’une fois terminées toutes les quêtes qui couvrent le cas d’usage. Avant cela, l’échec est attendu et affiché en développement.",
   "requirements.usecase.criteria": "Critères d’acceptation",
@@ -3641,6 +3710,10 @@ export default {
   "requirements.persona.showcase.current": "Version en cours",
   "requirements.persona.showcase.chapters": "Étapes",
   "requirements.persona.tab.activity": "Activité",
+  "requirements.persona.tab.useCases": "Cas d’usage ($1)",
+  "requirements.persona.useCases.empty":
+    "Ce persona n’intervient encore dans aucun cas d’usage",
+  "requirements.persona.useCases.role": "Rôle",
   "requirements.persona.tab.overview": "Aperçu",
   "requirements.persona.toast.created": "Persona créé",
   "requirements.more": "Autres actions",
@@ -3664,7 +3737,10 @@ export default {
   "requirements.persona.card.epics": "Épopées",
   "requirements.persona.card.requirements": "Exigences",
   "requirements.persona.card.lastRun": "Dernière exécution",
-  "requirements.persona.card.passed": "$1 / $2 réussis",
+  "requirements.persona.card.passing": "$1 % de réussite",
+  "requirements.persona.run.legend.passed": "$1 réussi(s)",
+  "requirements.persona.run.legend.failed": "$1 en échec",
+  "requirements.persona.run.legend.notRun": "$1 non joué(s)",
   "requirements.persona.card.failed": "$1 en échec",
   "requirements.persona.card.neverRun": "jamais joué",
   "requirements.persona.card.role": "rôle : $1",
@@ -4938,8 +5014,59 @@ export default {
   "backup.events": "Événements",
   "backup.noEvents": "Aucun événement de sauvegarde pour l'instant.",
   // The in-app assistant (#E120): its header toggle, dock and tool steps.
+  "assistant.open": "Assistant",
+  "assistant.title": "Assistant Lore",
+  "assistant.help": "Ce que l'assistant sait faire",
+  "assistant.suggest.open": "Qu'est-ce qui reste ouvert dans ce projet ?",
+  "assistant.suggest.epic": "Que manque-t-il encore à l'epic en cours ?",
+  "assistant.suggest.file": "Créer une quête pour ...",
+  "assistant.suggest.reports.week":
+    "Qu’est-ce qui a changé dans ce projet cette semaine ?",
+  "assistant.suggest.reports.slow":
+    "Quels domaines ralentissent, et pourquoi ?",
+  "assistant.suggest.reports.summary":
+    "Résume ces rapports pour un point d’avancement",
+  "assistant.suggest.quest.left": "Que reste-t-il à faire sur cette quête ?",
+  "assistant.suggest.quest.discussion": "Résume la discussion de cette quête",
+  "assistant.suggest.quest.dependencies":
+    "De quoi dépend cette quête, et est-elle prête ?",
+  "assistant.suggest.epic.lack": "Que manque-t-il encore à cette épopée ?",
+  "assistant.suggest.epic.blocked":
+    "Quelles quêtes de cette épopée sont bloquées ou en attente ?",
+  "assistant.suggest.epic.next": "Quelle quête de cette épopée faire ensuite ?",
+  "assistant.suggest.feedback.pending":
+    "Quels retours attendent encore d’être triés ?",
+  "assistant.suggest.feedback.group":
+    "Regroupe les retours en attente par sujet",
+  "assistant.suggest.feedback.file":
+    "Crée une quête pour le problème le plus signalé",
+  "assistant.suggest.apps.deploys":
+    "Quels déploiements ont échoué récemment, et pourquoi ?",
+  "assistant.suggest.apps.errors":
+    "Quelles applications signalent le plus d’erreurs ?",
+  "assistant.suggest.apps.silent":
+    "Quelles applications ont cessé de rapporter ?",
+  "assistant.suggest.usecase.review":
+    "Relis ce cas d’usage : qu’est-ce qui manque ou reste flou ?",
+  "assistant.suggest.usecase.steps":
+    "Écris les étapes manquantes de ce cas d’usage",
+  "assistant.suggest.usecase.quests":
+    "Crée les quêtes de ce qu’il reste à faire pour ce cas d’usage",
+  "assistant.suggest.requirements.failing":
+    "Quels cas d’usage échouent, et depuis quand ?",
+  "assistant.suggest.requirements.uncovered":
+    "Quels cas d’usage aucune épopée ne couvre ?",
+  "assistant.suggest.requirements.stale":
+    "Quelles exécutions sont périmées et à rejouer ?",
+  "assistant.suggest.folio.summary": "Résume ce folio",
+  "assistant.suggest.folio.decisions":
+    "Quelles décisions ce folio consigne-t-il ?",
+  "assistant.suggest.folio.quests":
+    "Crée les quêtes du travail que décrit ce folio",
   "assistant.tool.failed": "Échec : $1",
   "assistant.tool.denied": "Annulé : $1",
+  "assistant.tool.project_list.running": "Liste de vos projets",
+  "assistant.tool.project_list.done": "Projets listés",
   "assistant.tool.project_info.running": "Lecture du projet",
   "assistant.tool.project_info.done": "Projet lu",
   "assistant.tool.quest_list.running": "Liste des quêtes",
@@ -4974,12 +5101,18 @@ export default {
   "assistant.tool.quest_update.done": "Quête mise à jour",
   "assistant.tool.quest_complete.running": "Clôture d'une quête",
   "assistant.tool.quest_complete.done": "Quête terminée",
+  "assistant.tool.feedback_targets.running":
+    "Recherche des projets ouverts aux retours",
+  "assistant.tool.feedback_targets.done": "Projets ouverts aux retours listés",
+  "assistant.tool.feedback_submit.running": "Dépôt d'un retour",
+  "assistant.tool.feedback_submit.done": "Retour déposé",
   "assistant.tool.folio_create.running": "Rédaction d'un folio",
   "assistant.tool.folio_create.done": "Folio rédigé",
   "assistant.confirm.quest_create": "Créer cette quête ?",
   "assistant.confirm.quest_comment_add": "Publier ce commentaire ?",
   "assistant.confirm.quest_update": "Mettre à jour cette quête ?",
   "assistant.confirm.quest_complete": "Terminer cette quête ?",
+  "assistant.confirm.feedback_submit": "Déposer ce retour ?",
   "assistant.confirm.folio_create": "Rédiger ce folio ?",
   "assistant.confirm.project": "Dans",
   "assistant.confirm.elsewhere": "(pas le projet affiché)",

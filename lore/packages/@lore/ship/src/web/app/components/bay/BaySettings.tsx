@@ -24,6 +24,7 @@ import type { ProjectHostController } from "../../../../api/controllers/ProjectH
 import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
+import BayAgentHost from "./BayAgentHost.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
@@ -73,6 +74,7 @@ const BaySettings = () => {
     [
       body: {
         deployAllowed?: boolean;
+        jobsAllowed?: boolean;
         collectSeries?: boolean;
         statsIntervalSeconds?: number;
       },
@@ -215,6 +217,7 @@ const BaySettings = () => {
           projectTitle={host.project?.title ?? tr("hosts.project.noHome")}
         />
       )}
+      <BayAgentHost canUpdate={canUpdate} />
       {canUpdate && (
         <Card>
           <CardContent className="flex flex-col gap-4">
@@ -233,6 +236,22 @@ const BaySettings = () => {
                 }
                 aria-label={tr("account.hosts.switch.deploys")}
                 data-testid="bay-settings-deploys"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span>{tr("account.hosts.switch.jobs")}</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.hosts.switch.jobs.description")}
+                </span>
+              </span>
+              <Switch
+                checked={host.jobsAllowed}
+                disabled={busy}
+                onCheckedChange={(value) => void update({ jobsAllowed: value })}
+                aria-label={tr("account.hosts.switch.jobs")}
+                data-testid="bay-settings-jobs"
               />
             </div>
 

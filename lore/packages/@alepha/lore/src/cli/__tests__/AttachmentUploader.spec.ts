@@ -34,6 +34,13 @@ class Sink {
     bytes: string;
   }> = [];
   public attached: Array<{ questId: number; fileId: string }> = [];
+  public evidence: Array<{
+    runId: number;
+    fileId: string;
+    name: string;
+    criterionKey?: string;
+    step?: number;
+  }> = [];
   public registered: Array<{
     projectId: number;
     fileId: string;
@@ -135,6 +142,51 @@ class Sink {
         mimeType: "image/png",
         size: 17,
       })),
+  });
+
+  public uploadRunEvidence = $action({
+    method: "POST",
+    path: "/useCaseRuns/evidence",
+    schema: {
+      body: z.object({ file: z.file() }),
+      response: z.object({ fileId: z.uuid() }),
+    },
+    handler: async ({ body }) => {
+      this.uploaded.push({
+        path: "/api/useCaseRuns/evidence",
+        filename: body.file.name,
+        type: body.file.type,
+        bytes: await body.file.text(),
+      });
+      return { fileId: "44444444-4444-4444-8444-444444444444" };
+    },
+  });
+
+  public addRunEvidence = $action({
+    method: "POST",
+    path: "/addRunEvidence/:id",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        fileId: z.uuid(),
+        name: z.string(),
+        mimeType: z.string(),
+        size: z.number(),
+        criterionKey: z.string().optional(),
+        step: z.integer().optional(),
+      }),
+      response: z.object({ ok: z.boolean() }),
+    },
+    handler: async ({ params, body }) => {
+      this.evidence.push({
+        runId: params.id,
+        fileId: body.fileId,
+        name: body.name,
+        criterionKey: body.criterionKey,
+        step: body.step,
+      });
+      return { ok: true };
+    },
   });
 
   public getByShortId = $action({
@@ -348,6 +400,34 @@ describe("AttachmentUploader", () => {
    * something other than what the caller asked - silently. Refused before it
    * is written rather than discovered by the receiver.
    */
+  describe("a use case run (#Q3977)", () => {
+    it("streams the file, then places it on the run's criterion", async () => {
+      const ctx = await setup();
+
+      const pushed = await ctx.uploader.pushToRun({
+        projectId: 7,
+        runId: 41,
+        filePath: "/repo/chart.png",
+        criterionKey: "c2",
+      });
+
+      expect(ctx.sink.uploaded[0]).toMatchObject({
+        path: "/api/useCaseRuns/evidence",
+        filename: "chart.png",
+        bytes: "a mockup, in bytes",
+      });
+      expect(ctx.sink.evidence).toEqual([
+        {
+          runId: 41,
+          fileId: "44444444-4444-4444-8444-444444444444",
+          name: "chart.png",
+          criterionKey: "C2",
+        },
+      ]);
+      expect(pushed.subject).toBe("run 41 (C2)");
+    });
+  });
+
   it("refuses a name that could break the message", async () => {
     const ctx = await setup();
 

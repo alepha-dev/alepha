@@ -242,6 +242,17 @@ export class CapabilityRegistry {
           preselected: false,
         },
         {
+          // Each new feedback item triaged by an agent job on the project's
+          // Agent host (#Q3988), at most once per item. Off by default, and
+          // never offered at creation: a project has no Agent host yet.
+          key: "agentTriage",
+          labelKey: "project.capability.plan.option.agentTriage.label",
+          descriptionKey:
+            "project.capability.plan.option.agentTriage.description",
+          wizard: false,
+          preselected: false,
+        },
+        {
           // Personas, use cases and requirements (#E153): a part of Plan, not
           // a capability of its own, whose code lives in
           // `@lore/plan-requirements`. Offered in the wizard and never
@@ -332,6 +343,7 @@ export class CapabilityRegistry {
         "usecase_link_epic",
         "usecase_validate",
         "usecase_run_record",
+        "usecase_run_attachment_add",
         "usecase_prompt",
         "requirement_list",
         "requirement_get",
@@ -363,6 +375,7 @@ export class CapabilityRegistry {
         usecase_link_epic: "requirements",
         usecase_validate: "requirements",
         usecase_run_record: "requirements",
+        usecase_run_attachment_add: "requirements",
         usecase_prompt: "requirements",
         requirement_list: "requirements",
         requirement_coverage: "requirements",

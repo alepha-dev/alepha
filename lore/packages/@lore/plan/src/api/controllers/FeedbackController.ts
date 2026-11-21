@@ -3,11 +3,12 @@ import {
   $ownsProject,
   BoundParameters,
   LoreAudits,
+  ProjectController,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { type Project, projects, type User } from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
-import { $inject, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -37,6 +38,7 @@ import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
 } from "../schemas/myFeedbackResourceSchema.ts";
+import { FeedbackAgentService } from "../services/FeedbackAgentService.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { WorkBuckets } from "../services/WorkBuckets.ts";
@@ -66,6 +68,7 @@ type MyFeedbackWithRelations = FeedbackWithRelations & {
  */
 export class FeedbackController {
   protected readonly eventSources = $inject(WorkEventSources);
+  protected readonly agentTriage = $inject(FeedbackAgentService);
   protected feedback = $repository(feedback);
   /**
    * The same table, with `include`. Reads that need a feedback row's
@@ -95,6 +98,7 @@ export class FeedbackController {
     project: true,
   } as const;
   protected readonly ranks = $inject(RankService);
+  protected readonly alepha = $inject(Alepha);
 
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
@@ -147,7 +151,7 @@ export class FeedbackController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: feedbackBodySchema,
-      response: z.object({ id: z.integer() }),
+      response: z.object({ id: z.integer(), shortId: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
       await this.assertFeedbackOpen(params.projectId);
@@ -156,9 +160,15 @@ export class FeedbackController {
       // "outside-the-team feedback channel". A member whose rank reads the
       // inbox submits without limit; membership alone is not enough, since
       // anyone can join an open project as a viewer (#Q3648).
-      if (
-        !(await this.security.holds(params.projectId, user.id, "feedback:read"))
-      ) {
+      // The same line decides who is outside the team (#Q3987): a reporter
+      // whose rank does not read the inbox writes untrusted feedback, marked
+      // now and never cleared.
+      const insider = await this.security.holds(
+        params.projectId,
+        user.id,
+        "feedback:read",
+      );
+      if (!insider) {
         await this.rateLimiter.assertFeedbackAllowed(user.id);
       }
 
@@ -186,6 +196,7 @@ export class FeedbackController {
         attachments,
         tags: (body.tags ?? []).slice(0, 20),
         source: this.scrubSource(body.source),
+        untrusted: !insider,
       });
 
       await this.audits.feedback.logSuccess("create", {
@@ -197,7 +208,55 @@ export class FeedbackController {
         metadata: { id: created.id },
       });
 
-      return { id: created.id };
+      // Automatic triage by an agent, when the project asked for it
+      // (#Q3988): once per item, and never in the submit's way.
+      await this.agentTriage.onSubmitted(created);
+
+      return { id: created.id, shortId: created.shortId };
+    },
+  });
+
+  /**
+   * The projects the caller may file a feedback into from another project's
+   * room or page (#Q3971): the ones they belong to, unarchived, with Support
+   * (`plan.feedback`) on. What `feedback_targets` lists and `feedback_submit`
+   * checks, so the model is given these and nothing wider than them.
+   */
+  listFeedbackTargets = $action({
+    use: [$secure()],
+    method: "GET",
+    path: "/feedback/targets",
+    description:
+      "The projects the caller belongs to that accept feedback, by id, slug and title.",
+    schema: {
+      response: z.array(
+        z.object({ id: z.integer(), slug: z.text(), title: z.text() }),
+      ),
+    },
+    handler: async ({ user }) => {
+      // Resolved where it is called: a field would create it at boot.
+      const mine = await this.alepha
+        .inject(ProjectController)
+        .listProjectsOf(user.id);
+      const open = await Promise.all(
+        mine
+          .filter((it) => !it.archivedAt)
+          .map(async (it) => ({
+            project: it,
+            open: this.security.capabilityOption(
+              await this.security.capabilitiesOf(it.id),
+              "plan",
+              "feedback",
+            ),
+          })),
+      );
+      return open
+        .filter((it) => it.open)
+        .map(({ project }) => ({
+          id: project.id,
+          slug: project.slug,
+          title: project.title,
+        }));
     },
   });
 
@@ -644,6 +703,59 @@ export class FeedbackController {
         size: file.size,
         data,
       };
+    },
+  });
+
+  /**
+   * Triage one pending item with Claude (#Q3988): an agent job on the
+   * project's Agent host runs the project's Triage prompt on it, with the
+   * read profile and a key pinned to this item. Answers the job, or why
+   * none started.
+   */
+  triageFeedbackWithAgent = $action({
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
+    method: "POST",
+    path: "/projects/:projectId/feedback/:feedbackId/agent-triage",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        feedbackId: z.integer(),
+      }),
+      response: z.object({
+        jobId: z.uuid().optional(),
+        skipped: z.string().optional(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.assertFeedbackOpen(params.projectId);
+      const item = await this.loadFeedback(params.projectId, params.feedbackId);
+      return this.agentTriage.triageItem(
+        params.projectId,
+        item.shortId,
+        user.id,
+      );
+    },
+  });
+
+  /**
+   * Triage the inbox with Claude (#Q3988): one agent job per pending item,
+   * oldest first. Untrusted items on a host that runs jobs as a process are
+   * skipped, each with a comment saying a member must triage it.
+   */
+  triageInboxWithAgent = $action({
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
+    method: "POST",
+    path: "/projects/:projectId/feedback/agent-triage",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({
+        started: z.array(z.uuid()),
+        skipped: z.array(z.integer()),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.assertFeedbackOpen(params.projectId);
+      return this.agentTriage.triageInbox(params.projectId, user.id);
     },
   });
 

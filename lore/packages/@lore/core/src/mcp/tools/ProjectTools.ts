@@ -68,6 +68,29 @@ export class ProjectTools {
     return id;
   }
 
+  /**
+   * The project a `feedback_submit` files into (#Q3971): membership checked
+   * like {@link resolveProjectId}, but NOT pinned. The one named exception
+   * to a pinned run's single project: feedback is the channel open to people
+   * outside a project, so a member of another project filing one there from
+   * this room is the feature, and the write still waits for their card.
+   * Every other tool goes through {@link resolveProjectId}.
+   */
+  public async resolveFeedbackTarget(
+    project?: number,
+    projectName?: string,
+  ): Promise<number> {
+    return await this.lookupProjectId(project, projectName);
+  }
+
+  /**
+   * The project a pinned run (a chat room's agent) belongs to, or undefined
+   * outside one.
+   */
+  public pinnedProject(): number | undefined {
+    return this.mcpScope.pinnedProject();
+  }
+
   protected async lookupProjectId(
     project?: number,
     projectName?: string,

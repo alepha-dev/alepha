@@ -21,6 +21,11 @@ export const useCaseResourceSchema = useCases.schema
       useCaseActors.schema.pick({ personaId: true, role: true }).extend({
         number: z.integer(),
         name: z.string(),
+        /**
+         * The persona's Alepha role, which the use case aside shows as the
+         * persona card's badge (#Q3967).
+         */
+        alephaRole: z.string().optional(),
       }),
     ),
     steps: z.array(

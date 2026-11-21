@@ -405,6 +405,17 @@ export const quests = $entity({
      */
     source: questSourceSchema.optional(),
     /**
+     * Born of untrusted feedback (#Q3987): set when the quest is created
+     * from, or linked to, a feedback item written outside the team, and
+     * never cleared. An agent works it (#Q3989) only once a member confirmed
+     * its text, recorded below with who and when.
+     */
+    untrusted: db.default(z.boolean(), false),
+    untrustedConfirmedAt: z.string().optional(),
+    untrustedConfirmedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
      * What shipped for this quest, appended as commits land.
      *
      * ⚠️ Optional with NO `db.default(...)` so the migration is a plain

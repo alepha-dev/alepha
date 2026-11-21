@@ -126,6 +126,25 @@ export interface DataTableBaseProps<
    */
   pagination?: boolean | "compact";
   /**
+   * Called with the page on screen (zero-based) and the number of pages,
+   * on mount and whenever either changes.
+   *
+   * For static `data` the caller loads in batches (a cursor-paged list):
+   * when the reader reaches the last page and the server holds more, fetch
+   * the next batch and append it, so the footer's pager stays the one
+   * paging control and no "Load more" button sits under it.
+   *
+   * ```tsx
+   * <DataTable
+   *   data={rows}
+   *   onPage={({ page, totalPages }) => {
+   *     if (hasMore && page >= totalPages - 1) void loadMore();
+   *   }}
+   * />
+   * ```
+   */
+  onPage?: (state: { page: number; totalPages: number }) => void;
+  /**
    * Hide the toolbar band entirely: no search, no filter bar, no column
    * picker, no actions menu, no `actions`, `toolbar`, `leading` or `help`.
    *

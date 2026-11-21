@@ -16,6 +16,7 @@ import { LoreAccountSections } from "./app/components/account/LoreAccountSection
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
+import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
 import { ResourceRailRegistry } from "./app/registries/ResourceRailRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
@@ -60,6 +61,7 @@ export const LoreCoreWeb = $module({
     // the container locks whether or not the app registers anything on it.
     alepha.inject(ShellExtensionRegistry);
     // Filled by every module's shell at boot, read by the app's assistant.
+    alepha.inject(AssistantSuggestionRegistry);
     // Read by the quest rail on every quest page (#E154), whether or not a
     // module registers a row on it.
     alepha.inject(ResourceRailRegistry);
@@ -117,6 +119,9 @@ export {
 } from "./app/components/dashboard/dashboardEligibility.ts";
 export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilterFields.ts";
 export { default as ProjectPageSkeleton } from "./app/components/project/ProjectPageSkeleton.tsx";
+export { default as ProjectAiContextPublisher } from "./app/components/project/ProjectAiContextPublisher.tsx";
+export { useProjectAiContext } from "./app/components/project/useProjectAiContext.ts";
+export { DOCK_UNREAD_KEY } from "./app/components/project/useDockUnread.ts";
 export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,
@@ -235,6 +240,11 @@ export {
   ProjectBlockerRegistry,
 } from "./app/registries/ProjectBlockerRegistry.ts";
 export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
+export {
+  type AssistantSuggestionEntry,
+  type AssistantSuggestionKey,
+  AssistantSuggestionRegistry,
+} from "./app/registries/AssistantSuggestionRegistry.ts";
 export {
   type DashboardFilterEditorProps,
   type DashboardPickerContext,

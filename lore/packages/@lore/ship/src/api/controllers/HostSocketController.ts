@@ -10,6 +10,7 @@ import { hostServerFrameSchema } from "../schemas/hostServerFrameSchema.ts";
 import { HostCommandService } from "../services/HostCommandService.ts";
 import { HostEventService } from "../services/HostEventService.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
+import { HostJobService } from "../services/HostJobService.ts";
 import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 import { HostTokenService } from "../services/HostTokenService.ts";
@@ -76,6 +77,7 @@ export class HostSocketController {
   protected readonly stats = $inject(HostStatsService);
   protected readonly inventories = $inject(HostInventoryService);
   protected readonly events = $inject(HostEventService);
+  protected readonly jobs = $inject(HostJobService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   channel = $channel({
@@ -162,6 +164,12 @@ export class HostSocketController {
       }
       if (message.type === "event") {
         await this.events.record(host, message);
+        return;
+      }
+      if (message.type === "log") {
+        // A job's output (#Q3983), kept on its job (#Q3984): scoped to this
+        // host's own jobs, whatever command id the frame names.
+        await this.jobs.appendLog(host, message);
         return;
       }
       await this.stats.record(host, message);

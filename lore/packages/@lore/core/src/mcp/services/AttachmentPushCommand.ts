@@ -1,5 +1,6 @@
 /**
- * Composes the `lore attachments push` line the two attach tools hand back.
+ * Composes the `lore attachments push` line the attach tools hand back: a
+ * quest's, a folio's, and a use case run's (#Q3977).
  *
  * ## Why these tools return a command instead of taking bytes
  *
@@ -33,9 +34,18 @@ export class AttachmentPushCommand {
   public compose(input: {
     file: string;
     projectId: number;
-    target: "quest" | "folio";
+    target: "quest" | "folio" | "run";
+    /**
+     * The quest's or the folio's shortId, or the run's id: a run has no
+     * per-project number.
+     */
     shortId: number;
     name?: string;
+    /**
+     * With a run: the criterion the file shows (`C2`) and the scenario step.
+     */
+    criterion?: string;
+    step?: number;
   }): string {
     const parts = [
       "lore attachments push",
@@ -43,6 +53,12 @@ export class AttachmentPushCommand {
       `--project ${input.projectId}`,
       `--${input.target} ${input.shortId}`,
     ];
+    if (input.criterion) {
+      parts.push(`--criterion ${this.quote(input.criterion.toUpperCase())}`);
+    }
+    if (input.step !== undefined) {
+      parts.push(`--step ${input.step}`);
+    }
     if (input.name) {
       parts.push(`--name ${this.quote(input.name)}`);
     }

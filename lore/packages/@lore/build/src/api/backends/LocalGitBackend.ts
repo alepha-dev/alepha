@@ -52,6 +52,50 @@ export class LocalGitBackend extends GitBackend {
     return `${this.root()}/${ref}.git`;
   }
 
+  /**
+   * The `update` hook every receive-pack runs (#Q3953), through
+   * `core.hooksPath` rather than each repository's `hooks/`, so the
+   * repositories created before it are covered too. It refuses a
+   * non-fast-forward of the branch `HEAD` names, the default branch, and
+   * leaves every other ref alone: a feature branch may still be
+   * force-pushed. A creation or a deletion is not its business (Lore
+   * refuses deleting the default branch before the push reaches git).
+   *
+   * `receive.denyNonFastForwards` was the alternative, and it is too wide:
+   * it refuses a force-push on every branch.
+   */
+  public static readonly UPDATE_HOOK = `#!/bin/sh
+ref="$1"
+old="$2"
+new="$3"
+zero=0000000000000000000000000000000000000000
+[ "$old" = "$zero" ] && exit 0
+[ "$new" = "$zero" ] && exit 0
+head=$(git symbolic-ref -q HEAD) || exit 0
+[ "$ref" = "$head" ] || exit 0
+git merge-base --is-ancestor "$old" "$new" && exit 0
+echo "the default branch \${head#refs/heads/} refuses a non-fast-forward push: pull, then push again" >&2
+exit 1
+`;
+
+  /**
+   * The directory of {@link LocalGitBackend.UPDATE_HOOK}, written once per
+   * process beside the repositories.
+   */
+  protected hooksDir?: Promise<string>;
+
+  protected async hooks(): Promise<string> {
+    this.hooksDir ??= (async () => {
+      const { chmod, mkdir, writeFile } = await import("node:fs/promises");
+      const dir = `${this.root()}/.hooks`;
+      await mkdir(dir, { recursive: true });
+      await writeFile(`${dir}/update`, LocalGitBackend.UPDATE_HOOK);
+      await chmod(`${dir}/update`, 0o755);
+      return dir;
+    })();
+    return await this.hooksDir;
+  }
+
   public refFor(ids: { projectId: number; repoId: string }): string {
     return `${ids.projectId}/${ids.repoId}`;
   }
@@ -235,9 +279,15 @@ export class LocalGitBackend extends GitBackend {
       if (value) env[key] = value;
     }
     if (rpc.gitProtocol) env.GIT_PROTOCOL = rpc.gitProtocol;
+    // A push runs Lore's own `update` hook (#Q3953).
+    const hooked =
+      rpc.service === "git-receive-pack" && !rpc.advertise
+        ? ["-c", `core.hooksPath=${await this.hooks()}`]
+        : [];
     const child = spawn(
       "git",
       [
+        ...hooked,
         rpc.service.slice("git-".length),
         "--stateless-rpc",
         ...(rpc.advertise ? ["--advertise-refs"] : []),

@@ -4,6 +4,7 @@ import { type ReactElement, use } from "react";
 import type { FolioResource } from "../../../../../api/schemas/folioResourceSchema.ts";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
 import { FolioWorkspaceShellContext } from "./FolioWorkspaceShellContext.ts";
+import { useFolioAiContext } from "./useFolioAiContext.ts";
 
 export interface FolioWorkspaceProps {
   /**
@@ -41,6 +42,7 @@ export interface FolioWorkspaceProps {
  */
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   const shell = use(FolioWorkspaceShellContext);
+  useFolioAiContext(props.folio);
   if (!shell) {
     throw new AlephaError(
       "FolioWorkspace renders inside FolioWorkspaceShell, which FoliosLayout mounts",

@@ -51,6 +51,9 @@ export class RunController {
       },
     });
 
+  protected ownsRun = (requires: string) =>
+    $ownsProject({ requires, repository: () => this.runs, param: "id" });
+
   recordUseCaseRun = $action({
     method: "POST",
     path: "/recordUseCaseRun/:projectId",
@@ -160,6 +163,34 @@ export class RunController {
   });
 
   /**
+   * One run with its results, by id (#Q3977): what `usecase_run_attachment_add`
+   * reads to confirm the run exists before it hands back a command line.
+   */
+  getUseCaseRun = $action({
+    method: "GET",
+    path: "/getUseCaseRun/:id",
+    use: [this.ownsRun("usecase:read")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: useCaseRunResourceSchema,
+    },
+    handler: async ({ params }) => {
+      const run = this.owned.get<UseCaseRun>();
+      const rows = await this.results.findMany({
+        where: { runId: { eq: params.id } },
+      });
+      return {
+        ...run,
+        results: rows.map((it) => ({
+          criterionKey: it.criterionKey,
+          result: it.result,
+          note: it.note,
+        })),
+      };
+    },
+  });
+
+  /**
    * Upload a file of evidence; `addRunEvidence` then places it on a run.
    * The bucket takes 50 MB a file.
    */
@@ -199,6 +230,22 @@ export class RunController {
       const run = this.owned.get<UseCaseRun>();
       if (run.evidence.some((it) => it.fileId === body.fileId)) {
         throw new BadRequestError("This file is already evidence of the run");
+      }
+      // A file placed on a criterion the run never recorded would show under
+      // no criterion of the Runs tab (#Q3977).
+      if (body.criterionKey) {
+        const [result] = await this.results.findMany({
+          where: {
+            runId: { eq: params.id },
+            criterionKey: { eq: body.criterionKey },
+          },
+          limit: 1,
+        });
+        if (!result) {
+          throw new BadRequestError(
+            `Run ${params.id} has no criterion ${body.criterionKey}`,
+          );
+        }
       }
       await this.runs.updateById(params.id, {
         evidence: [...run.evidence, body],

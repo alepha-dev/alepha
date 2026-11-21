@@ -48,6 +48,7 @@ import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 import ProjectEpicReview from "./ProjectEpicReview.tsx";
+import { useEpicAiContext } from "./useEpicAiContext.ts";
 
 export interface ProjectEpicProps {
   epic: EpicResource;
@@ -241,6 +242,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   // failed reload reads as an epic with nothing in it.
   const quests: QuestResource[] | null =
     questsQuery.data?.epicId === epic.id ? questsQuery.data.items : null;
+  useEpicAiContext(epic, quests);
 
   // One `useAction` per write. A refusal is the server's sentence, toasted by
   // the root `ActionErrorToaster`; the two detach confirmations live in their

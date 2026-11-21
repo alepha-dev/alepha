@@ -29,6 +29,7 @@ import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailItem } from "./ProjectRailItem.tsx";
 import { ProjectRailMenu } from "./ProjectRailMenu.tsx";
 import { useDock } from "./useDock.ts";
+import { useDockUnread } from "./useDockUnread.ts";
 import { useLeavingProject } from "./useLeavingProject.ts";
 
 /**
@@ -118,6 +119,13 @@ const ProjectRail = () => {
       ?.focus();
   }, [picked, dock]);
 
+  // Every docked project's unread, in one request (#Q3981): the pins and
+  // the current project. Above the early return, as every hook is.
+  const unread = useDockUnread([
+    ...ids,
+    ...(project && !ids.includes(project.id) ? [project.id] : []),
+  ]);
+
   if (!project) {
     return null;
   }
@@ -128,6 +136,14 @@ const ProjectRail = () => {
     ? undefined
     : (byId.get(project.id) ?? project);
   const titleOf = (id: number) => byId.get(id)?.title ?? "";
+  const unreadLabel = (id: number) => {
+    const n = unread.get(id) ?? 0;
+    return n
+      ? tr(n === 1 ? "project.rail.unread.one" : "project.rail.unread", {
+          args: [String(n)],
+        })
+      : undefined;
+  };
   const full = ids.length >= USER_DOCK_CAP;
   const busy = actions.pin.loading || actions.unpin.loading;
 
@@ -273,6 +289,8 @@ const ProjectRail = () => {
               active={leavingTo ? it.slug === leavingTo : it.id === project.id}
               dragging={dragging}
               picked={picked?.id === it.id}
+              unread={unread.get(it.id)}
+              unreadLabel={unreadLabel(it.id)}
               onKeyDown={onKeyDown(it.id)}
               describedBy={hintId}
               menu={
@@ -293,6 +311,8 @@ const ProjectRail = () => {
               project={temporary}
               active
               temporary
+              unread={unread.get(temporary.id)}
+              unreadLabel={unreadLabel(temporary.id)}
               menu={
                 <ProjectRailMenu
                   project={temporary}

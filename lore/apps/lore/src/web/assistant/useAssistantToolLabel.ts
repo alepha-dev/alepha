@@ -20,6 +20,7 @@ const LABELLED = new Set([
   "release_get",
   "feedback_list",
   "feedback_get",
+  "feedback_targets",
   "search",
   "searchDocs",
   "quest_create",
@@ -27,6 +28,7 @@ const LABELLED = new Set([
   "quest_update",
   "quest_complete",
   "folio_create",
+  "feedback_submit",
 ]);
 
 /**

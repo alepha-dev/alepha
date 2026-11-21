@@ -1,5 +1,5 @@
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, userProjectsAtom } from "@lore/core/web";
 import { fireEvent, render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -34,6 +34,22 @@ describe("the assistant's confirmation cards", () => {
       currentProjectAtom,
       projectFixture({ id: 7, title: "Acme", slug: "acme" }),
     );
+    alepha.store.set(userProjectsAtom, {
+      projects: [
+        { id: 7, title: "Acme", slug: "acme" },
+        { id: 9, title: "Globex", slug: "globex" },
+      ].map((it) => ({
+        ...projectFixture(it),
+        areaCount: 0,
+        openQuestCount: 0,
+        owner: true,
+        lastActivityAt: "2026-01-01T00:00:00.000Z",
+      })),
+      totalCount: 2,
+      ownedCount: 2,
+      maxProjects: 50,
+      canCreate: true,
+    } as never);
     const Card = assistantConfirmCards[name];
     return render(
       <AlephaContext.Provider value={alepha}>
@@ -48,6 +64,7 @@ describe("the assistant's confirmation cards", () => {
 
   it("has a card for every write tool", ({ expect }) => {
     expect(Object.keys(assistantConfirmCards).sort()).toEqual([
+      "feedback_submit",
       "folio_create",
       "quest_comment_add",
       "quest_complete",
@@ -105,5 +122,32 @@ describe("the assistant's confirmation cards", () => {
     );
     // Provenance the model passes is not something the member decides.
     expect(view.queryByTestId("assistant-confirm-field-as")).toBeNull();
+  });
+
+  it("names the project a feedback goes to, by its title, when it is another one (#Q3971)", async ({
+    expect,
+  }) => {
+    const view = await mount(
+      "feedback_submit",
+      {
+        project: 9,
+        title: "Exports drop dates",
+        description: "Seen while **reviewing** Acme.",
+        as: "lore-ai",
+      },
+      { approve: () => {}, deny: () => {} },
+    );
+    expect(view.getByText("File this feedback?")).toBeTruthy();
+    const target = view.getByTestId("assistant-confirm-project").textContent;
+    expect(target).toContain("Globex");
+    expect(target).toContain("not the project you are looking at");
+    expect(
+      view.getByTestId("assistant-confirm-field-title").textContent,
+    ).toContain("Exports drop dates");
+    expect(
+      view
+        .getByTestId("assistant-confirm-field-description")
+        .querySelector("strong")?.textContent,
+    ).toBe("reviewing");
   });
 });

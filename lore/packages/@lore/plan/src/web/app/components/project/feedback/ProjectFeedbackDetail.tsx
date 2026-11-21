@@ -43,6 +43,9 @@ import type { FeedbackResource } from "../../../../../api/schemas/feedbackResour
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
+import FeedbackAgentTriage, {
+  FeedbackAgentJobLink,
+} from "./FeedbackAgentTriage.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 
 export interface ProjectFeedbackDetailProps {
@@ -269,6 +272,20 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           })()}
           {tr(`feedback.filter.${feedback.status}`)}
         </Badge>
+        {/* Written outside the team (#Q3987): no agent works on it while
+            the Agent host runs jobs as a process. */}
+        {feedback.untrusted && (
+          <Badge
+            variant="tint"
+            tone="warning"
+            className="shrink-0 uppercase"
+            title={tr("feedback.untrusted.description")}
+            data-testid="feedback-untrusted"
+          >
+            {tr("feedback.untrusted")}
+          </Badge>
+        )}
+        <FeedbackAgentJobLink feedback={feedback} />
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -524,6 +541,10 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
+          <FeedbackAgentTriage
+            feedback={feedback}
+            onStarted={props.onChanged}
+          />
           <AgentPromptsMenu items={promptItems} />
         </div>
       )}

@@ -874,6 +874,11 @@ export interface DataTableStatCard {
    *
    * Keys are the table's filter field names; `{ state: ["failed"] }` on a
    * "Failed" tile.
+   *
+   * A key set to `undefined` stands for that filter cleared: `{ state:
+   * undefined }` on an "All" tile is pressed while no state is picked, and a
+   * click clears the state filter, the way back to the whole list from the
+   * other tiles of the row.
    */
   filter?: Record<string, unknown>;
 }
@@ -884,9 +889,11 @@ export interface DataTableStatCard {
  *
  * Groups follow the rows' order: a group starts where its first row is,
  * so a table sorted by the grouped field reads in that order, unless
- * `order` says otherwise. Grouping applies to the rows on screen, so a
- * table grouping its whole set shows it on one page (`pagination={false}`
- * with static `data`).
+ * `order` says otherwise. With static `data` the whole set is grouped before
+ * it is paged: each page holds the next rows group by group, a group cut by
+ * a page break opens the next page under its header again, and the header
+ * counts the group over every page. A `fetch` table groups the rows of the
+ * page the server sent.
  */
 export interface DataTableGroupBy<T> {
   /**

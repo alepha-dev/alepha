@@ -72,7 +72,7 @@ class FakeLinkProvider extends LinkProvider {
   }
 }
 
-describe("AccountInbox - Load more and the Project filter", () => {
+describe("AccountInbox - paging and the Project filter", () => {
   beforeAll(() => {
     setupJsdomMocks();
   });
@@ -145,12 +145,12 @@ describe("AccountInbox - Load more and the Project filter", () => {
         | undefined
     )?.pages.flatMap((page) => page.items).length ?? 0;
 
-  const loadMoreButton = (root: HTMLElement) =>
-    Array.from(root.querySelectorAll("button")).find(
-      (el) => el.textContent?.trim() === "inbox.loadMore",
-    );
+  /**
+   * The footer's next-page button: the one paging control (#Q3969).
+   */
+  const nextPage = () => screen.getByRole("button", { name: /next/i });
 
-  it("renders one page, and Load more appends the next with the cursor of the last", async ({
+  it("renders one batch, and reaching the pager's last page fetches the next with the cursor of the last (#Q3969)", async ({
     expect,
   }) => {
     const { alepha, fake, rendered } = await mount();
@@ -161,12 +161,13 @@ describe("AccountInbox - Load more and the Project filter", () => {
     expect(root.textContent).toContain("Message number 1");
     expect(fake.calls.at(-1)?.scope).toBe(undefined);
     expect(alepha.store.get(inboxUnreadAtom)?.count).toBe(TOTAL);
+    // No paging control but the table's own.
+    expect(root.textContent).not.toContain("inbox.loadMore");
 
     fake.calls = [];
-    await act(async () => loadMoreButton(root)?.click());
+    await act(async () => fireEvent.click(nextPage()));
     await waitFor(() => expect(loaded(alepha, "all")).toBe(TOTAL));
     expect(fake.calls).toEqual([{ limit: PAGE_SIZE, cursor: `m${PAGE_SIZE}` }]);
-    await waitFor(() => expect(loadMoreButton(root)).toBe(undefined));
   });
 
   it("a project picked starts again from the first page, and a scoped read never writes the bell", async ({
@@ -176,7 +177,7 @@ describe("AccountInbox - Load more and the Project filter", () => {
     const root = rendered.container as HTMLElement;
 
     await waitFor(() => expect(loaded(alepha, "all")).toBe(PAGE_SIZE));
-    await act(async () => loadMoreButton(root)?.click());
+    await act(async () => fireEvent.click(nextPage()));
     await waitFor(() => expect(loaded(alepha, "all")).toBe(TOTAL));
 
     alepha.store.set(inboxUnreadAtom, { count: 7 });

@@ -3,6 +3,7 @@ import { formatReference, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import AlephaRoleValue from "../personas/AlephaRoleValue.tsx";
 import ReferenceLink from "../shared/ReferenceLink.tsx";
 import { developmentKey } from "./developmentKey.ts";
 import RunStateBadge from "./RunStateBadge.tsx";
@@ -76,9 +77,15 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
                     key={actor.personaId}
                     className="flex justify-between gap-2"
                   >
-                    <ReferenceLink kind="persona" number={actor.number}>
-                      {actor.name}
-                    </ReferenceLink>
+                    <span className="flex min-w-0 flex-col items-start gap-1">
+                      <ReferenceLink kind="persona" number={actor.number}>
+                        {actor.name}
+                      </ReferenceLink>
+                      {/* What the persona is, as its card shows it (#Q3967). */}
+                      {actor.alephaRole ? (
+                        <AlephaRoleValue role={actor.alephaRole} />
+                      ) : null}
+                    </span>
                     <span className="text-muted-foreground text-xs">
                       {tr(ACTOR_ROLE_LABEL_KEYS[actor.role])}
                     </span>

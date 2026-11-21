@@ -283,4 +283,51 @@ describe("paginateLocal", () => {
       expect(result.content.map((r) => r.id)).toEqual([1, 2, 3]);
     });
   });
+
+  describe("grouped", () => {
+    const areas = [
+      row({ id: 1, area: "web", score: 5 }),
+      row({ id: 2, area: "api", score: 1 }),
+      row({ id: 3, area: "web", score: 3 }),
+      row({ id: 4, area: "api", score: 4 }),
+      row({ id: 5, area: "cli", score: 2 }),
+    ];
+
+    it("orders the sorted rows group by group before cutting the page", () => {
+      const first = paginateLocal(areas, {
+        page: 0,
+        size: 3,
+        sort: "score",
+        group: { key: (r) => r.area },
+      });
+      // Sorted by score: 2 (api), 5 (cli), 3 (web), 4 (api), 1 (web); the
+      // groups then come where their first row fell: api, cli, web.
+      expect(first.content.map((r) => r.id)).toEqual([2, 4, 5]);
+      const second = paginateLocal(areas, {
+        page: 1,
+        size: 3,
+        sort: "score",
+        group: { key: (r) => r.area },
+      });
+      expect(second.content.map((r) => r.id)).toEqual([3, 1]);
+      expect(second.groupCounts).toEqual({ api: 2, cli: 1, web: 2 });
+    });
+
+    it("follows the group order when one is given, and counts the filtered rows only", () => {
+      const result = paginateLocal(areas, {
+        page: 0,
+        size: 10,
+        filters: { area: ["web", "cli"] },
+        group: { key: (r) => r.area, order: (a, b) => b.localeCompare(a) },
+      });
+      expect(result.content.map((r) => r.id)).toEqual([1, 3, 5]);
+      expect(result.groupCounts).toEqual({ web: 2, cli: 1 });
+    });
+
+    it("answers no groupCounts when nothing groups", () => {
+      expect(paginateLocal(areas, { page: 0, size: 2 }).groupCounts).toBe(
+        undefined,
+      );
+    });
+  });
 });

@@ -359,6 +359,44 @@ export class DeployRouter {
     },
   });
 
+  /**
+   * The project's host jobs (#Q3984): agent jobs and Agent host checks, and
+   * one job with its live log. Under the Ship capability; the reads are
+   * gated server-side on `host:read`.
+   */
+  projectJobs = $pageProject({
+    name: "projectJobs",
+    path: "/jobs",
+    nav: { hidden: true, label: "Jobs" },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Jobs`,
+    }),
+    lazy: () => import("./components/project/host-jobs/ProjectJobs.tsx"),
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
+  });
+
+  projectJob = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "projectJob",
+    path: "/jobs/:jobId",
+    nav: { hidden: true, label: "Job" },
+    schema: { params: z.object({ jobId: z.string() }) },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Job`,
+    }),
+    lazy: () => import("./components/project/host-jobs/ProjectJob.tsx"),
+    loader: async ({ params }) => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+      return { jobId: params.jobId };
+    },
+  });
+
   projectApps = $pageProject({
     name: "projectApps",
     path: "/apps",

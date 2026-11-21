@@ -75,10 +75,14 @@ type Config struct {
 // HostID keeps the JSON key `estateId`: the file is the welcome frame as
 // received, and the frame's key is Bay wire v1 (see serverFrame).
 type Welcome struct {
-	HostID               string `json:"estateId"`
-	Slug                 string `json:"slug"`
-	DeployAllowed        bool   `json:"deployAllowed"`
-	StatsIntervalSeconds int    `json:"statsIntervalSeconds"`
+	HostID        string `json:"estateId"`
+	Slug          string `json:"slug"`
+	DeployAllowed bool   `json:"deployAllowed"`
+	// JobsAllowed is the host's switch for one-shot jobs (`job-run`), agent
+	// jobs and CI alike. Off by default, and absent from an older Lore, which
+	// reads as off: a job is refused unless Lore said yes.
+	JobsAllowed          bool `json:"jobsAllowed,omitempty"`
+	StatsIntervalSeconds int  `json:"statsIntervalSeconds"`
 	// Features are what this Lore understands beyond protocol 1
 	// (EventsFeature). Absent from an older Lore, which means none.
 	Features   []string  `json:"features,omitempty"`

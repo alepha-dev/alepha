@@ -1,4 +1,7 @@
-import { projectParamsSchema } from "@lore/core/schemas";
+import {
+  attachmentPushResultSchema,
+  projectParamsSchema,
+} from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
 import { actorRoleSchema } from "../../api/schemas/actorRoleSchema.ts";
@@ -258,6 +261,48 @@ export const useCaseRunRecordResultSchema = z.object({
       "What a failure did: opened errors (one per failed criterion), stayed in_development (a covering quest is open), or no_inbox (Ship's track is off: the use case shows Failing).",
     ),
 });
+
+/**
+ * `usecase_run_attachment_add` (#Q3977): like `quest_attachment_add`, it moves
+ * no bytes and hands back the `lore attachments push --run` line to run.
+ */
+export const useCaseRunAttachmentAddParamsSchema = z.object({
+  run: z
+    .integer()
+    .describe("The run's id, as `usecase_run_record` answered it (runId)."),
+  file: z
+    .string()
+    .min(1)
+    .max(1000)
+    .describe(
+      "Path to the file on the machine you will run the command on, e.g. `./c2-receipt.png`. Used to fill in the returned command line; nothing is read here.",
+    ),
+  criterion: z
+    .string()
+    .max(10)
+    .optional()
+    .describe(
+      "The criterion the file shows, C2: the Runs tab lists it under that criterion. Must be one the run recorded.",
+    ),
+  step: z.integer().optional().describe("The scenario step the file shows."),
+  name: z
+    .string()
+    .min(1)
+    .max(200)
+    .optional()
+    .describe(
+      "Name to store it under, if it should differ from the file's own.",
+    ),
+});
+
+export const useCaseRunAttachmentAddResultSchema =
+  attachmentPushResultSchema.extend({
+    shortId: z
+      .integer()
+      .describe(
+        "The run's id, as the command addresses it. Confirmed to exist before this was returned.",
+      ),
+  });
 
 export const useCasePromptParamsSchema = projectParamsSchema.extend({
   number: z

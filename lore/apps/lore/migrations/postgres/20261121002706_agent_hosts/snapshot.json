@@ -1,0 +1,224 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "501b92bb-7bbb-407f-8f94-00dde9ca57e4",
+  "prevIds": ["57868378-bd84-4e1d-a8bc-92e4fc982508"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_host"],
+      "writes": [
+        "s|col|public.hosts.agent_host",
+        "n|col|public.hosts.agent_host",
+        "e|col|public.hosts.agent_host"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_status"],
+      "writes": [
+        "s|col|public.hosts.agent_status",
+        "n|col|public.hosts.agent_status",
+        "e|col|public.hosts.agent_status"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_checked_at"],
+      "writes": [
+        "s|col|public.hosts.agent_checked_at",
+        "n|col|public.hosts.agent_checked_at",
+        "e|col|public.hosts.agent_checked_at"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_error"],
+      "writes": [
+        "s|col|public.hosts.agent_error",
+        "n|col|public.hosts.agent_error",
+        "e|col|public.hosts.agent_error"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_cli_version"],
+      "writes": [
+        "s|col|public.hosts.agent_cli_version",
+        "n|col|public.hosts.agent_cli_version",
+        "e|col|public.hosts.agent_cli_version"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_model"],
+      "writes": [
+        "s|col|public.hosts.agent_model",
+        "n|col|public.hosts.agent_model",
+        "e|col|public.hosts.agent_model"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "agent_credential"],
+      "writes": [
+        "s|col|public.hosts.agent_credential",
+        "n|col|public.hosts.agent_credential",
+        "e|col|public.hosts.agent_credential"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "projects",
+        "default_agent_host_id"
+      ],
+      "writes": [
+        "s|col|public.projects.default_agent_host_id",
+        "n|col|public.projects.default_agent_host_id",
+        "e|col|public.projects.default_agent_host_id"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_host",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_checked_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_error",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_cli_version",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "agent_credential",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "default_agent_host_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -48,6 +48,7 @@ export const workspaceProjects = (
         name: options.name,
         root,
         environment: "node",
+        ...(options.testTimeout ? { testTimeout: options.testTimeout } : {}),
         ...(options.include ? { include: options.include } : {}),
         exclude: [
           ...sharedExclude,
@@ -121,6 +122,16 @@ export interface WorkspaceProjectsOptions {
    * genuinely live there are the repo-level tooling specs, and nothing else.
    */
   include?: string[];
+
+  /**
+   * The node project's test timeout, in place of the shared 10 s.
+   *
+   * For a workspace whose specs each build a whole database schema inside
+   * the test: there, a slow moment of the shared Postgres server lands on the
+   * test itself, and 10 s left little room over the 5 to 6 s such a test
+   * takes on a runner.
+   */
+  testTimeout?: number;
 }
 
 /**

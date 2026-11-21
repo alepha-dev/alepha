@@ -86,6 +86,11 @@ export interface DataTableBodyProps<T> {
    * The table's `groupBy`: rows drawn under folding group headers.
    */
   groupBy?: DataTableGroupBy<T>;
+  /**
+   * Each group's row count over every page (static rows): what a group's
+   * header shows when the table is paged. Absent, it counts the rows here.
+   */
+  groupCounts?: Record<string, number>;
 }
 
 /**
@@ -317,7 +322,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                     )
                   : group.key
               }
-              count={group.indexes.length}
+              count={props.groupCounts?.[group.key] ?? group.indexes.length}
               collapsed={collapsed}
               colSpan={colSpan}
               cellClassName={props.cellClassName}

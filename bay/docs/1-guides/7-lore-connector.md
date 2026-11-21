@@ -76,8 +76,9 @@ network in clear.
 
 ## What Lore can make the machine do
 
-A **closed vocabulary of fifteen verbs**, each naming one app instance or stack
-environment, or, for `upgrade`, the machine's own Bay. `deploy` and `stack-deploy` create what they name, `remove` and
+A **closed vocabulary of seventeen verbs**, each naming one app instance or stack
+environment, or, for `upgrade`, the machine's own Bay, or, for `job-run` and
+`job-cancel`, a one-shot job (see [Jobs](#jobs)). `deploy` and `stack-deploy` create what they name, `remove` and
 `stack-remove` answer done for one that is already gone, and the others refuse
 an instance this Bay does not run:
 
@@ -97,6 +98,8 @@ an instance this Bay does not run:
 | `restore`       | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run                                                                                 |
 | `remove`        | unregisters an app and stops serving it, as `bay remove` without `--purge`: its database, uploads and `.env` stay on the machine. Refused for a stack member, which goes with its stack |
 | `stack-remove`  | takes a stack environment down and forgets it, as `bay stack destroy` without `--purge`: its volumes, variables and registry credentials stay                                           |
+| `job-run`       | runs one one-shot job to its end, its output streamed back to Lore as it happens. See [Jobs](#jobs)                                                                                    |
+| `job-cancel`    | stops the running job it names                                                                                                                                                          |
 | `upgrade`       | replaces Bay's own binary with a newer release, named by its version, and hands over to it without closing a port. See [Upgrading Bay](/bay/docs/guides-installation#upgrading-bay)     |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
@@ -144,6 +147,76 @@ port N.
 Stack members are addressed by the same verbs, as the instance
 `<stack>.<service>`. A Lore `stack-deploy` also carries the environment's routes
 and base domain, which replace those set with `bay stack route`.
+
+## Jobs
+
+A job is not an app: it runs once, to an exit, under a deadline. The first kind
+is an **agent job**, Claude Code run with `claude -p` against a fresh clone of a
+Lore repository, which Lore starts from its own pages.
+
+A `job-run` carries nothing but its id. The machine pulls the job's spec over
+HTTPS by that id and checks every field before anything runs: the kind, the
+permission profile, the clone URL and the Lore MCP URL (both must be on the Lore
+this machine is connected to), the ref, the turn budget, the timeout, and each
+Claude Code tool name one by one. Bay builds the command line itself from those
+fields, so nothing Lore sends is run as written. A field Bay does not know
+refuses the job.
+
+The output goes back up the connection as it is printed. If the link drops
+mid-job, the job keeps running and its output waits on disk until Lore is back.
+A timeout kills the job's whole process group; so does `job-cancel`.
+
+**Jobs are refused until somebody who manages the host allows them**, with a
+switch of their own, separate from deploys. One job runs at a time, and a job
+never makes a deploy wait.
+
+### The jobs user
+
+Bay runs a job as a **dedicated Unix user**, never root and never the user Bay
+runs as, in a fresh directory under that user's home, removed when the job ends.
+Create the user, install Claude Code for it and log in as it by hand: Lore never
+configures Claude Code and never sees its credential.
+
+```bash
+sudo useradd --create-home bay-agent
+sudo -iu bay-agent claude login        # or: claude setup-token
+sudo bay config jobs --user bay-agent
+```
+
+`claude` must be on that user's `PATH` (`~/.local/bin`, `~/.npm-global/bin`,
+`/usr/local/bin` or `/usr/bin`). The host reports the CLI's version to Lore.
+`bay config jobs --clear` makes the host refuse every job again.
+
+⚠️ **A host that runs jobs this way does nothing else.** A job has that user's
+shell on the machine, its network and its Claude credential: Claude Code's tool
+flags narrow what the agent is told it may do, and nothing more. So the host
+serves no production app and holds no other project's secrets, and use a
+Claude credential you can rotate (an API key with a spend limit, or a token from
+`claude setup-token`). The host tells Lore it runs jobs as a process, and Lore
+refuses to give such a host a job whose input came from outside the project.
+
+### The container runner
+
+`bay config jobs --runner container` runs each job in the agent image instead,
+a container per step (the clone, then Claude Code), with no host mount but the
+job's own workspace volume and its repository's dependency cache, no Docker
+socket, every capability dropped, a read-only root filesystem, memory and
+process limits, and a network with no route out but Bay's egress proxy. Add
+`--gvisor` to run them under gVisor (`runsc`), which Bay refuses when the
+daemon has no such runtime.
+
+The Claude credential is a **host-local secret**: set it from stdin and name it
+in the config.
+
+```bash
+sudo bay secret set CLAUDE_CODE_OAUTH_TOKEN - < token.txt
+sudo bay config jobs --runner container --credential CLAUDE_CODE_OAUTH_TOKEN
+```
+
+The value stays on the machine, `0600` under Bay's root, and goes into the
+Claude Code step's environment only. Lore sees the secret's name in the host's
+report, never its value. A host on the container runner is the one Lore lets
+read feedback written outside the project's team, with read rights only.
 
 ## The console
 

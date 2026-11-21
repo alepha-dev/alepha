@@ -1,7 +1,8 @@
-import { ProjectController } from "@lore/core/api";
+import { LoreAudits, ProjectController } from "@lore/core/api";
 import { AttachmentContentService, ProjectTools } from "@lore/core/mcp";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $tool } from "alepha/mcp";
+import { currentUserAtom } from "alepha/security";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { FeedbackCommentController } from "../../api/controllers/FeedbackCommentController.ts";
@@ -15,6 +16,10 @@ import {
   feedbackGetResultSchema,
   feedbackListParamsSchema,
   feedbackListResultSchema,
+  feedbackSubmitParamsSchema,
+  feedbackSubmitResultSchema,
+  feedbackTargetsParamsSchema,
+  feedbackTargetsResultSchema,
   feedbackTriageParamsSchema,
   feedbackTriageResultSchema,
 } from "../schemas/feedbackSchemas.ts";
@@ -31,6 +36,8 @@ export class FeedbackTools {
   protected readonly attachmentContent = $inject(AttachmentContentService);
   protected readonly commentController = $inject(FeedbackCommentController);
   protected readonly projectTools = $inject(ProjectTools);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly audits = $inject(LoreAudits);
 
   /**
    * How many comments `feedback_get` inlines. Same cap and same reasoning
@@ -356,6 +363,72 @@ export class FeedbackTools {
       });
 
       return { ok: result.ok };
+    },
+  });
+
+  /**
+   * Where `feedback_submit` may file (#Q3971): the caller's projects with
+   * Support on, and nothing wider, so the model is never handed a general
+   * project list to guess from.
+   */
+  feedback_targets = $tool({
+    description:
+      "The projects you may file a feedback into with feedback_submit: those you belong to that accept feedback (Support on), by id, slug and title. Read it before filing into a project other than the one you are in.",
+    title: "Feedback targets",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: feedbackTargetsParamsSchema,
+      result: feedbackTargetsResultSchema,
+    },
+    handler: async () => ({
+      targets: await this.feedbackController.listFeedbackTargets({}),
+    }),
+  });
+
+  /**
+   * File a feedback item, possibly into another project than the run's
+   * (#Q3971). The one tool a pinned run may aim elsewhere
+   * (`ProjectTools.resolveFeedbackTarget`): the target must be a project the
+   * caller belongs to (a non-member gets "not found") with Support on (the
+   * action refuses otherwise), and the item lands `pending` in its triage
+   * inbox, never in its plan.
+   */
+  feedback_submit = $tool({
+    description:
+      "File a feedback item (a bug or a request) into a project you belong to that accepts feedback, which may be another project than the one you are in: list the possible ones with feedback_targets. It lands pending in that project's triage inbox and is tagged as filed by an agent. The target's members can read everything you write in it.",
+    title: "Submit feedback",
+    schema: {
+      params: feedbackSubmitParamsSchema,
+      result: feedbackSubmitResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.projectTools.resolveFeedbackTarget(
+        params.project,
+        params.project_name,
+      );
+      const agentTag = `agent:${(params.as ?? "mcp").toLowerCase()}`;
+      const created = await this.feedbackController.submitFeedback({
+        params: { projectId },
+        body: {
+          title: params.title,
+          description: params.description,
+          tags: [...new Set([...(params.tags ?? []), agentTag])].slice(0, 20),
+        },
+      });
+      // Filed from a room of another project: that project's own audit
+      // records it too, so the copy out of it is on its record (#Q3971).
+      const from = this.projectTools.pinnedProject();
+      if (from !== undefined && from !== projectId) {
+        await this.audits.feedback.logSuccess("submit-elsewhere", {
+          ...this.audits.actor(this.alepha.store.get(currentUserAtom)),
+          ...this.audits.scope(from),
+          resourceType: "feedback",
+          resourceId: String(created.shortId),
+          description: params.title,
+          metadata: { targetProjectId: projectId, id: created.id },
+        });
+      }
+      return { projectId, id: created.id, shortId: created.shortId };
     },
   });
 }

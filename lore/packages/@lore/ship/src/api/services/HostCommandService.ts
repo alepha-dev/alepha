@@ -33,6 +33,13 @@ declare module "alepha" {
        */
       appSecretSource?: string;
       warning?: string;
+      /**
+       * How a `job-run` ended, from its terminal ack (#Q3983): the command
+       * row says `failed` for a timeout or a cancel, and the job row keeps
+       * which one it was, with the process's exit code.
+       */
+      jobOutcome?: "done" | "failed" | "timed_out" | "cancelled";
+      exitCode?: number;
     };
   }
 }
@@ -42,7 +49,7 @@ declare module "alepha" {
  */
 export interface HostCommandAck {
   id: string;
-  status: "running" | "done" | "failed";
+  status: "running" | "done" | "failed" | "timed_out" | "cancelled";
   step?: string;
   reason?: string;
   /**
@@ -51,6 +58,7 @@ export interface HostCommandAck {
   url?: string;
   appSecretSource?: string;
   warning?: string;
+  exitCode?: number;
 }
 
 /**
@@ -131,6 +139,12 @@ export class HostCommandService {
       // A download of some tens of megabytes, a checksum, and a handoff that
       // gives the new Bay 60 s to say it is ready.
       upgrade: 300,
+      // A job's own deadline is in its spec and enforced by the machine, up
+      // to Bay's ceiling of four hours; this is that ceiling plus the clone
+      // and a margin, so the sweep never fails a job Bay is still timing.
+      "job-run": 4 * 3600 + 600,
+      // A kill of a process group.
+      "job-cancel": 60,
     };
 
   protected readonly log = $logger();
@@ -182,6 +196,28 @@ export class HostCommandService {
       throw new ForbiddenError(
         `Host "${host.slug}" does not accept changes to its apps; its home project has to allow deploys first`,
       );
+    }
+    // A job runs on its own switch, never on the deploy one (#Q3984): it
+    // names no instance, a `job-run` carries the job, a `job-cancel` the run.
+    if (kind === "job-run" || kind === "job-cancel") {
+      if (kind === "job-run" && !host.jobsAllowed) {
+        throw new ForbiddenError(
+          `Host "${host.slug}" does not run jobs; its home project has to allow them first`,
+        );
+      }
+      if (
+        payload &&
+        (payload.app ||
+          payload.environment ||
+          (kind === "job-run" ? !payload.jobId : !payload.jobCommandId))
+      ) {
+        throw new BadRequestError(
+          kind === "job-run"
+            ? "A job-run names its job and no app or environment"
+            : "A job-cancel names the job-run it stops and no app or environment",
+        );
+      }
+      return;
     }
     // The payload is one flat object for every kind, as the frame is, so
     // what each kind may carry is said here rather than by a union. An
@@ -320,8 +356,11 @@ export class HostCommandService {
         ...(ack.step === undefined ? {} : { step: ack.step }),
       });
     } else {
+      // A job's timeout and cancel are failures of the command; the job row
+      // keeps which one (`jobOutcome` below).
+      const status = ack.status === "done" ? "done" : "failed";
       await this.commands.updateById(command.id, {
-        status: ack.status,
+        status,
         finishedAt: now,
         ...(ack.step === undefined ? {} : { step: ack.step }),
         ...(ack.reason === undefined ? {} : { reason: ack.reason }),
@@ -337,6 +376,10 @@ export class HostCommandService {
         ? { appSecretSource: ack.appSecretSource }
         : {}),
       ...(ack.status === "done" && ack.warning ? { warning: ack.warning } : {}),
+      ...(command.kind === "job-run" && ack.status !== "running"
+        ? { jobOutcome: ack.status }
+        : {}),
+      ...(ack.exitCode === undefined ? {} : { exitCode: ack.exitCode }),
     });
     return updated;
   }
@@ -470,6 +513,11 @@ export class HostCommandService {
       // The whole of what an upgrade is told, and on that kind only.
       ...(command.kind === "upgrade" && command.payload.version
         ? { version: command.payload.version }
+        : {}),
+      // The whole of what a cancel is told; a job-run is told nothing but
+      // its id, and pulls its spec by it (`jobId` stays Lore's).
+      ...(command.kind === "job-cancel" && command.payload.jobCommandId
+        ? { jobCommandId: command.payload.jobCommandId }
         : {}),
     };
   }

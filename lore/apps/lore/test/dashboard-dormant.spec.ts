@@ -6,6 +6,7 @@ import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
+import { CronProvider } from "alepha/scheduler";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
@@ -18,14 +19,16 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
+import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 /**
  * A dormant project's board (#E77, #Q2662): no recorded write in 90 days,
  * so the computed board is one line and what it shipped last.
  */
-// A 120-day advance also executes the registered minute jobs. Keep all
-// assertions, with enough time for the full application on a loaded runner.
-describe("dashboard dormant state", { timeout: 60_000 }, () => {
+// No cron (#Q3998): a 120-day `travel()` fired every registered job, about
+// 7 s an advance on a laptop and past 60 s under coverage on a loaded
+// runner. The dormant line reads the clock and the writes, never a job.
+describe("dashboard dormant state", () => {
   let alepha: Alepha;
   let dateTime: DateTimeProvider;
   let board: ProjectDashboardController;
@@ -36,6 +39,7 @@ describe("dashboard dormant state", { timeout: 60_000 }, () => {
     alepha = Alepha.create({
       env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
     });
+    alepha.with({ provide: CronProvider, use: ManualCronProvider });
     alepha.with(AlephaOrm);
     alepha.with(AlephaServer);
     alepha.with(AlephaSecurity);
@@ -95,10 +99,6 @@ describe("dashboard dormant state", { timeout: 60_000 }, () => {
   });
 
   it("leaves a customized board alone", async ({ expect }) => {
-    // In process, not over HTTP: `travel()` below runs every cron job due in
-    // 120 days, seconds of real time, and a keep-alive socket opened before
-    // it can be closed by the server just as the next request reuses it
-    // ("other side closed"). The more jobs Lore has, the likelier.
     await board.addProjectDashboardCard.run(
       {
         params: { projectId: project.id },

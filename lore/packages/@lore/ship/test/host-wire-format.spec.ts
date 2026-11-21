@@ -33,6 +33,8 @@ const SERVER_FRAMES = [
   "command-backup-policy.json",
   "command-remove.json",
   "command-upgrade.json",
+  "command-job-run.json",
+  "command-job-cancel.json",
   "query.json",
 ];
 
@@ -42,6 +44,9 @@ const CLIENT_FRAMES = [
   "ack-done.json",
   "ack-deploy-done.json",
   "ack-failed.json",
+  "ack-job-timed-out.json",
+  "ack-job-failed.json",
+  "log.json",
   "stats.json",
   "inventory.json",
   "event.json",

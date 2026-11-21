@@ -163,6 +163,22 @@ export const projects = $entity({
      * cascade-wipes children on D1.
      */
     archivedAt: z.datetime().optional(),
+    /**
+     * The project's default Agent host (#Q3985): the host its agent jobs run
+     * on, its own or one lent to it, that runs Claude Code jobs. A logical
+     * reference: hosts are Ship's, and a core table cannot point into a
+     * feature module. Ship clears it when the host stops being an Agent host
+     * or the loan ends, and reads it through its own checks every time, so a
+     * stale id only hides the agent buttons. Absent hides them.
+     */
+    defaultAgentHostId: z.uuid().optional(),
+    /**
+     * The hosts a `push` agent job may reach beyond Anthropic and Lore
+     * (#Q3996), enforced by a container runner's egress proxy. Absent is the
+     * default list (the npm and Yarn registries and GitHub); an empty list
+     * reaches neither.
+     */
+    agentEgressHosts: z.array(z.string().max(253)).max(50).optional(),
   }),
   indexes: [
     {

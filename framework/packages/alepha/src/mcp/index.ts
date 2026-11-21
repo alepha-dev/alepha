@@ -157,6 +157,22 @@ export {
 declare module "alepha" {
   interface Hooks {
     /**
+     * A `tools/call` is about to run a registered tool, its arguments as the
+     * client sent them. A gate, unlike `mcp:tool:call:end`: a subscriber that
+     * throws an `HttpError` refuses the call, answered as the tool's own
+     * refusal (`isError`, the error's message) and announced `refused`.
+     *
+     * What lets an application bound a credential to a set of tools, or to
+     * one resource, server side and whatever the prompt asked for. Awaited, so
+     * a subscriber must be quick. Not emitted for a name no tool answers.
+     */
+    "mcp:tool:call:begin": {
+      name: string;
+      args: Record<string, unknown>;
+      context?: McpContext;
+    };
+
+    /**
      * A `tools/call` finished, however it finished.
      *
      * Emitted once per call by {@link McpServerProvider}, after the result is

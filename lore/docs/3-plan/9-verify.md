@@ -16,7 +16,7 @@ It opens a dialog:
 ![The Verify dialog](/screenshots/lore/requirements-verify-light.png)
 
 - **Mission**: **Test** (play the criteria and record one run, fixing
-  nothing), **Write the spec** (an end-to-end spec tagged `@U7`), **Demo** (a
+  nothing), **Write the e2e test** (an end-to-end spec tagged `@U7`), **Demo** (a
   demo script and its data) or, on a persona, **Explore** (exploratory testing
   in their shoes).
 - **App** and **Environment**: the app copy to play on, or `local`.
@@ -86,7 +86,9 @@ See [The lore CLI](/lore/docs/reference-cli).
 
 `usecase_prompt` returns the same prompt as the dialog, and
 `usecase_run_record` records a run. An agent following a Test prompt plays
-the criteria, records one run, and fixes nothing. The full list is in
+the criteria, records one run, and fixes nothing. `usecase_run_attachment_add`
+answers the command that attaches a screenshot to the run, on the criterion it
+shows. The full list is in
 [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next

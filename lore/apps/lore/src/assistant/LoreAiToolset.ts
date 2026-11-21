@@ -167,6 +167,13 @@ export class LoreAiToolset {
         gate: feedbackController.getFeedback,
       },
       {
+        // The member's own projects that accept feedback (#Q3971): where
+        // `feedback_submit` may file. Gated on sign-in only, no project.
+        tool: feedbackTools.feedback_targets,
+        permissions: [],
+        gate: feedbackController.listFeedbackTargets,
+      },
+      {
         tool: searchController.search,
         permissions: ["quest:read", "folio:read"],
         gate: searchController.search,
@@ -204,6 +211,16 @@ export class LoreAiToolset {
         tool: folioTools.folio_create,
         permissions: ["folio:write"],
         gate: folioController.create,
+      },
+      {
+        // The one write that may leave the run's project (#Q3971): a
+        // feedback into a project the member belongs to with Support on,
+        // which the tool and the action check whatever the model passes.
+        // Its gate holds no `$ownsProject`: feedback is open to outsiders,
+        // so this room's rank says nothing about it.
+        tool: feedbackTools.feedback_submit,
+        permissions: [],
+        gate: feedbackController.submitFeedback,
       },
     ];
 

@@ -441,7 +441,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Chat",
     section: "Asking Lore",
     url: "https://alepha.dev/lore/docs/project-chat#asking-lore",
-    text: "When the assistant is on for your Lore (see\n[Assistant](/lore/docs/agents-assistant)), write `@lore` followed by your\nquestion in any room. Lore answers in the room, where everyone can read the\nanswer:\n\n- It runs **as you**: it can only do what your rank allows, and its usage\n  counts against your budget.\n- It reads **this project only**, and this room's recent messages. What\n  other people wrote is context for it, never instructions.\n- The line under its name traces what it is doing: the tools it runs, then\n  what it ran.\n- A **write** (filing a quest, a comment, a folio) waits for a card. Everyone\n  sees the card; only you, who asked, can approve or decline it.\n\nYour own room with Lore is **Lore**, at the top of the list, opened by the\nsparkle button in the header. Nobody else is in it, and every message there is\na question to Lore, without `@lore`.",
+    text: "When the assistant is on for your Lore (see\n[Assistant](/lore/docs/agents-assistant)), write `@lore` followed by your\nquestion in any room. Lore answers in the room, where everyone can read the\nanswer:\n\n- It runs **as you**: it can only do what your rank allows, and its usage\n  counts against your budget.\n- It reads **this project only**, and this room's recent messages. What\n  other people wrote is context for it, never instructions.\n- The line under its name traces what it is doing: the tools it runs, then\n  what it ran.\n- A **write** (filing a quest, a comment, a folio) waits for a card. Everyone\n  sees the card; only you, who asked, can approve or decline it.\n\nTo ask Lore something on your own, about the page you are on, open the\n[Assistant](/lore/docs/agents-assistant) from the sparkle button in the header\ninstead.",
   },
   {
     guide: "Chat",
@@ -934,7 +934,7 @@ export const docsCorpus: DocsSection[] = [
     section: "The Verify dialog",
     url: "https://alepha.dev/lore/docs/plan-verify#the-verify-dialog",
     capability: "plan",
-    text: "**Verify** is the robot button on a use case's page and on a persona's page,\nwhere it lists the missions, and **Verify all stale** on the Use cases tab.\nIt opens a dialog:\n\n- **Mission**: **Test** (play the criteria and record one run, fixing\n  nothing), **Write the spec** (an end-to-end spec tagged `@U7`), **Demo** (a\n  demo script and its data) or, on a persona, **Explore** (exploratory testing\n  in their shoes).\n- **App** and **Environment**: the app copy to play on, or `local`.\n- **Play as**: the persona whose role the agent takes.\n\nThe preview is the prompt itself. **Copy prompt** copies it; **Copy command**\ncopies the `lore usecase prompt` line that prints the same text.\n\nThe prompts are templates the project can edit in **Settings ▸ Agent\nprompts**, which lists them whenever the Requirements option is on. Besides\nthe usual placeholders, they fill `{{steps}}`, `{{criteria}}`, `{{persona}}`,\n`{{demoAccount}}`, `{{app}}`, `{{env}}` and `{{appUrl}}`.",
+    text: "**Verify** is the robot button on a use case's page and on a persona's page,\nwhere it lists the missions, and **Verify all stale** on the Use cases tab.\nIt opens a dialog:\n\n- **Mission**: **Test** (play the criteria and record one run, fixing\n  nothing), **Write the e2e test** (an end-to-end spec tagged `@U7`), **Demo** (a\n  demo script and its data) or, on a persona, **Explore** (exploratory testing\n  in their shoes).\n- **App** and **Environment**: the app copy to play on, or `local`.\n- **Play as**: the persona whose role the agent takes.\n\nThe preview is the prompt itself. **Copy prompt** copies it; **Copy command**\ncopies the `lore usecase prompt` line that prints the same text.\n\nThe prompts are templates the project can edit in **Settings ▸ Agent\nprompts**, which lists them whenever the Requirements option is on. Besides\nthe usual placeholders, they fill `{{steps}}`, `{{criteria}}`, `{{persona}}`,\n`{{demoAccount}}`, `{{app}}`, `{{env}}` and `{{appUrl}}`.",
   },
   {
     guide: "Verify and runs",
@@ -955,7 +955,7 @@ export const docsCorpus: DocsSection[] = [
     section: "From an agent",
     url: "https://alepha.dev/lore/docs/plan-verify#from-an-agent",
     capability: "plan",
-    text: "`usecase_prompt` returns the same prompt as the dialog, and\n`usecase_run_record` records a run. An agent following a Test prompt plays\nthe criteria, records one run, and fixes nothing. The full list is in\n[MCP tools](/lore/docs/reference-mcp-tools).",
+    text: "`usecase_prompt` returns the same prompt as the dialog, and\n`usecase_run_record` records a run. An agent following a Test prompt plays\nthe criteria, records one run, and fixes nothing. `usecase_run_attachment_add`\nanswers the command that attaches a screenshot to the run, on the criterion it\nshows. The full list is in\n[MCP tools](/lore/docs/reference-mcp-tools).",
   },
   {
     guide: "Verify and runs",
@@ -1267,7 +1267,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Repositories",
     section: "Cloning and pushing",
     url: "https://alepha.dev/lore/docs/build-repositories#cloning-and-pushing",
-    text: "```bash\nlore clone acme/api\ncd api\ngit push\n```\n\n`lore clone <project>[/<repo>]` clones the repository and installs the `lore`\ncommand as git's credential helper for that instance. Without `/<repo>` it\ntakes the repository named like the project, or the project's only one. From\nthen on, `git fetch`, `git pull` and `git push` work as with any other host.\n\nIn an existing checkout, `lore code remote --add` adds the repository as a\nremote named `lore`.\n\nMembers push; Viewers clone and read. Deleting the default branch is refused,\nand so is a push to a repository over its size cap.\n\n### In CI\n\nSet `LORE_API_KEY` to an API key, and the credential helper answers git with\nit. A key narrowed to **Clone and fetch repositories** and **Push to\nrepositories** is all a pipeline needs.",
+    text: "```bash\nlore clone acme/api\ncd api\ngit push\n```\n\n`lore clone <project>[/<repo>]` clones the repository and installs the `lore`\ncommand as git's credential helper for that instance. Without `/<repo>` it\ntakes the repository named like the project, or the project's only one. From\nthen on, `git fetch`, `git pull` and `git push` work as with any other host.\n\nIn an existing checkout, `lore code remote --add` adds the repository as a\nremote named `lore`.\n\nMembers push; Viewers clone and read. Deleting the default branch is refused,\nand so is a push to a repository over its size cap. On a self-hosted Lore,\nwhich keeps its repositories on disk, a force-push that rewrites the default\nbranch's history is refused as well; other branches still take one.\n\n### In CI\n\nSet `LORE_API_KEY` to an API key, and the credential helper answers git with\nit. A key narrowed to **Clone and fetch repositories** and **Push to\nrepositories** is all a pipeline needs.",
   },
   {
     guide: "Repositories",
@@ -2049,31 +2049,37 @@ export const docsCorpus: DocsSection[] = [
     guide: "Assistant",
     section: "Assistant",
     url: "https://alepha.dev/lore/docs/agents-assistant",
-    text: "The assistant is Lore, answering in a project's [Chat](/lore/docs/project-chat).\nAsk it what you would otherwise click through: what is still open, what an epic\nlacks, how a feature works. It can also file a quest or write a folio for you,\nonce you approve.\n\nIt is off unless the operator of your Lore turns it on (see\n[Turning it on](#turning-it-on)). When it is off, its button does not appear and\n`@lore` is plain text.",
+    text: "The assistant is a chat beside the page, inside a Lore project. Ask it what you\nwould otherwise click through: what is still open, what this epic lacks, what\nis missing in this use case, how a feature works. It can also file a quest or\nwrite a folio for you, once you approve.\n\nIt is off unless the operator of your Lore turns it on (see\n[Turning it on](#turning-it-on)). When it is off, its button does not appear and\n`@lore` is plain text.",
   },
   {
     guide: "Assistant",
     section: "Opening it",
     url: "https://alepha.dev/lore/docs/agents-assistant#opening-it",
-    text: 'The assistant lives in Chat, so a project needs Chat turned on to have it.\n\n- Click the sparkle button, **Ask Lore**, in the project\'s header: it opens\n  your own room with Lore, created the first time. Nobody else is in it, and\n  every message there is a question.\n- Or write `@lore` and your question in any room: Lore answers there, for\n  everyone in the room to read.\n\nThe assistant does not follow the page you are on: say what you mean ("quest\n#Q12", "the API area"). Outside a project there is no assistant.',
+    text: 'Click the sparkle button, **Assistant**, in a project\'s header. On a wide\nscreen (1024 pixels and up) the chat docks beside the page, which stays in\nview and usable, so a link in a reply opens the page next to the conversation.\nOn a narrower screen it slides in as a drawer. Fold it into a pill to keep the\nconversation for later, and reopen an earlier one from its history menu.\n\n**It knows the page you are on.** On a quest, an epic, a folio or a use case,\n"this quest", "this epic" or "this use case" means the one in front of you:\n"what is missing in this use case?" needs no number. The empty chat offers a\nfew questions that fit the page.\n\nThe assistant is offered on project pages only: Home and your account have\nnone. It does not need Chat turned on.',
+  },
+  {
+    guide: "Assistant",
+    section: "In a chat room",
+    url: "https://alepha.dev/lore/docs/agents-assistant#in-a-chat-room",
+    text: "In a project with [Chat](/lore/docs/project-chat) on, write `@lore` and your\nquestion in any room: Lore answers there, for everyone in the room to read.\nThere it reads the room's recent messages rather than the page you are on.",
   },
   {
     guide: "Assistant",
     section: "What it can do",
     url: "https://alepha.dev/lore/docs/agents-assistant#what-it-can-do",
-    text: '- **Read** a project: its quests, epics, folios, releases and feedback, and\n  Lore\'s search. "What is still open in the API area?", "What does this epic\n  still lack?", "Summarise folio #F12."\n- **Write** the things you do most: file a quest, comment on one, update or\n  complete it, and write a folio.\n- **Answer how-to questions** from these guides, with a link to the page it\n  read.\n\n**Every write waits for you.** The assistant shows a card with exactly what it\nis about to do: the project, the title, the fields it sets, the text it posts.\nNothing happens until you approve. Deny it and nothing runs. In a room,\neveryone sees the card; only the member who asked can approve it.\n\nIts answers are short on purpose: a list names each item by its reference and\ntitle, a handful at a time, and says when there are more. An answer has a\nlength limit: ask again for the rest.',
+    text: '- **Read** a project: its quests, epics, folios, releases and feedback, and\n  Lore\'s search. "What is still open in the API area?", "What does this epic\n  still lack?", "Summarise folio #F12."\n- **Write** the things you do most: file a quest, comment on one, update or\n  complete it, and write a folio.\n- **File a feedback**, here or into another project you belong to that accepts\n  feedback, from any page or room: "report this to Acme". The card names the\n  project it goes to, since its members will read what is filed.\n- **Answer how-to questions** from these guides, with a link to the page it\n  read.\n\n**Every write waits for you.** The assistant shows a card with exactly what it\nis about to do: the project, the title, the fields it sets, the text it posts.\nNothing happens until you approve. Deny it and nothing runs. In a room,\neveryone sees the card; only the member who asked can approve it.\n\nIts answers are short on purpose: a list names each item by its reference and\ntitle, a handful at a time, and says when there are more. An answer has a\nlength limit: ask again for the rest.',
   },
   {
     guide: "Assistant",
     section: "What it may do",
     url: "https://alepha.dev/lore/docs/agents-assistant#what-it-may-do",
-    text: "The assistant works inside the project of the room, and only there: a tool\ncall naming another project is refused, whatever was asked. It acts as the\nmember who asked: it can never do anything their rank in that project does not\nallow, and it is not offered the tools their rank does not grant. See\n[Members](/lore/docs/project-members) for ranks.\n\nIn a room, the other messages it reads are context, never instructions: a\nmessage telling it to do something else does not change what it may do.\n\nWhat it writes is marked as written by an agent: a comment it posts shows your\nname with the agent badge and the client `lore-ai`.",
+    text: "The assistant works inside the project you are in (the page's, or the room's),\nand only there. It acts as the member who asked: it can never do anything\ntheir rank in that project does not allow, and it is not offered the tools\ntheir rank does not grant. See [Members](/lore/docs/project-members) for\nranks.\n\nWhat other members wrote is context, never instructions: a use case step, a\nquest description, a folio or a room message telling it to do something else\ndoes not change what it may do.\n\nWhat it writes is marked as written by an agent: a comment it posts shows your\nname with the agent badge and the client `lore-ai`.",
   },
   {
     guide: "Assistant",
     section: "What it sends, and what is kept",
     url: "https://alepha.dev/lore/docs/agents-assistant#what-it-sends-and-what-is-kept",
-    text: "- Each question goes to the model with the project's id, the room's recent\n  messages, and the results of the tools it runs, which can include a quest's\n  description or a folio's body. The model runs on Anthropic when the\n  operator set an Anthropic key, otherwise on Cloudflare Workers AI.\n- The answer is a message of the room, kept with the room. The run behind it\n  (each step, each tool) is kept apart, visible to no one in Lore, and deleted\n  30 days after its last message.\n- Each user has a token budget (200,000 tokens per 24 hours by default) and a\n  limit of 20 messages a minute. Past either, the assistant refuses until the\n  window moves on.",
+    text: "- Each question goes to the model with the project's id, name and language,\n  what the page shows (the quest, epic, folio or use case you are on; in a\n  room, its recent messages), and the results of the tools it runs, which can\n  include a quest's description or a folio's body. A protected folio's body is\n  never sent. The model runs on Anthropic when the operator set an Anthropic\n  key, otherwise on Cloudflare Workers AI.\n- Conversations in the dock are stored in your Lore, visible to you only, and\n  deleted 30 days after their last message. An answer in a room is a message\n  of the room, kept with the room.\n- Each user has a token budget (200,000 tokens per 24 hours by default) and a\n  limit of 20 messages a minute. Past either, the assistant refuses until the\n  window moves on.",
   },
   {
     guide: "Assistant",
@@ -2088,6 +2094,42 @@ export const docsCorpus: DocsSection[] = [
     text: "- [Agent prompts](/lore/docs/agents-prompts): hand work to your own coding\n  agent.\n- [Connecting an agent](/lore/docs/agents-connecting): give an agent the same\n  access over MCP.\n- [Self-hosting](/lore/docs/start-self-hosting): running your own Lore.",
   },
   {
+    guide: "Agent jobs",
+    section: "Agent jobs",
+    url: "https://alepha.dev/lore/docs/agents-jobs",
+    text: "An agent job is Claude Code run by Lore on one of your own hosts: it triages a\nfeedback item into quests, or works a quest and pushes a branch. You provide\nthe machine and the Claude credential; Lore writes the job, starts it, shows its\nlog, and keeps what it answered.\n\nThe credential never leaves your host. Lore asks the host to run a job, the\nhost pulls what to run, and Claude Code reads its credential from the host\nitself.",
+  },
+  {
+    guide: "Agent jobs",
+    section: "Claude Code on your host, by hand",
+    url: "https://alepha.dev/lore/docs/agents-jobs#claude-code-on-your-host-by-hand",
+    text: "An agent job runs on a host enrolled with Bay (see\n[Hosts](/lore/docs/ship-hosts)). Pick one that serves no production app and\nholds no other project's secrets: a job runs a repository's code there.\n\n**1. Mint a credential.** On any machine where you are signed in to Claude\nCode, run `claude setup-token`, which prints a long-lived OAuth token for your\nClaude subscription. An Anthropic API key works too, billed per token. Lore\nnever asks for either.\n\n**2. Tell Bay how to run jobs.** Bay has two ways, chosen on the host:\n\n- **In a container** (recommended). Each job runs in Lore's agent image, as a\n  non-root user, with no host directory mounted and a network whose only way\n  out is Bay's egress proxy. The credential is a host secret, set from stdin so\n  it lands in no shell history:\n\n  ```bash\n  sudo bay secret set CLAUDE_CODE_OAUTH_TOKEN - < token.txt\n  sudo bay config jobs --runner container --credential CLAUDE_CODE_OAUTH_TOKEN\n  ```\n\n  Add `--gvisor` when the host has the `runsc` runtime, for a kernel between\n  the job and the machine.\n\n- **As a host process.** Each job runs under a dedicated Unix user, signed in\n  to Claude Code by hand (`sudo -u bay-agent claude setup-token`, o...",
+  },
+  {
+    guide: "Agent jobs",
+    section: "What an agent does",
+    url: "https://alepha.dev/lore/docs/agents-jobs#what-an-agent-does",
+    text: "### Feedback to quests\n\n**Triage with Claude**, on a feedback item, runs the project's Triage prompt\n(see [Agent prompts](/lore/docs/agents-prompts)) on that one item. The agent\nreads the item and the code, then does one of three things: files a todo quest\nfor sound feedback, leaves a question for a member when it is unsure, or\nrejects what is not actionable. On the inbox, **Triage the pending feedback with\nClaude** starts one job per pending item.\n\nTo triage every new item as it arrives, turn on **Triage new feedback with\nClaude** in **Settings ▸ Plan ▸ Features**. Each item is triaged once.\n\n### A quest to a branch\n\n**Work it with Claude**, on an accepted quest, clones the repository, works the\nquest, can run the project's checks, and pushes the branch `lore/q<number>` to the\nproject's Lore repository. The branch is the job's whole output: it never\nwrites to any other branch, and it never merges. You review it as you would a\ncolleague's.\n\n### A branch to main\n\nOpening a pull request and merging it stay a person's acts for now.\n\n### Following a job\n\nEvery job shows on the subject it works on, with its log as it runs, its\nstatus, how many turns it took and what it cost. From the CL...",
+  },
+  {
+    guide: "Agent jobs",
+    section: "Profiles and rights",
+    url: "https://alepha.dev/lore/docs/agents-jobs#profiles-and-rights",
+    text: "A job runs one of two fixed profiles. Neither can be widened from a prompt.\n\n| profile | used by                 | Claude Code may                                               | turns | time   |\n| ------- | ----------------------- | ------------------------------------------------------------- | ----- | ------ |\n| `read`  | triage                  | read files, search, read git history                          | 30    | 15 min |\n| `push`  | **Work it with Claude** | edit files, run shell commands (`yarn`, git), push its branch | 100   | 60 min |\n\nEach job also gets its own Lore key, made when the host pulls the job and\nrevoked when it ends. The key holds only:\n\n- the Lore tools the job needs, for the one feedback item or quest it is\n  about;\n- read access to the one repository it cloned;\n- for a `push` job, write access to `lore/q<number>` and nothing else.\n\nA job never starts another agent job: whatever its output says, the next stage\nis started by a person or by the project's own settings.\n\n**Network.** On a container host, every job reaches the Anthropic API and your\nLore, and nothing else. A `push` job also reaches the npm and Yarn registries\nand GitHub, so it can install depe...",
+  },
+  {
+    guide: "Agent jobs",
+    section: "Untrusted input",
+    url: "https://alepha.dev/lore/docs/agents-jobs#untrusted-input",
+    text: "Feedback written by someone outside the project's team (a visitor of a public\nform or widget, a user who is not a member) is marked **Untrusted** when it is submitted, and\nstays so. Its text may be written to steer an agent, so Lore holds it to\nstricter rules:\n\n- A host that runs jobs **as a process** never gets it: Lore refuses to start\n  the job, and a member triages the item by hand.\n- A **container** host triages it with the `read` profile, whatever was asked:\n  no edit, no shell, no push.\n- A quest filed from it is marked **Untrusted** too. **Work it with Claude**\n  waits until a member has read its text and clicked **Confirm its text**,\n  which Lore records with their name.\n\nThe Triage prompt also tells the agent that the item's text is data, never\ninstructions. That sentence helps; the rules above are what hold.",
+  },
+  {
+    guide: "Agent jobs",
+    section: "What Lore never sees",
+    url: "https://alepha.dev/lore/docs/agents-jobs#what-lore-never-sees",
+    text: "- **The Claude credential.** It stays on the host: in a host secret, or in the\n  jobs user's own Claude Code sign-in. Lore sees only the secret's name, and\n  whether the check found an OAuth token or an API key.\n- **Your host's other secrets.** A job pulls its spec and nothing else; a\n  container job sees no host directory and no environment but its own.\n- **Your Claude account.** Usage and billing stay between you and Anthropic.\n  Lore shows the cost Claude Code reports at the end of each job.\n\nWhat Lore does keep: the prompt it sent, the job's log (up to a size cap), and\nClaude Code's final answer.",
+  },
+  {
     guide: "The lore CLI",
     section: "The lore CLI",
     url: "https://alepha.dev/lore/docs/reference-cli",
@@ -2097,7 +2139,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "The lore CLI",
     section: "Install",
     url: "https://alepha.dev/lore/docs/reference-cli#install",
-    text: "```bash\nnpm i -g @alepha/lore\nlore --help\n```\n\nA project that already depends on `@alepha/lore` can run `yarn lore ...`\nwithout the global install.",
+    text: "```bash\nnpm i -g @alepha/lore\nlore --help\nlore --version\n```\n\n`lore --version` (or `-v`) prints the version alone, so\n`VERSION=$(lore --version)` holds just the number.\n\nA project that already depends on `@alepha/lore` can run `yarn lore ...`\nwithout the global install.",
   },
   {
     guide: "The lore CLI",
@@ -2163,7 +2205,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "The lore CLI",
     section: "Attachments",
     url: "https://alepha.dev/lore/docs/reference-cli#attachments",
-    text: '```bash\nlore attachments push ./chart.png --quest 1208\nlore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"\n```\n\n`lore attachments push <file>` puts one file per call onto a quest or a folio.\n\n| Flag                  | What it does                                                                 |\n| --------------------- | ---------------------------------------------------------------------------- |\n| `--quest` / `--folio` | The target, by its bare number. One or the other.                            |\n| `--name`              | The name to store the file under. Defaults to the file\'s name on disk.       |\n| `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |\n\nA folio adds a suffix to a name it already holds, and the command prints the\nname it stored. To read a file back, use `lore quest attachment get` or\n`lore folio attachment list`. See\n[Attachments](/lore/docs/remember-attachments).',
+    text: '```bash\nlore attachments push ./chart.png --quest 1208\nlore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"\nlore attachments push ./receipt.png --run 41 --criterion C2\n```\n\n`lore attachments push <file>` puts one file per call onto a quest, a folio or\na use case run.\n\n| Flag                  | What it does                                                                 |\n| --------------------- | ---------------------------------------------------------------------------- |\n| `--quest` / `--folio` | The target, by its bare number. One of these or `--run`.                     |\n| `--run`               | A use case run, by the id `lore usecase run record` prints.                  |\n| `--criterion`         | With `--run`: the criterion the file shows, such as `C2`.                    |\n| `--step`              | With `--run`: the scenario step the file shows.                              |\n| `--name`              | The name to store the file under. Defaults to the file\'s name on disk.       |\n| `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |\n\nA folio adds a suffix to a name it already holds, and the command print...',
   },
   {
     guide: "The lore CLI",
@@ -2319,7 +2361,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "MCP tools",
     section: "Feedback",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#feedback",
-    text: "See [Feedback](/lore/docs/plan-feedback).\n\n| Tool                      | What it does                                         |\n| ------------------------- | ---------------------------------------------------- |\n| `feedback_list`           | The inbox, pending by default.                       |\n| `feedback_get`            | One report with its context, attachments and thread. |\n| `feedback_attachment_get` | One attachment's content.                            |\n| `feedback_comment_add`    | Comment on the thread the reporter shares.           |\n| `feedback_accept`         | Accept a pending report.                             |\n| `feedback_reject`         | Reject a report.                                     |",
+    text: "See [Feedback](/lore/docs/plan-feedback).\n\n| Tool                      | What it does                                          |\n| ------------------------- | ----------------------------------------------------- |\n| `feedback_list`           | The inbox, pending by default.                        |\n| `feedback_get`            | One report with its context, attachments and thread.  |\n| `feedback_attachment_get` | One attachment's content.                             |\n| `feedback_comment_add`    | Comment on the thread the reporter shares.            |\n| `feedback_accept`         | Accept a pending report.                              |\n| `feedback_reject`         | Reject a report.                                      |\n| `feedback_targets`        | The projects you may file a feedback into.            |\n| `feedback_submit`         | File a feedback, in this project or another of yours. |",
   },
   {
     guide: "MCP tools",

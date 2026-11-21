@@ -85,6 +85,26 @@ export const feedback = $entity({
      * Shape lives in `feedbackSourceSchema` (shared with the request body).
      */
     source: feedbackSourceSchema.optional(),
+    /**
+     * Written by someone outside the project's team (#Q3987): set at submit
+     * when the reporter's rank does not read the inbox (`feedback:read`), and
+     * never cleared, by an edit or anything else. `source` is the widget's
+     * claim and the reporter's to forge; this is Lore's own fact.
+     *
+     * What it drives: no agent job on it while the Agent host runs jobs as a
+     * host process; the `read` profile whatever the agent decides on a
+     * container host; the caution section in the agent's prompt; and the
+     * marker on any quest created from it, which an agent then works only
+     * once a member confirms its text.
+     */
+    untrusted: db.default(z.boolean(), false),
+    /**
+     * The last agent job that triaged this item (#Q3988), a host job id,
+     * and when it was started. Automatic triage starts at most one job per
+     * item: a set `agentTriagedAt` is the claim.
+     */
+    agentJobId: z.uuid().optional(),
+    agentTriagedAt: z.string().optional(),
   }),
   /**
    * ⚠️ `feedback` is a CASCADE parent since `feedback_comments` (#1281).

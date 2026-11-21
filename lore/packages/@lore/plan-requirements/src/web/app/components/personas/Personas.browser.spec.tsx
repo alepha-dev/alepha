@@ -18,6 +18,7 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import PersonasPage from "../pages/PersonasPage.tsx";
+import PersonaCard from "./PersonaCard.tsx";
 import PersonaPage from "./PersonaPage.tsx";
 
 const aPersona = (over: Partial<PersonaResource>): PersonaResource =>
@@ -112,6 +113,8 @@ class FakeLinkProvider extends LinkProvider {
           id: 7,
           number: 7,
           title: "Check out",
+          status: "ready",
+          priority: "high",
           state: "never_run",
           stale: false,
           actors: [{ personaId: 1, role: "primary", number: 1, name: "Léa" }],
@@ -165,6 +168,9 @@ describe("Personas screens", () => {
   });
 
   afterEach(async () => {
+    // The page keeps its tab in `?tab=`: a case that opened one must not
+    // start the next on it.
+    window.history.replaceState(null, "", "/");
     await alepha?.stop();
     alepha = undefined;
     copyState = "ready";
@@ -212,6 +218,21 @@ describe("Personas screens", () => {
           screen.getByTestId(`persona-filter-count-${kind}`).textContent,
       ),
     ).toEqual(["2", "1", "1", "0"]);
+    // The selected tab's count takes its foreground; the others stay muted
+    // (#Q3968).
+    const countClass = (kind: string) =>
+      screen.getByTestId(`persona-filter-count-${kind}`).className;
+    expect(countClass("all")).toContain("text-primary-foreground");
+    expect(countClass("human")).toContain("text-muted-foreground");
+    fireEvent.click(screen.getByRole("radio", { name: /Human/ }));
+    await waitFor(() =>
+      expect(countClass("human")).toContain("text-primary-foreground"),
+    );
+    expect(countClass("all")).toContain("text-muted-foreground");
+    fireEvent.click(screen.getByRole("radio", { name: /All/ }));
+    await waitFor(() =>
+      expect(screen.getAllByTestId("persona-card")).toHaveLength(2),
+    );
     expect(screen.getByText("#A1")).toBeTruthy();
     // The first line of the goals, as the card's quote.
     expect(screen.getByText("Ship orders the same day")).toBeTruthy();
@@ -274,6 +295,75 @@ describe("Personas screens", () => {
     // An empty section is omitted, not drawn blank.
     expect(screen.queryByText("Frustrations")).toBeNull();
     expect(screen.getByRole("button", { name: /Edit persona/ })).toBeTruthy();
+  });
+
+  it("lists the persona's use cases in a Use cases tab, opened from the aside's coverage line (#Q3966)", async ({
+    expect,
+  }) => {
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaPage persona={PEOPLE[0]} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    await screen.findByTestId("persona-overview");
+    // The tab label counts the use cases the persona acts in.
+    expect(
+      await screen.findByRole("radio", { name: /Use cases \(1\)/ }),
+    ).toBeTruthy();
+
+    fireEvent.click(await screen.findByTestId("persona-coverage-link"));
+    const tab = await screen.findByTestId("persona-use-cases");
+    const rows = screen.getAllByTestId("persona-use-case-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toBe("#U7 Check out");
+    expect(rows[0].getAttribute("href")).toBe("/acme/requirements/use-cases/7");
+    expect(tab.textContent).toContain("Primary");
+  });
+
+  it("draws the last run with its age, one passing share (red on a failure), a red failed segment and a legend (#Q3976)", async ({
+    expect,
+  }) => {
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaCard
+            persona={PEOPLE[0]}
+            href="/acme/requirements/personas/1"
+            coverage={{
+              useCases: 87,
+              epics: 3,
+              requirements: 12,
+              passed: 7,
+              failed: 28,
+              stale: 0,
+              lastRanAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
+            }}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("persona-last-run").textContent).toContain(
+        "2 hours ago",
+      ),
+    );
+    expect(screen.getByTestId("persona-last-run").textContent).toContain(
+      "Last run",
+    );
+    // 7 of the 35 run passed.
+    const passing = screen.getByTestId("persona-passing");
+    expect(passing.textContent).toBe("20% passing");
+    expect(passing.className).toContain("text-danger-text");
+    expect(
+      document.querySelector('[data-segment="failed"]')?.className,
+    ).toContain("bg-danger");
+    expect(screen.getByTestId("persona-run-legend").textContent).toBe(
+      "7 passed28 failed52 not run",
+    );
   });
 
   it("gives a viewer the page without its Edit and Delete", async ({

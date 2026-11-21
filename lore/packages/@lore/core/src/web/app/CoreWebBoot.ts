@@ -5,6 +5,7 @@ import { $manifest, $robots } from "alepha/react/sitemap";
 import { currentUserAtom } from "alepha/security";
 import { isHttpError } from "alepha/server";
 
+import { AssistantSuggestionRegistry } from "./registries/AssistantSuggestionRegistry.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
 import { ProjectTrail } from "./services/ProjectTrail.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
@@ -31,6 +32,7 @@ export class CoreWebBoot {
   protected readonly alepha = $inject(Alepha);
   protected readonly router = $inject(ReactRouter);
   protected readonly reportsTabs = $inject(ReportsTabRegistry);
+  protected readonly suggestions = $inject(AssistantSuggestionRegistry);
   protected readonly trail = $inject(ProjectTrail);
 
   // Read by components through `useInject`, so they exist before the lock.
@@ -45,6 +47,15 @@ export class CoreWebBoot {
       labelKey: "project.reports.nav.summary",
       order: 5,
       filters: ["period"],
+    });
+    // Reports' own prompts for the assistant (#Q3585): every tab of it.
+    this.suggestions.register({
+      routes: (name) => name === "projectReports" || name.startsWith("reports"),
+      keys: [
+        "assistant.suggest.reports.week",
+        "assistant.suggest.reports.slow",
+        "assistant.suggest.reports.summary",
+      ],
     });
   }
 

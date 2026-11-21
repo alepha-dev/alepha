@@ -11,7 +11,11 @@ for each flag.
 ```bash
 npm i -g @alepha/lore
 lore --help
+lore --version
 ```
+
+`lore --version` (or `-v`) prints the version alone, so
+`VERSION=$(lore --version)` holds just the number.
 
 A project that already depends on `@alepha/lore` can run `yarn lore ...`
 without the global install.
@@ -281,13 +285,18 @@ attachments and its directories.
 ```bash
 lore attachments push ./chart.png --quest 1208
 lore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"
+lore attachments push ./receipt.png --run 41 --criterion C2
 ```
 
-`lore attachments push <file>` puts one file per call onto a quest or a folio.
+`lore attachments push <file>` puts one file per call onto a quest, a folio or
+a use case run.
 
 | Flag                  | What it does                                                                 |
 | --------------------- | ---------------------------------------------------------------------------- |
-| `--quest` / `--folio` | The target, by its bare number. One or the other.                            |
+| `--quest` / `--folio` | The target, by its bare number. One of these or `--run`.                     |
+| `--run`               | A use case run, by the id `lore usecase run record` prints.                  |
+| `--criterion`         | With `--run`: the criterion the file shows, such as `C2`.                    |
+| `--step`              | With `--run`: the scenario step the file shows.                              |
 | `--name`              | The name to store the file under. Defaults to the file's name on disk.       |
 | `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |
 
@@ -306,6 +315,8 @@ name it stored. To read a file back, use `lore quest attachment get` or
 | `lore feedback comment add <ref>`    | Comment on an item. The reporter is told, and can answer.                       | `--body` (required), `--as <name>` (marks it as written by an agent)     |
 | `lore feedback accept <ref>`         | Accept a pending item: the request is valid.                                    |                                                                          |
 | `lore feedback reject <ref>`         | Reject a pending item. The item stays, for the record.                          |                                                                          |
+| `lore feedback targets`              | The projects you belong to that accept feedback: where `submit` can file.       |                                                                          |
+| `lore feedback submit`               | File a feedback item, pending in the project's inbox.                           | `--title`, `--description` (both required), `--tags a,b`, `--as <name>`  |
 
 `--status` is `pending`, `accepted`, `rejected` or `all`. Accepting creates no
 quest: file one with `lore quest create --feedback <ref>`.
