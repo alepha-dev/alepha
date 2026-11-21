@@ -25,7 +25,7 @@ class TestWorkerProvider extends WorkerProvider {
 }
 
 /**
- * Every entry is emitted on the `log` event whatever the active level, so a
+ * Every entry is emitted on the `log:entry` event whatever the active level, so a
  * test can observe what a worker logged without spying on its logger.
  */
 const captureLogs = (app: Alepha) => {
@@ -42,7 +42,7 @@ const messagesAt = (entries: LogEntry[], level: LogEntry["level"]) =>
 /**
  * Builds a service that registers one queue consumer on start.
  *
- * Replaces the `$queue` / `$consumer` primitives these tests used to declare —
+ * Replaces the `$queue` / `$consumer` primitives these tests used to declare:
  * queues are now registered imperatively against `WorkerProvider`.
  */
 const consumerService = <T extends ZType>(
@@ -75,6 +75,7 @@ describe("WorkerProvider", () => {
       workerConcurrency?: number;
       workerInterval?: number;
       workerMaxInterval?: number;
+      workerDrainTimeout?: number;
       queueProvider?: any;
     } = {},
   ) => {
@@ -84,6 +85,7 @@ describe("WorkerProvider", () => {
       concurrency: options.workerConcurrency ?? 1,
       interval: options.workerInterval ?? 10,
       maxInterval: options.workerMaxInterval ?? 1000,
+      drainTimeout: options.workerDrainTimeout,
     }));
 
     app.with({
@@ -214,6 +216,87 @@ describe("WorkerProvider", () => {
 
       await app.stop();
     });
+
+    // A hang is the failure here, so every wait has its own deadline and the
+    // test a hard timeout: a stop that never resolves fails, it does not
+    // stall the run.
+    test("should not restart workers when woken up during a drain", async () => {
+      let calls = 0;
+      let started = () => {};
+      const handlerStarted = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      let push = async () => {};
+
+      const app = await createTestApp({ workerDrainTimeout: 200 });
+      const workerProvider = app.inject(TestWorkerProvider);
+      app.with(
+        consumerService("drain", payloadSchema, async () => {
+          calls++;
+          started();
+          // Outlives the drain timeout, then does what a job dispatching a
+          // follow-up does: push and wake the workers.
+          await new Promise((r) => setTimeout(r, 300));
+          await push();
+        }),
+      );
+      const produce = producerFor(app);
+      push = () => produce("drain", payloadSchema, { id: "next", count: 1 });
+
+      try {
+        await app.start();
+        await push();
+        await handlerStarted;
+
+        const stopped = await Promise.race([
+          app.stop().then(() => true),
+          new Promise<boolean>((r) => setTimeout(() => r(false), 3000)),
+        ]);
+
+        expect(stopped).toBe(true);
+        expect(workerProvider.workersRunning).toBe(0);
+        expect(calls).toBe(1);
+      } finally {
+        // Ends any loop a failing run left behind.
+        workerProvider.workersRunning = 0;
+        workerProvider.abortController?.abort();
+      }
+    }, 10_000);
+
+    test("should not start workers when woken up after a stop", async () => {
+      const app = await createTestApp();
+      app.with(consumerService("test", payloadSchema, async () => {}));
+
+      const workerProvider = app.inject(TestWorkerProvider);
+
+      await app.start();
+      await app.stop();
+
+      try {
+        workerProvider.wakeUp();
+        expect(workerProvider.workersRunning).toBe(0);
+      } finally {
+        workerProvider.workersRunning = 0;
+        workerProvider.abortController?.abort();
+      }
+    }, 10_000);
+
+    test("should not start workers when woken up with no consumer", async () => {
+      const app = await createTestApp();
+      const workerProvider = app.inject(TestWorkerProvider);
+
+      await app.start();
+
+      try {
+        workerProvider.wakeUp();
+        expect(workerProvider.workersRunning).toBe(0);
+      } finally {
+        workerProvider.workersRunning = 0;
+        workerProvider.abortController?.abort();
+      }
+
+      await app.stop();
+    }, 10_000);
   });
 
   describe("Message Processing", () => {

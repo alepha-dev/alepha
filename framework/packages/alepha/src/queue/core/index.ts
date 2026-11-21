@@ -9,6 +9,7 @@ import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./errors/QueueDelayNotSupportedError.ts";
 export * from "./providers/CloudflareQueueProvider.ts";
 export * from "./providers/MemoryQueueProvider.ts";
 export * from "./providers/QueueCodec.ts";

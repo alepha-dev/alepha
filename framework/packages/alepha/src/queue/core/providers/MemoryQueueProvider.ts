@@ -12,7 +12,7 @@ export interface MemoryQueueEntry {
   dueAt: number;
 }
 
-// `extends`, not `implements` — otherwise this misses default members added
+// `extends`, not `implements`: otherwise this misses default members added
 // to the base class (it silently lost `pushMany` that way).
 export class MemoryQueueProvider extends QueueProvider {
   protected readonly log = $logger();

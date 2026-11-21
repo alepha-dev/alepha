@@ -9,7 +9,7 @@ import { MemoryQueueProvider, RedisQueueProvider } from "../index.ts";
 import {
   testQueueBasic,
   testQueueHasConsumer,
-  testQueueKillWorkerSleep,
+  testQueueWakeUpOnPush,
   uniqueQueueName,
 } from "./shared.ts";
 
@@ -30,7 +30,7 @@ describe("RedisQueueProvider", () => {
   });
 
   test("should wake up workers on push", async () => {
-    await testQueueKillWorkerSleep(Provider);
+    await testQueueWakeUpOnPush(Provider);
   });
 
   /**

@@ -80,6 +80,12 @@ export class WorkerProvider {
   protected workerPromises: Array<Promise<void>> = [];
   protected workersRunning = 0;
   /**
+   * True from the start hook that started the workers until stop begins.
+   * `wakeUp()` starts a missing worker only while it holds: a worker started
+   * during a drain, or after it, is one no stop would ever end.
+   */
+  protected polling = false;
+  /**
    * Cuts a poll wait short (`wakeUp()`, stop). Never a handler's signal:
    * `wakeUp()` aborts it whenever a message arrives.
    */
@@ -93,14 +99,10 @@ export class WorkerProvider {
   protected consumers: Array<QueueConsumer> = [];
   protected nextConsumerIndex = 0;
 
-  public get isRunning(): boolean {
-    return this.workersRunning > 0;
-  }
-
   /**
    * Register a consumer to be polled by the worker loop.
    *
-   * Call this before the `start` hook fires — this provider's own start hook
+   * Call this before the `start` hook fires: this provider's own start hook
    * runs at `priority: "last"`, so a registration made from any normal
    * start hook lands in time.
    */
@@ -119,6 +121,7 @@ export class WorkerProvider {
     priority: "last",
     handler: () => {
       if (this.consumers.length > 0) {
+        this.polling = true;
         this.startWorkers();
         this.log.debug(
           `Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""} with ${this.options.concurrency} worker${
@@ -151,7 +154,7 @@ export class WorkerProvider {
 
           // A backend blip must not end the loop. `getNextMessage` talks to
           // the queue provider (Redis, Cloudflare), so a transient error here
-          // is expected — and letting it escape killed the worker for good:
+          // is expected, and letting it escape killed the worker for good:
           // at the default concurrency of 1 the queue silently stopped being
           // polled, with nothing to restart it but a local `push()`.
           let next: NextMessage | undefined;
@@ -170,7 +173,7 @@ export class WorkerProvider {
             this.workerIntervals[i] = 0;
             // Swallow here, NOT in `processMessage`. On this transport the
             // message is already popped and gone, so there is nothing to
-            // redeliver — logging is all we can do, and the loop must
+            // redeliver: logging is all we can do, and the loop must
             // survive. Push-based transports (Cloudflare) need the error to
             // escape instead so the broker can retry; see
             // `WorkerdWorkerProvider.onQueueMessage`.
@@ -257,7 +260,7 @@ export class WorkerProvider {
   /**
    * Process a message from a queue.
    *
-   * **Throws on failure — deliberately.** Callers decide what a failure
+   * **Throws on failure, deliberately.** Callers decide what a failure
    * means for their transport: the polling loop logs and moves on (the
    * message is already gone), while the Cloudflare consumer lets it escape
    * so the runtime calls `msg.retry()` and the message can reach the
@@ -307,6 +310,7 @@ export class WorkerProvider {
    * This method will stop the workers and wait for them to finish processing.
    */
   protected async stopWorkers() {
+    this.polling = false;
     this.workersRunning = 0;
 
     this.log.trace("Stopping workers...");
@@ -345,8 +349,15 @@ export class WorkerProvider {
 
   /**
    * Force the workers to get back to work.
+   *
+   * Does nothing before the workers have started, once stop has begun, or
+   * when no consumer is registered.
    */
   public wakeUp(): void {
+    if (!this.polling) {
+      return;
+    }
+
     this.log.debug("Waking up workers...");
     // Cuts a poll wait short; never a handler's signal.
     this.abortController?.abort(new AbortedError("Queue workers woken up"));
@@ -361,7 +372,7 @@ export class WorkerProvider {
  * A queue the worker loop should drain.
  *
  * Registered imperatively via {@link WorkerProvider.register} rather than
- * discovered from a primitive — queues are an internal transport under
+ * discovered from a primitive: queues are an internal transport under
  * `$job`, not something applications declare.
  */
 export interface QueueConsumer<T extends ZType = ZType> {

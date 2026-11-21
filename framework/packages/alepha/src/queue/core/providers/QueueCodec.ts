@@ -25,7 +25,7 @@ export class QueueCodec {
     const traceparent = this.tracer.traceparent();
     return JSON.stringify({
       headers: traceparent ? { traceparent } : {},
-      // Encode on the way out, decode on the way in — the pairing
+      // Encode on the way out, decode on the way in: the pairing
       // `$topic.publishMessage` already uses. With the current codec the two
       // are identical, so this changes no bytes today; it stops a future
       // encoding change from silently corrupting queue payloads.
@@ -34,17 +34,11 @@ export class QueueCodec {
   }
 
   /**
-   * Parse a message off the backend back into a validated payload.
+   * Parse a message off the backend back into a validated payload, with the
+   * envelope's headers beside it. A message written before headers existed
+   * answers `{}`.
    *
    * Throws on malformed JSON or a payload that does not match `schema`.
-   */
-  public decode<T extends ZType>(schema: T, message: string): Infer<T> {
-    return this.decodeEnvelope(schema, message).payload;
-  }
-
-  /**
-   * {@link decode}, with the envelope's headers beside the payload. A
-   * message written before headers existed answers `{}`.
    */
   public decodeEnvelope<T extends ZType>(
     schema: T,

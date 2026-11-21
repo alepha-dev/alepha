@@ -18,7 +18,8 @@ export const redisQueueOptions = $atom({
       .min(1)
       .describe(
         "How many due messages one delay-tier scan promotes into the list. The scan only runs when the list is empty, so this bounds a burst coming due at once without adding a round trip to a busy queue.",
-      ),
+      )
+      .default(50),
   }),
   default: {
     delayScanBatch: 50,
@@ -136,7 +137,7 @@ export class RedisQueueProvider extends QueueProvider {
       key,
       0,
       this.dt.nowMillis(),
-      Math.max(1, this.options.delayScanBatch),
+      this.options.delayScanBatch,
     );
     if (due.length === 0) {
       return 0;
