@@ -23,6 +23,7 @@ import type {
 } from "../../../../../api/controllers/ProjectHostController.ts";
 import type { OwnedHostResource } from "../../../../../api/schemas/ownedHostResourceSchema.ts";
 import HostDrawer from "../../hosts/HostDrawer.tsx";
+import ProjectAgentHostPicker from "./ProjectAgentHostPicker.tsx";
 import type { ProjectHostTableRow } from "./projectHostTableRow.ts";
 import ProjectSettingsHostNameCell from "./ProjectSettingsHostNameCell.tsx";
 import ProjectSettingsHostsAddDialog from "./ProjectSettingsHostsAddDialog.tsx";
@@ -226,6 +227,8 @@ const ProjectSettingsHostsPage = () => {
           onDismiss={() => setFreshSecret(undefined)}
         />
       )}
+
+      {items !== undefined && <ProjectAgentHostPicker hosts={items} />}
 
       {/* Drawn once both reads land: a static table handed `[]` would say
           "no host" for the moment it takes them to answer. */}

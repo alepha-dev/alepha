@@ -388,6 +388,8 @@ export class ProjectHostController {
         type: host.type,
         online: this.service.isOnline(host),
         deployAllowed: host.deployAllowed,
+        agentHost: host.agentHost,
+        ...(host.agentStatus ? { agentStatus: host.agentStatus } : {}),
         acceptedRuntimes: this.service.acceptedRuntimes(host.type),
         credentialStatus: this.cloudflare.credentialStatus(host),
         lastSeenAt: host.lastSeenAt ?? undefined,

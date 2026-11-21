@@ -163,6 +163,15 @@ export const projects = $entity({
      * cascade-wipes children on D1.
      */
     archivedAt: z.datetime().optional(),
+    /**
+     * The project's default Agent host (#Q3985): the host its agent jobs run
+     * on, its own or one lent to it, that runs Claude Code jobs. A logical
+     * reference: hosts are Ship's, and a core table cannot point into a
+     * feature module. Ship clears it when the host stops being an Agent host
+     * or the loan ends, and reads it through its own checks every time, so a
+     * stale id only hides the agent buttons. Absent hides them.
+     */
+    defaultAgentHostId: z.uuid().optional(),
   }),
   indexes: [
     {

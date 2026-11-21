@@ -234,7 +234,7 @@ echo '{"type":"result","result":"OK","modelUsage":{"claude-sonnet-4-5":{}}}'
 			t.Fatalf("ack = %+v", rec.last())
 		}
 		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
-		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--max-turns", "1", "--output-format", "json"}) {
+		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--max-turns", "1", "--output-format", "stream-json", "--verbose"}) {
 			t.Fatalf("a check ran claude as %q", got)
 		}
 		if _, err := os.Stat(filepath.Join(w.bin, "git.args")); !os.IsNotExist(err) {

@@ -234,15 +234,17 @@ func sameOrigin(raw, sink string) error {
 claudeArgs is the command line, built here and only here.
 
 An agent job streams JSON (`--output-format stream-json --verbose`) so each
-tool call and message is a line of the log as it happens; a check answers one
-JSON document. The MCP config is the file Bay wrote, and `--strict-mcp-config`
+tool call and message is a line of the log as it happens; a check streams too,
+for its init line (version, model, credential kind) and its result. The MCP config is the file Bay wrote, and `--strict-mcp-config`
 keeps any other the jobs user has configured out of the run. Tool lists are
 joined with commas into one argument each: a Bash rule may hold a space, and
 toolPattern refuses a comma inside one.
 */
 func claudeArgs(spec jobSpec, mcpConfig string) []string {
 	if spec.Kind == jobKindCheck {
-		return []string{"-p", checkPrompt, "--max-turns", "1", "--output-format", "json"}
+		// stream-json rather than json: its init line is what says the CLI's
+		// version, the model and where the credential came from (#Q3985).
+		return []string{"-p", checkPrompt, "--max-turns", "1", "--output-format", "stream-json", "--verbose"}
 	}
 	args := []string{"-p", spec.Prompt,
 		"--output-format", "stream-json", "--verbose",
