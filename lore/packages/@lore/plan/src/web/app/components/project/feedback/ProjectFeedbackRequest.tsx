@@ -1,4 +1,8 @@
-import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "@alepha/lore/sigil";
+import {
+  SIGIL_FEEDBACK_READY_MESSAGE,
+  SIGIL_FEEDBACK_SUBMITTED_MESSAGE,
+  SIGIL_FEEDBACK_TRAIL_MESSAGE,
+} from "@alepha/lore/sigil";
 import {
   FileImage,
   Button,
@@ -50,8 +54,13 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "../../../../../api/schemas/feedbackSourceSchema.ts";
+import {
+  type FeedbackTrail,
+  feedbackTrailSchema,
+} from "../../../../../api/schemas/feedbackTrailSchema.ts";
 import { feedbackTypeSchema } from "../../../../../api/schemas/feedbackTypeSchema.ts";
 import { FeedbackTypeTags } from "../../../../../api/services/FeedbackTypeTags.ts";
+import FeedbackTrailList from "./FeedbackTrailList.tsx";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
 // Unlike the attachment bucket name (see FeedbackRateLimiter.ATTACHMENT_BUCKET),
@@ -261,10 +270,14 @@ const ProjectFeedbackRequest = () => {
   // populated asynchronously by effects. To let the frozen handler see live
   // values, mirror everything it needs into a ref that is refreshed on every
   // render.
+  // The trail the sigil button hands over (#Q4038), when this page is its
+  // popup and the button answered.
+  const [trail, setTrail] = useState<FeedbackTrail | undefined>();
   const liveRef = useRef<{
     attachments: Attachment[];
     tags: string[];
     source?: FeedbackSource;
+    trail?: FeedbackTrail;
     /**
      * Resolved asynchronously by `feedbackContext`, so it rides the ref for the
      * same reason as everything else here: the submit handler is frozen at
@@ -280,7 +293,33 @@ const ProjectFeedbackRequest = () => {
     attachments,
     tags,
     source: draft.source,
+    trail,
   };
+
+  // Opened as the sigil's popup, ask the page that opened it for its trail
+  // (#Q4038). Checked both ways: the request goes to the origin of the page
+  // the report is about, and only an answer from that window and that
+  // origin is read. No opener, or no answer, and the form has no trail.
+  const hostUrl = draft.source?.hostUrl;
+  useEffect(() => {
+    if (typeof window === "undefined" || !hostUrl) return;
+    if (window.name !== "lore-feedback" || !window.opener) return;
+    let origin: string;
+    try {
+      origin = new URL(hostUrl).origin;
+    } catch {
+      return;
+    }
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.opener || event.origin !== origin) return;
+      if (event.data?.type !== SIGIL_FEEDBACK_TRAIL_MESSAGE) return;
+      const parsed = feedbackTrailSchema.safeParse(event.data.trail);
+      if (parsed.success) setTrail(parsed.data);
+    };
+    window.addEventListener("message", onMessage);
+    window.opener.postMessage({ type: SIGIL_FEEDBACK_READY_MESSAGE }, origin);
+    return () => window.removeEventListener("message", onMessage);
+  }, [hostUrl]);
 
   const [seededTags, setSeededTags] = useState(draft.tags);
   if (draft.tags !== seededTags) {
@@ -341,12 +380,14 @@ const ProjectFeedbackRequest = () => {
     schema: z.object({
       type: feedbackTypeSchema,
       message: z.string().max(10_000),
+      // Send the trail along (#Q4038), on by default; the reporter may not.
+      includeTrail: z.boolean(),
     }),
-    initialValues: { message: "" },
+    initialValues: { message: "", includeTrail: true },
     handler: async (body) => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
-      const { attachments, tags, source } = liveRef.current;
+      const { attachments, tags, source, trail } = liveRef.current;
       // No catch (#E59, #Q2328): a refused submit is the server's sentence,
       // toasted by the root `ActionErrorToaster`, and the form keeps what
       // was typed.
@@ -382,7 +423,10 @@ const ProjectFeedbackRequest = () => {
           // said nothing in the inbox. The type is one, first, and never
           // twice, whatever a `?type=` put there (#Q4037).
           tags: FeedbackTypeTags.fold(tags, body.type),
-          source,
+          source:
+            source && trail && body.includeTrail
+              ? { ...source, trail }
+              : source,
         },
       });
       clearDraft();
@@ -735,6 +779,35 @@ const ProjectFeedbackRequest = () => {
                     {tr("feedback.request.pasteHint")}
                   </p>
                 </div>
+
+                {/* What the sigil saw just before (#Q4038): readable, and
+                    left out at the reporter's word. */}
+                {trail && (
+                  <div
+                    className="flex flex-col gap-2 rounded-md border p-3"
+                    data-testid="feedback-request-trail"
+                  >
+                    <Control
+                      input={form.input.includeTrail}
+                      label={tr("feedback.request.trail.include")}
+                      switch
+                    />
+                    <details className="text-sm">
+                      <summary className="text-muted-foreground cursor-pointer text-xs">
+                        {tr("feedback.request.trail.summary", {
+                          args: [
+                            String(trail.errors.length),
+                            String(trail.pages.length),
+                            String(trail.actions.length),
+                          ],
+                        })}
+                      </summary>
+                      <div className="mt-2">
+                        <FeedbackTrailList trail={trail} />
+                      </div>
+                    </details>
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-2">
                   <span className="flex items-center gap-1.5">

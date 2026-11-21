@@ -22,6 +22,7 @@ import type { SigilTracker } from "../shared/sigilFeatures.ts";
 import { sigilReferrerHost } from "../shared/sigilReferrerHost.ts";
 import { sigilScrubUrl } from "../shared/sigilScrubUrl.ts";
 import { SigilQueue } from "./SigilQueue.ts";
+import { SigilTrail } from "./SigilTrail.ts";
 
 /**
  * Browser bootstrap: subscribes to framework hooks, batches what it observes, and
@@ -46,6 +47,13 @@ export class SigilBrowserProvider {
    */
   protected readonly vitals = $inject(ReactVitalsProvider);
   protected queue?: SigilQueue;
+
+  /**
+   * The feedback trail (#Q4038): recent crashes, paths and actions, in
+   * memory only, read by the feedback button when the visitor files a
+   * report. Filled whatever the sink's `enabled` flags say.
+   */
+  public readonly trail = new SigilTrail(() => this.dateTime.nowMillis());
 
   /**
    * Whether the hydration render has already been counted as a pageview.
@@ -144,6 +152,7 @@ export class SigilBrowserProvider {
     on: "start",
     handler: () => {
       if (typeof window === "undefined") return;
+      this.recordTrail();
       if (!this.alepha.isProduction()) return;
 
       // Every response carries the current config, so the app's own server —
@@ -626,6 +635,60 @@ export class SigilBrowserProvider {
             stack: `${error.stack}\n${ev.componentStack}`.slice(0, 4096),
           }
         : error,
+    );
+  }
+
+  /**
+   * Fills {@link trail} from the sources the error queue and the page views
+   * already read (#Q4038), through the same crash and input-refusal filters,
+   * so a mistyped password or a 403 never lands there. Paths only, scrubbed
+   * of query and fragment like `hostPath`.
+   */
+  protected recordTrail(): void {
+    this.trail.addPage(location.pathname);
+    this.alepha.events.on("react:transition:end", (ev) => {
+      this.trail.addPage(ev.state?.url?.pathname ?? location.pathname);
+    });
+    this.alepha.events.on("react:action:begin", (ev) => {
+      if (ev.type === "transition") return;
+      this.trail.beginAction(this.actionName(ev));
+    });
+    this.alepha.events.on("react:action:success", (ev) => {
+      if (ev.type === "transition") return;
+      this.trail.endAction(this.actionName(ev), "success");
+    });
+    this.alepha.events.on("react:action:error", (ev) => {
+      if (ev.type !== "transition")
+        this.trail.endAction(this.actionName(ev), "error");
+      if (this.isInputRefusal(ev) || !this.isCrash(ev.error)) return;
+      this.trailError(ev.error);
+    });
+    const caught = (ev: { error: unknown }) => {
+      if (this.isCrash(ev.error)) this.trailError(ev.error);
+    };
+    this.alepha.events.on("react:render:recovered", caught);
+    this.alepha.events.on("react:render:caught", caught);
+    window.addEventListener("error", (e) => {
+      const error = e.error ?? e;
+      if (this.isCrash(error)) this.trailError(error);
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      if (this.isCrash(e.reason)) this.trailError(e.reason);
+    });
+  }
+
+  /**
+   * An action's name in the trail: its id when the caller gave one, else
+   * its kind (`custom`, `form`).
+   */
+  protected actionName(ev: { id?: string; type?: string }): string {
+    return ev.id ?? ev.type ?? "action";
+  }
+
+  protected trailError(error: unknown): void {
+    this.trail.addError(
+      this.toError(error, location.href).message,
+      location.pathname,
     );
   }
 

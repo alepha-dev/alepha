@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { feedbackTrailSchema } from "./feedbackTrailSchema.ts";
+
 /**
  * Provenance of an embedded feedback submission.
  *
@@ -11,9 +13,9 @@ import { type Infer, z } from "alepha";
  * page sets them — the sigil button reads `window.location`, `navigator`,
  * etc. on an arbitrary partner page). They are persisted verbatim and shown
  * to the project owner — render them as escaped plain text only, NEVER
- * through markdown / `dangerouslySetInnerHTML`. See folio #12. `consoleTail`
- * is also length-capped (`maxItems`) so an embedding page cannot POST an
- * arbitrarily large array.
+ * through markdown / `dangerouslySetInnerHTML`. See folio #12. `trail` is
+ * capped in every list and string, so an embedding page cannot POST an
+ * arbitrarily large one.
  *
  * `sigilId` is optional because the popup-redirect flow deliberately keeps the
  * sigil id server-side (it never reaches the browser), so a browser-built
@@ -75,7 +77,12 @@ export const feedbackSourceSchema = z.object({
    * IANA timezone (e.g. "Europe/Paris").
    */
   timezone: z.string().max(100).optional(),
-  consoleTail: z.array(z.string().max(2000)).max(50).optional(),
+  /**
+   * Recent crashes, paths and actions of the page (#Q4038), when the sigil
+   * button handed them to the popup and the reporter kept them. Replaces
+   * `consoleTail`, which nothing ever filled.
+   */
+  trail: feedbackTrailSchema.optional(),
 });
 
 export type FeedbackSource = Infer<typeof feedbackSourceSchema>;

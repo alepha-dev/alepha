@@ -1,4 +1,4 @@
-import { useStore } from "alepha/react";
+import { useAlepha, useStore } from "alepha/react";
 
 import { sigilClientAtom } from "../../shared/sigilClientAtom.ts";
 import {
@@ -8,6 +8,7 @@ import {
 import { sigilFeedbackShapeOf } from "../../shared/sigilFeedbackShape.ts";
 import { sigilFeedbackThemeOf } from "../../shared/sigilFeedbackTheme.ts";
 import { sigilAnyGlobMatch } from "../../shared/sigilGlobMatch.ts";
+import { SigilBrowserProvider } from "../SigilBrowserProvider.ts";
 import { useCurrentPath } from "../useCurrentPath.ts";
 import { useFeedbackUrl } from "../useFeedbackUrl.ts";
 import { SigilFeedbackButton } from "./SigilFeedbackButton.tsx";
@@ -29,6 +30,12 @@ export const SigilRoot = () => {
   const feedbackUrl = useFeedbackUrl();
   const [config] = useStore(sigilClientAtom);
   const path = useCurrentPath();
+  // The trail's owner, when the sigil module registered it: `SigilRoot` is
+  // also exported on its own (#Q4038).
+  const alepha = useAlepha();
+  const sigil = alepha.has(SigilBrowserProvider)
+    ? alepha.inject(SigilBrowserProvider)
+    : undefined;
 
   if (!feedbackUrl) {
     return null;
@@ -53,6 +60,7 @@ export const SigilRoot = () => {
       position={sigilFeedbackPositionOf(config.feedbackButton)}
       shape={sigilFeedbackShapeOf(config.feedbackButtonShape)}
       theme={sigilFeedbackThemeOf(config.feedbackButtonTheme)}
+      trail={sigil ? () => sigil.trail.snapshot() : undefined}
     />
   );
 };
