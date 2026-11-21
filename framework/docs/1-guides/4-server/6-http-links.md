@@ -129,7 +129,7 @@ Header precedence, weakest first:
 
 ### What a remote client does not reach
 
-- **`$sse`**. A local SSE action works through the handler branch and returns a real stream; a remote one would leave as a plain fetch, which answers with a response. It is dropped from the type of a client whose scope names a host, and refused by name at call time for one the type cannot narrow.
+- **`$sse`**. It is dropped from the type of a client whose scope names a host, and refused by name at call time for one the type cannot narrow.
 - **Anything the source is not reachable for.** The type comes from `import type`, so the controller's source has to be on disk. Generating types from `/api/_links` for a consumer with no source access is deliberately out of scope - see _No generated clients_ below.
 
 ### The registry is cached per host, per caller
@@ -272,6 +272,13 @@ class Gateway {
 }
 ```
 
+The service account is your server's own identity towards the remote. Its token is sent as a bearer:
+
+- when the remote's registry is read at start, so the registry lists the `$secure` actions the account may call;
+- with a call your server's code makes to the remote outside any incoming request (a job, a hook), when the call names no credential of its own.
+
+It is never used while serving a request. There a call forwards the caller's `Authorization` header, so the remote authenticates the caller, and goes out without a credential when the caller sent none: a public action that relays to a `$secure` remote action answers 401 to an anonymous caller. A request without an `Authorization` header is not necessarily anonymous (an API key, a session cookie), and lending it the account would give any caller the account's rights. A credential on the `$client` scope or on the call wins in both cases.
+
 ### Proxying
 
 Set `proxy: true` to expose the remote service's endpoints through the current server:
@@ -286,7 +293,9 @@ payments = $remote({
 
 This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API. A proxied request never carries the `serviceAccount`: it forwards the caller's request, so the remote authenticates the caller.
 
-A plain `$proxy` sends neither `Cookie` nor `Authorization` upstream unless its `forward` option names them ([Credentials stay home](/docs/guides-server-static-and-proxy#credentials-stay-home)). A `$remote` proxy forwards `authorization` by itself, never the cookie; `proxy: { forward: [] }` sends neither, and `proxy: { forward: ["cookie", "authorization"] }` sends both.
+Without `proxy`, a remote is for your server's own code and nothing else: its actions are not listed by `/api/_links`, have no route, and cannot be called through `POST /api/_batch`. The same goes for `proxy: { disabled: true }`.
+
+A plain `$proxy` sends neither `Cookie` nor `Authorization` upstream unless its `forward` option names them ([Credentials stay home](/docs/guides-server-static-and-proxy#credentials-stay-home)). A `$remote` proxy forwards `authorization` by itself, never the cookie; `proxy: { forward: [] }` sends neither, and `proxy: { forward: ["cookie", "authorization"] }` sends both. A [batched](#batching) call to a proxied action carries the same credentials as the proxy route (`authorization` and `cookie`, as `forward` says; none of the request's other headers, which the route does pass on), and never the service account.
 
 `proxy` also accepts an object form - `proxy: { noInternal: true }` makes the remote reachable only through the proxy, not via internal `$client` calls - and `$remote` takes a `name` to label the link (defaults to the class member's name).
 
@@ -311,7 +320,7 @@ In the browser, all calls go through HTTP. During SSR, local actions are called 
 
 ### Batching
 
-Browser calls made within the same 10 ms window are coalesced into one `POST /api/_batch` request (at most 20 per batch, split beyond that). A lone call in its window goes out directly, identical calls (same action, params, query and body) share one result, and multipart uploads always bypass the batch. Each sub-action keeps its own status and error, sanitized like any other response (see [Error Handling](/docs/guides-server-error-handling)). Turn it off with the links options atom:
+Browser calls made within the same 10 ms window are coalesced into one `POST /api/_batch` request (at most 20 per batch, split beyond that). A lone call in its window goes out directly, identical calls (same action, params, query and body) share one result, and multipart uploads always bypass the batch. So does a call that sends something of its own (`headers` in its config, headers or another option in `options.request`, or a client whose scope names `headers` or an `authorization`): a batch entry holds an action name with its params, query and body, so such a call goes out as its own request. An abort signal alone (`{ request: { signal } }`) keeps the call in the batch: when it aborts, that call rejects with the signal's reason and the shared request goes on for the others. Each sub-action keeps its own status and error, sanitized like any other response (see [Error Handling](/docs/guides-server-error-handling)). Turn it off with the links options atom:
 
 ```typescript
 import { linkOptionsAtom } from "alepha/server/links";
@@ -328,7 +337,7 @@ The `LinkProvider` maintains a registry of all available actions (local and remo
 1. It looks up the action by name in the link registry.
 2. If the action has a local handler (same process), it calls the handler directly.
 3. Otherwise it makes an HTTP request via `HttpClient`: an `$sse` link opens a stream, and a browser call to its own origin joins the [batch](#batching).
-4. Authorization headers from the current request context are forwarded automatically.
+4. Authorization headers from the current request context are forwarded automatically. Outside any request, a call to a `$remote` carries its service account's token, when it has one.
 
 ```mermaid
 flowchart TD

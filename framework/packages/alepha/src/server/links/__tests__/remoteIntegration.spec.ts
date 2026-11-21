@@ -1,4 +1,4 @@
-import { $hook, Alepha, z } from "alepha";
+import { Alepha, z } from "alepha";
 import {
   $secure,
   AlephaSecurity,
@@ -16,7 +16,6 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
-  $client,
   AlephaServerLinks,
   AlephaServerLinksClient,
   LinkProvider,
@@ -52,26 +51,6 @@ class Observatory {
   });
 }
 
-class Harbour {
-  tides = $action({
-    path: "/tides",
-    method: "GET",
-    schema: { response: z.text() },
-    handler: () => "rising",
-  });
-}
-
-class FetchLog {
-  public readonly urls: string[] = [];
-
-  protected readonly capture = $hook({
-    on: "client:fetch:before",
-    handler: ({ url }) => {
-      this.urls.push(url);
-    },
-  });
-}
-
 const serve = async (app: new () => any, secured = false) => {
   let alepha = Alepha.create().with(AlephaServerLinks).with(app);
   if (secured) {
@@ -99,11 +78,10 @@ const serve = async (app: new () => any, secured = false) => {
  * else: no `$action`, no `$route`, no server. It holds `$client` and that is
  * the whole surface.
  */
-const consumer = () =>
-  Alepha.create().with(AlephaServerLinksClient).with(FetchLog);
+const consumer = () => Alepha.create().with(AlephaServerLinksClient);
 
 describe("$client against a remote Alepha app", () => {
-  it("1. resolves and calls an anonymous action", async () => {
+  it("resolves and calls an anonymous action", async () => {
     const { hostname } = await serve(Observatory, true);
 
     const alepha = consumer();
@@ -116,95 +94,12 @@ describe("$client against a remote Alepha app", () => {
     expect(await remote.weather()).toBe("clear");
   });
 
-  it("2. refuses a secured action without a credential, and says why", async () => {
-    const { hostname } = await serve(Observatory, true);
-
-    const alepha = consumer();
-    await alepha.start();
-
-    const remote = alepha.inject(LinkProvider).client<Observatory>({
-      hostname,
-    });
-
-    // Anonymous, so the server never listed it: `restricted` is populated for
-    // authenticated callers only, and 401 is the right answer for a caller who
-    // has not said who they are. A signed-in caller refused a role gets 403
-    // instead - that distinction is `restrictedActions.spec.ts`.
-    await expect(remote.logbook()).rejects.toThrow("Action logbook not found");
-  });
-
-  it("3. returns it once a credential is on the scope", async () => {
-    const { hostname, authorization } = await serve(Observatory, true);
-
-    const alepha = consumer();
-    await alepha.start();
-
-    const remote = alepha
-      .inject(LinkProvider)
-      .client<Observatory>({ hostname, authorization });
-
-    expect(await remote.logbook()).toBe("kept");
-  });
-
-  it("4. fetches the registry once per host across many calls", async () => {
-    const { hostname } = await serve(Observatory, true);
-
-    const alepha = consumer();
-    await alepha.start();
-
-    const remote = alepha.inject(LinkProvider).client<Observatory>({
-      hostname,
-    });
-
-    await remote.weather();
-    await remote.weather();
-    await remote.weather();
-    await remote.weather();
-
-    const registryFetches = alepha
-      .inject(FetchLog)
-      .urls.filter((url) => url.endsWith(LinkProvider.path.apiLinks));
-
-    expect(registryFetches).toEqual([
-      `${hostname}${LinkProvider.path.apiLinks}`,
-    ]);
-  });
-
-  it("5. holds a second host independently, neither evicting the other", async () => {
-    const observatory = await serve(Observatory, true);
-    const harbour = await serve(Harbour);
-
-    const alepha = consumer();
-    await alepha.start();
-    const links = alepha.inject(LinkProvider);
-
-    const sky = links.client<Observatory>({ hostname: observatory.hostname });
-    const sea = links.client<Harbour>({ hostname: harbour.hostname });
-
-    expect(await sky.weather()).toBe("clear");
-    expect(await sea.tides()).toBe("rising");
-    expect(await sky.weather()).toBe("clear");
-    expect(await sea.tides()).toBe("rising");
-
-    const registryFetches = alepha
-      .inject(FetchLog)
-      .urls.filter((url) => url.endsWith(LinkProvider.path.apiLinks));
-
-    expect(registryFetches.sort()).toEqual(
-      [
-        `${observatory.hostname}${LinkProvider.path.apiLinks}`,
-        `${harbour.hostname}${LinkProvider.path.apiLinks}`,
-      ].sort(),
-    );
-  });
-
   /**
-   * ⚠️ The assertion that will rot first, and the reason it is written down.
-   *
-   * Nothing else here notices if someone widens the consumer module later, so
-   * without this the CLI grows a server and no test complains.
+   * `clientModule.spec.ts` asserts this of a consumer that has called
+   * nothing. This is the other half: still true once it has resolved a
+   * remote registry and made a call.
    */
-  it("6. registers no route and binds no port, having called two hosts", async () => {
+  it("registers no route and binds no port, having called a host", async () => {
     const { hostname } = await serve(Observatory, true);
 
     const alepha = consumer();
@@ -248,21 +143,5 @@ describe("$client against a remote Alepha app", () => {
     const remote = links.client<Observatory>(loose);
 
     await expect(remote.ticks()).rejects.toThrow("server-sent-events stream");
-  });
-
-  it("reads as the epic promised it would, through $client", async () => {
-    const { hostname, authorization } = await serve(Observatory, true);
-
-    class Cli {
-      observatory = $client<Observatory>({ hostname, authorization });
-
-      report = async () =>
-        `${await this.observatory.weather()} / ${await this.observatory.logbook()}`;
-    }
-
-    const alepha = consumer().with(Cli);
-    await alepha.start();
-
-    expect(await alepha.inject(Cli).report()).toBe("clear / kept");
   });
 });

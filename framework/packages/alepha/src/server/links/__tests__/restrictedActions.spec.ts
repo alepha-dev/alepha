@@ -10,8 +10,8 @@ import { LinkProvider, ServerLinksProvider } from "../index.ts";
  * used to make it indistinguishable from an action that was never
  * registered: both surfaced as `401 "Action <name> not found."`.
  *
- * That is wrong for a signed-in user — it is a refusal, not a missing
- * route — and consumers had no way to tell the two apart short of
+ * That is wrong for a signed-in user (it is a refusal, not a missing
+ * route), and consumers had no way to tell the two apart short of
  * matching on the message text. Apps that redirect 401 to a login page
  * would bounce an authenticated user out of the app for what should have
  * been an "access denied" screen.
@@ -101,7 +101,7 @@ describe("restricted actions", () => {
     await alepha.stop();
   });
 
-  it("answers 403 — not 401 — when following a restricted action", async ({
+  it("answers 403, not 401, when following a restricted action", async ({
     expect,
   }) => {
     const alepha = await boot();

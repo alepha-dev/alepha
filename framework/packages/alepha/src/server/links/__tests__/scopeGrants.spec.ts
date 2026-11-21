@@ -86,7 +86,9 @@ class App {
     handler: ({ params }) => params.id,
   });
 
-  /** The classic spelling, for comparison. */
+  /**
+   * The classic spelling, for comparison.
+   */
   updateProject = $action({
     path: "/updateProject",
     method: "GET",
@@ -95,7 +97,9 @@ class App {
     handler: () => "ok",
   });
 
-  /** No permission at all: nothing for a scope to narrow. */
+  /**
+   * No permission at all: nothing for a scope to narrow.
+   */
   ping = $action({
     path: "/ping",
     method: "GET",

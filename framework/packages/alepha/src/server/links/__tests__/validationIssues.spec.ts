@@ -110,6 +110,21 @@ const rejection = async (call: Promise<unknown>) => {
   throw new Error("expected the call to fail");
 };
 
+/**
+ * `BatchCollector` posts to a relative `/api/_batch`, as it does from a
+ * page: this client sends it to the real server.
+ */
+class RebasedHttpClient extends HttpClient {
+  public origin = "";
+
+  protected override transport(
+    url: string,
+    request: RequestInit,
+  ): Promise<Response> {
+    return super.transport(`${this.origin}${url}`, request);
+  }
+}
+
 describe("ValidationError's part and issues", () => {
   it("names the body and every failing field of it", async ({ expect }) => {
     const { hostname } = await serve();
@@ -228,13 +243,11 @@ describe("ValidationError's part and issues", () => {
 
   it("carries part and issues through a batched call", async ({ expect }) => {
     const { hostname } = await serve();
-    const alepha = Alepha.create();
-    const http = alepha.inject(HttpClient);
-    // `BatchCollector` posts to a relative `/api/_batch`, as it does from a
-    // page: point it at the real server.
-    const fetchOne = http.fetch.bind(http);
-    http.fetch = ((url: string, init: any) =>
-      fetchOne(`${hostname}${url}`, init)) as typeof http.fetch;
+    const alepha = Alepha.create().with({
+      provide: HttpClient,
+      use: RebasedHttpClient,
+    });
+    alepha.inject(RebasedHttpClient).origin = hostname;
     const collector = alepha.inject(BatchCollector);
 
     const call = (body: Record<string, any>) =>

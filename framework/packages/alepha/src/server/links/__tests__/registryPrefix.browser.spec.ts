@@ -69,7 +69,7 @@ describe("registry prefix", () => {
 
     // `.fetch()` rather than the plain call: in a browser the plain call is
     // coalesced by the batch collector and would address `/api/_batch`.
-    // The fetch itself has no server to reach, and that is fine — the URL is
+    // The fetch itself has no server to reach, and that is fine: the URL is
     // decided before it leaves.
     await alepha
       .inject(LinkProvider)

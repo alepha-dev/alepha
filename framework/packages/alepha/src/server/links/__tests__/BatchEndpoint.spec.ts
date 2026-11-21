@@ -347,7 +347,7 @@ describe("POST /api/_batch", () => {
 
       expect(seen).toHaveLength(1);
       expect(seen[0].message).toBe("boom");
-      // The failing action's own path, not `/api/_batch` — a report that
+      // The failing action's own path, not `/api/_batch`: a report that
       // blames the batch endpoint names the one route that is always
       // innocent.
       expect(seen[0].path).toBe("/api/boom");

@@ -14,7 +14,11 @@ import { HttpClient, HttpError } from "alepha/server";
  * - Transport failure → all pending promises reject
  */
 export class BatchCollector {
-  protected static readonly MAX_BATCH_SIZE = 20;
+  /**
+   * The most entries one `POST /api/_batch` carries. The server route
+   * refuses more than this same number.
+   */
+  public static readonly MAX_BATCH_SIZE = 20;
 
   protected readonly log = $logger();
   protected readonly httpClient = $inject(HttpClient);
@@ -28,7 +32,32 @@ export class BatchCollector {
    */
   public add(entry: BatchEntry): Promise<any> {
     return new Promise((resolve, reject) => {
-      this.pending.push({ entry, resolve, reject });
+      const { signal } = entry;
+      if (signal?.aborted) {
+        reject(signal.reason);
+        return;
+      }
+
+      const item: PendingBatchEntry = { entry, resolve, reject };
+      if (signal) {
+        // The batch request is shared, so one caller's signal never cancels
+        // it: that caller's promise rejects, and its entry leaves the batch
+        // when it has not been sent yet.
+        const onAbort = () => {
+          this.pending = this.pending.filter((it) => it !== item);
+          reject(signal.reason);
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+        item.resolve = (value) => {
+          signal.removeEventListener("abort", onAbort);
+          resolve(value);
+        };
+        item.reject = (reason) => {
+          signal.removeEventListener("abort", onAbort);
+          reject(reason);
+        };
+      }
+      this.pending.push(item);
 
       if (!this.scheduled) {
         this.scheduled = true;
@@ -66,7 +95,7 @@ export class BatchCollector {
 
     if (remaining.length === 0) return;
 
-    // Single request — skip batching, call directly via follow
+    // Single request: skip batching, call directly via follow
     if (remaining.length === 1) {
       const item = remaining[0];
       try {
@@ -148,7 +177,7 @@ export class BatchCollector {
         }
       }
     } catch (error) {
-      // Transport-level failure — reject all pending promises
+      // Transport-level failure: reject all pending promises
       for (const item of batch) {
         item.reject(error);
       }
@@ -210,6 +239,11 @@ export interface BatchEntry {
   params?: Record<string, any>;
   query?: Record<string, any>;
   body?: Record<string, any>;
+  /**
+   * The caller's abort signal: when it aborts, this call rejects with its
+   * reason. The batch request the call shares is not cancelled.
+   */
+  signal?: AbortSignal;
   directCall: () => Promise<any>;
 }
 
