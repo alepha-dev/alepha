@@ -1229,15 +1229,44 @@ export class HostCommand {
         .boolean()
         .describe("Name no default Agent host, which hides the agent buttons")
         .optional(),
+      egress: z
+        .text({
+          description:
+            "The hosts a push job reaches beyond Anthropic and Lore, comma separated; 'default' for the npm and Yarn registries and GitHub",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        if (!args && !flags.clear) {
-          throw new UsageError("Name an Agent host, or pass --clear.");
+        if (!args && !flags.clear && flags.egress === undefined) {
+          throw new UsageError(
+            "Name an Agent host, pass --clear, or set --egress.",
+          );
         }
         const { projectId } = await this.projects.named(flags.project, context);
+        if (flags.egress !== undefined) {
+          const hosts =
+            flags.egress === "default"
+              ? null
+              : flags.egress
+                  .split(",")
+                  .map((host) => host.trim().toLowerCase())
+                  .filter(Boolean);
+          await this.agents.setProjectAgentEgress({
+            params: { projectId },
+            body: { hosts },
+          });
+          if (!args && !flags.clear) {
+            print(
+              hosts
+                ? `Push jobs reach: ${hosts.join(", ")}`
+                : "Push jobs reach the default hosts",
+            );
+            return;
+          }
+        }
         let hostId: string | null = null;
         if (args) {
           const { items } = await this.lending.listProjectHosts({

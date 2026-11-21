@@ -3101,6 +3101,9 @@ export default {
   "quest.untrusted.confirm": "Confirmer son texte",
   "quest.untrusted.confirm.description":
     "Cette quête est née d'un retour écrit hors de l'équipe. Lisez son texte, puis confirmez-le : un agent ne la traite qu'après la confirmation d'un membre.",
+  "hosts.agent.egress.label": "Hôtes qu'une tâche de push peut joindre",
+  "hosts.agent.egress.description":
+    "En plus d'Anthropic et de Lore, imposé sur un hôte d'agent à conteneurs. Vide : les registres npm et Yarn et GitHub. Un point initial couvre tous les sous-domaines.",
   "account.hosts.switch.jobs": "Autoriser les tâches",
   "account.hosts.switch.jobs.description":
     "Les tâches ponctuelles que Lore lance sur cette machine, comme les tâches d'agent. Une tâche exécute ici le code d'un dépôt, sous l'utilisateur de tâches configuré dans Bay.",

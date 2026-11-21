@@ -172,6 +172,13 @@ export const projects = $entity({
      * stale id only hides the agent buttons. Absent hides them.
      */
     defaultAgentHostId: z.uuid().optional(),
+    /**
+     * The hosts a `push` agent job may reach beyond Anthropic and Lore
+     * (#Q3996), enforced by a container runner's egress proxy. Absent is the
+     * default list (the npm and Yarn registries and GitHub); an empty list
+     * reaches neither.
+     */
+    agentEgressHosts: z.array(z.string().max(253)).max(50).optional(),
   }),
   indexes: [
     {

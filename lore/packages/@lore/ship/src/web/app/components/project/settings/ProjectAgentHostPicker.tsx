@@ -33,7 +33,10 @@ const ProjectAgentHostPicker = ({ hosts }: ProjectAgentHostPickerProps) => {
 
   const form = useForm({
     schema: agentHostFormSchema,
-    initialValues: { hostId: project?.defaultAgentHostId ?? "" },
+    initialValues: {
+      hostId: project?.defaultAgentHostId ?? "",
+      egress: (project?.agentEgressHosts ?? []).join(", "),
+    },
     handler: () => undefined,
   });
   const values = useFormValues(form);
@@ -47,17 +50,28 @@ const ProjectAgentHostPicker = ({ hosts }: ProjectAgentHostPickerProps) => {
           params: { projectId: project.id },
           body: { hostId },
         });
+        const hosts = String(values.egress ?? "")
+          .split(",")
+          .map((host: string) => host.trim().toLowerCase())
+          .filter(Boolean);
+        await api.setProjectAgentEgress({
+          params: { projectId: project.id },
+          body: { hosts: hosts.length ? hosts : null },
+        });
         setCurrentProject(alepha, {
           ...project,
           defaultAgentHostId: hostId ?? undefined,
+          agentEgressHosts: hosts.length ? hosts : undefined,
         });
       },
     },
-    [alepha, api, project, values.hostId],
+    [alepha, api, project, values.hostId, values.egress],
   );
 
   if (!project) return null;
-  const changed = (values.hostId || undefined) !== project.defaultAgentHostId;
+  const changed =
+    (values.hostId || undefined) !== project.defaultAgentHostId ||
+    (values.egress ?? "") !== (project.agentEgressHosts ?? []).join(", ");
 
   return (
     <Card className="mx-4 md:mx-6" data-testid="project-agent-host">
@@ -71,7 +85,7 @@ const ProjectAgentHostPicker = ({ hosts }: ProjectAgentHostPickerProps) => {
           </span>
         </span>
         {agents.length > 0 && (
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <Control
               select
               input={form.input.hostId}
@@ -85,6 +99,13 @@ const ProjectAgentHostPicker = ({ hosts }: ProjectAgentHostPickerProps) => {
                 })),
               ]}
               inputProps={{ "data-testid": "project-agent-host-select" }}
+            />
+            <Control
+              input={form.input.egress}
+              label={tr("hosts.agent.egress.label")}
+              description={tr("hosts.agent.egress.description")}
+              disabled={!can("host:update") || save.loading}
+              inputProps={{ "data-testid": "project-agent-egress" }}
             />
             <Button
               size="sm"

@@ -204,6 +204,9 @@ func main() {
 		}
 	case "connector":
 		err = cmdConnector(os.Args[2:])
+	case "egress-proxy":
+		// Run by Bay itself, in a job's egress sidecar (#Q3996).
+		err = cmdEgressProxy(os.Args[2:])
 	case "backup":
 		if len(os.Args) > 2 && (os.Args[2] == "list" || os.Args[2] == "restore") {
 			err = cmdStackBackup(os.Args[2], os.Args[3:])

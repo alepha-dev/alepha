@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { AgentJobService, CodeRepositoryService } from "@lore/build/api";
 import { AgentPromptGuard, JobKeyService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import {
   AgentHostService,
   HostCommandService,
@@ -37,6 +38,7 @@ class ConnectedTransport extends HostCommandTransport {
 class Repos {
   jobs = $repository(hostJobs);
   hosts = $repository(hosts);
+  projects = $repository(projects);
 }
 
 const setup = async () => {
@@ -175,6 +177,27 @@ describe("the agent job", () => {
     expect(job.input.egress).toEqual(
       expect.arrayContaining(["registry.npmjs.org", "github.com"]),
     );
+  });
+
+  it("lets a project replace the push job's hosts, never Anthropic's or Lore's", async ({
+    expect,
+  }) => {
+    await makeAgentHost(w);
+    await w.repos.projects.updateById(w.host.projectId, {
+      agentEgressHosts: ["registry.example.app"],
+    });
+    const job = await triage(w, {
+      profile: "push",
+      questNumber: 12,
+      feedbackNumber: undefined,
+      tools: ["quest_get"],
+    });
+    expect(job.input.egress).toContain("registry.example.app");
+    expect(job.input.egress).toContain("api.anthropic.com");
+    expect(job.input.egress).not.toContain("github.com");
+    // A read job reaches no registry, whatever the project lists.
+    const read = await triage(w);
+    expect(read.input.egress).not.toContain("registry.example.app");
   });
 
   it("keeps Claude Code's result, and pauses a job a usage limit stopped until its window", async ({

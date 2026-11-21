@@ -1,4 +1,5 @@
 import { $ownsProject } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
@@ -15,6 +16,7 @@ import { AgentHostService } from "../services/AgentHostService.ts";
 export class AgentHostController {
   protected readonly agents = $inject(AgentHostService);
   protected readonly hostRows = $repository(hosts);
+  protected readonly projectRows = $repository(projects);
   protected readonly owned = $inject(OwnedResourceProvider);
 
   /**
@@ -64,6 +66,45 @@ export class AgentHostController {
     handler: async ({ params, body }) => {
       await this.agents.setDefault(params.projectId, body.hostId);
       return body.hostId ? { hostId: body.hostId } : {};
+    },
+  });
+
+  /**
+   * The hosts a `push` agent job of the project reaches beyond Anthropic and
+   * Lore (#Q3996), or `null` for the default list. Bare host names, a
+   * leading dot for every subdomain (`.githubusercontent.com`).
+   */
+  setProjectAgentEgress = $action({
+    use: [
+      $ownsProject({
+        param: "projectId",
+        requires: "host:update",
+        capability: { key: "ship" as const, action: "set the agent egress" },
+      }),
+    ],
+    method: "PUT",
+    path: "/projects/:projectId/agent-egress",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        hosts: z
+          .array(
+            z
+              .text({ maxLength: 253 })
+              .regex(
+                /^\.?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/,
+              ),
+          )
+          .max(50)
+          .nullable(),
+      }),
+      response: z.object({ hosts: z.array(z.string()).optional() }),
+    },
+    handler: async ({ params, body }) => {
+      await this.projectRows.updateById(params.projectId, {
+        agentEgressHosts: body.hosts,
+      });
+      return body.hosts ? { hosts: body.hosts } : {};
     },
   });
 }
