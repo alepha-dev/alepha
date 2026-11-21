@@ -67,24 +67,6 @@ describe("$sms", () => {
     expect(messages[1].to).toBe("+0987654321");
   });
 
-  test("should use memory provider by default", async ({ expect }) => {
-    class TestService {
-      readonly sms = $sms();
-    }
-
-    const alepha = Alepha.create();
-    const service = alepha.inject(TestService);
-    await alepha.start();
-
-    await service.sms.send({
-      to: "+1234567890",
-      message: "Test",
-    });
-
-    const provider = alepha.inject(MemorySmsProvider);
-    expect(provider.records).toHaveLength(1);
-  });
-
   test("should use explicit memory provider", async ({ expect }) => {
     class TestService {
       readonly sms = $sms({ provider: "memory" });

@@ -186,10 +186,6 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
       // error page as `undefined` and returned that: the right answer for the
       // wrong reason, and one that would flip the day Cloudflare's error body
       // grew a `success` field.
-      // A non-2xx is not a verdict. Parsing it anyway read `success` off an
-      // error page as `undefined` and returned that: the right answer for the
-      // wrong reason, and one that would flip the day Cloudflare's error body
-      // grew a `success` field.
       if (!res.ok) {
         this.log.warn("Turnstile siteverify refused the request", {
           status: res.status,

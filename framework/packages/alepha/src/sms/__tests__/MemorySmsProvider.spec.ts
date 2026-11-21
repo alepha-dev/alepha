@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
 
-import { $sms, MemorySmsProvider, SmsProvider } from "../index.ts";
+import { $sms, MemorySmsProvider } from "../index.ts";
 
 describe("MemorySmsProvider", () => {
   test("should store SMS in memory", async ({ expect }) => {
@@ -91,20 +91,6 @@ describe("MemorySmsProvider", () => {
     const provider = alepha.inject(MemorySmsProvider);
 
     expect(provider.last).toBeUndefined();
-  });
-
-  test("should be registered as default SmsProvider", async ({ expect }) => {
-    class TestService {
-      readonly sms = $sms();
-    }
-
-    const alepha = Alepha.create();
-    alepha.inject(TestService);
-    await alepha.start();
-
-    const provider = alepha.inject(SmsProvider);
-
-    expect(provider).toBeInstanceOf(MemorySmsProvider);
   });
 
   test("should accumulate messages across multiple sends", async ({

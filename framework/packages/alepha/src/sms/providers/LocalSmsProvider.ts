@@ -67,7 +67,12 @@ export class LocalSmsProvider implements SmsProvider {
       const timestamp = this.dateTime.nowISOString().replace(/[:.]/g, "-");
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedPhone = recipient.replace(/[^0-9+]/g, "_");
-        const filename = `${sanitizedPhone},${timestamp}.sms.json`;
+        // A fresh id per file: the timestamp is per millisecond, so two
+        // messages to one number in the same millisecond (or a number listed
+        // twice in `to`) used to share a name and the second overwrote the
+        // first. The phone stays the prefix, which is how a reader finds a
+        // number's messages.
+        const filename = `${sanitizedPhone},${timestamp},${crypto.randomUUID()}.sms.json`;
         const filepath = this.fs.join(this.directory, filename);
 
         const content = this.createSmsJson({ to: recipient, message });
