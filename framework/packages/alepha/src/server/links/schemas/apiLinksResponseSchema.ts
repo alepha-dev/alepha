@@ -55,7 +55,7 @@ export const apiRegistryResponseSchema = z.object({
    *
    * Without this, a pruned action is indistinguishable from one that was
    * never registered, and the client can only answer "not found" (401) to
-   * what is really "not allowed" (403) — so a signed-in user gets bounced
+   * what is really "not allowed" (403), so a signed-in user gets bounced
    * to the login page instead of a refusal.
    *
    * Only sent to **authenticated** callers. An anonymous visitor is missing

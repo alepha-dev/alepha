@@ -2,7 +2,7 @@ import { $inject, $store, Alepha, AlephaError, type Async, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import type { SecureOptions } from "alepha/security";
+import type { SecureOptions, ServiceAccountPrimitive } from "alepha/security";
 import {
   type ActionPrimitive,
   type ClientRequestEntry,
@@ -42,9 +42,9 @@ export class LinkProvider {
    */
   public static readonly id: string = "alepha.server.links.LinkProvider";
 
-  static path = {
+  public static readonly path = {
     apiLinks: "/api/_links",
-  };
+  } as const;
 
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
@@ -197,6 +197,18 @@ export class LinkProvider {
   }
 
   /**
+   * The `authorization` header of a service account: its access token as a
+   * bearer. A value that already names its scheme (`Basic ...`, `DPoP ...`,
+   * `Bearer ...`) is sent as it is.
+   */
+  public async serviceAuthorization(
+    account: ServiceAccountPrimitive,
+  ): Promise<string> {
+    const token = await account.token();
+    return /^[A-Za-z][\w.+~-]* +\S/.test(token) ? token : `Bearer ${token}`;
+  }
+
+  /**
    * Get applicative links registered on the server.
    * This does not include lazy-loaded remote links.
    */
@@ -236,11 +248,28 @@ export class LinkProvider {
       );
     }
 
+    // A remote never shadows a local action, whichever registers first: the
+    // name answers with this server's own handler.
+    const remote = link.handler
+      ? existing
+      : existing?.handler
+        ? link
+        : undefined;
+    if (remote) {
+      this.log.warn(
+        `Action "${link.name}" of remote '${remote.service ?? remote.host}' has the name of a local action and is not reachable by that name: the local action answers`,
+      );
+      if (!link.handler) {
+        return;
+      }
+    }
+
     this.serverLinkMap.set(link.name, link);
   }
 
   /**
-   * Load the registry response into internal stores (actionMap, permissions, definitions).
+   * Load the registry response into internal stores (actionMap,
+   * actionPermissions, permissions, restricted).
    * Called when storing from atom/fetch/SSR.
    */
   protected loadRegistry(registry: ApiRegistryResponse): void {
@@ -263,7 +292,7 @@ export class LinkProvider {
         contentType: action.contentType,
         service: action.service,
         // The registry states the prefix its paths are relative to, and
-        // `followRemote` falls back to "/api" without it — so dropping it here
+        // `followRemote` falls back to "/api" without it, so dropping it here
         // silently addressed every registry-derived link as if the server ran
         // on the default. Left undefined when the registry omits it, which is
         // the same fallback as before.
@@ -397,7 +426,7 @@ export class LinkProvider {
    * What identifies one cached registry.
    *
    * ⚠️ Not the host alone. `/api/_links` filters its answer by caller, so a
-   * host-only key serves one caller's action set to another — an anonymous
+   * host-only key serves one caller's action set to another: an anonymous
    * fetch's registry, missing every `$secure` action, answered to a caller who
    * is signed in and allowed.
    *
@@ -480,7 +509,7 @@ export class LinkProvider {
    *
    * Awaited per request and never cached. A device-flow token refreshes, and a
    * long-running process would otherwise pin whatever the first call happened
-   * to see at construction — working for an hour and then failing for good.
+   * to see at construction, working for an hour and then failing for good.
    */
   protected async resolveScope<T extends ClientScope>(
     scope: T,
@@ -535,7 +564,7 @@ export class LinkProvider {
           method: "GET",
           // ⚠️ The credential belongs on THIS request, not only on the calls
           // that follow. `/api/_links` prunes every action the caller may not
-          // invoke, so an anonymous fetch omits all of them — and the failure
+          // invoke, so an anonymous fetch omits all of them, and the failure
           // is `Action not found` for a route that plainly exists and that the
           // caller is plainly allowed to call. That is the single most
           // confusing way this can be half-built.
@@ -547,7 +576,7 @@ export class LinkProvider {
       ));
     } catch (cause) {
       // Named, and not swallowed. A process may hold several remotes, so a
-      // bare fetch failure says nothing about which one is down — and falling
+      // bare fetch failure says nothing about which one is down, and falling
       // back to an empty registry would turn a reachability problem into
       // `Action not found` on every call, which reads as a permission or
       // routing bug and sends the reader looking in the wrong place.
@@ -591,7 +620,18 @@ export class LinkProvider {
    * Use js Proxy under the hood.
    *
    * A scope naming a `hostname` yields a {@link RemoteVirtualClient}, which is
-   * the same surface minus `$sse` - see {@link VirtualClientFor}.
+   * the same surface minus `$sse`.
+   *
+   * ⚠️ Overloads rather than a conditional return type, and it has to be that
+   * way. Every caller writes `client<Controller>(scope)` with the controller
+   * given explicitly, and TypeScript has no partial type-argument inference: a
+   * second parameter would silently fall back to its default instead of being
+   * inferred from the argument, and the narrowing would never fire. Overload
+   * resolution reads the argument, so it works with an explicit `T`.
+   *
+   * A scope typed only as `ClientScope` says `hostname?: string`, which matches
+   * neither overload's remote form - it keeps the full surface, and the runtime
+   * refusal in `getRemoteLinkByName` is what catches an SSE call there.
    */
   public client<T extends object>(
     scope: ClientScope & { hostname: string },
@@ -625,14 +665,14 @@ export class LinkProvider {
     // Ensure the registry parsed from the store (actions + permissions) is
     // loaded. On SSR the `links` getter only calls `loadRegistry` in the
     // browser branch, so `this.permissions` would otherwise stay empty and
-    // every permission check would (wrongly) fail — making `has()`-gated UI
+    // every permission check would (wrongly) fail, making `has()`-gated UI
     // render differently on the server than on the client (hydration drift).
     const registry = this.alepha.store.get("alepha.server.request.apiLinks");
     if (registry && registry !== this.lastLoadedRegistry) {
       this.loadRegistry(registry);
     }
 
-    // Action check — O(1) map lookup
+    // Action check: O(1) map lookup
     //
     // ⚠️ All three branches answer "the action exists", and all three have to
     // narrow by scope. Filtering only the first would make SSR and the client
@@ -648,7 +688,7 @@ export class LinkProvider {
         return this.scopeAllows(name);
     }
 
-    // Permission check — wildcard matching
+    // Permission check: wildcard matching
     if (name.includes(":")) {
       if (name.endsWith("*")) {
         const prefix = name.slice(0, -1);
@@ -796,7 +836,8 @@ export class LinkProvider {
       this.options.batch &&
       this.alepha.isBrowser() &&
       !link.host &&
-      !this.defaultOrigin()
+      !this.defaultOrigin() &&
+      this.isBatchable(config, options)
     ) {
       this.batchCollector ??= this.alepha.inject(BatchCollector);
       return this.batchCollector.add({
@@ -804,6 +845,7 @@ export class LinkProvider {
         params: config.params,
         query: config.query,
         body: config.body,
+        signal: options.request?.signal ?? undefined,
         directCall: () =>
           this.followRemote(link, config, options).then((r) => r.data),
       });
@@ -812,6 +854,57 @@ export class LinkProvider {
     return this.followRemote(link, config, options).then(
       (response) => response.data,
     );
+  }
+
+  /**
+   * Whether a call may join a batch: only one that sends nothing but an
+   * action name with `params`, `query` and `body`, which is all a batch
+   * entry carries.
+   *
+   * A call with headers of its own (`config.headers`, the scope's `headers`
+   * or `authorization`) or with a request option that changes what is sent
+   * (`options.request` headers, credentials, cache and the like) goes out as
+   * its own request, where they travel. An abort signal changes nothing that
+   * is sent: such a call is batched, and {@link BatchCollector} rejects it
+   * when its signal aborts.
+   */
+  protected isBatchable(
+    config: Partial<ServerRequestConfigEntry>,
+    options: ClientRequestOptions & ResolvedClientScope,
+  ): boolean {
+    if (Object.keys(config.headers ?? {}).length > 0) {
+      return false;
+    }
+    if (options.headers || options.authorization) {
+      return false;
+    }
+    const { signal: _signal, ...sent } = options.request ?? {};
+    return Object.values(sent).every((value) => value === undefined);
+  }
+
+  /**
+   * Call a published remote link on behalf of this server's caller, as the
+   * remote's proxy route does: the request carries `headers` (the caller's
+   * credentials the proxy forwards) and nothing this server holds, neither
+   * the ambient request's authorization nor the remote's service account.
+   */
+  public async followProxied(
+    link: HttpClientLink,
+    config: Partial<ServerRequestConfigEntry>,
+    headers: Record<string, string>,
+  ): Promise<any> {
+    const { action, host, forwarded } = await this.prepareRemote(
+      link,
+      { request: { headers } },
+      false,
+    );
+    const response = await this.httpClient.fetchAction({
+      host,
+      config,
+      options: forwarded,
+      action: action,
+    });
+    return response.data;
   }
 
   protected createVirtualAction<T extends RequestConfigSchema>(
@@ -873,11 +966,16 @@ export class LinkProvider {
   /**
    * The action, host and request options of a call to a remote link: the
    * credential ladder, the request id, the API prefix. Shared by
-   * {@link followRemote} and {@link followStream}.
+   * {@link followRemote}, {@link followStream} and {@link followProxied}.
+   *
+   * `ambient: false` leaves out every credential this process holds (the
+   * incoming request's, the default origin's, the service account's): the
+   * call carries what `options` names and nothing else.
    */
   protected async prepareRemote(
     link: HttpClientLink,
     options: ClientRequestOptions & ResolvedClientScope = {},
+    ambient = true,
   ): Promise<{
     action: HttpClientLink;
     host: string | undefined;
@@ -887,11 +985,14 @@ export class LinkProvider {
     //
     //   ALS  <  default origin credential  <  scope.headers
     //        <  scope.authorization  <  per-call headers
+    //
+    // and, outside any incoming request only, the link's service account
+    // when none of them named an authorization.
     const headers = new Headers();
 
     // The ambient incoming request. Exactly right when a server proxies on
     // behalf of the user who called it, and wrong the moment this client named
-    // a credential of its own — the point of a scope credential is that it is
+    // a credential of its own: the point of a scope credential is that it is
     // not the visitor's. Weakest, so it only fills a gap; unchanged for every
     // caller that sets nothing, which is every caller that exists today.
     //
@@ -900,7 +1001,9 @@ export class LinkProvider {
     // whatever the remote decides for them, which nothing here can observe,
     // so the page is personal. One without a credential is the same for
     // every visitor.
-    const als = this.alepha.store.getUntracked("alepha.http.request");
+    const als = ambient
+      ? this.alepha.store.getUntracked("alepha.http.request")
+      : undefined;
     if (als?.headers.authorization) {
       this.alepha.store
         .recorder()
@@ -911,9 +1014,8 @@ export class LinkProvider {
     // A host-less link in a browser with a default origin goes there, with
     // the default credential: below the scope's own, which wins.
     const origin = link.host ? undefined : this.defaultOrigin();
-    const defaultAuthorization = origin
-      ? await this.resolveDefaultAuthorization()
-      : undefined;
+    const defaultAuthorization =
+      origin && ambient ? await this.resolveDefaultAuthorization() : undefined;
     if (defaultAuthorization) {
       headers.set("authorization", defaultAuthorization);
     }
@@ -926,6 +1028,29 @@ export class LinkProvider {
       headers.set(name, value);
     }
 
+    // A `$remote`'s service account is this server's own identity towards
+    // that remote, for a call made outside any incoming request (a job, a
+    // hook, start) that nothing else gave a credential.
+    //
+    // ⚠️ Never inside an incoming request, whatever it carries. A request
+    // without an `Authorization` header is not an anonymous one (an API key
+    // in the query, a session cookie), and signing its relayed call with the
+    // account would hand any caller, anonymous included, the account's
+    // rights on the remote. There the call forwards what the caller has,
+    // even nothing.
+    const incoming = this.alepha.store.getUntracked("alepha.http.request");
+    if (
+      ambient &&
+      !incoming &&
+      link.serviceAccount &&
+      !headers.has("authorization")
+    ) {
+      headers.set(
+        "authorization",
+        await this.serviceAuthorization(link.serviceAccount),
+      );
+    }
+
     const context = this.alepha.context.get("context");
     if (typeof context === "string") {
       headers.set("x-request-id", context);
@@ -933,6 +1058,7 @@ export class LinkProvider {
 
     const action = {
       ...link,
+      serviceAccount: undefined,
       // schema is not used in the client,
       // we assume that TypeScript will check
       schema: {
@@ -956,7 +1082,7 @@ export class LinkProvider {
     //
     // ⚠️ The scope's own keys are stripped, not carried. `fetchAction` ends
     // with `fetch(url, { ...request, schema, ...options })`, so a stray
-    // `headers` on `options` would clobber the ladder composed above — and
+    // `headers` on `options` would clobber the ladder composed above, and
     // `authorization` may be a function, which has no business on a RequestInit.
     //
     // `delete` rather than `= undefined`: the key surviving with an undefined
@@ -1015,7 +1141,7 @@ export class LinkProvider {
     // Same reason `can()` does this: the `links` getter only calls
     // loadRegistry on the browser branch, so during SSR `restricted` would
     // otherwise stay empty and a forbidden action would report 401 on the
-    // server and 403 in the browser — the page would redirect to login on
+    // server and 403 in the browser: the page would redirect to login on
     // first paint and only then render the refusal.
     //
     // Untracked (#E78), like `links`: the action's own guards decide.
@@ -1029,7 +1155,7 @@ export class LinkProvider {
     if (!link) {
       // An action the server knows about but pruned for this caller is a
       // permission problem, not a missing route. Saying 401 here sends a
-      // signed-in user to the login page for what is really a refusal —
+      // signed-in user to the login page for what is really a refusal,
       // and leaves the app unable to tell the two apart without matching
       // on the message text. `restricted` is only populated for
       // authenticated callers, so anonymous requests still get 401 and
@@ -1047,7 +1173,7 @@ export class LinkProvider {
 
     // A `hostname` never reaches here any more: it is answered by the remote
     // branch above, against the remote's own registry. Stamping the host onto
-    // a LOCAL link was the weaker mechanism this replaces — it borrowed this
+    // a LOCAL link was the weaker mechanism this replaces: it borrowed this
     // container's paths, prefix and permission view and pointed them at
     // someone else's server.
     return link;
@@ -1061,16 +1187,14 @@ export class LinkProvider {
     const link = registry.links.get(name);
 
     if (link?.kind === "sse") {
-      // Refused by name rather than attempted. A local `$sse` action works
-      // through the handler branch and returns a real `SseStream`; a remote
-      // one goes through `fetchAction`, which is a plain fetch and returns a
-      // response. Letting it through would hand back an object that answers
-      // to none of the stream's API, at the call site furthest from the cause.
+      // Refused by name: a client whose scope names a host is a
+      // `RemoteVirtualClient`, which offers no `$sse`, and this says at call
+      // time what that type says at compile time.
       //
       // Deliberately scoped to the remote-registry path: `$remote` links carry
       // no `kind`, so nothing existing can trip this.
       throw new AlephaError(
-        `Action ${name} is a server-sent-events stream, and $client cannot open one on a remote host (${scope.hostname}). A remote call leaves as a plain fetch, which answers with a response and not a stream. Call it from a process that hosts the action, or reach the endpoint directly.`,
+        `Action ${name} is a server-sent-events stream, and $client does not open one on a remote host (${scope.hostname}). Call it from a process that hosts the action, or reach the endpoint directly.`,
       );
     }
 
@@ -1106,6 +1230,11 @@ export interface HttpClientLink {
   group?: string;
   // -- server only --
   host?: string;
+  /**
+   * The `$remote`'s service account: the credential of a call to this link
+   * that carries no authorization of its own.
+   */
+  serviceAccount?: ServiceAccountPrimitive;
   schema?: RequestConfigSchema;
   handler?: (
     request: ServerRequest,
@@ -1127,7 +1256,7 @@ export interface ClientScope {
    * for good. A plain string stays accepted because it is the common case.
    *
    * Allowed without a `hostname`, and applied wherever a request is actually
-   * made — which means it is **inert when the link resolves to a local
+   * made, which means it is **inert when the link resolves to a local
    * handler**, since there is no request to carry it.
    */
   authorization?: string | (() => Async<string>);
@@ -1190,11 +1319,8 @@ export type HttpVirtualClient<T> = {
 /**
  * What a client reaches on a REMOTE app: actions, and no `$sse`.
  *
- * Excluded rather than offered and broken. A local SSE action works through
- * the handler branch and returns a real `SseStream`; a remote one leaves as a
- * plain fetch, which answers with a response. A type that offers a stream and
- * a runtime that cannot produce one is worse than the gap it papers over, so
- * the type says the same thing `getRemoteLinkByName` says at call time.
+ * `$sse` is left out because `getRemoteLinkByName` refuses a stream on a
+ * remote host at call time: the type says the same thing the runtime does.
  */
 export type RemoteVirtualClient<T> = {
   [
@@ -1203,19 +1329,6 @@ export type RemoteVirtualClient<T> = {
       : never
   ]: T[K] extends ActionPrimitive<infer Schema> ? VirtualAction<Schema> : never;
 };
-
-/**
- * ⚠️ Overloads rather than a conditional return type, and it has to be that
- * way. Every caller writes `client<Controller>(scope)` with the controller
- * given explicitly, and TypeScript has no partial type-argument inference: a
- * second parameter would silently fall back to its default instead of being
- * inferred from the argument, and the narrowing would never fire. Overload
- * resolution reads the argument, so it works with an explicit `T`.
- *
- * A scope typed only as `ClientScope` says `hostname?: string`, which matches
- * neither overload's remote form - it keeps the full surface, and the runtime
- * refusal in `getRemoteLinkByName` is what catches an SSE call there.
- */
 
 export interface VirtualAction<T extends RequestConfigSchema> extends Pick<
   ActionPrimitive<T>,

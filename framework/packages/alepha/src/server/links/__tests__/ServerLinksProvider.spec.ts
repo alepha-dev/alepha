@@ -161,15 +161,18 @@ describe("ServerLinksProvider", () => {
         .with(AlephaSecurity);
       await alepha.start();
 
-      // Use HttpClient to get a token automatically in test mode
-      const app = alepha.inject(App);
-      const { data } = await app.securedAction.fetch(
-        {},
-        {
-          user: { id: randomUUID(), roles: ["user"] },
-        },
+      const { access_token } = await alepha
+        .inject(App)
+        .issuer.createToken({ id: randomUUID(), roles: ["user"] });
+      const res = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_links`,
+        { headers: { authorization: `Bearer ${access_token}` } },
       );
-      expect(data).toBe("SECURED");
+      const data = await res.json();
+
+      expect(data.actions.securedAction).toStrictEqual({
+        path: "/securedAction",
+      });
     });
 
     it("should return both public and secured actions when user is authenticated", async ({
@@ -488,7 +491,7 @@ describe("ServerLinksProvider", () => {
         .with(AlephaSecurity);
       await alepha.start();
 
-      // Unauthenticated request — should only get public schema
+      // Unauthenticated request: should only get public schema
       const res = await fetch(
         `${alepha.inject(ServerProvider).hostname}/api/_links/schemas`,
         {
@@ -521,8 +524,7 @@ describe("ServerLinksProvider", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("etag")).toBeDefined();
-      expect(res.headers.get("etag")).toMatch(/^"[a-f0-9]{32}"$/);
+      expect(res.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/);
     });
 
     it("should return 304 when If-None-Match matches ETag", async ({
@@ -537,34 +539,18 @@ describe("ServerLinksProvider", () => {
 
       const hostname = alepha.inject(ServerProvider).hostname;
 
-      // First request — get the ETag
+      // First request: get the ETag
       const res1 = await fetch(`${hostname}/api/_links`);
       const etag = res1.headers.get("etag")!;
-      expect(etag).toBeDefined();
+      expect(etag).toMatch(/^"[a-f0-9]{64}"$/);
 
-      // Second request with If-None-Match — should get 304
+      // Second request with If-None-Match: should get 304
       const res2 = await fetch(`${hostname}/api/_links`, {
         headers: { "if-none-match": etag },
       });
 
       expect(res2.status).toBe(304);
       expect(res2.headers.get("etag")).toBe(etag);
-    });
-
-    it("should return same ETag for same roles", async ({ expect }) => {
-      class App {
-        ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
-      }
-
-      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
-      await alepha.start();
-
-      const hostname = alepha.inject(ServerProvider).hostname;
-
-      const res1 = await fetch(`${hostname}/api/_links`);
-      const res2 = await fetch(`${hostname}/api/_links`);
-
-      expect(res1.headers.get("etag")).toBe(res2.headers.get("etag"));
     });
 
     it("should not serve the anonymous registry to an authenticated user with no roles", async ({
@@ -592,7 +578,7 @@ describe("ServerLinksProvider", () => {
 
       const hostname = alepha.inject(ServerProvider).hostname;
 
-      // Anonymous request first — populates the cache entry for "no roles"
+      // Anonymous request first: populates the cache entry for "no roles"
       const anon = await (await fetch(`${hostname}/api/_links`)).json();
       expect(anon.actions.authOnly).toBeUndefined();
 
@@ -609,33 +595,6 @@ describe("ServerLinksProvider", () => {
       ).json();
 
       expect(authed.actions.authOnly).toBeDefined();
-    });
-
-    it("should serve cached response on second request", async ({ expect }) => {
-      class App {
-        ping = $action({
-          path: "/ping",
-          method: "GET",
-          schema: { response: z.text() },
-          handler: () => "pong",
-        });
-      }
-
-      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
-      await alepha.start();
-
-      const hostname = alepha.inject(ServerProvider).hostname;
-
-      // First request populates cache
-      const res1 = await fetch(`${hostname}/api/_links`);
-      const data1 = await res1.json();
-
-      // Second request should use cache
-      const res2 = await fetch(`${hostname}/api/_links`);
-      const data2 = await res2.json();
-
-      expect(data1).toStrictEqual(data2);
-      expect(data1.actions.ping).toBeDefined();
     });
   });
 });

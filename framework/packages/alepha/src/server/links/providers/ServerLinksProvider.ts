@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
   $hook,
   $inject,
@@ -12,6 +10,7 @@ import {
   TimeoutError,
   z,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import type {
   SecureOptions,
@@ -28,12 +27,15 @@ import {
   HttpError,
   type ClientRequestOptions,
   type RequestConfigSchema,
+  type ServerRequest,
   ServerSurfaceProvider,
   ServerTimingProvider,
   serverApiOptions,
+  UnauthorizedError,
 } from "alepha/server";
 
 import type { ApiRegistryResponse } from "../schemas/apiLinksResponseSchema.ts";
+import { BatchCollector } from "../services/BatchCollector.ts";
 import { type HttpClientLink, LinkProvider } from "./LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
@@ -49,6 +51,7 @@ export class ServerLinksProvider {
   protected readonly linkProvider = $inject(LinkProvider);
   protected readonly remoteProvider = $inject(RemotePrimitiveProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly log = $logger();
 
   /**
@@ -285,17 +288,17 @@ export class ServerLinksProvider {
         );
       } catch {
         this.log.debug(
-          "Security module is not loaded — permission checks are disabled",
+          "Security module is not loaded: permission checks are disabled",
         );
       }
     },
   });
 
   /**
-   * API registry endpoint — returns all available actions for the user.
+   * API registry endpoint: returns all available actions for the user.
    *
    * Response is filtered by the user's permissions.
-   * Cached by role set with ETag support.
+   * Cached per identity (see {@link registryCacheKey}), with ETag support.
    */
   public readonly links = $route({
     path: LinkProvider.path.apiLinks,
@@ -319,7 +322,7 @@ export class ServerLinksProvider {
   });
 
   /**
-   * On-demand schemas endpoint — returns JSON Schemas for requested actions.
+   * On-demand schemas endpoint: returns JSON Schemas for requested actions.
    *
    * Schemas are filtered by the user's permissions (same logic as the registry).
    */
@@ -367,7 +370,7 @@ export class ServerLinksProvider {
   });
 
   /**
-   * Batch endpoint — execute multiple actions in a single HTTP request.
+   * Batch endpoint: execute multiple actions in a single HTTP request.
    * Each sub-request is independent: errors in one don't affect others.
    */
   public readonly batch = $route({
@@ -393,7 +396,9 @@ export class ServerLinksProvider {
            * it, so the client rebuilds the same class (#Q3104).
            */
           name: z.text().optional(),
-          /** The batch request's id, the one its logs and reports carry. */
+          /**
+           * The batch request's id, the one its logs and reports carry.
+           */
           requestId: z.text().optional(),
           /**
            * A failed entry's error data beyond its status (a 400's `part`
@@ -406,22 +411,16 @@ export class ServerLinksProvider {
     },
     handler: async (request) => {
       const { body } = request;
-      if (body.length > ServerLinksProvider.MAX_BATCH_SIZE) {
-        // The caller sent too many entries — that is a bad request, not a
+      if (body.length > BatchCollector.MAX_BATCH_SIZE) {
+        // The caller sent too many entries: that is a bad request, not a
         // server fault. A bare AlephaError surfaced as a 500.
         throw new BadRequestError(
-          `Batch size ${body.length} exceeds maximum of ${ServerLinksProvider.MAX_BATCH_SIZE}`,
+          `Batch size ${body.length} exceeds maximum of ${BatchCollector.MAX_BATCH_SIZE}`,
         );
       }
 
       const results = await Promise.allSettled(
-        body.map((entry) =>
-          this.linkProvider.follow(entry.action, {
-            params: entry.params as any,
-            query: entry.query as any,
-            body: entry.body as any,
-          }),
-        ),
+        body.map((entry) => this.followEntry(request, entry)),
       );
 
       const entries: Array<{
@@ -459,7 +458,7 @@ export class ServerLinksProvider {
         // message is internal (DB URLs, upstream errors, credentials in a
         // connection string) and must not reach the client in production.
         // 4xx messages are deliberate, client-facing context and are kept.
-        // Without this the batch endpoint was a way around the sanitizer —
+        // Without this the batch endpoint was a way around the sanitizer,
         // and it is the path the React client uses by default.
         entries.push({
           action,
@@ -484,6 +483,51 @@ export class ServerLinksProvider {
       return entries;
     },
   });
+
+  /**
+   * Run one batch entry. It reaches what a direct HTTP call to this server
+   * reaches and nothing more: this server's own actions, and a remote's
+   * actions only when the remote is published, with the credentials its
+   * proxy route forwards (see
+   * {@link RemotePrimitiveProvider.getPublishedRemotes}).
+   *
+   * The link map also holds the actions of every `$remote` declared without
+   * `proxy`, for this server's own code to call. Such a name is answered as
+   * one that does not exist.
+   */
+  protected async followEntry(
+    request: ServerRequest,
+    entry: {
+      action: string;
+      params?: Record<string, any>;
+      query?: Record<string, any>;
+      body?: Record<string, any>;
+    },
+  ): Promise<unknown> {
+    const config = {
+      params: entry.params as any,
+      query: entry.query as any,
+      body: entry.body as any,
+    };
+    const link = this.linkProvider
+      .getServerLinks()
+      .find((it) => it.name === entry.action);
+
+    if (!link?.host) {
+      return this.linkProvider.follow(entry.action, config);
+    }
+
+    const remote = this.remoteProvider.publishedRemote(link);
+    if (!remote) {
+      throw new UnauthorizedError(`Action ${entry.action} not found.`);
+    }
+
+    return this.linkProvider.followProxied(
+      link,
+      config,
+      this.remoteProvider.forwardedCredentials(remote, request.headers),
+    );
+  }
 
   /**
    * The name `ServerRouterProvider.errorHandler` would put on the wire for
@@ -521,15 +565,15 @@ export class ServerLinksProvider {
    * single-request path does from `ServerRouterProvider.errorHandler`.
    *
    * ⚠️ **Not optional bookkeeping.** This endpoint answers 200 with a
-   * per-entry error, so `errorHandler` — the only other emitter of that event
-   * — never runs for anything that fails in here. Every consumer of the event
+   * per-entry error, so `errorHandler` (the only other emitter of that event)
+   * never runs for anything that fails in here. Every consumer of the event
    * (the error logger, the log buffer, crash reporting) was therefore blind
    * to the batch, and the batch is the path the React client uses by default:
    * on a client-rendered app it is not some corner of the API surface, it is
    * the whole of it. An app can lose an entire outage this way and see an
    * empty crash inbox throughout.
    *
-   * The route reported is the failing action's own, not `/api/_batch` —
+   * The route reported is the failing action's own, not `/api/_batch`:
    * reports that all blame the batch endpoint name the one route that is
    * always innocent, and group into one useless pile.
    *
@@ -537,7 +581,7 @@ export class ServerLinksProvider {
    * event by setting a status (that is how a custom error page works, and
    * `errorHandler` explicitly honours it). Here the response is already
    * decided: the failure belongs to one entry, and letting a hook promote it
-   * would fail the whole batch — including the entries that succeeded.
+   * would fail the whole batch, including the entries that succeeded.
    */
   protected async reportSubRequestError(
     request: any,
@@ -565,7 +609,7 @@ export class ServerLinksProvider {
   }
 
   /**
-   * The path a direct HTTP call to `action` would have hit — prefix included,
+   * The path a direct HTTP call to `action` would have hit, prefix included,
    * the same composition {@link LinkProvider.followRemote} performs.
    *
    * Reported rather than the bare link path so one failing action reads
@@ -579,20 +623,18 @@ export class ServerLinksProvider {
     return `${link.prefix ?? "/api"}${link.path}`;
   }
 
-  protected static readonly MAX_BATCH_SIZE = 20;
-
   /**
    * Cache key for the registry response.
    *
    * Every input {@link isLinkAccessible} reads must appear here, or one
    * identity's registry is served to another:
    *
-   * - authentication itself — `$secure()` is auth-only, so an authenticated
+   * - authentication itself: `$secure()` is auth-only, so an authenticated
    *   user carrying no roles sees strictly more than an anonymous visitor.
    *   Keying on roles alone made both `""`.
-   * - the realm — `$secure({ issuers })` filters on it, so realm A and realm B
+   * - the realm: `$secure({ issuers })` filters on it, so realm A and realm B
    *   with identical role names resolve to different link sets.
-   * - the permission scope — a scoped credential and an unscoped one with the
+   * - the permission scope: a scoped credential and an unscoped one with the
    *   same roles see different permissions and different actions, and sharing
    *   an entry hands whichever called second the first one's registry: the
    *   harmful direction is a scoped key receiving the full action list. An
@@ -650,7 +692,7 @@ export class ServerLinksProvider {
 
     const response = await this.getUserApiLinks(options);
     const json = JSON.stringify(response);
-    const etag = `"${createHash("md5").update(json).digest("hex")}"`;
+    const etag = `"${await this.crypto.hash(json)}"`;
     const entry: RegistryCacheEntry = { response, json, etag };
 
     while (this.registryCache.size >= ServerLinksProvider.MAX_REGISTRY_CACHE) {
@@ -686,7 +728,7 @@ export class ServerLinksProvider {
     const actions: Record<string, any> = {};
     const permissions: string[] = [];
     // Actions that exist but this caller may not invoke. Collected only for
-    // authenticated callers — see `restricted` in apiRegistryResponseSchema.
+    // authenticated callers: see `restricted` in apiRegistryResponseSchema.
     const restricted: string[] = [];
 
     // Collect permissions not related to $action (virtual permissions)
@@ -719,7 +761,7 @@ export class ServerLinksProvider {
         // The last link of a four-step chain, and the only one that is
         // visible from the client: `$owns({ requires })` folds the permission
         // into `secure.permissions`, `createMiddleware` puts it in the
-        // middleware's `[OPTIONS]`, `registerLink` above copies it onto
+        // middleware's `[OPTIONS]`, `collectLinks` above copies it onto
         // `link.secured`, and this publishes it. Break any of them and
         // nothing throws - the action simply arrives with no permissions,
         // `can()` falls through to "the action exists", and every write
@@ -729,15 +771,11 @@ export class ServerLinksProvider {
     }
 
     this.serverTimingProvider.beginTiming("fetchRemoteLinks");
-    // TODO: remote links can be cached by user.roles
     const remoteResults = await Promise.all(
-      this.remoteProvider
-        .getRemotes()
-        .filter((it) => it.proxy) // add only "proxy" remotes
-        .map(async (remote) => {
-          const registry = await remote.links(options);
-          return { remote, registry };
-        }),
+      this.remoteProvider.getPublishedRemotes().map(async (remote) => {
+        const registry = await remote.links(options);
+        return { remote, registry };
+      }),
     );
 
     for (const { remote, registry } of remoteResults) {

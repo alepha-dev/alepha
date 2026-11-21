@@ -22,9 +22,7 @@ import {
  * clients; for a consumer with no source access, serve OpenAPI through
  * `alepha/server/swagger` and let a dedicated tool read it.
  *
- * ⚠️ A remote client offers **actions only**. A local `$sse` works through the
- * handler branch and returns a real stream; a remote one would leave as a
- * plain fetch, which answers with a response, so it is dropped from the type
+ * ⚠️ A remote client offers **actions only**. `$sse` is dropped from its type
  * and refused by name at call time.
  *
  * ⚠️ `/api/_links` answers any caller with the anonymous action surface - that

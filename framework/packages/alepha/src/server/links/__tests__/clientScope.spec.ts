@@ -44,7 +44,7 @@ describe("$client scope", () => {
    * is baked into the resolved link; nothing else did.
    *
    * Invisible while `ClientScope` was `{ service, hostname }`, and the sharpest
-   * bug in the epic the moment it carries a credential — `.fetch()` would go
+   * bug in the epic the moment it carries a credential: `.fetch()` would go
    * out unauthenticated while the identical plain call succeeded.
    */
   it("reaches .fetch() the same way it reaches the plain call", async () => {

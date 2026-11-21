@@ -11,7 +11,9 @@ import type { ProxyPrimitiveOptions } from "alepha/server/proxy";
  *
  * All remote services can be exposed as actions, ... or not.
  *
- * You can add a service account if you want to use a security layer.
+ * You can add a service account if you want to use a security layer: it is
+ * the credential of the calls your server makes to the remote on its own
+ * behalf, outside any incoming request.
  *
  * ## `$remote` or `$client({ hostname })`?
  *
@@ -40,7 +42,7 @@ export interface RemotePrimitiveOptions {
    * @example
    * ```ts
    * import { $remote } from "alepha/server/links";
-   * import { $inject, z } from "alepha";
+   * import { $env, z } from "alepha";
    *
    * class App {
    *   env = $env(z.object({
@@ -64,6 +66,10 @@ export interface RemotePrimitiveOptions {
   /**
    * If true, all methods of the remote service will be exposed as actions in this context.
    * > Note: Proxy will never use the service account, it just... proxies the request.
+   *
+   * Without `proxy`, the remote's actions are for this server's own code:
+   * no caller of this server reaches them, by a route, by the registry or by
+   * a batched call.
    */
   proxy?:
     | boolean
@@ -79,13 +85,24 @@ export interface RemotePrimitiveOptions {
   /**
    * For communication between the server and the remote service with a security layer.
    * This will be used for internal communication and will not be exposed to the client.
+   *
+   * Its token is sent, as a bearer, when the registry of the remote is read
+   * at start, and with a call this server's code makes to the remote outside
+   * any incoming request (a job, a hook) when the call names no credential
+   * of its own.
+   *
+   * It is never used while serving a request: there a call forwards the
+   * caller's `Authorization`, or goes out without one when the caller has
+   * none. A request proxied or batched on behalf of a caller never carries
+   * it either.
    */
   serviceAccount?: ServiceAccountPrimitive;
 }
 
 export class RemotePrimitive extends Primitive<RemotePrimitiveOptions> {
   /**
-   * `boot` for the pure controller rule: read by RemotePrimitiveProvider at start.
+   * `boot` for the pure controller rule: read by RemotePrimitiveProvider at
+   * `configure`.
    */
   public static override readonly side: PrimitiveSide = "boot";
 

@@ -216,8 +216,6 @@ describe("$action", () => {
       "User not found",
     );
 
-    // as local function, we go the real error
-    // as remove function, we go the http error wrapper
     await expect(app.internalError.run({})).rejects.toThrow("Oops");
   };
 
@@ -232,8 +230,4 @@ describe("$action", () => {
   it("should handle errors properly (linkRemote)", async () => {
     await testActionErrors(linkRemote);
   });
-
-  // TODO - with security (on/off) + forward
-
-  // TODO - body parser (multipart)
 });
