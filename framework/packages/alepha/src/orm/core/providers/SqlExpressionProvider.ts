@@ -58,7 +58,18 @@ export class SqlExpressionProvider {
   }
 
   /**
+   * A Postgres `timestamptz` read in UTC. `TO_CHAR` formats one in the
+   * session's time zone, which a server or a role can set to anything, while
+   * SQLite and D1 bucket epoch milliseconds in UTC: pinned, a row lands in
+   * the same day, hour and week on every dialect.
+   */
+  protected inUtc(column: SqlLike): SQL {
+    return sql`(${column} AT TIME ZONE 'UTC')`;
+  }
+
+  /**
    * A timestamp column truncated to its day, as sortable `'YYYY-MM-DD'` text.
+   * The day is the UTC day on every dialect.
    *
    * Returns text on both dialects on purpose: Postgres `DATE(col)` would
    * otherwise decode to a Date while SQLite yields a string, forcing callers
@@ -68,7 +79,7 @@ export class SqlExpressionProvider {
     if (this.isEpochMillis) {
       return sql<string>`STRFTIME('%Y-%m-%d', ${this.toEpochSeconds(column)}, 'unixepoch')`;
     }
-    return sql<string>`TO_CHAR(${column}, 'YYYY-MM-DD')`;
+    return sql<string>`TO_CHAR(${this.inUtc(column)}, 'YYYY-MM-DD')`;
   }
 
   /**
@@ -93,7 +104,7 @@ export class SqlExpressionProvider {
     if (this.isEpochMillis) {
       return sql<string>`STRFTIME('%Y-%m-%dT%H', ${this.toEpochSeconds(column)}, 'unixepoch')`;
     }
-    return sql<string>`TO_CHAR(${column}, 'YYYY-MM-DD"T"HH24')`;
+    return sql<string>`TO_CHAR(${this.inUtc(column)}, 'YYYY-MM-DD"T"HH24')`;
   }
 
   /**
@@ -116,7 +127,7 @@ export class SqlExpressionProvider {
         || PRINTF('%02d', (CAST(STRFTIME('%j', ${thursday}) AS INTEGER) - 1) / 7 + 1)
       )`;
     }
-    return sql<string>`TO_CHAR(${column}, 'IYYY-"W"IW')`;
+    return sql<string>`TO_CHAR(${this.inUtc(column)}, 'IYYY-"W"IW')`;
   }
 
   /**
@@ -129,7 +140,7 @@ export class SqlExpressionProvider {
    *
    * The Postgres form is cast to `double precision` deliberately.
    * `EXTRACT(EPOCH …)` yields `numeric`, and the Postgres driver returns
-   * `numeric` (and any `AVG` over it) as a **string** to protect precision —
+   * `numeric` (and any `AVG` over it) as a **string** to protect precision:
    * so without the cast the same query decodes as a number on SQLite and a
    * string on Postgres, and every caller has to paper over the difference.
    */
@@ -151,7 +162,7 @@ export class SqlExpressionProvider {
    *
    * Instant-aligned on both dialects, not midnight-aligned. Callers that want
    * calendar-day boundaries should bucket with {@link dateDay} rather than
-   * relying on this — mixing the two is how a "last 7 days" window silently
+   * relying on this: mixing the two is how a "last 7 days" window silently
    * means different things on different databases.
    *
    * ⚠️ Prefer a bound computed from `DateTimeProvider`:
@@ -268,7 +279,7 @@ export class SqlExpressionProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Anything Drizzle accepts inside a `sql` template — a column, a nested
+ * Anything Drizzle accepts inside a `sql` template: a column, a nested
  * fragment, or a bound value.
  */
 export type SqlLike = unknown;

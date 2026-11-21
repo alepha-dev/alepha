@@ -254,7 +254,7 @@ export const testConcurrentTransactionals = async (alepha: Alepha) => {
 
   // Two overlapping transactional blocks from separate contexts (like two
   // concurrent server requests). On a single shared SQLite connection they
-  // must be serialized — not collide with "cannot start a transaction
+  // must be serialized: not collide with "cannot start a transaction
   // within a transaction" or end each other's half-finished transaction.
   await Promise.all([
     alepha.fork(() =>
@@ -315,7 +315,7 @@ export const testAfterCommitWaitsForOutermostCommit = async (
   await app.db.transactional(async () => {
     await app.repo.create({ name: "outer" });
 
-    // Joins the outer transaction — a callback registered here must wait for
+    // Joins the outer transaction: a callback registered here must wait for
     // the OUTERMOST commit, not fire when the inner block returns.
     await app.db.transactional(async () => {
       await app.db.afterCommit(async () => {
@@ -375,7 +375,7 @@ export const testAfterCommitIsolation = async (alepha: Alepha) => {
 
   // Overlapping transactions from separate contexts must each keep their own
   // callback queue: sharing one slot would let B's drain fire A's callback
-  // while A's transaction is still open — the same single-slot failure the tx
+  // while A's transaction is still open: the same single-slot failure the tx
   // marker itself once had. Gated on promises, not timers, so the overlap is
   // deterministic: A stays open until we release it.
   let releaseA: () => void = () => {};
@@ -403,7 +403,7 @@ export const testAfterCommitIsolation = async (alepha: Alepha) => {
   );
 
   // B has committed and drained; A is still open, so its callback must not
-  // have fired — and must fire exactly once when A commits.
+  // have fired, and must fire exactly once when A commits.
   expect(events).toStrictEqual(["callback:b"]);
 
   releaseA();

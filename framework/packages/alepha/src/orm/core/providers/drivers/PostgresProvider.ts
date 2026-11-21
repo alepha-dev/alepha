@@ -16,7 +16,7 @@ import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
  * Provides shared logic for Node.js and Bun PostgreSQL providers:
  * - Environment variable handling (DATABASE_URL, POSTGRES_SCHEMA)
  * - Schema name resolution (with test schema generation)
- * - SQL execution with error wrapping
+ * - SQL execution on the open transaction's handle
  * - Lifecycle hooks (start with migration lock, stop with test cleanup)
  *
  * Subclasses must implement `connect()`, `close()`, and `runMigrator()`.
@@ -63,7 +63,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
   ): Promise<Array<Record<string, unknown>>> {
     // On the open transaction's handle when there is one, like every
     // repository method: on the pool, a raw statement inside
-    // \`$transactional\` committed on its own connection and survived the
+    // `$transactional` committed on its own connection and survived the
     // rollback.
     return await this.executor.execute(statement);
   }
@@ -222,8 +222,8 @@ export abstract class PostgresProvider extends DatabaseProvider {
    * Drop the current test schema if applicable.
    *
    * Retries on a Postgres deadlock (40P01): background work that outran
-   * the stop-time drains — an unawaited cron catch-up from `travel()`,
-   * a fire-and-forget dispatch — can still hold an AccessShare lock on a
+   * the stop-time drains, an unawaited cron catch-up from `travel()`,
+   * a fire-and-forget dispatch, can still hold an AccessShare lock on a
    * table while the CASCADE wants AccessExclusive. Postgres kills one
    * side, the straggler dies with the app a beat later, and a retry
    * succeeds. Failing the whole test file over cleanup of a
@@ -267,7 +267,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
    */
   protected async cleanupStaleTestSchemas(): Promise<void> {
     try {
-      // Non-blocking advisory lock — first process in cleans, others skip
+      // Non-blocking advisory lock: first process in cleans, others skip
       const [lock] = await this.execute(
         sql`SELECT pg_try_advisory_lock(hashtext('alepha:test:schema:cleanup')) AS acquired`,
       );

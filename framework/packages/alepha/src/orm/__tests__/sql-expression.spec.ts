@@ -4,6 +4,7 @@ import { describe, it } from "vitest";
 
 import {
   testAgo,
+  testDateBucketsAreUtc,
   testDateDay,
   testDateDiff,
   testDateWeek,
@@ -20,6 +21,17 @@ describe("SqlExpressionProvider", () => {
     });
     it("should return YYYY-MM-DD text (postgres)", async () => {
       await testDateDay(Alepha.create().with(AlephaOrmTestPostgres));
+    });
+  });
+
+  describe("dateDay / dateHour / dateWeek time zone", () => {
+    it("should bucket in UTC (sqlite)", async () => {
+      await testDateBucketsAreUtc(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should bucket in UTC under a session in another time zone (postgres)", async () => {
+      await testDateBucketsAreUtc(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 

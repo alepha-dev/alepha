@@ -95,7 +95,7 @@ export interface FilterOperators<TValue> {
    * repository.findMany({ where: { year: { lt: 2000 } } })
    * ```
    *
-   * @see lte for greater-than-or-equal
+   * @see lte for less-than-or-equal
    */
   lt?: FilterValue<TValue>;
 
@@ -168,7 +168,7 @@ export interface FilterOperators<TValue> {
   /**
    * Test whether an expression is not NULL. By the SQL standard,
    * NULL is neither equal nor not equal to itself, so
-   * it's recommended to use `isNull` and `notIsNull` for
+   * it's recommended to use `isNull` and `isNotNull` for
    * comparisons to NULL.
    *
    * ## Examples
@@ -188,7 +188,7 @@ export interface FilterOperators<TValue> {
   /**
    * Test whether an expression is NULL. By the SQL standard,
    * NULL is neither equal nor not equal to itself, so
-   * it's recommended to use `isNull` and `notIsNull` for
+   * it's recommended to use `isNull` and `isNotNull` for
    * comparisons to NULL.
    *
    * ## Examples
@@ -300,7 +300,8 @@ export interface FilterOperators<TValue> {
   ilike?: string;
 
   /**
-   * Case-insensitive EQUALITY — `LOWER(column) = LOWER(value)`.
+   * Case-insensitive EQUALITY: `LOWER(column) = LOWER(value)` on PostgreSQL,
+   * `column = value COLLATE NOCASE` on SQLite and D1.
    *
    * Use this, not `ilike`, when you mean "the same string ignoring case".
    * `ilike` is a pattern match: `_` matches any single character and `%` any
@@ -309,8 +310,8 @@ export interface FilterOperators<TValue> {
    * `admi_` matches `admin`, `admix`, … and `findOne` then picks one
    * arbitrarily.
    *
-   * Mirrors the shape of a `LOWER(col)` unique index, so a lookup and the
-   * constraint that guards it agree.
+   * Mirrors the shape of the unique index `ctx.caseInsensitive` declares on
+   * each dialect, so a lookup and the constraint that guards it agree.
    *
    * ```ts
    * // exactly one user, whatever the casing
@@ -342,7 +343,8 @@ export interface FilterOperators<TValue> {
    * Syntactic sugar for case-insensitive substring matching.
    * Automatically wraps the value with `%` wildcards on both sides.
    *
-   * Equivalent to: `ilike: '%value%'`
+   * Like `ilike: '%value%'`, with `%`, `_` and `\` in the value escaped so
+   * they match literally.
    *
    * ## Examples
    *
@@ -362,7 +364,8 @@ export interface FilterOperators<TValue> {
    * Syntactic sugar for case-insensitive prefix matching.
    * Automatically appends a `%` wildcard to the end of the value.
    *
-   * Equivalent to: `ilike: 'value%'`
+   * Like `ilike: 'value%'`, with `%`, `_` and `\` in the value escaped so
+   * they match literally.
    *
    * ## Examples
    *
@@ -382,7 +385,8 @@ export interface FilterOperators<TValue> {
    * Syntactic sugar for case-insensitive suffix matching.
    * Automatically prepends a `%` wildcard to the beginning of the value.
    *
-   * Equivalent to: `ilike: '%value'`
+   * Like `ilike: '%value'`, with `%`, `_` and `\` in the value escaped so
+   * they match literally.
    *
    * ## Examples
    *

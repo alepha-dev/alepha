@@ -47,7 +47,7 @@ export class D1TimeoutProvider {
    * Each wrapper back to the statement it stands for.
    *
    * `batch` is the one call that takes statements back IN, and the binding
-   * accepts only the ones it made itself — so what `prepare` handed out has
+   * accepts only the ones it made itself, so what `prepare` handed out has
    * to be reversible. A `WeakMap` rather than a property on the wrapper: it
    * keeps the wrapper's shape exactly the binding's interface, and a
    * statement that is never batched is collectable as before.
@@ -121,7 +121,7 @@ export class D1TimeoutProvider {
       batch: <T>(statements: D1PreparedStatement[]) => {
         // Back to the binding's own statements before they reach it. Drizzle
         // builds a batch out of `prepare(...).bind(...)`, so with the ceiling
-        // on, every element here is one of ours — and the binding raises on
+        // on, every element here is one of ours, and the binding raises on
         // anything it did not make rather than running it.
         const unwrapped = this.unwrap(statements);
 

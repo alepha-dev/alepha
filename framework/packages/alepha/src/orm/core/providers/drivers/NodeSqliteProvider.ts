@@ -30,34 +30,6 @@ import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// HACK - Hide ExperimentalWarning about SQLite from Node.js to avoid spamming logs
-// TODO: Remove when SQLite support is stable in Node.js
-
-(() => {
-  if (process?.emit) {
-    // Captured to be restored, never called through this binding.
-    // The signature is widened because process.emit is overloaded per event
-    // name, and a spread apply() cannot select an overload.
-    // oxlint-disable-next-line typescript/unbound-method
-    const originalEmit = process.emit as (
-      event: string,
-      ...args: any[]
-    ) => boolean;
-    process.emit = (event: any, warning: any, ...args: any[]) => {
-      if (
-        event === "warning" &&
-        warning?.name === "ExperimentalWarning" &&
-        warning?.message?.includes("SQLite")
-      ) {
-        return false;
-      }
-      return originalEmit.apply(process, [event, warning, ...args]);
-    };
-  }
-})();
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 const envSchema = databaseEnvSchema;
 
 /**
@@ -144,9 +116,9 @@ export class NodeSqliteProvider extends DatabaseProvider {
     // lives, or it does not start.
     //
     // Except when this process exists only to run migrations. `alepha db
-    // migrations apply` boots the app with `NODE_ENV=production` on purpose —
+    // migrations apply` boots the app with `NODE_ENV=production` on purpose:
     // that is what makes it take the file-based migration path rather than the
-    // dev push — so refusing here would break the command in development, where
+    // dev push, so refusing here would break the command in development, where
     // the scratch file IS the database the developer means. A deploy that
     // reaches this line with no `DATABASE_URL` still cannot serve: the server
     // boot that follows has no `MIGRATE` set and hits the throw above. Warn so
@@ -154,12 +126,12 @@ export class NodeSqliteProvider extends DatabaseProvider {
     if (this.alepha.isProduction()) {
       if (!this.isMigrationRun()) {
         throw new AlephaError(
-          "DATABASE_URL is required in production. Without it the SQLite provider falls back to 'node_modules/.alepha/sqlite.db', a development scratch file: it is deleted by 'npm ci', it is not backed up, and it already holds the schema 'alepha dev' pushed with an empty migrations journal — so migrations replay and fail. Set DATABASE_URL to a path outside the bundle (e.g. 'sqlite:///var/lib/myapp/db.sqlite') or to a postgres:// URL.",
+          "DATABASE_URL is required in production. Without it the SQLite provider falls back to 'node_modules/.alepha/sqlite.db', a development scratch file: it is deleted by 'npm ci', it is not backed up, and it already holds the schema 'alepha dev' pushed with an empty migrations journal, so migrations replay and fail. Set DATABASE_URL to a path outside the bundle (e.g. 'sqlite:///var/lib/myapp/db.sqlite') or to a postgres:// URL.",
         );
       }
 
       this.log.warn(
-        "Migrating 'node_modules/.alepha/sqlite.db' — the development scratch database. Set DATABASE_URL if this was meant to migrate a deployed one.",
+        "Migrating 'node_modules/.alepha/sqlite.db', the development scratch database. Set DATABASE_URL if this was meant to migrate a deployed one.",
       );
     }
 
@@ -185,7 +157,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
    * Narrow `this.sqlite` to a connected handle, or throw with a clear
    * message. Every call site below runs after `connect()` in normal use
    * (either via the `start` hook or a CLI command's explicit
-   * `connect?.()`) — this only fires if that invariant was violated, e.g.
+   * `connect?.()`): this only fires if that invariant was violated, e.g.
    * a call after `close()` with no matching `connect()`.
    */
   protected requireSqlite(): DatabaseSync {
@@ -256,7 +228,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
    *
    * CLI commands that load the app via `loadAlephaFromServerEntryFile` set
    * `ALEPHA_CLI_IMPORT`, which makes `run(alepha)` return before
-   * `alepha.start()` — so nothing else opens this connection. Those commands
+   * `alepha.start()`, so nothing else opens this connection. Those commands
    * (e.g. `db baseline mark`) call this directly, matching the
    * `connect?()`/`close?()` pattern `db push --dry-run` already uses.
    */
@@ -286,7 +258,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
   /**
    * Close the connection opened by {@link connect}, and clear the cached
-   * handle and drizzle instance derived from it — otherwise a later
+   * handle and drizzle instance derived from it: otherwise a later
    * `connect()` would see `this.sqlite` still set and no-op, leaving the
    * provider holding a closed handle instead of reconnecting.
    */
@@ -347,7 +319,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     // it MUST happen here rather than inside the migration SQL.
     //
     // SQLite silently ignores `PRAGMA foreign_keys` inside a transaction,
-    // and drizzle wraps migrations in one — so the `PRAGMA foreign_keys=OFF`
+    // and drizzle wraps migrations in one, so the `PRAGMA foreign_keys=OFF`
     // that drizzle-kit emits at the top of a generated table-rebuild is a
     // no-op. Constraints therefore stay live, and because `DROP TABLE`
     // performs an implicit `DELETE FROM`, every `ON DELETE CASCADE` fires:

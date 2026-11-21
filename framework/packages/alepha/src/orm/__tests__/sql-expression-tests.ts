@@ -24,7 +24,7 @@ class SqlxFixture {
 
 /**
  * `dateDay` must return the same 'YYYY-MM-DD' text on both dialects for the
- * same instant — that uniformity is what lets one schema decode both.
+ * same instant: that uniformity is what lets one schema decode both.
  */
 export const testDateDay = async (alepha: Alepha) => {
   const app = alepha.inject(SqlxFixture);
@@ -47,9 +47,8 @@ export const testDateDay = async (alepha: Alepha) => {
 /**
  * ISO week boundaries are the interesting cases: 2026-01-01 is a Thursday, so
  * it belongs to ISO week 2026-W01, and 2025-12-29 (the Monday of that same
- * ISO week) must land on the identical label. Both dialects must agree —
- * today Postgres emits ISO weeks and SQLite emits `%W`, which are different
- * numbering schemes.
+ * ISO week) must land on the identical label. Both dialects must agree:
+ * Postgres has ISO weeks, SQLite computes them by the Thursday rule.
  */
 export const testDateWeek = async (alepha: Alepha) => {
   const app = alepha.inject(SqlxFixture);
@@ -76,9 +75,40 @@ export const testDateWeek = async (alepha: Alepha) => {
 };
 
 /**
+ * Buckets are UTC on every dialect, whatever the session's time zone:
+ * 2026-01-04T20:00Z is Sunday of ISO week 1, and already Monday of week 2 in
+ * Tokyo. SQLite has no session time zone; a Postgres session takes its from
+ * the server or the role, so the transaction sets one.
+ */
+export const testDateBucketsAreUtc = async (alepha: Alepha) => {
+  const app = alepha.inject(SqlxFixture);
+  await alepha.start();
+
+  await app.events.create({ id: "z1", startedAt: "2026-01-04T20:00:00.000Z" });
+
+  const column = app.events.table.startedAt;
+  const rows = await app.database.transactional(async () => {
+    if (app.database.dialect === "postgresql") {
+      await app.database.execute(sql`SET LOCAL TIME ZONE 'Asia/Tokyo'`);
+    }
+    return app.database.run(
+      sql`SELECT ${app.sqlx.dateDay(column)} AS day,
+                 ${app.sqlx.dateHour(column)} AS hour,
+                 ${app.sqlx.dateWeek(column)} AS week
+          FROM ${app.events.table}`,
+      z.object({ day: z.text(), hour: z.text(), week: z.text() }),
+    );
+  });
+
+  expect(rows).toEqual([
+    { day: "2026-01-04", hour: "2026-01-04T20", week: "2026-W01" },
+  ]);
+};
+
+/**
  * The exact shape a cycle-time metric needs: elapsed hours between two
  * timestamp columns, averaged. 36 hours apart must read as 36 on both
- * dialects — Postgres via EXTRACT(EPOCH), SQLite via the raw ms delta.
+ * dialects: Postgres via EXTRACT(EPOCH), SQLite via the raw ms delta.
  *
  * The second row has a NULL `endedAt` on purpose: NULL must propagate so
  * AVG skips it rather than counting it as zero.
@@ -226,9 +256,7 @@ export const testJsonHelpers = async (alepha: Alepha) => {
   });
   expect(() => app.sqlx.jsonSet(sql`'{}'`, ["a.b"], 1)).toThrow(/JSON path/);
 
-  // Over a real JSON array value. (A stored Postgres jsonb column is not
-  // used here: the ORM's jsonb type stores a string scalar today, which no
-  // JSON function can append to.)
+  // Over a JSON array value built in the statement.
   const array =
     app.database.dialect === "sqlite"
       ? sql`${JSON.stringify([{ action: "created" }])}`
@@ -243,15 +271,13 @@ export const testJsonHelpers = async (alepha: Alepha) => {
       : appended.history;
   expect(history).toEqual([{ action: "created" }, { action: "pinged" }]);
 
-  // And through an update of a stored array, on SQLite.
-  if (app.database.dialect === "sqlite") {
-    await app.docs.create({ id: "d1", history: [{ action: "created" }] });
-    await app.docs.updateById("d1", {
-      history: app.sqlx.jsonArrayAppend(app.docs.table.history, {
-        action: "pinged",
-      }) as never,
-    });
-    const doc = await app.docs.getById("d1");
-    expect(doc.history).toEqual([{ action: "created" }, { action: "pinged" }]);
-  }
+  // And through an update of a stored array.
+  await app.docs.create({ id: "d1", history: [{ action: "created" }] });
+  await app.docs.updateById("d1", {
+    history: app.sqlx.jsonArrayAppend(app.docs.table.history, {
+      action: "pinged",
+    }) as never,
+  });
+  const doc = await app.docs.getById("d1");
+  expect(doc.history).toEqual([{ action: "created" }, { action: "pinged" }]);
 };

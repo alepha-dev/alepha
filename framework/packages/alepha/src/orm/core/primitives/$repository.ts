@@ -22,7 +22,7 @@ export function $repository<T extends ZObject>(
  *
  * Same repository, plus `include`. The entity is addressed by its key in the
  * schema rather than by the entity object, because that key is what nested
- * includes follow to find the target's own relations — a structural lookup
+ * includes follow to find the target's own relations: a structural lookup
  * would go wrong the moment two entities happened to share a shape.
  *
  * @example
@@ -81,7 +81,7 @@ export function $repository(
 
 /**
  * Alepha injects classes, not instances, so each (relations, key) pair gets a
- * named subclass whose constructor closes over both — the same trick
+ * named subclass whose constructor closes over both: the same trick
  * `RepositoryProvider.createClassRepository` uses for plain repositories.
  *
  * Cached so repeated `$repository(relations, "campaigns")` calls resolve to

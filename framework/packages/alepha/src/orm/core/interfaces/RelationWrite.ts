@@ -30,7 +30,7 @@ type Optionalize<T, K extends PropertyKey> = Omit<T, K & keyof T> &
  * Columns that a nested write fills in for you.
  *
  * For a to-one relation the foreign key lives on *this* row, and is only known
- * once the related row exists — so it becomes optional here and is overwritten
+ * once the related row exists, so it becomes optional here and is overwritten
  * on the way through.
  */
 type FilledByNestedOne<
@@ -84,8 +84,8 @@ export type CreateData<
 };
 
 /**
- * A to-many child's data, without the foreign key pointing back at its parent
- * — that is filled from the parent row, so passing it would be ignored.
+ * A to-many child's data, without the foreign key pointing back at its parent:
+ * that is filled from the parent row, so passing it would be ignored.
  */
 type ChildCreateData<
   ZType extends EntitySchema,
@@ -173,7 +173,8 @@ export interface UpdateManyArgs<
  * Arguments to `upsert`.
  *
  * `create` is the row to insert; `update` is applied instead when `target`
- * already exists. Omitting `update` means "insert or leave alone".
+ * already exists. Omitting `update` writes the columns of `create` on the
+ * existing row.
  */
 export interface UpsertArgs<
   ZType extends EntitySchema,

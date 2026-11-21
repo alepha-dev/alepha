@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { $entity, $repository, db } from "../core/index.ts";
 
 /**
- * Four correctness findings from the framework review, each verified against
- * a real database rather than reasoned about.
+ * Three correctness cases, each run against a real database: `distinct`
+ * with joins, a patch that is not mutated, and an upsert with an empty SET.
  */
 const authors = $entity({
   name: "test_corr_authors",
@@ -44,9 +44,7 @@ class App {
 }
 
 const setup = async () => {
-  const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with(
-    AlephaOrmTestPostgres,
-  );
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   const app = alepha.inject(App);
   await alepha.start();
   return { alepha, app };
@@ -136,7 +134,7 @@ describe("upsert without an updatedAt column", () => {
 
     // The default SET removes the conflict target and the PK. When the target
     // is the ONLY field supplied and the entity has no PG_UPDATED_AT, that
-    // leaves `{}` — which drizzle cannot render.
+    // leaves `{}`, which drizzle cannot render.
     await app.contacts.upsert(
       { email: "a@example.com" },
       { target: ["email"] },

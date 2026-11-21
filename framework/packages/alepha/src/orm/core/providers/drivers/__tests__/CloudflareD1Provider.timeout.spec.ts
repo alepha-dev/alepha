@@ -94,7 +94,7 @@ describe("CloudflareD1Provider timeout", () => {
     await expect(provider.execute("select 1")).resolves.toEqual([]);
   });
 
-  it("surfaces a timeout as a retryable 503 through the repository", async () => {
+  it("surfaces a timeout as a 503 through the repository", async () => {
     const quests = $entity({
       name: "timeout_probe_quests",
       schema: z.object({

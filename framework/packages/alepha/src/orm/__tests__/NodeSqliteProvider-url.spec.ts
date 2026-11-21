@@ -7,7 +7,7 @@ import { NodeSqliteProvider } from "../core/providers/drivers/NodeSqliteProvider
 /**
  * The database path a SQLite app resolves when `DATABASE_URL` says nothing.
  *
- * Production used to silently fall back to `node_modules/.alepha/sqlite.db` —
+ * Production used to silently fall back to `node_modules/.alepha/sqlite.db`:
  * the same file `alepha dev` pushes its schema into, with an empty migrations
  * journal. A production boot then replayed the baseline onto existing tables
  * and died on `table 'alepha_sequences' already exists`.
@@ -47,7 +47,7 @@ describe("NodeSqliteProvider#url", () => {
    * `alepha db migrations apply` boots the app with `NODE_ENV=production` so
    * migrations run through the file-based path instead of the dev push. The
    * guard must not read that as a deploy, or the command becomes unusable in
-   * development — where the scratch file is exactly the database meant.
+   * development, where the scratch file is exactly the database meant.
    */
   it("should allow the scratch path for a migration run", ({ expect }) => {
     expect(

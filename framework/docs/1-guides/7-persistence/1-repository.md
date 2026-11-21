@@ -116,7 +116,7 @@ Relations between tables are NOT handled by `$entity`. Declare them separately w
 
 ### findMany
 
-Find multiple records. Supports `where`, `limit`, `offset`, `orderBy`, `groupBy`, `distinct`, `columns`, and `with` (joins). There is no `sort` or `size` here: those belong to `paginate`.
+Find multiple records. Supports `where`, `limit`, `offset`, `orderBy`, `groupBy`, `distinct`, `columns`, and `with` (joins). There is no `sort` or `size` here: those belong to `paginate`. `limit: 0` returns no row.
 
 ```typescript
 const items = await this.repo.findMany({
@@ -362,7 +362,8 @@ other rows are written: wrap it in `$transactional` to keep them out too.
 ### upsertMany
 
 Batch upsert. Same options as `upsert` (without `set`, each non-target column
-takes its incoming value), with two batch-only rules:
+takes its incoming value; rows that provide different columns go in separate
+statements, each updating its own), with two batch-only rules:
 
 - **No duplicate conflict targets within one call.** PostgreSQL refuses them
   ("cannot affect row a second time") while SQLite applies them one after the
@@ -541,6 +542,11 @@ const where: Record<string, unknown> = {};
 if (status) where.status = status;
 ```
 
+The same holds for an operator: `{ createdAt: { gte: since } }` with `since`
+undefined, or `{ id: { inArray: ids } }` with `ids` null, throws for every
+operator instead of running without that filter. `null` has no meaning as an
+operator value either: match NULL with `isNull` / `isNotNull`.
+
 ### Comparison Operators
 
 | Operator | Description           |
@@ -597,7 +603,7 @@ Both also take a subquery (see [Subqueries](#subqueries)); the "at least one val
 | `startsWith`    | Case-insensitive prefix match, like `ilike: 'value%'`     |
 | `endsWith`      | Case-insensitive suffix match, like `ilike: '%value'`     |
 
-`contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
+`contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Every pattern operator matches text: on PostgreSQL a uuid, an enum, an array or a JSON column is read as its text (an array and a JSON column as their JSON text, which is what SQLite stores). Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
 
 ### Array Operators
 

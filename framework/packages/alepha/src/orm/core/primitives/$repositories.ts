@@ -41,7 +41,7 @@ export const $repositories = <
   const repositories = {} as Repositories<ZType, TMap>;
 
   // Eager, not lazy. `$repository` reads the injection context, which only
-  // exists while the surrounding class field is initialising — a Proxy that
+  // exists while the surrounding class field is initialising: a Proxy that
   // deferred the binding to first access would resolve outside it.
   for (const key of Object.keys(relations.schema) as Array<
     keyof ZType & string

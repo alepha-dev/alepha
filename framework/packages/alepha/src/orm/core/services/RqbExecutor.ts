@@ -18,7 +18,7 @@ import { QueryManager } from "./QueryManager.ts";
 /**
  * Runs relational reads through Drizzle's own relational query builder.
  *
- * The alternative — issuing one query per relation and stitching in memory —
+ * The alternative, issuing one query per relation and stitching in memory,
  * works, but Drizzle already solves this per dialect and solves it better:
  * Postgres gets lateral joins with `json_agg`, SQLite gets correlated
  * subqueries with `json_object` / `json_group_array`, and the D1 driver alone
@@ -43,7 +43,7 @@ import { QueryManager } from "./QueryManager.ts";
  * `db.query` is built in a database's constructor, and Alepha's connection is
  * opened long before an application declares any relations. So this never
  * reconfigures that connection: it builds a second database over the same
- * *session*, which is where the connection actually lives — the session of the
+ * *session*, which is where the connection actually lives: the session of the
  * open transaction when there is one, so a relational read inside
  * `transactional()` sees the transaction's own uncommitted writes.
  */
@@ -55,7 +55,7 @@ export class RqbExecutor {
   protected readonly tracer = $inject(Tracer);
 
   /**
-   * One relational database per declaration *per session* — the session
+   * One relational database per declaration *per session*: the session
    * changes when a transaction opens, and a database built over the wrong one
    * would read around it.
    */
@@ -97,65 +97,74 @@ export class RqbExecutor {
       );
     }
 
-    for (const table of this.tablesRead(relations, entityKey, query)) {
-      await this.alepha.events.emit("repository:read:before", {
-        tableName: table,
-        query,
-      });
-    }
+    // Under the same rule as a plain read (`DatabaseProvider.statement`):
+    // the unit's signal and `DATABASE_TIMEOUT` outside a transaction, neither
+    // inside one.
+    const inTransaction =
+      tx !== null &&
+      (tx !== undefined || this.alepha.get("alepha.orm.tx") !== undefined);
 
-    // Translated outside the try: an unknown relation is a mistake in the
-    // query, and its own message says so far better than a driver-error
-    // classification would.
-    const translated = this.toRqbQuery(relations, entityKey, provider, query);
+    return provider.statement("read", { inTransaction }, async () => {
+      for (const table of this.tablesRead(relations, entityKey, query)) {
+        await this.alepha.events.emit("repository:read:before", {
+          tableName: table,
+          query,
+        });
+      }
 
-    let rows: Array<Record<string, any>>;
-    try {
-      // One statement for the whole tree: one span, named like a select on
-      // the root table (#E86).
-      rows = this.tracer.recording
-        ? await this.tracer.startSpan(
-            `select ${repository.tableName}`,
-            {
-              requireParent: true,
-              attributes: {
-                "db.system.name": provider.systemName,
-                "db.collection.name": repository.tableName,
-                "db.operation.name": "select",
+      // Translated outside the try: an unknown relation is a mistake in the
+      // query, and its own message says so far better than a driver-error
+      // classification would.
+      const translated = this.toRqbQuery(relations, entityKey, provider, query);
+
+      let rows: Array<Record<string, any>>;
+      try {
+        // One statement for the whole tree: one span, named like a select on
+        // the root table (#E86).
+        rows = this.tracer.recording
+          ? await this.tracer.startSpan(
+              `select ${repository.tableName}`,
+              {
+                requireParent: true,
+                attributes: {
+                  "db.system.name": provider.systemName,
+                  "db.collection.name": repository.tableName,
+                  "db.operation.name": "select",
+                },
               },
-            },
-            () => builder.findMany(translated),
-          )
-        : await builder.findMany(translated);
-    } catch (error) {
-      // Classified by the repository, so an `include` does not change which
-      // error a caller has to catch.
-      //
-      // The entity and the relations it pulled are named in the message
-      // because this is often the only line a caller ever sees: a boundary
-      // that logs `error.message` and drops `cause` (an MCP tool result, an
-      // HTTP error body) turns a bare "Relational query select has failed"
-      // into something nobody can act on — not which table, not which
-      // relation, not what the driver actually said. Both names are the
-      // caller's own query, so nothing here widens what a message reveals.
-      const included = Object.keys(query.include ?? {});
-      throw repository.wrapError(
-        error,
-        `Relational query select has failed on '${entityKey}'${
-          included.length ? ` (include: ${included.join(", ")})` : ""
-        }`,
-      );
-    }
+              () => builder.findMany(translated),
+            )
+          : await builder.findMany(translated);
+      } catch (error) {
+        // Classified by the repository, so an `include` does not change which
+        // error a caller has to catch.
+        //
+        // The entity and the relations it pulled are named in the message
+        // because this is often the only line a caller ever sees: a boundary
+        // that logs `error.message` and drops `cause` (an MCP tool result, an
+        // HTTP error body) turns a bare "Relational query select has failed"
+        // into something nobody can act on: not which table, not which
+        // relation, not what the driver actually said. Both names are the
+        // caller's own query, so nothing here widens what a message reveals.
+        const included = Object.keys(query.include ?? {});
+        throw repository.wrapError(
+          error,
+          `Relational query select has failed on '${entityKey}'${
+            included.length ? ` (include: ${included.join(", ")})` : ""
+          }`,
+        );
+      }
 
-    const decoded = this.decode(rows, relations, entityKey, query);
+      const decoded = this.decode(rows, relations, entityKey, query);
 
-    await this.alepha.events.emit("repository:read:after", {
-      tableName: repository.tableName,
-      query,
-      entities: decoded,
+      await this.alepha.events.emit("repository:read:after", {
+        tableName: repository.tableName,
+        query,
+        entities: decoded,
+      });
+
+      return decoded;
     });
-
-    return decoded;
   }
 
   /**
@@ -259,7 +268,7 @@ export class RqbExecutor {
    * Split a `where` into the part this repository compiles and the part that
    * names a relation.
    *
-   * Drizzle ANDs the keys of a filter, and `RAW` is one key among them — so a
+   * Drizzle ANDs the keys of a filter, and `RAW` is one key among them, so a
    * compiled column predicate and a relation filter sit side by side, and the
    * relation becomes an `EXISTS` over its own subquery. The nested side is
    * translated the same way, `RAW` included, which is what lets every Alepha
@@ -267,7 +276,7 @@ export class RqbExecutor {
    * vocabulary.
    *
    * The nested predicate goes through the target's own repository, so a
-   * filter on a relation will not match rows that entity hides — a
+   * filter on a relation will not match rows that entity hides: a
    * soft-deleted author does not make its quest match.
    */
   protected toWhere(
@@ -336,7 +345,7 @@ export class RqbExecutor {
    * Refuse a relation filter nested inside `and` / `or` / `not`.
    *
    * Those branches are compiled to SQL here, in one expression, while a
-   * relation filter is an `EXISTS` that Drizzle builds — there is no way to
+   * relation filter is an `EXISTS` that Drizzle builds: there is no way to
    * put one inside the other without re-implementing the boolean tree. Top
    * level is enough for the queries that want this, and a refusal beats a
    * predicate that quietly matches nothing.
@@ -358,7 +367,7 @@ export class RqbExecutor {
     for (const [key, value] of Object.entries(node)) {
       if (declared[key]) {
         throw new AlephaError(
-          `Filter on relation '${key}' of '${entityKey}' appears inside 'and' / 'or' / 'not', which is not supported — a relation filter compiles to EXISTS and cannot be nested in a compiled boolean expression. Lift it to the top level of the where.`,
+          `Filter on relation '${key}' of '${entityKey}' appears inside 'and' / 'or' / 'not', which is not supported: a relation filter compiles to EXISTS and cannot be nested in a compiled boolean expression. Lift it to the top level of the where.`,
         );
       }
       if (key === "and" || key === "or" || key === "not") {
@@ -405,7 +414,7 @@ export class RqbExecutor {
       });
 
     // Built against the real table first, only to find out whether there is a
-    // predicate at all — an empty one has to be left off rather than passed as
+    // predicate at all: an empty one has to be left off rather than passed as
     // an empty `RAW`.
     if (!build(provider.table(entity as EntityPrimitive))) return undefined;
 
@@ -436,7 +445,7 @@ export class RqbExecutor {
    *
    * The relational query builder decodes columns using the table definition
    * but never sees the entity schema, so this is where a value that drifted
-   * from its declared type is caught — the same guarantee a plain read gives,
+   * from its declared type is caught: the same guarantee a plain read gives,
    * restored one level at a time.
    */
   protected decode(
@@ -467,7 +476,7 @@ export class RqbExecutor {
         const value = cleaned[name];
 
         if (value == null) {
-          // A missing to-one is absent, not null — matching what an entity
+          // A missing to-one is absent, not null: matching what an entity
           // schema says an optional field looks like.
           cleaned[name] = relation.kind === "many" ? [] : undefined;
           continue;
@@ -553,7 +562,7 @@ export class RqbExecutor {
    * Drizzle's relation definition for a declaration.
    *
    * Cached apart from the database because it depends only on the tables,
-   * while the database depends on the session — and on Postgres every
+   * while the database depends on the session, and on Postgres every
    * transaction is a new session. Rebuilding the definition per transaction
    * would mean walking the whole schema on every nested write.
    */
@@ -642,7 +651,7 @@ export class RqbExecutor {
    * Rebuild the provider's database class with relations attached.
    *
    * The class comes off the connection rather than an import, so each dialect
-   * gets its own — and so does whatever `forbidJsonb` / `parseRqbJson` flag
+   * gets its own, and so does whatever `forbidJsonb` / `parseRqbJson` flag
    * that driver was constructed with, which is exactly the D1-specific
    * decision worth not losing. The *session* comes off `owner` instead, which
    * is the transaction when one is open; a transaction subclasses the database

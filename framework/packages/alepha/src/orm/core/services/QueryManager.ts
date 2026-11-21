@@ -146,7 +146,7 @@ export class QueryManager {
         }
 
         // Only `and` / `or` carry a list of nested CONDITIONS. Any other key is
-        // a column name, and an array under a column name is a VALUE — the
+        // a column name, and an array under a column name is a VALUE: the
         // shorthand `PgQueryWhereOperators` documents for an array column
         // (`{ tags: ["x", "y"] }`). Recursing into it treated each element as a
         // condition object, so `Object.keys("x")` asked for a column literally
@@ -166,7 +166,7 @@ export class QueryManager {
             })
             .filter((it) => it != null);
 
-          // Combine with the sibling conditions instead of returning early —
+          // Combine with the sibling conditions instead of returning early:
           // an early return here silently DROPPED every other key of the
           // where (e.g. `{ userId: {...}, or: [...] }` matched ALL users).
           const combined =
@@ -225,38 +225,75 @@ export class QueryManager {
   }
 
   /**
+   * Every key {@link mapOperatorToSql} reads as an operator.
+   */
+  protected readonly filterOperatorKeys = [
+    "eq",
+    "ne",
+    "gt",
+    "gte",
+    "lt",
+    "lte",
+    "inArray",
+    "notInArray",
+    "isNull",
+    "isNotNull",
+    "like",
+    "notLike",
+    "ilike",
+    "notIlike",
+    "eqInsensitive",
+    "contains",
+    "startsWith",
+    "endsWith",
+    "between",
+    "notBetween",
+    "arrayContains",
+    "arrayContained",
+    "arrayOverlaps",
+  ];
+
+  /**
    * Check if an object has any filter operator properties.
    */
   protected hasFilterOperatorProperties(obj: any): boolean {
     if (!obj || typeof obj !== "object") return false;
 
-    const filterOperatorKeys = [
-      "eq",
-      "ne",
-      "gt",
-      "gte",
-      "lt",
-      "lte",
-      "inArray",
-      "notInArray",
-      "isNull",
-      "isNotNull",
-      "like",
-      "notLike",
-      "ilike",
-      "notIlike",
-      "eqInsensitive",
-      "contains",
-      "startsWith",
-      "endsWith",
-      "between",
-      "notBetween",
-      "arrayContains",
-      "arrayContained",
-      "arrayOverlaps",
-    ];
+    return this.filterOperatorKeys.some((key) => key in obj);
+  }
 
-    return filterOperatorKeys.some((key) => key in obj);
+  /**
+   * Refuse an operator whose value is `undefined` or `null`.
+   *
+   * Every operator is read with `!= null`, so one carrying no value emits no
+   * condition and the statement runs without that filter: a `findMany`
+   * returns every row, a `deleteMany` deletes them. `null` is the same leak
+   * in JSON clothing (a request body or a saved view carries `null` where
+   * code carries `undefined`), and NULL matching has its own spelling,
+   * `isNull` / `isNotNull`.
+   */
+  protected assertOperatorValues(
+    operator: Record<string, unknown>,
+    columnName?: string,
+  ): void {
+    for (const key of this.filterOperatorKeys) {
+      if (!(key in operator)) continue;
+      const value = operator[key];
+      if (value === undefined) {
+        throw new AlephaError(
+          `Query filter${columnName ? ` '${columnName}'` : ""} has '${key}: undefined'. ` +
+            `An undefined condition would be silently dropped from the WHERE clause; ` +
+            `omit the operator instead if the filter is optional.`,
+        );
+      }
+      if (value === null) {
+        throw new AlephaError(
+          `Query filter${columnName ? ` '${columnName}'` : ""} has '${key}: null'. ` +
+            `A null condition would be silently dropped from the WHERE clause; ` +
+            `use { isNull: true } to match NULL, or omit the operator if the filter is optional.`,
+        );
+      }
+    }
   }
 
   /**
@@ -264,7 +301,7 @@ export class QueryManager {
    *
    * A value like `{ in: [1, 2] }` (the SQL spelling) instead of
    * `{ inArray: [1, 2] }` has no recognised operator key, so it fell through
-   * to the direct-value branch and produced `eq(column, <object>)` — at best
+   * to the direct-value branch and produced `eq(column, <object>)`: at best
    * a serialization error, at worst a query that silently matches nothing.
    *
    * Deliberately narrow: only names that are known aliases of real operators
@@ -378,12 +415,14 @@ export class QueryManager {
     // it against the column would refuse every such search. Passed as is.
     const patternValue = (value: any): any => value;
 
-    // A pattern over a structured Postgres column (jsonb, json, an array)
-    // matches its JSON text, which is what the column holds on SQLite: one
-    // `like: '%"bug"%'` then means the same on both dialects, where Postgres
-    // refused it outright (`operator does not exist: text[] ~~ unknown`).
-    // `jsonb::text` puts a space after each `:` and `,`, so a pattern can
-    // name a key or a value, not a `"key":"value"` pair.
+    // A pattern is matched against text. On Postgres a column that is not
+    // text is read as text, which is what it holds on SQLite: a structured
+    // column (jsonb, json, an array) by its JSON text, so one
+    // `like: '%"bug"%'` means the same on both dialects, and a uuid or a
+    // real enum by its value, where Postgres refused each outright
+    // (`operator does not exist: text[] ~~ unknown`). `jsonb::text` puts a
+    // space after each `:` and `,`, so a pattern can name a key or a value,
+    // not a `"key":"value"` pair.
     const patternTarget = (): SQL | PgColumn => {
       if (dialect !== "postgresql") return column;
       const meta = column as { getSQLType?: () => string; dimensions?: number };
@@ -394,8 +433,10 @@ export class QueryManager {
       }
       const type =
         typeof meta.getSQLType === "function" ? meta.getSQLType() : "";
-      if (type === "jsonb" || type === "json") return sql`${column}::text`;
-      return column;
+      if (type === "" || /^(text|varchar|char|citext)\b/i.test(type)) {
+        return column;
+      }
+      return sql`${column}::text`;
     };
 
     // Helper function to encode array values
@@ -416,25 +457,9 @@ export class QueryManager {
 
     const conditions: SQL[] = [];
 
-    // `eq: undefined` would be silently dropped, leaving no condition at all.
-    // Equality against "no value" is always a caller bug; `isNull` exists for
-    // NULL matching.
-    if ("eq" in operator && operator.eq === undefined) {
-      throw new AlephaError(
-        `Query filter${columnName ? ` '${columnName}'` : ""} has 'eq: undefined'. ` +
-          `An undefined condition would be silently dropped from the WHERE clause; ` +
-          `omit the operator instead if the filter is optional.`,
-      );
-    }
-
-    // Same guard for `eq: null`: `operator.eq != null` below would drop it.
-    if ("eq" in operator && operator.eq === null) {
-      throw new AlephaError(
-        `Query filter${columnName ? ` '${columnName}'` : ""} has 'eq: null'. ` +
-          `A null condition would be silently dropped from the WHERE clause; ` +
-          `use { isNull: true } to match NULL, or omit the operator if the filter is optional.`,
-      );
-    }
+    // An operator carrying no value would be silently dropped, leaving no
+    // condition at all: refused for every operator, not `eq` alone.
+    this.assertOperatorValues(operator, columnName);
 
     if (operator?.eq != null) {
       conditions.push(eq(column, encodeValue(operator.eq)));
@@ -485,7 +510,7 @@ export class QueryManager {
       conditions.push(notInArray(column, encodeArray(operator.notInArray)));
     }
 
-    // Presence is NOT the signal — the VALUE is. `!= null` made
+    // Presence is NOT the signal: the VALUE is. `!= null` made
     // `{ isNull: false }` emit `IS NULL`, the exact opposite predicate, because
     // `false != null` is true. Nothing in the where builder is allowed to mean
     // the reverse of what it reads as, so both flags now branch on the boolean.
@@ -567,7 +592,9 @@ export class QueryManager {
           sql`LOWER(${column}) LIKE LOWER(${patternValue(`%${escapedValue}%`)}) ESCAPE '\\'`,
         );
       } else {
-        conditions.push(ilike(column, patternValue(`%${escapedValue}%`)));
+        conditions.push(
+          ilike(patternTarget(), patternValue(`%${escapedValue}%`)),
+        );
       }
     }
 
@@ -584,7 +611,9 @@ export class QueryManager {
           sql`LOWER(${column}) LIKE LOWER(${patternValue(`${escapedValue}%`)}) ESCAPE '\\'`,
         );
       } else {
-        conditions.push(ilike(column, patternValue(`${escapedValue}%`)));
+        conditions.push(
+          ilike(patternTarget(), patternValue(`${escapedValue}%`)),
+        );
       }
     }
 
@@ -601,7 +630,9 @@ export class QueryManager {
           sql`LOWER(${column}) LIKE LOWER(${patternValue(`%${escapedValue}`)}) ESCAPE '\\'`,
         );
       } else {
-        conditions.push(ilike(column, patternValue(`%${escapedValue}`)));
+        conditions.push(
+          ilike(patternTarget(), patternValue(`%${escapedValue}`)),
+        );
       }
     }
 
@@ -812,7 +843,7 @@ export class QueryManager {
   /**
    * One clause, refusing a shape that has no column.
    *
-   * `{ title: "asc" }` looks like an order-by and is not one — the shape is
+   * `{ title: "asc" }` looks like an order-by and is not one: the shape is
    * `{ column, direction }`. Left alone it reaches the database as
    * `order by "undefined"`, and the driver's answer names a column nobody
    * wrote. TypeScript rejects it; this is for the callers TypeScript does not

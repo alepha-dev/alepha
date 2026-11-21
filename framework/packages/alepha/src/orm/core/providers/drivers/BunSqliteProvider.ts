@@ -112,9 +112,25 @@ export class BunSqliteProvider extends DatabaseProvider {
 
     if (this.alepha.isTest() || this.alepha.isServerless()) {
       return ":memory:";
-    } else {
-      return "node_modules/.alepha/bun-sqlite.db";
     }
+
+    // Same guard as `NodeSqliteProvider.url`, for the same reasons: the
+    // scratch file lives in `node_modules`, nothing backs it up, and
+    // `alepha dev` pushed its schema there with an empty migrations journal.
+    // A migration run is let through with a warning.
+    if (this.alepha.isProduction()) {
+      if (!this.isMigrationRun()) {
+        throw new AlephaError(
+          "DATABASE_URL is required in production. Without it the SQLite provider falls back to 'node_modules/.alepha/bun-sqlite.db', a development scratch file: it is deleted by 'npm ci', it is not backed up, and it already holds the schema 'alepha dev' pushed with an empty migrations journal, so migrations replay and fail. Set DATABASE_URL to a path outside the bundle (e.g. 'sqlite:///var/lib/myapp/db.sqlite') or to a postgres:// URL.",
+        );
+      }
+
+      this.log.warn(
+        "Migrating 'node_modules/.alepha/bun-sqlite.db', the development scratch database. Set DATABASE_URL if this was meant to migrate a deployed one.",
+      );
+    }
+
+    return "node_modules/.alepha/bun-sqlite.db";
   }
 
   /**
@@ -199,7 +215,7 @@ export class BunSqliteProvider extends DatabaseProvider {
    *
    * CLI commands that load the app via `loadAlephaFromServerEntryFile` set
    * `ALEPHA_CLI_IMPORT`, which makes `run(alepha)` return before
-   * `alepha.start()` — so nothing else opens this connection. Those commands
+   * `alepha.start()`, so nothing else opens this connection. Those commands
    * (e.g. `db baseline mark`) call this directly, matching the
    * `connect?()`/`close?()` pattern `db push --dry-run` already uses.
    */
@@ -235,6 +251,10 @@ export class BunSqliteProvider extends DatabaseProvider {
     }
 
     this.sqlite = new Database(filepath);
+    // `bun:sqlite` opens with foreign keys off, where `node:sqlite`, D1 and
+    // Postgres enforce them: without this every `db.ref()` (cascade, set
+    // null, the refusal of a dangling reference) is inert on Bun.
+    this.sqlite.run("PRAGMA foreign_keys = ON");
 
     this.bunDb = drizzle({
       client: this.sqlite,
@@ -291,7 +311,7 @@ export class BunSqliteProvider extends DatabaseProvider {
     // See NodeSqliteProvider.runMigrator for the full reasoning:
     // SQLite ignores `PRAGMA foreign_keys` inside a transaction, drizzle
     // wraps migrations in one, and `DROP TABLE` performs an implicit
-    // `DELETE FROM` — so a generated table-rebuild silently cascades every
+    // `DELETE FROM`, so a generated table-rebuild silently cascades every
     // child row away. The pragma has to be set out here, before drizzle
     // opens its transaction.
     const foreignKeysWereOn =

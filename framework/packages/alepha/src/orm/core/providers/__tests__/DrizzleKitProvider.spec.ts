@@ -61,7 +61,7 @@ describe("alepha.orm.DrizzleKitProvider", () => {
    * The lenient fallback executor skips "already exists" so a re-run against a
    * database that already has the tables is recoverable. drizzle rc.4 wraps
    * driver errors in `DrizzleQueryError`, whose own message is
-   * `Failed query: <sql>` — the driver text moved into `cause`. Matching only
+   * `Failed query: <sql>`: the driver text moved into `cause`. Matching only
    * the top-level message stopped working silently at the upgrade, which made
    * `yarn v` pass on a clean tree and fail on every run after it.
    */

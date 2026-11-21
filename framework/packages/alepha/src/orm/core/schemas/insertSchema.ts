@@ -29,7 +29,7 @@ export const insertSchema = <T extends ZObject>(obj: T): TObjectInsert<T> => {
   for (const key in obj.shape) {
     const prop = obj.shape[key];
 
-    // Skip generated columns — they are computed by the database
+    // Skip generated columns: they are computed by the database
     if (hasAttr(prop, PG_GENERATED)) {
       continue;
     }

@@ -4,8 +4,8 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 /**
  * Map a column's TypeScript value onto Drizzle's `dataType` tag.
  *
- * Drizzle's `ColumnDataType` union has no `date` or `json` member — both are
- * `object` there — so anything that is not a primitive lands on `object`.
+ * Drizzle's `ColumnDataType` union has no `date` or `json` member, both are
+ * `object` there, so anything that is not a primitive lands on `object`.
  */
 export type SchemaToDataType<T> = T extends string
   ? "string"
@@ -26,7 +26,7 @@ export type SchemaToDataType<T> = T extends string
  * **second**, so a bare `PgColumn` silently defaults both away. That single
  * detail cost this codebase two separate bugs: query results came back
  * `unknown` through anything that reads the table type, and `columns:`
- * projection never narrowed a result — the compiler kept promising fields that
+ * projection never narrowed a result: the compiler kept promising fields that
  * had already been stripped at runtime.
  */
 export type SchemaToColumn<
@@ -47,7 +47,7 @@ export type SchemaToColumn<
      * Always `true`, which is a deliberate looseness on the *insert* side.
      *
      * This config is derived from the select schema, which cannot say which
-     * columns have a database default — a generated primary key looks exactly
+     * columns have a database default: a generated primary key looks exactly
      * like a required one. Claiming `false` would make drizzle demand every
      * column on a raw `db.insert(table).values(...)`, including the ones the
      * database fills in.

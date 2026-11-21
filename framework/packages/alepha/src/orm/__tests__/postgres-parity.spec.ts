@@ -71,11 +71,11 @@ const parity = async (alepha: Alepha) => {
 };
 
 describe("postgres parity", () => {
-  it("answers as sqlite does (sqlite)", async () => {
+  it("answers the parity cases (sqlite)", async () => {
     await parity(Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }));
   });
 
-  it("answers as sqlite does (postgres)", async () => {
+  it("answers the parity cases as sqlite does (postgres)", async () => {
     await parity(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

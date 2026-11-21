@@ -150,6 +150,48 @@ describe("primaryKey", () => {
     });
   });
 
+  it("should keep int64 for primaryKey(z.int64()), as bigIdentityPrimaryKey does", () => {
+    expect(z.schema.format(db.primaryKey(z.int64()))).toBe(
+      z.schema.format(db.bigIdentityPrimaryKey()),
+    );
+    expect(z.schema.format(db.primaryKey(z.int64()))).toBe("int64");
+    expect(z.schema.format(db.primaryKey(z.integer()))).not.toBe("int64");
+  });
+
+  const testInt64PrimaryKeyPast32Bits = async (alepha: Alepha) => {
+    class App {
+      wide = $repository(
+        $entity({
+          name: "pk_int64_wide",
+          schema: z.object({
+            id: db.primaryKey(
+              z.int64(),
+              {},
+              { mode: "byDefault", minValue: 2147483647 },
+            ),
+          }),
+        }),
+      );
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    await app.wide.create({ id: 2147483647 });
+    expect(await app.wide.create({ id: 2147483648 })).toEqual({
+      id: 2147483648,
+    });
+    expect(await app.wide.getById(2147483648)).toEqual({ id: 2147483648 });
+  };
+
+  it("should build a 64-bit key for primaryKey(z.int64()) (sqlite)", async () => {
+    await testInt64PrimaryKeyPast32Bits(sqlite());
+  });
+
+  it("should build a 64-bit key for primaryKey(z.int64()) (postgres)", async () => {
+    await testInt64PrimaryKeyPast32Bits(postgres());
+  });
+
   it("should handle uuid primary key", async () => {
     class App {
       uuid = $repository(

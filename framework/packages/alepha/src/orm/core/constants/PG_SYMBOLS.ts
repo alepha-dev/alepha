@@ -63,8 +63,8 @@ export interface PgGeneratedOptions {
 
   /**
    * Storage mode for the generated column.
-   * - `"stored"` — value is computed on write and stored on disk (default for PostgreSQL).
-   * - `"virtual"` — value is computed on read (default for SQLite).
+   * - `"stored"`: value is computed on write and stored on disk (default for PostgreSQL).
+   * - `"virtual"`: value is computed on read (default for SQLite).
    */
   mode?: "stored" | "virtual";
 }

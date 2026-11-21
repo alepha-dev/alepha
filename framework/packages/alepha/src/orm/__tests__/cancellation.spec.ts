@@ -4,6 +4,7 @@ import { describe, it } from "vitest";
 
 import {
   $entity,
+  $relations,
   $repository,
   DatabaseProvider,
   db,
@@ -27,9 +28,25 @@ describe("ORM cancellation", () => {
     }),
   });
 
+  const comments = $entity({
+    name: "cancellation_comments",
+    schema: z.object({
+      id: db.primaryKey(z.integer()),
+      noteId: db.ref(z.integer(), () => notes.cols.id),
+      body: z.text(),
+    }),
+  });
+
+  const relations = $relations({ notes, comments }, (r) => ({
+    notes: {
+      comments: r.many.comments({ from: r.notes.id, to: r.comments.noteId }),
+    },
+  }));
+
   class App {
     notes = $repository(notes);
-    provider = $repository(notes).provider;
+    related = $repository(relations, "notes");
+    comments = $repository(relations, "comments");
     reads = 0;
     onRead = $hook({
       on: "repository:read:before",
@@ -66,6 +83,47 @@ describe("ORM cancellation", () => {
       expect(app.reads).toBe(0);
     });
 
+    it("refuses a relational read as it does a plain one", async ({
+      expect,
+    }) => {
+      const { alepha, app } = await postgres();
+      const signal = aborted();
+
+      await expect(
+        alepha.context.run(
+          () => app.related.findMany({ include: { comments: true } }),
+          { signal },
+        ),
+      ).rejects.toBe(signal.reason);
+      await expect(
+        alepha.context.run(
+          () => app.related.findMany({ where: { comments: {} } }),
+          { signal },
+        ),
+      ).rejects.toBe(signal.reason);
+      expect(app.reads).toBe(0);
+    });
+
+    it("lets a relational read inside a transaction run despite the abort", async ({
+      expect,
+    }) => {
+      const { alepha, app } = await postgres();
+      const provider = alepha.inject(DatabaseProvider);
+      const unit = new AbortController();
+
+      const rows = await alepha.context.run(
+        () =>
+          provider.transactional(async () => {
+            await app.notes.create({ title: "inside" });
+            unit.abort(new AbortedError("client gone"));
+            return app.related.findMany({ include: { comments: true } });
+          }),
+        { signal: unit.signal },
+      );
+
+      expect(rows.map((it) => it.title)).toEqual(["inside"]);
+    });
+
     it("releases a running read's caller on abort, and lets Postgres finish the statement", async ({
       expect,
     }) => {
@@ -86,11 +144,14 @@ describe("ORM cancellation", () => {
       expect(performance.now() - startedAt).toBeLessThan(1000);
 
       // Never cancelled (#Q3746): the statement is still running, alone.
-      const rows = await alepha
-        .inject(DatabaseProvider)
-        .execute(
-          sql`select count(*)::int as n from pg_stat_activity where state = 'active' and query like '%pg_sleep(1.25)%' and pid <> pg_backend_pid()`,
-        );
+      // `pg_stat_activity` is server-wide, so the count is scoped to this
+      // instance's own test schema, which qualifies the table in the
+      // statement text: another run of the suite sleeps on the same one.
+      const database = alepha.inject(DatabaseProvider);
+      const like = `%${database.schema}%pg_sleep(1.25)%`;
+      const rows = await database.execute(
+        sql`select count(*)::int as n from pg_stat_activity where state = 'active' and query like ${like} and pid <> pg_backend_pid()`,
+      );
       expect(Number(rows[0].n)).toBe(1);
     });
 
@@ -247,6 +308,21 @@ describe("ORM cancellation", () => {
         signal,
       });
       expect(await app.notes.count()).toBe(1);
+    });
+
+    it("refuses a relational read as it does a plain one", async ({
+      expect,
+    }) => {
+      const { alepha, app } = await sqlite();
+      const signal = aborted();
+
+      await expect(
+        alepha.context.run(
+          () => app.related.findMany({ include: { comments: true } }),
+          { signal },
+        ),
+      ).rejects.toBe(signal.reason);
+      expect(app.reads).toBe(0);
     });
   });
 });

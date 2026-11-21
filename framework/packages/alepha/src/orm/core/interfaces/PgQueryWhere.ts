@@ -29,37 +29,29 @@ type PgQueryWhereConditions<
   Relations extends PgRelationMap<ZObject> | undefined = undefined,
 > = {
   /**
-   * Combine a list of conditions with the `and` operator. Conditions
-   * that are equal `undefined` are automatically ignored.
+   * Combine a list of conditions with the `and` operator. Every entry is
+   * a condition: `undefined` is refused, not ignored.
    *
    * ## Examples
    *
    * ```ts
-   * db.select().from(cars)
-   *   .where(
-   *     and(
-   *       eq(cars.make, 'Volvo'),
-   *       eq(cars.year, 1950),
-   *     )
-   *   )
+   * repository.findMany({
+   *   where: { and: [{ make: { eq: "Volvo" } }, { year: { eq: 1950 } }] },
+   * })
    * ```
    */
   and?: Array<PgQueryWhereOrSQL<T, Relations>>;
 
   /**
-   * Combine a list of conditions with the `or` operator. Conditions
-   * that are equal `undefined` are automatically ignored.
+   * Combine a list of conditions with the `or` operator. Every entry is
+   * a condition: `undefined` is refused, not ignored.
    *
    * ## Examples
    *
    * ```ts
-   * db.select().from(cars)
-   *   .where(
-   *     or(
-   *       eq(cars.make, 'GM'),
-   *       eq(cars.make, 'Ford'),
-   *     )
-   *   )
+   * repository.findMany({
+   *   where: { or: [{ make: { eq: "GM" } }, { make: { eq: "Ford" } }] },
+   * })
    * ```
    */
   or?: Array<PgQueryWhereOrSQL<T, Relations>>;

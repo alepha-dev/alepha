@@ -24,8 +24,8 @@ const testOffsetWithoutLimit = async (alepha: Alepha) => {
     Array.from({ length: 1200 }, (_, n) => ({ n })),
   );
 
-  // Offset with no limit must return everything past the offset — not a
-  // silent 1000-row truncation — and must not mutate the caller's query.
+  // Offset with no limit must return everything past the offset, not a
+  // silent 1000-row truncation, and must not mutate the caller's query.
   const query = { offset: 100, orderBy: { column: "n" as const } };
   const rows = await app.repository.findMany(query);
 
@@ -80,5 +80,41 @@ describe("aggregate offset without limit", () => {
     await testAggregateOffsetWithoutLimit(
       Alepha.create().with(AlephaOrmTestPostgres),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * `limit: 0` asks for no row. Read as "falsy, so no limit" it returned the
+ * whole table, the trap `QueryManager.pageWindow` names for `paginate`.
+ */
+const testLimitZero = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  await app.repository.createMany(Array.from({ length: 3 }, (_, n) => ({ n })));
+
+  expect(await app.repository.findMany({ limit: 0 })).toEqual([]);
+  expect(await app.repository.findMany({ limit: 0, offset: 1 })).toEqual([]);
+  expect(
+    await app.repository.aggregate({
+      select: { n: true, id: { count: true } },
+      groupBy: ["n"],
+      limit: 0,
+    }),
+  ).toEqual([]);
+  expect(await app.repository.findMany({ limit: 2 })).toHaveLength(2);
+};
+
+describe("limit: 0", () => {
+  it("returns no row from findMany and aggregate (sqlite)", async () => {
+    await testLimitZero(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+
+  it("returns no row from findMany and aggregate (postgres)", async () => {
+    await testLimitZero(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

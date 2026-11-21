@@ -10,7 +10,7 @@ import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
  * When `MIGRATE=true` (or `MODE=MIGRATE`) is set, runs database migrations
  * via `DatabaseProvider.migrate()`, then stops the process.
  *
- * Auto-registered by `AlephaOrm` — any app using the ORM module gets
+ * Auto-registered by `AlephaOrm`: any app using the ORM module gets
  * `MIGRATE=true node app.js` for free.
  *
  * @example

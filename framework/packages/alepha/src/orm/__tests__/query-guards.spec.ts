@@ -21,7 +21,7 @@ describe("text primary keys", () => {
   it("should support a non-uuid text primary key", async () => {
     // The overload accepted any string schema but only handled
     // `format: "uuid"`, throwing "Unsupported type for primary key" for the
-    // rest — so a slug PK compiled and then crashed at startup.
+    // rest, so a slug PK compiled and then crashed at startup.
     const slugged = $entity({
       name: "test_slug_pk",
       schema: z.object({
@@ -51,7 +51,7 @@ describe("query guards", () => {
   describe("mistyped operators", () => {
     it("should reject `in` and point at `inArray`", async () => {
       // `{ in: [...] }` has no recognised operator key, so it fell through to
-      // the direct-value branch and produced eq(column, <object>) — a query
+      // the direct-value branch and produced eq(column, <object>): a query
       // that silently matches nothing.
       const alepha = Alepha.create({
         env: { DATABASE_URL: "sqlite://:memory:" },
@@ -81,7 +81,7 @@ describe("query guards", () => {
         .findMany({ where: { name: { some: "thing" } as any } })
         .catch((e) => e);
 
-      // It still fails — comparing a TEXT column to an object cannot work —
+      // It still fails, comparing a TEXT column to an object cannot work,
       // but with the driver's error, not ours.
       expect(String(error)).not.toMatch(/unknown operator/i);
     });
@@ -147,10 +147,10 @@ describe("query guards", () => {
 });
 
 describe("text primary key insert schema", () => {
-  it("should require the id — a slug PK has no server-side default", async () => {
+  it("should require the id: a slug PK has no server-side default", async () => {
     // `PG_DEFAULT` marks a column the database fills in, and `insertSchema`
     // turns every such column optional. A uuid PK earns it (the DB generates
-    // one) and an integer PK earns it (identity); a plain text PK does not —
+    // one) and an integer PK earns it (identity); a plain text PK does not:
     // there is nothing to generate, so omitting it must not typecheck and
     // must not reach the driver as a NULL primary key.
     const slugged = $entity({

@@ -25,9 +25,8 @@ cycle. Declaring relations separately, once every entity's type has already
 resolved, is the only shape that preserves full inference. Drizzle's
 `defineRelations` and Prisma's codegen both land here for the same reason.
 
-The shape deliberately mirrors `defineRelations` so the resolver behind it
-can later be swapped for Drizzle's relational query builder without moving
-a single call site.
+The shape deliberately mirrors `defineRelations`: Drizzle's relational
+query builder is the resolver behind it (`RqbExecutor`).
 
 ## Examples
 

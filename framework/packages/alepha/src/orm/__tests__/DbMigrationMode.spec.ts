@@ -13,7 +13,7 @@ const noteEntity = $entity({
 });
 
 /**
- * `MIGRATE=true node app.js` — the documented deploy-time migration step, and
+ * `MIGRATE=true node app.js`: the documented deploy-time migration step, and
  * what `alepha db migrations apply` boots underneath.
  *
  * It threw `CircularDependencyError` on every app mounting the ORM, because

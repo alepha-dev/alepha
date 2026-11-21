@@ -59,6 +59,11 @@ export class QuestFlowService {
     axis: string[],
     query: ReportsQuery,
   ): Promise<QuestFlowPoint[]> {
+    // An axis is empty when its range ends before it starts (`from` after
+    // `to`): it has no point, and no bound to read the snapshot between.
+    if (axis.length === 0) {
+      return [];
+    }
     const subject = this.subjectOf(query);
     const stored = subject
       ? await this.daily.findMany({

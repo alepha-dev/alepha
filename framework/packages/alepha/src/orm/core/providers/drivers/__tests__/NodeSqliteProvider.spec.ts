@@ -7,12 +7,12 @@ import { NodeSqliteProvider } from "../NodeSqliteProvider.ts";
 describe("NodeSqliteProvider connect/close", () => {
   /**
    * `close()` must clear the cached `sqlite` handle and `drizzleDb`
-   * instance derived from it, not just close the native connection —
+   * instance derived from it, not just close the native connection:
    * otherwise `connect()`'s "already connected" guard (`if (this.sqlite)
    * return;`) sees the stale field, no-ops, and the provider is left
    * holding a closed handle instead of reconnecting.
    *
-   * A single connect/close cycle — what `baseline mark` exercises today —
+   * A single connect/close cycle, what `baseline mark` exercises today,
    * cannot catch this; the bug only shows up on a second `connect()`. CLI
    * commands that load an unstarted app (see `baseline-mark.spec.ts`) are
    * exactly the kind of caller that manages this lifecycle by hand, so a

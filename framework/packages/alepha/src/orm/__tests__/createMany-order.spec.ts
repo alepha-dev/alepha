@@ -6,7 +6,7 @@ import { describe, it } from "vitest";
  * `createMany` returns rows index-aligned with its input, and callers
  * depend on it: a data importer rebuilds its old-id → new-id table by
  * zipping the two arrays. If the order ever drifted, every foreign key
- * in an import would be silently rewired to the wrong parent — no error,
+ * in an import would be silently rewired to the wrong parent: no error,
  * just quietly corrupt data.
  *
  * The guarantee is documented on `createMany`; this pins it, including

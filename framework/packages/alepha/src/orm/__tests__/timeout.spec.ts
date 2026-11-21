@@ -5,6 +5,7 @@ import { describe, it } from "vitest";
 
 import {
   $entity,
+  $relations,
   $repository,
   DatabaseProvider,
   DbTimeoutError,
@@ -27,8 +28,25 @@ describe("ORM timeout", () => {
     }),
   });
 
+  const comments = $entity({
+    name: "timeout_comments",
+    schema: z.object({
+      id: db.primaryKey(z.integer()),
+      noteId: db.ref(z.integer(), () => notes.cols.id),
+      body: z.text(),
+    }),
+  });
+
+  const relations = $relations({ notes, comments }, (r) => ({
+    notes: {
+      comments: r.many.comments({ from: r.notes.id, to: r.comments.noteId }),
+    },
+  }));
+
   class App {
     notes = $repository(notes);
+    related = $repository(relations, "notes");
+    comments = $repository(relations, "comments");
   }
 
   const boot = async (alepha: Alepha) => {
@@ -40,14 +58,18 @@ describe("ORM timeout", () => {
   };
 
   /**
-   * Wait, on the real clock, until postgres runs a statement matching `like`.
+   * How many statements holding `needle` postgres is running for THIS
+   * instance. `pg_stat_activity` is server-wide, and another run of the suite
+   * on the same server sleeps on the same statement: the instance's own test
+   * schema, which qualifies the table in the statement text, tells them
+   * apart.
    */
-  const running = async (alepha: Alepha, like: string): Promise<number> => {
-    const rows = await alepha
-      .inject(DatabaseProvider)
-      .execute(
-        sql`select count(*)::int as n from pg_stat_activity where state = 'active' and query like ${like} and pid <> pg_backend_pid()`,
-      );
+  const running = async (alepha: Alepha, needle: string): Promise<number> => {
+    const database = alepha.inject(DatabaseProvider);
+    const like = `%${database.schema}%${needle}%`;
+    const rows = await database.execute(
+      sql`select count(*)::int as n from pg_stat_activity where state = 'active' and query like ${like} and pid <> pg_backend_pid()`,
+    );
     return Number(rows[0].n);
   };
 
@@ -73,7 +95,7 @@ describe("ORM timeout", () => {
         .count(sql`pg_sleep(1.5) is not null`, { timeout: [1, "seconds"] })
         .catch((error: unknown) => error);
       expect(
-        await until(async () => (await running(alepha, "%pg_sleep(1.5)%")) > 0),
+        await until(async () => (await running(alepha, "pg_sleep(1.5)")) > 0),
       ).toBe(true);
       await time.travel([1, "seconds"]);
 
@@ -82,7 +104,7 @@ describe("ORM timeout", () => {
       expect((error as DbTimeoutError).status).toBe(503);
       expect((error as Error).cause).toBeInstanceOf(TimeoutError);
       // The caller is released, the statement is never cancelled (#Q3746).
-      expect(await running(alepha, "%pg_sleep(1.5)%")).toBe(1);
+      expect(await running(alepha, "pg_sleep(1.5)")).toBe(1);
     });
 
     it("reads DATABASE_TIMEOUT as the default, and a statement's own timeout wins", async ({
@@ -106,13 +128,37 @@ describe("ORM timeout", () => {
           return undefined;
         });
       expect(
-        await until(async () => (await running(alepha, "%pg_sleep(4.2)%")) > 0),
+        await until(async () => (await running(alepha, "pg_sleep(4.2)")) > 0),
       ).toBe(true);
       await time.travel([1, "seconds"]);
 
       expect(await bounded).toBeInstanceOf(DbTimeoutError);
       await unbounded;
       expect(opted).toBe(true);
+    });
+
+    it("bounds a relational read by DATABASE_TIMEOUT as it does a plain one", async ({
+      expect,
+    }) => {
+      const { alepha, app, time } = await boot(
+        Alepha.create({ env: { DATABASE_TIMEOUT: 1000 } }).with(
+          AlephaOrmTestPostgres,
+        ),
+      );
+      await app.notes.create({ title: "slow" });
+
+      const read = app.related
+        .findMany({
+          where: { and: [sql`pg_sleep(1.7) is not null`] },
+          include: { comments: true },
+        })
+        .catch((error: unknown) => error);
+      expect(
+        await until(async () => (await running(alepha, "pg_sleep(1.7)")) > 0),
+      ).toBe(true);
+      await time.travel([1, "seconds"]);
+
+      expect(await read).toBeInstanceOf(DbTimeoutError);
     });
 
     it("never makes a write inherit the unit's signal through its timeout", async ({
@@ -136,9 +182,7 @@ describe("ORM timeout", () => {
   });
 
   describe("SQLite", () => {
-    it("has no default off serverless, and lets a timed statement finish", async ({
-      expect,
-    }) => {
+    it("lets a timed statement finish", async ({ expect }) => {
       const { app } = await boot(
         Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
       );

@@ -39,7 +39,6 @@ export interface EntityPrimitiveOptions<
 > {
   /**
    * The database table name that will be created for this entity.
-   * If not provided, name will be inferred from the $repository variable name.
    */
   name: string;
 
@@ -148,7 +147,8 @@ export interface EntityPrimitiveOptions<
          */
         unique?: boolean;
         /**
-         * Custom name for the index. If not provided, generates name automatically.
+         * Name of the index. Required: an expression has no column to derive
+         * one from.
          */
         name: string;
         /**

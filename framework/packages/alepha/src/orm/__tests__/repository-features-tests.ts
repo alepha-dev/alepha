@@ -3,7 +3,14 @@ import { sql } from "drizzle-orm";
 import { expect } from "vitest";
 
 import { PG_GENERATED } from "../core/constants/PG_SYMBOLS.ts";
-import { $entity, $repository, db, pgAttr } from "../core/index.ts";
+import {
+  $entity,
+  $repository,
+  DatabaseProvider,
+  db,
+  DbConflictError,
+  pgAttr,
+} from "../core/index.ts";
 
 // ============================================================================
 // Shared entity definitions
@@ -20,7 +27,7 @@ const orderEntity = $entity({
 });
 
 // ============================================================================
-// Feature 1: Partial Indexes
+// Partial Indexes
 // ============================================================================
 
 export const testPartialIndex = async (alepha: Alepha) => {
@@ -47,17 +54,22 @@ export const testPartialIndex = async (alepha: Alepha) => {
   const app = alepha.inject(App);
   await alepha.start();
 
-  // Create an active item — unique constraint applies
+  // Create an active item: unique constraint applies
   const a = await app.repo.create({ email: "alice@test.com", active: true });
   expect(a.email).toBe("alice@test.com");
 
-  // Deactivate it — no longer covered by partial index
+  // Deactivate it: no longer covered by partial index
   await app.repo.updateById(a.id, { active: false });
 
-  // Insert same email as active — allowed because first one is inactive
+  // Insert same email as active: allowed because first one is inactive
   const b = await app.repo.create({ email: "alice@test.com", active: true });
   expect(b.email).toBe("alice@test.com");
   expect(b.id).not.toBe(a.id);
+
+  // A second ACTIVE row with that email is what the index refuses.
+  await expect(
+    app.repo.create({ email: "alice@test.com", active: true }),
+  ).rejects.toThrow(DbConflictError);
 };
 
 export const testPartialCompositeIndex = async (alepha: Alepha) => {
@@ -87,127 +99,21 @@ export const testPartialCompositeIndex = async (alepha: Alepha) => {
 
   await app.repo.create({ category: "A", name: "foo", active: true });
 
-  // Same category+name but inactive — allowed by partial index
+  // Same category+name but inactive: allowed by partial index
   await app.repo.create({ category: "A", name: "foo", active: false });
+
+  // A second active row with the same pair is what the index refuses.
+  await expect(
+    app.repo.create({ category: "A", name: "foo", active: true }),
+  ).rejects.toThrow(DbConflictError);
 
   const all = await app.repo.findMany();
   expect(all).toHaveLength(2);
 };
 
 // ============================================================================
-// Feature 2: Subqueries (exists / notExists)
+// Aggregate Functions
 // ============================================================================
-
-export const testExistsSubquery = async (alepha: Alepha) => {
-  const parentEntity = $entity({
-    name: "parents_exist",
-    schema: z.object({
-      id: db.primaryKey(z.integer()),
-      name: z.text(),
-    }),
-  });
-
-  const childEntity = $entity({
-    name: "children_exist",
-    schema: z.object({
-      id: db.primaryKey(z.integer()),
-      parentId: z.integer(),
-      label: z.text(),
-    }),
-  });
-
-  class App {
-    parents = $repository(parentEntity);
-    children = $repository(childEntity);
-  }
-
-  const app = alepha.inject(App);
-  await alepha.start();
-
-  const p1 = await app.parents.create({ name: "P1" });
-  await app.parents.create({ name: "P2" });
-  await app.children.create({ parentId: p1.id, label: "C1" });
-
-  // parents that have at least one child
-  const withChildren = await app.parents.findMany({
-    where: {
-      exists: sql`(SELECT 1 FROM children_exist WHERE children_exist.parent_id = parents_exist.id)`,
-    },
-  });
-  expect(withChildren).toHaveLength(1);
-  expect(withChildren[0].name).toBe("P1");
-
-  // parents that have NO children
-  const withoutChildren = await app.parents.findMany({
-    where: {
-      notExists: sql`(SELECT 1 FROM children_exist WHERE children_exist.parent_id = parents_exist.id)`,
-    },
-  });
-  expect(withoutChildren).toHaveLength(1);
-  expect(withoutChildren[0].name).toBe("P2");
-};
-
-// ============================================================================
-// Feature 4: Aggregate Functions
-// ============================================================================
-
-export const testAggregateBasic = async (alepha: Alepha) => {
-  class App {
-    orders = $repository(orderEntity);
-  }
-
-  const app = alepha.inject(App);
-  await alepha.start();
-
-  await app.orders.createMany([
-    { category: "A", amount: 100, status: "paid" },
-    { category: "A", amount: 200, status: "paid" },
-    { category: "B", amount: 50, status: "paid" },
-    { category: "B", amount: 150, status: "pending" },
-  ]);
-
-  // Basic grouped aggregation
-  const result = await app.orders.aggregate({
-    select: { category: true, amount: { sum: true, avg: true } },
-    groupBy: ["category"],
-    orderBy: "category",
-  });
-
-  expect(result).toHaveLength(2);
-  expect(result[0].category).toBe("A");
-  expect(result[0].amount.sum).toBe(300);
-  expect(result[0].amount.avg).toBe(150);
-  expect(result[1].category).toBe("B");
-  expect(result[1].amount.sum).toBe(200);
-};
-
-export const testAggregateMinMaxCount = async (alepha: Alepha) => {
-  class App {
-    orders = $repository(orderEntity);
-  }
-
-  const app = alepha.inject(App);
-  await alepha.start();
-
-  await app.orders.createMany([
-    { category: "X", amount: 10, status: "paid" },
-    { category: "X", amount: 30, status: "paid" },
-    { category: "X", amount: 50, status: "paid" },
-  ]);
-
-  const result = await app.orders.aggregate({
-    select: {
-      category: true,
-      amount: { min: true, max: true, count: true },
-    },
-    groupBy: ["category"],
-  });
-
-  expect(result).toHaveLength(1);
-  expect(result[0].amount.min).toBe(10);
-  expect(result[0].amount.max).toBe(50);
-  expect(result[0].amount.count).toBe(3);
-};
 
 export const testAggregateHaving = async (alepha: Alepha) => {
   class App {
@@ -263,7 +169,7 @@ export const testAggregateOrderByDotNotation = async (alepha: Alepha) => {
 };
 
 // ============================================================================
-// Feature 6: Generated Columns (SQLite only — virtual)
+// Generated Columns (SQLite only: virtual)
 // ============================================================================
 
 export const testGeneratedColumnSqlite = async (alepha: Alepha) => {
@@ -287,7 +193,7 @@ export const testGeneratedColumnSqlite = async (alepha: Alepha) => {
   const app = alepha.inject(App);
   await alepha.start();
 
-  // Insert without fullName — it's computed
+  // Insert without fullName: it's computed
   const created = await app.repo.create({
     firstName: "John",
     lastName: "Doe",
@@ -364,8 +270,20 @@ export const testGeneratedColumnExcludedFromInsertSchema = async (
 };
 
 // ============================================================================
-// Feature 7: Query Caching
+// Query Caching
 // ============================================================================
+
+/**
+ * A row written behind the repository's back: no cache is invalidated, so a
+ * cached read that still answers without it was served from the cache.
+ */
+const insertBehindTheCache = async (alepha: Alepha, app: { orders: any }) => {
+  await alepha
+    .inject(DatabaseProvider)
+    .execute(
+      sql`INSERT INTO ${app.orders.table} (category, amount, status) VALUES ('A', 5, 'paid')`,
+    );
+};
 
 export const testQueryCache = async (alepha: Alepha) => {
   class App {
@@ -374,32 +292,23 @@ export const testQueryCache = async (alepha: Alepha) => {
 
   const app = alepha.inject(App);
   await alepha.start();
+  const read = (cache?: { ttl: number }) =>
+    app.orders.findMany({ where: { category: { eq: "A" } } }, { cache });
 
   await app.orders.create({ category: "A", amount: 100, status: "paid" });
 
-  // First call — hits DB
-  const first = await app.orders.findMany(
-    { where: { category: { eq: "A" } } },
-    { cache: { ttl: 60_000 } },
-  );
-  expect(first).toHaveLength(1);
+  // First call: hits the database and fills the cache.
+  expect(await read({ ttl: 60_000 })).toHaveLength(1);
 
-  // Insert another — won't be in cache (cache was invalidated by write)
+  // A hit: the cached answer does not see the row written behind it, while
+  // an uncached read does.
+  await insertBehindTheCache(alepha, app);
+  expect(await read({ ttl: 60_000 })).toHaveLength(1);
+  expect(await read()).toHaveLength(2);
+
+  // A repository write invalidates: the next cached read is fresh.
   await app.orders.create({ category: "A", amount: 200, status: "paid" });
-
-  // This should hit DB again (cache was invalidated by the create above)
-  const afterInsert = await app.orders.findMany(
-    { where: { category: { eq: "A" } } },
-    { cache: { ttl: 60_000 } },
-  );
-  expect(afterInsert).toHaveLength(2);
-
-  // This should return cached result (no writes since last query)
-  const cached = await app.orders.findMany(
-    { where: { category: { eq: "A" } } },
-    { cache: { ttl: 60_000 } },
-  );
-  expect(cached).toHaveLength(2);
+  expect(await read({ ttl: 60_000 })).toHaveLength(3);
 };
 
 export const testQueryCacheCustomKey = async (alepha: Alepha) => {
@@ -409,20 +318,15 @@ export const testQueryCacheCustomKey = async (alepha: Alepha) => {
 
   const app = alepha.inject(App);
   await alepha.start();
+  const read = (key: string) =>
+    app.orders.findMany({}, { cache: { ttl: 60_000, key } });
 
   await app.orders.create({ category: "A", amount: 100, status: "paid" });
 
-  // Use custom cache key
-  const result = await app.orders.findMany(
-    {},
-    { cache: { ttl: 60_000, key: "all-orders" } },
-  );
-  expect(result).toHaveLength(1);
+  expect(await read("all-orders")).toHaveLength(1);
 
-  // Same custom key returns cached result
-  const cached = await app.orders.findMany(
-    {},
-    { cache: { ttl: 60_000, key: "all-orders" } },
-  );
-  expect(cached).toHaveLength(1);
+  // The same key answers from the cache, another key reads the database.
+  await insertBehindTheCache(alepha, app);
+  expect(await read("all-orders")).toHaveLength(1);
+  expect(await read("all-orders-again")).toHaveLength(2);
 };

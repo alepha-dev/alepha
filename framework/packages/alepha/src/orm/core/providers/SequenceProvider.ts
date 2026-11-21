@@ -36,7 +36,7 @@ export class SequenceProvider {
    * If the row doesn't exist yet, it's inserted with `value = start` and that
    * value is returned. Subsequent calls increment by `step`.
    *
-   * Scope defaults to "default" — pass any string to namespace per
+   * Scope defaults to "default": pass any string to namespace per
    * tenant / campaign / parent entity / etc.
    */
   public async advance(
@@ -122,7 +122,7 @@ export class SequenceProvider {
    * Reset the counter for `(name, scope)` to an explicit value. Creates the row
    * if it doesn't exist.
    *
-   * Mostly useful in tests and ops scripts — production code should rarely call
+   * Mostly useful in tests and ops scripts: production code should rarely call
    * this, since it can produce duplicate IDs if anything still holds a previously
    * advanced value.
    */

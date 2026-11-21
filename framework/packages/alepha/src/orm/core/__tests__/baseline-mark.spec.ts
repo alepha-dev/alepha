@@ -24,7 +24,7 @@ class App {
  * Write a single migration in the layout drizzle v1's migrator expects:
  * `<folder>/<14-digit-timestamp-prefixed-name>/migration.sql`.
  *
- * The SQL text is a `CREATE TABLE widgets` statement — it is never executed
+ * The SQL text is a `CREATE TABLE widgets` statement: it is never executed
  * by `markBaselineApplied`, which only records bookkeeping, so its exact
  * shape doesn't matter for these tests. What matters is that it exists, so
  * we can prove afterwards that it never ran.
@@ -92,7 +92,7 @@ describe("markBaselineApplied", () => {
 
   /**
    * The baseline file is nothing but CREATE TABLE statements. Recording it
-   * must never run them — that is the whole point of the command.
+   * must never run them: that is the whole point of the command.
    */
   it("records the baseline as applied without executing its SQL", async () => {
     writeBaselineMigration(migrationsFolder, "20260729120000_baseline");
@@ -144,7 +144,7 @@ describe("markBaselineApplied", () => {
    * `loadAlephaFromServerEntryFile`, which sets `ALEPHA_CLI_IMPORT` and so
    * never calls `alepha.start()` (see `core/index.ts`'s early return on that
    * flag). Database connections normally open in each provider's `start`
-   * hook, so the CLI's container reaches `markBaselineApplied` UNCONNECTED —
+   * hook, so the CLI's container reaches `markBaselineApplied` UNCONNECTED:
    * `boot()` above, which calls `alepha.start()`, does not reproduce that.
    *
    * The CLI command is responsible for calling `provider.connect?.()` /

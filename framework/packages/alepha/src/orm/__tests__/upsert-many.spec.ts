@@ -51,7 +51,7 @@ const testAccumulatesThroughExcluded = async (alepha: Alepha) => {
 
 /**
  * Without an explicit `set`, one statement still carries exactly one
- * `DO UPDATE` clause — so it has to update each conflicting row from the values
+ * `DO UPDATE` clause, so it has to update each conflicting row from the values
  * that row arrived with, not from whichever row of the batch came first.
  */
 const testDefaultSetUsesEachRowsOwnValues = async (alepha: Alepha) => {
@@ -90,7 +90,7 @@ const testEmptyIsANoop = async (alepha: Alepha) => {
  * duplicates themselves: Postgres refuses outright ("ON CONFLICT DO UPDATE
  * command cannot affect row a second time"), SQLite quietly applies them one
  * after another. Code written against SQLite therefore passes locally and
- * throws in Postgres — pinned in both directions so the divergence is a
+ * throws in Postgres: pinned in both directions so the divergence is a
  * documented fact rather than a surprise.
  */
 const testDuplicateTargetsPostgres = async (alepha: Alepha) => {
@@ -123,7 +123,7 @@ const testDuplicateTargetsSqlite = async (alepha: Alepha) => {
   );
 
   // Applied sequentially: inserted at 1, then the second row conflicted and
-  // added its own 1. Correct arithmetic, but do not rely on it — Postgres
+  // added its own 1. Correct arithmetic, but do not rely on it: Postgres
   // rejects the same statement.
   const [row] = await app.repository.findMany({ where: { slug: "dup" } });
   expect(row.hits).toBe(2);
@@ -285,6 +285,71 @@ const testQuotesReservedWordColumns = async (alepha: Alepha) => {
     ["outro", 4],
   ]);
 };
+
+const profiles = $entity({
+  name: "test_upsert_many_profiles",
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    slug: z.text(),
+    label: z.text(),
+    rank: z.integer().optional(),
+    note: z.text().optional(),
+  }),
+  constraints: [{ columns: ["slug"], unique: true }],
+});
+
+class ProfileApp {
+  repository = $repository(profiles);
+}
+
+/**
+ * Without `set`, a conflicting row is updated from its OWN insert data: a
+ * column the first row of the batch leaves out is still written for a later
+ * row that provides it, and left alone for a row that does not.
+ */
+const testDefaultSetWithDifferentKeys = async (alepha: Alepha) => {
+  const app = alepha.inject(ProfileApp);
+  await alepha.start();
+
+  await app.repository.createMany([
+    { slug: "a", label: "old-a", rank: 1, note: "keep-a" },
+    { slug: "b", label: "old-b", rank: 1, note: "keep-b" },
+    { slug: "c", label: "old-c", rank: 1, note: "keep-c" },
+  ]);
+
+  const returned = await app.repository.upsertMany(
+    [
+      { slug: "a", label: "new-a" },
+      { slug: "b", label: "new-b", rank: 99 },
+      { slug: "c", label: "new-c", note: "new-note" },
+      { slug: "d", label: "new-d", rank: 4 },
+    ],
+    { target: ["slug"] },
+  );
+  expect(returned).toHaveLength(4);
+
+  const rows = await app.repository.findMany({ orderBy: "slug" });
+  expect(rows.map((r) => [r.slug, r.label, r.rank, r.note])).toEqual([
+    ["a", "new-a", 1, "keep-a"],
+    ["b", "new-b", 99, "keep-b"],
+    ["c", "new-c", 1, "new-note"],
+    ["d", "new-d", 4, undefined],
+  ]);
+};
+
+describe("upsertMany without set, rows with different columns", () => {
+  it("updates each conflicting row from its own columns (sqlite)", async () => {
+    await testDefaultSetWithDifferentKeys(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+
+  it("updates each conflicting row from its own columns (postgres)", async () => {
+    await testDefaultSetWithDifferentKeys(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
+  });
+});
 
 describe("upsertMany on reserved-word columns", () => {
   it("quotes the generated excluded reference (sqlite)", async () => {

@@ -7,6 +7,7 @@ import {
   $repository,
   DatabaseProvider,
   db,
+  DbError,
   sql,
 } from "../core/index.ts";
 import {
@@ -19,8 +20,7 @@ import {
  *
  * This test suite validates that the ORM properly sanitizes and escapes user input
  * to prevent SQL injection attacks across various scenarios:
- * - Basic filter operators (eq, ne, like, ilike, etc.)
- * - JSONB queries
+ * - Basic filter operators (eq, ne, contains, inArray, etc.)
  * - Array operators
  * - Raw SQL queries
  * - Both PostgreSQL and SQLite
@@ -115,7 +115,7 @@ describe("SQL Injection Security Tests", () => {
     "' || '1",
     "'; ATTACH DATABASE 'file' AS db;--",
 
-    // JSONB injection attempts (PostgreSQL)
+    // JSON operator spellings (PostgreSQL)
     "' -> 'key",
     "' ->> 'key",
     "' #> '{key}'",
@@ -180,8 +180,8 @@ describe("SQL Injection Security Tests", () => {
             where: { username: { ne: payload } },
           });
 
-          // Should return the legitimate user
-          expect(result.length).toBeGreaterThanOrEqual(0);
+          // The one legitimate user: no payload is its username.
+          expect(result).toHaveLength(1);
         }
       });
 
@@ -255,23 +255,32 @@ describe("SQL Injection Security Tests", () => {
           metadata: { permissions: ["admin", "read", "write"] },
         });
 
-        // Numeric operators should either reject non-numeric payloads or treat them safely
-        // PostgreSQL will throw a type error for invalid integer syntax
-        // This is actually GOOD - the database layer is rejecting malicious input
+        // A payload is a bound value, never SQL: PostgreSQL refuses the
+        // ones that are no integer, and compares the few it can read as one
+        // (`0x27` is 39 since PostgreSQL 16). Either way the answer is the
+        // seeded row or nothing, and the table is left as it was.
         for (const payload of sqlInjectionPayloads) {
-          try {
-            const result = await app.users.findMany({
-              where: { age: { gt: payload as any } },
-            });
-
-            // If it doesn't throw, it should return safe results
-            expect(Array.isArray(result)).toBe(true);
-          } catch (error) {
-            // PostgreSQL rejects invalid integer syntax - this is expected and safe
-            // The SQL is still parameterized, preventing injection
-            expect(error).toBeDefined();
+          for (const operator of ["gt", "gte", "lt", "lte"] as const) {
+            const outcome = await app.users
+              .findMany({ where: { age: { [operator]: payload as any } } })
+              .then(
+                (rows) => rows.map((row) => row.username),
+                (error: unknown) => error,
+              );
+            if (Array.isArray(outcome)) {
+              expect(["", "eve"], `${operator}: ${payload}`).toContain(
+                outcome.join(","),
+              );
+            } else {
+              expect(outcome, `${operator}: ${payload}`).toBeInstanceOf(
+                DbError,
+              );
+            }
           }
         }
+
+        const after = await app.users.findMany();
+        expect(after.map((row) => row.username)).toEqual(["eve"]);
       });
 
       it("should prevent SQL injection in inArray operator", async () => {
@@ -608,31 +617,28 @@ describe("SQL Injection Security Tests", () => {
       ];
 
       for (const char of specialChars) {
-        try {
-          const created = await app.users.create({
-            username: char,
-            email: `${char}@example.com`,
-            age: 25,
-            profile: {
-              bio: char,
-              settings: { theme: "dark", notifications: true },
-            },
-            tags: [char],
-            metadata: { permissions: [char] },
-          });
+        const created = await app.users.create({
+          username: char,
+          email: `${char}@example.com`,
+          age: 25,
+          profile: {
+            bio: char,
+            settings: { theme: "dark", notifications: true },
+          },
+          tags: [char],
+          metadata: { permissions: [char] },
+        });
 
-          const found = await app.users.getOne({
-            where: { username: { eq: char } },
-          });
+        // `z.text()` trims, so the whitespace-only case is stored empty.
+        expect(created.username).toBe(char.trim());
 
-          expect(found.id).toBe(created.id);
-          expect(found.username).toBe(char);
-        } catch (error) {
-          // Some special characters may have database-specific limitations
-          // (e.g., PostgreSQL doesn't support null bytes in text fields)
-          // The important thing is that it fails safely without SQL injection
-          expect(error).toBeDefined();
-        }
+        const found = await app.users.getOne({
+          where: { id: { eq: created.id }, username: { eq: char.trim() } },
+        });
+
+        expect(found.username).toBe(char.trim());
+        expect(found.tags).toEqual([char.trim()]);
+        expect(found.profile.bio).toBe(char.trim());
       }
     });
 
@@ -666,7 +672,7 @@ describe("SQL Injection Security Tests", () => {
       expect(found.username).toBe(longString);
     });
 
-    it("should handle empty strings and nulls", async () => {
+    it("should handle empty strings", async () => {
       const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();

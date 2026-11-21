@@ -20,9 +20,8 @@ import type { EntityPrimitive } from "./$entity.ts";
  * resolved, is the only shape that preserves full inference. Drizzle's
  * `defineRelations` and Prisma's codegen both land here for the same reason.
  *
- * The shape deliberately mirrors `defineRelations` so the resolver behind it
- * can later be swapped for Drizzle's relational query builder without moving
- * a single call site.
+ * The shape deliberately mirrors `defineRelations`: Drizzle's relational
+ * query builder is the resolver behind it (`RqbExecutor`).
  *
  * @example
  * ```ts
@@ -73,8 +72,8 @@ export const $relations = <
         from: on.from.column,
         to: on.to.column,
         // Both sides must agree on the junction table, and each names its own
-        // column on it. An un-hopped ref still carries `through` — as the
-        // *method* — so the check is for an object, not for presence.
+        // column on it. An un-hopped ref still carries `through`, as the
+        // *method*, so the check is for an object, not for presence.
         through: junctionOf(on.from, on.to),
       });
     }
@@ -101,7 +100,7 @@ const junctionOf = (
 
   if (!fromHop || !toHop) {
     throw new AlephaError(
-      "A many-to-many relation must call .through() on both sides — one side alone leaves no column to match on the other.",
+      "A many-to-many relation must call .through() on both sides: one side alone leaves no column to match on the other.",
     );
   }
 
@@ -143,7 +142,7 @@ const makeColumnRef = (entity: string, column: string) => ({
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * A map of key to entity — the same shape `defineRelations` takes. These keys
+ * A map of key to entity: the same shape `defineRelations` takes. These keys
  * are how relations address one another, and how `include` results are named.
  */
 export type EntitySchema = Record<string, EntityPrimitive<any>>;
@@ -200,7 +199,7 @@ export interface Relation<
    */
   from: TFrom;
   /**
-   * Column on the target entity — the one a nested write fills in.
+   * Column on the target entity: the one a nested write fills in.
    */
   to: TTo;
 }
@@ -253,7 +252,7 @@ export interface ColumnRef<
   column: TColumn;
   through?: { entity: string; column: string };
   /**
-   * Phantom — carries the column's value type for inference only.
+   * Phantom: carries the column's value type for inference only.
    */
   __value?: TValue;
   /**
@@ -271,7 +270,7 @@ export interface ColumnRef<
  * Branded so the builder can tell the two cases apart. It matters: a direct
  * relation requires both sides to carry the *same* value type (a foreign key
  * and the column it points at), whereas the two sides of a many-to-many are
- * linked only through the junction and are routinely different types — here,
+ * linked only through the junction and are routinely different types: here,
  * a uuid on one side and an integer on the other.
  */
 export interface HoppedColumnRef<
@@ -301,7 +300,7 @@ export type HoppableColumnRef<
 };
 
 /**
- * Builds one relation. Two shapes, and the order matters — the junction case
+ * Builds one relation. Two shapes, and the order matters: the junction case
  * is tried first, because a hopped ref also satisfies the direct signature and
  * would otherwise be rejected for having mismatched value types.
  */
@@ -335,7 +334,7 @@ export type ColumnRefs<ZType extends EntitySchema> = {
 
 export type RelationBuilders<ZType extends EntitySchema> = ColumnRefs<ZType> & {
   /**
-   * A to-one relation. Resolves to `Target | undefined` — undefined when
+   * A to-one relation. Resolves to `Target | undefined`: undefined when
    * the foreign key is null or no row matches.
    */
   one: {
