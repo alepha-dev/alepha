@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 
 import { I18nCheckService } from "../services/I18nCheckService.ts";
 
@@ -46,7 +46,7 @@ ${body}
     env = createEnv();
   });
 
-  it("reports keys with no quoted reference as unused", async () => {
+  it("reports keys with no quoted reference as unused", async ({ expect }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -69,7 +69,7 @@ ${body}
     expect(result.dictionaryFiles).toHaveLength(1);
   });
 
-  it("exempts keys matching a dynamic prefix", async () => {
+  it("exempts keys matching a dynamic prefix", async ({ expect }) => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/I18n.ts`,
@@ -95,13 +95,13 @@ ${body}
     expect(result.exemptKeys).toBe(2);
   });
 
-  it("skips excluded paths and built-in excludes", async () => {
+  it("skips excluded paths and built-in excludes", async ({ expect }) => {
     await env.fs.mkdir(`${ROOT}/src/__tests__`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/I18n.ts`,
       dictionary({ "home.title": "Home" }),
     );
-    // Reference lives only in an excluded test file — should not count.
+    // Reference lives only in an excluded test file: it should not count.
     await env.fs.writeFile(
       `${ROOT}/src/__tests__/Home.spec.ts`,
       `tr("home.title");`,
@@ -117,7 +117,9 @@ ${body}
     expect(result.unused).toEqual(["home.title"]);
   });
 
-  it("excludes node_modules, dist and tests from a Windows path too (#Q3728)", () => {
+  it("excludes node_modules, dist and tests from a Windows path too (#Q3728)", ({
+    expect,
+  }) => {
     const service = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .inject(TestI18nCheckService);
@@ -142,7 +144,9 @@ ${body}
     );
   });
 
-  it("extracts keys from lazily-imported per-language files", async () => {
+  it("extracts keys from lazily-imported per-language files", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web/i18n`, { recursive: true });
     // Marker file declares `$dictionary` but the keys live in split,
     // markerless per-language files referenced via `lazy: () => import(...)`.
@@ -165,7 +169,7 @@ export class Router {
       `${ROOT}/src/web/i18n/en.ts`,
       `export default { "home.title": "Home", "home.unused": "Nothing" };`,
     );
-    // The only reference — `home.unused` is dead in both languages. The
+    // The only reference: `home.unused` is dead in both languages. The
     // `"home.title": "…"` lines in the sibling language file must not count
     // as references (key files are excluded from the usage corpus).
     await env.fs.writeFile(
@@ -190,7 +194,9 @@ export class Router {
     expect(result.dictionaryFiles).not.toContain(`${ROOT}/src/web/Home.tsx`);
   });
 
-  it("reports {0}-style placeholders, which never interpolate", async () => {
+  it("reports {0}-style placeholders, which never interpolate", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -220,9 +226,11 @@ export class Router {
     ]);
   });
 
-  it("attributes a placeholder to its key even when the value wraps", async () => {
+  it("attributes a placeholder to its key even when the value wraps", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
-    // A formatter is free to break a long entry onto its own line — the
+    // A formatter is free to break a long entry onto its own line: the
     // placeholder is then nowhere near the key declaration.
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -261,7 +269,9 @@ export class I18n {
     ]);
   });
 
-  it("reports a tr() call passing fewer args than its key needs", async () => {
+  it("reports a tr() call passing fewer args than its key needs", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -297,7 +307,9 @@ export class I18n {
     ]);
   });
 
-  it("does not flag what it cannot count, or keys that are not calls", async () => {
+  it("does not flag what it cannot count, or keys that are not calls", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -325,18 +337,20 @@ export class I18n {
     });
 
     // `a.spread` is unknowable, `a.default` passes one, and `a.listed` never
-    // appears as a call at all — a bare key in a nav array is not a call site.
+    // appears as a call at all: a bare key in a nav array is not a call site.
     expect(result.missingArgs).toEqual([]);
   });
 
   /**
    * An entry's value is read as the text up to the NEXT declaration, so a
    * comment in that gap counted as part of the entry above it. A dictionary
-   * documenting its placeholders — `// "$1" = label, "$2" = range` — therefore
+   * documenting its placeholders (`// "$1" = label, "$2" = range`) therefore
    * made the preceding entry demand two arguments, and a correct call site was
    * reported as passing too few. The dictionary's own documentation broke it.
    */
-  it("ignores comments when measuring how many arguments an entry needs", async () => {
+  it("ignores comments when measuring how many arguments an entry needs", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -375,7 +389,9 @@ export class I18n {
     expect(result.missingArgs).toEqual([]);
   });
 
-  it("treats // inside a value as text, not as the start of a comment", async () => {
+  it("treats // inside a value as text, not as the start of a comment", async ({
+    expect,
+  }) => {
     await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/web/I18n.ts`,
@@ -448,7 +464,9 @@ export class I18n {
 }
 `;
 
-    it("reports a readable call that omits a {name} used in any variant", async () => {
+    it("reports a readable call that omits a {name} used in any variant", async ({
+      expect,
+    }) => {
       const result = await run(
         variantDictionary,
         `export const P = () => [
@@ -477,7 +495,9 @@ export class I18n {
       expect(result.badPlaceholders).toEqual([]);
     });
 
-    it("leaves alone what it cannot read, and reads translate()'s positional form", async () => {
+    it("leaves alone what it cannot read, and reads translate()'s positional form", async ({
+      expect,
+    }) => {
       const result = await run(
         variantDictionary,
         "export const P = () => [\n" +
@@ -501,14 +521,15 @@ export class I18n {
       ]);
     });
 
-    it("still refuses {0}, and ignores a template literal's ${name}", async () => {
+    it("still refuses {0}, and ignores a template literal's ${name}", async ({
+      expect,
+    }) => {
       const result = await run(
         `import { $dictionary } from "alepha/react/i18n";
 export class I18n {
   en = $dictionary({
-    lazy: async () => ({ default: { "a.num": "Count {0}" } }),
+    lazy: async () => ({ default: { "a.num": \`Count {0} \${suffix}\` } }),
   });
-  label = \`\${this.name}\`;
 }
 `,
         `export const P = () => tr("a.num");`,
@@ -537,7 +558,9 @@ export class I18n {
   tr("mixed.key", { count }),
 ];`;
 
-    it("checks lazily imported per-language files against their language", async () => {
+    it("checks lazily imported per-language files against their language", async ({
+      expect,
+    }) => {
       await env.fs.mkdir(`${ROOT}/src/locales`, { recursive: true });
       await env.fs.writeFile(
         `${ROOT}/src/I18n.ts`,
@@ -655,7 +678,9 @@ export class I18n {
       ]);
     });
 
-    it("reads an inline dictionary with two languages in one file, wrapped and commented", async () => {
+    it("reads an inline dictionary with two languages in one file, wrapped and commented", async ({
+      expect,
+    }) => {
       await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
       await env.fs.writeFile(
         `${ROOT}/src/I18n.ts`,
@@ -711,7 +736,9 @@ export class I18n {
       ]);
     });
 
-    it("skips a spread record, which has no provable language, and leaves a select alone", async () => {
+    it("skips a spread record, which has no provable language, and leaves a select alone", async ({
+      expect,
+    }) => {
       await env.fs.mkdir(`${ROOT}/src/i18n`, { recursive: true });
       await env.fs.writeFile(
         `${ROOT}/src/i18n/kitPl.ts`,
@@ -751,7 +778,114 @@ export class I18n {
     });
   });
 
-  it("returns totalKeys=0 when no dictionary is found", async () => {
+  it("counts a reference in the file that declares the dictionary, but not the declaration itself", async ({
+    expect,
+  }) => {
+    await env.fs.writeFile(
+      `${ROOT}/src/AppRouter.tsx`,
+      `import { $dictionary } from "alepha/react/i18n";
+export class AppRouter {
+  en = $dictionary({ lazy: () => import("./en.ts") });
+  fr = $dictionary({
+    lazy: async () => ({ default: { "inline.used": "Oui $1", "inline.unused": "Non" } }),
+  });
+  title = () => tr("home.title");
+  inline = () => tr("inline.used");
+}
+`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/en.ts`,
+      `export default { "home.title": "Home", "home.unused": "Nothing" };`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.totalKeys).toBe(4);
+    expect(result.unused).toEqual(["home.unused", "inline.unused"]);
+    // The call sites of that file are checked for arguments too.
+    expect(result.missingArgs).toEqual([
+      {
+        key: "inline.used",
+        needs: 1,
+        got: 0,
+        file: `${ROOT}/src/AppRouter.tsx`,
+      },
+    ]);
+  });
+
+  it("reads an entry's placeholders up to the end of its dictionary, not of the file", async ({
+    expect,
+  }) => {
+    await env.fs.writeFile(
+      `${ROOT}/src/I18n.tsx`,
+      `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({ default: { "home.title": "Welcome" } }),
+  });
+  fr = $dictionary({
+    lazy: async () => ({ default: { "home.title": "Bienvenue {name}" } }),
+  });
+}
+export const Badge = (props: { label: string }) => <b>{label}</b>;
+const cost = "$3";
+const zero = "{0}";
+`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/Home.tsx`,
+      `export const Home = () => tr("home.title", { args: { name: "Ada" } });`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.missingNames).toEqual([]);
+    expect(result.missingArgs).toEqual([]);
+    expect(result.badPlaceholders).toEqual([]);
+    expect(result.unused).toEqual([]);
+  });
+
+  it("scans a project that lives under a directory named like a built-in exclude", async ({
+    expect,
+  }) => {
+    const root = "/work/dist/app";
+    await env.fs.writeFile(
+      `${root}/src/I18n.ts`,
+      dictionary({ "home.title": "Home", "home.tested": "Tested" }),
+    );
+    await env.fs.writeFile(
+      `${root}/src/Home.tsx`,
+      `export const Home = () => tr("home.title");`,
+    );
+    // The excludes still apply inside the project.
+    await env.fs.writeFile(
+      `${root}/src/dist/Built.tsx`,
+      `export const Built = () => tr("home.tested");`,
+    );
+
+    const result = await env.service.check({
+      root,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.totalKeys).toBe(2);
+    expect(result.unused).toEqual(["home.tested"]);
+  });
+
+  it("returns totalKeys=0 when no dictionary is found", async ({ expect }) => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
       `${ROOT}/src/App.tsx`,

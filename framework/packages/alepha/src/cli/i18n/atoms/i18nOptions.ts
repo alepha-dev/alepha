@@ -25,7 +25,7 @@ export const i18nOptions = $atom({
        * starting with one of these prefixes is exempted from the
        * unused check.
        *
-       * Keep this list short and audit it when a feature is removed —
+       * Keep this list short and audit it when a feature is removed:
        * a stale prefix here means dead keys can hide.
        *
        * @default []

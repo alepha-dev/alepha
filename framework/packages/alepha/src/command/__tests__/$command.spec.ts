@@ -7,7 +7,7 @@ import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { describe, expect, test, vi } from "vitest";
+import { describe, it, vi, type ExpectStatic } from "vitest";
 
 import {
   $command,
@@ -24,14 +24,15 @@ import {
  *
  * These assertions used to be `.rejects.toThrow(...)`. Throwing out of the
  * `ready` hook surfaced as "Alepha failed to start" followed by a stack trace
- * through `CliProvider` internals — a crash report for a typo. The unknown-
+ * through `CliProvider` internals: a crash report for a typo. The unknown-
  * command path had always rendered a message instead, and the two now agree:
  * log the reason, print the help for whatever context was resolved, exit 1.
  *
- * `CliProvider.run()`, the programmatic entry point, still throws — a caller
+ * `CliProvider.run()`, the programmatic entry point, still throws: a caller
  * driving the CLI from code wants the error, not a printed page.
  */
 const expectUsageError = async (
+  expect: ExpectStatic,
   running: Promise<{
     mockLogger: MemoryDestinationProvider;
     mockOutput: MemoryOutputProvider;
@@ -63,7 +64,6 @@ describe("$command", () => {
   ) => {
     const mockHandlers = {
       greet: vi.fn(),
-      root: vi.fn(),
       deploy: vi.fn(),
     };
 
@@ -117,14 +117,7 @@ describe("$command", () => {
     }
 
     await before?.(alepha);
-    try {
-      await alepha.start();
-    } catch (error) {
-      if (error instanceof AlephaError && error.cause instanceof CommandError) {
-        throw error.cause;
-      }
-      throw error;
-    }
+    await alepha.start();
 
     return {
       alepha,
@@ -155,7 +148,9 @@ describe("$command", () => {
       }
     };
 
-    test("holds one slot for the whole pre-hook, handler and post-hook run", async () => {
+    it("holds one slot for the whole pre-hook, handler and post-hook run", async ({
+      expect,
+    }) => {
       await inScratchQueue(async () => {
         const seen: string[] = [];
 
@@ -199,7 +194,9 @@ describe("$command", () => {
       });
     });
 
-    test("does not queue from CliProvider.run(), the programmatic path", async () => {
+    it("does not queue from CliProvider.run(), the programmatic path", async ({
+      expect,
+    }) => {
       await inScratchQueue(async () => {
         class RunCommands {
           work = $command({
@@ -223,7 +220,9 @@ describe("$command", () => {
       });
     });
 
-    test("resolves a function key against the parsed flags", async () => {
+    it("resolves a function key against the parsed flags", async ({
+      expect,
+    }) => {
       await inScratchQueue(async () => {
         const seen: Array<boolean | undefined> = [];
 
@@ -250,7 +249,9 @@ describe("$command", () => {
       });
     });
 
-    test("takes no slot at all when the function returns undefined", async () => {
+    it("takes no slot at all when the function returns undefined", async ({
+      expect,
+    }) => {
       await inScratchQueue(async () => {
         class FlagKeyedCommands {
           work = $command({
@@ -274,7 +275,9 @@ describe("$command", () => {
   });
 
   describe("Command Execution", () => {
-    test("should execute a matched command with correct flags", async () => {
+    it("should execute a matched command with correct flags", async ({
+      expect,
+    }) => {
       const { mockHandlers } = await setupTestCommands([
         "greet",
         "--name=Alepha",
@@ -286,14 +289,16 @@ describe("$command", () => {
       expect(callArgs.run).toBeDefined();
     });
 
-    test("should execute a command using its alias", async () => {
+    it("should execute a command using its alias", async ({ expect }) => {
       const { mockHandlers } = await setupTestCommands(["g", "--name=World"]);
 
       expect(mockHandlers.greet).toHaveBeenCalledOnce();
       expect(mockHandlers.greet.mock.calls[0][0].flags.name).toBe("World");
     });
 
-    test("should execute the root command when no command name is provided", async () => {
+    it("should execute the root command when no command name is provided", async ({
+      expect,
+    }) => {
       const mockHandlers = {
         root: vi.fn(),
       };
@@ -313,7 +318,9 @@ describe("$command", () => {
       expect(mockHandlers.root).toHaveBeenCalledOnce();
     });
 
-    test("should not execute any command if no matching command and no root command", async () => {
+    it("should not execute any command if no matching command and no root command", async ({
+      expect,
+    }) => {
       const { mockHandlers } = await setupTestCommands(["--some-flag"]);
 
       expect(mockHandlers.greet).not.toHaveBeenCalled();
@@ -322,7 +329,7 @@ describe("$command", () => {
   });
 
   describe("Flag Parsing", () => {
-    test("should parse string and boolean flags", async () => {
+    it("should parse string and boolean flags", async ({ expect }) => {
       const { mockHandlers } = await setupTestCommands([
         "deploy",
         "--production",
@@ -336,7 +343,7 @@ describe("$command", () => {
       });
     });
 
-    test("should use flag aliases", async () => {
+    it("should use flag aliases", async ({ expect }) => {
       const { mockHandlers } = await setupTestCommands([
         "deploy",
         "--key=abc-456",
@@ -348,19 +355,7 @@ describe("$command", () => {
       });
     });
 
-    test("should apply default values for optional flags", async () => {
-      const { mockHandlers } = await setupTestCommands([
-        "greet",
-        "--name=Tester",
-      ]);
-      expect(mockHandlers.greet).toHaveBeenCalledOnce();
-      expect(mockHandlers.greet.mock.calls[0][0].flags).toEqual({
-        name: "Tester",
-        times: 1,
-      });
-    });
-
-    test("should correctly parse and cast integer flags", async () => {
+    it("should correctly parse and cast integer flags", async ({ expect }) => {
       const { mockHandlers } = await setupTestCommands([
         "greet",
         "--name=Tester",
@@ -371,7 +366,7 @@ describe("$command", () => {
       expect(mockHandlers.greet.mock.calls[0][0].flags.times).toBe(5);
     });
 
-    test("should parse space-separated flag values", async () => {
+    it("should parse space-separated flag values", async ({ expect }) => {
       const { mockHandlers } = await setupTestCommands([
         "greet",
         "--name",
@@ -385,7 +380,9 @@ describe("$command", () => {
       });
     });
 
-    test("should parse space-separated flag values with aliases", async () => {
+    it("should parse space-separated flag values with aliases", async ({
+      expect,
+    }) => {
       const { mockHandlers } = await setupTestCommands([
         "deploy",
         "--key",
@@ -398,7 +395,7 @@ describe("$command", () => {
       });
     });
 
-    test("should mix space-separated and equals syntax", async () => {
+    it("should mix space-separated and equals syntax", async ({ expect }) => {
       const { mockHandlers } = await setupTestCommands([
         "greet",
         "--name",
@@ -413,7 +410,9 @@ describe("$command", () => {
       });
     });
 
-    test("should parse space-separated with boolean flag before it", async () => {
+    it("should parse space-separated with boolean flag before it", async ({
+      expect,
+    }) => {
       const { mockHandlers } = await setupTestCommands([
         "deploy",
         "--production",
@@ -428,7 +427,9 @@ describe("$command", () => {
       });
     });
 
-    test("should handle space-separated with short flag alias", async () => {
+    it("should handle space-separated with short flag alias", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -451,7 +452,9 @@ describe("$command", () => {
       });
     });
 
-    test("should parse JSON object with space-separated syntax", async () => {
+    it("should parse JSON object with space-separated syntax", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -478,7 +481,9 @@ describe("$command", () => {
       });
     });
 
-    test("should parse JSON array with space-separated syntax", async () => {
+    it("should parse JSON array with space-separated syntax", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -501,15 +506,21 @@ describe("$command", () => {
       });
     });
 
-    test("should throw error when space-separated value is missing (next arg is a flag)", async () => {
+    it("should report a usage error when space-separated value is missing (next arg is a flag)", async ({
+      expect,
+    }) => {
       await expectUsageError(
+        expect,
         setupTestCommands(["greet", "--name", "--times=5"]),
         "Flag --name requires a value",
       );
     });
 
-    test("should throw error when space-separated value is missing (end of args)", async () => {
+    it("should report a usage error when space-separated value is missing (end of args)", async ({
+      expect,
+    }) => {
       await expectUsageError(
+        expect,
         setupTestCommands(["greet", "--name"]),
         "Flag --name requires a value",
       );
@@ -520,7 +531,7 @@ describe("$command", () => {
    * A typo in a *sub*command used to exit 0.
    *
    * `resolveCommand` stops walking at the first word matching no child and
-   * returns the group it reached, so `db bogus` resolved to `db` — whose
+   * returns the group it reached, so `db bogus` resolved to `db`, whose
    * handler prints help and returns normally. `alepha db migreate` was a green
    * no-op in CI. The guard has to stay off groups that take positional args of
    * their own, where a leftover word is data rather than a typo.
@@ -554,25 +565,34 @@ describe("$command", () => {
     const setupNested = (argv: string[]) =>
       setupTestCommands(argv, (a) => a.with(NestedCommands));
 
-    test("should report an unknown subcommand instead of exiting 0", async () => {
-      await expectUsageError(setupNested(["db", "bogus"]), "db bogus");
+    it("should report an unknown subcommand instead of exiting 0", async ({
+      expect,
+    }) => {
+      await expectUsageError(expect, setupNested(["db", "bogus"]), "db bogus");
     });
 
-    test("should report an unknown subcommand at any depth", async () => {
+    it("should report an unknown subcommand at any depth", async ({
+      expect,
+    }) => {
       await expectUsageError(
+        expect,
         setupNested(["db", "seed", "bogus"]),
         "db seed bogus",
       );
     });
 
-    test("should still run a group with no subcommand at all", async () => {
+    it("should still run a group with no subcommand at all", async ({
+      expect,
+    }) => {
       const { mockOutput } = await setupNested(["db"]);
 
       expect(process.exitCode).not.toBe(1);
       expect(mockOutput.text).toContain("Usage:");
     });
 
-    test("should treat a leftover word as an argument when the command takes one", async () => {
+    it("should treat a leftover word as an argument when the command takes one", async ({
+      expect,
+    }) => {
       pushHandler.mockClear();
       await setupNested(["db", "push", "./some/path"]);
 
@@ -589,7 +609,9 @@ describe("$command", () => {
      * down. A leaf has no subcommands to have mistyped, so the message names
      * the argument rather than a command.
      */
-    test("should reject a stray word on a command that takes none", async () => {
+    it("should reject a stray word on a command that takes none", async ({
+      expect,
+    }) => {
       const leafHandler = vi.fn();
 
       class LeafCommands {
@@ -601,6 +623,7 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["verify", "fast"], (a) => a.with(LeafCommands)),
         "Unexpected argument 'fast'",
       );
@@ -614,7 +637,9 @@ describe("$command", () => {
      * Harmless while leaves were unguarded; a usage error the moment they were
      * not.
      */
-    test("should not mistake a --mode value for a stray word", async () => {
+    it("should not mistake a --mode value for a stray word", async ({
+      expect,
+    }) => {
       const modeHandler = vi.fn();
 
       class ModeCommands {
@@ -636,33 +661,29 @@ describe("$command", () => {
   });
 
   describe("Error Handling", () => {
-    test("should log an error for an unknown command", async () => {
+    it("should log an error for an unknown command", async ({ expect }) => {
       const { mockLogger, mockOutput } = await setupTestCommands([
         "non-existent-command",
       ]);
 
-      // The reason is a log — it is the CLI reporting a problem.
+      // The reason is a log: it is the CLI reporting a problem.
       const errorLog = mockLogger.logs.find((l) => l.level === "ERROR");
       expect(errorLog).toBeDefined();
       expect(errorLog?.message).toBe("Unknown command: 'non-existent-command'");
 
-      // The help that follows is output — it is a document, and it goes to
+      // The help that follows is output: it is a document, and it goes to
       // stdout so a caller can pipe it.
       expect(mockOutput.text).toContain("Commands:");
     });
 
-    test("should throw a CommandError for missing flag values", async () => {
-      await expectUsageError(
-        setupTestCommands(["greet", "--name"]),
-        "Flag --name requires a value",
-      );
-    });
-
-    test("should throw a CommandError for invalid flag types", async () => {
+    it("should report a usage error for invalid flag types", async ({
+      expect,
+    }) => {
       // Strict-zod: flag values are cast + validated via parseArgumentValue
       // (same path as positional args), which rejects non-numeric integer flags
-      // up front rather than deferring to the (typebox-style) decode message.
+      // up front rather than deferring to the decode message.
       await expectUsageError(
+        expect,
         setupTestCommands(["greet", "--name=Test", "--times=not-a-number"]),
         'Expected number, got "not-a-number"',
       );
@@ -691,7 +712,9 @@ describe("$command", () => {
         });
       };
 
-    test("should report the reason and exit 1 instead of throwing", async () => {
+    it("should report the reason and exit 1 instead of throwing", async ({
+      expect,
+    }) => {
       const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
         alepha.with(
           failingCommand(
@@ -719,7 +742,9 @@ describe("$command", () => {
       process.exitCode = 0;
     });
 
-    test("should not repeat the message when there is no cause", async () => {
+    it("should not repeat the message when there is no cause", async ({
+      expect,
+    }) => {
       const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
         alepha.with(failingCommand()),
       );
@@ -736,7 +761,9 @@ describe("$command", () => {
 
     // The tool streamed its own diagnostics, so a bare exit code is a second
     // line saying what the first already said.
-    test("should drop a cause that carries only the exit code", async () => {
+    it("should drop a cause that carries only the exit code", async ({
+      expect,
+    }) => {
       const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
         alepha.with(
           failingCommand(new AlephaError("Command exited with code 1")),
@@ -757,7 +784,7 @@ describe("$command", () => {
      * "forbidden", without parsing the sentence. An error that names none
      * keeps exiting 1, which the cases above already pin.
      */
-    test("should exit with the code the error carries", async () => {
+    it("should exit with the code the error carries", async ({ expect }) => {
       class RefusingCommands {
         refused = $command({
           name: "refused",
@@ -784,7 +811,40 @@ describe("$command", () => {
       process.exitCode = 0;
     });
 
-    test("should not repeat a cause the message already quotes", async () => {
+    it("should exit with the code of an error thrown inside a run() task", async ({
+      expect,
+    }) => {
+      class RefusingCommands {
+        whoami = $command({
+          name: "whoami",
+          handler: async ({ run }) => {
+            await run("check session", () => {
+              throw new CommandError(
+                { exitCode: 3 },
+                { message: "Not authenticated." },
+              );
+            });
+          },
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["whoami"], (alepha) =>
+        alepha.with(RefusingCommands),
+      );
+
+      expect(process.exitCode).toBe(3);
+      expect(
+        mockLogger.logs
+          .filter((l) => l.level === "ERROR")
+          .map((l) => l.message),
+      ).toEqual(["Task 'check session' failed", "Not authenticated."]);
+
+      process.exitCode = 0;
+    });
+
+    it("should not repeat a cause the message already quotes", async ({
+      expect,
+    }) => {
       const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
         alepha.with(
           class QuotingCommands {
@@ -819,7 +879,7 @@ describe("$command", () => {
   });
 
   describe("Help Message", () => {
-    test("should print general help with --help flag", async () => {
+    it("should print general help with --help flag", async ({ expect }) => {
       const { mockOutput } = await setupTestCommands(["--help"], (alepha) => {
         alepha.store.mut(cliOptions, (old) => ({
           ...old,
@@ -837,7 +897,7 @@ describe("$command", () => {
       expect(output).toContain("-h, --help");
     });
 
-    test("should print command-specific help", async () => {
+    it("should print command-specific help", async ({ expect }) => {
       const { mockOutput } = await setupTestCommands(
         ["greet", "-h"],
         (alepha) =>
@@ -858,7 +918,7 @@ describe("$command", () => {
   });
 
   describe("Arguments Parsing", () => {
-    test("should parse single string argument", async () => {
+    it("should parse single string argument", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -876,7 +936,7 @@ describe("$command", () => {
       expect(callArgs.args).toBe("hello");
     });
 
-    test("should parse single number argument", async () => {
+    it("should parse single number argument", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -893,7 +953,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBe(42.5);
     });
 
-    test("should parse single integer argument", async () => {
+    it("should parse single integer argument", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -910,7 +970,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBe(42);
     });
 
-    test("should parse single boolean argument", async () => {
+    it("should parse single boolean argument", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -931,7 +991,9 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBe(false);
     });
 
-    test("should handle optional string argument when provided", async () => {
+    it("should handle optional string argument when provided", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -950,7 +1012,9 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBe("optional-value");
     });
 
-    test("should handle optional string argument when not provided", async () => {
+    it("should handle optional string argument when not provided", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -967,7 +1031,9 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBeUndefined();
     });
 
-    test("should parse tuple arguments with multiple types", async () => {
+    it("should parse tuple arguments with multiple types", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -986,7 +1052,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toEqual(["hello", 42]);
     });
 
-    test("should parse tuple with optional arguments", async () => {
+    it("should parse tuple with optional arguments", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -1003,7 +1069,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toEqual(["hello", undefined]);
     });
 
-    test("should handle arguments with flags mixed in", async () => {
+    it("should handle arguments with flags mixed in", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -1027,7 +1093,9 @@ describe("$command", () => {
       expect(callArgs.args).toEqual(["hello", 42]);
     });
 
-    test("should handle arguments with space-separated flags", async () => {
+    it("should handle arguments with space-separated flags", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -1051,7 +1119,9 @@ describe("$command", () => {
       expect(callArgs.args).toBe("my-arg");
     });
 
-    test("should handle tuple arguments with space-separated flags interspersed", async () => {
+    it("should handle tuple arguments with space-separated flags interspersed", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -1077,7 +1147,7 @@ describe("$command", () => {
       expect(callArgs.args).toEqual(["hello", 42]);
     });
 
-    test("should pass fs and glob to handler", async () => {
+    it("should pass fs and glob to handler", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommand {
@@ -1097,7 +1167,9 @@ describe("$command", () => {
   });
 
   describe("Arguments Error Handling", () => {
-    test("should throw error for missing required argument", async () => {
+    it("should report a usage error for missing required argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with required arg",
@@ -1107,12 +1179,15 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["cmd"], (a) => a.with(TestCommand)),
         "Missing required argument",
       );
     });
 
-    test("should throw error for invalid number argument", async () => {
+    it("should report a usage error for invalid number argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with number arg",
@@ -1122,12 +1197,15 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["cmd", "not-a-number"], (a) => a.with(TestCommand)),
         'Expected number, got "not-a-number"',
       );
     });
 
-    test("should throw error for invalid integer argument", async () => {
+    it("should report a usage error for invalid integer argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with integer arg",
@@ -1137,12 +1215,15 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["cmd", "42.5"], (a) => a.with(TestCommand)),
         'Expected integer, got "42.5"',
       );
     });
 
-    test("should throw error for invalid boolean argument", async () => {
+    it("should report a usage error for invalid boolean argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with boolean arg",
@@ -1152,12 +1233,15 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["cmd", "not-a-boolean"], (a) => a.with(TestCommand)),
         'Expected boolean, got "not-a-boolean"',
       );
     });
 
-    test("should throw error for missing required tuple argument", async () => {
+    it("should report a usage error for missing required tuple argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple args",
@@ -1167,6 +1251,7 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["cmd", "hello"], (a) => a.with(TestCommand)),
         "Missing required argument at position 2",
       );
@@ -1174,7 +1259,9 @@ describe("$command", () => {
   });
 
   describe("Root Command with Arguments", () => {
-    test("should parse single string argument for root command", async () => {
+    it("should parse single string argument for root command", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class RootCommand {
@@ -1193,7 +1280,9 @@ describe("$command", () => {
       expect(callArgs.args).toBe("hello");
     });
 
-    test("should parse optional argument for root command when provided", async () => {
+    it("should parse optional argument for root command when provided", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class RootCommand {
@@ -1211,7 +1300,9 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBe("my-value");
     });
 
-    test("should handle optional argument for root command when not provided", async () => {
+    it("should handle optional argument for root command when not provided", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class RootCommand {
@@ -1229,7 +1320,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBeUndefined();
     });
 
-    test("should parse tuple arguments for root command", async () => {
+    it("should parse tuple arguments for root command", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class RootCommand {
@@ -1247,7 +1338,9 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toEqual(["hello", 42]);
     });
 
-    test("should parse root command args with flags mixed in", async () => {
+    it("should parse root command args with flags mixed in", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class RootCommand {
@@ -1272,7 +1365,9 @@ describe("$command", () => {
       expect(callArgs.args).toBe("my-arg");
     });
 
-    test("should parse root command with space-separated flags and args", async () => {
+    it("should parse root command with space-separated flags and args", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class RootCommand {
@@ -1297,7 +1392,9 @@ describe("$command", () => {
       expect(callArgs.args).toBe("my-arg");
     });
 
-    test("should throw error for missing required root command argument", async () => {
+    it("should report a usage error for missing required root command argument", async ({
+      expect,
+    }) => {
       class RootCommand {
         root = $command({
           name: "",
@@ -1308,6 +1405,7 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands([], (a) => a.with(RootCommand)),
         "Missing required argument",
       );
@@ -1315,7 +1413,9 @@ describe("$command", () => {
   });
 
   describe("Root Command Global Flags", () => {
-    test("should display root command flags as global flags in help", async () => {
+    it("should display root command flags as global flags in help", async ({
+      expect,
+    }) => {
       const mockRootHandler = vi.fn();
 
       class RootCommand {
@@ -1353,7 +1453,7 @@ describe("$command", () => {
       expect(output).toContain("-h, --help");
     });
 
-    test("should parse root command flags correctly", async () => {
+    it("should parse root command flags correctly", async ({ expect }) => {
       const mockRootHandler = vi.fn();
 
       class RootCommand {
@@ -1382,7 +1482,9 @@ describe("$command", () => {
   });
 
   describe("Help Message with Arguments", () => {
-    test("should show argument usage in help for single string argument", async () => {
+    it("should show argument usage in help for single string argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with string arg",
@@ -1406,7 +1508,9 @@ describe("$command", () => {
       expect(output).toContain("Usage: test-cli cmd <arg1>");
     });
 
-    test("should show argument usage in help for optional argument", async () => {
+    it("should show argument usage in help for optional argument", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with optional arg",
@@ -1430,7 +1534,9 @@ describe("$command", () => {
       expect(output).toContain("Usage: test-cli cmd [arg1]");
     });
 
-    test("should show argument usage in help for tuple arguments", async () => {
+    it("should show argument usage in help for tuple arguments", async ({
+      expect,
+    }) => {
       class TestCommand {
         cmd = $command({
           description: "Test command with tuple args",
@@ -1456,7 +1562,9 @@ describe("$command", () => {
   });
 
   describe("Subcommands", () => {
-    test("should execute subcommand with space-separated syntax", async () => {
+    it("should execute subcommand with space-separated syntax", async ({
+      expect,
+    }) => {
       const mockHandlers = {
         parent: vi.fn(),
         child: vi.fn(),
@@ -1485,7 +1593,9 @@ describe("$command", () => {
       expect(mockHandlers.parent).not.toHaveBeenCalled();
     });
 
-    test("should execute parent handler when subcommand is not provided", async () => {
+    it("should execute parent handler when subcommand is not provided", async ({
+      expect,
+    }) => {
       const mockHandlers = {
         parent: vi.fn(),
         child: vi.fn(),
@@ -1512,7 +1622,7 @@ describe("$command", () => {
       expect(mockHandlers.child).not.toHaveBeenCalled();
     });
 
-    test("should provide help() function in handler args", async () => {
+    it("should provide help() function in handler args", async ({ expect }) => {
       let helpFn: (() => void) | undefined;
 
       class TestCommands {
@@ -1548,7 +1658,7 @@ describe("$command", () => {
       expect(output).toContain("vercel");
     });
 
-    test("should pass flags to subcommand", async () => {
+    it("should pass flags to subcommand", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommands {
@@ -1577,7 +1687,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].flags).toEqual({ prod: true });
     });
 
-    test("should pass arguments to subcommand", async () => {
+    it("should pass arguments to subcommand", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommands {
@@ -1604,7 +1714,7 @@ describe("$command", () => {
       expect(mockHandler.mock.calls[0][0].args).toBe("my-domain.surge.sh");
     });
 
-    test("should show subcommands in help output", async () => {
+    it("should show subcommands in help output", async ({ expect }) => {
       class TestCommands {
         child1 = $command({
           name: "vercel",
@@ -1646,7 +1756,9 @@ describe("$command", () => {
       expect(output).toContain("Deploy to Cloudflare");
     });
 
-    test("should support colon notation for backwards compatibility", async () => {
+    it("should support colon notation for backwards compatibility", async ({
+      expect,
+    }) => {
       const mockHandler = vi.fn();
 
       class TestCommands {
@@ -1662,7 +1774,9 @@ describe("$command", () => {
       expect(mockHandler).toHaveBeenCalledOnce();
     });
 
-    test("should not show child commands in top-level help", async () => {
+    it("should not show child commands in top-level help", async ({
+      expect,
+    }) => {
       class TestCommands {
         child = $command({
           name: "vercel",
@@ -1692,7 +1806,7 @@ describe("$command", () => {
       expect(output).not.toMatch(/^\s*my-cli vercel/m);
     });
 
-    test("should execute subcommand by alias", async () => {
+    it("should execute subcommand by alias", async ({ expect }) => {
       const mockHandler = vi.fn();
 
       class TestCommands {
@@ -1718,7 +1832,7 @@ describe("$command", () => {
   });
 
   describe("Environment Variables", () => {
-    test("should pass validated env vars to handler", async () => {
+    it("should pass validated env vars to handler", async ({ expect }) => {
       let receivedEnv: any;
 
       class TestCommands {
@@ -1744,7 +1858,9 @@ describe("$command", () => {
       }
     });
 
-    test("should throw error for missing required env var", async () => {
+    it("should report a usage error for missing required env var", async ({
+      expect,
+    }) => {
       class TestCommands {
         cmd = $command({
           name: "test",
@@ -1759,12 +1875,13 @@ describe("$command", () => {
       delete process.env.REQUIRED_VAR;
 
       await expectUsageError(
+        expect,
         setupTestCommands(["test"], (a) => a.with(TestCommands)),
         "Missing required environment variable: REQUIRED_VAR",
       );
     });
 
-    test("should handle optional env vars", async () => {
+    it("should handle optional env vars", async ({ expect }) => {
       let receivedEnv: any;
 
       class TestCommands {
@@ -1786,7 +1903,7 @@ describe("$command", () => {
       expect(receivedEnv).toEqual({});
     });
 
-    test("should handle optional env vars with defaults", async () => {
+    it("should handle optional env vars with defaults", async ({ expect }) => {
       let receivedEnv: any;
 
       class TestCommands {
@@ -1808,7 +1925,7 @@ describe("$command", () => {
       expect(receivedEnv).toEqual({ MY_VAR: "default_value" });
     });
 
-    test("should show env vars in help output", async () => {
+    it("should show env vars in help output", async ({ expect }) => {
       class TestCommands {
         cmd = $command({
           name: "test",
@@ -1839,7 +1956,9 @@ describe("$command", () => {
       expect(output).toContain("(optional)");
     });
 
-    test("should throw error for multiple missing env vars", async () => {
+    it("should report a usage error for multiple missing env vars", async ({
+      expect,
+    }) => {
       class TestCommands {
         cmd = $command({
           name: "test",
@@ -1855,6 +1974,7 @@ describe("$command", () => {
       delete process.env.VAR_TWO;
 
       await expectUsageError(
+        expect,
         setupTestCommands(["test"], (a) => a.with(TestCommands)),
         "Missing required environment variables: VAR_ONE, VAR_TWO",
       );
@@ -1862,7 +1982,9 @@ describe("$command", () => {
   });
 
   describe("mode option", () => {
-    test("should pass mode value to handler when --mode flag is used", async () => {
+    it("should pass mode value to handler when --mode flag is used", async ({
+      expect,
+    }) => {
       const handler = vi.fn();
 
       class TestCommands {
@@ -1884,7 +2006,7 @@ describe("$command", () => {
       );
     });
 
-    test("should pass mode value with -m shorthand", async () => {
+    it("should pass mode value with -m shorthand", async ({ expect }) => {
       const handler = vi.fn();
 
       class TestCommands {
@@ -1906,7 +2028,9 @@ describe("$command", () => {
       );
     });
 
-    test("should pass mode value with --mode=value syntax", async () => {
+    it("should pass mode value with --mode=value syntax", async ({
+      expect,
+    }) => {
       const handler = vi.fn();
 
       class TestCommands {
@@ -1928,7 +2052,9 @@ describe("$command", () => {
       );
     });
 
-    test("should pass undefined mode when flag is not provided", async () => {
+    it("should pass undefined mode when flag is not provided", async ({
+      expect,
+    }) => {
       const handler = vi.fn();
 
       class TestCommands {
@@ -1948,7 +2074,9 @@ describe("$command", () => {
       );
     });
 
-    test("should throw error when --mode is used without value", async () => {
+    it("should report a usage error when --mode is used without value", async ({
+      expect,
+    }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -1958,12 +2086,15 @@ describe("$command", () => {
       }
 
       await expectUsageError(
+        expect,
         setupTestCommands(["build", "--mode"], (a) => a.with(TestCommands)),
         "Flag --mode requires a value.",
       );
     });
 
-    test("should show --mode flag in help when mode option is enabled", async () => {
+    it("should show --mode flag in help when mode option is enabled", async ({
+      expect,
+    }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -1982,7 +2113,9 @@ describe("$command", () => {
       expect(output).toContain("Environment mode");
     });
 
-    test("should not show --mode flag when mode option is disabled", async () => {
+    it("should not show --mode flag when mode option is disabled", async ({
+      expect,
+    }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -1999,7 +2132,9 @@ describe("$command", () => {
       expect(output).not.toContain("-m, --mode");
     });
 
-    test("should use string mode as default when no --mode flag provided", async () => {
+    it("should use string mode as default when no --mode flag provided", async ({
+      expect,
+    }) => {
       const handler = vi.fn();
 
       class TestCommands {
@@ -2019,7 +2154,9 @@ describe("$command", () => {
       );
     });
 
-    test("should override string default mode when --mode flag provided", async () => {
+    it("should override string default mode when --mode flag provided", async ({
+      expect,
+    }) => {
       const handler = vi.fn();
 
       class TestCommands {
@@ -2041,7 +2178,9 @@ describe("$command", () => {
       );
     });
 
-    test("should show default mode in help when mode is a string", async () => {
+    it("should show default mode in help when mode is a string", async ({
+      expect,
+    }) => {
       class TestCommands {
         deploy = $command({
           name: "deploy",

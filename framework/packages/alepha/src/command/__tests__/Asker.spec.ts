@@ -3,7 +3,7 @@ import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import {
   $command,
@@ -18,11 +18,15 @@ import {
 /**
  * Stands in for `readline`'s `Interface`, including the part that used to
  * break: once the answers run out, `question()` returns a promise that never
- * settles and the interface closes — exactly what the real one does at EOF.
+ * settles and the interface closes, which is what the real one does when
+ * stdin ends while a question waits.
  *
  * Reproducing that faithfully is the point. With a fake that simply resolved
  * `""` forever, the bug this file guards against (a command that prints its
  * question, does nothing, and exits 0) would not be reachable from a test.
+ *
+ * It hands out one answer per `question()` call, which a pipe does not:
+ * piped input is covered on the real `readline` in Asker-stdin.spec.ts.
  */
 class FakeInterface {
   answers: string[];
@@ -97,7 +101,7 @@ const setup = (env: Record<string, string> = {}) => {
 };
 
 describe("Asker", () => {
-  it("returns a trimmed string when no schema is given", async () => {
+  it("returns a trimmed string when no schema is given", async ({ expect }) => {
     const { asker } = setup();
     const fake = asker.answers("  hello world  ");
 
@@ -105,7 +109,7 @@ describe("Asker", () => {
     expect(fake.prompts).toEqual(["> "]);
   });
 
-  it("prints the question instead of logging it", async () => {
+  it("prints the question instead of logging it", async ({ expect }) => {
     const { asker, logs, output } = setup();
     asker.answers("jack");
 
@@ -117,7 +121,7 @@ describe("Asker", () => {
     ).toBe(false);
   });
 
-  it("still asks when the log level silences info", async () => {
+  it("still asks when the log level silences info", async ({ expect }) => {
     const { asker, output } = setup({ LOG_LEVEL: "error" });
     asker.answers("jack");
 
@@ -127,7 +131,7 @@ describe("Asker", () => {
     expect(output.text).toContain("What is your name?");
   });
 
-  it("retries until schema validation passes", async () => {
+  it("retries until schema validation passes", async ({ expect }) => {
     const { asker, output } = setup();
     asker.answers("abc", "41");
 
@@ -138,7 +142,7 @@ describe("Asker", () => {
     expect(output.text.match(/Enter a number/g)).toHaveLength(2);
   });
 
-  it("uses schema defaults when the answer is empty", async () => {
+  it("uses schema defaults when the answer is empty", async ({ expect }) => {
     const { asker } = setup();
     asker.answers("");
 
@@ -149,7 +153,7 @@ describe("Asker", () => {
     expect(result).toBe("blue");
   });
 
-  it("accepts an empty answer for an optional schema", async () => {
+  it("accepts an empty answer for an optional schema", async ({ expect }) => {
     const { asker, output } = setup();
     const fake = asker.answers("");
 
@@ -163,7 +167,9 @@ describe("Asker", () => {
     expect(output.text).not.toContain("Invalid");
   });
 
-  it("retries when custom validation throws an AlephaError", async () => {
+  it("retries when custom validation throws an AlephaError", async ({
+    expect,
+  }) => {
     const { asker, output } = setup();
     asker.answers("wrong", "right");
 
@@ -178,7 +184,9 @@ describe("Asker", () => {
     expect(output.text).toContain("Invalid secret");
   });
 
-  it("propagates unexpected errors without printing them", async () => {
+  it("propagates unexpected errors without printing them", async ({
+    expect,
+  }) => {
     const { asker, output } = setup();
     asker.answers("value");
     const unexpected = new Error("boom");
@@ -195,7 +203,7 @@ describe("Asker", () => {
     expect(output.text).not.toContain("boom");
   });
 
-  it("frames a session with intro and outro", async () => {
+  it("frames a session with intro and outro", async ({ expect }) => {
     const { asker, output } = setup();
 
     asker.ask.intro("Create Alepha");
@@ -212,7 +220,9 @@ describe("Asker", () => {
    * question wizard came out as one block of text with no seam between what
    * was asked and what was replied.
    */
-  it("frames every question with a blank line either side of the answer", async () => {
+  it("frames every question with a blank line either side of the answer", async ({
+    expect,
+  }) => {
     const { asker, output } = setup();
     asker.answers("my-app", "2", "y");
 
@@ -230,7 +240,7 @@ describe("Asker", () => {
 
     // The `> ` lines themselves are readline's, written straight to the
     // terminal rather than through the output provider, so they are absent
-    // here — each gap below is where one goes.
+    // here: each gap below is where one goes.
     expect(output.lines).toEqual([
       "",
       "Create Alepha",
@@ -250,7 +260,9 @@ describe("Asker", () => {
     ]);
   });
 
-  it("separates a rejected answer's reason from the question it re-asks", async () => {
+  it("separates a rejected answer's reason from the question it re-asks", async ({
+    expect,
+  }) => {
     const { asker, output } = setup();
     asker.answers("x", "y");
 
@@ -268,7 +280,7 @@ describe("Asker", () => {
     ]);
   });
 
-  it("reuses one interface across questions", async () => {
+  it("reuses one interface across questions", async ({ expect }) => {
     const { asker } = setup();
     const fake = asker.answers("first", "second");
 
@@ -280,7 +292,9 @@ describe("Asker", () => {
     expect(fake.closeCount).toBe(0);
   });
 
-  it("throws NoInputError instead of hanging when stdin ends", async () => {
+  it("throws NoInputError instead of hanging when stdin ends", async ({
+    expect,
+  }) => {
     const { asker } = setup();
     const fake = asker.answers();
 
@@ -290,7 +304,9 @@ describe("Asker", () => {
     expect(fake.closeCount).toBe(1);
   });
 
-  it("does not re-ask a question that stdin can never answer", async () => {
+  it("does not re-ask a question that stdin can never answer", async ({
+    expect,
+  }) => {
     const { asker } = setup();
     const fake = asker.answers();
 
@@ -301,7 +317,9 @@ describe("Asker", () => {
     expect(fake.prompts).toHaveLength(1);
   });
 
-  it("releases stdin when the command that asked is over", async () => {
+  it("releases stdin when the command that asked is over", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "info" } })
       .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
       .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider })
@@ -333,7 +351,7 @@ describe("Asker", () => {
     expect(fake.closeCount).toBe(1);
   });
 
-  it("releases stdin on stop", async () => {
+  it("releases stdin on stop", async ({ expect }) => {
     const { alepha, asker } = setup();
     const fake = asker.answers("done");
 
@@ -351,7 +369,7 @@ describe("Asker", () => {
   });
 
   describe("confirm", () => {
-    it("accepts every spelling of yes and no", async () => {
+    it("accepts every spelling of yes and no", async ({ expect }) => {
       const { asker } = setup();
       asker.answers("y", "YES", "n", "No");
 
@@ -361,7 +379,7 @@ describe("Asker", () => {
       expect(await asker.ask.confirm("Delete everything?")).toBe(false);
     });
 
-    it("shows which way an empty answer goes", async () => {
+    it("shows which way an empty answer goes", async ({ expect }) => {
       const { asker, output } = setup();
       asker.answers("", "");
 
@@ -374,7 +392,9 @@ describe("Asker", () => {
       expect(output.text).toContain("Drop it? [y/N]");
     });
 
-    it("re-asks an empty answer when there is no default", async () => {
+    it("re-asks an empty answer when there is no default", async ({
+      expect,
+    }) => {
       const { asker, output } = setup();
       asker.answers("", "y");
 
@@ -383,7 +403,7 @@ describe("Asker", () => {
       expect(output.text.match(/Proceed\?/g)).toHaveLength(2);
     });
 
-    it("re-asks on anything else", async () => {
+    it("re-asks on anything else", async ({ expect }) => {
       const { asker, output } = setup();
       asker.answers("x", "y");
 
@@ -393,7 +413,7 @@ describe("Asker", () => {
   });
 
   describe("choice", () => {
-    it("returns the value behind the number", async () => {
+    it("returns the value behind the number", async ({ expect }) => {
       const { asker } = setup();
       asker.answers("2");
 
@@ -402,7 +422,7 @@ describe("Asker", () => {
       ).toBe("blue");
     });
 
-    it("numbers the list from 1 and marks the default", async () => {
+    it("numbers the list from 1 and marks the default", async ({ expect }) => {
       const { asker, output } = setup();
       asker.answers("1");
 
@@ -414,7 +434,7 @@ describe("Asker", () => {
       expect(output.text).toContain("2. blue");
     });
 
-    it("prints the label and returns the value", async () => {
+    it("prints the label and returns the value", async ({ expect }) => {
       const { asker, output } = setup();
       asker.answers("2");
 
@@ -431,7 +451,7 @@ describe("Asker", () => {
       expect(output.text).toContain("2. saas (adds @alepha/ui)");
     });
 
-    it("takes the default on an empty answer", async () => {
+    it("takes the default on an empty answer", async ({ expect }) => {
       const { asker } = setup();
       asker.answers("");
 
@@ -442,7 +462,9 @@ describe("Asker", () => {
       ).toBe("blue");
     });
 
-    it("re-asks an empty answer when there is no default", async () => {
+    it("re-asks an empty answer when there is no default", async ({
+      expect,
+    }) => {
       const { asker } = setup();
       asker.answers("", "1");
 
@@ -451,7 +473,9 @@ describe("Asker", () => {
       ).toBe("red");
     });
 
-    it("re-asks on 0, on past the end, and on a non-number", async () => {
+    it("re-asks on 0, on past the end, and on a non-number", async ({
+      expect,
+    }) => {
       const { asker, output } = setup();
       asker.answers("0", "3", "purple", "2");
 
@@ -466,7 +490,9 @@ describe("Asker", () => {
       ).toHaveLength(3);
     });
 
-    it("throws when the default is not one of the choices", async () => {
+    it("throws when the default is not one of the choices", async ({
+      expect,
+    }) => {
       const { asker } = setup();
       const fake = asker.answers();
       // Widened to string[], the way a CLI list built from config or a
@@ -482,7 +508,7 @@ describe("Asker", () => {
       expect(fake.prompts).toHaveLength(0);
     });
 
-    it("rejects an empty list of choices", async () => {
+    it("rejects an empty list of choices", async ({ expect }) => {
       const { asker, output } = setup();
       const fake = asker.answers();
 
@@ -498,7 +524,7 @@ describe("Asker", () => {
       expect(output.text).toBe("");
     });
 
-    it("accepts the value typed out, in any case", async () => {
+    it("accepts the value typed out, in any case", async ({ expect }) => {
       const { asker } = setup();
       asker.answers("Saas");
 
@@ -514,14 +540,18 @@ describe("Asker", () => {
       ).toBe("saas");
     });
 
-    it("reads digits as a position even when a value is a number", async () => {
+    it("reads digits as a position even when a value is a number", async ({
+      expect,
+    }) => {
       const { asker } = setup();
       asker.answers("1");
 
       expect(await asker.ask.choice("Pick one:", ["2", "1"])).toBe("2");
     });
 
-    it("names the values it accepts when the answer matches nothing", async () => {
+    it("names the values it accepts when the answer matches nothing", async ({
+      expect,
+    }) => {
       const { asker, output } = setup();
       asker.answers("purple", "red");
 
@@ -533,7 +563,9 @@ describe("Asker", () => {
       );
     });
 
-    it("re-asks on a hex-looking answer instead of picking by it", async () => {
+    it("re-asks on a hex-looking answer instead of picking by it", async ({
+      expect,
+    }) => {
       const { asker, output } = setup();
       const fake = asker.answers("0x2", "2");
 
@@ -548,7 +580,7 @@ describe("Asker", () => {
   });
 
   describe("multiChoice", () => {
-    it("accepts every separator form", () => {
+    it("accepts every separator form", ({ expect }) => {
       const { asker } = setup();
 
       // Straight from the spec. `-` is a SEPARATOR, not a range: "1-4-10" is
@@ -563,13 +595,15 @@ describe("Asker", () => {
       }
     });
 
-    it("deduplicates while keeping the order typed", () => {
+    it("deduplicates while keeping the order typed", ({ expect }) => {
       const { asker } = setup();
 
       expect(asker.testParseSelection("3 1 3 2", 3)).toEqual([3, 1, 2]);
     });
 
-    it("rejects the whole answer when one token is out of range", () => {
+    it("rejects the whole answer when one token is out of range", ({
+      expect,
+    }) => {
       const { asker } = setup();
 
       expect(asker.testParseSelection("1 4", 3)).toBeUndefined();
@@ -582,7 +616,9 @@ describe("Asker", () => {
       expect(asker.testParseSelection("+2", 3)).toBeUndefined();
     });
 
-    it("rejects a default that is not one of the choices", async () => {
+    it("rejects a default that is not one of the choices", async ({
+      expect,
+    }) => {
       const { asker, output } = setup();
       const fake = asker.answers("");
 
@@ -598,7 +634,7 @@ describe("Asker", () => {
       expect(output.text).toBe("");
     });
 
-    it("rejects an empty list of choices", async () => {
+    it("rejects an empty list of choices", async ({ expect }) => {
       const { asker, output } = setup();
       const fake = asker.answers();
 
@@ -611,7 +647,7 @@ describe("Asker", () => {
       expect(output.text).toBe("");
     });
 
-    it("returns the selected values", async () => {
+    it("returns the selected values", async ({ expect }) => {
       const { asker } = setup();
       asker.answers("1, 3");
 
@@ -624,7 +660,7 @@ describe("Asker", () => {
       ).toEqual(["auth", "i18n"]);
     });
 
-    it("prints the hint under the list", async () => {
+    it("prints the hint under the list", async ({ expect }) => {
       const { asker, output } = setup();
       asker.answers("1");
 
@@ -635,7 +671,7 @@ describe("Asker", () => {
       );
     });
 
-    it("treats an empty answer as selecting nothing", async () => {
+    it("treats an empty answer as selecting nothing", async ({ expect }) => {
       const { asker } = setup();
       asker.answers("");
 
@@ -644,7 +680,9 @@ describe("Asker", () => {
       ).toEqual([]);
     });
 
-    it("takes the default on an empty answer when there is one", async () => {
+    it("takes the default on an empty answer when there is one", async ({
+      expect,
+    }) => {
       const { asker, output } = setup();
       asker.answers("");
 
@@ -656,7 +694,7 @@ describe("Asker", () => {
       expect(output.text).toContain("2. admin (default)");
     });
 
-    it("re-asks a bad answer", async () => {
+    it("re-asks a bad answer", async ({ expect }) => {
       const { asker, output } = setup();
       asker.answers("1 9", "2");
 

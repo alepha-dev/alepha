@@ -3,7 +3,8 @@ import { $atom, type Infer, z } from "alepha";
 /**
  * Vendor configuration atom.
  *
- * Filled from the `vendor` section of `alepha.config.ts`.
+ * Filled by the `vendor()` plugin listed in the `plugins` of
+ * `alepha.config.ts`.
  * Read by `VendorCommand` to resolve remote, branch, and packages.
  */
 export const vendorOptions = $atom({

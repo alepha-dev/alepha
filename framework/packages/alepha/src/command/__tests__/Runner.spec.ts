@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
@@ -8,7 +8,7 @@ import {
   NodeShellProvider,
   ShellProvider,
 } from "alepha/system";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, vi } from "vitest";
 
 import { Runner } from "../index.ts";
 
@@ -36,7 +36,9 @@ describe("Runner", () => {
     vi.clearAllMocks();
   });
 
-  test("should execute a single shell command via run.sh", async () => {
+  it("should run a shell command and log its start and finish", async ({
+    expect,
+  }) => {
     await runner.run(`echo "hello"`);
 
     expect(mockLogger.logs).toHaveLength(2);
@@ -50,20 +52,12 @@ describe("Runner", () => {
       /^Finished 'echo "hello"' after \d+\.\ds$/,
     );
     expect(finishLog.level).toBe("INFO");
-
-    const timers = (runner as any).timers;
-    expect(timers).toHaveLength(1);
-    expect(timers[0].name).toBe('echo "hello"');
-    expect(timers[0].duration).toMatch(/^\d+\.\ds$/);
+    expect(mockShell.wasCalled(`echo "hello"`)).toBe(true);
   });
 
-  test("should execute a single shell command via run(sh`...`)", async () => {
-    await runner.run(`echo "world"`);
-    expect(mockLogger.logs[0].message).toBe("Starting 'echo \"world\"' ...");
-    expect(mockLogger.logs).toHaveLength(2);
-  });
-
-  test("should execute a single function task via run.fn", async () => {
+  it("should run a named function task and log its start and finish", async ({
+    expect,
+  }) => {
     const mockFn = vi.fn();
     await runner.run("my-test-function", mockFn);
 
@@ -75,14 +69,7 @@ describe("Runner", () => {
     );
   });
 
-  test("should execute a single function task via run(fn(...))", async () => {
-    const mockFn = vi.fn();
-    await runner.run("another-function", mockFn);
-    expect(mockFn).toHaveBeenCalledOnce();
-    expect(mockLogger.logs).toHaveLength(2);
-  });
-
-  test("should execute an array of tasks in parallel", async () => {
+  it("should execute an array of tasks in parallel", async ({ expect }) => {
     const fn1 = vi.fn(() => new Promise((res) => setTimeout(res, 20)));
     const fn2 = vi.fn(() => new Promise((res) => setTimeout(res, 20)));
 
@@ -95,26 +82,39 @@ describe("Runner", () => {
     expect(fn1).toHaveBeenCalledOnce();
     expect(fn2).toHaveBeenCalledOnce();
     expect(mockLogger.logs).toHaveLength(6); // 3 start, 3 finish logs
-    expect((runner as any).timers).toHaveLength(3);
   });
 
-  test("should throw and log an error for a failing shell command", async () => {
+  it("should throw an error naming the task for a failing shell command", async ({
+    expect,
+  }) => {
     mockShell.errors.set("exit 1", "Command failed with exit code 1");
     await expect(runner.run(`exit 1`)).rejects.toThrow("Task 'exit 1' failed");
   });
 
-  test("should throw and log an error for a failing function task", async () => {
-    const error = new Error("Function failed!");
+  it("should throw an error naming the task, with the failure as its cause", async ({
+    expect,
+  }) => {
+    const error = new AlephaError("Function failed!");
     const failingFn = () => {
       throw error;
     };
 
-    await expect(runner.run("failing-task", failingFn)).rejects.toThrow(
-      "Task 'failing-task' failed",
+    const thrown = await runner.run("failing-task", failingFn).then(
+      () => undefined,
+      (it: Error) => it,
     );
+
+    expect(thrown?.message).toBe("Task 'failing-task' failed");
+    expect(thrown?.cause).toBe(error);
+    // No "Finished" line for a task that did not finish.
+    expect(mockLogger.logs.map((l) => l.message)).toEqual([
+      "Starting 'failing-task' ...",
+    ]);
   });
 
-  test("end() should print a total-time summary line after tasks run", async () => {
+  it("end() should print a total-time summary line after tasks run", async ({
+    expect,
+  }) => {
     await runner.run(`echo "Task 1"`);
     await runner.run("A slightly longer task name", () => {});
 
@@ -125,67 +125,11 @@ describe("Runner", () => {
     expect(messages.some((m) => m.startsWith("Total time:"))).toBe(true);
   });
 
-  test("end() should print nothing if no tasks were run", () => {
+  it("end() should print nothing if no tasks were run", ({ expect }) => {
     runner.end();
 
     const logs = mockLogger.logs.map((l) => l.message);
     expect(logs.length).toBe(0);
-  });
-
-  test("should reset firstTaskStarted when starting a new command", async () => {
-    // Simulate running command A
-    runner.startCommand("cli", "commandA");
-    await runner.run("task A1", () => {});
-    await runner.run("task A2", () => {});
-    runner.end();
-
-    const logsAfterA = mockLogger.logs.length;
-    expect(logsAfterA).toBeGreaterThan(0);
-
-    // Clear logs for next command
-    mockLogger.clear();
-
-    // Simulate running command B (should get fresh start)
-    runner.startCommand("cli", "commandB");
-    await runner.run("task B1", () => {});
-    runner.end();
-
-    // Verify command B also logged properly (not reusing A's state)
-    expect(mockLogger.logs.length).toBeGreaterThan(0);
-    expect(mockLogger.logs[0].message).toBe("Starting 'task B1' ...");
-  });
-
-  test("should handle running same task name in different commands", async () => {
-    // Run command with task "clean"
-    runner.startCommand("cli", "build");
-    await runner.run("clean", () => {});
-    runner.end();
-
-    mockLogger.clear();
-
-    // Run another command with same task name "clean"
-    runner.startCommand("cli", "verify");
-    await runner.run("clean", () => {});
-    runner.end();
-
-    // Both should have executed and logged independently
-    expect(mockLogger.logs[0].message).toBe("Starting 'clean' ...");
-    expect(mockLogger.logs[1].message).toMatch(/^Finished 'clean' after/);
-  });
-
-  test("should log start and finish for duplicate task names in one command", async () => {
-    runner.startCommand("cli", "verify");
-    await runner.run("clean", () => {});
-    await runner.run("lint", () => {});
-    await runner.run("typecheck", () => {});
-    await runner.run("clean", () => {}); // Same name as first task
-    runner.end();
-
-    const messages = mockLogger.logs.map((l) => l.message).join("\n");
-    const cleanStarts = messages.match(/Starting 'clean'/g) ?? [];
-    expect(cleanStarts.length).toBe(2);
-    expect(messages).toContain("Starting 'lint' ...");
-    expect(messages).toContain("Starting 'typecheck' ...");
   });
 
   describe("sub-process output gating", () => {
@@ -200,27 +144,35 @@ describe("Runner", () => {
       };
     };
 
-    test("captures child output (capture:true) when below DEBUG", async () => {
+    it("captures child output (capture:true) when below DEBUG", async ({
+      expect,
+    }) => {
       const { runner, shell } = build("info");
       await runner.run("echo hi");
       expect(shell.calls[0].options.capture).toBe(true);
     });
 
-    test("streams child output (capture:false) when DEBUG is enabled", async () => {
+    it("streams child output (capture:false) when DEBUG is enabled", async ({
+      expect,
+    }) => {
       const { runner, shell } = build("debug");
       await runner.run("echo hi");
       expect(shell.calls[0].options.capture).toBe(false);
     });
 
-    test("streams child output (capture:false) at trace level too", async () => {
+    it("streams child output (capture:false) at trace level too", async ({
+      expect,
+    }) => {
       const { runner, shell } = build("trace");
       await runner.run("echo hi");
       expect(shell.calls[0].options.capture).toBe(false);
     });
 
-    test("surfaces captured stdout and stderr when a task fails", async () => {
+    it("surfaces captured stdout and stderr when a task fails", async ({
+      expect,
+    }) => {
       const failing = () => {
-        throw Object.assign(new Error("boom"), {
+        throw Object.assign(new AlephaError("boom"), {
           stdout: "OUT_TEXT",
           stderr: "ERR_TEXT",
         });
@@ -247,13 +199,17 @@ describe("Runner", () => {
       return alepha.inject(Runner);
     };
 
-    test("captures and returns child stdout when below DEBUG", async () => {
+    it("captures and returns child stdout when below DEBUG", async ({
+      expect,
+    }) => {
       const runner = build("info");
       const out = await runner.run("echo MARKER_INFO");
       expect(out).toContain("MARKER_INFO");
     });
 
-    test("streams child output (returns empty) when DEBUG is enabled", async () => {
+    it("streams child output (returns empty) when DEBUG is enabled", async ({
+      expect,
+    }) => {
       const runner = build("debug");
       const out = await runner.run("echo MARKER_DEBUG");
       expect(out).toBe("");

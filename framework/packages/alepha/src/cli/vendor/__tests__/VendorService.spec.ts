@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -28,12 +28,9 @@ describe("VendorService", () => {
    * Helper to create a test service with a stubbed clone that returns
    * a known directory, plus stubs getCommitHash to return a fixed hash.
    */
-  const createTestService = (shell: MemoryShellProvider) => {
+  const createTestService = () => {
     class TestVendorService extends VendorService {
       protected override async cloneRemote(): Promise<string> {
-        await shell.run(
-          "git clone --depth 1 --branch main --filter=blob:none remote /tmp/test-clone",
-        );
         return "/tmp/test-clone";
       }
 
@@ -58,15 +55,7 @@ describe("VendorService", () => {
 
   describe("sync", () => {
     it("should clone the remote repository", async ({ expect }) => {
-      const { service, shell, fs } = createTestEnv();
-
-      await fs.mkdir("/tmp/.alepha-vendor-fake/packages/my-pkg", {
-        recursive: true,
-      });
-      await fs.writeFile(
-        "/tmp/.alepha-vendor-fake/packages/my-pkg/index.ts",
-        "export {}",
-      );
+      const { service, shell } = createTestEnv();
 
       await service.sync({
         root: "/project",
@@ -84,11 +73,7 @@ describe("VendorService", () => {
     });
 
     it("should remove local package dir before copying", async ({ expect }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/packages/my-pkg", {
         recursive: true,
@@ -117,11 +102,7 @@ describe("VendorService", () => {
     it("should read packages from the framework/ layout", async ({
       expect,
     }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/framework/packages/my-pkg", {
         recursive: true,
@@ -148,11 +129,7 @@ describe("VendorService", () => {
     it("should read a package from lore/ beside the framework's", async ({
       expect,
     }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/framework/packages/alepha", {
         recursive: true,
@@ -188,11 +165,7 @@ describe("VendorService", () => {
     it("should report errors for missing remote packages", async ({
       expect,
     }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/packages", { recursive: true });
 
@@ -211,11 +184,7 @@ describe("VendorService", () => {
     });
 
     it("should sync multiple packages", async ({ expect }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/packages/pkg-a", { recursive: true });
       await fs.writeFile("/tmp/test-clone/packages/pkg-a/index.ts", "a");
@@ -246,23 +215,24 @@ describe("VendorService", () => {
         }
       }
 
+      /**
+       * A copy that throws, to simulate a failure mid-sync.
+       */
+      class FullDiskFileSystem extends MemoryFileSystemProvider {
+        public override async cp(): Promise<void> {
+          throw new AlephaError("disk full");
+        }
+      }
+
       const alepha = Alepha.create()
         .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+        .with({ provide: FileSystemProvider, use: FullDiskFileSystem });
 
       const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
+      const testFs = alepha.inject(FullDiskFileSystem);
 
       await testFs.mkdir("/tmp/test-clone/packages/pkg-a", { recursive: true });
       await testFs.writeFile("/tmp/test-clone/packages/pkg-a/index.ts", "a");
-
-      /**
-       * Make cp throw to simulate a failure mid-sync.
-       */
-      const originalCp = testFs.cp.bind(testFs);
-      testFs.cp = async () => {
-        throw new Error("disk full");
-      };
 
       await expect(
         testService.sync({
@@ -276,16 +246,10 @@ describe("VendorService", () => {
       ).rejects.toThrow("disk full");
 
       expect(testFs.wasDeleted("/tmp/test-clone")).toBe(true);
-
-      testFs.cp = originalCp;
     });
 
     it("should write vendor.json after successful sync", async ({ expect }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
       await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "code");
@@ -308,11 +272,7 @@ describe("VendorService", () => {
     it("should skip modification check on first sync (no vendor.json)", async ({
       expect,
     }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
       await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "code");
@@ -332,11 +292,7 @@ describe("VendorService", () => {
     it("should abort when local modifications detected against baseline", async ({
       expect,
     }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       // Baseline (last synced state)
       await fs.mkdir("/tmp/test-baseline/packages/my-pkg", { recursive: true });
@@ -373,11 +329,7 @@ describe("VendorService", () => {
     });
 
     it("should sync when local matches baseline", async ({ expect }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       // Baseline and local are identical
       await fs.mkdir("/tmp/test-baseline/packages/my-pkg", { recursive: true });
@@ -411,11 +363,7 @@ describe("VendorService", () => {
     it("should skip modification check with --force even when vendor.json exists", async ({
       expect,
     }) => {
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       // Local has modifications
       await fs.mkdir("/project/packages/my-pkg", { recursive: true });
@@ -799,11 +747,7 @@ describe("VendorService", () => {
       // `@alepha/ui`'s build script is a bare `tsdown`, which reads exactly
       // that file. Stripping it - which sync used to do - left a package
       // whose own build could not run.
-      const { service, fs } = createTestService(
-        Alepha.create()
-          .with({ provide: ShellProvider, use: MemoryShellProvider })
-          .inject(MemoryShellProvider),
-      );
+      const { service, fs } = createTestService();
 
       await fs.mkdir("/tmp/test-clone/packages/ui", { recursive: true });
       await fs.writeFile("/tmp/test-clone/packages/ui/index.ts", "export {}");
@@ -1018,6 +962,7 @@ describe("VendorService", () => {
 
       const base = {
         name: "alepha",
+        scripts: { build: "node scripts/build.ts" },
         dependencies: { zod: "1.0.0" },
         publishConfig: {
           exports: { "./react": { import: "./dist/react/index.js" } },
@@ -1029,27 +974,46 @@ describe("VendorService", () => {
         "/project/packages/vendor.json",
         JSON.stringify({ remote: "remote", commit: "abc123" }),
       );
-      await fs.mkdir("/tmp/test-baseline/packages/alepha", { recursive: true });
-      await fs.writeFile(
-        "/tmp/test-baseline/packages/alepha/package.json",
-        `${JSON.stringify(base, null, 2)}\n`,
-      );
 
+      const local = "/project/packages/alepha/package.json";
       await fs.mkdir("/project/packages/alepha", { recursive: true });
-      await fs.writeFile(
-        "/project/packages/alepha/package.json",
-        `${JSON.stringify({ ...base, dependencies: { zod: "2.0.0" } }, null, 2)}\n`,
-      );
-
-      const result = await service.diff({
+      await fs.writeFile(local, `${JSON.stringify(base, null, 2)}\n`);
+      await service.build({
         root: "/project",
-        remote: "remote",
-        branch: "main",
         dir: "packages",
         packages: ["alepha"],
+        packageManager: "yarn",
       });
 
-      expect(result.totalChanges).toBeGreaterThan(0);
+      // A diff removes the baseline it cloned, so each one gets its own.
+      const diff = async () => {
+        await fs.writeFile(
+          "/tmp/test-baseline/packages/alepha/package.json",
+          `${JSON.stringify(base, null, 2)}\n`,
+        );
+        return service.diff({
+          root: "/project",
+          remote: "remote",
+          branch: "main",
+          dir: "packages",
+          packages: ["alepha"],
+        });
+      };
+
+      // Built and untouched: nothing to report, so what follows is the edit.
+      expect((await diff()).totalChanges).toBe(0);
+
+      const built = JSON.parse(await fs.readTextFile(local));
+      await fs.writeFile(
+        local,
+        `${JSON.stringify({ ...built, dependencies: { zod: "2.0.0" } }, null, 2)}\n`,
+      );
+
+      const result = await diff();
+      expect(result.totalChanges).toBe(1);
+      expect(result.packages[0].modified.map((it) => it.file)).toEqual([
+        "package.json",
+      ]);
     });
   });
 });

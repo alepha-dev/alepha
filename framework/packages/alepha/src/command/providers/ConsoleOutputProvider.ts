@@ -33,7 +33,7 @@ export class ConsoleOutputProvider {
    * Built from `String.fromCharCode(27)` instead of a literal ESC in the
    * source. A raw control character is invisible in an editor, survives
    * editing badly, and is rejected outright by some tooling. The ESC also has
-   * to be part of the pattern — matching only `[0-9;]*m` would eat literal
+   * to be part of the pattern: matching only `[0-9;]*m` would eat literal
    * text like `[0m` out of a help string.
    */
   protected readonly ansi = new RegExp(
@@ -44,7 +44,7 @@ export class ConsoleOutputProvider {
   /**
    * Write one line to stdout.
    *
-   * Falls back to `console.log` where there is no `process` — workerd and the
+   * Falls back to `console.log` where there is no `process`: workerd and the
    * browser, where a CLI has no business running anyway, but the logger guards
    * the same way and this should not be the thing that throws.
    */
@@ -74,14 +74,11 @@ export class ConsoleOutputProvider {
   /**
    * Strip colour.
    *
-   * Call sites colour their strings before handing them over — `printHelp`
-   * builds a whole document that way — so the colour has to come back out
+   * Call sites colour their strings before handing them over (`printHelp`
+   * builds a whole document that way), so the colour has to come back out
    * here rather than being conditionally applied upstream.
    */
   protected stripAnsi(message: string): string {
-    // `lastIndex` is shared state on a global regex; reset it so two calls in
-    // a row cannot start mid-string.
-    this.ansi.lastIndex = 0;
     return message.replace(this.ansi, "");
   }
 }

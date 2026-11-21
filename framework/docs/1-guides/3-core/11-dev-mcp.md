@@ -106,8 +106,8 @@ vendor:
 - **Environment values.** The map lists variable names, types and defaults,
   never values, and atoms by key and type, never values.
 - **Secret columns.** `db_rows` replaces every column its entity marks
-  `secret: true` with `"[redacted]"`, with no opt-out, and refuses a filter on
-  one. The framework's own credential columns are marked; mark yours (see
+  `secret: true` with `"[redacted]"`, with no opt-out, and refuses a filter or
+  a sort on one. The framework's own credential columns are marked; mark yours (see
   [Special Columns](/docs/guides-persistence-special-columns)).
 - **Row writes.** No tool creates, updates or deletes a row.
 

@@ -298,8 +298,7 @@ handler, which here prints the help rather than guessing.
 ### Hooks
 
 `pre` and `post` attach a command to another one by name. They are hidden from
-help, cannot be invoked directly, and receive the same parsed flags and
-arguments as their target.
+help and receive the same parsed flags and arguments as their target.
 
 ```typescript check
 import { $command } from "alepha/command";

@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { $command } from "../primitives/$command.ts";
 import { CliProvider } from "../providers/CliProvider.ts";
@@ -31,27 +31,6 @@ class TestCliProvider extends CliProvider {
   public testGetEnumValues = this.getEnumValues.bind(this);
   public testFormatFlagDescription = this.formatFlagDescription.bind(this);
   public testParseCommandEnv = this.parseCommandEnv.bind(this);
-
-  /**
-   * Extract flag definitions from a command's flags schema (for testing printHelp logic).
-   *
-   * Delegates to the real `extractFlagDefs`, which reads aliases/description from
-   * the schema's `.meta()` registry (zod) — under typebox these were direct
-   * schema properties, but strict-zod stores them in metadata.
-   */
-  public testExtractFlagDefs = this.extractFlagDefs.bind(this);
-
-  /**
-   * Format aliases array into flag string (e.g., "-t, --target").
-   * Sorts by length (shorter first).
-   */
-  public testFormatFlagStr(aliases: string[]): string {
-    return aliases
-      .slice()
-      .sort((a, b) => a.length - b.length)
-      .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
-      .join(", ");
-  }
 }
 
 describe("CliProvider", () => {
@@ -80,7 +59,7 @@ describe("CliProvider", () => {
       return alepha.inject(TestCliProvider);
     };
 
-    it("should not treat a flag value as a subcommand", () => {
+    it("should not treat a flag value as a subcommand", ({ expect }) => {
       const cli = create();
 
       const { command } = cli.testResolveCommandFromArgv([
@@ -92,7 +71,9 @@ describe("CliProvider", () => {
       expect(command?.name).toBe("deploy");
     });
 
-    it("should resolve a command that follows a global flag value", () => {
+    it("should resolve a command that follows another command's flag value", ({
+      expect,
+    }) => {
       const cli = create();
 
       const { command } = cli.testResolveCommandFromArgv([
@@ -104,7 +85,7 @@ describe("CliProvider", () => {
       expect(command?.name).toBe("build");
     });
 
-    it("should still resolve a real subcommand", () => {
+    it("should still resolve a real subcommand", ({ expect }) => {
       const cli = create();
 
       const { command } = cli.testResolveCommandFromArgv(["deploy", "vercel"]);
@@ -123,7 +104,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("parseFlags", () => {
-    it("should parse boolean flags", () => {
+    it("should parse boolean flags", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
@@ -133,7 +114,7 @@ describe("CliProvider", () => {
       expect(result.verbose).toBe(true);
     });
 
-    it("should parse short boolean flags", () => {
+    it("should parse short boolean flags", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
@@ -143,7 +124,7 @@ describe("CliProvider", () => {
       expect(result.verbose).toBe(true);
     });
 
-    it("should parse string flags with = syntax", () => {
+    it("should parse string flags with = syntax", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "name", aliases: ["n", "name"], schema: z.string() },
@@ -153,7 +134,7 @@ describe("CliProvider", () => {
       expect(result.name).toBe("hello");
     });
 
-    it("should parse string flags with space syntax", () => {
+    it("should parse string flags with space syntax", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "name", aliases: ["n", "name"], schema: z.string() },
@@ -163,7 +144,7 @@ describe("CliProvider", () => {
       expect(result.name).toBe("hello");
     });
 
-    it("should parse JSON object flags", () => {
+    it("should parse JSON object flags", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "config", aliases: ["config"], schema: z.object({}) },
@@ -176,7 +157,7 @@ describe("CliProvider", () => {
       expect(result.config).toEqual({ key: "value" });
     });
 
-    it("should parse JSON array flags", () => {
+    it("should parse JSON array flags", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "items", aliases: ["items"], schema: z.array(z.string()) },
@@ -186,7 +167,7 @@ describe("CliProvider", () => {
       expect(result.items).toEqual(["a", "b"]);
     });
 
-    it("should throw on unknown flags", () => {
+    it("should throw on unknown flags", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "known", aliases: ["known"], schema: z.boolean() },
@@ -197,7 +178,7 @@ describe("CliProvider", () => {
       ).toThrow("Unknown flag: --unknown");
     });
 
-    it("should throw on missing required value", () => {
+    it("should throw on missing required value", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [{ key: "name", aliases: ["name"], schema: z.string() }];
 
@@ -206,7 +187,7 @@ describe("CliProvider", () => {
       );
     });
 
-    it("should throw on invalid JSON", () => {
+    it("should throw on invalid JSON", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "config", aliases: ["config"], schema: z.object({}) },
@@ -217,7 +198,9 @@ describe("CliProvider", () => {
       ).toThrow("Invalid JSON");
     });
 
-    it("should parse union(boolean, text) flag without value as true", () => {
+    it("should parse union(boolean, text) flag without value as true", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -231,7 +214,9 @@ describe("CliProvider", () => {
       expect(result.image).toBe(true);
     });
 
-    it("should parse union(boolean, text) flag with = value as string", () => {
+    it("should parse union(boolean, text) flag with = value as string", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -245,7 +230,9 @@ describe("CliProvider", () => {
       expect(result.image).toBe("1.3.4");
     });
 
-    it("should parse union(boolean, text) flag with space value as string", () => {
+    it("should parse union(boolean, text) flag with space value as string", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -259,7 +246,9 @@ describe("CliProvider", () => {
       expect(result.image).toBe("1.3.4");
     });
 
-    it("should parse union(boolean, text) flag without value when followed by another flag", () => {
+    it("should parse union(boolean, text) flag without value when followed by another flag", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -275,7 +264,9 @@ describe("CliProvider", () => {
       expect(result.verbose).toBe(true);
     });
 
-    it("should parse union(boolean, text) flag with long form without value", () => {
+    it("should parse union(boolean, text) flag with long form without value", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -289,7 +280,9 @@ describe("CliProvider", () => {
       expect(result.image).toBe(true);
     });
 
-    it("should parse union(boolean, text) flag at end of argv without value", () => {
+    it("should parse union(boolean, text) flag at end of argv without value", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -305,7 +298,9 @@ describe("CliProvider", () => {
       expect(result.image).toBe(true);
     });
 
-    it("should parse union(boolean, text) with empty = value as empty string", () => {
+    it("should parse union(boolean, text) with an empty = value as true, and leave the next token a positional", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -315,14 +310,19 @@ describe("CliProvider", () => {
         },
       ];
 
-      // Note: --image= results in empty string value
-      const result = cli.testParseFlags(["--image="], flagDefs);
-      // Empty string is falsy, so it goes through the "no value" path → true
-      // This is expected behavior - use --image="" if you need empty string
-      expect(result.image).toBe(true);
+      expect(cli.testParseFlags(["--image="], flagDefs).image).toBe(true);
+
+      // The `=` says the value is not the next token: taking it here, while
+      // `getFlagConsumedIndices` leaves it a positional, would bind one word
+      // twice.
+      const argv = ["--image=", "target"];
+      expect(cli.testParseFlags(argv, flagDefs).image).toBe(true);
+      expect(cli.testGetFlagConsumedIndices(argv, flagDefs).has(1)).toBe(false);
     });
 
-    it("should parse union(boolean, text) with value containing special chars", () => {
+    it("should parse union(boolean, text) with value containing special chars", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -345,49 +345,49 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("parseArgumentValue", () => {
-    it("should parse string values", () => {
+    it("should parse string values", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseArgumentValue("hello", z.string())).toBe("hello");
     });
 
-    it("should parse number values", () => {
+    it("should parse number values", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseArgumentValue("42", z.number())).toBe(42);
       expect(cli.testParseArgumentValue("3.14", z.number())).toBe(3.14);
     });
 
-    it("should throw on invalid number", () => {
+    it("should throw on invalid number", ({ expect }) => {
       const cli = createTestCli();
       expect(() => cli.testParseArgumentValue("abc", z.number())).toThrow(
         "Expected number",
       );
     });
 
-    it("should parse integer values", () => {
+    it("should parse integer values", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseArgumentValue("42", z.integer())).toBe(42);
     });
 
-    it("should throw on non-integer for integer schema", () => {
+    it("should throw on non-integer for integer schema", ({ expect }) => {
       const cli = createTestCli();
       expect(() => cli.testParseArgumentValue("3.14", z.integer())).toThrow(
         "Expected integer",
       );
     });
 
-    it("should parse boolean true values", () => {
+    it("should parse boolean true values", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseArgumentValue("true", z.boolean())).toBe(true);
       expect(cli.testParseArgumentValue("1", z.boolean())).toBe(true);
     });
 
-    it("should parse boolean false values", () => {
+    it("should parse boolean false values", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseArgumentValue("false", z.boolean())).toBe(false);
       expect(cli.testParseArgumentValue("0", z.boolean())).toBe(false);
     });
 
-    it("should throw on invalid boolean", () => {
+    it("should throw on invalid boolean", ({ expect }) => {
       const cli = createTestCli();
       expect(() => cli.testParseArgumentValue("yes", z.boolean())).toThrow(
         "Expected boolean",
@@ -400,32 +400,34 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("parseCommandArgs", () => {
-    it("should return undefined when no schema", () => {
+    it("should return undefined when no schema", ({ expect }) => {
       const cli = createTestCli();
       expect(
         cli.testParseCommandArgs(["arg"], undefined, true),
       ).toBeUndefined();
     });
 
-    it("should parse optional args when present", () => {
+    it("should parse optional args when present", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string().optional();
       expect(cli.testParseCommandArgs(["hello"], schema, true)).toBe("hello");
     });
 
-    it("should return undefined for optional args when missing", () => {
+    it("should return undefined for optional args when missing", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const schema = z.string().optional();
       expect(cli.testParseCommandArgs([], schema, true)).toBeUndefined();
     });
 
-    it("should parse required args", () => {
+    it("should parse required args", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string();
       expect(cli.testParseCommandArgs(["hello"], schema, true)).toBe("hello");
     });
 
-    it("should throw on missing required args", () => {
+    it("should throw on missing required args", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string();
       expect(() => cli.testParseCommandArgs([], schema, true)).toThrow(
@@ -433,21 +435,21 @@ describe("CliProvider", () => {
       );
     });
 
-    it("should parse tuple args", () => {
+    it("should parse tuple args", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.tuple([z.string(), z.number()]);
       const result = cli.testParseCommandArgs(["hello", "42"], schema, true);
       expect(result).toEqual(["hello", 42]);
     });
 
-    it("should handle optional tuple items", () => {
+    it("should handle optional tuple items", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.tuple([z.string(), z.number().optional()]);
       const result = cli.testParseCommandArgs(["hello"], schema, true);
       expect(result).toEqual(["hello", undefined]);
     });
 
-    it("should skip flags when parsing args", () => {
+    it("should skip flags when parsing args", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string();
       const flags = z.object({ verbose: z.boolean().optional() });
@@ -460,7 +462,7 @@ describe("CliProvider", () => {
       expect(result).toBe("hello");
     });
 
-    it("should skip flag values when parsing args", () => {
+    it("should skip flag values when parsing args", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string();
       const flags = z.object({ name: z.string().optional() });
@@ -479,41 +481,58 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("parseModeFlag", () => {
-    it("should parse --mode=value", () => {
+    it("should parse --mode=value", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseModeFlag(["--mode=production"])).toBe("production");
     });
 
-    it("should parse -m=value", () => {
+    it("should parse -m=value", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseModeFlag(["-m=staging"])).toBe("staging");
     });
 
-    it("should parse --mode value", () => {
+    it("should parse --mode value", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseModeFlag(["--mode", "production"])).toBe(
         "production",
       );
     });
 
-    it("should parse -m value", () => {
+    it("should parse -m value", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseModeFlag(["-m", "staging"])).toBe("staging");
     });
 
-    it("should return undefined when no mode flag", () => {
+    it("should return undefined when no mode flag", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testParseModeFlag(["--other", "value"])).toBeUndefined();
     });
 
-    it("should throw when --mode has no value", () => {
+    it("should throw when --mode has no value", ({ expect }) => {
       const cli = createTestCli();
       expect(() => cli.testParseModeFlag(["--mode"])).toThrow(
         "requires a value",
       );
     });
 
-    it("should throw when --mode followed by another flag", () => {
+    it("should read the mode in every spelling the flag parser accepts as --mode", ({
+      expect,
+    }) => {
+      const cli = createTestCli();
+      // `parseFlags` strips one or two dashes, so it takes these for the mode
+      // flag: reading none here ran the command in no mode, exit 0.
+      expect(cli.testParseModeFlag(["--m", "production"])).toBe("production");
+      expect(cli.testParseModeFlag(["-mode", "production"])).toBe("production");
+      expect(cli.testParseModeFlag(["-mode=staging"])).toBe("staging");
+      expect(cli.testParseModeFlag(["--model", "x"])).toBeUndefined();
+    });
+
+    it("should keep an = inside the mode value", ({ expect }) => {
+      const cli = createTestCli();
+      expect(cli.testParseModeFlag(["--mode=a=b"])).toBe("a=b");
+    });
+
+    it("should throw when --mode followed by another flag", ({ expect }) => {
       const cli = createTestCli();
       expect(() => cli.testParseModeFlag(["--mode", "--other"])).toThrow(
         "requires a value",
@@ -526,14 +545,14 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("resolveCommand", () => {
-    it("should return undefined for empty args", () => {
+    it("should return undefined for empty args", ({ expect }) => {
       const cli = createTestCli();
       const result = cli.testResolveCommand([]);
       expect(result.command).toBeUndefined();
       expect(result.consumedArgs).toEqual([]);
     });
 
-    it("should find command by name", () => {
+    it("should find command by name", ({ expect }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -550,7 +569,7 @@ describe("CliProvider", () => {
       expect(result.consumedArgs).toEqual(["build"]);
     });
 
-    it("should find command by colon notation", () => {
+    it("should find command by colon notation", ({ expect }) => {
       class TestCommands {
         deployVercel = $command({
           name: "deploy:vercel",
@@ -567,7 +586,7 @@ describe("CliProvider", () => {
       expect(result.consumedArgs).toEqual(["deploy:vercel"]);
     });
 
-    it("should return undefined for unknown command", () => {
+    it("should return undefined for unknown command", ({ expect }) => {
       const cli = createTestCli();
       const result = cli.testResolveCommand(["unknown"]);
       expect(result.command).toBeUndefined();
@@ -580,7 +599,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("removeConsumedArgs", () => {
-    it("should remove consumed command args", () => {
+    it("should remove consumed command args", ({ expect }) => {
       const cli = createTestCli();
       const result = cli.testRemoveConsumedArgs(
         ["build", "--verbose", "extra"],
@@ -589,7 +608,7 @@ describe("CliProvider", () => {
       expect(result).toEqual(["--verbose", "extra"]);
     });
 
-    it("should preserve flags", () => {
+    it("should preserve flags", ({ expect }) => {
       const cli = createTestCli();
       const result = cli.testRemoveConsumedArgs(
         ["--flag", "build", "arg"],
@@ -598,7 +617,7 @@ describe("CliProvider", () => {
       expect(result).toEqual(["--flag", "arg"]);
     });
 
-    it("should remove multiple consumed args", () => {
+    it("should remove multiple consumed args", ({ expect }) => {
       const cli = createTestCli();
       const result = cli.testRemoveConsumedArgs(
         ["deploy", "vercel", "--prod"],
@@ -613,7 +632,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("getFlagConsumedIndices", () => {
-    it("should mark flag indices as consumed", () => {
+    it("should mark flag indices as consumed", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
@@ -623,7 +642,7 @@ describe("CliProvider", () => {
       expect(result.has(0)).toBe(true);
     });
 
-    it("should mark flag value indices as consumed", () => {
+    it("should mark flag value indices as consumed", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [{ key: "name", aliases: ["name"], schema: z.string() }];
 
@@ -636,7 +655,7 @@ describe("CliProvider", () => {
       expect(result.has(2)).toBe(false); // arg
     });
 
-    it("should not consume next arg for --flag=value syntax", () => {
+    it("should not consume next arg for --flag=value syntax", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [{ key: "name", aliases: ["name"], schema: z.string() }];
 
@@ -648,7 +667,9 @@ describe("CliProvider", () => {
       expect(result.has(1)).toBe(false); // arg
     });
 
-    it("should consume value for union(boolean, text) when value is provided", () => {
+    it("should consume value for union(boolean, text) when value is provided", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -667,23 +688,9 @@ describe("CliProvider", () => {
       expect(result.has(2)).toBe(false); // arg
     });
 
-    it("should not consume next arg for union(boolean, text) when next is a flag", () => {
-      const cli = createTestCli();
-      const flagDefs = [
-        {
-          key: "image",
-          aliases: ["i", "image"],
-          schema: z.union([z.boolean(), z.text()]),
-        },
-        { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
-      ];
-
-      const result = cli.testGetFlagConsumedIndices(["-i", "-v"], flagDefs);
-      expect(result.has(0)).toBe(true); // -i
-      expect(result.has(1)).toBe(true); // -v (not consumed by -i, but by itself)
-    });
-
-    it("should not consume next arg for union(boolean, text) at end of argv", () => {
+    it("should not consume next arg for union(boolean, text) at end of argv", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -704,24 +711,24 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("generateArgsUsage", () => {
-    it("should return empty string for no schema", () => {
+    it("should return empty string for no schema", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testGenerateArgsUsage(undefined)).toBe("");
     });
 
-    it("should generate optional arg usage", () => {
+    it("should generate optional arg usage", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string().meta({ title: "path" }).optional();
       expect(cli.testGenerateArgsUsage(schema)).toBe(" [path]");
     });
 
-    it("should generate required arg usage", () => {
+    it("should generate required arg usage", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string().meta({ title: "path" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <path>");
     });
 
-    it("should generate tuple arg usage", () => {
+    it("should generate tuple arg usage", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.tuple([z.string(), z.number().optional()]);
       const result = cli.testGenerateArgsUsage(schema);
@@ -729,7 +736,7 @@ describe("CliProvider", () => {
       expect(result).toContain("[arg2");
     });
 
-    it("names each tuple item by its title when it has one", () => {
+    it("names each tuple item by its title when it has one", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.tuple([
         z.text({ title: "repository" }),
@@ -738,19 +745,19 @@ describe("CliProvider", () => {
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <repository> [dir]");
     });
 
-    it("should include type for numbers", () => {
+    it("should include type for numbers", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.number().meta({ title: "count" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <count: number>");
     });
 
-    it("should include type for integers", () => {
+    it("should include type for integers", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.integer().meta({ title: "port" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <port: integer>");
     });
 
-    it("should include type for booleans", () => {
+    it("should include type for booleans", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.boolean().meta({ title: "force" });
       expect(cli.testGenerateArgsUsage(schema)).toBe(" <force: boolean>");
@@ -762,22 +769,22 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("getTypeName", () => {
-    it("should return empty for string", () => {
+    it("should return empty for string", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testGetTypeName(z.string())).toBe("");
     });
 
-    it("should return ': number' for number", () => {
+    it("should return ': number' for number", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testGetTypeName(z.number())).toBe(": number");
     });
 
-    it("should return ': integer' for integer", () => {
+    it("should return ': integer' for integer", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testGetTypeName(z.integer())).toBe(": integer");
     });
 
-    it("should return ': boolean' for boolean", () => {
+    it("should return ': boolean' for boolean", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testGetTypeName(z.boolean())).toBe(": boolean");
     });
@@ -788,26 +795,26 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("generateColoredArgsUsage", () => {
-    it("should return empty string for no schema", () => {
+    it("should return empty string for no schema", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testGenerateColoredArgsUsage(undefined)).toBe("");
     });
 
-    it("should generate colored optional arg usage", () => {
+    it("should generate colored optional arg usage", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string().meta({ title: "path" }).optional();
       const result = cli.testGenerateColoredArgsUsage(schema);
       expect(result).toContain("[path]");
     });
 
-    it("should generate colored required arg usage", () => {
+    it("should generate colored required arg usage", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.string().meta({ title: "path" });
       const result = cli.testGenerateColoredArgsUsage(schema);
       expect(result).toContain("<path>");
     });
 
-    it("should generate colored tuple arg usage", () => {
+    it("should generate colored tuple arg usage", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.tuple([z.string(), z.number().optional()]);
       const result = cli.testGenerateColoredArgsUsage(schema);
@@ -821,12 +828,12 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("findCommand", () => {
-    it("should return undefined for unknown command", () => {
+    it("should return undefined for unknown command", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testFindCommand("unknown")).toBeUndefined();
     });
 
-    it("should find command by name", () => {
+    it("should find command by name", ({ expect }) => {
       class TestCommands {
         test = $command({
           name: "test",
@@ -841,7 +848,7 @@ describe("CliProvider", () => {
       expect(cli.testFindCommand("test")?.name).toBe("test");
     });
 
-    it("should find command by alias", () => {
+    it("should find command by alias", ({ expect }) => {
       class TestCommands {
         test = $command({
           name: "test",
@@ -863,12 +870,12 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("findPreHooks", () => {
-    it("should return empty array when no hooks", () => {
+    it("should return empty array when no hooks", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testFindPreHooks("build")).toEqual([]);
     });
 
-    it("should find pre-hooks for command", () => {
+    it("should find pre-hooks for command", ({ expect }) => {
       class TestCommands {
         preBuild = $command({
           name: "prebuild",
@@ -890,12 +897,12 @@ describe("CliProvider", () => {
   });
 
   describe("findPostHooks", () => {
-    it("should return empty array when no hooks", () => {
+    it("should return empty array when no hooks", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.testFindPostHooks("build")).toEqual([]);
     });
 
-    it("should find post-hooks for command", () => {
+    it("should find post-hooks for command", ({ expect }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -921,7 +928,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("getTopLevelCommands", () => {
-    it("should return all commands when no children", () => {
+    it("should return all commands when no children", ({ expect }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -942,7 +949,7 @@ describe("CliProvider", () => {
       expect(topLevel.length).toBe(2);
     });
 
-    it("should exclude child commands", () => {
+    it("should exclude child commands", ({ expect }) => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
@@ -971,7 +978,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("findParentCommand", () => {
-    it("should return undefined for top-level command", () => {
+    it("should return undefined for top-level command", ({ expect }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -987,7 +994,7 @@ describe("CliProvider", () => {
       expect(cli.testFindParentCommand(cmd)).toBeUndefined();
     });
 
-    it("should find parent of child command", () => {
+    it("should find parent of child command", ({ expect }) => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
@@ -1015,7 +1022,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("getCommandPath", () => {
-    it("should return simple name for top-level command", () => {
+    it("should return simple name for top-level command", ({ expect }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -1031,7 +1038,7 @@ describe("CliProvider", () => {
       expect(cli.testGetCommandPath(cmd)).toBe("build");
     });
 
-    it("should return full path for nested command", () => {
+    it("should return full path for nested command", ({ expect }) => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
@@ -1058,183 +1065,105 @@ describe("CliProvider", () => {
   // printHelp
   // ─────────────────────────────────────────────────────────────────────────────
 
+  // General and command help, env vars, `--mode` and arguments are asserted
+  // on real output in $command.spec.ts ("Help Message" and after).
   describe("printHelp", () => {
-    it("should print general help when no command provided", () => {
-      class TestCommands {
-        build = $command({
-          name: "build",
-          description: "Build the project",
-          flags: z.object({}),
-          handler: async () => {},
-        });
-      }
+    const capture = (commands: new () => object) => {
+      const alepha = Alepha.create({ env: { NO_COLOR: "true" } })
+        .with(commands)
+        .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider });
 
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
+      return {
+        cli: alepha.inject(TestCliProvider),
+        output: alepha.inject(MemoryOutputProvider),
+      };
+    };
 
-      // Just verify it doesn't throw
-      expect(() => cli.printHelp()).not.toThrow();
-    });
-
-    it("should print command-specific help", () => {
-      class TestCommands {
-        build = $command({
-          name: "build",
-          description: "Build the project",
-          flags: z.object({
-            watch: z.boolean().describe("Watch for changes").optional(),
-          }),
-          handler: async () => {},
-        });
-      }
-
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
-      const cmd = cli.testFindCommand("build")!;
-
-      expect(() => cli.printHelp(cmd)).not.toThrow();
-    });
-
-    it("should print help for command with children", () => {
+    it("should list a group's children, and leave out a hidden one", ({
+      expect,
+    }) => {
       class TestCommands {
         deployVercel = $command({
           name: "vercel",
           description: "Deploy to Vercel",
-          flags: z.object({}),
+          handler: async () => {},
+        });
+        deploySecret = $command({
+          name: "secret",
+          description: "Not for the help",
+          hide: true,
           handler: async () => {},
         });
         deploy = $command({
           name: "deploy",
           description: "Deploy commands",
-          flags: z.object({}),
-          children: [this.deployVercel],
+          children: [this.deployVercel, this.deploySecret],
           handler: async () => {},
         });
       }
 
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
-      const cmd = cli.testFindCommand("deploy")!;
+      const { cli, output } = capture(TestCommands);
+      cli.printHelp(cli.testFindCommand("deploy"));
 
-      expect(() => cli.printHelp(cmd)).not.toThrow();
+      expect(output.text).toContain("Usage: cli deploy <command>");
+      expect(output.text).toMatch(/cli deploy vercel\s+Deploy to Vercel/);
+      expect(output.text).not.toContain("secret");
     });
 
-    it("should print help for command with env vars", () => {
-      class TestCommands {
-        deploy = $command({
-          name: "deploy",
-          description: "Deploy to production",
-          flags: z.object({}),
-          env: z.object({
-            API_KEY: z.string().describe("API key for deployment"),
-            REGION: z.string().describe("Target region").optional(),
-          }),
-          handler: async () => {},
-        });
-      }
-
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
-      const cmd = cli.testFindCommand("deploy")!;
-
-      expect(() => cli.printHelp(cmd)).not.toThrow();
-    });
-
-    it("should print help for command with mode option", () => {
-      class TestCommands {
-        build = $command({
-          name: "build",
-          description: "Build for environment",
-          flags: z.object({}),
-          mode: "development",
-          handler: async () => {},
-        });
-      }
-
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
-      const cmd = cli.testFindCommand("build")!;
-
-      expect(() => cli.printHelp(cmd)).not.toThrow();
-    });
-
-    it("should print help for command with args", () => {
-      class TestCommands {
-        greet = $command({
-          name: "greet",
-          description: "Greet someone",
-          flags: z.object({}),
-          args: z.string().meta({ title: "name" }),
-          handler: async () => {},
-        });
-      }
-
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
-      const cmd = cli.testFindCommand("greet")!;
-
-      expect(() => cli.printHelp(cmd)).not.toThrow();
-    });
-
-    it("should hide commands with hide option in general help", () => {
+    it("should hide commands with hide option in general help", ({
+      expect,
+    }) => {
       class TestCommands {
         visible = $command({
           name: "visible",
           description: "Visible command",
-          flags: z.object({}),
           handler: async () => {},
         });
         hidden = $command({
           name: "hidden",
           description: "Hidden command",
           hide: true,
-          flags: z.object({}),
           handler: async () => {},
         });
       }
 
-      const alepha = Alepha.create().with(TestCommands);
-      const cli = alepha.inject(TestCliProvider);
+      const { cli, output } = capture(TestCommands);
+      cli.printHelp();
 
-      // Just verify it doesn't throw - hidden commands filtered in getTopLevelCommands
-      expect(() => cli.printHelp()).not.toThrow();
+      expect(output.text).toContain("Visible command");
+      expect(output.text).not.toContain("hidden");
+      expect(output.text).not.toContain("Hidden command");
     });
 
-    it("should include flag aliases in help output", () => {
-      const cli = createTestCli();
+    it("should include flag aliases in help output, shortest first", ({
+      expect,
+    }) => {
+      class TestCommands {
+        deploy = $command({
+          name: "deploy",
+          flags: z.object({
+            target: z
+              .enum(["bare", "docker", "vercel"])
+              .meta({ aliases: ["t"] })
+              .describe("Deployment target")
+              .optional(),
+            runtime: z
+              .enum(["node", "bun"])
+              .meta({ alias: "r" })
+              .describe("JavaScript runtime")
+              .optional(),
+            verbose: z.boolean().describe("Verbose output").optional(),
+          }),
+          handler: async () => {},
+        });
+      }
 
-      const flagsSchema = z.object({
-        target: z
-          .enum(["bare", "docker", "vercel"])
-          .meta({ aliases: ["t"] })
-          .describe("Deployment target")
-          .optional(),
-        runtime: z
-          .enum(["node", "bun"])
-          .meta({ alias: "r" })
-          .describe("JavaScript runtime")
-          .optional(),
-        verbose: z.boolean().describe("Verbose output").optional(),
-      });
+      const { cli, output } = capture(TestCommands);
+      cli.printHelp(cli.testFindCommand("deploy"));
 
-      const flagDefs = cli.testExtractFlagDefs(flagsSchema);
-
-      // target should have key + aliases array
-      const targetFlag = flagDefs.find((f) => f.key === "target");
-      expect(targetFlag?.aliases).toContain("target");
-      expect(targetFlag?.aliases).toContain("t");
-      expect(cli.testFormatFlagStr(targetFlag!.aliases)).toBe("-t, --target");
-
-      // runtime should have key + alias (singular)
-      const runtimeFlag = flagDefs.find((f) => f.key === "runtime");
-      expect(runtimeFlag?.aliases).toContain("runtime");
-      expect(runtimeFlag?.aliases).toContain("r");
-      expect(cli.testFormatFlagStr(runtimeFlag!.aliases)).toBe("-r, --runtime");
-
-      // verbose should only have key (no aliases defined)
-      const verboseFlag = flagDefs.find((f) => f.key === "verbose");
-      expect(verboseFlag?.aliases).toEqual(["verbose"]);
-      expect(cli.testFormatFlagStr(verboseFlag!.aliases)).toBe("--verbose");
+      expect(output.text).toMatch(/^ {4}-t, --target\s+Deployment target/m);
+      expect(output.text).toMatch(/^ {4}-r, --runtime\s+JavaScript runtime/m);
+      expect(output.text).toMatch(/^ {4}--verbose\s+Verbose output/m);
     });
   });
 
@@ -1243,7 +1172,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("getEnumValues", () => {
-    it("should extract values from z.enum schema", () => {
+    it("should extract values from z.enum schema", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.enum(["yarn", "npm", "pnpm", "bun"]);
 
@@ -1252,7 +1181,7 @@ describe("CliProvider", () => {
       expect(values).toEqual(["yarn", "npm", "pnpm", "bun"]);
     });
 
-    it("should return undefined for non-enum schemas", () => {
+    it("should return undefined for non-enum schemas", ({ expect }) => {
       const cli = createTestCli();
 
       expect(cli.testGetEnumValues(z.string())).toBeUndefined();
@@ -1261,7 +1190,9 @@ describe("CliProvider", () => {
       expect(cli.testGetEnumValues(z.object({}))).toBeUndefined();
     });
 
-    it("should return undefined for empty or undefined schema", () => {
+    it("should return undefined for empty or undefined schema", ({
+      expect,
+    }) => {
       const cli = createTestCli();
 
       expect(cli.testGetEnumValues(undefined as any)).toBeUndefined();
@@ -1273,7 +1204,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("formatFlagDescription", () => {
-    it("should append enum values to description", () => {
+    it("should append enum values to description", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.enum(["yarn", "npm", "pnpm", "bun"]);
 
@@ -1289,7 +1220,9 @@ describe("CliProvider", () => {
       expect(result).toContain("bun");
     });
 
-    it("should return only enum values when description is empty", () => {
+    it("should return only enum values when description is empty", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const schema = z.enum(["a", "b", "c"]);
 
@@ -1300,7 +1233,9 @@ describe("CliProvider", () => {
       expect(result).toContain("c");
     });
 
-    it("should return original description for non-enum schemas", () => {
+    it("should return original description for non-enum schemas", ({
+      expect,
+    }) => {
       const cli = createTestCli();
 
       expect(cli.testFormatFlagDescription("A string flag", z.string())).toBe(
@@ -1311,7 +1246,9 @@ describe("CliProvider", () => {
       );
     });
 
-    it("should return empty string when no description and no enum", () => {
+    it("should return empty string when no description and no enum", ({
+      expect,
+    }) => {
       const cli = createTestCli();
 
       expect(cli.testFormatFlagDescription(undefined, z.string())).toBe("");
@@ -1323,7 +1260,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("commands", () => {
-    it("should return all registered commands", () => {
+    it("should return all registered commands", ({ expect }) => {
       class TestCommands {
         build = $command({
           name: "build",
@@ -1344,7 +1281,7 @@ describe("CliProvider", () => {
       expect(cli.commands.map((c) => c.name).sort()).toEqual(["build", "test"]);
     });
 
-    it("should return empty array when no commands", () => {
+    it("should return empty array when no commands", ({ expect }) => {
       const cli = createTestCli();
       expect(cli.commands).toEqual([]);
     });
@@ -1355,7 +1292,9 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("parseCommandEnv", () => {
-    it("should use default value for required field with default when env var is missing", () => {
+    it("should use default value for required field with default when env var is missing", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const schema = z.object({
         MY_VAR: z.text({ default: "fallback" }),
@@ -1366,7 +1305,7 @@ describe("CliProvider", () => {
       expect(result.MY_VAR).toBe("fallback");
     });
 
-    it("should prefer env var over default when both exist", () => {
+    it("should prefer env var over default when both exist", ({ expect }) => {
       const cli = createTestCli();
       const schema = z.object({
         MY_VAR: z.text({ default: "fallback" }),
@@ -1381,7 +1320,9 @@ describe("CliProvider", () => {
       }
     });
 
-    it("should throw for required field without default when env var is missing", () => {
+    it("should throw for required field without default when env var is missing", ({
+      expect,
+    }) => {
       const cli = createTestCli();
       const schema = z.object({
         MY_VAR: z.text(),
@@ -1399,7 +1340,7 @@ describe("CliProvider", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("run", () => {
-    it("should execute command with string args", async () => {
+    it("should execute command with string args", async ({ expect }) => {
       let capturedFlags: Record<string, unknown> = {};
 
       class TestCommands {
@@ -1423,7 +1364,7 @@ describe("CliProvider", () => {
       expect(capturedFlags.watch).toBe(true);
     });
 
-    it("should execute command with array args", async () => {
+    it("should execute command with array args", async ({ expect }) => {
       let capturedFlags: Record<string, unknown> = {};
 
       class TestCommands {
@@ -1447,7 +1388,7 @@ describe("CliProvider", () => {
       expect(capturedFlags.name).toBe("World");
     });
 
-    it("should execute command with options object", async () => {
+    it("should execute command with options object", async ({ expect }) => {
       let capturedRoot = "";
 
       class TestCommands {
@@ -1469,7 +1410,7 @@ describe("CliProvider", () => {
       expect(capturedRoot).toBe("/custom/path");
     });
 
-    it("should parse command args", async () => {
+    it("should parse command args", async ({ expect }) => {
       let capturedArgs: unknown;
 
       class TestCommands {
@@ -1503,7 +1444,7 @@ describe("CliProvider", () => {
       { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
     ];
 
-    it("should stop parsing flags at --", () => {
+    it("should stop parsing flags at --", ({ expect }) => {
       const cli = createTestCli();
 
       const result = cli.testParseFlags(
@@ -1515,7 +1456,7 @@ describe("CliProvider", () => {
       expect(result.verbose).toBeUndefined();
     });
 
-    it("should not reject an unknown flag after --", () => {
+    it("should not reject an unknown flag after --", ({ expect }) => {
       const cli = createTestCli();
 
       expect(() =>
@@ -1523,7 +1464,9 @@ describe("CliProvider", () => {
       ).not.toThrow();
     });
 
-    it("should keep -- so the terminator survives command path removal", () => {
+    it("should keep -- so the terminator survives command path removal", ({
+      expect,
+    }) => {
       const cli = createTestCli();
 
       const result = cli.testRemoveConsumedArgs(
@@ -1534,7 +1477,7 @@ describe("CliProvider", () => {
       expect(result).toEqual(["--", "--raw"]);
     });
 
-    it("should pass a dash-leading positional through", async () => {
+    it("should pass a dash-leading positional through", async ({ expect }) => {
       let captured: unknown;
 
       class TestCommands {
@@ -1557,7 +1500,9 @@ describe("CliProvider", () => {
       expect(captured).toBe("--looks-like-a-flag");
     });
 
-    it("should carry a dash-leading positional through a subcommand path", () => {
+    it("should carry a dash-leading positional through a subcommand path", ({
+      expect,
+    }) => {
       class TestCommands {
         vercel = $command({
           name: "vercel",
@@ -1591,7 +1536,7 @@ describe("CliProvider", () => {
       expect(args).toBe("--raw");
     });
 
-    it("should not read a value across the terminator", () => {
+    it("should not read a value across the terminator", ({ expect }) => {
       const cli = createTestCli();
 
       expect(() => cli.testParseFlags(["--name", "--"], flagDefs)).toThrow(
@@ -1599,7 +1544,7 @@ describe("CliProvider", () => {
       );
     });
 
-    it("should ignore --mode after the terminator", () => {
+    it("should ignore --mode after the terminator", ({ expect }) => {
       const cli = createTestCli();
 
       expect(
@@ -1607,10 +1552,6 @@ describe("CliProvider", () => {
       ).toBeUndefined();
     });
   });
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // --no-<flag> negation
-  // ────────────────────────────────────────────────────────────────────────────
 
   describe("help footer", () => {
     class TestCommands {
@@ -1634,7 +1575,7 @@ describe("CliProvider", () => {
       };
     };
 
-    it("should document -- and --no-<flag> in command help", () => {
+    it("should document -- and --no-<flag> in command help", ({ expect }) => {
       const { cli, output, commands } = capture();
 
       cli.printHelp(commands.build);
@@ -1643,7 +1584,7 @@ describe("CliProvider", () => {
       expect(output.text).toContain("ends flag parsing");
     });
 
-    it("should document -- and --no-<flag> in general help", () => {
+    it("should document -- and --no-<flag> in general help", ({ expect }) => {
       const { cli, output } = capture();
 
       cli.printHelp();
@@ -1653,8 +1594,12 @@ describe("CliProvider", () => {
     });
   });
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // --no-<flag> negation
+  // ────────────────────────────────────────────────────────────────────────────
+
   describe("--no-<flag> negation", () => {
-    it("should turn a boolean flag off", () => {
+    it("should turn a boolean flag off", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "compile", aliases: ["compile"], schema: z.boolean() },
@@ -1665,7 +1610,7 @@ describe("CliProvider", () => {
       expect(result.compile).toBe(false);
     });
 
-    it("should turn an optional boolean flag off", () => {
+    it("should turn an optional boolean flag off", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         {
@@ -1680,7 +1625,7 @@ describe("CliProvider", () => {
       expect(result.compile).toBe(false);
     });
 
-    it("should reject the negation of a non-boolean flag", () => {
+    it("should reject the negation of a non-boolean flag", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [{ key: "name", aliases: ["name"], schema: z.text() }];
 
@@ -1689,7 +1634,7 @@ describe("CliProvider", () => {
       );
     });
 
-    it("should reject a value on the negated form", () => {
+    it("should reject a value on the negated form", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "compile", aliases: ["compile"], schema: z.boolean() },
@@ -1700,7 +1645,7 @@ describe("CliProvider", () => {
       );
     });
 
-    it("should prefer a flag actually named no-<something>", () => {
+    it("should prefer a flag actually named no-<something>", ({ expect }) => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "noCache", aliases: ["no-cache"], schema: z.boolean() },
@@ -1713,21 +1658,32 @@ describe("CliProvider", () => {
       expect(result.cache).toBeUndefined();
     });
 
-    it("should not swallow the next token as a value", () => {
+    it("should not swallow the next token as a value", ({ expect }) => {
       const cli = createTestCli();
+      // A union with boolean takes the next token as its value when it is
+      // not negated, so this is the flag the negation has to stop.
       const flagDefs = [
-        { key: "compile", aliases: ["compile"], schema: z.boolean() },
+        {
+          key: "image",
+          aliases: ["image"],
+          schema: z.union([z.boolean(), z.text()]),
+        },
       ];
 
-      const consumed = cli.testGetFlagConsumedIndices(
-        ["--no-compile", "target"],
-        flagDefs,
-      );
-
-      expect(consumed.has(1)).toBe(false);
+      expect(
+        cli.testGetFlagConsumedIndices(["--image", "target"], flagDefs).has(1),
+      ).toBe(true);
+      expect(
+        cli
+          .testGetFlagConsumedIndices(["--no-image", "target"], flagDefs)
+          .has(1),
+      ).toBe(false);
+      expect(cli.testParseFlags(["--no-image", "target"], flagDefs)).toEqual({
+        image: false,
+      });
     });
 
-    it("should reach a command handler", async () => {
+    it("should reach a command handler", async ({ expect }) => {
       let captured: unknown;
 
       class TestCommands {

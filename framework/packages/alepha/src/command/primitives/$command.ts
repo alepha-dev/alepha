@@ -156,7 +156,7 @@ export interface CommandPrimitiveOptions<
   /**
    * Run this command's handler BEFORE the specified target command.
    *
-   * Pre-hooks are not listed in help and cannot be called directly.
+   * Pre-hooks are not listed in help.
    * They receive the same parsed flags and args as the target command.
    *
    * @example
@@ -181,7 +181,7 @@ export interface CommandPrimitiveOptions<
   /**
    * Run this command's handler AFTER the specified target command.
    *
-   * Post-hooks are not listed in help and cannot be called directly.
+   * Post-hooks are not listed in help.
    * They receive the same parsed flags and args as the target command.
    *
    * @example
@@ -472,8 +472,8 @@ export interface CommandHandlerArgs<
    * Write a line of output to stdout.
    *
    * Output is what the command *produces*; the logger is for what it
-   * *reports*. Anything a caller might pipe, parse or redirect belongs here —
-   * a version string, a rendered table, a generated config — while progress
+   * *reports*. Anything a caller might pipe, parse or redirect belongs here
+   * (a version string, a rendered table, a generated config), while progress
    * and diagnostics stay with `$logger`.
    *
    * Going through the logger instead is what made `alepha --version` return

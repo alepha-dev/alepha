@@ -14,7 +14,7 @@ export class EnvUtils {
    * takes precedence over .env file values.
    *
    * For EVERY file given, the `.local` sibling is also loaded and takes
-   * precedence — so the default `[".env"]` reads `.env` then `.env.local`,
+   * precedence, so the default `[".env"]` reads `.env` then `.env.local`,
    * and `[".env", ".env.production"]` reads four files in that order. This
    * was always the behaviour; the doc used to describe only the default
    * case, which made the multi-file form surprising.

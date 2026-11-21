@@ -24,10 +24,10 @@ describe("VendorCommand", () => {
    * success over that is how #Q2490 went unnoticed across three consumers.
    */
   describe("sync", () => {
-    const createEnv = (buildErrors: string[]) => {
+    const createEnv = (buildErrors: string[], syncErrors: string[] = []) => {
       class FakeVendorService extends VendorService {
         public override async sync(): Promise<VendorSyncResult> {
-          return { synced: ["alepha"], errors: [] };
+          return { synced: ["alepha"], errors: syncErrors };
         }
 
         public override async build(
@@ -67,6 +67,20 @@ describe("VendorCommand", () => {
       await expect(
         cli.run(cmd.testSync, { root: "/project", argv: "" }),
       ).rejects.toThrow(/1 vendored package failed to build/);
+    });
+
+    it("fails when a package was not synced, though the others built", async ({
+      expect,
+    }) => {
+      const { cli, cmd, fs } = createEnv(
+        [],
+        ['Package "alpha" not found in remote'],
+      );
+      await fs.writeFile("/project/yarn.lock", "");
+
+      await expect(
+        cli.run(cmd.testSync, { root: "/project", argv: "" }),
+      ).rejects.toThrow(/1 vendored package could not be synced/);
     });
 
     it("succeeds when every vendored package builds", async ({ expect }) => {

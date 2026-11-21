@@ -100,6 +100,32 @@ describe("alepha mcp: db_rows and the job tools", () => {
         /^No entity "nope". Entities: .*mcp_fixture_notes/,
       );
     });
+
+    it("refuses a sort on a secret column, in either direction or among others", async ({
+      expect,
+    }) => {
+      const { call } = await fixture();
+
+      for (const sort of ["shareToken", "-shareToken", "title, -shareToken"]) {
+        expect(
+          await call("db_rows", { entity: "mcp_fixture_notes", sort }),
+        ).toMatch(/^Refused: shareToken is secret/);
+      }
+
+      const byTitle = await call("db_rows", {
+        entity: "mcp_fixture_notes",
+        sort: "-title,id",
+      });
+      const [head, ...rows] = byTitle.split("\n");
+      expect(head).toBe(
+        "3 rows of 3 from mcp_fixture_notes (shareToken redacted)",
+      );
+      expect(rows.map((row) => JSON.parse(row).title)).toEqual([
+        "beta",
+        "beta",
+        "alpha",
+      ]);
+    });
   });
 
   describe("jobs", () => {

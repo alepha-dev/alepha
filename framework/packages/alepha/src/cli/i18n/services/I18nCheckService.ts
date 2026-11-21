@@ -105,7 +105,7 @@ export interface I18nMissingArg {
    */
   needs: number;
   /**
-   * How many the call site passes — `0` when it passes no `args` at all.
+   * How many the call site passes, `0` when it passes no `args` at all.
    */
   got: number;
   /**
@@ -127,6 +127,22 @@ export interface I18nBadPlaceholder {
    * The offending placeholder as written, e.g. `{0}`.
    */
   placeholder: string;
+}
+
+export interface I18nKeyDeclaration {
+  /**
+   * The dotted key.
+   */
+  key: string;
+  /**
+   * Where its `"a.b.c":` starts in the file.
+   */
+  index: number;
+  /**
+   * Where its value stops: the next declaration, the end of the
+   * `$dictionary` call it sits in, or the end of the file.
+   */
+  end: number;
 }
 
 export class I18nCheckService {
@@ -161,7 +177,7 @@ export class I18nCheckService {
 
   /**
    * Heuristic for spotting files that declare a dictionary. Conservative
-   * by design — we'd rather scan a few unrelated files than miss a
+   * by design: we'd rather scan a few unrelated files than miss a
    * dictionary tucked away in an unusual location.
    */
   protected readonly dictionaryMarker = "$dictionary";
@@ -170,27 +186,27 @@ export class I18nCheckService {
    * Captures the module specifier of a lazily-imported dictionary, i.e. the
    * `"./fr.ts"` in `$dictionary({ lazy: () => import("./fr.ts") })`. Apps
    * commonly split each language into its own file so a session only ships the
-   * active locale — those key files carry no `$dictionary` marker, so without
+   * active locale: those key files carry no `$dictionary` marker, so without
    * this the keys would be invisible to the check.
    *
    * `[^{}]*?` keeps the match inside the `$dictionary` call's own object literal
-   * (it stops at the first brace), so unrelated lazy imports in the same file —
+   * (it stops at the first brace), so unrelated lazy imports in the same file,
    * e.g. a sibling `$page({ lazy: () => import("./Page.tsx") })` or a
-   * `$dictionary` whose `lazy` returns an inline `({ default: {…} })` object —
+   * `$dictionary` whose `lazy` returns an inline `({ default: {…} })` object,
    * are never mistaken for dictionary key files.
    */
   protected readonly dictionaryLazyImportRe =
     /\$dictionary\s*\(\s*\{[^{}]*?import\s*\(\s*["']([^"']+)["']/g;
 
   /**
-   * Matches an ICU/`String.format`-style placeholder — `{0}`, `{1}`, … — inside a
+   * Matches an ICU/`String.format`-style placeholder (`{0}`, `{1}`, …) inside a
    * dictionary file.
    *
    * Alepha interpolates `$1`, `$2`, … and `{name}` (see `I18nProvider.render`),
    * and a name is never a number: `{0}` is not a placeholder, so it survives
    * verbatim into the rendered string and the user
    * reads a literal `{0}` where a number or a name belonged. The failure is
-   * entirely silent — no throw, no missing-key fallback — which is why it is worth
+   * entirely silent (no throw, no missing-key fallback), which is why it is worth
    * a check rather than a code review. The two syntaxes are unambiguous, so a
    * match is always a mistake and never a deliberate choice.
    */
@@ -205,16 +221,6 @@ export class I18nCheckService {
   protected readonly namedPlaceholderRe = /\{\{|\}\}|(?<!\$)\{(\w+)\}/g;
 
   /**
-   * Find unused translation keys.
-   *
-   * Discovery is fully static: we walk `scan` dirs, identify files
-   * that import `$dictionary` (matched via the literal substring) plus
-   * any per-language files they lazily `import(...)`, extract every
-   * `"a.b.c": ...` property key declared across them, then grep the
-   * remaining source files for a quoted-literal occurrence of each key.
-   * Anything matching a `dynamicPrefixes` entry is exempted.
-   */
-  /**
    * Whether a file is left out of the scan: a built-in or configured
    * exclude found in its path. Both sides are compared with `/` separators,
    * so a Windows path (`C:\\app\\node_modules\\x.ts`) matches `/node_modules/`
@@ -225,7 +231,31 @@ export class I18nCheckService {
     return excludes.some((sub) => path.includes(sub.replaceAll("\\", "/")));
   }
 
-  async check(options: I18nCheckOptions): Promise<I18nCheckResult> {
+  /**
+   * The path the excludes are matched against: a file under the project root
+   * is read from the root down, so a project that itself lives under a
+   * `dist` or a `node_modules` directory is not excluded whole. A file
+   * outside the root (a `scan` entry starting with `..`) keeps its full path.
+   */
+  protected fromRoot(abs: string, root: string): string {
+    const base = root.replace(/[\\/]+$/, "");
+    const rest = abs.slice(base.length);
+    return abs.startsWith(base) && /^[\\/]/.test(rest) ? rest : abs;
+  }
+
+  /**
+   * Find unused translation keys.
+   *
+   * Discovery is fully static: we walk `scan` dirs, identify files
+   * that contain `$dictionary` (the literal substring) plus any
+   * per-language files they lazily `import(...)`, extract every
+   * `"a.b.c": ...` property key declared across them, then grep the
+   * source files for a quoted-literal occurrence of each key: every file
+   * but the lazily imported ones, a file holding `$dictionary` being read
+   * without its dictionaries and key declarations.
+   * Anything matching a `dynamicPrefixes` entry is exempted.
+   */
+  public async check(options: I18nCheckOptions): Promise<I18nCheckResult> {
     const { root, scan, dynamicPrefixes, exclude } = options;
     const excludes = [...this.defaultExcludes, ...exclude];
 
@@ -236,14 +266,14 @@ export class I18nCheckService {
       try {
         entries = await this.fs.ls(absDir, { recursive: true });
       } catch {
-        // Missing scan dir is silently skipped — config carries
+        // Missing scan dir is silently skipped: config carries
         // optional paths (e.g. .vendor/**) that may not exist locally.
         continue;
       }
       for (const rel of entries) {
         const abs = this.fs.join(absDir, rel);
         if (!this.scanExts.some((ext) => abs.endsWith(ext))) continue;
-        if (this.isExcluded(abs, excludes)) continue;
+        if (this.isExcluded(this.fromRoot(abs, root), excludes)) continue;
         allFiles.push(abs);
       }
     }
@@ -259,12 +289,16 @@ export class I18nCheckService {
     // targets first lets their keys be extracted below and keeps them out of
     // the usage corpus (their `"key": "value"` lines aren't references).
     const dictionarySet = new Set<string>();
+    const lazyTargets = new Set<string>();
     for (const [file, text] of fileContents) {
       if (!text.includes(this.dictionaryMarker)) continue;
       dictionarySet.add(file);
       for (const m of text.matchAll(this.dictionaryLazyImportRe)) {
         const target = this.resolveImport(file, m[1], fileContents);
-        if (target) dictionarySet.add(target);
+        if (target) {
+          dictionarySet.add(target);
+          lazyTargets.add(target);
+        }
       }
     }
 
@@ -315,15 +349,26 @@ export class I18nCheckService {
       if (!raw) continue;
       // Both scans below read the text BETWEEN two key declarations, so a
       // comment sitting there is attributed to the entry above it. A comment
-      // documenting placeholders — exactly the kind a careful dictionary
-      // carries — then makes its neighbour look like it needs arguments it
+      // documenting placeholders (exactly the kind a careful dictionary
+      // carries) then makes its neighbour look like it needs arguments it
       // does not, and the entry fails a check its own documentation caused.
       const text = this.blankComments(raw);
       const before = allKeys.size;
-      const declarations: Array<{ key: string; index: number }> = [];
+      const calls = this.dictionaryCalls(text);
+      const declarations: I18nKeyDeclaration[] = [];
       for (const m of text.matchAll(this.keyDeclarationRe)) {
         allKeys.add(m[1]);
-        declarations.push({ key: m[1], index: m.index ?? 0 });
+        const index = m.index ?? 0;
+        // An entry of an inline dictionary stops with its `$dictionary`
+        // call: the code after it is not part of the value.
+        const call = calls.find((c) => index > c.start && index < c.end);
+        declarations.push({ key: m[1], index, end: call?.end ?? text.length });
+      }
+      for (let i = 0; i < declarations.length - 1; i++) {
+        declarations[i].end = Math.min(
+          declarations[i].end,
+          declarations[i + 1].index,
+        );
       }
       badPlaceholders.push(
         ...this.findBadPlaceholders(file, text, declarations),
@@ -344,13 +389,16 @@ export class I18nCheckService {
       if (allKeys.size > before) dictionaryFiles.push(file);
     }
 
-    // Concatenate every non-dictionary file into one corpus so each
-    // key is tested with a single regex run rather than O(files × keys).
+    // Concatenate every source file into one corpus so each key is tested
+    // with a single regex run rather than O(files × keys). A lazily imported
+    // key file is not a source file. A file declaring a dictionary is one,
+    // minus its dictionaries and key declarations, which are not references.
     const corpusParts: string[] = [];
     const sourceFiles: Array<[string, string]> = [];
     let scannedFiles = 0;
-    for (const [file, text] of fileContents) {
-      if (dictionarySet.has(file)) continue;
+    for (const [file, raw] of fileContents) {
+      if (lazyTargets.has(file)) continue;
+      const text = dictionarySet.has(file) ? this.blankDictionaries(raw) : raw;
       corpusParts.push(text);
       sourceFiles.push([file, text]);
       scannedFiles++;
@@ -374,7 +422,7 @@ export class I18nCheckService {
         continue;
       }
       const literal = key.replace(/[.\\]/g, (c) => `\\${c}`);
-      // Key must appear as a quoted string literal — `"..."`, `'...'`,
+      // Key must appear as a quoted string literal: `"..."`, `'...'`,
       // or `` `...` ``. Quotes on both sides rule out accidental
       // substring hits in longer keys.
       const re = new RegExp(`["'\`]${literal}["'\`]`);
@@ -598,6 +646,26 @@ export class I18nCheckService {
   }
 
   /**
+   * A file that declares a dictionary, with every `$dictionary(...)` call and
+   * every `"a.b.c":` key declaration replaced by spaces: what is left is the
+   * code that may reference a key. Same length, as {@link blankComments}.
+   */
+  protected blankDictionaries(raw: string): string {
+    const out = raw.split("");
+    const blank = (from: number, to: number) => {
+      for (let i = from; i < to; i++) if (out[i] !== "\n") out[i] = " ";
+    };
+    const text = this.blankComments(raw);
+    for (const call of this.dictionaryCalls(text)) {
+      blank(call.start, call.end + 1);
+    }
+    for (const m of text.matchAll(this.keyDeclarationRe)) {
+      blank(m.index ?? 0, (m.index ?? 0) + m[0].length);
+    }
+    return out.join("");
+  }
+
+  /**
    * The index of the bracket closing the one at `open`, skipping strings, or
    * `undefined` when it does not close.
    */
@@ -650,7 +718,7 @@ export class I18nCheckService {
   protected findBadPlaceholders(
     file: string,
     text: string,
-    declarations: Array<{ key: string; index: number }>,
+    declarations: I18nKeyDeclaration[],
   ): I18nBadPlaceholder[] {
     const found: I18nBadPlaceholder[] = [];
     for (const m of text.matchAll(this.badPlaceholderRe)) {
@@ -658,7 +726,7 @@ export class I18nCheckService {
       let key: string | undefined;
       for (const d of declarations) {
         if (d.index > at) break;
-        key = d.key;
+        key = at < d.end ? d.key : undefined;
       }
       if (!key) continue;
       found.push({ file, key, placeholder: m[0] });
@@ -674,7 +742,7 @@ export class I18nCheckService {
    * declaration after the first one out of position.
    *
    * String literals are tracked rather than skipped naively, because a value
-   * may legitimately contain `//` — `"Voir https://example.com/$1"` is a
+   * may legitimately contain `//`: `"Voir https://example.com/$1"` is a
    * dictionary entry, not a comment, and blanking from the slashes would drop
    * the `$1` and under-count the entry's arity.
    */
@@ -732,7 +800,7 @@ export class I18nCheckService {
   }
 
   /**
-   * Record how many arguments each entry needs — the highest `$N` in its value.
+   * Record how many arguments each entry needs: the highest `$N` in its value.
    *
    * Same positional attribution as {@link findBadPlaceholders}: a value's text
    * is whatever lies between its own key declaration and the next one, which
@@ -743,12 +811,12 @@ export class I18nCheckService {
    */
   protected collectArity(
     text: string,
-    declarations: Array<{ key: string; index: number }>,
+    declarations: I18nKeyDeclaration[],
     into: Map<string, number>,
   ): void {
     for (let i = 0; i < declarations.length; i++) {
       const start = declarations[i].index;
-      const end = declarations[i + 1]?.index ?? text.length;
+      const end = declarations[i].end;
       let max = 0;
       for (const m of text.slice(start, end).matchAll(/\$(\d+)/g)) {
         max = Math.max(max, Number.parseInt(m[1], 10));
@@ -768,12 +836,12 @@ export class I18nCheckService {
    */
   protected collectNames(
     text: string,
-    declarations: Array<{ key: string; index: number }>,
+    declarations: I18nKeyDeclaration[],
     into: Map<string, Set<string>>,
   ): void {
     for (let i = 0; i < declarations.length; i++) {
       const start = declarations[i].index;
-      const end = declarations[i + 1]?.index ?? text.length;
+      const end = declarations[i].end;
       for (const m of text
         .slice(start, end)
         .matchAll(this.namedPlaceholderRe)) {
@@ -947,12 +1015,12 @@ export class I18nCheckService {
    * with no arguments and wrong syntax are the two halves of the same defect,
    * and neither throws.
    *
-   * **Deliberately conservative — it reports only what it can prove.** A call
+   * **Deliberately conservative: it reports only what it can prove.** A call
    * whose arguments it cannot count (a spread, a variable, a helper wrapping
    * `tr`) is skipped rather than guessed at, because a false positive in a
    * pipeline check costs more than a missed one: the first thing anyone does
    * with a check that cries wolf is stop reading it. What it does prove is the
-   * common case — a call passing no `args` at all.
+   * common case: a call passing no `args` at all.
    */
   protected findMissingArgs(
     file: string,
@@ -1005,14 +1073,14 @@ export class I18nCheckService {
    * counted with certainty.
    *
    * Two shapes are understood: `tr(key, { args: [a, b] })` and the positional
-   * `translate(key, [a, b])`. Anything else — a spread, a bare identifier, a
-   * computed array — returns `undefined` and the call is left alone.
+   * `translate(key, [a, b])`. Anything else (a spread, a bare identifier, a
+   * computed array) returns `undefined` and the call is left alone.
    */
   protected countArgs(tail: string): number | undefined {
     const trimmed = tail.trim();
-    // `tr("key")` — nothing follows the key at all. The one case worth being
+    // `tr("key")`: nothing follows the key at all. The one case worth being
     // certain about, and the one that shipped.
-    if (trimmed === "" || trimmed.startsWith(")")) return 0;
+    if (trimmed === "") return 0;
     if (!trimmed.startsWith(",")) return undefined;
 
     const after = trimmed.slice(1).trimStart();
@@ -1022,7 +1090,7 @@ export class I18nCheckService {
     } else if (after.startsWith("{")) {
       const m = /(^|[{,\s])args\s*:\s*\[/.exec(after);
       if (!m) {
-        // An options object with no `args` key — e.g. `{ default: "…" }`.
+        // An options object with no `args` key, e.g. `{ default: "…" }`.
         // Proven to pass nothing.
         return /(^|[{,\s])args\s*:/.test(after) ? undefined : 0;
       }
@@ -1078,7 +1146,7 @@ export class I18nCheckService {
   ): string | undefined {
     if (!spec.startsWith(".")) return undefined;
     // `join(file, "..", spec)` drops the filename then applies the relative
-    // specifier — i.e. resolves against `fromFile`'s directory.
+    // specifier, i.e. resolves against `fromFile`'s directory.
     const base = this.fs.join(fromFile, "..", spec);
     if (files.has(base)) return base;
     for (const ext of this.scanExts) {
