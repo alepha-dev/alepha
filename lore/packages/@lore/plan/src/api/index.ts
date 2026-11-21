@@ -9,6 +9,7 @@ import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
+import { QuestAgentController } from "./controllers/QuestAgentController.ts";
 import { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
@@ -51,6 +52,7 @@ import { ProjectPlanningReportService } from "./services/ProjectPlanningReportSe
 import { ProjectReportsService } from "./services/ProjectReportsService.ts";
 import { ProjectSupportReportService } from "./services/ProjectSupportReportService.ts";
 import { ProjectTeamReportService } from "./services/ProjectTeamReportService.ts";
+import { QuestAgentService } from "./services/QuestAgentService.ts";
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestEditAccess } from "./services/QuestEditAccess.ts";
@@ -107,6 +109,9 @@ export const LorePlanApi = $module({
   services: [
     // Feedback triaged by an agent job on the Agent host (#Q3988).
     FeedbackAgentService,
+    // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
+    QuestAgentService,
+    QuestAgentController,
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     WorkBuckets,
@@ -287,3 +292,5 @@ export {
 export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
+export { QuestAgentController } from "./controllers/QuestAgentController.ts";
+export { QuestAgentService } from "./services/QuestAgentService.ts";

@@ -49,6 +49,7 @@ import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
 import { QuestDueDate } from "./questDueDate.ts";
+import QuestViewAgentWork from "./QuestViewAgentWork.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewFeedbackBadge from "./QuestViewFeedbackBadge.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
@@ -767,6 +768,16 @@ const QuestView = (props: QuestViewProps) => {
                     epic phase has to be asserted, and `withheldReason` is
                     the shared helper's answer. The menu renders nothing on
                     an empty list, so a withheld quest shows no button. */}
+                {context === "page" && !withheldReason && (
+                  <QuestViewAgentWork
+                    quest={quest}
+                    onChanged={(patch) => {
+                      const next = { ...quest, ...patch };
+                      updateQuest(next);
+                      alepha.store.set(currentQuestAtom, next);
+                    }}
+                  />
+                )}
                 {context === "page" && (
                   <AgentPromptsMenu
                     items={

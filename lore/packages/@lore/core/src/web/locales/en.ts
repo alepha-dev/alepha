@@ -3086,6 +3086,13 @@ export default {
     "Claude is triaging this feedback on the Agent host",
   "feedback.agent.startedMany": "Started $1 triage jobs; $2 left for a member",
   "feedback.agent.job": "Agent job",
+  "quest.agent.work": "Work it with Claude",
+  "quest.agent.started":
+    "Claude is working on this quest on the Agent host: it pushes its own branch",
+  "quest.untrusted": "Untrusted",
+  "quest.untrusted.confirm": "Confirm its text",
+  "quest.untrusted.confirm.description":
+    "This quest was born of feedback written outside the team. Read its text, then confirm it: an agent works it only after a member did.",
   "account.hosts.switch.jobs": "Allow jobs",
   "account.hosts.switch.jobs.description":
     "One-shot jobs Lore starts on this machine, such as agent jobs. A job runs a repository's code here, under the jobs user Bay is configured with.",
