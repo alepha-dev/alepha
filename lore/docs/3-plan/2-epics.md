@@ -264,7 +264,7 @@ epic's id as `epic` to read one epic's quests whatever its status, or
 [MCP tools](/lore/docs/reference-mcp-tools).
 
 Going the other way, an epic can hand itself to an agent from the browser. With
-the **Agent prompts** option on, its **Agent Prompts** menu offers **Review
+the **Prompts** option on, its **Agent Prompts** menu offers **Review
 Epic** while the plan is still open (draft or ready), and **Work on it**, which
 hands the whole epic over, quest by quest. On a draft epic, Work on it marks
 the epic ready as it copies, so a finished plan is handed over in one click.

@@ -124,7 +124,7 @@ describe("ProjectSettingsAgentPrompts", () => {
       project: projectFixture({ options: { plan: { agentPrompts: false } } }),
     });
 
-    expect(screen.queryByText("Agent prompts")).toBe(null);
+    expect(screen.queryByText("Prompts")).toBe(null);
     // And it does not pay for a read it will not show.
     expect(links.calls).toEqual([]);
   });

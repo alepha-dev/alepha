@@ -125,7 +125,7 @@ test.describe("agent prompts", () => {
       await page.goto(`/${projectSlug}/settings/work`);
       // ⚠️ Addressed by its own label: each option row sets `aria-label`
       // from its own label key, and the masters are on General now.
-      const toggle = page.getByRole("switch", { name: "Agent prompts" });
+      const toggle = page.getByRole("switch", { name: "Prompts", exact: true });
       await expect(toggle).toBeVisible({ timeout: 15_000 });
 
       // ⚠️ The capability switches are optimistic, so the control's own
@@ -142,7 +142,7 @@ test.describe("agent prompts", () => {
       // option is on. A client-side click, so nothing reloads the loader.
       await page
         .getByTestId("settings-tabs")
-        .getByRole("link", { name: "Agent prompts" })
+        .getByRole("link", { name: "Prompts", exact: true })
         .click();
       await expect(page).toHaveURL(
         new RegExp(`/${projectSlug}/settings/work/prompts$`),
