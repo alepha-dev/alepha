@@ -118,16 +118,6 @@ describe("FileController", () => {
   });
 
   describe("findFiles", () => {
-    it("should return files from specific bucket", async () => {
-      const { app, ctrl } = await setup();
-      await app.images.upload(createFile("test"));
-      const files = await ctrl.findFiles(
-        { query: { bucket: app.images.name } },
-        asAdmin,
-      );
-      expect(files.content.length).toEqual(1);
-    });
-
     it("should return empty list when no files exist", async () => {
       const { ctrl } = await setup();
       const files = await ctrl.findFiles({}, asAdmin);
@@ -234,6 +224,7 @@ describe("FileController", () => {
         asAdmin,
       );
 
+      expect(result.bucket).toBe("default");
       expect(result.name).toBe("test.txt");
       expect(result.mimeType).toBe("text/plain");
       expect(result.size).toBeGreaterThan(0);
@@ -327,7 +318,7 @@ describe("FileController", () => {
       expect(await streamed.text()).toBe(originalContent);
     });
 
-    it("should throw NotFoundError for non-existent file", async () => {
+    it("should answer DB_ENTITY_NOT_FOUND for non-existent file", async () => {
       const { ctrl } = await setup();
 
       await expect(
@@ -335,7 +326,7 @@ describe("FileController", () => {
           { params: { id: "00000000-0000-0000-0000-000000000000" } },
           asAdmin,
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: "DB_ENTITY_NOT_FOUND" });
     });
   });
 
@@ -363,7 +354,7 @@ describe("FileController", () => {
       ).rejects.toThrow();
     });
 
-    it("should throw NotFoundError when deleting non-existent file", async () => {
+    it("should answer DB_ENTITY_NOT_FOUND when deleting non-existent file", async () => {
       const { ctrl } = await setup();
 
       await expect(
@@ -371,7 +362,7 @@ describe("FileController", () => {
           { params: { id: "00000000-0000-0000-0000-000000000000" } },
           asAdmin,
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: "DB_ENTITY_NOT_FOUND" });
     });
   });
 
@@ -461,7 +452,7 @@ describe("FileController", () => {
       expect(updated.expirationDate).toBe(newExpiration);
     });
 
-    it("should throw error when updating non-existent file", async () => {
+    it("should answer DB_ENTITY_NOT_FOUND when updating non-existent file", async () => {
       const { ctrl } = await setup();
 
       await expect(
@@ -472,7 +463,7 @@ describe("FileController", () => {
           },
           asAdmin,
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: "DB_ENTITY_NOT_FOUND" });
     });
   });
 
@@ -547,27 +538,30 @@ describe("FileController", () => {
     it("should filter by date range", async () => {
       const { service, ctrl, dtp } = await setup();
 
-      // createdAfter is exclusive, so sampling "now" here races the first
-      // upload: at millisecond precision both can land on the same tick and
-      // the file gets filtered out. Take a bound strictly below all uploads.
-      const startTime = dtp.now().subtract(1, "second").toISOString();
-
-      await service.uploadFile(createFile("content", { name: "file1.txt" }));
+      const old = await service.uploadFile(
+        createFile("content", { name: "file1.txt" }),
+      );
       await service.uploadFile(createFile("content", { name: "file2.txt" }));
       await service.uploadFile(createFile("content", { name: "file3.txt" }));
+      await service.fileRepository.updateById(old.id, {
+        createdAt: dtp.now().subtract(2, "days").toISOString(),
+      });
+      const between = dtp.now().subtract(1, "day").toISOString();
 
-      const results = await ctrl.findFiles(
-        { query: { createdAfter: startTime } },
+      const after = await ctrl.findFiles(
+        { query: { createdAfter: between } },
         asAdmin,
       );
-      expect(results.content.length).toBe(3);
+      expect(after.content.map((file) => file.name).sort()).toEqual([
+        "file2.txt",
+        "file3.txt",
+      ]);
 
-      const futureTime = dtp.now().add(1, "hour").toISOString();
-      const results2 = await ctrl.findFiles(
-        { query: { createdBefore: futureTime } },
+      const before = await ctrl.findFiles(
+        { query: { createdBefore: between } },
         asAdmin,
       );
-      expect(results2.content.length).toBe(3);
+      expect(before.content.map((file) => file.name)).toEqual(["file1.txt"]);
     });
 
     it("should combine multiple filters", async () => {

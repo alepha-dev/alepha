@@ -7,7 +7,7 @@ import { type Infer, z } from "alepha";
  *
  * Optional end-to-end: the join only runs when the `users` entity is
  * registered in the running app (see `FileService.findFiles`), and even then
- * a file whose creator was deleted — or who lives in a non-default realm —
+ * a file whose creator was deleted, or who lives in a non-default realm,
  * comes back with `user` undefined. Callers must fall back to `creatorName`
  * or the raw `creator` id.
  */

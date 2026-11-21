@@ -148,7 +148,15 @@ describe("filesOptions.maxTotalSize", () => {
   it("is 1 GB per user by default, and the environment wins over code", async ({
     expect,
   }) => {
-    const { alepha } = await setup({ env: { FILES_MAX_USER_SIZE: "5" } });
+    // Built by hand: the value set in code has to be there before `start`.
+    const alepha = Alepha.create({ env: { FILES_MAX_USER_SIZE: 5 } })
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiFiles);
+    alepha.store.mut(filesOptions, (current) => ({
+      ...current,
+      maxUserSize: 50,
+    }));
+    await alepha.start();
     expect(alepha.store.get(filesOptions).maxUserSize).toBe(5);
 
     const defaults = await setup();

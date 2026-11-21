@@ -119,7 +119,7 @@ export class NotificationSuppressionService {
   }
 
   /**
-   * Read one row, so a caller can check tenancy before deleting it.
+   * Read one row, so a caller can check it exists before deleting it.
    */
   public async findById(
     id: string,

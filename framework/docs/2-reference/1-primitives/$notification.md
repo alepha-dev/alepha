@@ -14,8 +14,8 @@ durable outbox.
 Provides type-safe, reusable notification templates with multi-language
 support, variable substitution, and categorization.
 
-**The channel set is open.** `email` and `sms` are the two the framework
-ships, and each is one `NotificationChannel` service among however many the
+**The channel set is open.** `email`, `sms` and `inbox` are the three the
+framework ships, and each is one `NotificationChannel` service among however many the
 container registers. A package outside the framework adds its own key by
 declaration merging on `NotificationChannels`, and a template that
 names a channel nothing provides refuses to boot rather than silently

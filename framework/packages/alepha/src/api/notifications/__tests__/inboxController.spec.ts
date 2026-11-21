@@ -317,6 +317,37 @@ for (const engine of ENGINES) {
       await ctx.alepha.stop();
     });
 
+    it("refuses a cursor whose id is not a uuid, and a fractional limit, with a 400", async ({
+      expect,
+    }) => {
+      const ctx = await boot(engine);
+      await ctx.rows.repo.create({
+        userId: ME,
+        template: "t",
+        title: "One",
+        href: "/one",
+      });
+
+      const forged = Buffer.from(
+        "2026-01-01T00:00:00.000Z|not-a-uuid",
+      ).toString("base64url");
+      await expect(ctx.list({ cursor: forged })).rejects.toBeInstanceOf(
+        BadRequestError,
+      );
+      await expect(ctx.list({ limit: 1.5 })).rejects.toMatchObject({
+        status: 400,
+      });
+
+      // The same shapes, well formed, are served.
+      const wellFormed = Buffer.from(
+        `2099-01-01T00:00:00.000Z|${SOMEBODY_ELSE}`,
+      ).toString("base64url");
+      expect((await ctx.list({ cursor: wellFormed })).items).toHaveLength(1);
+      expect((await ctx.list({ limit: 1 })).items).toHaveLength(1);
+
+      await ctx.alepha.stop();
+    });
+
     it("refuses a malformed cursor rather than silently restarting", async ({
       expect,
     }) => {

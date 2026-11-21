@@ -258,13 +258,19 @@ export class WebhookEndpointService {
   /**
    * Bring back an endpoint the module disabled: `active` again, with its
    * reason and its failure run cleared. Its failed deliveries stay failed;
-   * redeliver the ones that matter.
+   * redeliver the ones that matter. A paused endpoint is refused: only
+   * `resume` re-pushes the deliveries waiting on it.
    */
   public async enable(
     id: string,
     access: WebhookAccess = {},
   ): Promise<WebhookEndpointResource> {
-    await this.row(id, access);
+    const row = await this.row(id, access);
+    if (row.status === "paused") {
+      throw new WebhookEndpointNotActiveError(
+        "A paused webhook endpoint is resumed, not enabled",
+      );
+    }
     const updated = await this.endpoints.updateById(id, {
       status: "active",
       disabledReason: null as any,

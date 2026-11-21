@@ -452,6 +452,50 @@ describe("AdminWebhookController", () => {
     ).toBe(b.endpoint.id);
   });
 
+  it("refuses to enable a paused endpoint, whose pending deliveries only a resume re-pushes", async ({
+    expect,
+  }) => {
+    const { api, shop, transport } = await boot();
+    const url = "https://example.app/hooks";
+    const { endpoint } = await api.createWebhookEndpoint.run(
+      { body: { url } },
+      writer,
+    );
+    const id = endpoint.id;
+    await api.updateWebhookEndpoint.run(
+      { params: { id }, query: {}, body: { status: "paused" } },
+      writer,
+    );
+    await shop.deliveries.create({
+      endpointId: id,
+      eventType: "order.paid",
+      eventId: "evt-pending",
+      payload: {
+        id: "evt-pending",
+        type: "order.paid",
+        timestamp: "1970-01-01T00:00:00.000Z",
+        data: {},
+      },
+      status: "pending",
+      attempt: 0,
+    });
+
+    await expect(
+      api.enableWebhookEndpoint.run({ params: { id }, query: {} }, writer),
+    ).rejects.toThrow(WebhookEndpointNotActiveError);
+    expect((await shop.endpointRows.getById(id)).status).toBe("paused");
+
+    // The resume it points to is what sends the delivery.
+    await api.updateWebhookEndpoint.run(
+      { params: { id }, query: {}, body: { status: "active" } },
+      writer,
+    );
+    await shop.background.flush();
+    expect(transport.deliveriesFor(url).map((it) => it.envelope.id)).toEqual([
+      "evt-pending",
+    ]);
+  });
+
   it("audits create, update, rotate, enable and delete, naming the host", async ({
     expect,
   }) => {

@@ -7,7 +7,7 @@ export const fileResourceSchema = files.schema
   .extend({
     /**
      * Uploader summary, embedded by the admin listing via a best-effort
-     * left join. Optional — see `fileCreatorSummarySchema`. Distinct from
+     * left join. Optional, see `fileCreatorSummarySchema`. Distinct from
      * the denormalized `creatorName`, which is set only on direct uploads
      * and never carries an email.
      */

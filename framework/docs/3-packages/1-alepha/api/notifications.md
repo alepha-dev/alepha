@@ -14,7 +14,7 @@ User notification management.
 
 **Features:**
 
-- Notification definitions (email/SMS templates)
+- Notification definitions (email, SMS and inbox templates)
 - Delivery via `$job` with retry and an audit trail kept for `retentionDays`
 - Runtime-editable retention window via `$parameter` - the jobs trim reads it live
 - Admin API for inspecting sent notifications

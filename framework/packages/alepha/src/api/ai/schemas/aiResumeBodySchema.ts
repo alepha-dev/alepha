@@ -21,6 +21,11 @@ export const aiResumeBodySchema = z.object({
   decision: z.enum(["approve", "deny"]).optional(),
   result: z.any().optional(),
   context: aiPageContextSchema.optional(),
+  /**
+   * The `$ai` the paused turn talked to, by name, when the app declares
+   * more than one.
+   */
+  assistant: z.text({ maxLength: 64 }).optional(),
 });
 
 export type AiResumeBody = Infer<typeof aiResumeBodySchema>;

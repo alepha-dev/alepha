@@ -148,7 +148,7 @@ export class FileService {
    * Best-effort left join embedding the uploader on every file row, so the
    * admin UI can render `user.email` instead of the bare `creator` UUID.
    * Joins `files.creator` → `users.id`. Only applied when the `users` table is
-   * actually registered in the app (see `findFiles`) — the files module stays
+   * actually registered in the app (see `findFiles`), the files module stays
    * usable standalone, without `alepha/api/users`. Targets the default `users`
    * table, so creators in non-default realms come back unmatched (`user`
    * undefined), which the UI handles by falling back to `creatorName`.
@@ -248,7 +248,7 @@ export class FileService {
 
     // The creator join requires the `users` table. Only opt in when a users
     // repository is registered (i.e. `alepha/api/users` is loaded) so the
-    // files module — and its standalone tests — keep working without it.
+    // files module, and its standalone tests, keep working without it.
     const withCreator = this.resolveCreatorJoin();
 
     return await this.fileRepository
@@ -322,8 +322,8 @@ export class FileService {
   ): Promise<FileEntity> {
     const storage = options.storage ?? this.storage(options.bucket);
 
-    // Three consumers want these bytes — the checksum, the size and MIME
-    // checks, and the provider — and a one-shot stream serves exactly one.
+    // Three consumers want these bytes, the checksum, the size and MIME
+    // checks, and the provider, and a one-shot stream serves exactly one.
     //
     // A file whose length is already known is read once into a buffer and all
     // three read from it: reading twice would either hash the wrong thing or
@@ -355,7 +355,7 @@ export class FileService {
       this.assertAllowed(file, storage);
 
       // Ahead of the checksum, because a subscriber that rewrites the bytes
-      // must have the row describe what was actually stored — hashing first
+      // must have the row describe what was actually stored, hashing first
       // would pin the checksum, the size and the MIME type to a file nobody can
       // fetch. After `assertAllowed`, so an oversized upload is refused before
       // any subscriber spends work on it.
@@ -378,7 +378,7 @@ export class FileService {
     } else {
       // MIME is known from the headers, so it is still checked up front. Size
       // cannot be: it is counted as the bytes go by, which is stricter than the
-      // old check — that one trusted whatever `size` the caller reported.
+      // old check, that one trusted whatever `size` the caller reported.
       this.assertMimeAllowed(file, storage);
 
       // What was already read is checked here, before the backend sees a
@@ -403,8 +403,8 @@ export class FileService {
       streamedSize = counter.size;
 
       // ⚠️ No checksum for a streamed upload, deliberately. There is no
-      // streaming digest on workerd — `crypto.subtle.digest` wants the whole
-      // buffer — so producing one would mean buffering the payload, which is
+      // streaming digest on workerd, `crypto.subtle.digest` wants the whole
+      // buffer, so producing one would mean buffering the payload, which is
       // the single thing this path exists to avoid. The column is optional; a
       // wrong hash would be worse than none.
     }
@@ -449,19 +449,12 @@ export class FileService {
   }
 
   /**
-   * Enforces the storage's MIME and size constraints.
-   *
-   * Runs against a materialized buffer, so `file.size` is always the real
-   * byte count. A streamed body reports `size === 0` until read, which is how
-   * the size cap used to be bypassed.
-   */
-  /**
    * How much of an unknown-length upload is read before giving up on buffering.
    *
-   * Below it, an upload keeps everything it used to have — an exact size and a
-   * checksum — because it fits. Above it, those are traded for not holding the
-   * payload. Ten megabytes is the application-wide multipart default: the size
-   * the framework already considered safe to hold.
+   * Below it, an upload keeps everything it used to have, an exact size and a
+   * checksum, because it fits. Above it, those are traded for not holding the
+   * payload. Ten megabytes is the default `maxSize` of a `$storage`: a size
+   * the framework already considers safe to hold.
    */
   protected static readonly BUFFER_THRESHOLD = 10 * 1024 * 1024;
 
@@ -469,7 +462,7 @@ export class FileService {
    * Reads a file until it ends or outgrows `limit`.
    *
    * Returns the whole thing when it fits, and otherwise what was read plus the
-   * rest of the stream — so nothing is consumed twice and nothing is lost. The
+   * rest of the stream, so nothing is consumed twice and nothing is lost. The
    * bug this shape avoids is the one its regression test names: draining a
    * one-shot stream for a checksum, then handing the drained stream to the
    * bucket and storing an empty blob.
@@ -543,7 +536,7 @@ export class FileService {
   /**
    * Wraps a file so its bytes are counted, and refused, as they pass.
    *
-   * The cap used to be a comparison against `file.size` — a number the caller
+   * The cap used to be a comparison against `file.size`, a number the caller
    * supplied. A stream reports 0 there, which is precisely how the limit was
    * bypassed (see the note this replaces). Counting cannot be lied to.
    *
@@ -619,6 +612,13 @@ export class FileService {
     }
   }
 
+  /**
+   * Enforces the storage's MIME and size constraints.
+   *
+   * Runs against a materialized buffer, so `file.size` is always the real
+   * byte count. A streamed body reports `size === 0` until read, which is how
+   * the size cap used to be bypassed.
+   */
   protected assertAllowed(file: FileLike, storage: StoragePrimitive): void {
     const { mimeTypes } = storage.options;
     const { maxSize } = storage;
@@ -721,13 +721,12 @@ export class FileService {
    * Persists the metadata row for an already-uploaded blob, deleting the
    * blob if the insert fails. Uploads are not atomic: the blob is written to
    * storage first (the row needs the returned `blobId`), so a failed insert
-   * would otherwise leak the blob — an orphaned blob with no DB row. This
+   * would otherwise leak the blob, an orphaned blob with no DB row. This
    * compensates by removing the blob, favouring the recoverable failure
    * (a missing blob) over the worse one (a row pointing at nothing).
    *
-   * Best-effort: cleanup runs with `skipHook` so it neither re-emits
-   * cleanup is logged rather than thrown. The original write error is always
-   * rethrown so callers still see the real failure.
+   * Best-effort: a failed cleanup is logged rather than thrown. The original
+   * write error is always rethrown so callers still see the real failure.
    *
    * @param storage - The storage the blob was uploaded to
    * @param blobId - The id returned by the provider's `upload`
@@ -896,7 +895,7 @@ export class FileService {
         const storage = this.storage(storageName);
         await storage.provider.deleteMany(storage.name, blobIds);
       } catch (e) {
-        // DB rows already gone — log and continue. Orphaned blobs are
+        // DB rows already gone, log and continue. Orphaned blobs are
         // recoverable; orphaned DB rows would be worse.
         this.log.warn(
           `Failed to bulk-delete ${blobIds.length} files from storage ${storageName}`,
@@ -966,7 +965,7 @@ export class FileService {
    * Gets storage statistics including total size, file count, and breakdowns by bucket and MIME type.
    *
    * Aggregated in SQL (`SUM`/`COUNT` + `GROUP BY`) rather than by loading
-   * every row into memory — the table can hold millions of files, and this
+   * every row into memory, the table can hold millions of files, and this
    * endpoint must stay O(groups), not O(rows). Totals are derived from the
    * per-bucket groups (every row has exactly one bucket), so no extra query
    * is needed.

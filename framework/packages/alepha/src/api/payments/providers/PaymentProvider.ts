@@ -16,7 +16,7 @@ export interface WebhookEvent {
    * Checkout-session events carry BOTH a session id and a PaymentIntent id,
    * while the stored intent ref is whichever existed at session-creation
    * time (the PI when eager, the session id when the PSP creates the PI
-   * lazily — e.g. Stripe Checkout on connected accounts).
+   * lazily, e.g. Stripe Checkout on connected accounts).
    */
   providerRefAlt?: string;
   status: string;
@@ -44,7 +44,7 @@ export interface ElementSessionResult {
    */
   publishableKey: string;
   /**
-   * Which SDK the browser should load — `"stripe"`, `"mollie"`, … The front end
+   * Which SDK the browser should load, `"stripe"`, `"mollie"`, … The front end
    * dispatches on it, so swapping PSP changes no component code.
    */
   provider: string;
@@ -145,14 +145,14 @@ export abstract class PaymentProvider {
    * payer on the merchant's own domain.
    *
    * **Optional on purpose.** Not every PSP has an embeddable field, and those
-   * that do expose incompatible SDKs — Stripe's Payment Element and Mollie's
+   * that do expose incompatible SDKs, Stripe's Payment Element and Mollie's
    * Components share no API. Declaring this as an optional method rather than a
    * required one is what keeps the abstraction honest: a consumer asks whether
    * the installed provider has it, instead of calling something that silently
    * does nothing.
    *
    * A provider that does not implement it is used through
-   * {@link createSession} — a redirect, which every PSP supports.
+   * {@link createSession}, a redirect, which every PSP supports.
    */
   createElementSession?(
     intent: PaymentIntentEntity,
@@ -196,7 +196,7 @@ export abstract class PaymentProvider {
    *   against the raw body using a shared secret. Throw if invalid.
    * - Re-fetch (Mollie, legacy webhooks): the body only carries an id;
    *   call back into the PSP API with your authenticated client to
-   *   fetch the real resource state. The fetch itself is the auth —
+   *   fetch the real resource state. The fetch itself is the auth,
    *   an attacker can POST a fake id but cannot influence the result.
    *
    * Throw an error if authenticity cannot be established. This endpoint

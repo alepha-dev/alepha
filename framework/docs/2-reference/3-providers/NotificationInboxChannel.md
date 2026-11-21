@@ -11,8 +11,8 @@ import { NotificationInboxChannel } from "alepha/api/notifications";
 The inbox, as the third implementation of the channel contract.
 
 `addressable = true`: it delivers to a **person**, so it keeps the whole
-gate - the suppression list, the app's preference provider and the
-unsubscribe token. It is not a sink, so there is no
+gate: the suppression list and the app's preference provider. It mints no
+unsubscribe token, which only the email channel does. It is not a sink, so there is no
 `NotificationSinkChannels` entry and `push()` still demands a contact.
 
 Registered by default in `AlephaApiNotifications`' `services[]`, so an app

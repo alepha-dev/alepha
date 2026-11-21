@@ -374,6 +374,32 @@ describe("notification suppression gate", () => {
       expect(mail.records).toHaveLength(1);
     });
 
+    it("hands the provider the normalized contact, so a preference stored by address is found", async ({
+      expect,
+    }) => {
+      class OptedOut extends NotificationPreferenceProvider {
+        public override async allows(options: {
+          contact: string;
+        }): Promise<boolean> {
+          return options.contact !== "alice@example.com";
+        }
+      }
+
+      const { sender, mail } = await boot((alepha) => {
+        alepha.with({
+          provide: NotificationPreferenceProvider,
+          use: OptedOut,
+        });
+      });
+
+      await sender.send(emailPayload("sup-newsletter", " Alice@Example.COM "));
+      expect(mail.records).toHaveLength(0);
+
+      // Somebody else, spelled the same way, is still written to.
+      await sender.send(emailPayload("sup-newsletter", " Bob@Example.COM "));
+      expect(mail.records).toHaveLength(1);
+    });
+
     it("never lets a preference override a bounce", async ({ expect }) => {
       class AllowEverything extends NotificationPreferenceProvider {
         public override async allows(): Promise<boolean> {

@@ -79,7 +79,7 @@ export interface StoragePrimitiveOptions {
    * Allowed MIME types. An upload with any other type is rejected with
    * `InvalidFileError`.
    *
-   * MIME types are client-supplied and trivially spoofed — treat this as a
+   * MIME types are client-supplied and trivially spoofed, treat this as a
    * usability guard, not a security control.
    *
    * @example ["image/jpeg", "image/png"]
@@ -88,7 +88,7 @@ export interface StoragePrimitiveOptions {
 
   /**
    * Maximum file size in **megabytes**. Larger uploads are rejected with
-   * `InvalidFileError`.
+   * `FileTooLargeError`.
    *
    * @default 10
    */
@@ -121,9 +121,9 @@ export interface StoragePrimitiveOptions {
   /**
    * Storage backend.
    *
-   * - `"memory"` — in-process, lost on restart (tests)
-   * - a `FileStorageProvider` subclass — e.g. `S3FileStorageProvider`
-   * - omitted — the injected default for the environment
+   * - `"memory"`: in-process, lost on restart (tests)
+   * - a `FileStorageProvider` subclass: e.g. `S3FileStorageProvider`
+   * - omitted: the injected default for the environment
    */
   provider?: Service<FileStorageProvider> | "memory";
 
@@ -143,7 +143,7 @@ export interface StoragePrimitiveOptions {
    * ```
    *
    * Installing such a package makes the option available, typed, at every
-   * `$storage({ ... })` call site with no import — and uninstalling it stops
+   * `$storage({ ... })` call site with no import, and uninstalling it stops
    * those call sites compiling, which is the honest outcome, since the option
    * would no longer do anything.
    */
@@ -308,7 +308,7 @@ export class StoragePrimitive extends Primitive<StoragePrimitiveOptions> {
   }
 
   /**
-   * Paginated, filterable listing of this storage's files — a real query
+   * Paginated, filterable listing of this storage's files, a real query
    * against the `files` table.
    *
    * This is the piece raw blob storage cannot give you: `FileStorageProvider`

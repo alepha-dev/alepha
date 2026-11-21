@@ -43,7 +43,7 @@ async function waitFor<T>(
 
 /**
  * Records every delivery the job hands it, and whether the job's execution
- * row was visible then. Nothing is sent: the transport is the next quest.
+ * row was visible then. Nothing is sent: `deliver` is replaced whole.
  */
 class RecordingDeliveryService extends WebhookDeliveryService {
   public calls: Array<{ deliveryId: string; executionRows: number }> = [];

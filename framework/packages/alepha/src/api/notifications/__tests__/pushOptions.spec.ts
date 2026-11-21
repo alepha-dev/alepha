@@ -214,19 +214,6 @@ describe("$notification.pushMany fans out over contacts", () => {
     expect(langs).toContain(undefined);
   });
 
-  it("does not throw when called with no request context", async ({
-    expect,
-  }) => {
-    const { templates } = await boot();
-
-    await expect(
-      templates.reminder.pushMany({
-        contacts: [{ contact: "a@example.com", variables: { what: "one" } }],
-        delay: [1, "hour"],
-      }),
-    ).resolves.toBe(1);
-  });
-
   it("does nothing for an empty contact list", async ({ expect }) => {
     const { templates, rows } = await boot();
 

@@ -33,7 +33,9 @@ import {
 export class DatabaseMemoryPaymentProvider extends MemoryPaymentProvider {
   protected readonly cache = $inject(DatabaseCacheProvider);
 
-  /** How long a record is kept, in milliseconds (30 days). */
+  /**
+   * How long a record is kept, in milliseconds (30 days).
+   */
   protected readonly ttl = 30 * 24 * 60 * 60 * 1000;
 
   protected container(bucket: MemoryPaymentBucket): string {

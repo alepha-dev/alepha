@@ -284,6 +284,66 @@ describe("alepha/api/ai", () => {
     ).toBe(404);
   });
 
+  it("in an app with two assistants, a resume names its assistant, and one that does not leaves the pause intact", async ({
+    expect,
+  }) => {
+    class Second {
+      other = $ai({ system: "You help with something else." });
+    }
+    const { chat, resume, read, ai, api, rows } = await boot(
+      "sqlite",
+      (alepha) => {
+        alepha.inject(Second);
+      },
+    );
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c1",
+        name: "create",
+        input: { body: { amount: 120 } },
+      },
+    ]);
+    const id = (
+      await read(
+        await chat("u1", { message: "bill 120", assistant: "support" }),
+      )
+    )[0].conversationId!;
+
+    // No name, and a name nothing declares: refused before the call is
+    // claimed, so the conversation still waits on it.
+    expect(
+      (await resume("u1", id, { callId: "c1", decision: "approve" })).status,
+    ).toBe(400);
+    expect(
+      (
+        await resume("u1", id, {
+          callId: "c1",
+          decision: "approve",
+          assistant: "nobody",
+        })
+      ).status,
+    ).toBe(400);
+    const [paused] = await rows.conversations.findMany({});
+    expect(paused.pendingCallId).toBe("c1");
+    expect(api.created).toEqual([]);
+
+    ai.script([{ type: "text", text: "Created invoice 3." }]);
+    const res = await resume("u1", id, {
+      callId: "c1",
+      decision: "approve",
+      assistant: "support",
+    });
+    expect(res.status).toBe(200);
+    expect((await read(res)).at(-1)).toEqual({ type: "end", reason: "stop" });
+    expect(api.created).toEqual([{ by: "u1", amount: 120 }]);
+
+    // A chat that names no assistant is refused before a conversation is
+    // created for it.
+    expect((await chat("u1", { message: "hello" })).status).toBe(400);
+    expect(await rows.conversations.findMany({})).toHaveLength(1);
+  });
+
   it("resumes a client tool with its result", async ({ expect }) => {
     const { chat, resume, read, ai } = await boot();
     ai.script([

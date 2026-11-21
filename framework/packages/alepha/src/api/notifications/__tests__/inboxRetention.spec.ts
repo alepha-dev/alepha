@@ -61,9 +61,7 @@ describe("inbox retention", () => {
    * makes the first sweep after a deploy compute `subtract(undefined, "day")`,
    * an Invalid Date that on sqlite compares as a string against every row.
    */
-  it("ships a default and a description for its own window", async ({
-    expect,
-  }) => {
+  it("ships a default for its own window", async ({ expect }) => {
     const { alepha, settings } = await boot();
 
     expect(settings.current.inboxRetentionDays).toBe(90);
@@ -100,7 +98,7 @@ describe("inbox retention", () => {
   });
 
   /**
-   * Bounded exactly like the executions sweep next door: an unbounded
+   * Bounded exactly like the receipt sweep next door: an unbounded
    * DELETE over a table that grows with every mention is what times an
    * hourly D1 cron out.
    */

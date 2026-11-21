@@ -48,7 +48,7 @@ describe("StorageMultipartCapProvider", () => {
 
     const cap = caps.resolve(requestFor("releases"), uploadRoute);
 
-    // 100 MB, declared in megabytes and answered in bytes — the one place the
+    // 100 MB, declared in megabytes and answered in bytes, the one place the
     // two vocabularies meet.
     expect(cap?.maxFileBytes).toBe(100 * 1024 * 1024);
   });
@@ -69,16 +69,23 @@ describe("StorageMultipartCapProvider", () => {
     // `$storage` documents `maxSize` as defaulting to 10 MB, and `FileService`
     // enforces exactly that. Deferring here instead meant the transport applied
     // the 5 MB application default, so an undeclared bucket was held at half
-    // what its own documentation promised — and nothing said so.
+    // what its own documentation promised, and nothing said so.
     const cap = caps.resolve(requestFor("scratch"), uploadRoute);
 
     expect(cap?.maxFileBytes).toBe(10 * 1024 * 1024);
   });
 
-  it("has no opinion when no bucket was named", async ({ expect }) => {
+  it("answers the default storage's cap when no bucket was named", async ({
+    expect,
+  }) => {
     const caps = await setup();
 
-    expect(caps.resolve(requestFor(), uploadRoute)).toBeUndefined();
+    // An upload with no `bucket` is stored in `default`, so it gets the same
+    // budget as one that names it, not the application-wide ceiling.
+    const unnamed = caps.resolve(requestFor(), uploadRoute);
+
+    expect(unnamed?.maxFileBytes).toBe(10 * 1024 * 1024);
+    expect(unnamed).toEqual(caps.resolve(requestFor("default"), uploadRoute));
   });
 
   it("has no opinion about a bucket that does not exist", async ({
@@ -96,7 +103,7 @@ describe("StorageMultipartCapProvider", () => {
    *
    * It is chosen by the caller, so a resolver that answered for every route
    * would let any request name the largest bucket the application declares and
-   * claim its budget — on a route that never stores anything by bucket.
+   * claim its budget, on a route that never stores anything by bucket.
    */
   it("says nothing about a route it does not own", async ({ expect }) => {
     const caps = await setup();
@@ -116,7 +123,7 @@ describe("StorageMultipartCapProvider", () => {
 
     // A suffix is not an identity. This route stores nothing by bucket, so
     // answering for it would hand any caller the largest budget the app
-    // declares anywhere — and on a `z.file()` route that budget is memory,
+    // declares anywhere, and on a `z.file()` route that budget is memory,
     // spent before `$secure` has run.
     const theirs = {
       path: "/api/projects/:id/files",
@@ -132,7 +139,7 @@ describe("StorageMultipartCapProvider", () => {
     const caps = await setup();
 
     // `GET /api/files` is the listing. It carries no body, so a size budget is
-    // meaningless there — and granting one is free surface.
+    // meaningless there, and granting one is free surface.
     const listing = { path: "/api/files", method: "GET" } as ServerRoute;
 
     expect(caps.resolve(requestFor("releases"), listing)).toBeUndefined();

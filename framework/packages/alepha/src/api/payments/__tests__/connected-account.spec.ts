@@ -21,7 +21,9 @@ const VENUE_ACCOUNT = "acct_venue";
  */
 class AccountScopedProvider extends MemoryPaymentProvider {
   protected readonly accounts = new Map<string, string | undefined>();
-  /** Sessions the buyer completed on the PSP page. */
+  /**
+   * Sessions the buyer completed on the PSP page.
+   */
   public readonly paid = new Set<string>();
 
   public override async createSession(
@@ -121,7 +123,9 @@ const setup = async () => {
     jobErrors.push(`${name}: ${String(error?.message)}`);
   });
 
-  /** A checkout session opened `ageMin` minutes ago. */
+  /**
+   * A checkout session opened `ageMin` minutes ago.
+   */
   const openSession = async (
     ageMin: number,
     options: { stripeAccount?: string; authorize?: boolean } = {},

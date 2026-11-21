@@ -355,8 +355,8 @@ export class MemoryPaymentProvider implements PaymentProvider {
 
   /**
    * Deliberately unpollable. The mock stamps every charge "captured" at
-   * creation — that is what the charge WILL be if the buyer completes
-   * the fake checkout, not what actually happened — so reporting it here
+   * creation, that is what the charge WILL be if the buyer completes
+   * the fake checkout, not what actually happened, so reporting it here
    * would make every abandoned-payment scenario auto-recover. A test
    * exercising reconciliation substitutes a subclass that answers.
    */

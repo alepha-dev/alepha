@@ -229,7 +229,7 @@ export class NotificationSenderService {
         body:
           sensitive || !this.storeRenderedBody()
             ? null
-            : (outcome.body ?? null),
+            : this.storedBody(outcome.body),
         error: outcome.error ?? null,
       });
     } catch (error) {
@@ -265,6 +265,24 @@ export class NotificationSenderService {
   }
 
   /**
+   * The body as the receipt keeps it: cut at `maxStoredBodyBytes` of UTF-8,
+   * never in the middle of a character.
+   */
+  protected storedBody(body: string | null | undefined): string | null {
+    if (body === undefined || body === null) {
+      return null;
+    }
+    const max = this.settings.current.maxStoredBodyBytes;
+    const bytes = new TextEncoder().encode(body);
+    if (bytes.length <= max) {
+      return body;
+    }
+    return new TextDecoder()
+      .decode(bytes.subarray(0, max))
+      .replace(/\uFFFD$/, "");
+  }
+
+  /**
    * Decide whether this message must not go out, and why.
    *
    * Suppression first, preferences second, and the order matters: an app's
@@ -290,7 +308,9 @@ export class NotificationSenderService {
     }
 
     const allowed = await this.preferences.allows({
-      contact,
+      // Normalized as the suppression list normalizes it, which is what
+      // `NotificationPreferenceOptions.contact` promises.
+      contact: contact.trim().toLowerCase(),
       channel,
       template: payload.template,
       category: payload.category,
@@ -348,7 +368,7 @@ export class NotificationSenderService {
   /**
    * Pick the template's `translations` entry for the payload language:
    * exact match ("fr-FR") first, then the base language ("fr"). Returns
-   * undefined when there is no match — callers fall back to the default
+   * undefined when there is no match, callers fall back to the default
    * (template-level) message.
    */
   protected translation(

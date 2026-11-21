@@ -19,10 +19,10 @@ declare module "alepha" {
     /**
      * The bytes are in hand, the storage's own MIME and size rules have
      * passed, and nothing has been written yet. A subscriber may **replace**
-     * `ev.file` — what it puts there is what gets hashed, stored and described
+     * `ev.file`, what it puts there is what gets hashed, stored and described
      * by the `files` row.
      *
-     * The seam that keeps upload-time concerns out of core — resizing,
+     * The seam that keeps upload-time concerns out of core, resizing,
      * re-encoding, EXIF stripping, scanning. Each of those drags in a
      * dependency that has no business in the bundle of an app that merely
      * stores a PDF, so core offers the hook and carries none of them.
@@ -31,7 +31,7 @@ declare module "alepha" {
      * resizer built on this was measured and dropped: the wasm codec cost 27%
      * of a Cloudflare Worker's entire byte budget, loaded on every request
      * rather than every upload, to cover the uploads a browser-side downscale
-     * (`ControlUpload`'s `image` prop) already handles — and encoded them
+     * (`ControlUpload`'s `image` prop) already handles, and encoded them
      * worse, having no lossy WebP. Reach for this hook where that trade comes
      * out differently: a Node host with no bundle ceiling, or a transform with
      * no client-side equivalent.
@@ -47,7 +47,7 @@ declare module "alepha" {
 
 export interface FileUploadEvent {
   /**
-   * Reassign to store something else — resized, re-encoded, stripped of
+   * Reassign to store something else, resized, re-encoded, stripped of
    * metadata. Leave alone to store what the caller sent.
    */
   file: FileLike;
@@ -119,7 +119,7 @@ export const AlephaApiFiles = $module({
     DefaultStorage,
     // Lets the targeted bucket decide the request's size budget. Without it,
     // `$storage({ maxSize })` could only ever tighten an application-wide
-    // ceiling, never reach past it — a bucket asking for 100 MB was silently
+    // ceiling, never reach past it, a bucket asking for 100 MB was silently
     // held at 5, and nothing said so.
     StorageMultipartCapProvider,
   ],

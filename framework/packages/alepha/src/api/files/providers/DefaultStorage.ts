@@ -12,7 +12,7 @@ import { DEFAULT_STORAGE } from "../services/FileService.ts";
 export class DefaultStorage {
   public readonly files = $storage({
     name: DEFAULT_STORAGE,
-    // Where an upload with no `bucket` lands, so naming it changes nothing.
+    // Where an upload with no `bucket` lands, so a client may name it too.
     clientUploads: true,
   });
 }

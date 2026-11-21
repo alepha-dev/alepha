@@ -9,13 +9,13 @@ import { PaymentService } from "../services/PaymentService.ts";
 /**
  * `capture`, `void` and `cancel` read the intent, assert its status, then wrote
  * with an unguarded `updateById`. Whatever the row said by the time the write
- * landed was overwritten — the assertion only ever described the *snapshot*.
+ * landed was overwritten, the assertion only ever described the *snapshot*.
  *
  * The race needs the row to change between the read and the write, which a
  * plain `Promise.all` cannot force here (the shared test connection serialises
  * the statements). `StaleReadPaymentService` reproduces it deterministically:
  * it hands the operation a snapshot that was true a moment ago and is not true
- * any more — exactly the state a second worker leaves behind.
+ * any more, exactly the state a second worker leaves behind.
  */
 class StaleReadPaymentService extends PaymentService {
   public staleSnapshot?: PaymentIntentEntity;

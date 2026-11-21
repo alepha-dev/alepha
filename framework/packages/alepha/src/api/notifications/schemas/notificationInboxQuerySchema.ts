@@ -19,7 +19,7 @@ export const notificationInboxQuerySchema = z.object({
    * Only messages the owner has not read yet.
    */
   unreadOnly: z.boolean().optional(),
-  limit: z.number().min(1).max(100).optional(),
+  limit: z.integer().min(1).max(100).optional(),
   /**
    * Where to continue from, taken verbatim from the previous page's
    * `nextCursor`.

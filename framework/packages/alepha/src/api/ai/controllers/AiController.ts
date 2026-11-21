@@ -19,6 +19,11 @@ import { AiConversationService } from "../services/AiConversationService.ts";
 import { AiSettings } from "../services/AiSettings.ts";
 
 /**
+ * The endpoint {@link AiController.guard} is building a gate for.
+ */
+export type AiEndpoint = "chat" | "resume" | "list" | "detail";
+
+/**
  * The assistant's HTTP surface: chat and resume as `$sse` streams, the
  * conversation list and detail as `$action`s.
  *
@@ -26,14 +31,10 @@ import { AiSettings } from "../services/AiSettings.ts";
  * the app narrows it) and scoped to the caller: another user's
  * conversation is a 404, never a 403. On the streams, every refusal happens
  * in a `use` middleware, before the stream opens, so it is the response's
- * status: 401 anonymous, 404 not yours, 409 not waiting on that call, 429
- * over the turn rate or the token budget.
+ * status: 400 a malformed answer or an assistant name nothing declares, 401
+ * anonymous, 404 not yours, 409 not waiting on that call, 429 over the turn
+ * rate or the token budget.
  */
-/**
- * The endpoint {@link AiController.guard} is building a gate for.
- */
-export type AiEndpoint = "chat" | "resume" | "list" | "detail";
-
 export class AiController {
   protected readonly url: string = "/ai";
   protected readonly group: string = "ai";
@@ -95,7 +96,7 @@ export class AiController {
         conversation,
         user,
         this.chatService.toResume(body),
-        undefined,
+        body.assistant,
         body.context,
       )) {
         emit(event);
@@ -185,6 +186,9 @@ export class AiController {
       handler: ({ next }) => {
         return async (...args: any[]) => {
           const context = args[0];
+          // An unknown or missing assistant name is a 400 here, before a
+          // conversation is created for the turn.
+          this.chatService.assistant(context.body.assistant);
           context.conversation = await this.chatService.conversationFor(
             context.user.id,
             context.body,
@@ -208,8 +212,10 @@ export class AiController {
       handler: ({ next }) => {
         return async (...args: any[]) => {
           const context = args[0];
-          // A malformed answer is a 400 here, before the call is claimed.
+          // A malformed answer, or an unknown or missing assistant name, is
+          // a 400 here, before the call is claimed.
           this.chatService.toResume(context.body);
+          this.chatService.assistant(context.body.assistant);
           context.conversation = await this.chatService.claim(
             context.user.id,
             context.params.id,

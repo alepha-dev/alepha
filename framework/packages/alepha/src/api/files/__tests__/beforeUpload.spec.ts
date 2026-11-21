@@ -91,7 +91,7 @@ describe("files:upload:before", () => {
     await media.raw.upload(file("abc"));
 
     // `storage` is how a subscriber reaches whatever option its own package
-    // augmented onto `StoragePrimitiveOptions` — without it the hook could
+    // augmented onto `StoragePrimitiveOptions`, without it the hook could
     // only ever apply one global policy.
     expect(rewriter.seen).toEqual([{ bucket: "raw", size: 3 }]);
   });
@@ -112,7 +112,7 @@ describe("files:upload:before", () => {
     const rewriter = alepha.inject(Rewriter);
     await alepha.start();
 
-    // A rejected upload must never reach a subscriber — otherwise every
+    // A rejected upload must never reach a subscriber, otherwise every
     // transform pays to decode what the storage was always going to refuse.
     await expect(app.images.upload(file("nope"))).rejects.toThrow();
     expect(rewriter.seen).toEqual([]);

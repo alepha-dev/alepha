@@ -54,7 +54,7 @@ const testStorageOperations = async (
 
   const blob = Buffer.from("Hello, World!");
 
-  // `upload` returns the `files` row, not a bare blob id — `.id` is what
+  // `upload` returns the `files` row, not a bare blob id, `.id` is what
   // callers persist and what `GET /api/files/:id` accepts.
   const stored = await assets.images.upload(
     createFile(blob, {
@@ -124,7 +124,7 @@ describe("$storage", () => {
       .catch((e) => e);
 
     expect(error).toBeInstanceOf(InvalidFileError);
-    // The request itself is malformed — this file may never be accepted here,
+    // The request itself is malformed, this file may never be accepted here,
     // no matter its size.
     expect(error.status).toBe(400);
   });

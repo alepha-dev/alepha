@@ -27,13 +27,25 @@ export class NotificationIngestService {
   /**
    * When the provider told us the event happened, or now.
    *
-   * Not every provider sends a timestamp on every event, and an empty string
-   * reaching a datetime column is a 500 on a webhook: the provider then
-   * retries it, forever, for a message that will never map.
+   * Always an ISO string. Not every provider sends a timestamp on every
+   * event, and none is bound to send ISO: anything else reaching a datetime
+   * column is a 500 on a webhook, which the provider then retries, forever.
    */
   protected occurredAt(value: string | number | null | undefined): string {
-    const text = typeof value === "number" ? String(value) : (value ?? "");
-    return text.trim() || this.dateTime.now().toISOString();
+    const text = String(value ?? "").trim();
+    if (text === "") {
+      return this.dateTime.now().toISOString();
+    }
+    // Digits alone are an epoch, in seconds (Brevo's `ts_event`) or in
+    // milliseconds. Anything else is a date as the provider spells it,
+    // Brevo's `YYYY-MM-DD HH:MM:SS` included.
+    const epoch = /^\d+$/.test(text) ? Number(text) : undefined;
+    const date = this.dateTime.of(
+      epoch === undefined ? text : epoch < 1e11 ? epoch * 1000 : epoch,
+    );
+    return (
+      Number.isNaN(date.valueOf()) ? this.dateTime.now() : date
+    ).toISOString();
   }
 
   /**
@@ -198,7 +210,8 @@ export class NotificationIngestService {
       bounce: mapped.bounce,
       smtpStatusCode: body.reason ? String(body.reason) : undefined,
       raw: body,
-      occurredAt: this.occurredAt(body.date ?? body.ts_event),
+      // `ts_event` is UTC; `date` carries no zone.
+      occurredAt: this.occurredAt(body.ts_event ?? body.date),
     };
   }
 }

@@ -78,14 +78,16 @@ describe("PaymentMethodService", () => {
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 
-    const method1 = await service.addPaymentMethod(userId, "tok_visa");
-    await service.addPaymentMethod(userId, "tok_mastercard");
+    // The first method saved is the default: move it to the second.
+    await service.addPaymentMethod(userId, "tok_visa");
+    const method2 = await service.addPaymentMethod(userId, "tok_mastercard");
 
-    await service.setDefault(method1.id, userId);
+    await service.setDefault(method2.id, userId);
 
     const methods = await service.listPaymentMethods(userId);
-    const defaultMethod = methods.find((m) => m.isDefault);
-    expect(defaultMethod?.id).toBe(method1.id);
+    expect(methods.filter((m) => m.isDefault).map((m) => m.id)).toEqual([
+      method2.id,
+    ]);
   });
 
   it("should reject removing another user's payment method", async ({
