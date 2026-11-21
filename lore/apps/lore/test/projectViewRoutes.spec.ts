@@ -72,6 +72,25 @@ describe("projectViewRoutes", () => {
     }
   });
 
+  it("lays out every settings page as the settings shell, under a Settings crumb (#Q4063)", async () => {
+    const names = await pageNamesUnder("projectSettings");
+
+    // The page that shipped missing from the list. Delete this line only
+    // when the page itself leaves the router.
+    expect(names).toContain("projectSettingsErrors");
+
+    for (const name of names) {
+      expect(
+        ROUTES_FULL_WIDTH.has(name),
+        `${name} is missing from ROUTES_FULL_WIDTH (ROUTES_SETTINGS)`,
+      ).toBe(true);
+      expect(
+        SECTION_LABEL_KEYS[name],
+        `${name} has no Settings crumb in SECTION_LABEL_KEYS (ROUTES_SETTINGS)`,
+      ).toBe("project.menu.settings");
+    }
+  });
+
   /**
    * Activity is a leaf: `/` under the project is the whole section, so an
    * href in the map would link the page to itself. (The inbox was the other
