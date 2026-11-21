@@ -1,5 +1,5 @@
 import { $inject, AlephaError } from "alepha";
-import { isSQLWrapper, type SQL, sql } from "drizzle-orm";
+import { Column, is, isSQLWrapper, type SQL, sql } from "drizzle-orm";
 
 import { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
@@ -58,18 +58,32 @@ export class SqlExpressionProvider {
   }
 
   /**
-   * A Postgres `timestamptz` read in UTC. `TO_CHAR` formats one in the
-   * session's time zone, which a server or a role can set to anything, while
-   * SQLite and D1 bucket epoch milliseconds in UTC: pinned, a row lands in
-   * the same day, hour and week on every dialect.
+   * `TO_CHAR` of a Postgres date or timestamp, with a `timestamptz` read in
+   * UTC. `TO_CHAR` formats a `timestamptz` in the session's time zone, which
+   * a server or a role can set to anything, while SQLite and D1 bucket epoch
+   * milliseconds in UTC: pinned, a row lands in the same day, hour and week
+   * on every dialect.
+   *
+   * Only a `timestamptz` is shifted. A `date` or a `timestamp` has no zone,
+   * and `AT TIME ZONE 'UTC'` would give it one and move it by the session's
+   * offset. A column says its type; for any other expression the statement
+   * asks Postgres (`pg_typeof`), so a raw fragment of either type is right
+   * too.
    */
-  protected inUtc(column: SqlLike): SQL {
-    return sql`(${column} AT TIME ZONE 'UTC')`;
+  protected toCharUtc(column: SqlLike, format: string): SQL<string> {
+    const pattern = sql.raw(`'${format}'`);
+    const pinned = sql<string>`TO_CHAR((${column} AT TIME ZONE 'UTC'), ${pattern})`;
+    const plain = sql<string>`TO_CHAR(${column}, ${pattern})`;
+    if (is(column, Column)) {
+      return column.getSQLType().includes("with time zone") ? pinned : plain;
+    }
+    return sql<string>`(CASE WHEN pg_typeof(${column}) = 'timestamp with time zone'::regtype THEN ${pinned} ELSE ${plain} END)`;
   }
 
   /**
    * A timestamp column truncated to its day, as sortable `'YYYY-MM-DD'` text.
-   * The day is the UTC day on every dialect.
+   * The day of a timestamp is its UTC day on every dialect; a Postgres `date`
+   * column is formatted as it is.
    *
    * Returns text on both dialects on purpose: Postgres `DATE(col)` would
    * otherwise decode to a Date while SQLite yields a string, forcing callers
@@ -79,7 +93,7 @@ export class SqlExpressionProvider {
     if (this.isEpochMillis) {
       return sql<string>`STRFTIME('%Y-%m-%d', ${this.toEpochSeconds(column)}, 'unixepoch')`;
     }
-    return sql<string>`TO_CHAR(${this.inUtc(column)}, 'YYYY-MM-DD')`;
+    return this.toCharUtc(column, "YYYY-MM-DD");
   }
 
   /**
@@ -104,7 +118,7 @@ export class SqlExpressionProvider {
     if (this.isEpochMillis) {
       return sql<string>`STRFTIME('%Y-%m-%dT%H', ${this.toEpochSeconds(column)}, 'unixepoch')`;
     }
-    return sql<string>`TO_CHAR(${this.inUtc(column)}, 'YYYY-MM-DD"T"HH24')`;
+    return this.toCharUtc(column, 'YYYY-MM-DD"T"HH24');
   }
 
   /**
@@ -127,7 +141,7 @@ export class SqlExpressionProvider {
         || PRINTF('%02d', (CAST(STRFTIME('%j', ${thursday}) AS INTEGER) - 1) / 7 + 1)
       )`;
     }
-    return sql<string>`TO_CHAR(${this.inUtc(column)}, 'IYYY-"W"IW')`;
+    return this.toCharUtc(column, 'IYYY-"W"IW');
   }
 
   /**

@@ -785,6 +785,40 @@ export const testFindWithJoinsAndLimit = async (alepha: Alepha) => {
   expect(results.length).toBe(2);
   expect(results[0].name).toBe("Alice");
   expect(results[1].name).toBe("Bob");
+  // The joined row comes with each of them, under the limit too.
+  expect(results[0].city?.id).toBe(results[0].cityId);
+  expect(results[1].city?.id).toBe(results[1].cityId);
+  expect(results[0].city?.name).toBeTypeOf("string");
+};
+
+/**
+ * An INNER join pages over the rows it keeps: Diana has no profile, so the
+ * offset counts Alice, Bob and Charlie only.
+ */
+export const testInnerJoinWithOffset = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  await setupTestData(app);
+
+  const page = (offset: number) =>
+    app.users.findMany({
+      with: {
+        profile: {
+          type: "inner",
+          join: profiles,
+          on: ["id", profiles.cols.userId],
+        },
+      },
+      offset,
+      limit: 2,
+      orderBy: { column: "name", direction: "asc" },
+    });
+
+  expect((await page(1)).map((user) => user.name)).toEqual(["Bob", "Charlie"]);
+  const last = await page(2);
+  expect(last.map((user) => user.name)).toEqual(["Charlie"]);
+  expect(last[0].profile?.userId).toBe(last[0].id);
 };
 
 export const testFindWithJoinsAndOffset = async (alepha: Alepha) => {

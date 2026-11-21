@@ -1700,9 +1700,12 @@ export abstract class Repository<T extends ZObject> {
    * against a remote database (D1 in particular) a batch of twenty becomes one
    * network call instead of twenty, which is usually the whole cost.
    *
-   * One statement when the rows fit, otherwise one per batch, sized like
-   * {@link createMany}'s from the driver's `maxBoundParameters` less what the
-   * `ON CONFLICT … DO UPDATE SET` clause binds itself. It used to be one
+   * With a `set`, or when every row provides the same columns, one statement
+   * when the rows fit; without `set`, rows that provide different columns
+   * make one group each (see `opts.set`). A group too large for one statement
+   * goes in batches, sized like {@link createMany}'s from the driver's
+   * `maxBoundParameters` less what the `ON CONFLICT … DO UPDATE SET` clause
+   * binds itself. It used to be one
    * statement whatever the count, so on D1 (a ceiling of 100) a fourteen-value
    * row failed from its eighth: Lore's hourly analytics rollup failed on every
    * run for a week with `too many SQL variables` (#Q2404). Like

@@ -247,6 +247,53 @@ describe("ModelBuilder", () => {
         ]);
       });
 
+      it("should build table with a composite foreign key", () => {
+        const seatsEntity = $entity({
+          name: "seats",
+          schema: z.object({
+            id: db.primaryKey(z.integer()),
+            roomId: z.integer(),
+            seatNumber: z.integer(),
+          }),
+          constraints: [
+            {
+              columns: ["roomId", "seatNumber"],
+              unique: true,
+              name: "unique_room_seat",
+            },
+          ],
+        });
+        builder.buildTable(seatsEntity, options);
+
+        const bookingsEntity = $entity({
+          name: "bookings",
+          schema: z.object({
+            id: db.primaryKey(z.integer()),
+            roomId: z.integer(),
+            seatNumber: z.integer(),
+          }),
+          foreignKeys: [
+            {
+              name: "bookings_seat_fk",
+              columns: ["roomId", "seatNumber"],
+              foreignColumns: [
+                () => seatsEntity.cols.roomId,
+                () => seatsEntity.cols.seatNumber,
+              ],
+            },
+          ],
+        });
+        builder.buildTable(bookingsEntity, options);
+
+        expect(built("bookings").foreignKeys).toEqual([
+          {
+            name: "bookings_seat_fk",
+            columns: ["room_id", "seat_number"],
+            foreignColumns: ["room_id", "seat_number"],
+          },
+        ]);
+      });
+
       it("should build table with unique constraint", () => {
         const entity = $entity({
           name: "users",
