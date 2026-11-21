@@ -1,16 +1,16 @@
 import { $pipeline, Alepha } from "alepha";
 import { AlephaServer } from "alepha/server";
-import { describe, test } from "vitest";
+import { describe, it } from "vitest";
 
 import { AlephaServerCors } from "../index.ts";
 import { $cors } from "../primitives/$cors.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
-// $cors — core behavior
+// $cors: core behavior
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$cors", () => {
-  test("applies CORS headers to request", async ({ expect }) => {
+  it("applies CORS headers to request", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     class TestService {
@@ -40,7 +40,7 @@ describe("$cors", () => {
     });
   });
 
-  test("throws AlephaError when no request context", async ({ expect }) => {
+  it("throws AlephaError when no request context", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     class TestService {
@@ -55,7 +55,7 @@ describe("$cors", () => {
     await expect(svc.fn()).rejects.toThrow("$cors requires a request context");
   });
 
-  test("does not set origin header when origin is disallowed", async ({
+  it("does not set origin header when origin is disallowed", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
@@ -85,7 +85,7 @@ describe("$cors", () => {
     });
   });
 
-  test("applies credentials header when enabled", async ({ expect }) => {
+  it("applies credentials header when enabled", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     class TestService {
@@ -113,7 +113,7 @@ describe("$cors", () => {
     });
   });
 
-  test("refuses credentials when the origin is the wildcard", async ({
+  it("refuses credentials when the origin is the wildcard", async ({
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
@@ -143,7 +143,7 @@ describe("$cors", () => {
     });
   });
 
-  test("applies methods and headers", async ({ expect }) => {
+  it("applies methods and headers", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     class TestService {
@@ -178,7 +178,7 @@ describe("$cors", () => {
     });
   });
 
-  test("handler arguments are passed through", async ({ expect }) => {
+  it("handler arguments are passed through", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     class TestService {
@@ -200,9 +200,12 @@ describe("$cors", () => {
     });
   });
 
-  test("OPTIONS preflight returns 204 and skips handler", async ({
+  it("answers 204 and skips the handler when the request's own method is OPTIONS", async ({
     expect,
   }) => {
+    // A pipeline or a route declared with `method: "OPTIONS"`. The preflight
+    // of a GET or POST action never gets here: its generated OPTIONS twin
+    // answers it (see "preflight" in ServerCorsProvider.spec.ts).
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     let handlerCalled = false;
@@ -246,11 +249,11 @@ describe("$cors", () => {
 });
 
 // -----------------------------------------------------------------------------------------------------------------
-// $cors — metadata
+// $cors: metadata
 // -----------------------------------------------------------------------------------------------------------------
 
 describe("$cors metadata", () => {
-  test("has middleware metadata", ({ expect }) => {
+  it("has middleware metadata", ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCors);
 
     class TestService {

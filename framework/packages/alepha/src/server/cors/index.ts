@@ -1,12 +1,11 @@
 import { $module } from "alepha";
 
-import {
-  type CorsOptions,
-  ServerCorsProvider,
-} from "./providers/ServerCorsProvider.ts";
+import type { CorsOptions } from "./atoms/corsOptions.ts";
+import { ServerCorsProvider } from "./providers/ServerCorsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/corsOptions.ts";
 export * from "./constants/CAPACITOR_ORIGINS.ts";
 export * from "./primitives/$cors.ts";
 export * from "./providers/ServerCorsProvider.ts";

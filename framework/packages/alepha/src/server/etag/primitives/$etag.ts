@@ -13,6 +13,11 @@ import { ServerEtagProvider } from "../providers/ServerEtagProvider.ts";
  * The global `ServerEtagProvider` hooks read these
  * to generate ETags, handle 304s, and optionally store responses.
  *
+ * A request is answered `304 Not Modified` when its `If-None-Match` names
+ * the response's ETag: a list of validators, a weak one (`W/"..."`) and `*`
+ * all match. A stored response also carries `Last-Modified`, the time it was
+ * stored, and answers `If-Modified-Since`.
+ *
  * When `store` is enabled, the middleware also checks the cache before
  * calling the handler, short-circuiting on cache hits.
  *
@@ -130,9 +135,14 @@ export type EtagMiddlewareOptions =
    */
   | {
       /**
-       * If true, enables storing cached responses. (in-memory, Redis, @see alepha/cache for other providers)
-       * If a DurationLike is provided, it will be used as the TTL for the cache.
-       * If CachePrimitiveOptions is provided, its `ttl` is used as the TTL.
+       * If true, stores the response and answers later requests from the
+       * store without running the handler.
+       * If a DurationLike is provided, it is the TTL of the stored response.
+       * If CachePrimitiveOptions is provided, only its `ttl` is read.
+       *
+       * The store is in memory, in the process that answered: it is not
+       * shared between instances, and `ServerEtagProvider.invalidate()`
+       * clears the entries of the process it runs in.
        *
        * With `store: true` the cache's own default TTL applies (300s).
        *
@@ -141,84 +151,76 @@ export type EtagMiddlewareOptions =
       store?: true | DurationLike | CachePrimitiveOptions;
 
       /**
-       * If true, enables ETag support for the cached responses.
+       * Always on: sending an ETag is what `$etag` is for, and the option
+       * accepts no other value.
        *
-       * @default true (always true when using $etag)
+       * @default true
        */
       etag?: true;
 
       /**
+       * The `Cache-Control` header of a successful response.
+       *
        * - If true, sets Cache-Control to "public, max-age=300" (5 minutes).
        * - If string, sets Cache-Control to the provided value directly.
        * - If object, configures Cache-Control directives.
        */
-      control?:
-        | true
-        | string
-        | {
-            /**
-             * Indicates that the response may be cached by any cache.
-             */
-            public?: boolean;
-            /**
-             * Indicates that the response is intended for a single user and must not be stored by a shared cache.
-             */
-            private?: boolean;
-            /**
-             * Forces caches to submit the request to the origin server for validation before releasing a cached copy.
-             */
-            noCache?: boolean;
-            /**
-             * Instructs caches not to store the response.
-             */
-            noStore?: boolean;
-            /**
-             * Maximum amount of time a resource is considered fresh.
-             * Can be specified as a number (seconds) or as a DurationLike object.
-             */
-            maxAge?: number | DurationLike;
-            /**
-             * Overrides max-age for shared caches (e.g., CDNs).
-             * Can be specified as a number (seconds) or as a DurationLike object.
-             */
-            sMaxAge?: number | DurationLike;
-            /**
-             * Indicates that once a resource becomes stale, caches must not use it without successful validation.
-             */
-            mustRevalidate?: boolean;
-            /**
-             * Similar to must-revalidate, but only for shared caches.
-             */
-            proxyRevalidate?: boolean;
-            /**
-             * Indicates that the response can be stored but must be revalidated before each use.
-             */
-            immutable?: boolean;
-            /**
-             * Time window (in seconds or DurationLike) during which a stale response may be served
-             * while a fresh one is fetched in the background.
-             * Supported by Cloudflare, modern browsers, and most CDNs.
-             */
-            staleWhileRevalidate?: number | DurationLike;
-          };
+      control?: true | string | EtagCacheControlOptions;
     };
+
+/**
+ * The `Cache-Control` directives `$etag({ control })` can write.
+ */
+export interface EtagCacheControlOptions {
+  /**
+   * Indicates that the response may be cached by any cache.
+   */
+  public?: boolean;
+  /**
+   * Indicates that the response is intended for a single user and must not be stored by a shared cache.
+   */
+  private?: boolean;
+  /**
+   * Forces caches to submit the request to the origin server for validation before releasing a cached copy.
+   */
+  noCache?: boolean;
+  /**
+   * Instructs caches not to store the response.
+   */
+  noStore?: boolean;
+  /**
+   * Maximum amount of time a resource is considered fresh.
+   * Can be specified as a number (seconds) or as a DurationLike object.
+   */
+  maxAge?: number | DurationLike;
+  /**
+   * Overrides max-age for shared caches (e.g., CDNs).
+   * Can be specified as a number (seconds) or as a DurationLike object.
+   */
+  sMaxAge?: number | DurationLike;
+  /**
+   * Indicates that once a resource becomes stale, caches must not use it without successful validation.
+   */
+  mustRevalidate?: boolean;
+  /**
+   * Similar to must-revalidate, but only for shared caches.
+   */
+  proxyRevalidate?: boolean;
+  /**
+   * Indicates that the response will not change while it is fresh, so a
+   * cache does not revalidate it before `max-age` runs out, even on a reload.
+   */
+  immutable?: boolean;
+  /**
+   * Time window (in seconds or DurationLike) during which a stale response may be served
+   * while a fresh one is fetched in the background.
+   * Supported by Cloudflare, modern browsers, and most CDNs.
+   */
+  staleWhileRevalidate?: number | DurationLike;
+}
 
 export interface EtagMiddlewareOptionsResolved {
   store?: true | DurationLike | CachePrimitiveOptions;
   etag?: true;
-  control?:
-    | true
-    | string
-    | {
-        public?: boolean;
-        private?: boolean;
-        noCache?: boolean;
-        noStore?: boolean;
-        maxAge?: number | DurationLike;
-        sMaxAge?: number | DurationLike;
-        mustRevalidate?: boolean;
-        proxyRevalidate?: boolean;
-        immutable?: boolean;
-        staleWhileRevalidate?: number | DurationLike;
-      };
+  control?: true | string | EtagCacheControlOptions;
 }

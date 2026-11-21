@@ -1,19 +1,22 @@
 import { AlephaError, createMiddleware, type Middleware } from "alepha";
 
-import {
-  type CorsOptions,
-  ServerCorsProvider,
-} from "../providers/ServerCorsProvider.ts";
+import type { CorsOptions } from "../atoms/corsOptions.ts";
+import { ServerCorsProvider } from "../providers/ServerCorsProvider.ts";
 
 /**
- * Middleware that applies CORS headers to the response and handles OPTIONS preflight.
+ * Middleware that applies CORS headers to the response of the route that declares it.
  *
- * Reads the request from the ALS context and applies the configured
- * CORS headers via `ServerCorsProvider`. Options are merged with
- * global CORS defaults.
+ * Options are merged with the global CORS defaults, and the result replaces
+ * the global policy for that route, on the request and on its preflight.
  *
- * For OPTIONS preflight requests, the middleware short-circuits with a 204 response
- * and skips the handler entirely.
+ * The headers go on the response of the action that declares the middleware.
+ * When that action is called in process, through `run()` from another route,
+ * they stay off the calling route's response: its own policy governs it.
+ *
+ * The preflight of a routed action is answered by an OPTIONS route generated
+ * for its path. The middleware itself answers 204 and skips the handler only
+ * when the request it runs on is an OPTIONS request, which is the case of a
+ * route declared with `method: "OPTIONS"`.
  *
  * **Route middleware** - requires a request context (`$action`). Throws if used outside one.
  *
@@ -36,7 +39,17 @@ export const $cors = (options?: Partial<CorsOptions>): Middleware => {
       const corsProvider = alepha.inject(ServerCorsProvider);
 
       return async (...args) => {
-        const request = alepha.get("alepha.http.request");
+        // Same resolution as `$etag`, for the same trap. Inside a nested
+        // `run()` the container-wide `alepha.http.request` is the OUTER
+        // request: applying this action's allow-list to it removed the grant
+        // the outer route was entitled to, or granted an origin the outer
+        // route refuses. `run()` publishes its per-call request on its own
+        // fork layer, so `"fork"` finds the action that declared this
+        // middleware, reading through any layer a `$transactional()` nested
+        // in between, and never an enclosing action's.
+        const request =
+          alepha.store.get("alepha.action.request", "fork") ??
+          alepha.get("alepha.http.request");
 
         if (!request) {
           throw new AlephaError(
@@ -47,7 +60,7 @@ export const $cors = (options?: Partial<CorsOptions>): Middleware => {
         const corsConfig = corsProvider.buildCorsOptions(options ?? {});
         corsProvider.applyCorsHeaders(request, corsConfig);
 
-        // OPTIONS preflight → respond immediately, skip handler
+        // An OPTIONS request is answered here, without the handler.
         if (request.method === "OPTIONS") {
           request.reply.setStatus(204);
           return;

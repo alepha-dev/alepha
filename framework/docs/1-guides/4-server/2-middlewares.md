@@ -214,7 +214,7 @@ alepha.store.mut(corsOptions, (o) => ({
 }));
 ```
 
-For per-action CORS, attach the `$cors` middleware instead: `use: [$cors({ origin: "..." })]`.
+For per-action CORS, attach the `$cors` middleware instead: `use: [$cors({ origin: "..." })]`. It governs the response of the action that declares it. When another route calls that action in process with `run()`, the calling route's own policy still decides its response.
 
 | Option        | Default                                                | Description                                              |
 | ------------- | ------------------------------------------------------ | -------------------------------------------------------- |
@@ -377,7 +377,9 @@ Set `METRICS_TOKEN` if the app itself is reachable from the network: the scraper
 
 `AlephaServerEtag` adds the `$etag` middleware, which hashes a response, sends
 it as an `ETag`, and answers `304 Not Modified` when the client sends the same
-value back in `If-None-Match`.
+value back in `If-None-Match`. The header is read the way a conditional GET
+defines it: a list of validators, a weak one (`W/"..."`, which is what a
+compressing proxy turns an ETag into) and `*` all match.
 
 ```typescript check
 import { $action } from "alepha/server";
@@ -402,6 +404,11 @@ short-circuits the handler on a hit:
 | `$etag()`                          | yes                   | no (304)           |
 | `$etag(true)`                      | no                    | no (304)           |
 | `$etag({ store: [5, "minutes"] })` | no                    | no (304)           |
+
+A stored response also carries `Last-Modified`, the time it was stored as an
+HTTP-date, repeated on every hit until the entry expires or is invalidated, and
+it answers `If-Modified-Since` when the request sends no `If-None-Match`. Bare
+`$etag()` stores nothing, so it sends no `Last-Modified`.
 
 `control` sets `Cache-Control` on top of that, either as a literal string or as
 directives:
@@ -431,6 +438,16 @@ user's body to another. Anonymous callers share a single entry. That is the
 right default and it is also worth knowing before you put `store` on a route
 whose response varies by something _other_ than those two headers, such as an
 `Accept-Language` or a tenant header: those responses would share an entry.
+
+Within one caller, an entry belongs to one route and to the path parameters and
+query the route **parsed**. Two requests whose parsed values differ never share
+a stored response, and two that parse to the same values do: under an integer
+schema `?n=1` and `?n=01` are one entry. On a route with no query schema every
+parameter the client sends is part of the key, so an unknown one makes a new
+entry.
+
+The store is in memory, in the process that answered. It has no single-flight:
+concurrent requests on an entry that is not stored yet each run the handler.
 
 ### Path-Scoped Middleware
 
