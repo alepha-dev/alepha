@@ -1,4 +1,10 @@
-import { jsonSchemaToZod, type ZObject, type ZType, z } from "alepha";
+import {
+  AlephaError,
+  jsonSchemaToZod,
+  type ZObject,
+  type ZType,
+  z,
+} from "alepha";
 
 import type { ControlProps } from "../form/Control.tsx";
 import type { OpenApiSpec, SwaggerEntry } from "./OpenApiSpec.ts";
@@ -55,7 +61,7 @@ export interface SwaggerRequest {
  * the operation's (dereferenced) JSON schemas, so every field is a `Control`
  * and validation is the one the rest of the UI uses:
  *
- * - each path, query and header parameter is a top-level field;
+ * - each path, query, header and cookie parameter is a top-level field;
  * - a JSON object body is flattened, one field per property (a nested object
  *   stays a group), or a textarea of raw JSON in `json` mode, which is also
  *   the only mode for a body that is not an object;
@@ -145,7 +151,9 @@ export class SwaggerRequestBuilder {
 
   /**
    * The request a submitted form describes. `origin` prefixes the path; leave
-   * it empty for the page's own origin.
+   * it empty for the page's own origin. Throws when the path would take the
+   * request to another origin (a document path such as `//host/x`), so the
+   * explorer never sends its credentials there.
    */
   public request(
     entry: SwaggerEntry,
@@ -160,7 +168,6 @@ export class SwaggerRequestBuilder {
     let hasParts = false;
     let body: BodyInit | undefined;
     const json: Record<string, unknown> = {};
-    let hasJson = false;
 
     for (const [key, target] of Object.entries(model.targets)) {
       const value = values[key];
@@ -191,7 +198,6 @@ export class SwaggerRequestBuilder {
           }
           break;
         case "field":
-          hasJson = true;
           json[target.name] = value;
           break;
         case "body":
@@ -204,7 +210,9 @@ export class SwaggerRequestBuilder {
       }
     }
 
-    if (hasJson) {
+    // A form body always goes out, `{}` when nothing was typed: a required
+    // body the server finds missing answers 400.
+    if (model.mode === "form" && model.mediaType !== "multipart/form-data") {
       headers["content-type"] = model.mediaType ?? "application/json";
       body = JSON.stringify(json);
     }
@@ -214,9 +222,17 @@ export class SwaggerRequestBuilder {
     }
 
     const search = query.toString();
+    const url = `${origin}${path}${search ? `?${search}` : ""}`;
+    // Resolved the way `fetch` will: `//host/x` or `/\host/x` is another host.
+    const base = "http://page.invalid";
+    if (new URL(url, base).origin !== new URL(origin || "/", base).origin) {
+      throw new AlephaError(
+        `Refusing to send ${url}: it leaves the API's origin`,
+      );
+    }
     return {
       method: entry.method.toUpperCase(),
-      url: `${origin}${path}${search ? `?${search}` : ""}`,
+      url,
       headers,
       body,
     };

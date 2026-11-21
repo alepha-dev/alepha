@@ -1,8 +1,8 @@
 import { useI18n } from "alepha/react/i18n";
-import { ChevronRight } from "lucide-react";
 
 import { cn } from "../core/utils.ts";
 import type { OpenApiSpec } from "./OpenApiSpec.ts";
+import { SwaggerSchemaViewField } from "./SwaggerSchemaViewField.tsx";
 
 export interface SwaggerSchemaViewProps {
   spec: OpenApiSpec;
@@ -18,8 +18,9 @@ export interface SwaggerSchemaViewProps {
  * A JSON schema as a tree of fields: name, type, a required mark and the
  * description, each object or array field opening on a click.
  *
- * Native `<details>`, so it opens without JavaScript and server-renders as
- * it will look; a `$ref` is followed one level at a time, only when opened.
+ * Native `<details>`, server-rendered closed. A field's children render the
+ * first time it is opened, so a `$ref` is followed one level at a time, only
+ * when opened, and a recursive schema costs one level per click.
  */
 export const SwaggerSchemaView = (props: SwaggerSchemaViewProps) => {
   const { tr } = useI18n();
@@ -108,19 +109,13 @@ export const SwaggerSchemaView = (props: SwaggerSchemaViewProps) => {
         return (
           <li key={name}>
             {expandable ? (
-              <details className="group/field">
-                <summary className="hover:bg-hover flex cursor-pointer list-none items-start gap-1 rounded-sm [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="text-muted-foreground mt-1.5 size-3.5 shrink-0 transition-transform group-open/field:rotate-90 rtl:-scale-x-100 rtl:group-open/field:-rotate-90" />
-                  {head}
-                </summary>
-                <div className="ps-4 pb-1">
-                  <SwaggerSchemaView
-                    spec={props.spec}
-                    schema={field}
-                    depth={depth + 1}
-                  />
-                </div>
-              </details>
+              <SwaggerSchemaViewField head={head}>
+                <SwaggerSchemaView
+                  spec={props.spec}
+                  schema={field}
+                  depth={depth + 1}
+                />
+              </SwaggerSchemaViewField>
             ) : (
               <div className="flex items-start gap-1 ps-4.5">{head}</div>
             )}

@@ -248,3 +248,113 @@ describe("SwaggerRequestBuilder", () => {
     ).toEqual({ status: "open", size: 20, tags: [""] });
   });
 });
+
+/**
+ * The builder over documents `$swagger` never writes: an external OpenAPI
+ * document may be hostile or simply shaped differently.
+ */
+describe("SwaggerRequestBuilder, external documents", () => {
+  const external = (paths: Record<string, unknown>) =>
+    new OpenApiSpec({
+      openapi: "3.0.0",
+      info: { title: "External", version: "1.0.0" },
+      paths,
+    } as never);
+
+  it("refuses a path that leaves the intended origin", ({ expect }) => {
+    const spec = external({
+      "//evil.example/steal": { get: { operationId: "steal", responses: {} } },
+      "/\\evil.example/steal": { get: { operationId: "slash", responses: {} } },
+    });
+    const builder = new SwaggerRequestBuilder(spec);
+    for (const id of ["steal", "slash"]) {
+      const entry = spec.find(id)!;
+      const model = builder.build(entry, "form");
+      expect(() => builder.request(entry, model, {})).toThrow(/origin/);
+      expect(() =>
+        builder.request(entry, model, {}, "https://api.example"),
+      ).not.toThrow();
+    }
+  });
+
+  it("sends an empty JSON object for a form body with nothing typed", ({
+    expect,
+  }) => {
+    const spec = external({
+      "/items": {
+        post: {
+          operationId: "create",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: { a: { type: "string" } },
+                },
+              },
+            },
+          },
+          responses: {},
+        },
+      },
+    });
+    const builder = new SwaggerRequestBuilder(spec);
+    const entry = spec.find("create")!;
+    const request = builder.request(entry, builder.build(entry, "form"), {
+      a: "",
+    });
+    expect(request.body).toBe("{}");
+    expect(request.headers).toEqual({ "content-type": "application/json" });
+  });
+
+  it("takes the parameters declared on the path item", ({ expect }) => {
+    const spec = external({
+      "/items/{id}": {
+        parameters: [
+          {
+            name: "x-tenant",
+            in: "header",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        delete: {
+          operationId: "remove",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+          ],
+          responses: {},
+        },
+      },
+    });
+    const builder = new SwaggerRequestBuilder(spec);
+    const entry = spec.find("remove")!;
+    const model = builder.build(entry, "form");
+    expect(model.targets).toEqual({
+      id: { in: "path", name: "id" },
+      "x-tenant": { in: "header", name: "x-tenant" },
+    });
+    // The operation's own `id` wins over the path item's.
+    expect(
+      entry.operation.parameters?.find((it) => it.name === "id")?.schema,
+    ).toEqual({ type: "string" });
+    const request = builder.request(entry, model, {
+      id: "i1",
+      "x-tenant": "acme",
+    });
+    expect(request.url).toBe("/items/i1");
+    expect(request.headers).toEqual({ "x-tenant": "acme" });
+  });
+});
