@@ -1,8 +1,18 @@
-import type { MyMfaController } from "alepha/api/users";
-import { TrustedTypes, useAction, useClient, useQuery } from "alepha/react";
+import type {
+  MyMfaController,
+  PasskeyProof,
+  PasskeyProofKind,
+} from "alepha/api/users";
+import {
+  type RunResult,
+  TrustedTypes,
+  useAction,
+  useClient,
+  useQuery,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { Button } from "../core/Button.tsx";
@@ -13,6 +23,7 @@ import {
   DialogTitle,
 } from "../core/Dialog.tsx";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
+import { AccountPasskeyProofDialog } from "./AccountPasskeyProofDialog.tsx";
 import { AccountRecoveryCodes } from "./AccountRecoveryCodes.tsx";
 
 /**
@@ -29,6 +40,18 @@ export interface AccountMfaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
+   * The proof turning the factor on asks of this account, as
+   * `GET /users/me/passkeys` says it: the current password, a passkey it
+   * already holds, or nothing (the default).
+   */
+  proof?: PasskeyProofKind;
+
+  /**
+   * A step-up assertion from one of the account's passkeys
+   * (`usePasskey().prove`), for an account whose proof is `passkey`.
+   */
+  prove?: () => Promise<RunResult<unknown>>;
+  /**
    * Called after enrollment completes, so the caller can refresh its status.
    */
   onDone?: () => void | Promise<void>;
@@ -37,6 +60,11 @@ export interface AccountMfaDialogProps {
 /**
  * Enroll an authenticator app: scan, confirm, then write down the recovery
  * codes.
+ *
+ * Once the code is typed, an account that owes a proof gives it in
+ * {@link AccountPasskeyProofDialog}, and the two go to the server together:
+ * a borrowed session cannot turn the factor on with an authenticator of its
+ * own.
  *
  * The recovery-code step is not a formality and is deliberately hard to
  * skip past. The secret is stored encrypted and the codes hashed, so this
@@ -50,6 +78,16 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
 
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>();
+  // The code waiting for its proof: set, the proof dialog is open.
+  const [pendingCode, setPendingCode] = useState<string>();
+  const [codeError, setCodeError] = useState<string>();
+  const proofKind = props.proof ?? "none";
+  const prove =
+    props.prove ??
+    (async (): Promise<RunResult<unknown>> => ({
+      ok: false,
+      reason: "cancelled",
+    }));
 
   /**
    * A fresh enrollment is started each time the dialog opens, and the
@@ -78,6 +116,8 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
     if (!open) {
       setCode("");
       setRecoveryCodes(undefined);
+      setPendingCode(undefined);
+      setCodeError(undefined);
     }
     props.onOpenChange(open);
   };
@@ -95,10 +135,61 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
     [api, props.onDone],
   );
 
+  // The same write with its proof. Its failures are shown here, not toasted:
+  // a refused proof on the proof dialog's own field, a refused code above
+  // the code field.
+  const activateProved = useAction<[code: string, proof: PasskeyProof]>(
+    {
+      handler: async (_ctx, value, proof) => {
+        const result = await api.activateTotp({
+          body: { code: value, proof },
+        });
+        setRecoveryCodes(result.recoveryCodes);
+        await props.onDone?.();
+      },
+      onError: useCallback(() => {}, []),
+    },
+    [api, props.onDone],
+  );
+  const activating = activate.loading || activateProved.loading;
+
   const submit = async (value: string) => {
+    setCodeError(undefined);
+    if (proofKind !== "none") {
+      setPendingCode(value);
+      return;
+    }
     if (!(await activate.run(value)).ok) {
       setCode("");
     }
+  };
+
+  /**
+   * Send the pending code with the proof the dialog collected. A refused
+   * proof stays on the proof dialog, which shows it and keeps the code; any
+   * other refusal (a wrong or expired code) closes it and is shown above the
+   * code field, which is cleared for the next attempt.
+   */
+  const submitProved = async (
+    proof: PasskeyProof,
+  ): Promise<RunResult<unknown>> => {
+    const result = await activateProved.run(pendingCode ?? "", proof);
+    if (result.ok || result.reason !== "error") {
+      return result;
+    }
+    const name = (result.error as { name?: string } | undefined)?.name;
+    if (
+      name === "PASSKEY_PASSWORD_PROOF" ||
+      name === "PASSKEY_ASSERTION_PROOF"
+    ) {
+      return result;
+    }
+    setCodeError(
+      result.error instanceof Error ? result.error.message : undefined,
+    );
+    setPendingCode(undefined);
+    setCode("");
+    return { ok: false, reason: "aborted" };
   };
 
   return (
@@ -111,13 +202,13 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
       onOpenChange={(open) => {
         // Not while activating either: the codes it is about to return
         // could never be shown again.
-        if (!open && (recoveryCodes || activate.loading)) {
+        if (!open && (recoveryCodes || activating)) {
           return;
         }
         setOpen(open);
       }}
     >
-      <DialogContent showCloseButton={!recoveryCodes && !activate.loading}>
+      <DialogContent showCloseButton={!recoveryCodes && !activating}>
         <DialogHeader>
           <DialogTitle>
             {recoveryCodes
@@ -182,7 +273,7 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                   <InputOTP
                     maxLength={6}
                     value={code}
-                    disabled={activate.loading}
+                    disabled={activating}
                     onChange={(value: string) => {
                       setCode(value);
                       if (value.length === 6) {
@@ -198,8 +289,17 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                   </InputOTP>
                 </div>
 
+                {codeError ? (
+                  <span
+                    className="text-danger text-center text-sm"
+                    role="alert"
+                  >
+                    {codeError}
+                  </span>
+                ) : null}
+
                 <Button
-                  loading={activate.loading}
+                  loading={activating}
                   disabled={code.length !== 6}
                   onClick={() => submit(code)}
                 >
@@ -214,6 +314,24 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
           </div>
         )}
       </DialogContent>
+
+      <AccountPasskeyProofDialog
+        // Under this dialog's root, so it opens as a dialog nested in it. A
+        // new one for each code: nothing typed for the last one stays.
+        key={pendingCode ?? "closed"}
+        kind={
+          pendingCode !== undefined && proofKind !== "none"
+            ? proofKind
+            : undefined
+        }
+        purpose="change"
+        prove={prove}
+        onProof={submitProved}
+        onClose={() => {
+          setPendingCode(undefined);
+          setCode("");
+        }}
+      />
     </Dialog>
   );
 };

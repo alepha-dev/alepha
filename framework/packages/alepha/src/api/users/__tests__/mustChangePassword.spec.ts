@@ -61,13 +61,17 @@ const setup = async (username: string) => {
     userService,
     passwords: alepha.inject(MyPasswordController),
     caller,
-    /** The flag as the user's own browser reads it. */
+    /**
+     * The flag as the user's own browser reads it.
+     */
     flag: async () => {
       const rows = await identities.listMyIdentities({}, { user: caller });
       return rows.find((row) => row.provider === "credentials")
         ?.mustChangePassword;
     },
-    /** The flag as stored, read straight from the row. */
+    /**
+     * The flag as stored, read straight from the row.
+     */
     stored: async () =>
       credentialsMustChangePassword(
         await realmProvider.identityRepository().findOne({

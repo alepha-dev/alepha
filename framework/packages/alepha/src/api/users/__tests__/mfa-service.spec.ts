@@ -25,7 +25,7 @@ const setup = async (
   await alepha.start();
 
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("default", {
+  realmProvider.register("users", {
     settings: {
       username: "required",
       mfa: { totp: "optional", ...mfa },
@@ -65,7 +65,7 @@ describe("alepha/api/users - MfaService", () => {
   }) => {
     const ctx = await setup("mfa-none");
 
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   it("should not require a second factor while enrollment is still pending", async ({
@@ -73,20 +73,17 @@ describe("alepha/api/users - MfaService", () => {
   }) => {
     const ctx = await setup("mfa-pending");
 
-    await ctx.mfa.beginTotpEnrollment(ctx.user.id, "default");
+    await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
 
     // A half-finished enrollment must never gate the login: the user has not
     // proved they can produce a code yet, so requiring one locks them out.
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   it("should require totp once enrollment is activated", async ({ expect }) => {
     const ctx = await setup("mfa-activate");
 
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     const code = ctx.totp.codeForCounter(
       enrollment.secret,
       ctx.totp.currentStep(),
@@ -95,10 +92,10 @@ describe("alepha/api/users - MfaService", () => {
     const { recoveryCodes } = await ctx.mfa.activateTotp(
       ctx.user.id,
       code,
-      "default",
+      "users",
     );
 
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual(["totp"]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual(["totp"]);
     expect(recoveryCodes).toHaveLength(10);
   });
 
@@ -107,24 +104,21 @@ describe("alepha/api/users - MfaService", () => {
   }) => {
     const ctx = await setup("mfa-bad-activate");
 
-    await ctx.mfa.beginTotpEnrollment(ctx.user.id, "default");
+    await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
 
     await expect(
-      ctx.mfa.activateTotp(ctx.user.id, "000000", "default"),
+      ctx.mfa.activateTotp(ctx.user.id, "000000", "users"),
     ).rejects.toThrow();
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   it("should verify a valid totp code after activation", async ({ expect }) => {
     const ctx = await setup("mfa-verify");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
     // A fresh step, so this is not the code activation just consumed.
@@ -134,21 +128,16 @@ describe("alepha/api/users - MfaService", () => {
       ctx.totp.currentStep(),
     );
 
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "default")).toBe(
-      true,
-    );
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "users")).toBe(true);
   });
 
   it("should refuse a totp code that was already used", async ({ expect }) => {
     const ctx = await setup("mfa-replay");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
     await ctx.dateTime.travel(30, "seconds");
@@ -157,79 +146,68 @@ describe("alepha/api/users - MfaService", () => {
       ctx.totp.currentStep(),
     );
 
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "default")).toBe(
-      true,
-    );
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "users")).toBe(true);
     // Same code, same step: an attacker who shoulder-surfed it must not get
     // a second use out of it.
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "default")).toBe(
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "users")).toBe(
       false,
     );
   });
 
   it("should consume a recovery code exactly once", async ({ expect }) => {
     const ctx = await setup("mfa-recovery");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     const { recoveryCodes } = await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
     const recovery = recoveryCodes[0]!;
 
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", recovery, "default")).toBe(
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", recovery, "users")).toBe(
       true,
     );
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", recovery, "default")).toBe(
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", recovery, "users")).toBe(
       false,
     );
     // The other nine survive.
     expect(
-      await ctx.mfa.verify(ctx.user.id, "totp", recoveryCodes[1]!, "default"),
+      await ctx.mfa.verify(ctx.user.id, "totp", recoveryCodes[1]!, "users"),
     ).toBe(true);
   });
 
   it("should stop requiring totp once it is disabled", async ({ expect }) => {
     const ctx = await setup("mfa-disable");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
-    await ctx.mfa.disableTotp(ctx.user.id, "default");
+    await ctx.mfa.disableTotp(ctx.user.id, "users");
 
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   it("should lock out after repeated wrong codes, even a correct one", async ({
     expect,
   }) => {
     const ctx = await setup("mfa-bruteforce");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
     // A six-digit code is a one-in-a-million guess, which is only safe while
     // the number of guesses is bounded. The default account budget is 5.
     for (let attempt = 0; attempt < 5; attempt++) {
-      expect(
-        await ctx.mfa.verify(ctx.user.id, "totp", "000000", "default"),
-      ).toBe(false);
+      expect(await ctx.mfa.verify(ctx.user.id, "totp", "000000", "users")).toBe(
+        false,
+      );
     }
 
     await ctx.dateTime.travel(30, "seconds");
@@ -238,7 +216,7 @@ describe("alepha/api/users - MfaService", () => {
       ctx.totp.currentStep(),
     );
 
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", good, "default")).toBe(
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", good, "users")).toBe(
       false,
     );
   });
@@ -247,10 +225,7 @@ describe("alepha/api/users - MfaService", () => {
     expect,
   }) => {
     const ctx = await setup("mfa-at-rest");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
 
     const row = await ctx.realmProvider.identityRepository().findOne({
       where: { userId: { eq: ctx.user.id }, provider: { eq: "totp" } },
@@ -274,7 +249,7 @@ describe("alepha/api/users - MfaService", () => {
     const ctx = await setup("mfa-disabled-enroll", { totp: "disabled" });
 
     await expect(
-      ctx.mfa.beginTotpEnrollment(ctx.user.id, "default"),
+      ctx.mfa.beginTotpEnrollment(ctx.user.id, "users"),
     ).rejects.toThrow();
   });
 
@@ -282,17 +257,14 @@ describe("alepha/api/users - MfaService", () => {
     expect,
   }) => {
     const ctx = await setup("mfa-disabled-activate");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     const code = ctx.totp.codeForCounter(
       enrollment.secret,
       ctx.totp.currentStep(),
     );
 
     // The realm turns it off while the user still has the QR on screen.
-    ctx.realmProvider.register("default", {
+    ctx.realmProvider.register("users", {
       settings: {
         username: "required",
         mfa: { totp: "disabled" },
@@ -300,9 +272,9 @@ describe("alepha/api/users - MfaService", () => {
     });
 
     await expect(
-      ctx.mfa.activateTotp(ctx.user.id, code, "default"),
+      ctx.mfa.activateTotp(ctx.user.id, code, "users"),
     ).rejects.toThrow();
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   /*
@@ -315,26 +287,23 @@ describe("alepha/api/users - MfaService", () => {
     expect,
   }) => {
     const ctx = await setup("mfa-disabled-stranded");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
-    ctx.realmProvider.register("default", {
+    ctx.realmProvider.register("users", {
       settings: {
         username: "required",
         mfa: { totp: "disabled" },
       } as never,
     });
 
-    const status = await ctx.mfa.statusFor(ctx.user.id, "default");
+    const status = await ctx.mfa.statusFor(ctx.user.id, "users");
     expect(status.totp.enabled).toBe(true);
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   /*
@@ -350,7 +319,7 @@ describe("alepha/api/users - MfaService", () => {
     expect,
   }) => {
     const ctx = await setup("mfa-issuer");
-    ctx.realmProvider.register("default", {
+    ctx.realmProvider.register("users", {
       settings: {
         username: "required",
         displayName: "Alepha TOTP demo",
@@ -358,13 +327,13 @@ describe("alepha/api/users - MfaService", () => {
       } as never,
     });
 
-    const { uri } = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "default");
+    const { uri } = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
 
     // Spaces are percent-encoded, never "+": several authenticator apps read
     // the issuer literally and would show the plus sign.
     expect(uri).toContain("issuer=Alepha%20TOTP%20demo");
     expect(uri.startsWith("otpauth://totp/Alepha%20TOTP%20demo:")).toBe(true);
-    expect(uri).not.toContain("default");
+    expect(uri).not.toContain("issuer=users");
   });
 
   it("should fall back to the realm name when no display name is set", async ({
@@ -372,9 +341,9 @@ describe("alepha/api/users - MfaService", () => {
   }) => {
     const ctx = await setup("mfa-issuer-fallback");
 
-    const { uri } = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "default");
+    const { uri } = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
 
-    expect(uri).toContain("issuer=default");
+    expect(uri).toContain("issuer=users");
   });
 
   /*
@@ -386,17 +355,14 @@ describe("alepha/api/users - MfaService", () => {
     expect,
   }) => {
     const ctx = await setup("mfa-disabled-remove");
-    const enrollment = await ctx.mfa.beginTotpEnrollment(
-      ctx.user.id,
-      "default",
-    );
+    const enrollment = await ctx.mfa.beginTotpEnrollment(ctx.user.id, "users");
     await ctx.mfa.activateTotp(
       ctx.user.id,
       ctx.totp.codeForCounter(enrollment.secret, ctx.totp.currentStep()),
-      "default",
+      "users",
     );
 
-    ctx.realmProvider.register("default", {
+    ctx.realmProvider.register("users", {
       settings: {
         username: "required",
         mfa: { totp: "disabled" },
@@ -409,13 +375,11 @@ describe("alepha/api/users - MfaService", () => {
       enrollment.secret,
       ctx.totp.currentStep(),
     );
-    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "default")).toBe(
-      true,
-    );
+    expect(await ctx.mfa.verify(ctx.user.id, "totp", code, "users")).toBe(true);
 
-    await ctx.mfa.disableTotp(ctx.user.id, "default");
+    await ctx.mfa.disableTotp(ctx.user.id, "users");
 
-    const status = await ctx.mfa.statusFor(ctx.user.id, "default");
+    const status = await ctx.mfa.statusFor(ctx.user.id, "users");
     expect(status.totp.enabled).toBe(false);
   });
 });

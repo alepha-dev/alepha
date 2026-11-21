@@ -1,11 +1,11 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
-import { BadRequestError, ConflictError, HttpError } from "alepha/server";
+import { BadRequestError, ConflictError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import {
@@ -36,7 +36,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
 
   // Configure realm settings if provided (applies to default realm)
   if (realmSettings) {
-    realmProvider.register("default", {
+    realmProvider.register("users", {
       settings: realmSettings,
     });
   }
@@ -56,7 +56,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
 // Helper to extract code from email
 const extractCode = (emailBody: string): string => {
   const match = emailBody.match(/(\d{6})/);
-  if (!match) throw new Error("Code not found in email");
+  if (!match) throw new AlephaError("Code not found in email");
   return match[1];
 };
 
@@ -523,7 +523,9 @@ describe("alepha/api/users - RegistrationService", () => {
       const expectedExpiry = before.add(10, "minutes");
 
       // Should expire approximately 10 minutes from now
-      expect(expiresAt.diff(expectedExpiry, "seconds")).toBeLessThan(5);
+      expect(Math.abs(expiresAt.diff(expectedExpiry, "seconds"))).toBeLessThan(
+        5,
+      );
     });
   });
 
@@ -613,7 +615,7 @@ describe("alepha/api/users - RegistrationService", () => {
         registrationService.completeRegistration({
           intentId: intent.intentId,
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
 
     it("should reject invalid intent ID", async ({ expect }) => {
@@ -623,7 +625,7 @@ describe("alepha/api/users - RegistrationService", () => {
         registrationService.completeRegistration({
           intentId: "550e8400-e29b-41d4-a716-446655440000",
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
 
     it("should reject when email code is required but not provided", async ({
@@ -704,7 +706,7 @@ describe("alepha/api/users - RegistrationService", () => {
         registrationService.completeRegistration({
           intentId: intent.intentId,
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
 
     it("should detect race condition when email is taken during verification", async ({
@@ -958,7 +960,7 @@ describe("alepha/api/users - RegistrationService", () => {
         roles: ["user"],
       });
 
-      // Without a captcha, the caller must get the captcha error — not a
+      // Without a captcha, the caller must get the captcha error, not a
       // ConflictError that confirms the address is registered (enumeration).
       await expect(
         registrationService.createRegistrationIntent({

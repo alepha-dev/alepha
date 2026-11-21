@@ -11,8 +11,8 @@ import { $realm, AlephaApiUsers, RealmProvider } from "../index.ts";
  *
  * `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
  * all complete by delivering a code, which `features.notifications` is what
- * wires up. The combination used to be reconciled silently — `$realm`
- * overwrote all three with `false` — which meant an application could ask
+ * wires up. The combination used to be reconciled silently, `$realm`
+ * overwrote all three with `false`, which meant an application could ask
  * for password resets, ship, and have every reset request rejected with
  * nothing anywhere saying why. `apps/examples/shop` did exactly that in production.
  *
@@ -60,8 +60,8 @@ describe("alepha/api/users - realm notification contradictions", () => {
 
   /**
    * Only an explicit `true` contradicts. The settings atom already defaults
-   * all three to `false`, so a realm that simply never mentions them — the
-   * common case, and every `$realm()` written before this rule existed — is
+   * all three to `false`, so a realm that simply never mentions them, the
+   * common case, and every `$realm()` written before this rule existed, is
    * untouched.
    */
   it("ignores settings left unset", async ({ expect }) => {
@@ -95,7 +95,7 @@ describe("alepha/api/users - realm notification contradictions", () => {
 
   /**
    * The `$realm` path surfaces the same error. It fires while the holder
-   * class is being constructed — that is, at `with()`, not at `start()` —
+   * class is being constructed, that is, at `with()`, not at `start()`,
    * because `$realm` registers the realm from a field initializer.
    */
   it("surfaces through $realm too", async ({ expect }) => {

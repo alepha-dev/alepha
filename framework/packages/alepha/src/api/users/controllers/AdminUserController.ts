@@ -184,7 +184,7 @@ export class AdminUserController {
   });
 
   /**
-   * Set (or reset) a user's password. Admin-only flow — does NOT
+   * Set (or reset) a user's password. Admin-only flow, does NOT
    * require knowing the previous password. Hash is stored as a
    * "credentials" identity for the user (upsert).
    */
@@ -219,6 +219,12 @@ export class AdminUserController {
         body.password,
         this.securityProvider.assertRealmScope(user, query.userRealmName),
         { mustChangePassword: body.mustChangePassword },
+      );
+      // An operator resets a password because the account may be in other
+      // hands: every session opened before the reset ends with it.
+      await this.userService.revokeSessions(
+        params.id,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
       );
       return { ok: true, id: params.id };
     },

@@ -27,7 +27,7 @@ export const myProfileSchema = z.object({
 
   /**
    * Shown so a person can see what they are, not so the client can gate on
-   * it — authorization is decided server-side on every call.
+   * it, authorization is decided server-side on every call.
    */
   roles: z.array(z.string()),
 

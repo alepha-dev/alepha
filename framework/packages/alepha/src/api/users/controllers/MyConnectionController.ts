@@ -10,14 +10,14 @@ import {
 } from "../schemas/myConnectionSchema.ts";
 
 /**
- * Self-service "connected apps" — every OAuth client holding a live session
+ * Self-service "connected apps", every OAuth client holding a live session
  * on the caller's account, and the ability to cut one off.
  *
  * ### Why it lives in `api/users` and not in `api/oauth`
  *
  * A connection needs both halves: a `sessions` row, owned here, named by an
  * `oauth_clients` row, owned by `api/oauth`. Either module could host it, and
- * the first attempt put it in `api/oauth` — reasoning that "OAuth mints
+ * the first attempt put it in `api/oauth`, reasoning that "OAuth mints
  * sessions for users" made `oauth → users` the natural direction.
  *
  * **That is backwards, and `yarn build` proved it.** `api/users` already
@@ -29,13 +29,13 @@ import {
  *
  * So the direction is fixed by what already exists: **users depends on oauth**,
  * and importing `oauthClientEntity` from `alepha/api/oauth` here is the same
- * edge `$realm` already relies on. It must stay one-way — a cycle is not a
+ * edge `$realm` already relies on. It must stay one-way, a cycle is not a
  * lint warning but a crash, a primitive factory resolving to `undefined` at
  * class-field-init time, surfacing in an unrelated file.
  *
  * Cross-module imports go through the **package specifier**
  * (`alepha/api/oauth`), never a deep relative path: the same build step
- * rejects a relative import that leaves its module directory — *"Relative
+ * rejects a relative import that leaves its module directory, *"Relative
  * imports must stay within the module boundary. Use a package import
  * instead"*.
  *
@@ -45,7 +45,7 @@ import {
  * `listMyConnections.can()`, which resolves against `/api/_links`. While this
  * controller lived in `api/oauth`, an application that never mounted that
  * module got the page hidden for nothing. Registered here it is always
- * present wherever `api/users` is — which in practice is the same thing,
+ * present wherever `api/users` is, which in practice is the same thing,
  * since `$realm` mounts `AlephaOAuth` anyway, but it is now a property of the
  * users module rather than a guarantee the placement provides.
  */
@@ -174,7 +174,7 @@ export class MyConnectionController {
       /*
         Three conditions, all load-bearing. `userId` keeps this owner-scoped,
         so another account's client id reads as missing rather than
-        forbidden — a distinct answer would confirm the id exists.
+        forbidden, a distinct answer would confirm the id exists.
 
         `clientId: isNotNull` keeps this endpoint to connections only: without
         it, "revoke a connected app" would happily delete the browser session
@@ -208,14 +208,14 @@ export class MyConnectionController {
    * ⚠️ **Do not turn this back into a `$repository(oauthClientEntity)` field.**
    * A repository declaration *registers the entity*, so putting one here adds
    * an `oauth_clients` table to the schema of every application that mounts
-   * `api/users` — including ones with no OAuth at all. `yarn check:migrations`
+   * `api/users`, including ones with no OAuth at all. `yarn check:migrations`
    * caught exactly that in `apps/examples/shop`, which suddenly wanted a
    * migration for a table it can never read.
    *
    * Going through `OAuthClientService` instead keeps the entity owned by the
    * module that declares it: the service is registered by `AlephaOAuth`, so
    * `alepha.has(...)` is false when OAuth is absent and the map comes back
-   * empty — callers already fall back to the raw client id.
+   * empty, callers already fall back to the raw client id.
    */
   /**
    * The host of a URL client id, or the id itself when it does not parse.

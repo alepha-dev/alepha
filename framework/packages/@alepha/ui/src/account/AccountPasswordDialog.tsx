@@ -1,8 +1,10 @@
 import type {
   MyIdentityController,
   MyPasswordController,
+  PasskeyProof,
+  PasskeyProofKind,
 } from "alepha/api/users";
-import { useAction, useClient } from "alepha/react";
+import { type RunResult, useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, useState } from "react";
 
@@ -29,6 +31,19 @@ export interface AccountPasswordDialogProps {
   onOpenChange: (open: boolean) => void;
 
   /**
+   * The proof the account owes, as `GET /users/me/passkeys` says it. Read
+   * for a first password only: an account with no password and a usable
+   * passkey confirms with that passkey before the password is set.
+   */
+  proof?: PasskeyProofKind;
+
+  /**
+   * A step-up assertion from one of the account's passkeys
+   * (`usePasskey().prove`), for an account whose proof is `passkey`.
+   */
+  prove?: () => Promise<RunResult<unknown>>;
+
+  /**
    * The password is temporary and must be replaced before the app can be
    * used: the dialog explains why, has no Cancel button and refuses every
    * close request. Only a successful change dismisses it.
@@ -46,8 +61,9 @@ export interface AccountPasswordDialogProps {
  * Set a first password, or change an existing one.
  *
  * ⚠️ **These are two different endpoints and must stay so.**
- * `setMyFirstPassword` takes only the new password and trusts the session,
- * which is defensible when there is nothing to prove knowledge of. Reusing it
+ * `setMyFirstPassword` takes the new password and, from an account that holds
+ * a usable passkey, a confirmation with it; an account with neither has
+ * nothing to prove knowledge of. Reusing it
  * to *change* a password would make any unattended signed-in browser a full
  * account takeover.
  *
@@ -62,6 +78,8 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
   const identityApi = useClient<MyIdentityController>();
   const toaster = useToast();
   const { tr } = useI18n();
+  const confirmsWithPasskey =
+    !props.hasPassword && props.proof === "passkey" && !!props.prove;
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
@@ -102,7 +120,17 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
             "success",
           );
         } else {
-          await identityApi.setMyFirstPassword({ body: { password } });
+          let proof: PasskeyProof | undefined;
+          if (confirmsWithPasskey) {
+            // A dismissed prompt sets nothing; a failed one is reported by
+            // the passkey action itself.
+            const assertion = await props.prove!();
+            if (!assertion.ok) {
+              return;
+            }
+            proof = { assertion: assertion.value as PasskeyProof["assertion"] };
+          }
+          await identityApi.setMyFirstPassword({ body: { password, proof } });
           toaster.show(
             tr("account.password.set", { default: "Password set" }),
             "success",
@@ -118,6 +146,8 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
       props.hasPassword,
       props.onDone,
       props.onOpenChange,
+      confirmsWithPasskey,
+      props.prove,
     ],
   );
   const submitting = save.loading;
@@ -162,10 +192,15 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
                 ? tr("account.password.changeDescription", {
                     default: "Every other device will be signed out.",
                   })
-                : tr("account.password.setDescription", {
-                    default:
-                      "You will be able to sign in with your password as well as your existing method.",
-                  })}
+                : confirmsWithPasskey
+                  ? tr("account.password.setDescriptionPasskey", {
+                      default:
+                        "You will be able to sign in with your password as well as your existing method. Your browser asks you to confirm with a passkey first.",
+                    })
+                  : tr("account.password.setDescription", {
+                      default:
+                        "You will be able to sign in with your password as well as your existing method.",
+                    })}
           </span>
           {props.hasPassword ? (
             <ControlPassword

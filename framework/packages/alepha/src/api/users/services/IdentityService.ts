@@ -7,6 +7,10 @@ import { UserAudits } from "../audits/UserAudits.ts";
 import type { IdentityEntity } from "../entities/identities.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";
+import {
+  type IdentityResource,
+  identityResourceSchema,
+} from "../schemas/identityResourceSchema.ts";
 import { PasskeyService } from "./PasskeyService.ts";
 
 export class IdentityService {
@@ -14,6 +18,14 @@ export class IdentityService {
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly passkeyService = $inject(PasskeyService);
+
+  /**
+   * The `providerData` keys an admin response may carry: the keys of
+   * `identityResourceSchema`'s `providerData`.
+   */
+  protected readonly resourceDataKeys = Object.keys(
+    identityResourceSchema.shape.providerData.unwrap().shape,
+  );
 
   protected userAudits(realmName?: string) {
     // Registered by every `$realm` whatever its features say; a realm
@@ -40,27 +52,19 @@ export class IdentityService {
 
     const where = this.identities(userRealmName).createQueryWhere();
 
-    if (q.userId) {
-      where.userId = { eq: q.userId };
-    }
+    // Identities carry no realm column and the table is shared: the owner's
+    // realm decides, in the query, so the page and its total count this
+    // realm's rows only, with or without a `userId`.
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const realmUsers = this.realmProvider
+      .userRepository(userRealmName)
+      .subquery({ realm: { eq: realm.name } }, "id");
+    where.userId = q.userId
+      ? { eq: q.userId, inArray: realmUsers }
+      : { inArray: realmUsers };
 
     if (q.provider) {
       where.provider = { like: q.provider };
-    }
-
-    // Identities carry no realm column: a listing filtered on a user of
-    // another realm must come back empty rather than leak that user's
-    // providers.
-    if (q.userId) {
-      const realm = this.realmProvider.getRealm(userRealmName);
-      const owner = await this.realmProvider
-        .userRepository(userRealmName)
-        .findOne({
-          where: { id: { eq: q.userId }, realm: { eq: realm.name } },
-        });
-      if (!owner) {
-        where.userId = { eq: "00000000-0000-0000-0000-000000000000" };
-      }
     }
 
     const result = await this.identities(userRealmName).paginate(
@@ -105,18 +109,24 @@ export class IdentityService {
   }
 
   /**
-   * An identity as an admin response carries it. A passkey row goes out
-   * without its public key: nothing secret, but nothing an operator needs
-   * either. The credential id stays in `providerUserId`: it is the row's key,
-   * and the server hands it out in `excludeCredentials` anyway.
+   * An identity as an admin response carries it: no password hash, and of
+   * `providerData` only the keys `identityResourceSchema` lists. A TOTP row
+   * goes out without its seed, recovery-code hashes and last used step, a
+   * passkey without its public key, a provider identity without the tokens
+   * the provider handed back. The credential id of a passkey stays in
+   * `providerUserId`: it is the row's key, and the server hands it out in
+   * `excludeCredentials` anyway.
    */
-  public toResource(identity: IdentityEntity): IdentityEntity {
-    if (identity.provider !== this.passkeyService.provider) {
-      return identity;
+  public toResource(identity: IdentityEntity): IdentityResource {
+    const { password: _password, providerData, ...row } = identity;
+    const stored = (providerData ?? {}) as Record<string, unknown>;
+    const data: Record<string, unknown> = {};
+    for (const key of this.resourceDataKeys) {
+      if (stored[key] !== undefined) {
+        data[key] = stored[key];
+      }
     }
-    const { publicKey: _publicKey, ...data } = (identity.providerData ??
-      {}) as Record<string, unknown>;
-    return { ...identity, providerData: data };
+    return { ...row, providerData: data };
   }
 
   /**

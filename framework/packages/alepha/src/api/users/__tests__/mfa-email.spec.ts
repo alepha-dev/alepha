@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmTestPostgres } from "alepha/orm";
@@ -26,7 +26,7 @@ const setup = async (user: { email?: string; emailVerified?: boolean }) => {
   await alepha.start();
 
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("default", {
+  realmProvider.register("users", {
     features: { notifications: true },
     settings: { mfa: { emailCode: "required" } } as never,
   });
@@ -63,7 +63,7 @@ const sentCode = async (emailProvider: { records: any[] }): Promise<string> => {
   const body = String(emailProvider.records[0].body ?? "");
   const match = body.match(/(\d{6})/);
   if (!match) {
-    throw new Error("No code found in the email that was sent");
+    throw new AlephaError("No code found in the email that was sent");
   }
   return match[1]!;
 };
@@ -77,7 +77,7 @@ describe("alepha/api/users - email code as a second factor", () => {
       emailVerified: true,
     });
 
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([
       "emailCode",
     ]);
   });
@@ -92,7 +92,7 @@ describe("alepha/api/users - email code as a second factor", () => {
 
     // Challenging an unverified address would send the code to a mailbox
     // nobody has proved they own.
-    expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
+    expect(await ctx.mfa.methodsFor(ctx.user.id, "users")).toEqual([]);
   });
 
   it("should send a code and report a masked destination", async ({
@@ -103,7 +103,7 @@ describe("alepha/api/users - email code as a second factor", () => {
       emailVerified: true,
     });
 
-    const started = await ctx.mfa.start(ctx.user.id, "emailCode", "default");
+    const started = await ctx.mfa.start(ctx.user.id, "emailCode", "users");
 
     await expect.poll(() => ctx.emailProvider.records.length).toBe(1);
     // Masked: enough for the user to recognise the mailbox, not enough to
@@ -117,13 +117,13 @@ describe("alepha/api/users - email code as a second factor", () => {
       email: "ada@example.com",
       emailVerified: true,
     });
-    await ctx.mfa.start(ctx.user.id, "emailCode", "default");
+    await ctx.mfa.start(ctx.user.id, "emailCode", "users");
 
     const code = await sentCode(ctx.emailProvider);
 
-    expect(
-      await ctx.mfa.verify(ctx.user.id, "emailCode", code, "default"),
-    ).toBe(true);
+    expect(await ctx.mfa.verify(ctx.user.id, "emailCode", code, "users")).toBe(
+      true,
+    );
   });
 
   it("should refuse a code that does not match", async ({ expect }) => {
@@ -131,10 +131,10 @@ describe("alepha/api/users - email code as a second factor", () => {
       email: "ada@example.com",
       emailVerified: true,
     });
-    await ctx.mfa.start(ctx.user.id, "emailCode", "default");
+    await ctx.mfa.start(ctx.user.id, "emailCode", "users");
 
     expect(
-      await ctx.mfa.verify(ctx.user.id, "emailCode", "000000", "default"),
+      await ctx.mfa.verify(ctx.user.id, "emailCode", "000000", "users"),
     ).toBe(false);
   });
 
@@ -143,19 +143,19 @@ describe("alepha/api/users - email code as a second factor", () => {
       email: "ada@example.com",
       emailVerified: true,
     });
-    await ctx.mfa.start(ctx.user.id, "emailCode", "default");
+    await ctx.mfa.start(ctx.user.id, "emailCode", "users");
     const code = await sentCode(ctx.emailProvider);
 
-    expect(
-      await ctx.mfa.verify(ctx.user.id, "emailCode", code, "default"),
-    ).toBe(true);
+    expect(await ctx.mfa.verify(ctx.user.id, "emailCode", code, "users")).toBe(
+      true,
+    );
 
     // `VerificationService.verifyCode` answers `{ ok: true, alreadyVerified }`
     // for a code it has already accepted, which is right for confirming an
     // address and wrong for a login factor: it would let one intercepted
     // code clear a second sign-in inside its lifetime.
-    expect(
-      await ctx.mfa.verify(ctx.user.id, "emailCode", code, "default"),
-    ).toBe(false);
+    expect(await ctx.mfa.verify(ctx.user.id, "emailCode", code, "users")).toBe(
+      false,
+    );
   });
 });

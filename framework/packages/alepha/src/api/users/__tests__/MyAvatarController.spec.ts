@@ -18,7 +18,7 @@ import {
  * the storage behind them.**
  *
  * `updateMyAvatar` / `deleteMyAvatar` used to live on `MyProfileController`,
- * which is always registered and injected `UserStorage` directly — so the
+ * which is always registered and injected `UserStorage` directly, so the
  * storage the flag was supposed to control got pulled in transitively and both
  * routes answered on every realm, including the default one where `avatars` is
  * `false`. The flag switched on a service nothing could observe. Nothing could
@@ -86,7 +86,7 @@ describe("alepha/api/users - MyAvatarController", () => {
 
     expect(actions).not.toContain("updateMyAvatar");
     expect(actions).not.toContain("deleteMyAvatar");
-    // The rest of the profile is unaffected — this is the avatar's own switch,
+    // The rest of the profile is unaffected, this is the avatar's own switch,
     // not a switch on the account area.
     expect(actions).toContain("updateMyProfile");
     expect(actions).toContain("getMyProfile");
@@ -120,7 +120,7 @@ describe("alepha/api/users - MyAvatarController", () => {
     const profile = await ctx.alepha.inject(MyAvatarController).deleteMyAvatar(
       {},
       {
-        user: { id: ctx.user.id, realm: "default", sessionId: "s-1" },
+        user: { id: ctx.user.id, realm: "users", sessionId: "s-1" },
       },
     );
 

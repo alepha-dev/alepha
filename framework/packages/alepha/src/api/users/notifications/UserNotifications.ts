@@ -155,7 +155,7 @@ export class UserNotifications {
    * The registration endpoint answers a taken address exactly as it answers
    * a fresh one, so the attempt is invisible to whoever made it. This is the
    * out-of-band channel that tells the real owner it happened. It carries no
-   * code — there is nothing for the recipient to act on beyond knowing.
+   * code, there is nothing for the recipient to act on beyond knowing.
    */
   public readonly registrationAttempt = $notification({
     category: "security",
@@ -169,7 +169,7 @@ export class UserNotifications {
 			<h1>Someone Tried to Sign Up With Your Email</h1>
 			<p>Hi ${it.email},</p>
 			<p>We received a request to create a new account using this email address, but an account already exists for it. No new account was created and nothing about your account has changed.</p>
-			<p>If this was you, you can simply sign in instead — or reset your password if you have forgotten it.</p>
+			<p>If this was you, you can simply sign in instead, or reset your password if you have forgotten it.</p>
 			<p>If this was not you, no action is required. Someone may have mistyped their own address. If you receive these repeatedly, consider changing your password.</p>
 			<p>Best regards,<br>The Team</p>
 		`,
@@ -182,7 +182,7 @@ export class UserNotifications {
 				<h1>Tentative d'inscription avec votre adresse e-mail</h1>
 				<p>Bonjour ${it.email},</p>
 				<p>Nous avons reçu une demande de création de compte avec cette adresse e-mail, mais un compte existe déjà. Aucun nouveau compte n'a été créé et votre compte n'a pas été modifié.</p>
-				<p>S'il s'agissait de vous, connectez-vous simplement — ou réinitialisez votre mot de passe si vous l'avez oublié.</p>
+				<p>S'il s'agissait de vous, connectez-vous simplement, ou réinitialisez votre mot de passe si vous l'avez oublié.</p>
 				<p>Si ce n'était pas vous, aucune action n'est nécessaire. Quelqu'un a peut-être mal saisi sa propre adresse. Si vous recevez ce message à répétition, envisagez de changer votre mot de passe.</p>
 			`,
         },
@@ -210,7 +210,6 @@ export class UserNotifications {
     }),
   });
 
-  // Link-based notifications (alternative)
   public readonly accountLockout = $notification({
     category: "security",
     description:

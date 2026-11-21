@@ -494,6 +494,20 @@ setup before the instance is publicly reachable.
 > container gates the option on `!alepha.isServerless()` and grants its
 > administrator through `adminEmails` on the Worker.
 
+`adminEmails` promotes an account only once its address is verified
+(`emailVerified`): by the verification code of a realm with
+`verifyEmailRequired`, by `POST /users/email-verification/verify`, or by an
+identity provider that says so. An address somebody merely typed at
+registration grants nothing, and on a closed realm an `adminEmails` address
+gets through only when the provider sends `email_verified: true`. A realm that
+cannot send mail and signs in by password alone therefore cannot use
+`adminEmails`: use `bootstrapFirstUser`, or create the administrator from a
+script with `UserService.createUser`.
+
+`adminUsernames` promotes whoever holds the name, so an account cannot rename
+itself into one, and a realm with `username: "none"` accepts no username
+change at all.
+
 ### Passkeys
 
 Beside a password and the identity providers below, a realm with `passkeys: "optional"` in its settings lets a user add a passkey and sign in with it alone: no username, no password, through a button on the login page or the browser's autofill. See [Passkeys](/docs/guides-security-passkeys).
@@ -703,7 +717,7 @@ Declared paths are shown; as `$action`s they serve under the `/api` prefix
 | `MyProfileController`    | `GET`/`PATCH /users/me`                                                                                                                                          |
 | `MyAvatarController`     | `POST`/`DELETE /users/me/avatar`                                                                                                                                 |
 | `MyIdentityController`   | `GET /users/me/identities`, `POST /users/me/identities/password`, `DELETE /users/me/identities/:id`                                                              |
-| `MyPasswordController`   | `POST /users/me/password`                                                                                                                                        |
+| `MyPasswordController`   | `POST /users/me/password`, `DELETE /users/me/password`                                                                                                           |
 | `MySessionController`    | `GET /users/me/sessions`, `DELETE /users/me/sessions/:id`, `POST /users/me/sessions/revoke-others`                                                               |
 | `MyConnectionController` | `GET /users/me/connections`, `DELETE /users/me/connections/:id`                                                                                                  |
 | `MyAccountController`    | `DELETE /users/me`                                                                                                                                               |
@@ -712,7 +726,7 @@ Declared paths are shown; as `$action`s they serve under the `/api` prefix
 The second-factor endpoints are covered in
 [Two-factor authentication](/docs/guides-security-two-factor-authentication).
 
-Two rules are worth knowing before you wire a UI to them:
+A few rules are worth knowing before you wire a UI to them:
 
 - **Setting a first password and changing one are different endpoints.**
   `setMyFirstPassword` trusts the session and refuses once a `credentials`
@@ -722,6 +736,18 @@ Two rules are worth knowing before you wire a UI to them:
 - **Unlinking the last identity is refused.** An account with no sign-in method
   is not locked, it is unreachable - and password reset cannot recover it,
   because that needs a `credentials` identity to reset.
+- **Removing the password asks for it.** `DELETE /users/me/password` takes
+  `{ currentPassword }`, refuses the last way to sign in, and signs the other
+  sessions out. `DELETE /users/me/identities/:id` unlinks a provider identity
+  without proof and refuses the `credentials` one. Setting a first password
+  on an account that holds a usable passkey takes `{ proof: { assertion } }`,
+  and also signs the other sessions out.
+- **A current password is a login attempt.** Changing or removing the
+  password, deleting the account and every `proof.currentPassword` spend the
+  account's
+  `loginRateLimit` budget: after `accountMaxAttempts` wrong ones the right
+  password is refused too, here and at the sign-in page, for the window.
+- **An admin password reset signs the account out everywhere.**
 
 `@alepha/ui` provides the matching UI as `AccountDialog`, the account as a
 settings dialog over the page - see the

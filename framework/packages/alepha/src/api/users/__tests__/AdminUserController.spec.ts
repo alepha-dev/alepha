@@ -1,4 +1,5 @@
 import { $hook, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { DbEntityNotFoundError, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
@@ -441,6 +442,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     );
 
     expect(result.content.length).toBeGreaterThanOrEqual(1);
+    expect(result.content.length).toBeGreaterThan(0);
     expect(result.content.every((u) => u.email?.includes("example.com"))).toBe(
       true,
     );
@@ -527,12 +529,16 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
       asAdmin,
     );
 
+    expect(enabledResult.content.length).toBeGreaterThan(0);
+
     expect(enabledResult.content.every((u) => u.enabled === true)).toBe(true);
 
     const disabledResult = await controller.findUsers(
       { query: { enabled: false } },
       asAdmin,
     );
+
+    expect(disabledResult.content.length).toBeGreaterThan(0);
 
     expect(disabledResult.content.every((u) => u.enabled === false)).toBe(true);
   });
@@ -566,6 +572,8 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
       asAdmin,
     );
 
+    expect(verifiedResult.content.length).toBeGreaterThan(0);
+
     expect(verifiedResult.content.every((u) => u.emailVerified === true)).toBe(
       true,
     );
@@ -574,6 +582,8 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
       { query: { emailVerified: false } },
       asAdmin,
     );
+
+    expect(unverifiedResult.content.length).toBeGreaterThan(0);
 
     expect(
       unverifiedResult.content.every((u) => u.emailVerified === false),
@@ -608,6 +618,8 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
       { query: { roles: ["admin"] } },
       asAdmin,
     );
+
+    expect(adminResult.content.length).toBeGreaterThan(0);
 
     expect(adminResult.content.every((u) => u.roles.includes("admin"))).toBe(
       true,
@@ -646,6 +658,7 @@ describe("alepha/api/users - AdminUserController delete cleanup", () => {
   }) => {
     const { alepha, controller } = await setup();
     const sessionService = alepha.inject(SessionService);
+    const dateTime = alepha.inject(DateTimeProvider);
 
     // Arrange: create a user
     const user = await controller.createUser(
@@ -674,12 +687,12 @@ describe("alepha/api/users - AdminUserController delete cleanup", () => {
     await sessionService.sessions().create({
       userId: user.id,
       refreshToken: "00000000-0000-0000-0000-000000000010",
-      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      expiresAt: dateTime.now().add(1, "hour").toISOString(),
     });
     await sessionService.sessions().create({
       userId: user.id,
       refreshToken: "00000000-0000-0000-0000-000000000011",
-      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      expiresAt: dateTime.now().add(1, "hour").toISOString(),
     });
 
     // Sanity check: sessions and identities exist before deletion

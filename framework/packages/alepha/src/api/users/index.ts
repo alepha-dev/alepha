@@ -24,6 +24,7 @@ import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { RealmProvider } from "./providers/RealmProvider.ts";
 import { AvatarPermissions } from "./services/AvatarPermissions.ts";
 import { CredentialService } from "./services/CredentialService.ts";
+import { CurrentPasswordService } from "./services/CurrentPasswordService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
 import { MfaService } from "./services/MfaService.ts";
 import { PasskeyService } from "./services/PasskeyService.ts";
@@ -95,6 +96,7 @@ export * from "./schemas/userResourceSchema.ts";
 export * from "./schemas/userStatsQuerySchema.ts";
 export * from "./schemas/userStatsSchema.ts";
 export * from "./services/CredentialService.ts";
+export * from "./services/CurrentPasswordService.ts";
 export * from "./services/IdentityService.ts";
 export * from "./services/MfaService.ts";
 export * from "./services/PasskeyService.ts";
@@ -149,6 +151,7 @@ export const AlephaApiUsers = $module({
     SessionService,
     SessionCrudService,
     CredentialService,
+    CurrentPasswordService,
     RegistrationService,
     MfaService,
     PasskeyService,
@@ -177,7 +180,7 @@ export const AlephaApiUsers = $module({
     UserAudits,
     SessionAudits,
     UserStorage,
-    // Registered by `$realm({ features: { avatars: true } })` only — see the
+    // Registered by `$realm({ features: { avatars: true } })` only, see the
     // class for why the avatar endpoints are not on `MyProfileController`.
     MyAvatarController,
     // Same gate, same reason: a realm that switched avatars off must not grow
@@ -193,7 +196,7 @@ declare module "alepha" {
   interface Hooks {
     /**
      * Emitted by {@link MyAccountController} immediately before an account is
-     * deleted, and awaited — nothing is removed until every handler resolves.
+     * deleted, and awaited, nothing is removed until every handler resolves.
      *
      * **Throwing aborts the deletion**, and the thrown error reaches the
      * caller unwrapped, so an application can refuse with its own message and
@@ -203,7 +206,7 @@ declare module "alepha" {
      * users, identities and sessions; it does not know that an account also
      * owns a project, or that rows it authored inside *other people's* data
      * cascade away with it. An application with foreign keys to `users.id`
-     * should subscribe here to clean up or refuse — otherwise it is trusting
+     * should subscribe here to clean up or refuse, otherwise it is trusting
      * its own cascade rules, silently.
      */
     "user:delete:before": {

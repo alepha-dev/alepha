@@ -1,11 +1,11 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { MemoryCaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
-import { BadRequestError, HttpError } from "alepha/server";
+import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import {
@@ -60,7 +60,7 @@ const setup = async () => {
 // Helper to extract code from email
 const extractCode = (emailBody: string): string => {
   const match = emailBody.match(/(\d{6})/);
-  if (!match) throw new Error("Code not found in email");
+  if (!match) throw new AlephaError("Code not found in email");
   return match[1];
 };
 
@@ -184,7 +184,9 @@ describe("alepha/api/users - CredentialService", () => {
       const expectedExpiry = before.add(10, "minutes");
 
       // Should expire approximately 10 minutes from now
-      expect(expiresAt.diff(expectedExpiry, "seconds")).toBeLessThan(5);
+      expect(Math.abs(expiresAt.diff(expectedExpiry, "seconds"))).toBeLessThan(
+        5,
+      );
     });
   });
 
@@ -268,7 +270,7 @@ describe("alepha/api/users - CredentialService", () => {
           code,
           newPassword: "NewPassword456!",
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
 
     it("should reject invalid intent ID", async ({ expect }) => {
@@ -280,7 +282,7 @@ describe("alepha/api/users - CredentialService", () => {
           code: "123456",
           newPassword: "NewPassword456!",
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
 
     it("should refuse completions past the per-IP cap with a 429", async ({
@@ -372,7 +374,7 @@ describe("alepha/api/users - CredentialService", () => {
           code,
           newPassword: "AnotherPassword789!",
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
 
     it("should invalidate all existing sessions after password reset", async ({
@@ -384,6 +386,7 @@ describe("alepha/api/users - CredentialService", () => {
         sessionService,
         cryptoProvider,
         emailProvider,
+        dateTimeProvider,
       } = await setup();
 
       const user = await createUserWithCredentials(
@@ -398,7 +401,7 @@ describe("alepha/api/users - CredentialService", () => {
       await sessionService.sessions().create({
         userId: user.id,
         refreshToken: crypto.randomUUID(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expiresAt: dateTimeProvider.now().add(1, "hour").toISOString(),
       });
 
       // Verify session exists
@@ -579,7 +582,7 @@ describe("alepha/api/users - CredentialService", () => {
           code: "123456",
           newPassword: "NewPassword456!",
         }),
-      ).rejects.toThrow(HttpError);
+      ).rejects.toMatchObject({ status: 410 });
     });
   });
 
@@ -727,7 +730,7 @@ describe("alepha/api/users - CredentialService", () => {
       await credentialService.createPasswordResetIntent("cooldown@example.com");
       await expect.poll(() => emailProvider.records.length).toBe(1);
 
-      // Second request inside the window is silently absorbed — the caller
+      // Second request inside the window is silently absorbed, the caller
       // still gets an intent, but no second mail goes out.
       await credentialService.createPasswordResetIntent("cooldown@example.com");
       expect(emailProvider.records.length).toBe(1);

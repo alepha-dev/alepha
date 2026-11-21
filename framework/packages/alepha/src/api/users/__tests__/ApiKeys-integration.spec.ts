@@ -58,7 +58,7 @@ const setup = async () => {
       }),
     });
 
-    // Admin-only action (explicit permission — user role excludes "admin:*")
+    // Admin-only action (explicit permission, user role excludes "admin:*")
     adminStats = $action({
       path: "/admin/stats",
       method: "GET",
@@ -750,7 +750,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const ok = await app.getProfile.fetch({ query: { api_key: token } });
     expect(ok.status).toBe(200);
 
-    // Disable the account — every outstanding API key must stop working.
+    // Disable the account, every outstanding API key must stop working.
     await adminUserController.updateUser.fetch(
       { params: { id: user.id }, body: { enabled: false } },
       { user: adminUser },
@@ -971,7 +971,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
       { user: adminUser },
     );
 
-    // A key must never grant more than its owner currently has — otherwise
+    // A key must never grant more than its owner currently has, otherwise
     // demotion is meaningless while any older key is outstanding.
     await expect(
       app.adminStats.fetch({ query: { api_key: token } }),

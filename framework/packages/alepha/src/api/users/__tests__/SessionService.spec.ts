@@ -25,7 +25,7 @@ import {
  *
  * On Workers `CacheProvider` is bound to `CloudflareKVProvider` whether or not
  * the app ever provisioned a namespace. When it didn't, the provider skips its
- * own initialization at boot and every call throws this error — which is what
+ * own initialization at boot and every call throws this error, which is what
  * disabled the login lockout in production, because the limiter injected the
  * default provider and swallowed the failure as "not locked".
  */
@@ -98,7 +98,7 @@ const setup = async (options?: {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
 
-  // Before start() — the container locks once started.
+  // Before start(), the container locks once started.
   const testSessionService = alepha.inject(TestSessionService);
 
   await alepha.start();
@@ -199,7 +199,7 @@ describe("alepha/api/users - SessionService.login", () => {
     expect(result?.email).toBe("login-success@example.com");
   });
 
-  it("should throw InvalidCredentialsError when identity not found", async ({
+  it("should throw InvalidCredentialsError when the user is unknown", async ({
     expect,
   }) => {
     const { sessionService } = await setup();
@@ -321,25 +321,24 @@ describe("alepha/api/users - SessionService.login", () => {
       password: hashedPassword,
     });
 
-    // Test identity not found
-    try {
-      await sessionService.login("local", "notfound@example.com", "password");
-    } catch (error) {
+    const failure = async (identifier: string, password: string) => {
+      const error = await sessionService
+        .login("local", identifier, password)
+        .then(
+          () => undefined,
+          (thrown: unknown) => thrown,
+        );
       expect(error).toBeInstanceOf(InvalidCredentialsError);
-      expect((error as Error).message).toBe("Invalid credentials");
-    }
+      return (error as Error).message;
+    };
 
-    // Test invalid password
-    try {
-      await sessionService.login(
-        "local",
-        "same-error@example.com",
-        "wrongPassword",
-      );
-    } catch (error) {
-      expect(error).toBeInstanceOf(InvalidCredentialsError);
-      expect((error as Error).message).toBe("Invalid credentials");
-    }
+    // An unknown user and a wrong password read the same.
+    expect(await failure("notfound@example.com", "password")).toBe(
+      "Invalid credentials",
+    );
+    expect(await failure("same-error@example.com", "wrongPassword")).toBe(
+      "Invalid credentials",
+    );
   });
 
   it("should include random delay to prevent timing attacks", async ({
@@ -347,7 +346,7 @@ describe("alepha/api/users - SessionService.login", () => {
   }) => {
     const { sessionService } = await setup();
 
-    const start = Date.now();
+    const start = performance.now();
 
     try {
       await sessionService.login(
@@ -359,7 +358,7 @@ describe("alepha/api/users - SessionService.login", () => {
       // Expected to fail
     }
 
-    const elapsed = Date.now() - start;
+    const elapsed = performance.now() - start;
 
     // Should take at least 50ms due to random delay
     expect(elapsed).toBeGreaterThanOrEqual(50);
@@ -391,9 +390,9 @@ describe("alepha/api/users - SessionService.login", () => {
     );
     expect(result?.id).toBe(user.id);
 
-    // Should fail with wrong provider
+    // The same user and password through a provider it has no identity for.
     await expect(
-      sessionService.login("local", "custom-user-id", "customPass"),
+      sessionService.login("local", "multiprovideruser", "customPass"),
     ).rejects.toThrow(InvalidCredentialsError);
   });
 
@@ -544,7 +543,7 @@ describe("alepha/api/users - SessionService.login", () => {
         password: hashedPassword,
       });
 
-      // Login successfully 10 times — should never be blocked
+      // Login successfully 10 times, should never be blocked
       for (let i = 0; i < 10; i++) {
         const result = await sessionService.login(
           "local",
@@ -555,7 +554,9 @@ describe("alepha/api/users - SessionService.login", () => {
       }
     });
 
-    it("should isolate account lockout per realm", async ({ expect }) => {
+    it("should not lock the account holding the same address in another realm", async ({
+      expect,
+    }) => {
       const {
         sessionService,
         userService,
@@ -597,7 +598,7 @@ describe("alepha/api/users - SessionService.login", () => {
         ).rejects.toThrow(InvalidCredentialsError);
       }
 
-      // realm-b should NOT be blocked (different account key: login:account:realm-b:userB.id)
+      // The realm-b account is another user: its budget is untouched.
       await identities.create({
         provider: "local",
         providerUserId: "same-realm-b@example.com",
@@ -654,7 +655,7 @@ describe("alepha/api/users - SessionService.login", () => {
           }
         }
 
-        // 16th attempt — IP should be blocked even with correct credentials
+        // 16th attempt, IP should be blocked even with correct credentials
         await expect(
           sessionService.login("local", "iptest-0@example.com", "correct"),
         ).rejects.toThrow(InvalidCredentialsError);
@@ -678,7 +679,7 @@ describe("alepha/api/users - SessionService.login", () => {
         password: hashedPassword,
       });
 
-      // No HTTP request in ALS — IP check skipped, only account check applies
+      // No HTTP request in ALS, IP check skipped, only account check applies
       // Fail 4 times (under account limit of 5) then succeed
       for (let i = 0; i < 4; i++) {
         await expect(
@@ -727,7 +728,7 @@ describe("alepha/api/users - SessionService.login", () => {
     }) => {
       // Regression for the production failure: on workerd the default
       // `CacheProvider` is an uninitialized `CloudflareKVProvider` that throws
-      // on every call. The lockout must not ride it — it rides the actor store, so
+      // on every call. The lockout must not ride it, it rides the actor store, so
       // it keeps working while the default provider is entirely unusable.
       //
       // Both halves below are needed to pin the behaviour down. Only a limiter
@@ -876,7 +877,7 @@ describe("alepha/api/users - SessionService.login", () => {
         ).rejects.toThrow(InvalidCredentialsError);
       }
 
-      // Advance 10 minutes — still inside the window.
+      // Advance 10 minutes, still inside the window.
       await dateTimeProvider.travel(10 * 60 * 1000);
 
       // 5th failure crosses the threshold. It does NOT push the expiry out.
@@ -911,7 +912,7 @@ describe("alepha/api/users - SessionService.login", () => {
       // The counter is an actor serialized per key, so all 20 land. A
       // read-modify-write would have most of them read the same value and
       // write the same `count + 1`, leaving the counter far short of the
-      // threshold — a lockout bypassable by anyone sending their guesses at
+      // threshold, a lockout bypassable by anyone sending their guesses at
       // once rather than in sequence.
       const { testSessionService: service } = await setup();
 
@@ -1237,7 +1238,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
       UnauthorizedError,
     );
 
-    // Session should be deleted — a second refresh should also fail
+    // Session should be deleted, a second refresh should also fail
     await expect(sessionService.refreshSession(refreshToken)).rejects.toThrow();
   });
 
@@ -1267,7 +1268,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
         "idle-ok",
       );
 
-      // Half the idle window — still well inside.
+      // Half the idle window, still well inside.
       await dateTimeProvider.travel(30, "minutes");
 
       const result = await sessionService.refreshSession(
@@ -1298,7 +1299,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
 
       const { refreshToken } = await sessionService.createSession(
         user,
-        7 * 24 * 3600, // 7 day absolute expiry — well beyond idle threshold
+        7 * 24 * 3600, // 7 day absolute expiry, well beyond idle threshold
         "idle-strict",
       );
 
@@ -1309,7 +1310,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
         sessionService.refreshSession(refreshToken, "idle-strict"),
       ).rejects.toThrow(UnauthorizedError);
 
-      // Session deleted — second refresh fails too (row gone).
+      // Session deleted, second refresh fails too (row gone).
       await expect(
         sessionService.refreshSession(refreshToken, "idle-strict"),
       ).rejects.toThrow();
@@ -1331,7 +1332,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
         7 * 24 * 3600,
       );
 
-      // Travel days into the future. With no idleTtl configured, refresh
+      // Travel days into the future. With no `refreshToken.expirationIdle` configured, refresh
       // should still succeed (only absolute expiresAt matters).
       await dateTimeProvider.travel(3, "days");
 
