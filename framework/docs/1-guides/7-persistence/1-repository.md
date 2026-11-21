@@ -391,9 +391,11 @@ await this.pageViews.upsertMany(
 
 `excluded()` only means something inside an `upsert` or `upsertMany` `set`.
 
-It sends one statement when the rows fit, and otherwise splits them the way
-`createMany` does, so no statement binds more values than the driver accepts
-(100 on Cloudflare D1). Like `createMany`'s, the batches are not one atomic unit
+With a `set`, or when every row provides the same columns, it sends one
+statement when the rows fit; rows that provide different columns make one
+group each. A group too large for one statement is split the way `createMany`
+does, so no statement binds more values than the driver accepts (100 on
+Cloudflare D1). Like `createMany`'s, the batches are not one atomic unit
 unless the call runs inside `$transactional`.
 
 ## Update Methods
@@ -603,7 +605,7 @@ Both also take a subquery (see [Subqueries](#subqueries)); the "at least one val
 | `startsWith`    | Case-insensitive prefix match, like `ilike: 'value%'`     |
 | `endsWith`      | Case-insensitive suffix match, like `ilike: '%value'`     |
 
-`contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Every pattern operator matches text: on PostgreSQL a uuid, an enum, an array or a JSON column is read as its text (an array and a JSON column as their JSON text, which is what SQLite stores). Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
+`contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Every pattern operator matches text: on PostgreSQL a uuid, an enum, an array or a JSON column is read as its text (an array and a JSON column as their JSON text, which is what SQLite stores). A pattern on any other non-text column (a timestamp, a date, a boolean, a number) is refused by PostgreSQL, whose text for those differs from SQLite's. Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
 
 ### Array Operators
 

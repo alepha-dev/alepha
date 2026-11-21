@@ -40,7 +40,7 @@ Inject it and write the expression once. Each helper returns a typed `SQL` fragm
 | `dateDiff(end, start, unit)` | number, `NULL` propagates  | `EXTRACT(EPOCH ...)` as double      | epoch-millisecond arithmetic       |
 | `ago(amount, unit)`          | a timestamp bound          | `NOW() - interval`                  | `STRFTIME('%s', 'now')` arithmetic |
 
-`dateDay`, `dateHour` and `dateWeek` bucket in UTC on every dialect: on Postgres the column is read `AT TIME ZONE 'UTC'`, whatever the session's time zone.
+`dateDay`, `dateHour` and `dateWeek` bucket a timestamp in UTC on every dialect: on Postgres a `timestamptz` is read `AT TIME ZONE 'UTC'`, whatever the session's time zone. A Postgres `date` or `timestamp` without time zone has no zone and is formatted as it is.
 
 `unit` is one of `"seconds"`, `"minutes"`, `"hours"` or `"days"`. The examples below read this entity:
 

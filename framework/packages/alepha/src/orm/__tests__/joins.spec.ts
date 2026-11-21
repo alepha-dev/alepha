@@ -15,6 +15,7 @@ import {
   testFindWithJoinsAndOffset,
   testInnerJoin,
   testInnerJoinNoMatchingRecords,
+  testInnerJoinWithOffset,
   testJoinWithNullForeignKey,
   testLeftJoinSqlWrapper,
   testLeftJoinTupleSyntax,
@@ -255,6 +256,17 @@ describe("joins", () => {
     });
     it("should find with joins and offset (postgres)", async () => {
       await testFindWithJoinsAndOffset(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
+    });
+
+    it("should page over the rows an inner join keeps (sqlite)", async () => {
+      await testInnerJoinWithOffset(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should page over the rows an inner join keeps (postgres)", async () => {
+      await testInnerJoinWithOffset(
         Alepha.create().with(AlephaOrmTestPostgres),
       );
     });

@@ -1198,9 +1198,9 @@ export abstract class DatabaseProvider {
    *
    * Default implementation delegates to {@link runMigrator}, the
    * driver-dispatch method shared with {@link markBaselineApplied}. Drivers
-   * whose migration flow doesn't fit that shape: Cloudflare D1 and
+   * whose migration flow doesn't fit that shape (Cloudflare D1 and
    * Cloudflare Hyperdrive, both fully self-contained, error-wrapped flows
-   * with no baseline-mark support (yet): override this method directly
+   * with no baseline-mark support yet) override this method directly
    * instead and never implement `runMigrator`.
    */
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
