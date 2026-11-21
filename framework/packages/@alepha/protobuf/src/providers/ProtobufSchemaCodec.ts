@@ -25,7 +25,13 @@ export class ProtobufSchemaCodec extends SchemaCodec {
     if (typeof Buffer !== "undefined") {
       return Buffer.from(binary).toString("base64");
     }
-    return btoa(String.fromCharCode(...binary));
+    // In chunks: spreading every byte into one call overflows the stack
+    // past about 150 kB.
+    let text = "";
+    for (let i = 0; i < binary.length; i += 0x8000) {
+      text += String.fromCharCode(...binary.subarray(i, i + 0x8000));
+    }
+    return btoa(text);
   }
 
   public encodeToBinary<T extends ZType>(
@@ -107,6 +113,11 @@ export class ProtobufSchemaCodec extends SchemaCodec {
         const propSchema = raw as JsonSchema;
 
         if (!(key in result) || result[key] === undefined) {
+          // A message field has presence in proto3: an absent optional one
+          // stays absent. Its `{}` default failed its own required fields.
+          if (this.isMessage(propSchema) && !schema.required?.includes(key)) {
+            continue;
+          }
           result[key] = this.getProto3Default(propSchema);
           continue;
         }
@@ -128,7 +139,29 @@ export class ProtobufSchemaCodec extends SchemaCodec {
       return value.map((item) => this.applyProto3Defaults(schema.items, item));
     }
 
+    // A map value needs the same conversion as any field: an int64 value
+    // arrives as a decimal string.
+    if (this.isRecord(schema)) {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          key,
+          this.applyProto3Defaults(schema.additionalProperties, item),
+        ]),
+      );
+    }
+
     return value;
+  }
+
+  /**
+   * A field written as a protobuf message: an object, or a nullable one.
+   */
+  protected isMessage(schema: JsonSchema): boolean {
+    if (this.isUnion(schema)) {
+      const member = this.getNonNullMember(schema);
+      return !!member && this.isObject(member);
+    }
+    return this.isObject(schema);
   }
 
   protected isObject(schema: JsonSchema): boolean {
@@ -156,11 +189,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
    * change exists to stop, and returning it as a `bigint` instead would fail
    * the same validation for the same reason.
    */
-  protected toSafeInteger(
-    schema: JsonSchema,
-    value: unknown,
-    field?: string,
-  ): unknown {
+  protected toSafeInteger(schema: JsonSchema, value: unknown): unknown {
     // `z.bigint()` is carried as a string ON PURPOSE - it is declared
     // `type: "string", format: "bigint"`, so it never reaches here, but the
     // guard keeps that true if the mapping ever changes.
@@ -171,7 +200,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
     const parsed = Number(value);
     if (!Number.isSafeInteger(parsed)) {
       throw new AlephaError(
-        `Protobuf field ${field ? `'${field}' ` : ""}decoded to ${value}, which is outside the safe integer range. Declare it as z.bigint() to carry it exactly.`,
+        `Protobuf field decoded to ${value}, which is outside the safe integer range. Declare it as z.bigint() to carry it exactly.`,
       );
     }
 
@@ -205,7 +234,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
    * Get the proto3 default value for a schema node.
    */
   protected getProto3Default(schema: JsonSchema): any {
-    // Enums default to their zero value — the first member — and the wire
+    // Enums default to their zero value (the first member), and the wire
     // format omits it. Returning "" here (an enum is carried as a string) would
     // hand back a value the schema rejects.
     if (this.isEnum(schema)) {
@@ -214,7 +243,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
 
     // proto3 has no null: a nullable field was written as its base type, so it
     // decodes to that type's default. Returning undefined instead would drop a
-    // field the schema still requires — nullable is not optional.
+    // field the schema still requires: nullable is not optional.
     if (this.isUnion(schema)) {
       const nonNull = this.getNonNullMember(schema);
       return nonNull ? this.getProto3Default(nonNull) : undefined;
@@ -236,8 +265,9 @@ export class ProtobufSchemaCodec extends SchemaCodec {
     if (this.isInteger(schema)) return 0;
     if (this.isBoolean(schema)) return false;
 
+    // Built from the nested schema, so its own required fields are there.
     if (this.isObject(schema)) {
-      return {};
+      return this.applyProto3Defaults(schema, {});
     }
 
     return undefined;

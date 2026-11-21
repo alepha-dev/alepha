@@ -247,8 +247,8 @@ message Target {
 
     /**
      * `.optional()` drops the key from `required` but leaves the property in
-     * place, so the field still needs a slot in the message — proto3 encodes an
-     * absent optional as its type default rather than omitting the field.
+     * place, so the field still needs a slot in the message. proto3 omits a
+     * default-valued field on the wire, and the decoder restores the default.
      */
     it("should handle optional types", async ({ expect }) => {
       const schema = z.object({
@@ -284,7 +284,7 @@ message Target {
 
       const data2 = {
         name: "Jane",
-        email: "", // In proto3, null string becomes empty string
+        email: null, // proto3 has no null: it comes back as ""
       };
 
       const buf1 = alepha.codec.encode(schema, data1, {
@@ -434,6 +434,22 @@ message Target {
       );
     });
 
+    it("should round-trip a record of integers", async ({ expect }) => {
+      const schema = z.object({ counts: z.record(z.text(), z.integer()) });
+      const data = { counts: { a: 5, b: 1_787_667_245_237 } };
+
+      expect(
+        alepha.codec.decode(
+          schema,
+          alepha.codec.encode(schema, data, {
+            as: "binary",
+            encoder: "protobuf",
+          }),
+          { encoder: "protobuf" },
+        ),
+      ).toEqual(data);
+    });
+
     it("should encode and decode records", async ({ expect }) => {
       const schema = z.object({
         metadata: z.record(z.text(), z.text()),
@@ -516,12 +532,12 @@ message Target {
   describe("Edge cases", () => {
     /**
      * `z.bigint()` is carried as a string with a `bigint` format, because JSON
-     * Schema has no bigint. The field must still reach the wire as int64 — a
+     * Schema has no bigint. The field must still reach the wire as int64: a
      * check on `type` alone would silently widen it to `string`.
      */
     it("should round-trip a bigint as int64", async ({ expect }) => {
       const schema = z.object({ id: z.bigint(), name: z.text() });
-      // `z.bigint()` is a validated decimal string, not a JS bigint — JSON
+      // `z.bigint()` is a validated decimal string, not a JS bigint. JSON
       // Schema has no bigint, so the framework carries it as text.
       const data = { id: "9007199254740993", name: "big" };
 
@@ -595,6 +611,42 @@ message Target {
     });
 
     /**
+     * A message field has presence in proto3: an absent optional nested
+     * object stays absent, rather than coming back as `{}` and failing its
+     * own required fields.
+     */
+    it("should leave an absent optional nested object absent", async ({
+      expect,
+    }) => {
+      const schema = z.object({
+        o: z.object({ x: z.text() }).optional(),
+      });
+
+      expect(
+        alepha.codec.decode(
+          schema,
+          alepha.codec.encode(
+            schema,
+            {},
+            { as: "binary", encoder: "protobuf" },
+          ),
+          { encoder: "protobuf" },
+        ),
+      ).toEqual({});
+    });
+
+    it("should fill an absent required nested object with its defaults", async ({
+      expect,
+    }) => {
+      const schema = z.object({ o: z.object({ x: z.text(), n: z.integer() }) });
+
+      // An empty message on the wire, as a peer that never set `o` sends it.
+      expect(
+        alepha.codec.decode(schema, new Uint8Array(), { encoder: "protobuf" }),
+      ).toEqual({ o: { x: "", n: 0 } });
+    });
+
+    /**
      * A protobuf message is an object. Anything else has no message to map to,
      * and the failure should name that rather than surfacing as a lookup error
      * from inside protobufjs.
@@ -662,7 +714,106 @@ message User {
     });
   });
 
+  describe("Unions", () => {
+    it("should reject a union whose members map to different types", async ({
+      expect,
+    }) => {
+      expect(() =>
+        protobuf.createProtobufSchema(
+          z.object({ v: z.union([z.text(), z.number()]) }),
+        ),
+      ).toThrow(/Unsupported type for protobuf/);
+      expect(() =>
+        protobuf.createProtobufSchema(
+          z.object({ v: z.union([z.integer(), z.number()]) }),
+        ),
+      ).toThrow(/Unsupported type for protobuf/);
+      expect(() =>
+        protobuf.createProtobufSchema(
+          z.object({
+            v: z.union([
+              z.object({ a: z.text() }),
+              z.object({ b: z.number() }),
+            ]),
+          }),
+        ),
+      ).toThrow(/Unsupported type for protobuf/);
+      expect(() =>
+        protobuf.createProtobufSchema(
+          z.object({ v: z.array(z.union([z.text(), z.number()])) }),
+        ),
+      ).toThrow(/Unsupported type for protobuf/);
+    });
+
+    it("should round-trip a union of literals", async ({ expect }) => {
+      const schema = z.object({
+        v: z.union([z.literal("a"), z.literal("b")]),
+      });
+      const data = { v: "b" as const };
+
+      expect(protobuf.createProtobufSchema(schema)).toContain("string v = 1;");
+      expect(
+        alepha.codec.decode(
+          schema,
+          alepha.codec.encode(schema, data, {
+            as: "binary",
+            encoder: "protobuf",
+          }),
+          { encoder: "protobuf" },
+        ),
+      ).toEqual(data);
+    });
+
+    it("should round-trip a union of two string formats", async ({
+      expect,
+    }) => {
+      const schema = z.object({ v: z.union([z.email(), z.uuid()]) });
+      const data = { v: "123e4567-e89b-12d3-a456-426614174000" };
+
+      expect(
+        alepha.codec.decode(
+          schema,
+          alepha.codec.encode(schema, data, {
+            as: "binary",
+            encoder: "protobuf",
+          }),
+          { encoder: "protobuf" },
+        ),
+      ).toEqual(data);
+    });
+  });
+
   describe("Codec surface", () => {
+    /**
+     * Without `Buffer` (a browser), the base64 text is built with `btoa`.
+     * Spreading every byte into `String.fromCharCode` overflowed the call
+     * stack past about 150 kB.
+     */
+    it("should encode a large message to a string without Buffer", async ({
+      expect,
+    }) => {
+      const schema = z.object({ lines: z.array(z.text()) });
+      const data = {
+        lines: Array.from({ length: 1000 }, () => "x".repeat(200)),
+      };
+      const buffer = globalThis.Buffer;
+
+      let text: string;
+      try {
+        (globalThis as any).Buffer = undefined;
+        text = alepha.codec.encode(schema, data, {
+          as: "string",
+          encoder: "protobuf",
+        });
+      } finally {
+        globalThis.Buffer = buffer;
+      }
+
+      expect(
+        alepha.codec.decode(schema, text, { encoder: "protobuf" }),
+      ).toEqual(data);
+    });
+
     it("should encode to a base64 string and decode it back", async ({
       expect,
     }) => {

@@ -36,7 +36,7 @@ export class ProtobufProvider {
    * `toObject` rather than the decoded message: it yields a plain object, and
    * `longs: String` is what makes 64-bit fields survive the round trip.
    * protobufjs otherwise hands back a `Long`, while `z.bigint()` is a decimal
-   * string — so every int64 field failed validation on the way back in.
+   * string, so every int64 field failed validation on the way back in.
    */
   public decode<T = any>(schema: ProtobufSchema, data: Uint8Array): T {
     const type = this.parse(schema);
@@ -64,8 +64,8 @@ export class ProtobufProvider {
   /**
    * Convert an Alepha schema to its JSON Schema form.
    *
-   * `reused: "inline"` is passed explicitly because the alternative — emitting
-   * `$ref`/`$defs` for any schema referenced twice — would produce a document
+   * `reused: "inline"` is passed explicitly because the alternative (emitting
+   * `$ref`/`$defs` for any schema referenced twice) would produce a document
    * the walker below cannot follow. It is zod's default today; naming it here
    * means a change of default cannot silently break encoding.
    */
@@ -323,7 +323,7 @@ export class ProtobufProvider {
   }
 
   /**
-   * An object with declared properties — a protobuf message.
+   * An object with declared properties: a protobuf message.
    */
   protected isObject(schema: JsonSchema): boolean {
     return schema?.type === "object" && !!schema.properties;
@@ -431,12 +431,27 @@ export class ProtobufProvider {
   }
 
   /**
-   * The first member of a union that is not `null` — i.e. the payload type of a
+   * The first member of a union that is not `null`, i.e. the payload type of a
    * nullable field, which proto3 represents with its type default.
+   *
+   * Several non-null members are accepted only when they all map to one proto
+   * type (a union of literals, of two string formats). Otherwise the field
+   * would be written as its first member: `z.union([z.text(), z.number()])`
+   * turned `5` into `"5"`, and a union of two objects dropped the second
+   * one's fields.
    */
   protected getNonNullMember(schema: JsonSchema): JsonSchema | undefined {
     const members = (schema.anyOf ?? schema.oneOf ?? []) as JsonSchema[];
-    return members.find((member) => !this.isNull(member));
+    const nonNull = members.filter((member) => !this.isNull(member));
+    if (
+      nonNull.length > 1 &&
+      new Set(nonNull.map((member) => this.convertType(member))).size > 1
+    ) {
+      throw new AlephaError(
+        `Unsupported type for protobuf: a union of different types ${JSON.stringify(schema)}`,
+      );
+    }
+    return nonNull[0];
   }
 
   /**
