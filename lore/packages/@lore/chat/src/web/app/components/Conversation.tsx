@@ -335,9 +335,7 @@ const Conversation = (props: ConversationProps) => {
         {props.typing.length === 0 &&
           !room.archivedAt &&
           props.canWrite &&
-          (room.personal
-            ? tr("chat.composer.hintPersonal")
-            : tr("chat.composer.hint"))}
+          tr("chat.composer.hint")}
       </div>
     </section>
   );
