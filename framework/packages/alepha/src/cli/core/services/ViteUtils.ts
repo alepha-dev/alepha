@@ -637,9 +637,20 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
     // everything after it in this process reads `process.env` too. The deploy
     // pipeline's secrets step does (`selectSecrets`), so a leaked placeholder
     // was pushed as the app's production APP_SECRET.
-    const placeholderSecret = process.env.APP_SECRET === undefined;
+    //
+    // An EMPTY value is unset too (#Q4012), as `SecretProvider` reads it:
+    // the scaffold's `.env.example` writes `APP_SECRET=`, so a checkout that
+    // copied it had the placeholder skipped, and a production-mode load (the
+    // build's pre-render) refused the default. What was there is put back.
+    const configuredSecret = process.env.APP_SECRET;
+    const placeholderSecret = !configuredSecret?.trim();
     if (placeholderSecret) {
       process.env.APP_SECRET = ViteUtils.PLACEHOLDER_APP_SECRET;
+      if (opts.mode === "production") {
+        this.log.info(
+          "APP_SECRET is unset: the app is loaded for the build with a placeholder, which is never shipped",
+        );
+      }
     }
 
     /**
@@ -682,7 +693,11 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
     } finally {
       delete process.env.ALEPHA_CLI_IMPORT;
       if (placeholderSecret) {
-        delete process.env.APP_SECRET;
+        if (configuredSecret === undefined) {
+          delete process.env.APP_SECRET;
+        } else {
+          process.env.APP_SECRET = configuredSecret;
+        }
       }
     }
 

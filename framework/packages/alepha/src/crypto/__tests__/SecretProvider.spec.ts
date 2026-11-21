@@ -14,9 +14,9 @@ describe("SecretProvider", () => {
     it("is not created by AlephaCrypto, so an app that only hashes boots in production", async () => {
       // The server and etag modules reach AlephaCrypto for hashes and request
       // ids. An app that signs nothing must not need APP_SECRET for that.
-      const alepha = Alepha.create({ env: { NODE_ENV: "production" } }).with(
-        AlephaCrypto,
-      );
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "" },
+      }).with(AlephaCrypto);
       alepha.inject(CryptoProvider);
 
       await expect(alepha.start()).resolves.toBeDefined();
@@ -29,7 +29,9 @@ describe("SecretProvider", () => {
       class Signer {
         protected readonly secrets = $inject(SecretProvider);
       }
-      const alepha = Alepha.create({ env: { NODE_ENV: "production" } })
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", APP_SECRET: "" },
+      })
         .with(AlephaCrypto)
         .with(Signer);
 
@@ -38,7 +40,9 @@ describe("SecretProvider", () => {
   });
 
   it("throws on start in production when APP_SECRET is the default", async () => {
-    const alepha = Alepha.create({ env: { NODE_ENV: "production" } });
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", APP_SECRET: "" },
+    });
     // Register the provider so its `configure` hook runs on start.
     alepha.inject(SecretProvider);
 
@@ -56,7 +60,7 @@ describe("SecretProvider", () => {
   });
 
   it("only warns (does not throw) outside production with the default secret", async () => {
-    const alepha = Alepha.create({ env: { NODE_ENV: "test" } });
+    const alepha = Alepha.create({ env: { NODE_ENV: "test", APP_SECRET: "" } });
     alepha.inject(SecretProvider);
 
     await expect(alepha.start()).resolves.toBeDefined();
@@ -129,7 +133,9 @@ describe("SecretProvider", () => {
 
     const createEnv = (env: Record<string, string>) => {
       const alepha = Alepha.create({
-        env: { NODE_ENV: "production", ...env },
+        // `APP_SECRET: ""` unless the case sets one (#Q4012): an absent key
+        // reads the shell's, and these cases are about the default.
+        env: { NODE_ENV: "production", APP_SECRET: "", ...env },
       }).with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
       const fs = alepha.inject(MemoryFileSystemProvider);
       const secret = alepha.inject(SecretProvider);

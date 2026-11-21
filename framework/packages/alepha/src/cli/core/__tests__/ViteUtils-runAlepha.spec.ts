@@ -124,6 +124,31 @@ describe("ViteUtils: the APP_SECRET placeholder", () => {
     }
   });
 
+  it("should treat an empty APP_SECRET as unset, and put the empty value back (#Q4012)", async () => {
+    // `.env.example` writes `APP_SECRET=`: a copied one skipped the
+    // placeholder, and the build's production-mode pre-render refused.
+    const nodeEnv = process.env.NODE_ENV;
+    const before = process.env.APP_SECRET;
+    process.env.APP_SECRET = "";
+    const alepha = Alepha.create().with({
+      provide: ViteUtils,
+      use: FakeViteUtils,
+    });
+    const vite = alepha.inject(FakeViteUtils);
+
+    try {
+      const app = await vite.runAlepha({ entry, mode: "production" });
+
+      expect(app.env.APP_SECRET).toBe(ViteUtils.PLACEHOLDER_APP_SECRET);
+      expect(process.env.APP_SECRET).toBe("");
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+      if (before === undefined) delete process.env.APP_SECRET;
+      else process.env.APP_SECRET = before;
+      delete (globalThis as any).__alepha;
+    }
+  });
+
   it("should leave an APP_SECRET that was already set untouched", async () => {
     const nodeEnv = process.env.NODE_ENV;
     const before = process.env.APP_SECRET;
