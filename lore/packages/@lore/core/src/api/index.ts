@@ -74,6 +74,7 @@ import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { HostJobs } from "./services/HostJobs.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
+import { JobKeyService } from "./services/JobKeyService.ts";
 import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
@@ -257,6 +258,9 @@ export const LoreCoreApi = $module({
     LiveQuestRegistry,
     // The port host jobs start through (#Q3984): Ship registers the queue.
     HostJobs,
+    // Job keys (#Q3995): the credential a host job holds, its pins checked on
+    // every MCP call and git request it makes. Registers the port's issuer.
+    JobKeyService,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     CommitReferenceRegistry,
     McpProjectScope,
@@ -475,6 +479,7 @@ export {
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
 export { HostJobs } from "./services/HostJobs.ts";
+export { JobKeyService } from "./services/JobKeyService.ts";
 export type {
   HostJobInput,
   HostJobKeyIssuer,

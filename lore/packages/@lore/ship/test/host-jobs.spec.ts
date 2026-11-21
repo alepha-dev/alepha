@@ -1,4 +1,5 @@
 import { HostJobs } from "@lore/core/api";
+import { jobKeys } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -37,6 +38,7 @@ class Repos {
   jobs = $repository(hostJobs);
   logs = $repository(hostJobLogs);
   commands = $repository(hostCommands);
+  keys = $repository(jobKeys);
 }
 
 const input = {
@@ -230,17 +232,10 @@ describe("HostJobService", () => {
     expect(ended.status).toBe("cancelled");
   });
 
-  it("emits host:job:ended and revokes through the port", async ({
+  it("mints the job key at the spec pull, then on the end emits host:job:ended and revokes it", async ({
     expect,
   }) => {
     const port = w.alepha.inject(HostJobs);
-    const revoked: string[] = [];
-    port.registerKeyIssuer({
-      mint: async () => "lore_job_minted_0123456789",
-      revoke: async (id) => {
-        revoked.push(id);
-      },
-    });
     const ended: string[] = [];
     w.alepha.events.on("host:job:ended", ({ job }) => {
       ended.push(job.status);
@@ -250,20 +245,25 @@ describe("HostJobService", () => {
       hostId: w.host.id,
       kind: "agent",
       input: { ...input, key: { tools: ["feedback_get"] } },
+      startedBy: w.ownerId,
     });
     const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
     const spec = await w.service.spec(row, "https://lore.test");
     expect(spec).toMatchObject({
       kind: "agent",
       profile: "read",
-      key: "lore_job_minted_0123456789",
       mcpUrl: "https://lore.test/mcp",
       repository: input.repository,
     });
+    expect(String(spec.key)).toMatch(/^ak_lorejob_/);
     const command = await commandOf(w, job.id);
     await w.commands.ack(w.host.id, { id: command.id, status: "failed" });
     expect(ended).toEqual(["failed"]);
-    expect(revoked).toEqual([job.id]);
+    const keys = await w.repos.keys.findMany({
+      where: { jobId: { eq: job.id } },
+    });
+    expect(keys).toHaveLength(1);
+    expect(keys[0]?.revokedAt).toBeDefined();
   });
 
   it("walks the chain a job was started by", async ({ expect }) => {

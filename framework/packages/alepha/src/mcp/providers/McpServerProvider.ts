@@ -1370,6 +1370,12 @@ export class McpServerProvider {
     }
 
     try {
+      // A gate an application holds over every call: a throw refuses it.
+      await this.alepha.events.emit("mcp:tool:call:begin", {
+        name,
+        args,
+        context,
+      });
       const result = await tool.execute(args, context);
 
       // A tool WITHOUT an output schema may return raw MCP content blocks
@@ -1546,6 +1552,11 @@ export class McpServerProvider {
     context?: McpContext,
   ): Promise<McpToolCallResult> {
     try {
+      await this.alepha.events.emit("mcp:tool:call:begin", {
+        name: tool.name,
+        args,
+        context,
+      });
       const result = await tool.call(args);
       await this.announceToolEnd(tool.name, "ok", context);
       return {

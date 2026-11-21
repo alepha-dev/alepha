@@ -156,3 +156,4 @@ export {
   renderPromptTemplate,
 } from "../api/schemas/renderPromptTemplate.ts";
 export { projectPrompts } from "../api/entities/projectPrompts.ts";
+export { jobKeys, type JobKey } from "../api/entities/jobKeys.ts";

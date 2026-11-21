@@ -1,4 +1,5 @@
-import { ProjectSecurityService } from "@lore/core/api";
+import { JobKeyService, ProjectSecurityService } from "@lore/core/api";
+import type { JobKey } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { SecurityProvider, type UserAccountToken } from "alepha/security";
 
@@ -30,6 +31,7 @@ export class GitAccessService {
   protected readonly security = $inject(SecurityProvider);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly repositories = $inject(CodeRepositoryService);
+  protected readonly jobKeys = $inject(JobKeyService);
 
   public async authorize(input: {
     authorization?: string;
@@ -102,6 +104,28 @@ export class GitAccessService {
     }
     const row = await this.repositories.find(project.id, input.repoSlug);
     if (!row) return notFound;
+    // A job key (#Q3995) reads one repository of one project, and writes
+    // only below its ref prefix, which the push's commands are held to.
+    const key = await this.jobKeys.scopeOf(user);
+    if (key) {
+      if (
+        key.revokedAt ||
+        key.projectId !== project.id ||
+        (key.repositoryId !== undefined &&
+          key.repositoryId !== null &&
+          key.repositoryId !== row.id)
+      ) {
+        return notFound;
+      }
+      if (write && !key.writeRefPrefix) {
+        return {
+          allowed: false,
+          status: 403,
+          message: "This job key does not push",
+        };
+      }
+      return { allowed: true, repository: row, user, jobKey: key };
+    }
     return { allowed: true, repository: row, user };
   }
 
@@ -124,5 +148,11 @@ export class GitAccessService {
 }
 
 export type GitAccessDecision =
-  | { allowed: true; repository: CodeRepository; user: UserAccountToken }
+  | {
+      allowed: true;
+      repository: CodeRepository;
+      user: UserAccountToken;
+      /** The pins of the job key the caller holds, if any (#Q3995). */
+      jobKey?: JobKey;
+    }
   | { allowed: false; status: 400 | 401 | 403 | 404; message: string };
