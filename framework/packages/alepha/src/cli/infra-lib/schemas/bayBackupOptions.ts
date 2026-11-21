@@ -22,11 +22,17 @@ const count = (max: number) => z.integer().min(0).max(max).optional();
 
 export const bayBackupScheduleSchema = z
   .object({
-    /** Interval between two backups, e.g. `"6h"`, `"1d"` (5m to 31d). */
+    /**
+     * Interval between two backups, e.g. `"6h"`, `"1d"` (5m to 31d).
+     */
     every: z.text().optional(),
-    /** Wall-clock times in `timezone`, e.g. `["03:00", "15:00"]`. */
+    /**
+     * Wall-clock times in `timezone`, e.g. `["03:00", "15:00"]`.
+     */
     at: z.array(z.text()).min(1).optional(),
-    /** Five-field cron expression, in `timezone`. */
+    /**
+     * Five-field cron expression, in `timezone`.
+     */
     cron: z.text().optional(),
     /**
      * IANA timezone (`"Europe/Paris"`). Also where a day, week and month
@@ -48,35 +54,55 @@ export const bayBackupScheduleSchema = z
 
 export const bayBackupRetentionSchema = z
   .object({
-    /** The newest N backups (1 to 365). */
+    /**
+     * The newest N backups (1 to 365).
+     */
     keep: z.integer().min(1).max(365).optional(),
-    /** The newest backup of each of the last N hours that have one. */
+    /**
+     * The newest backup of each of the last N hours that have one.
+     */
     hourly: count(365),
-    /** … of each of the last N days. */
+    /**
+     * … of each of the last N days.
+     */
     daily: count(365),
-    /** … of each of the last N ISO weeks. */
+    /**
+     * … of each of the last N ISO weeks.
+     */
     weekly: count(365),
-    /** … of each of the last N months. */
+    /**
+     * … of each of the last N months.
+     */
     monthly: count(365),
-    /** … of each of the last N years. */
+    /**
+     * … of each of the last N years.
+     */
     yearly: count(365),
     /**
      * Removes backups older than this whatever else keeps them (`"180d"`, at
      * least a day); `"0"` lifts a limit set by the host.
      */
     maxAge: z.text().optional(),
-    /** How many pre-deploy backups are kept, apart from the rules above. */
+    /**
+     * How many pre-deploy backups are kept, apart from the rules above.
+     */
     keepPreDeploy: count(365),
-    /** Keeps backups given a name (`bay backup --tag`) out of pruning. */
+    /**
+     * Keeps backups given a name (`bay backup --tag`) out of pruning.
+     */
     keepTagged: z.boolean().optional(),
   })
   .strict();
 
 export const bayBackupOptionsSchema = z
   .object({
-    /** Turns scheduled backups on or off for this app. */
+    /**
+     * Turns scheduled backups on or off for this app.
+     */
     enabled: z.boolean().optional(),
-    /** When backups are taken: one of `every`, `at` or `cron`. */
+    /**
+     * When backups are taken: one of `every`, `at` or `cron`.
+     */
     schedule: bayBackupScheduleSchema.optional(),
     /**
      * Restricts when a scheduled backup may start, `"HH:MM-HH:MM"` in the
@@ -94,7 +120,9 @@ export const bayBackupOptionsSchema = z
      * starting point saved.
      */
     onDeploy: z.boolean().optional(),
-    /** Which backups survive pruning; a backup is kept when any rule keeps it. */
+    /**
+     * Which backups survive pruning; a backup is kept when any rule keeps it.
+     */
     retention: bayBackupRetentionSchema.optional(),
     /**
      * The restore test: how often the newest backup is downloaded and

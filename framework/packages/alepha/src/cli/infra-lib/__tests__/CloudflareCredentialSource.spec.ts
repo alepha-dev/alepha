@@ -222,6 +222,53 @@ describe("CloudflareCredentialSource", () => {
       );
     });
 
+    it("reads a wrangler login's account from the project cache, which never holds the token", async () => {
+      const { alepha, shell, source } = await setup();
+      shell.outputs.set(
+        "wrangler auth token --json",
+        JSON.stringify({ type: "oauth", token: "token-user-a" }),
+      );
+
+      await source.resolve({ root: "/app" });
+      // What a second CLI run starts from: nothing in memory, the file on disk.
+      source.reset();
+      const again = await source.resolve({ root: "/app" });
+
+      expect(again.credential.accountId).toBe("acc-only");
+      expect(TestCredentialSource.accountLookups).toBe(1);
+      const cache = await alepha
+        .inject(MemoryFileSystemProvider)
+        .readTextFile("/app/node_modules/.alepha/platform.json");
+      expect(cache).toContain("acc-only");
+      expect(cache).not.toContain("token-user-a");
+    });
+
+    it("never answers one login's cached account for another login's token", async () => {
+      const { shell, source } = await setup();
+      shell.outputs.set(
+        "wrangler auth token --json",
+        JSON.stringify({ type: "oauth", token: "token-user-a" }),
+      );
+      const first = await source.resolve({ root: "/app" });
+      expect(first.credential.accountId).toBe("acc-only");
+
+      // `alepha infra logout`, then a login as someone who sees two accounts,
+      // neither of them the first user's.
+      source.reset();
+      shell.outputs.set(
+        "wrangler auth token --json",
+        JSON.stringify({ type: "oauth", token: "token-user-b" }),
+      );
+      TestCredentialSource.accounts = [
+        { id: "acc-b1", name: "B1" },
+        { id: "acc-b2", name: "B2" },
+      ];
+
+      await expect(source.resolve({ root: "/app" })).rejects.toThrow(
+        /access to 2 accounts[\s\S]*acc-b1[\s\S]*acc-b2/,
+      );
+    });
+
     it("carries the jurisdiction into the credential", async () => {
       const { source } = await setup({ env: { CLOUDFLARE_API_TOKEN: "t" } });
 

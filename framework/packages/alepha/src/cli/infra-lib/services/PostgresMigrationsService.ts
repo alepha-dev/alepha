@@ -2,6 +2,8 @@ import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
+import { PostgresUrlReader } from "./PostgresUrlReader.ts";
+
 /**
  * One migration, in the shape drizzle's `pg-core` `migrate()` takes: what
  * drizzle's own `readMigrationFiles` builds from disk, built here from any
@@ -218,7 +220,7 @@ export class PostgresMigrationsService {
       import("drizzle-orm/pg-core"),
     ]);
     const postgres = (pg.default ?? pg) as typeof import("postgres").default;
-    const parsed = new URL(url);
+    const parsed = new PostgresUrlReader().read(url);
     const sslmode = parsed.searchParams.get("sslmode");
     const client = postgres({
       host: parsed.hostname,
@@ -262,7 +264,7 @@ export class PostgresMigrationsService {
    * `host:port/database` as a log may print it: never the user or password.
    */
   protected describe(url: string): string {
-    const parsed = new URL(url);
+    const parsed = new PostgresUrlReader().read(url);
     const database = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
     return `${parsed.hostname}:${parsed.port || 5432}/${database}`;
   }

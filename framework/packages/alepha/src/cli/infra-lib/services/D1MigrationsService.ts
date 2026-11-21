@@ -119,7 +119,7 @@ export class D1MigrationsService {
     // folder was quietly dropped from the deploy while it reported success.
     if (unrecognized.length > 0) {
       throw new AlephaError(
-        `'${dir}' contains ${unrecognized.length} ${unrecognized.length === 1 ? "entry" : "entries"} (${unrecognized.join(", ")}) but none are recognizable as migrations (expected '*.sql' or '<name>/migration.sql'). Refusing to silently apply nothing.`,
+        `'${dir}' contains ${unrecognized.length} ${unrecognized.length === 1 ? "entry" : "entries"} (${unrecognized.join(", ")}) not recognizable as migrations (expected '*.sql' or '<name>/migration.sql'). Refusing to deploy without ${unrecognized.length === 1 ? "it" : "them"}.`,
       );
     }
 

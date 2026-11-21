@@ -16,7 +16,7 @@ import { describe, it } from "vitest";
 
 import { infra } from "../index.ts";
 
-describe("platform environments", () => {
+describe("infra environments", () => {
   it("defaults PUBLIC_URL only for a production domain in production mode", ({
     expect,
   }) => {
@@ -188,7 +188,7 @@ class ExternalAdapter extends InfraAdapter<{ region: string }> {
 }
 
 const ExternalModule = $module({
-  name: "test.platform.external",
+  name: "test.infra.external",
   services: [ExternalAdapter],
 });
 

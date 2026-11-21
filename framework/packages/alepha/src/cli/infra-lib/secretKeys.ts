@@ -159,8 +159,8 @@ export interface SecretKeySet {
  *
  * 1. `keys`, the explicit `infra().secrets.keys` override.
  * 2. Otherwise the UNION of:
- *    - the manifest's `env` list (every key the app declares via `$env`,
- *      captured at build time), or the `.env.<env>` file's own keys when there
+ *    - the manifest's `secrets` and `variables` lists (every key the app
+ *      declares via `$env`, captured at build time), or the `.env.<env>` file's own keys when there
  *      is no readable manifest. This is what lets CI deliver declared secrets
  *      from `process.env` with no file on the runner.
  *    - the `.env.<env>.local` keys, the per-deploy override layer an external

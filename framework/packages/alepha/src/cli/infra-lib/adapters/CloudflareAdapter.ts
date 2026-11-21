@@ -23,8 +23,6 @@ import {
 import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
 import type { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import type { D1MigrationTransport } from "../services/D1MigrationsService.ts";
-import { NamingService } from "../services/NamingService.ts";
-import { PostgresMigrationsService } from "../services/PostgresMigrationsService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import type {
@@ -55,22 +53,19 @@ import {
  *   from `.env.<env>`;
  * - the non-prebuilt `build` (spawns `alepha build`) and `migrate` (`alepha
  *   db migrations`, the Postgres path);
- * - Hyperdrive, the D1 `weur` location hint, the job queue's dead-letter
- *   queue, the dev database export and the R2 wipe with `S3mini`;
+ * - the dev database export and the R2 wipe with `S3mini`;
  * - `inspect` and the name-derived `teardown`, which the parent refuses.
  */
 export class CloudflareAdapter extends WorkerCloudflareAdapter {
   static override readonly id = "cloudflare";
   static override readonly options = cloudflareEnvironmentOptionsSchema;
 
-  protected readonly naming = $inject(NamingService);
   protected readonly shell = $inject(ShellProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly credentials = $inject(CloudflareCredentialSource);
   protected readonly runner = $inject(Runner);
   protected readonly placeholders = $inject(StoragePlaceholderService);
-  protected readonly postgresMigrations = $inject(PostgresMigrationsService);
   protected readonly options = $store(infraOptions);
 
   protected provisionedD1Id?: string;
@@ -138,15 +133,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
   ) {
-    const output = await this.shell.run(command, options);
-
-    // When the caller captured the output, echo it to the log so the user
-    // still sees it (uncaptured commands stream straight to the terminal).
-    if (options.capture) {
-      this.log.info(output);
-    }
-
-    return output;
+    return await this.shell.run(command, options);
   }
 
   // -------------------------------------------------------------------------
@@ -222,9 +209,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
    * Fill in resource ids that `provision()` would have set, by looking up what
    * already exists on the account.
    *
-   * `provision()` and `build()` share process state, so a full `platform
-   * deploy` had the ids in hand. The granular commands (`platform build`,
-   * `platform deploy`) never call provision, so those fields were empty and the
+   * `provision()` and `build()` share process state, so a full `alepha
+   * deploy` had the ids in hand. The granular commands (`alepha infra build`,
+   * `alepha infra deploy`) never call provision, so those fields were empty and the
    * generated `wrangler.jsonc` silently came out with no D1 binding  -  or a KV
    * binding with an empty id  -  and the deploy shipped a worker with no
    * database. Nothing failed; the worker just 500'd on first query.
@@ -302,7 +289,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     // An app can declare object storage either with `$storage` or by
     // setting R2_BUCKET_NAME itself (the "blobs without a database" route,
     // where nothing observable at build time reveals the need  -  see
-    // BuildCloudflareTask.writeManifest). Forward an explicit value into
+    // BuildManifestTask.writeManifest). Forward an explicit value into
     // the build so resource detection can see it.
     const declaredBucket = (
       await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`])
@@ -382,7 +369,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       env.CLOUDFLARE_JURISDICTION = ctx.options.jurisdiction;
     }
 
-    // Worker-to-worker service bindings (see EnvironmentConfig.services).
+    // Worker-to-worker service bindings (see cloudflareEnvironmentOptionsSchema.services).
     if (ctx.options.services?.length) {
       env.CLOUDFLARE_SERVICES = JSON.stringify(ctx.options.services);
     }
@@ -751,7 +738,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
    * `PUBLIC_URL` cannot go through the `secret: false` route the way every
    * other declassified key does: core carries it on the ambient `Env`
    * interface rather than in an `$env` schema, so it is not in `dump().env`
-   * and can never reach the manifest's `publicVars`. It is also injected by
+   * and can never reach the manifest's `variables`. It is also injected by
    * {@link resolveSecrets} itself, derived from the configured domain: a value this
    * adapter made up, which no app schema was ever consulted about.
    *
@@ -1320,16 +1307,16 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
             if (queue) {
               await api.deleteQueueConsumer(queue.queue_id, workerName);
             }
-          } catch (error: any) {
+          } catch (error) {
             this.log.warn(
-              `Failed to unbind queue consumer: ${String(error.message || "")}`,
+              `Failed to unbind queue consumer: ${error instanceof Error ? error.message : String(error)}`,
             );
           }
         },
       });
     }
 
-    // 2. Delete workers
+    // Delete workers
     {
       const name = ctx.naming.worker();
       await run({
@@ -1337,9 +1324,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
         handler: async () => {
           try {
             await api.deleteWorker(name);
-          } catch (error: any) {
+          } catch (error) {
             this.log.warn(
-              `Failed to delete worker ${name}: ${String(error.message || "")}`,
+              `Failed to delete worker ${name}: ${error instanceof Error ? error.message : String(error)}`,
             );
           }
         },
@@ -1357,9 +1344,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
           handler: async () => {
             try {
               await api.deleteQueue(name);
-            } catch (error: any) {
+            } catch (error) {
               this.log.warn(
-                `Failed to delete queue ${name}: ${String(error.message || "")}`,
+                `Failed to delete queue ${name}: ${error instanceof Error ? error.message : String(error)}`,
               );
             }
           },
@@ -1379,16 +1366,16 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
               return;
             }
             await api.deleteKV(existing.id);
-          } catch (error: any) {
+          } catch (error) {
             this.log.warn(
-              `Failed to delete kv ${name}: ${String(error.message || "")}`,
+              `Failed to delete kv ${name}: ${error instanceof Error ? error.message : String(error)}`,
             );
           }
         },
       });
     }
 
-    // 5. Delete R2 bucket. An empty bucket is removed by the REST DELETE
+    // Delete R2 bucket. An empty bucket is removed by the REST DELETE
     // directly; only a non-empty one needs an S3 wipe first. Crucially the
     // wipe is NOT a precondition of the delete  -  a wipe that can't run (no
     // creds) must never strand an otherwise-deletable bucket.
@@ -1400,8 +1387,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
         handler: async () => {
           try {
             await this.deleteR2Bucket(api, name, ctx);
-          } catch (error: any) {
-            const msg = String(error.message || "");
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
             if (this.isMissingBucketError(msg)) {
               this.log.debug(`Bucket ${name} not found  -  skipping.`);
             } else {
@@ -1412,7 +1399,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       });
     }
 
-    // 6. Delete D1 or Hyperdrive
+    // Delete D1 or Hyperdrive
     const needsDB = ctx.resources.hasDatabase;
     if (needsDB) {
       if (await this.isPostgres(ctx)) {
@@ -1428,9 +1415,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
                 return;
               }
               await api.deleteHyperdrive(existing.id);
-            } catch (error: any) {
+            } catch (error) {
               this.log.warn(
-                `Failed to delete hyperdrive ${name}: ${String(error.message || "")}`,
+                `Failed to delete hyperdrive ${name}: ${error instanceof Error ? error.message : String(error)}`,
               );
             }
           },
@@ -1448,9 +1435,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
                 return;
               }
               await api.deleteD1(existing.uuid);
-            } catch (error: any) {
+            } catch (error) {
               this.log.warn(
-                `Failed to delete d1 ${name}: ${String(error.message || "")}`,
+                `Failed to delete d1 ${name}: ${error instanceof Error ? error.message : String(error)}`,
               );
             }
           },
@@ -1465,8 +1452,11 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
 
   /**
    * The dead-letter queue `BuildCloudflareTask.enhanceQueue` names for the
-   * job queue, unless `CLOUDFLARE_QUEUE_DLQ_NAME` overrides it (a queue the
-   * app then owns).
+   * job queue by default.
+   *
+   * ⚠️ `CLOUDFLARE_QUEUE_DLQ_NAME` overrides that name in the build only:
+   * this method does not read it, so with it set `provision`, `inspect` and
+   * `teardown` still act on `<queue>-dlq`.
    */
   protected dlqName(queueName: string): string {
     return `${queueName}-dlq`;
@@ -1521,8 +1511,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     try {
       await api.deleteR2Bucket(name);
       return;
-    } catch (error: any) {
-      const msg = String(error.message || "");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (this.isMissingBucketError(msg)) {
         return; // already gone
       }
@@ -1536,8 +1526,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
 
     try {
       await api.deleteR2Bucket(name);
-    } catch (error: any) {
-      const msg = String(error.message || "");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (this.isMissingBucketError(msg)) {
         return;
       }
@@ -1589,10 +1579,10 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
           accessKeyId: token.accessKeyId,
           secretAccessKey: token.secretAccessKey,
         };
-      } catch (error: any) {
+      } catch (error) {
         this.log.warn(
           `Skipping R2 wipe for ${bucketName}: could not mint an R2 token ` +
-            `(${String(error.message || "")}). Set S3_ACCESS_KEY_ID / ` +
+            `(${error instanceof Error ? error.message : String(error)}). Set S3_ACCESS_KEY_ID / ` +
             `S3_SECRET_ACCESS_KEY for reliable teardown.`,
         );
         return;
@@ -1633,9 +1623,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
             }
           }
         }
-      } catch (error: any) {
+      } catch (error) {
         this.log.debug(
-          `listMultipartUploads on ${bucketName} failed: ${String(error.message || "")}`,
+          `listMultipartUploads on ${bucketName} failed: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -1670,9 +1660,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       if (mintedTokenId) {
         try {
           await api.deleteR2Token(mintedTokenId);
-        } catch (error: any) {
+        } catch (error) {
           this.log.warn(
-            `Failed to revoke ephemeral R2 token ${mintedTokenId}: ${String(error.message || "")}`,
+            `Failed to revoke ephemeral R2 token ${mintedTokenId}: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
       }

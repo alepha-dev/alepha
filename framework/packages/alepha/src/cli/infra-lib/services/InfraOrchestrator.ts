@@ -136,8 +136,8 @@ export class InfraOrchestrator {
   /**
    * Runs the adapter's interactive login or logout.
    *
-   * Each adapter answers in its own currency  -  `wrangler login` for Cloudflare,
-   * a device-code flow for Bay  -  so the command stays one thing to learn while
+   * Each adapter answers in its own currency: `wrangler login` for Cloudflare,
+   * an ssh and group check for Bay. The command stays one thing to learn while
    * the mechanism stays the adapter's business.
    */
   public async auth(options: {
@@ -175,9 +175,9 @@ export class InfraOrchestrator {
      * Pre-built mode  -  the artifact's `dist/` is already produced.
      *
      * Still runs auth → provision → build → migrate → deploy → secrets,
-     * but the `build` step shells out to `alepha build --prebuilt` which
-     * only regenerates the target-specific deploy config (e.g.
-     * `wrangler.jsonc`) and skips the Vite client + server builds.
+     * but the `build` step only regenerates the target-specific deploy
+     * config (e.g. `wrangler.jsonc`, in process) and skips the Vite client +
+     * server builds.
      * Used by external orchestrators (Lore Deploy) that ship a pre-built
      * `dist/` and just need the wrangler config refreshed for
      * per-deploy overrides on every deploy.
@@ -328,7 +328,11 @@ export class InfraOrchestrator {
   // Helpers
   // -------------------------------------------------------------------------
 
+  /**
+   * Whether an environment is a throwaway one, named `tmp-<something>`:
+   * `down` tears it down without the typed confirmation.
+   */
   public isTmpEnv(env: string): boolean {
-    return env.startsWith("tmp");
+    return env.startsWith("tmp-");
   }
 }

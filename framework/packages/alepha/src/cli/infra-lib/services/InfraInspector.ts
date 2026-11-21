@@ -22,8 +22,8 @@ export interface ResolvedInfraConfig {
  * Reads platform config and resolves project topology.
  *
  * Validates project name and environment configuration. Does NOT
- * introspect app code for resources  -  that happens at deploy time via
- * ViteBuildProvider.
+ * introspect app code for resources: that is `InfraCommand.detectResources`
+ * when the command runs, or the build manifest in prebuilt mode.
  *
  * Each app self-declares its platform topology via its own
  * `alepha.config.ts`. Run `alepha infra <op>` from the app's

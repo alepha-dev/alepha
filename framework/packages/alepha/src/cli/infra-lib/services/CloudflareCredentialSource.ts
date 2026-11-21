@@ -181,7 +181,8 @@ export class CloudflareCredentialSource {
    * The account the run deploys into.
    *
    * The explicit option wins, then `CLOUDFLARE_ACCOUNT_ID`, then the account a
-   * previous run recorded for a wrangler login, then the token's only account.
+   * previous run recorded for this wrangler login, then the token's only
+   * account.
    *
    * ⚠️ The login cache is consulted for a wrangler token only. An environment
    * token is a deliberate credential, often a CI secret scoped to another
@@ -204,11 +205,9 @@ export class CloudflareCredentialSource {
       return known;
     }
 
-    if (
-      origin !== "env" &&
-      (await this.cache.isLoginFresh(options.root, "cloudflare"))
-    ) {
-      const cached = await this.cache.getAccountId(options.root, "cloudflare");
+    const login = origin === "env" ? undefined : await this.loginKey(token);
+    if (login && (await this.cache.isLoginFresh(options.root, login))) {
+      const cached = await this.cache.getAccountId(options.root, login);
       if (cached) {
         this.resolvedAccounts.set(token, cached);
         return cached;
@@ -228,10 +227,31 @@ export class CloudflareCredentialSource {
 
     const accountId = accounts[0].id;
     this.resolvedAccounts.set(token, accountId);
-    if (origin !== "env") {
-      await this.cache.recordLogin(options.root, "cloudflare", accountId);
+    if (login) {
+      await this.cache.recordLogin(options.root, login, accountId);
     }
     return accountId;
+  }
+
+  /**
+   * The cache entry of one wrangler login: `cloudflare:` and the first half
+   * of the token's SHA-256.
+   *
+   * ⚠️ Keyed by the token, because the login can change outside this CLI
+   * (`wrangler login` run directly, another user on the same checkout): an
+   * entry keyed by the project alone answers the previous login's account
+   * for the new login's token. A digest, never the token: the file sits in
+   * `node_modules`, readable by every tool that runs there.
+   */
+  protected async loginKey(token: string): Promise<string> {
+    const digest = await globalThis.crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(token),
+    );
+    const hex = [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+    return `cloudflare:${hex.slice(0, 32)}`;
   }
 
   /**

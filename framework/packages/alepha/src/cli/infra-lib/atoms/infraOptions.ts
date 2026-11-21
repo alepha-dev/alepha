@@ -5,7 +5,7 @@ import type { EnvironmentDescriptor } from "../adapters/InfraAdapter.ts";
 /**
  * Infra deployment configuration atom.
  *
- * Filled from the `platform` section of `alepha.config.ts`.
+ * Set by the `infra()` plugin of `alepha.config.ts`.
  * Read by `InfraCommand` to resolve environments and adapters.
  */
 export const infraOptions = $atom({
@@ -41,17 +41,16 @@ export const infraOptions = $atom({
       default: z.text().optional(),
 
       /**
-       * Secret store configuration for syncing .env secrets
-       * to external providers (e.g. GitHub Actions environments).
+       * Which keys a deploy pushes as the app's secrets.
        */
       secrets: z
         .object({
           /**
            * Explicit override of the worker secret-key allowlist.
            *
-           * By default the deploy `secrets` step uses the build manifest's
-           * `env` list (every key the app declares via `$env`, captured at
-           * build time) as the allowlist, resolving each value from
+           * By default the deploy uses the build manifest's `secrets` and
+           * `variables` lists (every key the app declares via `$env`, captured
+           * at build time) as the allowlist, resolving each value from
            * `.env.<env>[.local]` first, then `process.env`. This lets CI
            * deliver secrets via the job environment (no `.env` file on the
            * runner) while only ever pushing declared keys  -  ambient runner
@@ -98,6 +97,6 @@ export const infraOptions = $atom({
 });
 
 /**
- * Type for platform options.
+ * Type for infra options.
  */
 export type InfraOptions = Infer<typeof infraOptions.schema>;

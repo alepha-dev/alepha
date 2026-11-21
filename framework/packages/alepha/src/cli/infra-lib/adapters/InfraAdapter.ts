@@ -58,9 +58,7 @@ export interface DetectedResources {
 }
 
 /**
- * One workspace = one app. Used to be a per-app definition in a
- * monorepo-aware orchestrator; flattened into `InfraContext` after
- * the `apps:` field was removed from platform options.
+ * What every adapter method receives. One workspace is one app.
  */
 export interface InfraContext<TOptions = unknown> {
   /**
@@ -159,7 +157,7 @@ export type InfraAdapterClass<TOptions = any> = InstantiableClass<
 > & {
   /**
    * Display name, e.g. `"cloudflare"`. Emitted as `adapter` by
-   * `platform plan --json` and `platform status --json`.
+   * `alepha infra plan --json` and `alepha infra status --json`.
    */
   readonly id: string;
   /**
@@ -299,7 +297,7 @@ export abstract class InfraAdapter<TOptions = unknown> {
 
   /**
    * Create/ensure cloud resources exist (DB, buckets, queues).
-   * Not all adapters provision -- AKS defers to Helm.
+   * Not all adapters provision: the default does nothing.
    */
   async provision(
     _ctx: InfraContext<TOptions>,
@@ -329,11 +327,13 @@ export abstract class InfraAdapter<TOptions = unknown> {
   }
 
   /**
-   * Push runtime secrets to the deployed worker(s).
+   * Push runtime secrets to the deployed app, for an adapter whose target
+   * takes them in a step of their own.
    *
-   * Reads secrets from `.env.{env}` files (parsed, not from process.env),
-   * filters out vars already handled by bindings (DATABASE_URL, R2, etc.),
-   * and pushes the rest via the platform's secret management.
+   * Both built-in adapters leave it empty: Cloudflare sends the secrets with
+   * the script upload and Bay with the deploy. Which keys are secrets, and
+   * where each value comes from, is `resolveSecretKeySet` and
+   * `selectSecrets`.
    */
   async secrets(
     _ctx: InfraContext<TOptions>,

@@ -14,6 +14,7 @@ import type {
   CloudflareR2Token,
   CloudflareWorker,
 } from "../schemas/cloudflare.ts";
+import { PostgresUrlReader } from "./PostgresUrlReader.ts";
 
 /**
  * Creating the resources a Worker binds, from inside a Worker.
@@ -36,8 +37,7 @@ import type {
  *
  * ## Raw `fetch` rather than the SDK
  *
- * The deploy client uses the `cloudflare` SDK because the SDK builds the
- * multipart script upload, which is the fiddliest part of that flow.
+ * The deploy client uses the `cloudflare` SDK for most of its calls.
  * Provisioning is plain JSON, so the SDK would buy nothing and cost the
  * `D1`, `KV`, `R2` and `Queues` resource trees in Lore's bundle.
  *
@@ -540,7 +540,9 @@ export class CloudflareProvisionClient {
     caching: { disabled: true };
     mtls?: { sslmode: "require" | "verify-ca" | "verify-full" };
   } {
-    const sslmode = new URL(connectionString).searchParams.get("sslmode");
+    const sslmode = new PostgresUrlReader()
+      .read(connectionString)
+      .searchParams.get("sslmode");
     return {
       origin: this.hyperdriveOrigin(connectionString),
       caching: { disabled: true },
@@ -570,7 +572,7 @@ export class CloudflareProvisionClient {
     user: string;
     password: string;
   } {
-    const url = new URL(connectionString);
+    const url = new PostgresUrlReader().read(connectionString);
     return {
       scheme: "postgres",
       host: url.hostname,
@@ -641,12 +643,6 @@ export class CloudflareProvisionClient {
   // transport
   // -------------------------------------------------------------------------
 
-  /**
-   * Every page of a list endpoint.
-   *
-   * Bounded: a list that never stops growing is a Worker burning its CPU
-   * budget on a page cursor that does not advance.
-   */
   // -------------------------------------------------------------------------
   // Teardown
   // -------------------------------------------------------------------------
@@ -805,6 +801,12 @@ export class CloudflareProvisionClient {
     });
   }
 
+  /**
+   * Every page of a list endpoint.
+   *
+   * Bounded: a list that never stops growing is a Worker burning its CPU
+   * budget on a page cursor that does not advance.
+   */
   protected async paginate<T>(path: string): Promise<T[]> {
     const all: T[] = [];
     for (let page = 1; page <= 50; page++) {

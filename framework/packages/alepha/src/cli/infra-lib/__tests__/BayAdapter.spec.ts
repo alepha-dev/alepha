@@ -82,6 +82,15 @@ class QuotingBayAdapter extends BayAdapter {
   }
 }
 
+/**
+ * Exposes the three settings an environment variable can override.
+ */
+class SettingsBayAdapter extends BayAdapter {
+  public testHost = this.host.bind(this);
+  public testStack = this.stack.bind(this);
+  public testSocket = this.socket.bind(this);
+}
+
 describe("BayAdapter  -  the host it deploys to", () => {
   it("refuses to guess when no host is configured", async () => {
     const { adapter } = await setup();
@@ -111,6 +120,32 @@ describe("BayAdapter  -  the host it deploys to", () => {
     expect(
       shell.wasCalled("ssh -o BatchMode=yes ci@other.example.com bay list"),
     ).toBe(true);
+  });
+
+  it("keeps the configured host, stack and socket when the variables are set but empty", () => {
+    // What a CI job gets from `BAY_STACK: ${{ vars.BAY_STACK }}` when the
+    // variable is not defined: an empty string, which is not an override.
+    const adapter = Alepha.create().inject(SettingsBayAdapter);
+    const ctx = context({
+      env: "staging",
+      options: {
+        host: "deploy@bay.example.com",
+        stack: "crm",
+        socket: "/var/lib/bay/control.sock",
+      },
+    });
+    process.env.BAY_HOST = "";
+    process.env.BAY_STACK = "";
+    process.env.BAY_SOCKET = "";
+    try {
+      expect(adapter.testHost(ctx)).toBe("deploy@bay.example.com");
+      expect(adapter.testStack(ctx)).toBe("crm");
+      expect(adapter.testSocket(ctx)).toBe("/var/lib/bay/control.sock");
+    } finally {
+      delete process.env.BAY_HOST;
+      delete process.env.BAY_STACK;
+      delete process.env.BAY_SOCKET;
+    }
   });
 
   it("probes with `bay list`, which reaches the control socket  -  `bay version` does not", async () => {
@@ -1037,7 +1072,9 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
     if (!call) {
       // Said explicitly, because "nothing was pushed" is the failure these
       // tests exist to catch and a bare `undefined.options` names nothing.
-      throw new Error("nothing was staged  -  no secrets file was written");
+      throw new AlephaError(
+        "nothing was staged  -  no secrets file was written",
+      );
     }
     return new TextDecoder().decode(call.options.stdin as Uint8Array);
   };
@@ -1073,11 +1110,11 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
   const stagedPath = (shell: MemoryShellProvider): string => {
     const [call] = shell.getCallsMatching(/--secrets-file/);
     if (!call) {
-      throw new Error("the deploy carried no --secrets-file");
+      throw new AlephaError("the deploy carried no --secrets-file");
     }
     const path = /--secrets-file (\S+)/.exec(call.command)?.[1];
     if (!path) {
-      throw new Error(`no path after --secrets-file in: ${call.command}`);
+      throw new AlephaError(`no path after --secrets-file in: ${call.command}`);
     }
     return path;
   };
@@ -1619,10 +1656,10 @@ describe("BayAdapter  -  inspect reports the secrets that are set", () => {
     expect(state.secrets.map((s) => s.name)).toEqual(["STRIPE_KEY"]);
   });
 
-  it("names the upgrade when the host's `bay` has no `env` command", async () => {
+  it("names the upgrade when the host's `bay` answers `env list` with its usage banner", async () => {
     /*
       The OTHER version gate, and the one `inspect` still walks into: a deploy
-      no longer uses `bay env set`, but `platform status` reads the configured
+      no longer uses `bay env set`, but `alepha infra status` reads the configured
       key names back with `bay env list`, and a `bay` that has neither prints
       its whole usage banner and exits 2.
 
@@ -1648,7 +1685,7 @@ describe("BayAdapter  -  inspect reports the secrets that are set", () => {
     });
 
     await expect(adapter.inspect(context(), run)).rejects.toThrow(
-      /has no `env` command[\s\S]*Upgrade `bay` on the host/,
+      /does not know the command it was sent[\s\S]*Upgrade `bay` on the host/,
     );
   });
 

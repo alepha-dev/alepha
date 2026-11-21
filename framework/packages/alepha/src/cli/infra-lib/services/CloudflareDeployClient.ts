@@ -121,7 +121,7 @@ export interface CloudflareDeployAssets {
    * The bytes of one asset, by the manifest key.
    *
    * A callback rather than a map, because the whole point of batching is never
-   * to hold the asset set: `apps/docs` is 1545 files and 44 MB against a
+   * to hold the asset set: the docs site is 1545 files and 44 MB against a
    * 128 MB isolate.
    */
   read: (key: string) => Promise<Uint8Array>;
@@ -135,7 +135,7 @@ export interface CloudflareDeployAssets {
    * {@link read} is a PULL, and a pull needs the bytes to be addressable one
    * key at a time - which means they are sitting somewhere. For a deploy
    * running inside Lore's Worker that somewhere was a `MemoryFileSystemProvider`
-   * holding the whole unpacked tree, and `apps/docs` is 49 MB of assets inside
+   * holding the whole unpacked tree, and the docs site is 49 MB of assets inside
    * a 128 MB isolate. It died with `Worker exceeded memory limit` before the
    * upload began.
    *
@@ -421,7 +421,9 @@ export class CloudflareDeployClient {
       byHash.set(entry.hash, key);
     }
 
-    let completion = session.jwt;
+    // ⚠️ Never seeded with the session's token: that one authenticates the
+    // uploads, and only an upload's answer can carry the completion token.
+    let completion: string | undefined;
 
     // ⚠️ A different transport, not a different batch size: one request per
     // file, raw bytes, the type as a request header. Sending this session
@@ -443,7 +445,7 @@ export class CloudflareDeployClient {
     // `CloudflareDeployAssets.readAll`.
     //
     // ⚠️ **This path cannot honour the server's bucketing, and the pull path
-    // above does.** A push arrives in the order the source can produce - for
+    // below does.** A push arrives in the order the source can produce - for
     // a deploy that is the order of the archive - while a bucket is an
     // arbitrary set of hashes. Holding files back until their bucket is
     // complete would mean holding most of the site, which is the memory this
@@ -457,22 +459,36 @@ export class CloudflareDeployClient {
       // end to end. The completion token is whichever answer carries one, in
       // whatever order they land - the same rule wrangler applies.
       const inFlight = new Set<Promise<unknown>>();
+      // ⚠️ A batch can fail while nothing awaits it (fewer than the limit in
+      // flight, the reader still walking), so its failure is kept here and
+      // rethrown at the next step instead of rejecting a promise nobody
+      // holds.
+      let failure: { error: unknown } | undefined;
+      const rethrow = () => {
+        if (failure) throw failure.error;
+      };
       const send = (batch: Record<string, File>) => {
-        const pending = this.postAssetsWithRetry(batch, completion, expiresAt)
+        const pending = this.postAssetsWithRetry(batch, session.jwt, expiresAt)
           .then((answer) => {
             completion = answer.jwt ?? completion;
             return answer;
+          })
+          .catch((error) => {
+            failure ??= { error };
           })
           .finally(() => inFlight.delete(pending));
         inFlight.add(pending);
       };
       const flush = async () => {
-        if (bytes === 0) return;
+        rethrow();
+        // Counted in files: an empty file is zero bytes and still wanted.
+        if (Object.keys(body).length === 0) return;
         send(body);
         body = {};
         bytes = 0;
         if (inFlight.size >= CloudflareDeployClient.UPLOAD_CONCURRENCY) {
           await Promise.race(inFlight);
+          rethrow();
         }
       };
 
@@ -504,6 +520,7 @@ export class CloudflareDeployClient {
       });
       await flush();
       await Promise.all(inFlight);
+      rethrow();
 
       if (!completion) {
         throw new AlephaError(
@@ -538,7 +555,7 @@ export class CloudflareDeployClient {
 
       const answer = await this.postAssetsWithRetry(
         body,
-        completion,
+        session.jwt,
         expiresAt,
       );
       // Only the LAST response carries the completion token; the others answer
@@ -631,7 +648,14 @@ export class CloudflareDeployClient {
     );
     let completion: string | undefined;
     const inFlight = new Set<Promise<unknown>>();
+    // Kept and rethrown at the next step, for the reason the multipart path
+    // of `uploadAssets` gives.
+    let failure: { error: unknown } | undefined;
+    const rethrow = () => {
+      if (failure) throw failure.error;
+    };
     const send = async (key: string, bytes: Uint8Array) => {
+      rethrow();
       const hash = assets.manifest[key]?.hash;
       if (!hash) return;
       const pending = this.withRetry(expiresAt, () =>
@@ -641,10 +665,14 @@ export class CloudflareDeployClient {
           completion = answer.jwt ?? completion;
           return answer;
         })
+        .catch((error) => {
+          failure ??= { error };
+        })
         .finally(() => inFlight.delete(pending));
       inFlight.add(pending);
       if (inFlight.size >= limit) {
         await Promise.race(inFlight);
+        rethrow();
       }
     };
 
@@ -658,6 +686,7 @@ export class CloudflareDeployClient {
       }
     }
     await Promise.all(inFlight);
+    rethrow();
 
     if (!completion) {
       throw new AlephaError(
@@ -780,8 +809,7 @@ export class CloudflareDeployClient {
 
   /**
    * The script, its modules and its bindings.
-   */
-  /**
+   *
    * @returns the version this upload produced, when Cloudflare names one.
    *
    * ⚠️ **What makes a fast rollback possible.** Cloudflare keeps every uploaded
@@ -1228,12 +1256,6 @@ export class CloudflareDeployClient {
   }
 
   /**
-   * Split the hashes Cloudflare asked for into requests this isolate can hold.
-   *
-   * The size is read from the manifest we already sent rather than from the
-   * file, so the split is decided before a single byte is read.
-   */
-  /**
    * The server's own buckets, split where one is too big for this isolate.
    *
    * ## ⚠️ Cloudflare proposes the grouping, and it is not ours to improve
@@ -1258,6 +1280,12 @@ export class CloudflareDeployClient {
     }
   }
 
+  /**
+   * Split the hashes of one bucket into requests this isolate can hold.
+   *
+   * The size is read from the manifest we already sent rather than from the
+   * file, so the split is decided before a single byte is read.
+   */
   protected *split(
     wanted: string[],
     manifest: Record<string, CloudflareAssetEntry>,

@@ -568,8 +568,8 @@ describe("CloudflareAdapter", () => {
 
   /**
    * `build()` derived DATABASE_URL / CLOUDFLARE_KV_ID from fields that only
-   * `provision()` sets, in the same process. The granular `platform build` and
-   * `platform deploy` commands never call provision, so those fields were
+   * `provision()` sets, in the same process. The granular `alepha infra build` and
+   * `alepha infra deploy` commands never call provision, so those fields were
    * empty and the emitted wrangler config silently lacked the D1 binding (or
    * carried `kv_namespaces: [{ id: "" }]`)  -  a worker deployed with no
    * database, failing only at the first query.
@@ -811,7 +811,7 @@ describe("CloudflareAdapter", () => {
       ];
     };
 
-    test("pushes non-binding env vars via REST putSecret", async ({
+    test("pushes non-binding env vars as secret_text bindings of the script upload", async ({
       expect,
     }) => {
       const { adapter, fs, naming, worker } = createTestEnv();
@@ -849,7 +849,7 @@ describe("CloudflareAdapter", () => {
       expect(names).toEqual(["APP_SECRET", "GOOGLE_API_KEY"]);
     });
 
-    test("with platform.secrets.keys, resolves the allowlist from process.env (no .env file) and ignores ambient vars", async ({
+    test("with infra().secrets.keys, resolves the allowlist from process.env (no .env file) and ignores ambient vars", async ({
       expect,
     }) => {
       const { adapter, alepha, fs, naming, worker } = createTestEnv();
@@ -891,7 +891,7 @@ describe("CloudflareAdapter", () => {
       expect(names).toEqual(["APP_SECRET", "GOOGLE_CLIENT_ID"]);
     });
 
-    test("with platform.secrets.keys, the .env file overrides process.env per key", async ({
+    test("with infra().secrets.keys, the .env file overrides process.env per key", async ({
       expect,
     }) => {
       const { adapter, alepha, fs, naming, worker } = createTestEnv();
@@ -943,7 +943,7 @@ describe("CloudflareAdapter", () => {
       expect,
     }) => {
       const { adapter, fs, naming, worker } = createTestEnv();
-      // No platform.secrets.keys and no .env file → the manifest's declared
+      // No infra().secrets.keys and no .env file → the manifest's declared
       // env list is the allowlist. This is the CI shape.
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
@@ -1057,7 +1057,7 @@ describe("CloudflareAdapter", () => {
       ]);
     });
 
-    test("platform.secrets.keys overrides the manifest `env` allowlist", async ({
+    test("infra().secrets.keys overrides the manifest allowlist", async ({
       expect,
     }) => {
       const { adapter, alepha, fs, naming, worker } = createTestEnv();
@@ -1386,7 +1386,7 @@ describe("CloudflareAdapter", () => {
         ]);
       });
 
-      test("a key declassified since the last deploy leaves the secrets file for the config vars", async ({
+      test("a key declassified since the last deploy leaves the secret bindings for the config vars", async ({
         expect,
       }) => {
         const { adapter, fs, naming, worker } = createTestEnv();
@@ -1523,7 +1523,7 @@ describe("CloudflareAdapter", () => {
         Object.assign(probe, {
           provisioner: () => ({
             listSecrets: async () => {
-              throw new Error("workers.api.error.script_not_found");
+              throw new AlephaError("workers.api.error.script_not_found");
             },
           }),
         });

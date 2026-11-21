@@ -28,15 +28,7 @@ export class WranglerApi {
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
   ) {
-    const output = await this.shell.run(command, options);
-
-    // When the caller captured the output, echo it to the log so the user
-    // still sees it (uncaptured commands stream straight to the terminal).
-    if (options.capture) {
-      this.log.info(output);
-    }
-
-    return output;
+    return await this.shell.run(command, options);
   }
 
   // -------------------------------------------------------------------------

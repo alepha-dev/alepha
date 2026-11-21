@@ -118,11 +118,12 @@ export class CloudflareAssetManifest {
    * The asset digest: the full SHA-256 of the raw bytes, as 64 lowercase hex
    * characters, by the runtime's native crypto.
    *
-   * ⚠️ `crypto.subtle`, not `node:crypto`: this class reaches Lore's Worker
-   * through `alepha/cli/infra-lib`'s workerd entry, which admits no `node:`
-   * builtin beyond `node:async_hooks` (`workerdEntryGraph.spec.ts`). The two
-   * are equally native, 18 against 20 ms for 50 MB on local workerd (folio
-   * #F1484); the only cost is that the answer is a promise.
+   * ⚠️ No `node:crypto` IMPORT: this class reaches Lore's Worker through
+   * `alepha/cli/infra-lib`'s workerd entry, which admits no `node:` builtin
+   * beyond `node:async_hooks` (`workerdEntryGraph.spec.ts`). {@link sha256}
+   * reaches `createHash` at runtime where there is one and falls back to
+   * `crypto.subtle`; the two are equally native, 18 against 20 ms for 50 MB
+   * on local workerd (folio #F1484).
    */
   public async digest(bytes: Uint8Array): Promise<string> {
     return await this.sha256(bytes);

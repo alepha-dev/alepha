@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
+import { MemoryShellProvider, ShellProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
 import { BayAdapter } from "../adapters/BayAdapter.ts";
@@ -57,7 +58,7 @@ const run: RunnerMethod = (async (task: { handler: () => Promise<unknown> }) =>
 const context = (): InfraContext<any> =>
   ({ env: "production", root: "/app", options: {} }) as InfraContext<any>;
 
-describe("platform auth", () => {
+describe("infra auth", () => {
   it("hands Cloudflare's login to wrangler", async () => {
     const alepha = Alepha.create().with({
       provide: WranglerApi,
@@ -88,13 +89,27 @@ describe("platform auth", () => {
   });
 
   it("makes Bay name the host it cannot find, rather than assuming one", async () => {
-    const alepha = Alepha.create();
+    // The shell is a fake and the machine's own `BAY_HOST` is set aside: with
+    // it exported, the real adapter would ssh to the developer's Bay.
+    const alepha = Alepha.create().with({
+      provide: ShellProvider,
+      use: MemoryShellProvider,
+    });
     const adapter = alepha.inject(BayAdapter);
+    const exported = process.env.BAY_HOST;
+    delete process.env.BAY_HOST;
 
-    // Unlike Cloudflare there is no global destination to fall back on: a Bay
-    // is a machine someone owns, reached over SSH.
-    await expect(adapter.login(context(), run)).rejects.toThrow(
-      /No Bay host for environment "production"/,
-    );
+    try {
+      // Unlike Cloudflare there is no global destination to fall back on: a
+      // Bay is a machine someone owns, reached over SSH.
+      await expect(adapter.login(context(), run)).rejects.toThrow(
+        /No Bay host for environment "production"/,
+      );
+      expect(alepha.inject(MemoryShellProvider).calls).toEqual([]);
+    } finally {
+      if (exported !== undefined) {
+        process.env.BAY_HOST = exported;
+      }
+    }
   });
 });

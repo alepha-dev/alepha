@@ -3,35 +3,27 @@ import { $cache, CacheProvider, MemoryCacheProvider } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
 import { describe, expect, it } from "vitest";
 
+import { InfraCommand } from "../commands/infra.ts";
+
 /**
- * Mirrors the inline filter in `cli/infra/commands/infra.ts`
- * (`detectResources`) and its twin in `BuildManifestTask`.
- *
- * Pulled out as a tiny helper so the decision matrix can be tested without
- * instantiating the full InfraCommand (which depends on Vite, AppEntry,
- * etc. and is awkward to spin up under unit tests). If the filter changes,
- * update this helper and BOTH call sites - `plan` and `up` read one, a
- * manifest-driven deploy reads the other, and they have to agree.
+ * Reaches the protected `detectResources`, the live-boot detection `alepha
+ * infra plan` and `alepha deploy` run on the app's own container.
  */
-const detectHasKV = (alepha: Alepha): boolean => {
-  // ⚠️ Since #Q2151 a `$cache` with no explicit provider does NOT imply KV:
-  // the workerd default is `CloudflareCacheProvider`, which takes the
-  // database cache whenever the container has one. An app that registered
-  // `alepha/cache/database` needs no namespace, and used to be given one
-  // that nothing ever wrote to.
-  let hasDatabaseCache = false;
-  try {
-    hasDatabaseCache = !!alepha.inject("alepha.cache.DatabaseCacheProvider");
-  } catch {}
+class TestInfraCommand extends InfraCommand {
+  public readonly testDetectResources = this.detectResources.bind(this);
+}
 
-  return (
-    !hasDatabaseCache &&
-    alepha.primitives("cache").filter((it: any) => it.options?.provider == null)
-      .length > 0
-  );
-};
+/**
+ * `detectResources` on an app container. `BuildManifestTask` holds the twin
+ * of each rule: a manifest-driven deploy reads that one, and the two have to
+ * agree.
+ */
+const detect = (app: unknown) =>
+  Alepha.create().inject(TestInfraCommand).testDetectResources(app);
 
-describe("platform.detectResources  -  hasKV decision", () => {
+const detectHasKV = (app: Alepha): boolean => detect(app).hasKV;
+
+describe("InfraCommand.detectResources, the hasKV decision", () => {
   it("is false when no $cache primitive is registered", () => {
     const alepha = Alepha.create();
     expect(detectHasKV(alepha)).toBe(false);
@@ -160,33 +152,28 @@ describe("platform.detectResources  -  hasKV decision", () => {
 });
 
 /**
- * Mirrors the inline check at `cli/infra/commands/infra.ts:1015-1022`
- * (`detectResources`'s `hasAnalytics`)  -  the live-boot path `alepha infra
- * up` actually runs, as opposed to `BuildManifestTask`, which only drives
- * `alepha build` / `--prebuilt` deploys. Both must agree on what a
- * `$analytics` primitive means, or `up` would build without the dataset
- * binding while a manifest-driven deploy of the same app carries it.
+ * The `hasAnalytics` rule of the same method.
  *
- * Typed against a minimal duck-typed shape rather than a real `Alepha`
- * instance (unlike `detectHasKV` above): registering a real `$analytics`
- * dataset (now `alepha/api/analytics`, in this same package) would drag
+ * The app is a real container whose `primitives()` answers one `$analytics`
+ * dataset: registering a real one (`alepha/api/analytics`) would drag
  * providers and a database seam into a spec that only cares about the
- * detection expression. `alepha.primitives()` itself is just a string-keyed
- * lookup, so a fake is enough to exercise the exact expression this mirrors.
+ * detection.
  */
-const detectHasAnalytics = (alepha: { primitives(name: string): unknown[] }) =>
-  alepha.primitives("$analytics").length > 0;
+const withAnalyticsDataset = () => {
+  const real = Alepha.create();
+  return {
+    inject: real.inject.bind(real),
+    primitives: (name: string) =>
+      name === "$analytics" ? [{}] : real.primitives(name),
+  };
+};
 
-describe("platform.detectResources  -  hasAnalytics decision", () => {
+describe("InfraCommand.detectResources, the hasAnalytics decision", () => {
   it("is false when no $analytics primitive is registered", () => {
-    const alepha = Alepha.create();
-    expect(detectHasAnalytics(alepha)).toBe(false);
+    expect(detect(Alepha.create()).hasAnalytics).toBe(false);
   });
 
   it("is TRUE when a $analytics dataset is declared", () => {
-    const fake = {
-      primitives: (name: string) => (name === "$analytics" ? [{}] : []),
-    };
-    expect(detectHasAnalytics(fake)).toBe(true);
+    expect(detect(withAnalyticsDataset()).hasAnalytics).toBe(true);
   });
 });

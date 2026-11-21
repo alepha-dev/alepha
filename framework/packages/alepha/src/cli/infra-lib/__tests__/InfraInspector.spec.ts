@@ -44,16 +44,11 @@ describe("InfraInspector", () => {
     });
   }
 
-  test("throws when platform is not configured in CI", async ({ expect }) => {
-    process.env.CI = "1";
-    try {
-      const { inspector } = createTestEnv();
-      await expect(inspector.resolveConfig("/project")).rejects.toThrow(
-        AlephaError,
-      );
-    } finally {
-      delete process.env.CI;
-    }
+  test("throws when infra is not configured", async ({ expect }) => {
+    const { inspector } = createTestEnv();
+    await expect(inspector.resolveConfig("/project")).rejects.toThrow(
+      AlephaError,
+    );
   });
 
   test("throws when project name is missing", async ({ expect }) => {
