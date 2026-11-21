@@ -5,12 +5,19 @@ import { AlephaContext } from "alepha/react";
 import { useState } from "react";
 import { describe, it } from "vitest";
 
-import { useForm, useFormState, useFormValues } from "../index.ts";
+import {
+  type BaseInputField,
+  useFieldValue,
+  useForm,
+  useFormState,
+  useFormValues,
+} from "../index.ts";
 
 /**
  * `useForm`'s `deps` parameter (see `useForm.ts`) lets a caller mint a
- * brand new `FormModel` — new `id`, fresh values store — whenever a
- * dependency changes. `useFormValues` and `useFormState` used to subscribe
+ * brand new `FormModel`, with a fresh values store, whenever a dependency
+ * changes. The widget below also changes the form's `id` with it; the swap
+ * that keeps the default `id` is the suite at the end of this file. `useFormValues` and `useFormState` used to subscribe
  * to `alepha.events.on("form:changed", ...)` inside a `useEffect(() => {},
  * [])` with an EMPTY dependency array, closing over whichever `form` was
  * passed on the render where that effect first ran. A caller that swapped
@@ -18,7 +25,7 @@ import { useForm, useFormState, useFormValues } from "../index.ts";
  * forever: the values/dirty/loading they returned froze at whatever the
  * old form last held, and never moved again for the new one.
  *
- * Found while building Lore's folio workspace (github.com/alepha-dev/lore) — the shell
+ * Found while building Lore's folio workspace (github.com/alepha-dev/lore): the shell
  * that replaces one folio's editor buffer with another's when the user
  * switches documents. Lore works around the underlying issue locally by
  * forcing a full remount instead of relying on `deps` (see
@@ -90,7 +97,7 @@ describe("useFormValues / useFormState track a form that changes identity", () =
 
     fireEvent.click(getByTestId("switch"));
 
-    // Must show document B's title immediately — never a frozen
+    // Must show document B's title immediately: never a frozen
     // "Document A, edited" carried over from the FormModel that just got
     // replaced.
     await waitFor(() =>
@@ -115,7 +122,7 @@ describe("useFormValues / useFormState track a form that changes identity", () =
 
     fireEvent.click(getByTestId("switch"));
 
-    // The new form (document B) has not been touched — dirty must not
+    // The new form (document B) has not been touched: dirty must not
     // carry over from document A.
     await waitFor(() => expect(getByTestId("dirty").textContent).toBe("clean"));
   });
@@ -144,5 +151,77 @@ describe("useFormValues / useFormState track a form that changes identity", () =
       ),
     );
     expect(getByTestId("dirty").textContent).toBe("dirty");
+  });
+});
+
+/**
+ * With the default id (`useId()`), a model rebuilt through `deps` keeps the
+ * SAME id, and with no `initialValues` it emits nothing: only the model's
+ * identity says the form changed. `useFieldValue` re-seeded on a path change
+ * alone, so the input kept showing what was typed into the previous model
+ * while the new one was empty and submitted `{}`.
+ */
+describe("useFieldValue tracks a form rebuilt under the same id", () => {
+  interface NameFieldProps {
+    input: BaseInputField;
+  }
+
+  const NameField = (props: NameFieldProps) => {
+    const [value, setValue] = useFieldValue(props.input);
+    return (
+      <input
+        data-testid="name"
+        value={value ?? ""}
+        onChange={(event) => setValue(event.target.value)}
+      />
+    );
+  };
+
+  it("shows the new model's value, not what was typed into the old one", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const sent: unknown[] = [];
+    const Widget = () => {
+      const [record, setRecord] = useState(0);
+      const form = useForm(
+        {
+          schema: z.object({ name: z.text().optional() }),
+          handler: (values) => {
+            sent.push(values);
+          },
+        },
+        [record],
+      );
+      return (
+        <form {...form.props} data-testid="form">
+          <NameField input={form.input.name} />
+          <button
+            type="button"
+            data-testid="next"
+            onClick={() => setRecord((current) => current + 1)}
+          >
+            next
+          </button>
+        </form>
+      );
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <Widget />
+      </AlephaContext.Provider>,
+    );
+    const shown = () => (ui.getByTestId("name") as HTMLInputElement).value;
+
+    fireEvent.change(ui.getByTestId("name"), {
+      target: { value: "typed in A" },
+    });
+    await waitFor(() => expect(shown()).toBe("typed in A"));
+
+    fireEvent.click(ui.getByTestId("next"));
+    await waitFor(() => expect(shown()).toBe(""));
+
+    fireEvent.submit(ui.getByTestId("form"));
+    await waitFor(() => expect(sent).toEqual([{}]));
   });
 });

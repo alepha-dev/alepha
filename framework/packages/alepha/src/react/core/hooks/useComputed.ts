@@ -6,7 +6,7 @@ import { useAlepha } from "./useAlepha.ts";
 /**
  * Subscribes to a `$computed` value.
  *
- * `getSnapshot` always reads the dependency atoms **live** off the store —
+ * `getSnapshot` always reads the dependency atoms **live** off the store:
  * never through a subscription-set dirty flag. A dirty flag is only ever
  * flipped by the `state:mutated` listener registered in `subscribe`, which
  * React wires up in a passive effect (after commit); `EventManager.emit` is
@@ -25,7 +25,7 @@ import { useAlepha } from "./useAlepha.ts";
  * reference is cached.
  *
  * A `Computed` passed here should be declared at module scope, like an
- * atom — constructing one inline in a component body creates a new
+ * atom: constructing one inline in a component body creates a new
  * instance every render, which (because `subscribe`/`getSnapshot` are keyed
  * on `target.key`, matching `useStore`/`useSelector`) is tolerated for
  * resubscription purposes, but any closures captured by that instance's
@@ -42,7 +42,7 @@ function useComputed<R>(target: Computed<R>): R {
 
   // A ref, not state: the cached snapshot must survive re-renders without
   // scheduling them. It exists purely to give `useSyncExternalStore` a
-  // stable reference when the resolved dependency values haven't changed —
+  // stable reference when the resolved dependency values haven't changed:
   // it is never the source of truth for staleness (see rationale above).
   const cache = useRef<{
     target: Computed<R>;

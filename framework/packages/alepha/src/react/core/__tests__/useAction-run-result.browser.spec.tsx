@@ -19,7 +19,7 @@ describe("useAction RunResult", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
     );
-    return { wrapper };
+    return { alepha, wrapper };
   };
 
   it("resolves the error instead of rejecting", async ({ expect }) => {
@@ -104,6 +104,173 @@ describe("useAction RunResult", () => {
 
     expect(replaced).toEqual({ ok: false, reason: "dropped" });
     expect(cancelled).toEqual({ ok: false, reason: "aborted" });
+  });
+
+  it("resolves when onError itself throws, and reports that second failure unhandled", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await boot();
+    const seen: Array<{ message: string; handled?: boolean }> = [];
+    alepha.events.on("react:action:error", (event) => {
+      seen.push({ message: event.error.message, handled: event.handled });
+    });
+    const { result } = renderHook(
+      () =>
+        useAction(
+          {
+            handler: async () => {
+              throw new Error("boom");
+            },
+            onError: () => {
+              throw new Error("onError threw");
+            },
+          },
+          [],
+        ),
+      { wrapper },
+    );
+
+    let run: RunResult<void> | undefined;
+    await act(async () => {
+      run = await result.current.run();
+    });
+
+    expect(run).toMatchObject({ ok: false, reason: "error" });
+    expect(
+      run?.ok === false && run.reason === "error" && run.error.message,
+    ).toBe("boom");
+    expect(result.current.loading).toBe(false);
+    expect(seen).toEqual([
+      { message: "boom", handled: true },
+      { message: "onError threw", handled: false },
+    ]);
+  });
+
+  it("resolves the error when a react:action:error listener throws", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await boot();
+    alepha.events.on("react:action:error", () => {
+      throw new Error("listener threw");
+    });
+    const failure = new Error("boom");
+    const { result } = renderHook(
+      () =>
+        useAction(
+          {
+            handler: async () => {
+              throw failure;
+            },
+          },
+          [],
+        ),
+      { wrapper },
+    );
+
+    let run: RunResult<void> | undefined;
+    await act(async () => {
+      run = await result.current.run();
+    });
+
+    expect(run).toEqual({ ok: false, reason: "error", error: failure });
+  });
+
+  it("keeps a saved write ok when a react:action:success listener throws", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await boot();
+    alepha.events.on("react:action:success", () => {
+      throw new Error("success listener threw");
+    });
+    let saved = 0;
+    const succeeded: string[] = [];
+    const { result } = renderHook(
+      () =>
+        useAction(
+          {
+            handler: async () => {
+              saved++;
+              return "saved";
+            },
+            onSuccess: (value) => {
+              succeeded.push(value);
+            },
+          },
+          [],
+        ),
+      { wrapper },
+    );
+
+    let run: RunResult<string> | undefined;
+    await act(async () => {
+      run = await result.current.run();
+    });
+
+    expect(saved).toBe(1);
+    expect(run).toEqual({ ok: true, value: "saved" });
+    expect(succeeded).toEqual(["saved"]);
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("resolves the value when a react:action:end listener throws", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await boot();
+    alepha.events.on("react:action:end", () => {
+      throw new Error("end listener threw");
+    });
+    const { result } = renderHook(
+      () => useAction({ handler: async () => "saved" }, []),
+      { wrapper },
+    );
+
+    let run: RunResult<string> | undefined;
+    await act(async () => {
+      run = await result.current.run();
+    });
+
+    expect(run).toEqual({ ok: true, value: "saved" });
+  });
+
+  it("reports a failure that lands after cancel() as aborted, with no error", async ({
+    expect,
+  }) => {
+    const { alepha, wrapper } = await boot();
+    const errors: string[] = [];
+    alepha.events.on("react:action:error", (event) => {
+      errors.push(event.error.message);
+    });
+    let fail: (error: Error) => void = () => {};
+    const { result } = renderHook(
+      () =>
+        useAction(
+          {
+            // Ignores its signal: the rejection is the handler's own.
+            handler: () =>
+              new Promise<string>((_resolve, reject) => {
+                fail = reject;
+              }),
+          },
+          [],
+        ),
+      { wrapper },
+    );
+
+    let pending: Promise<RunResult<string>> | undefined;
+    await act(async () => {
+      pending = result.current.run();
+      await Promise.resolve();
+    });
+    act(() => result.current.cancel());
+    let run: RunResult<string> | undefined;
+    await act(async () => {
+      fail(new Error("late failure"));
+      run = await pending;
+    });
+
+    expect(run).toEqual({ ok: false, reason: "aborted" });
+    expect(errors).toEqual([]);
+    expect(result.current.error).toBeUndefined();
   });
 
   it("derives handled one way", ({ expect }) => {

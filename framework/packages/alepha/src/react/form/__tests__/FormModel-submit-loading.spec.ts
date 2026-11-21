@@ -5,8 +5,8 @@ import { describe, it } from "vitest";
 import { FormModel } from "../services/FormModel.ts";
 
 /**
- * Repro for: a form whose submit fails schema validation (missing field)
- * leaves the submit button stuck in its loading state forever.
+ * A form whose submit fails schema validation (a missing field) must not
+ * leave the submit button stuck in its loading state.
  *
  * The button's loading is driven by the `form:submit:begin` / `form:submit:end`
  * event pair (see useFormState). So the invariant that matters is: every
@@ -44,10 +44,10 @@ describe("FormModel.submit loading pairing", () => {
       ended = true;
     });
 
-    await form.submit().catch(() => {});
+    await form.submit();
 
     expect(begun).toBe(true);
-    expect(ended).toBe(true); // pairing must hold
+    expect(ended).toBe(true);
   });
 
   it("emits form:submit:end even when a react:action:error listener throws", async ({
@@ -65,8 +65,8 @@ describe("FormModel.submit loading pairing", () => {
       throw new Error("toaster boom");
     });
 
-    await form.submit().catch(() => {});
+    await form.submit();
 
-    expect(ended).toBe(true); // currently FAILS: end is skipped → button stuck
+    expect(ended).toBe(true);
   });
 });

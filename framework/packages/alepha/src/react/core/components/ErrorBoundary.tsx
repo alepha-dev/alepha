@@ -9,8 +9,8 @@ import React, {
  */
 export interface ErrorBoundaryProps {
   /**
-   * Fallback React node to render when an error is caught.
-   * If not provided, a default error message will be shown.
+   * Renders in place of the children once an error is caught. Receives the
+   * error, and `reset`, which clears it and renders the children again.
    */
   fallback: (error: Error, reset: () => void) => ReactNode;
 
@@ -24,7 +24,7 @@ export interface ErrorBoundaryProps {
    * Clear a caught error whenever any of these values changes (compared with
    * `Object.is`, positionally).
    *
-   * A boundary that catches has to be told when the reason to fail is gone —
+   * A boundary that catches has to be told when the reason to fail is gone:
    * otherwise the fallback latches and every later render keeps showing the
    * stale error. The router passes the current path, so navigating away from a
    * page that threw recovers on its own.
@@ -84,7 +84,7 @@ export class ErrorBoundary extends React.Component<
     }
 
     if (this.hasResetKeyChanged(prevProps.resetKeys, this.props.resetKeys)) {
-      // Guarded twice — there is an error, and a reset key changed — so it
+      // Guarded twice (there is an error, and a reset key changed), so it
       // cannot loop. The alternative, `getDerivedStateFromProps`, would have
       // to mirror `resetKeys` into state to detect the same change.
       // oxlint-disable-next-line react/no-did-update-set-state

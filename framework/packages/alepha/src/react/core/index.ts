@@ -90,26 +90,22 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Full-stack React framework with server-side rendering.
+ * The React bindings of an Alepha container: hooks and components that work
+ * with or without the router.
  *
  * **Features:**
- * - React page routes with type-safe params
  * - Async action handler with loading/error/cancel states
+ * - Declarative reads with a keyed cache, invalidation and retries
  * - Type-safe HTTP client access
  * - Dependency injection in components
  * - Global state management
- * - Router navigation methods
- * - Current route state access
- * - Check if path is active
- * - URL query parameters
- * - Access route schema
  * - Subscribe to Alepha events
- * - Type-safe form handling with validation
  * - Error handling wrapper component
  * - Client-side only rendering component
- * - Server-side rendering with hydration
- * - Automatic code splitting
  * - Event system for action tracking
+ *
+ * Page routes, navigation and server-side rendering are `alepha/react/router`;
+ * forms are `alepha/react/form`.
  *
  * @module alepha.react
  */

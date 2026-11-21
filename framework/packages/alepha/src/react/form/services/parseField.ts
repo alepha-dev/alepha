@@ -5,7 +5,7 @@ import { prettyName } from "./prettyName.ts";
 
 /**
  * Semantic icon hint derived from schema metadata. UI layers map this
- * to their own icon set — this module is headless and ships no JSX.
+ * to their own icon set: this module is headless and ships no JSX.
  */
 export type IconHint =
   | "email"
@@ -62,7 +62,7 @@ export interface ParseFieldOptions {
 
 /**
  * Derives a {@link FieldMeta} from an `InputField` (from `useForm`) plus
- * optional overrides. Pure — no React, no JSX, no UI library coupling.
+ * optional overrides. Pure: no React, no JSX, no UI library coupling.
  *
  * UI components consume this metadata to render labels, descriptions,
  * error messages, icons, and validation constraints.
@@ -82,11 +82,10 @@ export const parseField = (
     maxValue?: number;
   };
 
-  // Title / description / `$control` ride on zod's `.meta()` registry now
-  // (typebox kept them as plain schema properties). Read them through
-  // `z.schema.meta`, which merges the wrapper layers: `.meta()` binds to one
-  // instance, so `.default(x).meta({ title })` leaves the title on the
-  // `ZodDefault` and reading the unwrapped schema alone loses it.
+  // Title / description / `$control` ride on zod's `.meta()` registry. Read
+  // them through `z.schema.meta`, which merges the wrapper layers: `.meta()`
+  // binds to one instance, so `.default(x).meta({ title })` leaves the title
+  // on the `ZodDefault` and reading the unwrapped schema alone loses it.
   const meta = z.schema.meta(input.schema) as Record<string, unknown> | null;
 
   const label =
@@ -104,7 +103,7 @@ export const parseField = (
       : undefined;
 
   // Structural classification via zod guards (the schema is a real zod schema,
-  // not a JSON-Schema object — `schema.type`/`schema.enum` no longer apply).
+  // not a JSON-Schema object: `schema.type`/`schema.enum` no longer apply).
   // A union of string literals is a closed set of values as much as an
   // `z.enum` is, and renders as the same select (#Q3425): written either way,
   // the field offers its choices instead of a free text box.
@@ -143,7 +142,7 @@ export const parseField = (
         : undefined;
   const element = z.schema.element(schema) ?? z.schema.items(schema)[0];
   // An array of a UNION of objects is still an array of objects for editing
-  // purposes — `z.array(z.union([...]))` is how a heterogeneous list (a
+  // purposes: `z.array(z.union([...]))` is how a heterogeneous list (a
   // discriminated one, most often) is spelled, and classifying it as scalars
   // sends it to the tag-list control, which stringifies each item to
   // "[object Object]". ControlArray resolves the variant per item.
@@ -203,9 +202,8 @@ const readPattern = (schema: unknown): string | undefined => {
 };
 
 /**
- * Variants of a union schema, or `undefined` when `schema` is not one.
- * `anyOf` is the JSON-Schema spelling (a round-tripped schema), `options`
- * zod's own — both appear in practice.
+ * Variants of a union schema (zod's `options`), or `undefined` when `schema`
+ * is not one or has none.
  */
 export const unionVariants = (schema: unknown): ZType[] | undefined => {
   if (!schema || !z.schema.isUnion(schema as ZType)) {
@@ -217,7 +215,7 @@ export const unionVariants = (schema: unknown): ZType[] | undefined => {
 
 /**
  * True for an object schema, and for a union whose every variant is an object
- * (a discriminated union of objects) — both are editable as objects.
+ * (a discriminated union of objects): both are editable as objects.
  */
 export const isObjectOrUnionOfObjects = (schema: unknown): boolean => {
   if (!schema) return false;

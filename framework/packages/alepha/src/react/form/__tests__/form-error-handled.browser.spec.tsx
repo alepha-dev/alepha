@@ -2,7 +2,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha, SchemaValidationError, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { FormValidationError, useForm, useFormState } from "../index.ts";
 
@@ -58,7 +58,9 @@ describe("useForm handled errors", () => {
     fireEvent.submit(ui.getByTestId("form"));
   };
 
-  it("marks a FormValidationError with a field path handled, and shows it under the field", async () => {
+  it("marks a FormValidationError with a field path handled, and shows it under the field", async ({
+    expect,
+  }) => {
     const { alepha, seen } = await setup();
     const ui = render(
       <AlephaContext.Provider value={alepha}>
@@ -86,7 +88,9 @@ describe("useForm handled errors", () => {
     await alepha.stop();
   });
 
-  it("does not mark a FormValidationError with no path, which has nowhere to render", async () => {
+  it("does not mark a FormValidationError with no path, which has nowhere to render", async ({
+    expect,
+  }) => {
     const { alepha, seen } = await setup();
     const ui = render(
       <AlephaContext.Provider value={alepha}>
@@ -114,7 +118,9 @@ describe("useForm handled errors", () => {
    * sent the request. Its path points into the response, not into this form,
    * so nothing renders it: a fault, and it must still toast.
    */
-  it("does not mark a SchemaValidationError raised inside the handler", async () => {
+  it("does not mark a SchemaValidationError raised inside the handler", async ({
+    expect,
+  }) => {
     const { alepha, seen } = await setup();
     const ui = render(
       <AlephaContext.Provider value={alepha}>
@@ -137,7 +143,7 @@ describe("useForm handled errors", () => {
     await alepha.stop();
   });
 
-  it("does not mark a plain throw", async () => {
+  it("does not mark a plain throw", async ({ expect }) => {
     const { alepha, seen } = await setup();
     const ui = render(
       <AlephaContext.Provider value={alepha}>
@@ -157,7 +163,9 @@ describe("useForm handled errors", () => {
     await alepha.stop();
   });
 
-  it("marks any failure handled when the form was given an onError, and still calls it", async () => {
+  it("marks any failure handled when the form was given an onError, and still calls it", async ({
+    expect,
+  }) => {
     const { alepha, seen } = await setup();
     const received: Error[] = [];
     const ui = render(
@@ -176,6 +184,95 @@ describe("useForm handled errors", () => {
     await waitFor(() => expect(seen).toHaveLength(1));
     expect(seen[0].handled).toBe(true);
     expect(received.map((it) => it.message)).toEqual(["Slug taken"]);
+
+    await alepha.stop();
+  });
+
+  /**
+   * `setErrors` only lands a path that names a field of the schema, and a
+   * path into a record's value names none. Marked handled anyway, the refusal
+   * was shown under no field and toasted by nobody.
+   */
+  it("does not mark a refusal whose path the form cannot show", async ({
+    expect,
+  }) => {
+    const { alepha, seen } = await setup();
+    const TagsForm = () => {
+      const form = useForm({
+        schema: z.object({ tags: z.record(z.text(), z.number()) }),
+        initialValues: { tags: { a: "abc" } } as never,
+        handler: () => {},
+      });
+      return <form {...form.props} data-testid="form" />;
+    };
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <TagsForm />
+      </AlephaContext.Provider>,
+    );
+
+    fireEvent.submit(ui.getByTestId("form"));
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0].error.name).toBe("FORM_VALIDATION");
+    expect((seen[0].error as FormValidationError).data.path).toBe("/tags/a");
+    expect(seen[0].handled).toBe(false);
+
+    await alepha.stop();
+  });
+
+  it("does not mark a thrown FormValidationError naming no field of the schema", async ({
+    expect,
+  }) => {
+    const { alepha, seen } = await setup();
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <PasswordForm
+          fail={() => {
+            throw new FormValidationError({
+              message: "Unknown coupon",
+              path: "/coupon",
+            });
+          }}
+        />
+      </AlephaContext.Provider>,
+    );
+
+    submit(ui);
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0].handled).toBe(false);
+
+    await alepha.stop();
+  });
+
+  it("reports the issue with nowhere to go when another one is shown under its field", async ({
+    expect,
+  }) => {
+    const { alepha, seen } = await setup();
+    const ui = render(
+      <AlephaContext.Provider value={alepha}>
+        <PasswordForm
+          fail={() => {
+            throw new FormValidationError({
+              message: "Too short",
+              path: "/password",
+              issues: [
+                { path: "/password", message: "Too short" },
+                { path: "/coupon", message: "Unknown coupon" },
+              ],
+            });
+          }}
+        />
+      </AlephaContext.Provider>,
+    );
+
+    submit(ui);
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(ui.getByTestId("password-error").textContent).toContain("Too short");
+    expect(seen[0].handled).toBe(false);
+    expect(seen[0].error.message).toBe("Unknown coupon");
 
     await alepha.stop();
   });

@@ -15,8 +15,8 @@ exposes the last result as `data`, and provides a stable `refetch()` to
 re-run the query on demand. For optimistic mutations and side-effects,
 use `useAction` directly - `useQuery` is for the read path.
 
-Request deduplication and AbortSignal cancellation come from `useAction` +
-`HttpClient`.
+AbortSignal cancellation comes from `useAction` and `HttpClient`. Request
+deduplication is the query cache's, so it applies to keyed queries only.
 
 Pass a `key` to opt into the shared query cache: components using the same
 key read one entry rather than each fetching, `staleTime` serves a fresh

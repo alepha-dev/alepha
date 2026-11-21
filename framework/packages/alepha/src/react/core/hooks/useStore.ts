@@ -7,8 +7,8 @@ import { useAlepha } from "./useAlepha.ts";
 /**
  * Hook to access and mutate the Alepha state.
  *
- * Reads through `useSyncExternalStore`, so the store — not a `useState` copy of
- * it — is the single source of truth. That is what keeps the value correct when
+ * Reads through `useSyncExternalStore`, so the store, not a `useState` copy of
+ * it, is the single source of truth. That is what keeps the value correct when
  * a mutation lands between render and effect-commit, when the component swaps
  * which `target` it watches, and when React renders concurrently (no tearing).
  */
@@ -27,7 +27,7 @@ function useStore(target: any, defaultValue?: any): any {
   // Seed during render (not in an effect) on purpose: effects don't run during
   // SSR, and the default has to be in the store before `exportAtoms` serializes
   // the hydration payload. A plain statement rather than a `useMemo`, because
-  // `store.get(target) == null` is already the idempotency guard — the memo
+  // `store.get(target) == null` is already the idempotency guard: the memo
   // only ever saved a map lookup, and a `useMemo` that returns nothing is a
   // side effect wearing a cache's clothes.
   if (defaultValue != null && alepha.store.get(target) == null) {

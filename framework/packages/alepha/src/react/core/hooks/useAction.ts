@@ -108,7 +108,7 @@ import { useInject } from "./useInject.ts";
  *     return response.json();
  *   }
  * }, []);
- * // Automatically cancelled on unmount or when new request starts
+ * // Aborted on unmount, on cancel(), and when a newer run supersedes it
  * ```
  *
  * @example With error handling
@@ -157,11 +157,11 @@ export function useAction<Args extends any[], Result = void>(
   const isMountedRef = useRef(true);
   const intervalRef = useRef<Interval | undefined>(undefined);
   // Monotonic id of the latest run. A superseded run keeps executing until its
-  // abort lands, so every state write is gated on "am I still the latest?" —
+  // abort lands, so every state write is gated on "am I still the latest?":
   // otherwise the stale run's `finally` would clear the newer run's `loading`.
   const runIdRef = useRef(0);
 
-  // Track mount state — must set true in body for React StrictMode double-invoke
+  // Track mount state: must set true in body for React StrictMode double-invoke
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -192,8 +192,8 @@ export function useAction<Args extends any[], Result = void>(
       // Release the concurrency guard: we've just abandoned the in-flight run
       // (its result is discarded by the aborted-signal check), so the *next*
       // lifecycle must be free to start. Without this, a remount that reuses
-      // the same refs — React StrictMode's double-invoke, or a Suspense/router
-      // remount on client-side navigation — would hit `if (isExecutingRef
+      // the same refs (React StrictMode's double-invoke, or a Suspense/router
+      // remount on client-side navigation) would hit `if (isExecutingRef
       // .current) return` and never re-run, leaving a `useQuery` stuck on its
       // loading skeleton forever (the original request 200s but is dropped).
       isExecutingRef.current = false;
@@ -219,14 +219,14 @@ export function useAction<Args extends any[], Result = void>(
       { supersede = false }: { supersede?: boolean } = {},
     ): Promise<RunResult<Result>> => {
       if (isExecutingRef.current && !supersede) {
-        // A manual `run()` must not fire twice — this is what stops a
+        // A manual `run()` must not fire twice: this is what stops a
         // double-clicked mutation from being submitted twice.
         return { ok: false, reason: "dropped" };
       }
 
       // A dep-change or interval run supersedes: the in-flight request was
       // issued for inputs that are now stale, so its result must never win.
-      // (This is why the guard above is skipped rather than short-circuiting —
+      // (This is why the guard above is skipped rather than short-circuiting:
       // otherwise `useQuery([userId])` whose `userId` changes mid-flight would
       // never refetch, and the old user's data would stay on screen.)
       if (abortControllerRef.current) {
@@ -249,7 +249,7 @@ export function useAction<Args extends any[], Result = void>(
           type: "custom",
           id: optionsRef.current.id,
         });
-        // Pass abort signal as last argument to handler
+        // The context, with the abort signal, is the handler's first argument.
         const result = await optionsRef.current.handler(
           { signal: abortController.signal },
           ...args,
@@ -266,10 +266,13 @@ export function useAction<Args extends any[], Result = void>(
 
         setResult(result as Result);
 
-        await alepha.events.emit("react:action:success", {
-          type: "custom",
-          id: optionsRef.current.id,
-        });
+        // A listener that throws must not undo a handler that succeeded: it
+        // is reported by the event manager, and the run goes on.
+        await alepha.events.emit(
+          "react:action:success",
+          { type: "custom", id: optionsRef.current.id },
+          { catch: true },
+        );
 
         // Invalidate before the caller's `onSuccess`, so a handler that
         // navigates or reads the cache sees the post-mutation state.
@@ -308,12 +311,16 @@ export function useAction<Args extends any[], Result = void>(
             "An action succeeded, but its invalidates or onSuccess threw",
             error,
           );
-          await alepha.events.emit("react:action:error", {
-            type: "custom",
-            id: optionsRef.current.id,
-            error,
-            handled: false,
-          });
+          await alepha.events.emit(
+            "react:action:error",
+            {
+              type: "custom",
+              id: optionsRef.current.id,
+              error,
+              handled: false,
+            },
+            { catch: true },
+          );
         }
 
         return { ok: true, value: result as Result };
@@ -323,8 +330,15 @@ export function useAction<Args extends any[], Result = void>(
           return { ok: false, reason: "aborted" };
         }
 
-        // Superseded or unmounted: nobody is waiting for this failure.
-        if (!isMountedRef.current || !isLatestRun()) {
+        // Cancelled, superseded or unmounted: nobody is waiting for this
+        // failure. `cancel()` aborts the signal and leaves the run id alone,
+        // so a handler that ignores its signal and fails later is caught by
+        // the signal check.
+        if (
+          !isMountedRef.current ||
+          abortController.signal.aborted ||
+          !isLatestRun()
+        ) {
           return { ok: false, reason: "aborted" };
         }
 
@@ -336,18 +350,48 @@ export function useAction<Args extends any[], Result = void>(
         // <ActionErrorToaster /> does not toast it on top of whatever the
         // caller did. It used to fire unflagged, so every `onError: () => {}`
         // written to keep a read quiet toasted anyway.
-        await alepha.events.emit("react:action:error", {
-          type: "custom",
-          id: optionsRef.current.id,
-          error,
-          handled: ActionErrorPolicy.isHandled(
+        //
+        // `run()` never rejects, so neither a listener nor `onError` may
+        // throw through it: a listener's failure is reported by the event
+        // manager, and a throwing `onError` is a second failure, logged and
+        // emitted unhandled like a throwing `onSuccess`.
+        await alepha.events.emit(
+          "react:action:error",
+          {
+            type: "custom",
+            id: optionsRef.current.id,
             error,
-            optionsRef.current.onError,
-          ),
-        });
+            handled: ActionErrorPolicy.isHandled(
+              error,
+              optionsRef.current.onError,
+            ),
+          },
+          { catch: true },
+        );
 
         if (optionsRef.current.onError) {
-          await optionsRef.current.onError(error);
+          try {
+            await optionsRef.current.onError(error);
+          } catch (followUp) {
+            const second =
+              followUp instanceof Error
+                ? followUp
+                : new AlephaError(String(followUp));
+            alepha.log?.error(
+              "An action failed, and its onError threw",
+              second,
+            );
+            await alepha.events.emit(
+              "react:action:error",
+              {
+                type: "custom",
+                id: optionsRef.current.id,
+                error: second,
+                handled: false,
+              },
+              { catch: true },
+            );
+          }
         }
         return { ok: false, reason: "error", error };
         // With or without `onError`, the error is NOT re-thrown: `run()`
@@ -357,7 +401,7 @@ export function useAction<Args extends any[], Result = void>(
         // keeps fire-and-forget `action.run()` calls from producing unhandled
         // promise rejections.
       } finally {
-        // A superseded run must not release the guard or drop `loading` — the
+        // A superseded run must not release the guard or drop `loading`: the
         // run that replaced it is still in flight.
         if (isLatestRun()) {
           isExecutingRef.current = false;
@@ -366,10 +410,11 @@ export function useAction<Args extends any[], Result = void>(
           }
         }
 
-        await alepha.events.emit("react:action:end", {
-          type: "custom",
-          id: optionsRef.current.id,
-        });
+        await alepha.events.emit(
+          "react:action:end",
+          { type: "custom", id: optionsRef.current.id },
+          { catch: true },
+        );
 
         // Clean up abort controller
         if (abortControllerRef.current === abortController) {
@@ -390,7 +435,7 @@ export function useAction<Args extends any[], Result = void>(
     ): Promise<RunResult<Result>> => {
       if (options.debounce) {
         // Settle the superseded call. `cancel()`, unmount, and a newer call
-        // all clear the timer — and the promise returned to THAT caller was
+        // all clear the timer: and the promise returned to THAT caller was
         // only ever resolved inside the timeout, so `await action.run(...)`
         // hung forever. A newer call settles it as `dropped`; `cancel()` and
         // unmount as `aborted`.
@@ -428,7 +473,7 @@ export function useAction<Args extends any[], Result = void>(
   );
 
   /**
-   * Public `run()` — a user-initiated call. Deduped while one is in flight so a
+   * Public `run()`: a user-initiated call. Deduped while one is in flight so a
    * double-clicked mutation submits once.
    */
   const handler = useCallback(
@@ -437,9 +482,9 @@ export function useAction<Args extends any[], Result = void>(
   );
 
   /**
-   * Public `refetch()` — re-run with the same semantics as a dep change: the
+   * Public `refetch()`: re-run with the same semantics as a dep change: the
    * in-flight request (if any) is aborted and a fresh one starts. This is
-   * what `useQuery.refetch()` uses — `run()`'s double-click dedup would
+   * what `useQuery.refetch()` uses: `run()`'s double-click dedup would
    * silently drop a refetch issued during a slow fetch or an active poll.
    */
   const refetch = useCallback(
@@ -469,7 +514,7 @@ export function useAction<Args extends any[], Result = void>(
     }
   }, []);
 
-  // Run action on mount, and again whenever `deps` change — or when
+  // Run action on mount, and again whenever `deps` change: or when
   // `runOnInit` itself flips to true (the `useQuery` `enabled: !!userId` gate
   // pattern: the fetch must start the moment the gate opens, not stay a
   // skeleton forever). These runs supersede an in-flight request: it was
@@ -548,7 +593,9 @@ export interface ActionContext {
    * AbortSignal that can be passed to fetch or other async operations.
    * The signal will be aborted when:
    * - The component unmounts
-   * - A new action is triggered (cancels previous)
+   * - A newer run supersedes this one (a refetch, a dependency change, an
+   *   interval tick, a debounced call). A plain `run()` while one is in
+   *   flight is dropped and aborts nothing.
    * - The cancel() method is called
    *
    * @example
@@ -581,7 +628,9 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * With or without one, errors are never re-thrown by `run`: it resolves
    * `{ ok: false, reason: "error", error }`, the error is captured in `error`
    * state and emitted as `react:action:error`, so fire-and-forget calls can't
-   * produce unhandled promise rejections.
+   * produce unhandled promise rejections. An `onError` that throws does not
+   * reject `run()` either: its own error is logged and emitted as a second
+   * `react:action:error`, with `handled: false`.
    */
   onError?: (error: Error) => void | Promise<void>;
 
@@ -595,7 +644,7 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    *
    * Matching is by prefix, so `[["folios"]]` drops every entry under that
    * prefix regardless of trailing key members. Mounted `useQuery` hooks whose
-   * key was dropped refetch automatically — this is the replacement for
+   * key was dropped refetch automatically: this is the replacement for
    * hand-patching atoms after a write.
    *
    * Pass a function to derive keys from the result, e.g. when the id of the
@@ -604,7 +653,7 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * ```tsx
    * const remove = useAction(
    *   {
-   *     handler: async (id: string) => api.delete({ params: { id } }),
+   *     handler: async (_ctx, id: string) => api.delete({ params: { id } }),
    *     invalidates: [["folios", campaignId]],
    *   },
    *   [campaignId],
@@ -678,7 +727,7 @@ export interface UseActionReturn<Args extends any[], Result> {
    *
    * @example
    * ```tsx
-   * const action = useAction({ handler: async (data) => { ... } }, []);
+   * const action = useAction({ handler: async (_ctx, data: Data) => { ... } }, []);
    * action.run(data);
    * ```
    */

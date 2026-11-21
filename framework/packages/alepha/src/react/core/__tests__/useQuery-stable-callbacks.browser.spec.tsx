@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 
 import { useQuery } from "../hooks/useQuery.ts";
 
@@ -14,9 +14,11 @@ describe("useQuery callback identity", () => {
     </AlephaContext.Provider>
   );
 
-  it("should keep refetch and cancel stable across re-renders", async () => {
+  it("should keep refetch and cancel stable across re-renders", async ({
+    expect,
+  }) => {
     // `useQuery` passes a fresh inline `onSuccess` to `useAction` on every
-    // render, and `executeAction` listed the callbacks in its deps — so
+    // render, and `executeAction` listed the callbacks in its deps: so
     // `run`/`refetch`/`cancel` were rebuilt each render. Any consumer that
     // depends on one (`useEffect(..., [refetch])`, a memoised child) churned
     // on every parent render, and an effect that calls `refetch()` looped.
@@ -42,34 +44,36 @@ describe("useQuery callback identity", () => {
     expect(result.current.cancel).toBe(cancel);
   });
 
-  it("should call the latest onSuccess, not the one from the first render", async () => {
+  it("should call the latest onSuccess, not the one from the first render", async ({
+    expect,
+  }) => {
     // The flip side of holding callbacks in refs: they must not go stale.
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
+    // The label is a prop, so each render's `onSuccess` closes over its own
+    // value: a callback kept from the first render would push "first" twice.
     const seen: string[] = [];
-    let label = "first";
 
     const { result, rerender } = renderHook(
-      () =>
+      (props: { label: string }) =>
         useQuery(
           {
             handler: async () => 1,
             onSuccess: () => {
-              seen.push(label);
+              seen.push(props.label);
             },
           },
           [],
         ),
-      { wrapper: wrapper(alepha) },
+      { wrapper: wrapper(alepha), initialProps: { label: "first" } },
     );
 
     await waitFor(() => {
       expect(seen).toEqual(["first"]);
     });
 
-    label = "second";
-    rerender();
+    rerender({ label: "second" });
     await result.current.refetch();
 
     await waitFor(() => {

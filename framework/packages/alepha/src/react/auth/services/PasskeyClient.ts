@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import {
   type AuthenticationOptionsJson,
   type AuthenticationResponseJson,
@@ -144,7 +144,7 @@ export class PasskeyClient {
     return {
       ok: false,
       reason: "error",
-      error: error instanceof Error ? error : new Error(String(error)),
+      error: error instanceof Error ? error : new AlephaError(String(error)),
     };
   }
 

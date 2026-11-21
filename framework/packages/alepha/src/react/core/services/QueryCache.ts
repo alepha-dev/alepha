@@ -12,7 +12,7 @@ import { QueryWakeEvents } from "./QueryWakeEvents.ts";
 /**
  * Keyed cache behind `useQuery`, with prefix invalidation.
  *
- * Keys are arrays — `["folios", campaignId]` — and invalidation matches by
+ * Keys are arrays, `["folios", campaignId]`, and invalidation matches by
  * prefix, so `invalidate(["folios"])` drops every folio query regardless of
  * its trailing arguments. That is the shape mutations actually need: a write
  * knows which entity it touched, but rarely every query that observed it.
@@ -176,8 +176,14 @@ export class QueryCache {
    * Stable string form of a key array.
    *
    * Object members are serialized with their properties sorted, so
-   * `{ page: 1, size: 10 }` and `{ size: 10, page: 1 }` collide as intended —
+   * `{ page: 1, size: 10 }` and `{ size: 10, page: 1 }` collide as intended:
    * callers build these inline and property order is not meaningful to them.
+   * The sort compares code units, never the runtime's locale, so the server
+   * that wrote an entry and the browser that hydrates it agree on its key.
+   *
+   * A key is read as JSON: an `undefined` member and a `null` one serialize
+   * alike, and a `Map` or a `Set` member as `{}`. Keep to strings, numbers,
+   * booleans, arrays and plain objects.
    */
   public serialize(key: unknown[]): string {
     return JSON.stringify(key, (_, value) => {
@@ -188,7 +194,9 @@ export class QueryCache {
         Object.getPrototypeOf(value) === Object.prototype
       ) {
         return Object.fromEntries(
-          Object.entries(value).sort(([a], [b]) => a.localeCompare(b)),
+          Object.entries(value).sort(([a], [b]) =>
+            a < b ? -1 : a > b ? 1 : 0,
+          ),
         );
       }
       return value;
@@ -222,17 +230,20 @@ export class QueryCache {
   }
 
   /**
-   * Drop every entry whose key starts with `key`.
+   * Drop every entry whose key starts with `key`. Every key starts with the
+   * empty one, so `invalidate([])` drops them all.
    *
    * Matching is done on the serialized prefix minus its closing bracket, so
-   * `["folios"]` matches `["folios", 1]` but not `["folios-archive"]` — a
+   * `["folios"]` matches `["folios", 1]` but not `["folios-archive"]`: a
    * plain `startsWith` on the raw string would catch the sibling too.
    */
   public invalidate(key: unknown[]): void {
     const serialized = this.serialize(key);
     const prefix = serialized.slice(0, -1);
     const matches = (candidate: string) =>
-      candidate === serialized || candidate.startsWith(`${prefix},`);
+      key.length === 0 ||
+      candidate === serialized ||
+      candidate.startsWith(`${prefix},`);
     const next: Record<string, QueryCacheEntry> = {};
 
     for (const [candidate, entry] of Object.entries(this.entries())) {
@@ -274,10 +285,15 @@ export class QueryCache {
    * Mounted queries refetch, as after an invalidation: that is what a change
    * of signed-in user wants, the page re-read under the new identity. With
    * `refetch: false` they stay quiet instead, until their key is written
-   * again or they unmount: that is a sign-out, where the page is being left
-   * and every protected read would answer 401.
+   * again, they unmount, or a later `clear()` asks for the refetch: that is a
+   * sign-out, where the page is being left and every protected read would
+   * answer 401.
    */
   public clear(options: { refetch?: boolean } = {}): void {
+    // The keys an earlier `clear({ refetch: false })` left quiet hold no
+    // entry, so emptying the atom again changes nothing their queries could
+    // react to: they are woken by hand below.
+    const quiet = Array.from(this.silenced);
     this.silenced.clear();
     if (options.refetch === false) {
       for (const serialized of this.observers.keys()) {
@@ -292,6 +308,19 @@ export class QueryCache {
     this.inflight.clear();
     for (const [candidate, generation] of this.generations) {
       this.generations.set(candidate, generation + 1);
+    }
+    if (options.refetch !== false) {
+      for (const serialized of quiet) {
+        for (const observer of Array.from(
+          this.observers.get(serialized) ?? [],
+        )) {
+          if (observer.wake) {
+            observer.wake();
+          } else {
+            observer.refetch();
+          }
+        }
+      }
     }
   }
 
@@ -385,7 +414,7 @@ export class QueryCache {
    * the existing request.
    *
    * Without this, two components mounting on the same key in the same tick
-   * both miss the cache — it is only populated when the first one resolves —
+   * both miss the cache (it is only populated when the first one resolves)
    * and fire duplicate requests. Deduplication has to happen on the promise,
    * not the cached value.
    *
@@ -518,7 +547,7 @@ export interface QueryCacheEntry {
   data: unknown;
 
   /**
-   * When it was stored, in epoch milliseconds — the basis for `staleTime`.
+   * When it was stored, in epoch milliseconds: the basis for `staleTime`.
    */
   updatedAt: number;
 }
@@ -537,6 +566,12 @@ export interface QueryObserver {
    * Re-run it, keeping its entry: `refetch()`'s semantics.
    */
   refetch: () => void;
+
+  /**
+   * Render it again, so it reads that its key is no longer silenced and
+   * starts the run that calls for. Without one, `refetch` is called instead.
+   */
+  wake?: () => void;
 
   /**
    * Whether its last run failed.

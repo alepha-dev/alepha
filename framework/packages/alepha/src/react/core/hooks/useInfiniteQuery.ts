@@ -87,6 +87,14 @@ export function useInfiniteQuery<Page, Param>(
     undefined,
   );
 
+  // What a reload has returned and `useQuery` has not written yet. The
+  // write follows the return by a few microtasks, and a `loadMore()` landing
+  // in between appended its page to an entry about to be replaced. It adds
+  // the page to this result too, so the write carries it.
+  const pendingRef = useRef<
+    { key: string; data: InfiniteQueryData<Page, Param> } | undefined
+  >(undefined);
+
   // `initialData` is held back from the cache until the first commit: a
   // write during render would notify every other reader of the cache in the
   // middle of it. Until it lands, the query is disabled, so mounting sends
@@ -122,20 +130,31 @@ export function useInfiniteQuery<Page, Param>(
       refetchOnReconnect: options.refetchOnReconnect,
       runEvery: options.runEvery,
       onError: options.onError,
+      onSuccess: () => {
+        pendingRef.current = undefined;
+      },
       handler: async (context) => {
         const current = optionsRef.current;
         const key = cache.serialize(current.key);
-        const entry = cache.get(current.key)?.data as
-          | InfiniteQueryData<Page, Param>
-          | undefined;
-        const count =
-          entry?.pages.length ??
-          (loadedRef.current?.key === key ? loadedRef.current.count : 1);
+        pendingRef.current = undefined;
+        // How many pages to reload, read again after every page: a
+        // `loadMore()` landing while this runs appends a page to the entry,
+        // and a count taken once at the start wrote the list back without it.
+        const count = () => {
+          const entry = cache.get(current.key)?.data as
+            | InfiniteQueryData<Page, Param>
+            | undefined;
+          return Math.max(
+            entry?.pages.length ??
+              (loadedRef.current?.key === key ? loadedRef.current.count : 1),
+            1,
+          );
+        };
 
         const pages: Page[] = [];
         const pageParams: Param[] = [];
         let param = current.initialPageParam;
-        for (let index = 0; index < Math.max(count, 1); index++) {
+        for (let index = 0; index < count(); index++) {
           const page = await current.handler(context, param);
           pages.push(page);
           pageParams.push(param);
@@ -145,7 +164,9 @@ export function useInfiniteQuery<Page, Param>(
           }
           param = next;
         }
-        return { pages, pageParams };
+        const data = { pages, pageParams };
+        pendingRef.current = { key, data };
+        return data;
       },
     },
     deps,
@@ -201,6 +222,18 @@ export function useInfiniteQuery<Page, Param>(
           pages: [...latest.pages, page],
           pageParams: [...latest.pageParams, param],
         });
+        // A reload that has every page `latest` had, returned and not
+        // written yet (once written, it IS `latest`): it takes the page too.
+        const pending = pendingRef.current;
+        if (
+          pending &&
+          pending.key === cache.serialize(key) &&
+          pending.data !== latest &&
+          pending.data.pages.length === latest.pages.length
+        ) {
+          pending.data.pages.push(page);
+          pending.data.pageParams.push(param);
+        }
       },
     },
     [serializedKey],
