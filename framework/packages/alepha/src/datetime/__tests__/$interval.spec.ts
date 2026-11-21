@@ -22,9 +22,6 @@ describe("$interval", () => {
     const app = alepha.inject(TestApp);
     expect(app.loop.called).toBe(0);
     expect(count.value).toBe(0);
-
-    expect(app.loop.called).toBe(0);
-    expect(count.value).toBe(0);
     await alepha.start();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(app.loop.called).toBe(1);
@@ -41,11 +38,11 @@ describe("$interval", () => {
     expect(count.value).toBe(11);
   });
 
-  it("should stop interval on abort", async () => {
+  it("should not tick once the app is stopped", async () => {
     const count = { value: 0 };
     class TestApp {
       loop = $interval({
-        duration: [10, "seconds"],
+        duration: [5, "milliseconds"],
         handler: () => {
           count.value += 1;
         },
@@ -54,16 +51,16 @@ describe("$interval", () => {
 
     const alepha = Alepha.create();
     const app = alepha.inject(TestApp);
-    expect(app.loop.called).toBe(0);
-    expect(count.value).toBe(0);
 
     await alepha.start();
-    expect(app.loop.called).toBe(1);
-    expect(count.value).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(count.value).toBeGreaterThan(1);
 
     await alepha.stop();
-    expect(app.loop.called).toBe(1);
-    expect(count.value).toBe(1);
+    const stopped = count.value;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(count.value).toBe(stopped);
+    expect(app.loop.called).toBe(stopped);
   });
 });
 
@@ -85,7 +82,7 @@ describe("Alepha start lifecycle", () => {
     });
 
     class LongStart {
-      _ = $hook({
+      boot = $hook({
         on: "start",
         handler: async () => {
           blocker.resolve();

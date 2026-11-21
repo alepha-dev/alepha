@@ -12,7 +12,7 @@ describe("timeouts beyond the 32-bit setTimeout limit", () => {
   it("should not fire a far-future timeout immediately", async () => {
     // setTimeout takes a 32-bit signed delay (~24.8 days max); Node clamps
     // anything larger to 1ms. A monthly cron on the 31st can be 61 days from
-    // its next fire — without chaining, its tick fires instantly and loops.
+    // its next fire: without chaining, its tick fires instantly and loops.
     const time = create();
 
     let fired = false;
@@ -34,7 +34,7 @@ describe("timeouts beyond the 32-bit setTimeout limit", () => {
       fired = true;
     }, [60, "day"]);
 
-    // travel() rewrites the remaining duration and re-arms the timer — the
+    // travel() rewrites the remaining duration and re-arms the timer: the
     // re-armed delay (59 days) is still beyond the 32-bit limit.
     await time.travel([1, "day"]);
 
@@ -77,7 +77,7 @@ describe("intervals beyond the 32-bit setInterval limit", () => {
 
   it("should not spin a far-future interval immediately", async () => {
     // setInterval clamps like setTimeout: a period beyond ~24.8 days fires
-    // every ~1ms instead — the handler spins continuously.
+    // every ~1ms instead: the handler spins continuously.
     const time = create();
 
     let calls = 0;

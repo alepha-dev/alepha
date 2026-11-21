@@ -262,10 +262,6 @@ export class Duration {
   }
 }
 
-export const isDateTime = (value: unknown): value is DateTime => {
-  return value instanceof DateTime;
-};
-
 /**
  * The injectable clock. Every service reads time through it - `nowMillis()`,
  * `now()`, `nowISOString()` - instead of `Date.now()`, which is what makes
@@ -282,8 +278,8 @@ export class DateTimeProvider {
 
   /**
    * `setTimeout` takes a 32-bit signed delay (~24.8 days). Node clamps
-   * anything larger to 1ms, so an unclamped far-future timer — a monthly
-   * cron on the 31st can be 61 days out — fires immediately instead.
+   * anything larger to 1ms, so an unclamped far-future timer (a monthly
+   * cron on the 31st can be 61 days out) fires immediately instead.
    * Longer delays are chained in hops of at most this length.
    */
   protected readonly maxTimerMs = 2147483647;
@@ -295,7 +291,8 @@ export class DateTimeProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      // we start intervals now but first tick will be rejected as App is not ready yet
+      // Each interval runs its handler once, awaited, before its timer is
+      // armed: the first tick belongs to `start`.
       await Promise.all(
         this.intervals.map(async (interval) => {
           if (interval.timer != null) {
@@ -362,7 +359,7 @@ export class DateTimeProvider {
   }
 
   /**
-   * Get the current date as a string.
+   * Format a date as an ISO 8601 string. Defaults to the current date.
    */
   public toISOString(date: DateTimeInput = this.now()): string {
     return this.of(date).toISOString();
@@ -396,14 +393,21 @@ export class DateTimeProvider {
     if (this.ref) {
       return this.ref.valueOf();
     }
+    return this.wallMillis();
+  }
+
+  /**
+   * The wall clock, whatever `pause()` and `travel()` did to the reference
+   * date. A real timer counts on this clock only.
+   */
+  protected wallMillis(): number {
     // alepha-allow no-date-now: the provider itself has to read the wall clock somewhere
     return Date.now();
   }
 
   /**
-   * Get the current date as a string.
-   *
-   * @protected
+   * The current date: the reference date under `pause()` / `travel()`, the
+   * wall clock otherwise.
    */
   protected getCurrentDate(): DateTime {
     if (this.ref) {
@@ -432,16 +436,6 @@ export class DateTimeProvider {
     return duration;
   };
 
-  public isDurationLike(value: unknown): value is DurationLike {
-    try {
-      return DayjsApi.isDuration(
-        DateTimeEngine.duration(this.duration(value as DurationLike)),
-      );
-    } catch {
-      return false;
-    }
-  }
-
   // -------------------------------------------------------------------------------------------------------------------
 
   // Timer Management
@@ -459,6 +453,7 @@ export class DateTimeProvider {
    *
    * You can clear the timeout by using the `AbortSignal` API.
    * Aborted signal will resolve the promise immediately, it does not reject it.
+   * A signal already aborted when `wait()` is called resolves it at once too.
    *
    * `options.now` anchors the duration at an earlier instant: the wait
    * resolves at `now + duration`, however far in the past `now` is. An
@@ -472,6 +467,13 @@ export class DateTimeProvider {
     } = {},
   ): Promise<void> {
     return new Promise((resolve) => {
+      // An `abort` event that has already fired is never delivered to a new
+      // listener: without this check the wait ran its full duration.
+      if (options.signal?.aborted) {
+        resolve();
+        return;
+      }
+
       let onAbort: (() => void) | undefined;
 
       const timeout = this.createTimeout(
@@ -543,7 +545,7 @@ export class DateTimeProvider {
       interval.timer = setTimeout(async () => {
         await interval.run();
         // `clearInterval` / `travel()` null the handle to suspend the
-        // interval — do not re-arm once that has happened.
+        // interval: do not re-arm once that has happened.
         if (interval.timer != null) {
           hop(interval.duration);
         }
@@ -558,8 +560,8 @@ export class DateTimeProvider {
    *
    * `options.unref` arms the timer without holding the event loop open, for a
    * callback that only tidies up: a cache eviction, a lock expiry. Refed is
-   * the right default — a timeout carrying real work must keep the process
-   * alive until it has run — but a housekeeping timer that does is a process
+   * the right default (a timeout carrying real work must keep the process
+   * alive until it has run), but a housekeeping timer that does is a process
    * that will not exit, and the wait is as long as the TTL. A 5-minute cache
    * TTL kept `lore quality push` alive for 5 minutes after its work,
    * once per CI run, delaying every deploy gated on it.
@@ -574,7 +576,7 @@ export class DateTimeProvider {
       // `now` anchors the duration at an earlier instant: the expiry is
       // `now + duration`, and only the REMAINING time from the current
       // instant is actually waited. Honoring it on the real clock matters as
-      // much as under a paused one — `CronProvider` anchors every tick at
+      // much as under a paused one: `CronProvider` anchors every tick at
       // the previous scheduled tick, and waiting the full interval from the
       // call instant instead lets scheduling lateness accumulate tick after
       // tick, drifting the whole cron grid off its wall-clock alignment.
@@ -595,13 +597,14 @@ export class DateTimeProvider {
 
       // Still in the future. This used to return an unregistered dummy under
       // a paused clock, so `travel()` past the expiry never fired it and
-      // `wait(d, { now })` hung forever — stalling any paused-clock cron
+      // `wait(d, { now })` hung forever, stalling any paused-clock cron
       // chain. Register it against the REMAINING time instead.
       return this.createTimeout(callback, remaining, undefined, options);
     }
 
     const timeout: Timeout = {
-      now: now ?? this.now().valueOf(),
+      now: this.now().valueOf(),
+      armedAt: this.wallMillis(),
       duration: this.duration(duration).asMilliseconds(),
       callback,
       // ⚠️ Carried on the timeout, not held in this call: `travel()` re-arms a
@@ -629,8 +632,8 @@ export class DateTimeProvider {
    * of at most `maxTimerMs` so far-future delays survive the 32-bit
    * `setTimeout` limit. Each hop reassigns `timeout.timer`, so
    * `clearTimeout` and `travel()` always see the live handle. The chain
-   * never mutates `timeout.now` / `timeout.duration` — `travel()` owns that
-   * bookkeeping.
+   * never mutates `timeout.now` / `timeout.duration`: `travel()` and
+   * `reset()` own that bookkeeping.
    */
   protected registerTimer(
     timeout: Timeout,
@@ -797,6 +800,7 @@ export class DateTimeProvider {
       timeout.duration = timeout.duration - spent - ms;
       // Re-baseline so the next travel() doesn't count this elapsed time again.
       timeout.now = now + ms;
+      timeout.armedAt = this.wallMillis();
 
       if (timeout.duration <= 0) {
         const index = this.timeouts.indexOf(timeout);
@@ -815,7 +819,7 @@ export class DateTimeProvider {
       }
     }
 
-    // Fire in expiry order, not creation order — real timers do the same.
+    // Fire in expiry order, not creation order: real timers do the same.
     // Every remaining duration shares the same base instant, so the most
     // negative one is the earliest expiry. The sort is stable: same-expiry
     // timeouts keep their creation order.
@@ -863,10 +867,29 @@ export class DateTimeProvider {
   }
 
   /**
-   * Reset the reference date.
+   * Reset the reference date: the clock is the wall clock again.
+   *
+   * A pending timeout fires when its real timer does. The time `travel()`
+   * took off it stays taken off, and the real time that passed since it was
+   * last armed counts too, whether or not the clock was paused meanwhile. An
+   * interval starts a full period again.
    */
   public reset(): void {
     this.ref = null;
+    const now = this.wallMillis();
+
+    // Make every pending timeout describe its live real timer again: that
+    // timer was armed at `armedAt` for `duration`, by createTimeout() or by
+    // the last travel(), and has been counting real time since, through any
+    // pause. An interval differs because travel() left it no timer at all,
+    // only progress toward a tick, which is why it restarts below. A baseline
+    // left in the travelled future made the next travel() read the jump back
+    // as negative elapsed time and hand it to the timeout as extra time.
+    for (const timeout of this.timeouts) {
+      timeout.duration -= now - (timeout.armedAt ?? now);
+      timeout.now = now;
+      timeout.armedAt = now;
+    }
 
     // Give every interval travel() took over back to the real clock, or a
     // suspended one would stay dead for the rest of the process. The carried
@@ -904,6 +927,12 @@ export interface Interval {
 
 export interface Timeout {
   now: number;
+  /**
+   * The wall-clock instant the real timer was last armed for `duration`:
+   * at creation, then on every travel(). reset() reads it to count the real
+   * time the timer has already run.
+   */
+  armedAt?: number;
   timer?: any;
   duration: number;
   callback: () => void;
@@ -918,7 +947,7 @@ export interface TimeoutOptions {
   /**
    * Arm the timer without holding the event loop open.
    *
-   * For housekeeping only — an eviction, an expiry — never for a callback
+   * For housekeeping only (an eviction, an expiry), never for a callback
    * whose work must happen before the process may exit.
    */
   unref?: boolean;

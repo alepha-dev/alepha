@@ -12,7 +12,7 @@ describe("paused-clock timeouts", () => {
   it("should fire a future replayed timeout on travel()", async () => {
     // A timeout replayed with an explicit `now` under a paused/travelled
     // clock returned an unregistered dummy when its expiry was still in the
-    // future — travel() could never fire it, so a paused-clock cron chain
+    // future: travel() could never fire it, so a paused-clock cron chain
     // stalled permanently.
     const time = create();
     await time.travel([0, "milliseconds"]); // pin the clock

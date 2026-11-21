@@ -116,26 +116,6 @@ describe("DateTimeProvider.nowMillis", () => {
   });
 });
 
-describe("DateTimeProvider.isDurationLike", () => {
-  it("should return true for valid durations", () => {
-    const app = Alepha.create();
-    const dt = app.inject(DateTimeProvider);
-
-    expect(dt.isDurationLike(1000)).toBe(true);
-    expect(dt.isDurationLike([5, "minutes"])).toBe(true);
-  });
-
-  it("should return false for invalid values", () => {
-    const app = Alepha.create();
-    const dt = app.inject(DateTimeProvider);
-
-    expect(dt.isDurationLike("not-a-duration")).toBe(false);
-    expect(dt.isDurationLike(null)).toBe(false);
-    expect(dt.isDurationLike(undefined)).toBe(false);
-    expect(dt.isDurationLike({})).toBe(false);
-  });
-});
-
 describe("DateTimeProvider.duration", () => {
   it("should pass through an existing Duration object", () => {
     const app = Alepha.create();
@@ -149,7 +129,7 @@ describe("DateTimeProvider.duration", () => {
   });
 });
 
-describe("DateTimeProvider.travel — reschedule surviving timeout", () => {
+describe("DateTimeProvider.travel: reschedule surviving timeout", () => {
   it("should reschedule a timeout that has not yet expired", async () => {
     const app = Alepha.create();
     const dt = app.inject(DateTimeProvider);
@@ -157,46 +137,13 @@ describe("DateTimeProvider.travel — reschedule surviving timeout", () => {
 
     dt.createTimeout(() => stack.push("A"), [10, "minutes"]);
 
-    // travel less than 10 minutes — timeout survives
+    // travel less than 10 minutes: timeout survives
     await dt.travel([3, "minutes"]);
     expect(stack).toEqual([]);
 
-    // travel past the remaining time — timeout fires
+    // travel past the remaining time: timeout fires
     await dt.travel([8, "minutes"]);
     expect(stack).toEqual(["A"]);
-  });
-});
-
-describe("DateTimeProvider.createTimeout — replay with ref", () => {
-  it("should fire immediately when replaying a past timeout", async () => {
-    const app = Alepha.create();
-    const dt = app.inject(DateTimeProvider);
-    const stack: string[] = [];
-
-    // Pause time at a known point, then travel forward
-    dt.pause();
-    await dt.travel([30, "minutes"]);
-
-    // Create a timeout with a `now` in the past — should fire immediately
-    const pastNow = dt.now().subtract(20, "minutes").valueOf();
-    dt.createTimeout(() => stack.push("replayed"), [10, "minutes"], pastNow);
-
-    expect(stack).toEqual(["replayed"]);
-  });
-
-  it("should not fire when replay timeout is still in the future", async () => {
-    const app = Alepha.create();
-    const dt = app.inject(DateTimeProvider);
-    const stack: string[] = [];
-
-    dt.pause();
-    await dt.travel([5, "minutes"]);
-
-    // Create a timeout with a `now` that puts expiry in the future
-    const recentNow = dt.now().subtract(1, "minutes").valueOf();
-    dt.createTimeout(() => stack.push("future"), [10, "minutes"], recentNow);
-
-    expect(stack).toEqual([]);
   });
 });
 
@@ -206,13 +153,18 @@ describe("DateTimeProvider.clearInterval", () => {
     const dt = app.inject(DateTimeProvider);
     let count = 0;
 
-    const interval = dt.createInterval(() => count++, [10, "seconds"], true);
+    const interval = dt.createInterval(
+      () => count++,
+      [5, "milliseconds"],
+      true,
+    );
 
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 40));
+    expect(count).toBeGreaterThan(0);
     dt.clearInterval(interval);
 
     const countAfterClear = count;
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 40));
 
     expect(count).toBe(countAfterClear);
     expect(interval.duration).toBe(0);
