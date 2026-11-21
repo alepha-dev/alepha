@@ -1,11 +1,16 @@
-import { ProjectController } from "@lore/core/api";
+import { ProjectArchiveGuard, ProjectController } from "@lore/core/api";
+import { ProjectTools } from "@lore/core/mcp";
 import { createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
-import { AlephaSecurity, type UserAccountToken } from "alepha/security";
+import {
+  AlephaSecurity,
+  currentUserAtom,
+  type UserAccountToken,
+} from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -16,6 +21,7 @@ interface Ctx {
   alepha: Alepha;
   repos: CoreTestEntities;
   projects: ProjectController;
+  tools: ProjectTools;
 }
 
 /**
@@ -35,6 +41,8 @@ const setup = async (): Promise<Ctx> => {
   alepha.with(LoreCoreApi);
 
   const repos = alepha.inject(CoreTestEntities);
+  // Before start: a service injected after it is refused.
+  const tools = alepha.inject(ProjectTools);
 
   await alepha.start();
 
@@ -42,6 +50,7 @@ const setup = async (): Promise<Ctx> => {
     alepha,
     repos,
     projects: alepha.inject(ProjectController),
+    tools,
   };
 };
 
@@ -131,5 +140,72 @@ describe("archiveProject / unarchiveProject", () => {
     expect(
       (await ctx.repos.projects.findById(created.id))?.archivedAt,
     ).toBeUndefined();
+  });
+
+  it("is read-only while archived: a write is refused, a read answers, unarchiving restores (#Q4051)", async ({
+    expect,
+  }) => {
+    const { user, created } = await ownedProject();
+    await ctx.projects.archiveProject({ params: { id: created.id } }, { user });
+
+    await expect(
+      ctx.projects.updateProjectById(
+        { params: { id: created.id }, body: { title: "Renamed" } },
+        { user },
+      ),
+    ).rejects.toThrow("archived and read-only");
+    expect((await ctx.repos.projects.findById(created.id))?.title).toBe(
+      "Minorca",
+    );
+    const read = await ctx.projects.getProjectById(
+      { params: { id: created.id } },
+      { user },
+    );
+    expect(read.title).toBe("Minorca");
+
+    await ctx.projects.unarchiveProject(
+      { params: { id: created.id } },
+      { user },
+    );
+    const renamed = await ctx.projects.updateProjectById(
+      { params: { id: created.id }, body: { title: "Renamed" } },
+      { user },
+    );
+    expect(renamed.title).toBe("Renamed");
+  });
+
+  it("refuses an MCP write tool on an archived project, and lets a read tool through (#Q4051)", async ({
+    expect,
+  }) => {
+    const { user, created } = await ownedProject();
+    await ctx.projects.archiveProject({ params: { id: created.id } }, { user });
+    const guard = ctx.alepha.inject(ProjectArchiveGuard);
+    const tools = ctx.tools;
+
+    await ctx.alepha.context.run(async () => {
+      ctx.alepha.store.set(currentUserAtom, user);
+      // A read tool goes through.
+      ctx.alepha.context.set(ProjectArchiveGuard.WRITE_KEY, false);
+      expect(await tools.resolveProjectId(created.id)).toBe(created.id);
+      // A write tool does not.
+      ctx.alepha.context.set(ProjectArchiveGuard.WRITE_KEY, true);
+      expect(guard.mcpWrite()).toBe(true);
+      await expect(tools.resolveProjectId(created.id)).rejects.toThrow(
+        "archived and read-only",
+      );
+    });
+  });
+
+  it("tells a write from a read by method and required permissions (#Q4051)", ({
+    expect,
+  }) => {
+    const guard = ctx.alepha.inject(ProjectArchiveGuard);
+    expect(guard.refusesWrite("GET", "quest:create")).toBe(false);
+    expect(guard.refusesWrite("POST", "quest:create")).toBe(true);
+    expect(guard.refusesWrite("POST", ["quest:read", "folio:read"])).toBe(
+      false,
+    );
+    expect(guard.refusesWrite("PATCH", undefined)).toBe(true);
+    expect(guard.refusesWrite(undefined, "quest:create")).toBe(false);
   });
 });

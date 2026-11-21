@@ -35,6 +35,10 @@ export const adminProjectResourceSchema = z.object({
    * extra query per page rather than one per row.
    */
   memberCount: z.integer(),
+  /**
+   * When the project was archived (#Q4051), absent while it is live.
+   */
+  archivedAt: z.datetime().optional(),
 });
 
 export type AdminProjectResource = Infer<typeof adminProjectResourceSchema>;

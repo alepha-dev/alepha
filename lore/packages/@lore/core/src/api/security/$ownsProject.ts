@@ -11,6 +11,7 @@ import {
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { McpProjectScope } from "../services/McpProjectScope.ts";
+import { ProjectArchiveGuard } from "../services/ProjectArchiveGuard.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -133,10 +134,21 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
     handler: ({ alepha: container, next }) => {
       return (async (...args: any[]) => {
         const authority = container.store.get(currentAuthorityAtom) as
-          | { id?: number }
+          | { id?: number; archivedAt?: string | null }
           | undefined;
         if (typeof authority?.id === "number") {
           container.inject(McpProjectScope).resolved(authority.id);
+        }
+        // An archived project is read-only (#Q4051): a write is refused
+        // here, for every caller, unless the gate says otherwise.
+        if (
+          authority?.archivedAt &&
+          options.whenArchived !== "allow" &&
+          container
+            .inject(ProjectArchiveGuard)
+            .refusesWrite(args[0]?.method, options.requires)
+        ) {
+          container.inject(ProjectArchiveGuard).assertWritable(authority);
         }
         return next(...args);
       }) as any;
@@ -262,6 +274,13 @@ export interface OwnsProjectOptions extends Pick<
    * nothing.
    */
   capability?: CapabilityKey | RequiredCapability;
+
+  /**
+   * `"allow"`: a write this gate admits on an archived project (#Q4051).
+   * Only archiving, unarchiving and deleting take it; everything else is
+   * refused there.
+   */
+  whenArchived?: "allow";
 }
 
 export interface RequiredCapability {

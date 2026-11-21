@@ -85,6 +85,7 @@ import { McpProjectScope } from "./services/McpProjectScope.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
+import { ProjectArchiveGuard } from "./services/ProjectArchiveGuard.ts";
 import { ProjectChannelService } from "./services/ProjectChannelService.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";
@@ -187,6 +188,7 @@ export const LoreCoreApi = $module({
     // boot and the admin filter offers them before any row exists.
     LoreAudits,
     ProjectSecurityService,
+    ProjectArchiveGuard,
     CapabilityRegistry,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
@@ -559,6 +561,7 @@ export {
   ProjectRoster,
   type ProjectRosterEntry,
 } from "./services/ProjectRoster.ts";
+export { ProjectArchiveGuard } from "./services/ProjectArchiveGuard.ts";
 export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";

@@ -62,6 +62,7 @@ import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
 import { CoreBuckets } from "../services/CoreBuckets.ts";
 import { DefaultRankService } from "../services/DefaultRankService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectArchiveGuard } from "../services/ProjectArchiveGuard.ts";
 import { ProjectCapabilityHooks } from "../services/ProjectCapabilityHooks.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -127,7 +128,7 @@ export class ProjectController {
    * list and only the `owner` built-in's `*` reaches it (#Q3736).
    */
   protected ownsAsOwner = (requires: string | string[]) =>
-    $ownsProject({ requires, param: "id" });
+    $ownsProject({ requires, param: "id", whenArchived: "allow" });
   projectMapper = $inject(ProjectResourceMapper);
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
@@ -1556,7 +1557,8 @@ export class ProjectController {
   /**
    * Put the project away (#Q2601): it leaves the switcher, Spotlight and
    * Home, and stays in My projects marked Archived. Nothing is deleted, and
-   * members, ranks and sigils are untouched; it still accepts writes.
+   * members, ranks and sigils are untouched. Since #Q4051 it is read-only:
+   * every write but unarchiving and deleting is refused.
    *
    * Gated on `project:delete`, which is owner-only structurally: archiving
    * is the soft half of ending a project, and a permission of its own would
@@ -1594,25 +1596,9 @@ export class ProjectController {
     archived: boolean,
     user: UserAccountToken,
   ) {
-    // Idempotent: archiving an archived project keeps its first date, so
-    // "Archived since" never moves under a double click.
-    if (archived !== Boolean(project.archivedAt)) {
-      project.archivedAt = archived ? this.dateTime.nowISOString() : undefined;
-      await this.projects.save(project);
-      // Archiving frees the slot on every member's dock (#E139, #Q3436).
-      // Unarchiving pins nothing back: a dock is what its owner chose, and
-      // that is why this is a write and not only the read filter.
-      if (archived && project.organizationId) {
-        await this.dock.unpinForMembers(project.organizationId, project.id);
-      }
-      await this.audits.project.logSuccess(archived ? "archive" : "unarchive", {
-        ...this.audits.actor(user),
-        ...this.audits.scope(project.id),
-        resourceType: "project",
-        resourceId: String(project.id),
-        description: project.title,
-      });
-    }
+    await this.alepha
+      .inject(ProjectArchiveGuard)
+      .setArchived(project, archived, user);
 
     return this.projectMapper.toResource(
       project,

@@ -20,6 +20,7 @@ import { projectMergeResultSchema } from "../../api/schemas/projectMergeResultSc
 import { ProjectSlugService } from "../../api/schemas/ProjectSlugService.ts";
 import { LoreViewerAllowlist } from "../../api/security/LoreViewerAllowlist.ts";
 import { McpProjectScope } from "../../api/services/McpProjectScope.ts";
+import { ProjectArchiveGuard } from "../../api/services/ProjectArchiveGuard.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
 import {
   projectActivityParamsSchema,
@@ -65,6 +66,12 @@ export class ProjectTools {
   ): Promise<number> {
     const id = await this.lookupProjectId(project, projectName);
     this.mcpScope.resolved(id);
+    // A write tool on an archived project is refused (#Q4051).
+    const guard = this.alepha.inject(ProjectArchiveGuard);
+    if (guard.mcpWrite()) {
+      const row = await this.projectSecurity.projects.findById(id);
+      if (row) guard.assertWritable(row);
+    }
     return id;
   }
 
