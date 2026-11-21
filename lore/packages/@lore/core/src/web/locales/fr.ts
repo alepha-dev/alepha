@@ -1193,7 +1193,7 @@ export default {
   "project.settings.tab.features": "Fonctionnalités",
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
-  "project.settings.tab.prompts": "Invites pour agents",
+  "project.settings.tab.prompts": "Invites",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -1220,7 +1220,7 @@ export default {
   "project.capability.plan.option.reminder.label": "Rappels",
   "project.capability.plan.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
-  "project.capability.plan.option.agentPrompts.label": "Invites pour agents",
+  "project.capability.plan.option.agentPrompts.label": "Invites",
   "project.capability.plan.option.agentPrompts.description":
     "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour votre agent de code ; rien n’est envoyé nulle part.",
   "project.capability.plan.option.feedback.label": "Retours",
@@ -3848,7 +3848,7 @@ export default {
     "Invite pour $1 copiée. Collez-la dans votre agent de code.",
   "agentPrompts.copied.surface":
     "Invite copiée. Collez-la dans votre agent de code.",
-  "agentPrompts.settings.title": "Invites pour agents",
+  "agentPrompts.settings.title": "Invites",
   "agentPrompts.settings.description":
     "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",
   "agentPrompts.settings.legend": "Variables",

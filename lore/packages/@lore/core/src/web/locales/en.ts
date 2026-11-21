@@ -1203,7 +1203,7 @@ export default {
   "project.settings.tab.features": "Features",
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
-  "project.settings.tab.prompts": "Agent prompts",
+  "project.settings.tab.prompts": "Prompts",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -1234,7 +1234,7 @@ export default {
   "project.capability.plan.option.reminder.label": "Reminders",
   "project.capability.plan.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
-  "project.capability.plan.option.agentPrompts.label": "Agent prompts",
+  "project.capability.plan.option.agentPrompts.label": "Prompts",
   "project.capability.plan.option.agentPrompts.description":
     "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for your coding agent; nothing is sent anywhere.",
   "project.capability.plan.option.feedback.label": "Feedback",
@@ -3831,7 +3831,7 @@ export default {
   // about one rather than standing the project title in its place.
   "agentPrompts.copied.surface":
     "Prompt copied. Paste it into your coding agent.",
-  "agentPrompts.settings.title": "Agent prompts",
+  "agentPrompts.settings.title": "Prompts",
   "agentPrompts.settings.description":
     "The text each Agent Prompts entry puts on the clipboard. The prompts are written in English on purpose: their words are the tool names an agent calls.",
   "agentPrompts.settings.legend": "Placeholders",
