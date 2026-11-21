@@ -197,6 +197,13 @@ export const hosts = $entity({
      */
     deployAllowed: db.default(z.boolean(), false),
     /**
+     * Whether one-shot jobs (#Q3983, #Q3984) may run on this host: agent
+     * jobs now, CI later. Off by default, like deploys, and separate from
+     * them: a job runs code of a repository on the machine. Bay refuses a
+     * `job-run` without it, from the `welcome` frame.
+     */
+    jobsAllowed: db.default(z.boolean(), false),
+    /**
      * How often the connector pushes its gauge, in seconds. Reaches the
      * machine in the `welcome` frame (#1782). A UX choice, not a cost one.
      */

@@ -73,6 +73,7 @@ const BaySettings = () => {
     [
       body: {
         deployAllowed?: boolean;
+        jobsAllowed?: boolean;
         collectSeries?: boolean;
         statsIntervalSeconds?: number;
       },
@@ -233,6 +234,22 @@ const BaySettings = () => {
                 }
                 aria-label={tr("account.hosts.switch.deploys")}
                 data-testid="bay-settings-deploys"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span>{tr("account.hosts.switch.jobs")}</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.hosts.switch.jobs.description")}
+                </span>
+              </span>
+              <Switch
+                checked={host.jobsAllowed}
+                disabled={busy}
+                onCheckedChange={(value) => void update({ jobsAllowed: value })}
+                aria-label={tr("account.hosts.switch.jobs")}
+                data-testid="bay-settings-jobs"
               />
             </div>
 

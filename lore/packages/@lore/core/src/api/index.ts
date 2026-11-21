@@ -72,6 +72,7 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
+import { HostJobs } from "./services/HostJobs.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
 import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
@@ -254,6 +255,8 @@ export const LoreCoreApi = $module({
     // Which deployed copy runs a quest's commits (#E154): Plan registers the
     // recorded commits, Ship the reads.
     LiveQuestRegistry,
+    // The port host jobs start through (#Q3984): Ship registers the queue.
+    HostJobs,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     CommitReferenceRegistry,
     McpProjectScope,
@@ -471,6 +474,15 @@ export {
   type CommitReferenceResult,
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
+export { HostJobs } from "./services/HostJobs.ts";
+export type {
+  HostJobInput,
+  HostJobKeyIssuer,
+  HostJobKeyScope,
+  HostJobQueue,
+  HostJobRequest,
+  HostJobSummary,
+} from "./services/HostJobs.ts";
 export {
   type LiveQuestInstance,
   type LiveQuestReader,

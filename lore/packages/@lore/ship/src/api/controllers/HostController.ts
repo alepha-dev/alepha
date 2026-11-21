@@ -395,6 +395,7 @@ export class HostController {
         label: z.string().max(100).optional(),
         collectSeries: z.boolean().optional(),
         deployAllowed: z.boolean().optional(),
+        jobsAllowed: z.boolean().optional(),
         statsIntervalSeconds: z.integer().min(60).max(86_400).optional(),
         /**
          * How long from now the host is meant to live, in seconds (#Q3138);
@@ -423,6 +424,9 @@ export class HostController {
         ...(body.deployAllowed === undefined
           ? {}
           : { deployAllowed: body.deployAllowed }),
+        ...(body.jobsAllowed === undefined
+          ? {}
+          : { jobsAllowed: body.jobsAllowed }),
         ...(body.statsIntervalSeconds === undefined
           ? {}
           : { statsIntervalSeconds: body.statsIntervalSeconds }),
@@ -458,6 +462,7 @@ export class HostController {
       if (
         updated.type === "bay" &&
         (body.deployAllowed !== undefined ||
+          body.jobsAllowed !== undefined ||
           body.statsIntervalSeconds !== undefined)
       ) {
         await this.transport.push(
