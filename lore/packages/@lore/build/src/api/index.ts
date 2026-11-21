@@ -96,6 +96,7 @@ export const LoreBuildApi = $module({
 export { ArtifactsGitBackend } from "./backends/ArtifactsGitBackend.ts";
 export type {
   ArtifactsBinding,
+  ArtifactsCommit,
   ArtifactsRepoHandle,
 } from "./backends/ArtifactsGitBackend.ts";
 export { GitBackend } from "./backends/GitBackend.ts";

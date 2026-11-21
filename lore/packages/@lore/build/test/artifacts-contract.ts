@@ -16,10 +16,14 @@
  * throwaway one: every run leaves a deleted name behind, which Artifacts does
  * not let anyone reuse for a while.
  */
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
+import { promisify } from "node:util";
 
 import { Alepha, AlephaError } from "alepha";
 
@@ -91,6 +95,21 @@ class RestArtifactsBinding implements ArtifactsBinding {
         });
         return { plaintext: minted.plaintext, expiresAt: minted.expires_at };
       },
+      log: async (options) => {
+        const query = new URLSearchParams({
+          ref: options.ref ?? "HEAD",
+          limit: String(options.limit ?? 50),
+          offset: String(options.offset ?? 0),
+        });
+        return this.call("GET", `/repos/${name}/log?${query}`);
+      },
+      readCommit: async (hash) => {
+        try {
+          return await this.call("GET", `/repos/${name}/commit/${hash}`);
+        } catch {
+          return null;
+        }
+      },
     };
   }
 
@@ -115,6 +134,13 @@ const env = (name: string): string => {
 
 const git = (cwd: string, ...args: string[]) =>
   execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+
+/**
+ * `git` without blocking the event loop, for a push through the local
+ * `serve` front, which answers in this same process.
+ */
+const gitAsync = (cwd: string, ...args: string[]) =>
+  promisify(execFile)("git", args, { cwd, encoding: "utf8" });
 
 const withToken = (remote: string, token: string) => {
   const url = new URL(remote);
@@ -168,6 +194,84 @@ try {
   git(source, "push", "--quiet", withToken(write.remote, write.token), "main");
   console.log(`pushed ${head}`);
 
+  // Through `serve`, as Lore's git route calls it, the default branch named.
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url!, "http://lore.test");
+    const advertise = url.pathname.endsWith("/info/refs");
+    const service = (
+      advertise
+        ? url.searchParams.get("service")
+        : url.pathname.split("/").pop()
+    ) as "git-upload-pack" | "git-receive-pack";
+    const response = await backend.serve(ref, {
+      service,
+      advertise,
+      body: advertise
+        ? undefined
+        : (Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>),
+      gitProtocol: req.headers["git-protocol"] as string | undefined,
+      userAgent: req.headers["user-agent"],
+      defaultBranch: "main",
+    });
+    res.statusCode = response.status;
+    if (response.contentType)
+      res.setHeader("content-type", response.contentType);
+    if (typeof response.body === "string") res.end(response.body);
+    else Readable.fromWeb(response.body as never).pipe(res);
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const lore = `http://127.0.0.1:${(server.address() as AddressInfo).port}/r.git`;
+  const commitFile = (cwd: string, name: string) => {
+    writeFileSync(join(cwd, `${name}.txt`), `${name}\n`);
+    git(cwd, "add", `${name}.txt`);
+    git(
+      cwd,
+      "-c",
+      "user.name=lore",
+      "-c",
+      "user.email=lore@example.com",
+      "commit",
+      "--quiet",
+      "-m",
+      name,
+    );
+    return git(cwd, "rev-parse", "HEAD");
+  };
+  const remoteRefs = () =>
+    git(work, "ls-remote", withToken(write.remote, write.token))
+      .split("\n")
+      .filter((line) => !line.endsWith("\tHEAD"));
+  const expectRefs = (expected: string[], step: string) => {
+    const refs = remoteRefs();
+    if (JSON.stringify(refs) !== JSON.stringify(expected)) {
+      throw new AlephaError(`${step}: refs are ${JSON.stringify(refs)}`);
+    }
+    console.log(`${step}: ok`);
+  };
+  try {
+    const forward = commitFile(source, "forward");
+    await gitAsync(source, "push", "--quiet", lore, "main");
+    expectRefs([`${forward}\trefs/heads/main`], "fast-forward");
+
+    git(source, "reset", "--quiet", "--hard", head);
+    commitFile(source, "rewritten");
+    const forced = await gitAsync(source, "push", "--force", lore, "main").then(
+      () => undefined,
+      (error: { stderr?: string }) => String(error.stderr),
+    );
+    if (!forced?.includes("refuses a non-fast-forward push")) {
+      throw new AlephaError(`force-push was not refused: ${forced}`);
+    }
+    expectRefs([`${forward}\trefs/heads/main`], "force-push refused");
+
+    git(source, "merge", "--quiet", "--no-edit", "-X", "theirs", forward);
+    const merge = git(source, "rev-parse", "HEAD");
+    await gitAsync(source, "push", "--quiet", lore, "main");
+    expectRefs([`${merge}\trefs/heads/main`], "second-parent fast-forward");
+  } finally {
+    server.close();
+  }
+
   const read = await backend.token(ref, "read");
   if (!read) throw new AlephaError("no read token");
   const again = await backend.token(ref, "read");
@@ -176,8 +280,9 @@ try {
   }
   git(work, "clone", "--quiet", withToken(read.remote, read.token), "clone");
   const cloned = git(join(work, "clone"), "rev-parse", "HEAD");
-  if (cloned !== head) {
-    throw new AlephaError(`cloned HEAD ${cloned}, pushed ${head}`);
+  const pushed = git(source, "rev-parse", "HEAD");
+  if (cloned !== pushed) {
+    throw new AlephaError(`cloned HEAD ${cloned}, pushed ${pushed}`);
   }
   console.log(`cloned ${cloned}`);
 

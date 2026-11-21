@@ -126,6 +126,12 @@ export interface GitRpcRequest {
   gitProtocol?: string;
   userAgent?: string;
   /**
+   * The repository's default branch, as Lore's row names it: a
+   * receive-pack refuses a non-fast-forward of it (#Q3953). The bare
+   * repository reads its own `HEAD` instead.
+   */
+  defaultBranch?: string;
+  /**
    * Aborted when the client goes away: a spawned `git` is killed with it.
    */
   signal?: AbortSignal;

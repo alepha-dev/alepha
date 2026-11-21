@@ -48,9 +48,9 @@ In an existing checkout, `lore code remote --add` adds the repository as a
 remote named `lore`.
 
 Members push; Viewers clone and read. Deleting the default branch is refused,
-and so is a push to a repository over its size cap. On a self-hosted Lore,
-which keeps its repositories on disk, a force-push that rewrites the default
-branch's history is refused as well; other branches still take one.
+and so is a push to a repository over its size cap. A force-push that rewrites
+the default branch's history is refused as well: pull, then push again. Other
+branches still take one.
 
 ### In CI
 

@@ -26,7 +26,10 @@ export class GitReceivePack {
    * Read the ref commands, the capabilities and the push options, and the
    * body to forward.
    */
-  public async inspect(body: ReadableStream<Uint8Array>): Promise<{
+  public async inspect(
+    body: ReadableStream<Uint8Array>,
+    rewrite?: GitHeadRewrite,
+  ): Promise<{
     commands: GitRefCommand[];
     capabilities: string[];
     pushOptions: string[];
@@ -49,7 +52,8 @@ export class GitReceivePack {
       }
       buffer = this.concat(buffer, value);
     }
-    if (!parsed.capabilities.includes("push-options")) {
+    const rewritten = rewrite?.(parsed.commands, parsed.capabilities);
+    if (!parsed.capabilities.includes("push-options") && !rewritten) {
       return {
         commands: parsed.commands,
         capabilities: parsed.capabilities,
@@ -60,11 +64,12 @@ export class GitReceivePack {
     // Lore advertised `push-options` itself (see `advertisePushOptions`), so
     // the backend never did: it gets the commands without the capability and
     // without the options section, which Lore keeps.
-    const capabilities = parsed.capabilities.filter(
-      (it) => it !== "push-options",
-    );
+    const forwarded = rewritten?.commands ?? parsed.commands;
+    const capabilities = (
+      rewritten?.capabilities ?? parsed.capabilities
+    ).filter((it) => it !== "push-options");
     const head = this.concat(
-      ...parsed.commands.map((command, index) =>
+      ...forwarded.map((command, index) =>
         this.pkt(
           `${command.oldId} ${command.newId} ${command.ref}${index === 0 ? `\0${capabilities.join(" ")}` : ""}\n`,
         ),
@@ -74,7 +79,7 @@ export class GitReceivePack {
     );
     return {
       commands: parsed.commands,
-      capabilities,
+      capabilities: parsed.capabilities.filter((it) => it !== "push-options"),
       pushOptions: parsed.pushOptions,
       body: this.replay(head, reader),
     };
@@ -192,11 +197,31 @@ export class GitReceivePack {
     ) {
       return undefined;
     }
-    const report = this.concat(
-      this.pkt("unpack ok\n"),
-      ...commands.map((command) => this.pkt(`ng ${command.ref} ${reason}\n`)),
-      this.flush(),
+    return this.encodeReport(
+      [
+        "unpack ok",
+        ...commands.map((command) => `ng ${command.ref} ${reason}`),
+      ],
+      capabilities,
     );
+  }
+
+  /**
+   * A `report-status` of these lines (`unpack ok`, then `ok <ref>` or
+   * `ng <ref> <reason>`), inside side-band 1 when the client asked for
+   * side-band, after `progress`, the band 2 and 3 payloads to replay first.
+   * Plain `report-status` lines are valid `report-status-v2` too. Without
+   * `lines`, for a client that asked for no report, only the progress and
+   * the flush under side-band, and nothing otherwise.
+   */
+  public encodeReport(
+    lines: string[] | undefined,
+    capabilities: string[],
+    progress: Uint8Array[] = [],
+  ): Uint8Array {
+    const report = lines
+      ? this.concat(...lines.map((line) => this.pkt(`${line}\n`)), this.flush())
+      : new Uint8Array(0);
     if (
       !capabilities.includes("side-band-64k") &&
       !capabilities.includes("side-band")
@@ -204,13 +229,42 @@ export class GitReceivePack {
       return report;
     }
     const max = capabilities.includes("side-band-64k") ? 65515 : 995;
-    const packets: Uint8Array[] = [];
+    const packets: Uint8Array[] = progress.map((payload) => this.pkt(payload));
     for (let i = 0; i < report.length; i += max) {
       packets.push(
         this.pkt(this.concat(new Uint8Array([1]), report.slice(i, i + max))),
       );
     }
     return this.concat(...packets, this.flush());
+  }
+
+  /**
+   * A receive-pack response read back: its `report-status` lines, without
+   * their newline, and, under side-band, the band 2 and 3 payloads (progress,
+   * errors) as they came, band byte included.
+   */
+  public decodeReport(
+    response: Uint8Array,
+    capabilities: string[],
+  ): { lines: string[]; progress: Uint8Array[] } {
+    const sideBand =
+      capabilities.includes("side-band-64k") ||
+      capabilities.includes("side-band");
+    let report = response;
+    const progress: Uint8Array[] = [];
+    if (sideBand) {
+      const band: Uint8Array[] = [];
+      for (const payload of this.payloads(response)) {
+        if (payload[0] === 1) band.push(payload.slice(1));
+        else progress.push(payload);
+      }
+      report = this.concat(...band);
+    }
+    const decoder = new TextDecoder();
+    const lines = [...this.payloads(report)].map((payload) =>
+      decoder.decode(payload).replace(/\n$/, ""),
+    );
+    return { lines, progress };
   }
 
   /**
@@ -223,21 +277,8 @@ export class GitReceivePack {
     response: Uint8Array,
     capabilities: string[],
   ): Set<string> {
-    const sideBand =
-      capabilities.includes("side-band-64k") ||
-      capabilities.includes("side-band");
-    let report = response;
-    if (sideBand) {
-      const band: Uint8Array[] = [];
-      for (const payload of this.payloads(response)) {
-        if (payload[0] === 1) band.push(payload.slice(1));
-      }
-      report = this.concat(...band);
-    }
-    const decoder = new TextDecoder();
     const accepted = new Set<string>();
-    for (const payload of this.payloads(report)) {
-      const line = decoder.decode(payload).replace(/\n$/, "");
+    for (const line of this.decodeReport(response, capabilities).lines) {
       if (line.startsWith("ok ")) accepted.add(line.slice(3).trim());
     }
     return accepted;
@@ -398,6 +439,15 @@ export class GitReceivePack {
     return out;
   }
 }
+
+/**
+ * What a backend forwards instead of the push's own head: other commands or
+ * other capabilities, or undefined to forward it as it came.
+ */
+export type GitHeadRewrite = (
+  commands: GitRefCommand[],
+  capabilities: string[],
+) => { commands: GitRefCommand[]; capabilities: string[] } | undefined;
 
 /**
  * One ref update a push asks for.
