@@ -27,6 +27,7 @@ import {
 import { useCallback, useRef, useState } from "react";
 
 import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
+import AdminHostLoans from "./AdminHostLoans.tsx";
 import AdminHostRenameDialog from "./AdminHostRenameDialog.tsx";
 
 /**
@@ -236,13 +237,8 @@ export const AdminHosts = () => {
           },
           loans: {
             label: "Lent to",
-            cell: (host) => (
-              <span className="text-xs">
-                {host.loans.length
-                  ? host.loans.map((project) => project.title).join(", ")
-                  : "none"}
-              </span>
-            ),
+            // Three names, then "+N more" in a hover card (#Q4049).
+            cell: (host) => <AdminHostLoans loans={host.loans} />,
           },
           lastSeenAt: {
             label: "Last seen",
