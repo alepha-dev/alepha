@@ -119,7 +119,9 @@ interface IgnorePattern {
  *
  * Exemptions are comments on the line above the code,
  * `// alepha-allow <rule>: <reason>`; several stacked comment lines all
- * apply to the first code line below them. An exemption with no reason, one
+ * apply to the first code line below them. A comment trailing a line of code
+ * is read the same way: it exempts the NEXT line, not its own. An exemption
+ * with no reason, one
  * naming no known rule, and one that suppresses nothing are each findings of
  * their own. "Suppresses nothing" is judged only for a rule that ran on that
  * file: under `--rule`, or with a rule `off`, another rule's exemption is
@@ -206,7 +208,7 @@ export class ConventionRunner {
           `Unknown rule id: ${unknown.join(", ")}. Valid ids: ${this.registry.ids().join(", ")}`,
         );
       }
-      return ids.map((id) => this.registry.get(id)!);
+      return [...new Set(ids)].map((id) => this.registry.get(id)!);
     }
 
     return this.registry

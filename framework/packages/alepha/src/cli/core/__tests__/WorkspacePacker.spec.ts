@@ -1,8 +1,20 @@
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { Alepha } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
   MemoryShellProvider,
+  NodeFileSystemProvider,
+  NodeShellProvider,
   ShellProvider,
 } from "alepha/system";
 import { describe, it } from "vitest";
@@ -17,7 +29,7 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
 /*
  * The compression step reaches `node:fs` and `node:zlib` directly, because a
  * zstd stream operates on real descriptors and its input is a tar a real `tar`
- * binary just wrote. Neither exists here, where the shell is a fake — so
+ * binary just wrote. Neither exists here, where the shell is a fake, so
  * `ArchiveCompressor` is substituted and the shell command it wraps is what
  * these cases read. The compression itself is measured in
  * `WorkspacePackerZstd.spec.ts`, against real files, which is the only place
@@ -152,7 +164,7 @@ describe("WorkspacePacker", () => {
 
   /**
    * ⚠️ Not `tar --zstd`: it needs GNU tar 1.31+ on every machine that packs,
-   * which macOS does not have, and it exposes no way to set `windowLog` — the
+   * which macOS does not have, and it exposes no way to set `windowLog`, the
    * one setting the whole dedup depends on.
    */
   describe("the compression step", () => {
@@ -183,6 +195,87 @@ describe("WorkspacePacker", () => {
       await packer.pack({ root: "/project", output: "/out" });
 
       expect(fs.wasDeleted("/out/acme-app-latest.tar.zst.tar")).toBe(true);
+    });
+  });
+
+  /**
+   * The tar command is a script handed to a real `sh`, so these run one: a
+   * fake shell records the string and cannot say what `sh` makes of it.
+   */
+  describe("with a real shell", () => {
+    const manifest = JSON.stringify({
+      manifestVersion: 2,
+      runtimes: [{ runtime: "node", entry: "index.node.js" }],
+      resources: {
+        hasDatabase: false,
+        hasBucket: false,
+        hasAnalytics: false,
+        hasKV: false,
+        hasQueue: false,
+        hasCron: false,
+        hasWebSocket: false,
+      },
+      crons: [],
+      secrets: [],
+      variables: [],
+      project: "app",
+    });
+
+    const aRealWorkspace = (segment: string) => {
+      const base = mkdtempSync(join(tmpdir(), "alepha-pack-"));
+      const root = join(base, segment, "app");
+      mkdirSync(join(root, "dist"), { recursive: true });
+      writeFileSync(join(root, "dist", "manifest.json"), manifest);
+      writeFileSync(join(root, "dist", "index.node.js"), "console.log(1);");
+      const output = join(base, segment, "out");
+      mkdirSync(output);
+      const packer = Alepha.create({ env: { LOG_LEVEL: "error" } })
+        .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
+        .with({ provide: ShellProvider, use: NodeShellProvider })
+        .inject(WorkspacePacker);
+      return { base, root, output, packer };
+    };
+
+    it("refuses a tag that is not a filename segment, and runs nothing", async ({
+      expect,
+    }) => {
+      const { base, root, output, packer } = aRealWorkspace("plain");
+      try {
+        await expect(
+          packer.pack({
+            root,
+            name: "app",
+            tag: "x';touch INJECTED;'",
+            output,
+          }),
+        ).rejects.toThrow(/Invalid --tag/);
+        expect(existsSync(join(root, "INJECTED"))).toBe(false);
+
+        await expect(
+          packer.pack({ root, name: "app", tag: "../escaped", output }),
+        ).rejects.toThrow(/Invalid --tag/);
+        expect(existsSync(join(base, "plain", "escaped.tar.zst"))).toBe(false);
+      } finally {
+        rmSync(base, { recursive: true, force: true });
+      }
+    });
+
+    it("packs a workspace whose path holds a quote, a space and a dollar", async ({
+      expect,
+    }) => {
+      const { base, root, output, packer } = aRealWorkspace(
+        'o\'brien "$(touch INJECTED)"',
+      );
+      try {
+        const result = await packer.pack({ root, name: "app", output });
+
+        expect(result.outputPath).toBe(join(output, "app-latest.tar.zst"));
+        expect(existsSync(result.outputPath)).toBe(true);
+        expect(existsSync(`${result.outputPath}.tar`)).toBe(false);
+        expect(existsSync(join(root, "INJECTED"))).toBe(false);
+      } finally {
+        rmSync(base, { recursive: true, force: true });
+      }
     });
   });
 });

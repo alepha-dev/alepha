@@ -1,10 +1,10 @@
 /**
- * `vite.config.ts` — one config for the build and for the tests.
+ * `vite.config.ts`: one config for the build and for the tests.
  *
  * There used to be a `vitest.config.ts` beside it. Vitest reads `vite.config.ts`
  * when no dedicated file exists, and `defineConfig` imported from
  * `vitest/config` types both halves, so the second file bought nothing except a
- * second place for plugins and aliases to drift apart — which is the failure
+ * second place for plugins and aliases to drift apart, which is the failure
  * that actually hurts: tests resolving imports differently from the build.
  *
  * `test.root` pins test discovery to this directory. It mattered more before

@@ -9,28 +9,6 @@ export class TestCommand {
   protected readonly scaffolder = $inject(ProjectScaffolder);
 
   /**
-   * The vitest flags that turn a run into a pair of machine-readable reports,
-   * written where every Alepha project already ignores them: `coverage/` is
-   * vitest's own `reportsDirectory` and is gitignored by the templates.
-   *
-   * This is the convention half of `lore quality push`: the command
-   * finds these two files without being told where they are, which is the
-   * only reason it does not need a path argument.
-   *
-   * Every flag below is here because running vitest 4.1.10 said so, and the
-   * obvious shorter spelling is wrong in each case:
-   *
-   * - `--coverage.reporter=json-summary` REPLACES the config's reporter list.
-   *   Ask for the summary alone and the browsable HTML report silently stops
-   *   being written, so `html` is named again here. Repeated occurrences of
-   *   the flag accumulate, which is what makes naming both work.
-   * - `--reporter=json` REPLACES the default reporter. On its own it writes
-   *   the file and reduces the whole run's output to one line, so CI would
-   *   trade every readable failure for a report nobody reads on a green run.
-   * - `--outputFile.json=` is the keyed form. Bare `--outputFile=` names a
-   *   path with nothing saying which of the two reporters owns it.
-   */
-  /**
    * `--project` for each name in a comma-separated list.
    *
    * A repeated flag is what Vitest itself takes, and a repeated flag is not
@@ -57,6 +35,28 @@ export class TestCommand {
       .join(" ");
   }
 
+  /**
+   * The vitest flags that turn a run into a pair of machine-readable reports,
+   * written where every Alepha project already ignores them: `coverage/` is
+   * vitest's own `reportsDirectory` and is gitignored by the templates.
+   *
+   * This is the convention half of `lore quality push`: the command
+   * finds these two files without being told where they are, which is the
+   * only reason it does not need a path argument.
+   *
+   * Every flag below is here because running vitest 4.1.10 said so, and the
+   * obvious shorter spelling is wrong in each case:
+   *
+   * - `--coverage.reporter=json-summary` REPLACES the config's reporter list.
+   *   Ask for the summary alone and the browsable HTML report silently stops
+   *   being written, so `html` is named again here. Repeated occurrences of
+   *   the flag accumulate, which is what makes naming both work.
+   * - `--reporter=json` REPLACES the default reporter. On its own it writes
+   *   the file and reduces the whole run's output to one line, so CI would
+   *   trade every readable failure for a report nobody reads on a green run.
+   * - `--outputFile.json=` is the keyed form. Bare `--outputFile=` names a
+   *   path with nothing saying which of the two reporters owns it.
+   */
   protected reportArgs(): string {
     return [
       "--coverage",
@@ -126,7 +126,11 @@ export class TestCommand {
         tsconfigJson: true,
       });
 
-      const config = flags.config ? `--config=${flags.config}` : "";
+      // Quoted like the filter below: the command is one string, split on
+      // spaces on its way to the child.
+      const config = flags.config
+        ? `--config=${JSON.stringify(flags.config)}`
+        : "";
 
       // The run's children inherit the environment, and the ORM reads the
       // switch in each spec's container (#Q3473).
@@ -139,7 +143,7 @@ export class TestCommand {
         process.env.DATABASE_TEST_DIALECT = flags.dialect;
       }
 
-      // The positional arg is forwarded to Vitest as a filename filter —
+      // The positional arg is forwarded to Vitest as a filename filter:
       // `alepha test user` runs only specs whose path matches "user".
       const filter = args ? JSON.stringify(args) : "";
 
@@ -152,7 +156,7 @@ export class TestCommand {
       // refused outright by vitest when the count exceeds the files.
       const shard = flags.shard ? `--shard=${flags.shard}` : "";
 
-      // Vitest ships embedded in `alepha` (paired with vite) — resolve and
+      // Vitest ships embedded in `alepha` (paired with vite): resolve and
       // run it from alepha's own install, so the project never declares it.
       const vitest = this.utils.resolveBin("vitest", "vitest");
 

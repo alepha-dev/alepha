@@ -12,7 +12,7 @@ export class InitCommand {
    * Ensure the project has the necessary Alepha configuration files.
    * Add the correct dependencies to package.json and install them.
    *
-   * Every project gets the same full-stack shape  -  API (`src/api/`), web
+   * Every project gets the same full-stack shape: API (`src/api/`), web
    * (`src/web/`) and Tailwind. A single canonical layout is what makes an
    * Alepha project legible at a glance, to humans and to AI assistants alike.
    *

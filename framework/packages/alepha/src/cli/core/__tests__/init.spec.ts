@@ -80,6 +80,42 @@ describe("alepha init", () => {
       expect(tsconfig.extends).toBe("alepha/tsconfig.base");
     });
 
+    /**
+     * A `tsconfig.json` in some ancestor directory (a home directory, an
+     * unrelated repository the project is created inside) is not this
+     * project's: without its own, it has no `alepha/tsconfig.base` and no
+     * `@/*` path.
+     */
+    it("should create tsconfig.json whatever an unrelated ancestor holds", async () => {
+      const { fs, cli, cmd } = createTestEnv();
+      await fs.writeFile("/home/tsconfig.json", "{}");
+      await fs.mkdir("/home/me/code");
+
+      await cli.run(cmd.init, { argv: "my-app", root: "/home/me/code" });
+
+      expect(fs.wasWritten("/home/me/code/my-app/src/main.server.ts")).toBe(
+        true,
+      );
+      expect(
+        fs.wasWrittenMatching(
+          "/home/me/code/my-app/tsconfig.json",
+          /alepha\/tsconfig\.base/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should keep a tsconfig.json the project already has", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/tsconfig.json", '{"mine":true}');
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(await fs.readTextFile("/project/tsconfig.json")).toBe(
+        '{"mine":true}',
+      );
+    });
+
     it("should create the oxlint and oxfmt configs", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
@@ -198,7 +234,7 @@ describe("alepha init", () => {
       await cli.run(cmd.init, { root: "/project" });
 
       // Vitest falls back to vite.config.ts, so one file drives both the build
-      // and the tests — plugins and aliases cannot drift apart.
+      // and the tests: plugins and aliases cannot drift apart.
       expect(fs.wasWritten("/project/vitest.config.ts")).toBe(false);
       expect(
         fs.wasWrittenMatching(
@@ -409,7 +445,7 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Project Structure — API + web + Tailwind, always. No flags to opt in.
+  // Project Structure: API + web + Tailwind, always. No flags to opt in.
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("project structure", () => {
@@ -513,7 +549,7 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Test Setup (always scaffolded — Vitest ships embedded in alepha)
+  // Test Setup (always scaffolded: Vitest ships embedded in alepha)
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("test setup", () => {
@@ -525,10 +561,10 @@ describe("alepha init", () => {
 
       expect(fs.wasWritten("/project/test/dummy.spec.ts")).toBe(true);
       expect(
-        fs.wasWrittenMatching(
-          "/project/test/dummy.spec.ts",
-          /describe|test|it/,
-        ),
+        fs.wasWrittenMatching("/project/test/dummy.spec.ts", /\bdescribe\(/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/test/dummy.spec.ts", /\bit\(/),
       ).toBe(true);
     });
 
@@ -543,7 +579,7 @@ describe("alepha init", () => {
         devDependencies?: Record<string, string>;
       }>("/project/package.json");
       // The toolchain (vitest, vite, oxlint/oxfmt, tsc, drizzle-kit) ships embedded
-      // as dependencies of `alepha` — the project never declares it.
+      // as dependencies of `alepha`: the project never declares it.
       expect(pkg.devDependencies?.vitest).toBeUndefined();
       expect(pkg.dependencies?.vitest).toBeUndefined();
     });
@@ -562,7 +598,7 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Tailwind CSS — part of the default shape, no flag
+  // Tailwind CSS: part of the default shape, no flag
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("tailwind", () => {
@@ -722,7 +758,7 @@ describe("alepha init", () => {
       await setupProject(fs, json);
       await fs.writeFile("/project/src/existing.ts", "export {}");
 
-      // No path argument — should not throw
+      // No path argument: should not throw
       await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
@@ -770,14 +806,14 @@ describe("alepha init", () => {
 
       expect(fs.wasWritten("/elsewhere/app/tsconfig.json")).toBe(true);
       // `join(root, args)` silently reparents the target under the cwd, so the
-      // project lands in `/project/elsewhere/app` — a directory nobody asked
+      // project lands in `/project/elsewhere/app`: a directory nobody asked
       // for, created without a word of warning.
       expect(fs.wasWritten("/project/elsewhere/app/tsconfig.json")).toBe(false);
     });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Linter Execution
+  // Post-install Tasks
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("post-install tasks", () => {
@@ -788,12 +824,16 @@ describe("alepha init", () => {
 
       await cli.run(cmd.init, { root: "/project" });
 
-      expect(shell.wasCalled("yarn run lint")).toBe(true);
+      const commands = shell.calls.map((call) => call.command);
+      expect(commands).toContain("yarn install");
+      expect(commands.indexOf("yarn run lint")).toBeGreaterThan(
+        commands.indexOf("yarn install"),
+      );
     });
 
     /**
      * `git init` writes "Initialized empty Git repository in ..." itself. Run
-     * with stdio inherited it landed raw between two log lines — the one line
+     * with stdio inherited it landed raw between two log lines: the one line
      * in the whole of `init` with no timestamp and no level in front of it.
      */
     it("should report git's own output through the logger", async () => {
@@ -817,6 +857,80 @@ describe("alepha init", () => {
     });
   });
 
+  describe("git", () => {
+    /**
+     * `mkdir my-app && cd my-app && git init && alepha init`: the repository
+     * is there already, and the scaffold still writes `node_modules/`,
+     * `dist/` and a `.env`.
+     */
+    it("should write .gitignore in a directory that is already a repository", async () => {
+      const { fs, shell, cli, cmd } = createTestEnv();
+      await fs.writeFile("/project/.git/HEAD", "ref: refs/heads/main");
+      shell.configure({ installedCommands: ["git"] });
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWrittenMatching("/project/.gitignore", /node_modules/)).toBe(
+        true,
+      );
+      expect(shell.wasCalled("git init")).toBe(false);
+      expect(shell.wasCalled("git add .")).toBe(false);
+    });
+
+    it("should write .gitignore when git is not installed", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/.gitignore")).toBe(true);
+      expect(shell.wasCalled("git init")).toBe(false);
+    });
+
+    it("should keep a .gitignore that is already there", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/.git/HEAD", "ref: refs/heads/main");
+      await fs.writeFile("/project/.gitignore", "mine\n");
+      shell.configure({ installedCommands: ["git"] });
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(await fs.readTextFile("/project/.gitignore")).toBe("mine\n");
+    });
+
+    /**
+     * `--force` overwrites the scaffold's files. It is not a reason to stage
+     * whatever else the user had in their working tree.
+     */
+    it("should not run git init or git add in an existing repository with --force", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/.git/HEAD", "ref: refs/heads/main");
+      await fs.writeFile("/project/.gitignore", "mine\n");
+      shell.configure({ installedCommands: ["git"] });
+
+      await cli.run(cmd.init, { argv: "--force", root: "/project" });
+
+      expect(shell.wasCalled("git init")).toBe(false);
+      expect(shell.wasCalled("git add .")).toBe(false);
+      expect(fs.wasWrittenMatching("/project/.gitignore", /node_modules/)).toBe(
+        true,
+      );
+    });
+
+    it("should stage the scaffold in the repository it created", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      shell.configure({ installedCommands: ["git"] });
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("git init")).toBe(true);
+      expect(shell.wasCalled("git add .")).toBe(true);
+    });
+  });
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Sign-off
   // ─────────────────────────────────────────────────────────────────────────────
@@ -834,7 +948,9 @@ describe("alepha init", () => {
         json.stringify({ name: "subdir-app" }),
       );
 
-      await cli.run(cmd.init, { argv: "subdir", root: "/project" });
+      // `--pm`: with no lockfile the manager is whoever launched the suite
+      // (`npm_config_user_agent`), which is not what this asserts.
+      await cli.run(cmd.init, { argv: "subdir --pm=yarn", root: "/project" });
 
       expect(signOff(logs)).toEqual([
         "Project ready!",
@@ -851,7 +967,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, logs } = createTestEnv();
       await fs.mkdir("/project");
 
-      await cli.run(cmd.init, { root: "/project" });
+      await cli.run(cmd.init, { argv: "--pm=yarn", root: "/project" });
 
       expect(signOff(logs)).toEqual(["Project ready!", "$ yarn dev"]);
     });
@@ -988,9 +1104,11 @@ describe("alepha init", () => {
 
       await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
 
-      expect(fs.wasWritten("/workspace/packages/my-pkg/package.json")).toBe(
-        true,
+      // The seed wrote `{ name }` alone: the scripts are init's.
+      const pkg = await fs.readJsonFile<{ scripts?: Record<string, string> }>(
+        "/workspace/packages/my-pkg/package.json",
       );
+      expect(pkg.scripts?.dev).toBe("alepha dev");
     });
   });
 });

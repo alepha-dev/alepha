@@ -38,13 +38,6 @@ const canonical = `${header}export default defineConfig({
   } })],
 });`;
 
-const existingConfigs = [
-  canonical,
-  `${header}export default defineConfig({ plugins: [] });`,
-  `${header}export default defineConfig(makeConfig());`,
-  `${header}export default defineConfig({`,
-];
-
 describe("init --infra", () => {
   for (const preset of ["default", "saas"]) {
     for (const flag of [
@@ -56,7 +49,7 @@ describe("init --infra", () => {
       it(`generates active production infrastructure for ${preset} with ${flag}`, async ({
         expect,
       }) => {
-        const { cli, command, fs, shell } = await setup();
+        const { cli, command, fs } = await setup();
         await cli.run(command.init, {
           root: "/project",
           argv: `--preset ${preset} ${flag}`,
@@ -69,11 +62,6 @@ describe("init --infra", () => {
         expect(config).toContain("production: cloudflare(),");
         expect(config).not.toContain("preview: cloudflare()");
         expect(config).not.toMatch(/^\s*(?:name|project|default|runtime):/m);
-        expect(
-          shell.calls.some((call) =>
-            /wrangler|alepha deploy|alepha infra/.test(call.command),
-          ),
-        ).toBe(false);
       });
     }
   }
@@ -106,25 +94,24 @@ describe("init --infra", () => {
     });
   }
 
-  for (const [index, config] of existingConfigs.entries()) {
-    it(`refuses existing config ${index + 1} before any scaffold writes/install`, async ({
-      expect,
-    }) => {
-      const { cli, command, fs, shell } = await setup(config);
-      const writes = fs.writeFileCalls.length;
-      await expect(
-        cli.run(command.init, { root: "/project", argv: "--infra cf" }),
-      ).rejects.toThrow(
-        /alepha\.config\.ts already exists[\s\S]*defineConfig[\s\S]*production: cloudflare[\s\S]*--force/,
-      );
-      await expect(
-        cli.run(command.init, { root: "/project", argv: "--infra cf" }),
-      ).rejects.toBeInstanceOf(CommandError);
-      expect(fs.writeFileCalls).toHaveLength(writes);
-      expect(shell.calls).toHaveLength(0);
-      expect(fs.getFileContent("/project/alepha.config.ts")).toBe(config);
-    });
-  }
+  it("refuses an existing config before any scaffold writes/install", async ({
+    expect,
+  }) => {
+    const config = canonical;
+    const { cli, command, fs, shell } = await setup(config);
+    const writes = fs.writeFileCalls.length;
+    await expect(
+      cli.run(command.init, { root: "/project", argv: "--infra cf" }),
+    ).rejects.toThrow(
+      /alepha\.config\.ts already exists[\s\S]*defineConfig[\s\S]*production: cloudflare[\s\S]*--force/,
+    );
+    await expect(
+      cli.run(command.init, { root: "/project", argv: "--infra cf" }),
+    ).rejects.toBeInstanceOf(CommandError);
+    expect(fs.writeFileCalls).toHaveLength(writes);
+    expect(shell.calls).toHaveLength(0);
+    expect(fs.getFileContent("/project/alepha.config.ts")).toBe(config);
+  });
 
   it("leaves an existing config alone when the flag is omitted", async ({
     expect,

@@ -74,7 +74,7 @@ describe("DevCommand", () => {
 
     it("should keep an app's port when siblings are filtered out", () => {
       // Ports were numbered over the FILTERED list, so `--only api` moved api
-      // from 5174 to 5173 — breaking OAuth redirect URIs and client configs
+      // from 5174 to 5173: breaking OAuth redirect URIs and client configs
       // pinned to its usual port.
       const dev = create();
 

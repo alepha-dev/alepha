@@ -15,7 +15,7 @@ export interface EnvLocalOptions {
  * only variable in the saas preset with no usable default. Left unset, the
  * first person to register gets `["user"]`, `/admin` answers 403, and the
  * preset's headline surface is unreachable until someone reads `Realm.ts` and
- * edits it — which is exactly the kind of step a scaffolder exists to remove.
+ * edits it, which is exactly the kind of step a scaffolder exists to remove.
  *
  * Only `ADMIN_EMAIL` is written. `APP_SECRET` stays out: a value generated
  * here would be a development secret sitting in a file that looks like the
@@ -24,7 +24,7 @@ export interface EnvLocalOptions {
  */
 export const envLocal = (options: EnvLocalOptions) =>
   `
-# Local environment. Gitignored — see .env.example for the full list.
+# Local environment. Gitignored: see .env.example for the full list.
 
 # The first account registered with this address is promoted to admin.
 # Taken from \`git config user.email\` when this project was created.

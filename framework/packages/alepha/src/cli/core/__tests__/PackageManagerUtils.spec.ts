@@ -127,7 +127,7 @@ describe("PackageManagerUtils", () => {
  * and installed into that repo's root. It also never checked depth 1, so a
  * package sitting directly under a real workspace root reported no context.
  */
-describe("getWorkspaceContext — workspace membership", () => {
+describe("getWorkspaceContext: workspace membership", () => {
   const seed = async (
     files: Record<string, unknown>,
   ): Promise<TestPackageManagerUtils> => {
@@ -193,6 +193,32 @@ describe("getWorkspaceContext — workspace membership", () => {
     );
   });
 
+  it("recognises a pattern written with a leading ./", async () => {
+    const pm = await seed({
+      "/repo/yarn.lock": "",
+      "/repo/package.json": { name: "root", workspaces: ["./apps/*"] },
+      "/repo/apps/web/package.json": { name: "web" },
+    });
+
+    expect((await pm.getWorkspaceContext("/repo/apps/web")).isPackage).toBe(
+      true,
+    );
+  });
+
+  it("recognises a workspace root locked by the binary bun.lockb", async () => {
+    const pm = await seed({
+      "/repo/bun.lockb": "",
+      "/repo/package.json": { name: "root", workspaces: ["apps/*"] },
+      "/repo/apps/web/package.json": { name: "web" },
+    });
+    pm.userAgent = undefined;
+
+    const ctx = await pm.getWorkspaceContext("/repo/apps/web");
+    expect(ctx.workspaceRoot).toBe("/repo");
+    expect(ctx.packageManager).toBe("bun");
+    expect(await pm.getPackageManager("/repo/apps/web")).toBe("bun");
+  });
+
   it("supports the object form of workspaces", async () => {
     const pm = await seed({
       "/repo/pnpm-lock.yaml": "",
@@ -218,7 +244,7 @@ describe("getWorkspaceContext — workspace membership", () => {
  * exited 0 under all four managers, so nothing short of running the
  * scaffolded project could see it.
  */
-describe("ensurePnpm — hoisting", () => {
+describe("ensurePnpm: hoisting", () => {
   const seed = async (files: Record<string, string> = {}) => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
@@ -276,6 +302,62 @@ describe("ensurePnpm — hoisting", () => {
       await pm[ensure]("/app");
 
       expect(await npmrc(fs)).toBe(null);
+    }
+  });
+});
+
+/**
+ * `packageManager` pins a manager and a version. Settling on a manager removes
+ * the other managers' files, and the field with them only when it names one
+ * of those.
+ */
+describe("the packageManager field", () => {
+  const seed = async (pkg: Record<string, unknown>, lockfile: string) => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    await fs.writeFile("/app/package.json", JSON.stringify(pkg));
+    await fs.writeFile(`/app/${lockfile}`, "");
+    const read = async (): Promise<Record<string, unknown>> =>
+      JSON.parse(await fs.readTextFile("/app/package.json"));
+    return { pm: alepha.inject(TestPackageManagerUtils), read };
+  };
+
+  it("is kept when it names the manager being kept", async () => {
+    for (const [name, ensure] of [
+      ["pnpm", "ensurePnpm"],
+      ["yarn", "ensureYarn"],
+      ["bun", "ensureBun"],
+      ["npm", "ensureNpm"],
+    ] as const) {
+      const { pm, read } = await seed(
+        { name: "a", packageManager: `${name}@9.9.9` },
+        "package-lock.json",
+      );
+
+      await pm[ensure]("/app");
+
+      expect((await read()).packageManager, name).toBe(`${name}@9.9.9`);
+    }
+  });
+
+  it("is removed when it names another manager", async () => {
+    for (const [from, ensure] of [
+      ["yarn", "ensurePnpm"],
+      ["pnpm", "ensureYarn"],
+      ["bun", "ensureYarn"],
+      ["npm", "ensureBun"],
+      ["yarn", "ensureNpm"],
+    ] as const) {
+      const { pm, read } = await seed(
+        { name: "a", packageManager: `${from}@9.9.9` },
+        "package-lock.json",
+      );
+
+      await pm[ensure]("/app");
+
+      expect(await read(), `${from} then ${ensure}`).toEqual({ name: "a" });
     }
   });
 });

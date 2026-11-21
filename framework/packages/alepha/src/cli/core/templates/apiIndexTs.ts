@@ -42,7 +42,7 @@ import { Realm } from "./Realm.ts";
 
 /**
  * Everything the identity surface needs is turned on from Realm's \`features\`
- * — see that file. AlephaOrm needs DATABASE_URL; in development
+ * (see that file). AlephaOrm needs DATABASE_URL; in development
  * DATABASE_SYNC defaults to true, so the schema is pushed for you and there
  * is nothing to generate before the first \`alepha dev\`.
  *

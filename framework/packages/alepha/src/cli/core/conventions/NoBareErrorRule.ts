@@ -19,7 +19,7 @@ import {
  *   are not reported, as in the repository's own check.
  * - Code emitted as a string (a template literal holding generated source)
  *   is not code in the parsed tree, so it is never a finding.
- * - Tests are out of scope (`*.spec.*`, `__tests__/`, `test/`, `e2e/`,
+ * - Tests are out of scope (`*.spec.*`, `*.test.*`, `__tests__/`, `test/`, `tests/`, `e2e/`,
  *   `fixtures/`).
  */
 export class NoBareErrorRule extends ConventionRule {

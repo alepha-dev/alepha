@@ -17,7 +17,7 @@ export class VerifyCommand {
    *
    * Vitest ships embedded in `alepha`, so it is not a project dependency and
    * cannot be detected that way. Gating on a `test/` directory alone missed
-   * the framework's own co-located convention (`src/**\/*.spec.ts`) — such a
+   * the framework's own co-located convention (`src/**\/*.spec.ts`), such a
    * project got a green `alepha verify` having executed zero tests, which is
    * worse than no verification at all because it reports success.
    */
@@ -26,7 +26,7 @@ export class VerifyCommand {
       return true;
     }
 
-    // A missing `src/` yields no entries rather than an error — `ls` is a raw
+    // A missing `src/` yields no entries rather than an error: `ls` is a raw
     // readdir and throws ENOENT.
     const entries = await this.fs
       .ls(this.fs.join(root, "src"), { recursive: true })
@@ -73,8 +73,8 @@ export class VerifyCommand {
       // Unconditional on purpose. This used to be gated on a `migrations/`
       // directory existing, which inverted the check: a project that had
       // generated migrations was verified, and one with entities and no
-      // migrations at all — the state that ships a server which boots green
-      // and 500s on its first query — was waved through. The command itself
+      // migrations at all (the state that ships a server which boots green
+      // and 500s on its first query) was waved through. The command itself
       // returns cleanly when the app has no database, so there is nothing
       // left for a gate to protect.
       await run("alepha db migrations check");

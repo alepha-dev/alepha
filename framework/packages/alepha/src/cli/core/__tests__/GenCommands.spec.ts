@@ -88,7 +88,7 @@ describe("gen commands", () => {
 
   /**
    * Generating a spec used to require the app to also mount a runtime `/docs`
-   * UI — it failed with "Missing $swagger() primitive" otherwise. The document
+   * UI: it failed with "Missing $swagger() primitive" otherwise. The document
    * is derived purely from the `$action` primitives already in the container,
    * so the module is registered on demand instead.
    */
@@ -172,7 +172,7 @@ describe("gen commands", () => {
     const written = await fs.readTextFile("/app/.env.example");
 
     expect(written).toContain("# (public)\n#PUBLIC_URL=");
-    // The unannotated key is a secret and carries no label — it is the norm.
+    // The unannotated key is a secret and carries no label: it is the norm.
     expect(written).toContain("\n#STRIPE_SECRET_KEY=");
     expect(written).not.toContain("# (public)\n#STRIPE_SECRET_KEY=");
   });
@@ -247,7 +247,7 @@ describe("gen commands", () => {
   });
 
   /**
-   * Both commands exist to be redirected — `alepha gen openapi > api.json`.
+   * Both commands exist to be redirected: `alepha gen openapi > api.json`.
    * Emitting through the logger prefixed a timestamp, a level and ANSI colour
    * regardless of whether stdout was a TTY, so the redirected file was not
    * parseable.

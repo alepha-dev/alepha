@@ -87,14 +87,6 @@ export class ProjectScaffolder {
   ];
 
   /**
-   * Get the app name from the directory name.
-   *
-   * Converts the directory name to a valid module name:
-   * - Converts to lowercase
-   * - Strips spaces, dashes, underscores, dots and digits
-   * - Falls back to "app" if empty
-   */
-  /**
    * Whether a directory listing holds anything a person put there.
    *
    * Windows creates `desktop.ini` on its own whenever a folder gets a custom
@@ -109,6 +101,16 @@ export class ProjectScaffolder {
     );
   }
 
+  /**
+   * Get the app name from the directory name.
+   *
+   * - Converts to lowercase
+   * - Strips spaces, dashes, underscores, dots and digits
+   * - Falls back to "app" if empty
+   *
+   * Any other character is kept, so the result is not always a valid module
+   * name.
+   */
   public getAppName(root: string): string {
     const dirName = basename(root);
     const appName = dirName.toLowerCase().replace(/[\s\-_.\d]/g, "");
@@ -225,7 +227,7 @@ export class ProjectScaffolder {
    * `.oxfmtrc.json` for oxfmt.
    *
    * Both, or neither. They are checked for as a pair because a project that
-   * has one and not the other gets half a toolchain  -  a formatter with no
+   * has one and not the other gets half a toolchain: a formatter with no
    * linter silently stops gating, and a linter with no formatter reformats
    * every file it touches to oxfmt's Prettier defaults, tabs included.
    */
@@ -281,7 +283,7 @@ export class ProjectScaffolder {
    *
    * Never forced. `--force` exists to re-scaffold the generated files, and a
    * `.env` is the one file in the tree that is not generated in any meaningful
-   * sense  -  it is where the developer put their local secrets. Overwriting it
+   * sense: it is where the developer put their local secrets. Overwriting it
    * on a re-run would be a data loss bug, so an existing `.env` is left alone
    * even when everything else is rewritten.
    */
@@ -302,7 +304,7 @@ export class ProjectScaffolder {
    * `git config user.email` is the one address already on the machine that is
    * almost certainly the person running `alepha init`, and reading it costs a
    * subprocess that has already been spawned for `git init`. It is only ever a
-   * local default  -  `Realm` reads `ADMIN_EMAIL` from the environment, so every
+   * local default: `Realm` reads `ADMIN_EMAIL` from the environment, so every
    * deployed environment still sets its own.
    *
    * Falls back to a placeholder on a machine with no git identity. The
@@ -319,7 +321,7 @@ export class ProjectScaffolder {
       // A machine without a git identity exits non-zero with empty stdout.
       return result.exitCode === 0 && email ? email : fallback;
     } catch {
-      // git missing entirely  -  same outcome, no reason to fail init over it.
+      // git missing entirely: same outcome, no reason to fail init over it.
       return fallback;
     }
   }
@@ -327,7 +329,7 @@ export class ProjectScaffolder {
   /**
    * Ensure `.vscode/` exists: `settings.json` puts the editor on the same
    * TypeScript and the same formatter as the CLI, and `extensions.json`
-   * recommends the Oxc extension the settings depend on  -  see
+   * recommends the Oxc extension the settings depend on: see
    * `vscodeSettingsJson`.
    */
   public async ensureVscodeSettings(
@@ -358,7 +360,11 @@ export class ProjectScaffolder {
   }
 
   /**
-   * Ensure git repository is initialized with .gitignore.
+   * Ensure `.gitignore` exists, and a git repository with it.
+   *
+   * `.gitignore` is written whether or not a repository is created here: a
+   * directory that already is one, or a machine without git, still gets
+   * `node_modules/`, `dist/` and `.env` from the scaffold.
    *
    * @returns true if git was initialized, false if already exists or git unavailable
    */
@@ -366,10 +372,11 @@ export class ProjectScaffolder {
     root: string,
     opts: { force?: boolean } = {},
   ): Promise<boolean> {
-    const gitDir = this.fs.join(root, ".git");
+    await this.ensureFile(root, ".gitignore", gitignore(), opts.force);
 
-    // Skip if .git already exists
-    if (!opts.force && (await this.fs.exists(gitDir))) {
+    // An existing repository is the user's, `--force` or not: `false` keeps
+    // the caller from staging their working tree.
+    if (await this.fs.exists(this.fs.join(root, ".git"))) {
       return false;
     }
 
@@ -383,7 +390,7 @@ export class ProjectScaffolder {
     //
     // Captured rather than inherited: with stdio inherited, git's own
     // "Initialized empty Git repository in ..." landed raw in the middle of an
-    // otherwise uniform log stream  -  no timestamp, no level, the one line in
+    // otherwise uniform log stream: no timestamp, no level, the one line in
     // `init` that did not look like the others. Re-emitting it through the
     // logger keeps the report in one voice.
     const result = await this.shell.capture("git init", { root });
@@ -396,9 +403,6 @@ export class ProjectScaffolder {
     if (initMessage) {
       this.log.info(initMessage);
     }
-
-    // Write .gitignore
-    await this.ensureFile(root, ".gitignore", gitignore(), opts.force);
 
     return true;
   }
@@ -593,6 +597,7 @@ export class ProjectScaffolder {
    * Creates:
    * - src/api/index.ts (API module)
    * - src/api/controllers/HelloController.ts (example controller)
+   * - src/api/schemas/helloResponseSchema.ts (its response schema)
    * - src/api/Realm.ts (saas preset only)
    */
   public async ensureApiProject(
@@ -653,7 +658,9 @@ export class ProjectScaffolder {
    * - src/main.browser.ts
    * - src/main.css
    * - vite.config.ts (Tailwind plugin)
-   * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Home.tsx
+   * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Home.tsx,
+   *   src/web/components/Layout.tsx
+   * - public/favicon.svg
    */
   public async ensureWebProject(
     root: string,
@@ -824,7 +831,7 @@ export class ProjectScaffolder {
   /**
    * Full project init: scaffolds files, installs deps, sets up PM and git.
    */
-  async init({
+  public async init({
     run,
     root,
     flags,
@@ -877,13 +884,13 @@ export class ProjectScaffolder {
       // Except when the directory is empty. `mkdir my-app && cd my-app &&
       // alepha init` is the single most obvious way to start a project, and
       // answering it with `my-app/my-app/` is a surprise every other tool
-      // avoids  -  `git init`, `npm init`, `cargo init` and `bun init` all
+      // avoids: `git init`, `npm init`, `cargo init` and `bun init` all
       // scaffold in place. The "random cwd" this guard protects is by
       // definition not empty, so emptiness is the signal to use: there is
       // nothing to scatter files over and nothing to clobber.
       //
       // `ls` hides dotfiles, so a directory holding only `.git` (or a stray
-      // `.DS_Store`) still counts as empty  -  which is what someone who ran
+      // `.DS_Store`) still counts as empty, which is what someone who ran
       // `git init` first expects.
       const hasPackageJson = await this.fs.exists(
         this.fs.join(root, "package.json"),
@@ -902,14 +909,14 @@ export class ProjectScaffolder {
       // `resolve`, not `join`: an absolute `alepha init /tmp/foo` names the
       // target outright, and `join` would reparent it under the cwd and
       // scaffold into `./tmp/foo` without a word. Relative paths are
-      // unaffected  -  they still anchor to `root`.
+      // unaffected: they still anchor to `root`.
       root = this.fs.resolve(root, args);
       await this.fs.mkdir(root, { force: true });
     }
 
     // Creating a project at a named path expects a clean slate, so refuse to
     // scaffold over someone else's files. A bare `alepha init` is the
-    // fill-in-the-gaps mode and stays safe to run on an existing project  -
+    // fill-in-the-gaps mode and stays safe to run on an existing project:
     // `ensureFile` never overwrites without `--force`.
     if (explicitPath && !flags.force) {
       const files = await this.fs.ls(root);
@@ -949,7 +956,7 @@ export class ProjectScaffolder {
 
     // All three saas routers are React pages, so the preset has nothing to
     // mount without the web module. Refusing beats scaffolding an api-only
-    // project that quietly ignored the flag  -  the difference would only
+    // project that quietly ignored the flag: the difference would only
     // surface as a missing /admin much later.
     const saas = (flags.preset ?? "default") === "saas";
     if (saas && !web) {
@@ -972,7 +979,6 @@ export class ProjectScaffolder {
             ui: saas,
             lore: !!lore,
           },
-          tsconfigJson: !workspace.config.tsconfigJson,
           oxc: true,
           editorconfig: !workspace.config.editorconfig,
           // Same rule as the agent files: a project root owns its env, a
@@ -983,6 +989,13 @@ export class ProjectScaffolder {
           // sub-packages inherit the workspace-root `.vscode/`.
           vscodeSettings: writeAgentMd,
         });
+
+        // The project's own file, unless the workspace root has one. Not
+        // `ensureConfig`'s `tsconfigJson`, which a `tsconfig.json` in any
+        // ancestor directory satisfies, an unrelated one included.
+        if (!workspace.config.tsconfigJson) {
+          await this.ensureFile(root, "tsconfig.json", tsconfigJson(), force);
+        }
 
         // Create alepha.config.ts with documented options
         await this.ensureAlephaConfig(root, {
@@ -1046,7 +1059,7 @@ export class ProjectScaffolder {
       root: installRoot,
     });
 
-    // Always scaffold the test setup  -  Vitest ships embedded in `alepha`, so
+    // Always scaffold the test setup: Vitest ships embedded in `alepha`, so
     // `alepha test` works in every project. The dummy spec doubles as a
     // worked example for both humans and AI agents.
     await this.ensureTestDir(root);
@@ -1062,7 +1075,7 @@ export class ProjectScaffolder {
 
     // Freeze the schema the preset just mounted.
     //
-    // `alepha verify` runs `db migrations check` unconditionally  -  gating it on
+    // `alepha verify` runs `db migrations check` unconditionally: gating it on
     // a `migrations/` directory inverted the check, so that gate is gone. A
     // preset that declares entities and ships no migration therefore fails the
     // command its own `alepha.config.ts` recommends for CI, on commit zero.
@@ -1073,14 +1086,14 @@ export class ProjectScaffolder {
     // the app boots green with no tables and 500s on its first query.
     //
     // Generating it here is safe in a way later migrations are not: a baseline
-    // diffs against an empty database, so it is pure CREATE TABLE  -  none of the
+    // diffs against an empty database, so it is pure CREATE TABLE: none of the
     // DROP/ALTER statements that need a human reading them before they reach a
     // CASCADE parent on D1. Only presets that mount an ORM get one; the diff is
     // computed from the entity declarations against the snapshot on disk, so
     // this needs no database connection and works offline.
     //
     // Ahead of the lint pass on purpose. oxfmt reformats drizzle's
-    // `snapshot.json`  -  collapsing its arrays, semantically identical, and the
+    // `snapshot.json`: collapsing its arrays, semantically identical, and the
     // migration check reads the reformatted file happily. But whoever formats
     // it first wins, and if that is not init then it is the user's first
     // `lint` or `verify`, which hands them a dirty tree on a project they have
@@ -1099,13 +1112,13 @@ export class ProjectScaffolder {
         // and leaving a half-scaffolded project behind is worse than leaving a
         // migration for the user to generate. `verify` will name the command.
         this.log.warn(
-          "Could not generate the initial migration  -  continuing. Run `alepha db migrations create` before your first `alepha verify` or deploy.",
+          "Could not generate the initial migration, continuing. Run `alepha db migrations create` before your first `alepha verify` or deploy.",
           { error: err instanceof Error ? err.message : String(err) },
         );
       }
     }
 
-    // Best-effort lint pass  -  don't block init if it fails. The user can
+    // Best-effort lint pass: don't block init if it fails. The user can
     // fix or silence issues later.
     try {
       await run(`${pmName} run lint`, {
@@ -1114,7 +1127,7 @@ export class ProjectScaffolder {
       });
     } catch (err) {
       this.log.warn(
-        "Linter reported issues during init  -  continuing. Run `lint` again later to inspect.",
+        "Linter reported issues during init, continuing. Run `lint` again later to inspect.",
         { error: err instanceof Error ? err.message : String(err) },
       );
     }
@@ -1132,7 +1145,7 @@ export class ProjectScaffolder {
       }
     }
 
-    // Nothing was created  -  this was `alepha init` re-configuring a project
+    // Nothing was created: this was `alepha init` re-configuring a project
     // that already existed. Announcing "Project ready!" there would be noise.
     if (!newProject) {
       return;
@@ -1150,8 +1163,8 @@ export class ProjectScaffolder {
     const c = this.colors;
 
     this.log.info(c.set("GREEN", "Project ready!"));
-    // No `cd` line when the project was scaffolded into the current directory
-    //  -  there is nowhere to go.
+    // No `cd` line when the project was scaffolded into the current directory:
+    // there is nowhere to go.
     if (args) {
       this.log.info(`${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", args)}`);
     }

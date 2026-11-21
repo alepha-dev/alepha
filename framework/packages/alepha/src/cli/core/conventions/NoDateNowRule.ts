@@ -19,7 +19,7 @@ import {
  * - `const { now } = Date` and `Date["now"]()` are not reported: the rule
  *   reads the plain call, which is the one written by accident.
  * - `globalThis.Date.now()` IS reported: it is the same clock.
- * - Tests are out of scope (`*.spec.*`, `__tests__/`, `test/`, `e2e/`,
+ * - Tests are out of scope (`*.spec.*`, `*.test.*`, `__tests__/`, `test/`, `tests/`, `e2e/`,
  *   `fixtures/`): a test may do what is convenient.
  * - A `*.browser.ts(x)` entry point is NOT skipped. No case of a `Date.now()`
  *   needed before the container exists was found in the framework or in

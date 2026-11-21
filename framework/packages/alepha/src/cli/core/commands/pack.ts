@@ -10,14 +10,14 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
  * The tar contains everything a remote runner (Lore Deploy, or any
  * `alepha deploy --prebuilt` consumer) needs to deploy the app:
  *
- *   dist/                 pre-built output (incl. manifest.json)
+ *   .                     the contents of `dist/` (incl. manifest.json)
  *   migrations/           SQL files (if present)
  *
- * No source, no `alepha.config.ts`, no `package.json`  -  the deploy
+ * No source, no `alepha.config.ts`, no `package.json`: the deploy
  * side reads everything from `dist/manifest.json` and never touches
  * source. Excludes: `node_modules`, `.DS_Store`, macOS AppleDouble
  * (`._*`), `.alepha` build cache, `e2e`, `playwright-report`,
- * `coverage`.
+ * `coverage`, `test-results` and `*.map`.
  *
  * Output name: `<project-name>-<tag>.tar.zst` (default tag
  * "latest"). Project name comes from `--name` when the caller passes

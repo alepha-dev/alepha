@@ -14,14 +14,15 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
  *
  * ⚠️ The leak this guards has no import graph to read. `Alepha.inject`
  * registers the module that DECLARES a service, through a `[MODULE]`
- * back-reference, so a task declared beside the twelve `*Command` classes
- * pulls all twenty-five commands into any container that injects one. That is
+ * back-reference, so a task declared beside the `*Command` classes pulls
+ * every command into any container that injects one. That is
  * what `lore apps build` would have done: a second `build`, `dev`, `db` and
  * `verify` under the `lore` binary's name and release cadence.
  *
- * `@alepha/lore`'s own `commandSurface.spec.ts` (github.com/alepha-dev/lore)
- * asserts the same property from the consumer's side. This half fails in the package that caused it, so the
- * next person to add a task learns the rule where the task is written.
+ * `@alepha/lore`'s own `commandSurface.spec.ts` (under `lore/` in this
+ * repository) asserts the same property from the consumer's side. This half
+ * fails in the package that caused it, so the next person to add a task
+ * learns the rule where the task is written.
  */
 class TestExtension extends AlephaCliExtensionProvider {
   public loadBuiltIns = this.loadInfraCommands.bind(this);
@@ -84,10 +85,12 @@ describe("the CLI's build tasks and its commands", () => {
       "build",
       "check",
       "clean",
+      "compile",
       "db",
       "dev",
       "docs",
       "gen",
+      "image",
       "init",
       "lint",
       "pack",

@@ -25,7 +25,7 @@ export class RootCommand {
       if (flags.version) {
         // Bare on the first line, and through `print` rather than the logger.
         // `alepha --version` used to come back as `18:21:36 I Alepha v0.24.0`
-        // plus a runtime line — 112 bytes of timestamped, coloured log, whose
+        // plus a runtime line: 112 bytes of timestamped, coloured log, whose
         // shape followed `LOG_FORMAT`. `VERSION=$(alepha --version)` now yields
         // exactly `0.24.0`, the way node, npm and yarn all behave.
         print(version);

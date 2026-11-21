@@ -1,9 +1,9 @@
 /**
- * `.oxlintrc.json` — the linter half of the toolchain `alepha lint` runs.
+ * `.oxlintrc.json`: the linter half of the toolchain `alepha lint` runs.
  *
  * Only the `correctness` category, and it is an error: a lint gate nobody can
  * pass is a lint gate nobody keeps. The wider categories are not a matter of
- * taste here — `suspicious` + `perf` across every plugin reports thousands of
+ * taste here: `suspicious` + `perf` across every plugin reports thousands of
  * findings on a real app, `react/react-in-jsx-scope` alone accounting for most
  * of them because it predates the automatic JSX runtime every Alepha project
  * compiles with.
@@ -66,10 +66,10 @@ export const oxlintrc = () =>
     // Jest-era aliases such as \`toThrowError\`, which Vitest 5 deprecates in
     // favour of \`toThrow\`: the same matcher, and \`oxlint --fix\` rewrites it.
     "vitest/no-alias-methods": "error",
-    // Alepha's test fixture hands \`expect\` to the test body
-    // (\`test("…", ({ expect }) => …)\`) rather than being imported, and the rule
-    // counts assertions by identifier — so it reports tests full of assertions
-    // as having none.
+    // A test may take \`expect\` from the test fixture
+    // (\`it("…", ({ expect }) => …)\`) instead of importing it, and the rule
+    // counts assertions by identifier, so it reports such a test, full of
+    // assertions, as having none.
     "vitest/expect-expect": "off"
   },
   "overrides": [

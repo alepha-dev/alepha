@@ -20,7 +20,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  * ## ⚠️ It needs the docker CLI
  *
  * It shells out to `docker build`, so it cannot run in an in-process build
- * path — notably the one Lore's Worker deploy uses, which has no shell at all.
+ * path, notably the one Lore's Worker deploy uses, which has no shell at all.
  * This is a local and CI command, and saying so here is cheaper than somebody
  * finding out from a deploy that cannot shell out.
  *
@@ -29,11 +29,11 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  * No Dockerfile in the app directory: one is generated there, beside
  * `alepha.config.ts`. One already present: it is used untouched. The file is
  * meant to be committed and edited by hand, which is exactly why it is not
- * written into `dist/` — the build wipes that on every run, so a file living
+ * written into `dist/`: the build wipes that on every run, so a file living
  * there could never be either.
  *
- * A committed Dockerfile stops tracking the build the moment `engines.node`
- * moves, so its header records the manifest facts it came from and a later
+ * A committed Dockerfile stops tracking the build the moment its runtime or
+ * its entry moves, so its header records those two facts and a later
  * run **warns** when they no longer match. Never fails: the file is the
  * author's after generation, and a hard failure would make an intentional
  * edit feel like a bug.
@@ -61,7 +61,7 @@ export class ImageCommand {
    * it wrong is not a build failure.** A Bun `--compile` binary is dynamically
    * linked and the target triple picks its interpreter: a glibc binary on a
    * musl base, or the reverse, produces a container that exits immediately
-   * with `exec /app/app: no such file or directory` — an error naming a file
+   * with `exec /app/app: no such file or directory`: an error naming a file
    * that plainly exists.
    *
    * So `alepha image` derives the triple from the BASE rather than inheriting
@@ -74,7 +74,7 @@ export class ImageCommand {
    * Bases that carry no libc at all, and therefore cannot run a Bun binary.
    *
    * ⚠️ **Refused by name, because no triple fixes them.** Measured: a Bun
-   * `--compile` binary is not static under either triple — the musl one needs
+   * `--compile` binary is not static under either triple: the musl one needs
    * `ld-musl`, `libstdc++.so.6` and `libgcc_s.so.1`. `scratch` and
    * `distroless/static` have none of that, so an image built on one starts
    * nothing and says only "no such file or directory" about a file that is
@@ -363,7 +363,7 @@ export class ImageCommand {
    *
    * ⚠️ Read rather than inferred from flags. The manifest is what the build
    * actually produced, and it is the only thing that can say which slices are
-   * in `dist/` — this command never boots the app.
+   * in `dist/`: this command never boots the app.
    */
   protected async readManifest(root: string): Promise<BuildManifest> {
     return this.manifestReader.read(

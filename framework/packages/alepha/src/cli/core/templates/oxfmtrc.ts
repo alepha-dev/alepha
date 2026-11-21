@@ -1,5 +1,5 @@
 /**
- * `.oxfmtrc.json` — the formatter half of the toolchain `alepha lint` runs.
+ * `.oxfmtrc.json`: the formatter half of the toolchain `alepha lint` runs.
  *
  * Two spaces at 80 columns, double quotes, semicolons, trailing commas: the
  * shape Alepha's own sources are written in, so a scaffolded project reads the
@@ -12,7 +12,7 @@
  * are what a hand-sorted file already looks like; the visible change is a blank
  * line between the groups.
  *
- * `dist` and `.gen` are ignored because they are build output — oxfmt already
+ * `dist` and `.gen` are ignored because they are build output: oxfmt already
  * skips anything `.gitignore` lists, so this only matters for a project that
  * commits either one.
  */

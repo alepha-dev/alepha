@@ -151,7 +151,7 @@ export class PackageManagerUtils {
       config: { oxlintrc: false, editorconfig: false, tsconfigJson: false },
     };
 
-    // Walk up 1–3 levels: `monorepo/pkg` (depth 1) was never checked, so a
+    // Walk up 1 to 3 levels: `monorepo/pkg` (depth 1) was never checked, so a
     // package directly under the workspace root reported no context at all.
     for (let depth = 1; depth <= 3; depth++) {
       const segments = Array.from({ length: depth }, () => "..");
@@ -177,7 +177,7 @@ export class PackageManagerUtils {
    * Does `candidate`'s package.json declare `target` among its workspaces?
    *
    * Compares resolved paths against the (possibly globbed) `workspaces`
-   * patterns. Unreadable or workspace-less package.json answers false — the
+   * patterns. Unreadable or workspace-less package.json answers false: the
    * safe direction, since the consequence of a false positive is scaffolding
    * into someone else's repository.
    */
@@ -217,7 +217,9 @@ export class PackageManagerUtils {
 
     return patterns.some((pattern) => {
       // One pass, so `**` is matched before `*` without needing a sentinel.
+      // npm and yarn accept `./apps/*` for `apps/*`.
       const source = pattern
+        .replace(/^\.\//, "")
         .replace(/[.+^${}()|[\]\\]/g, "\\$&")
         .replace(/\*\*|\*/g, (token) => (token === "**" ? ".*" : "[^/]*"));
       return new RegExp(`^${source}/?$`).test(relative);
@@ -227,13 +229,16 @@ export class PackageManagerUtils {
   protected async checkWorkspaceRoot(
     candidate: string,
   ): Promise<WorkspaceContext | null> {
-    const [hasYarnLock, hasPnpmLock, hasNpmLock, hasBunLock] =
+    const [hasYarnLock, hasPnpmLock, hasNpmLock, hasBunTextLock, hasBunLockb] =
       await Promise.all([
         this.fs.exists(this.fs.join(candidate, "yarn.lock")),
         this.fs.exists(this.fs.join(candidate, "pnpm-lock.yaml")),
         this.fs.exists(this.fs.join(candidate, "package-lock.json")),
         this.fs.exists(this.fs.join(candidate, "bun.lock")),
+        // The binary lockfile older Bun versions wrote.
+        this.fs.exists(this.fs.join(candidate, "bun.lockb")),
       ]);
+    const hasBunLock = hasBunTextLock || hasBunLockb;
 
     const hasLockfile = hasYarnLock || hasPnpmLock || hasNpmLock || hasBunLock;
     if (!hasLockfile) return null;
@@ -412,8 +417,8 @@ export class PackageManagerUtils {
   /**
    * Opt a pnpm project into a hoisted `node_modules`.
    *
-   * `alepha` carries the toolchain — vite, vitest, typescript, oxlint/oxfmt,
-   * drizzle-kit — in its own `dependencies`, and the scaffold's generated
+   * `alepha` carries the toolchain (vite, vitest, typescript, oxlint/oxfmt,
+   * drizzle-kit) in its own `dependencies`, and the scaffold's generated
    * files import part of it directly: `vite.config.ts` imports
    * `vitest/config`, and the dummy spec imports `vitest`. npm, bun and yarn
    * all hoist those transitives into the project's top-level `node_modules`,
@@ -423,13 +428,13 @@ export class PackageManagerUtils {
    * `Cannot find module 'vitest'`.
    *
    * {@link AlephaCliUtils.resolveBin} already covers the other half of the
-   * same problem — a transitive's *bin* is not linked into `.bin` either —
+   * same problem (a transitive's *bin* is not linked into `.bin` either)
    * which is why `lint` was the one script that survived. Nothing can fix
    * module resolution from the project's own source except the layout.
    *
    * Mirrors {@link ensureYarn} writing `nodeLinker: node-modules`: one
    * layout across all four managers, so there is one bug surface instead of
-   * four. An `.npmrc` that already sets `node-linker` is left alone — that
+   * four. An `.npmrc` that already sets `node-linker` is left alone: that
    * is a deliberate choice by whoever wrote it.
    */
   protected async ensurePnpmHoisting(root: string): Promise<void> {
@@ -465,26 +470,38 @@ export class PackageManagerUtils {
 
   public async removeYarn(root: string): Promise<void> {
     await this.removeFiles(root, [".yarn", ".yarnrc.yml", "yarn.lock"]);
-    await this.editPackageJson(root, (pkg) => {
-      pkg.packageManager = undefined;
-      return pkg;
-    });
+    await this.removePackageManagerField(root, "yarn");
   }
 
   public async removePnpm(root: string): Promise<void> {
     await this.removeFiles(root, ["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
-    await this.editPackageJson(root, (pkg) => {
-      pkg.packageManager = undefined;
-      return pkg;
-    });
+    await this.removePackageManagerField(root, "pnpm");
   }
 
   public async removeNpm(root: string): Promise<void> {
     await this.removeFiles(root, ["package-lock.json"]);
+    await this.removePackageManagerField(root, "npm");
   }
 
   public async removeBun(root: string): Promise<void> {
     await this.removeFiles(root, ["bun.lockb", "bun.lock"]);
+    await this.removePackageManagerField(root, "bun");
+  }
+
+  /**
+   * Drop `packageManager` from package.json when it pins `pm`, the manager
+   * being removed. A field naming the manager that stays is left alone.
+   */
+  protected async removePackageManagerField(
+    root: string,
+    pm: "yarn" | "pnpm" | "npm" | "bun",
+  ): Promise<void> {
+    await this.editPackageJson(root, (pkg) => {
+      if (String(pkg.packageManager).startsWith(`${pm}@`)) {
+        pkg.packageManager = undefined;
+      }
+      return pkg;
+    });
   }
 
   // ===========================================
@@ -502,7 +519,7 @@ export class PackageManagerUtils {
    * Write `package.json`, newline-terminated.
    *
    * `JSON.stringify` does not end with one, and every other tool that touches
-   * this file does — npm, yarn and oxfmt all rewrite it with a trailing
+   * this file does: npm, yarn and oxfmt all rewrite it with a trailing
    * newline. Without it, the scaffolder emitted the one file in a new project
    * that its own `alepha lint` immediately had to fix.
    */
@@ -575,7 +592,7 @@ export class PackageManagerUtils {
     };
 
     // The toolchain (typescript, vite, vitest, oxlint/oxfmt, drizzle-kit) is NOT
-    // pinned here — it ships embedded as `dependencies` of `alepha`, so the
+    // pinned here: it ships embedded as `dependencies` of `alepha`, so the
     // `alepha` CLI resolves and runs it from its own install. The project
     // never declares those versions; upgrading `alepha` moves the whole
     // toolchain atomically. See `AlephaCliUtils.resolveBin`.

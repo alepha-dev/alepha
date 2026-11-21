@@ -17,7 +17,7 @@ export class LintCommand {
         checkWorkspace: true,
       });
 
-      // oxlint and oxfmt ship embedded in `alepha` — resolved and run from
+      // oxlint and oxfmt ship embedded in `alepha`: resolved and run from
       // alepha's own install, so the project never declares them.
       const oxlint = this.utils.resolveBin("oxlint");
       const oxfmt = this.utils.resolveBin("oxfmt");
@@ -43,10 +43,9 @@ export class LintCommand {
       // and honours only the ignore files it finds. With no `.gitignore` on
       // disk, `oxlint --fix` walks into the dependencies and *rewrites* them.
       //
-      // Which is reachable two ways, neither exotic. `alepha init` runs this
-      // pass before `ensureGitRepo` writes the `.gitignore`; and that write is
-      // skipped outright when the directory was already a git repository, so
-      // such a project never gets one. A fresh `--preset saas` scaffold
+      // Which is reachable with nothing exotic: `alepha init` runs this pass
+      // before `ensureGitRepo` writes the `.gitignore`, and nothing obliges a
+      // project to keep one afterwards. A fresh `--preset saas` scaffold
       // reported 258k errors from `node_modules` and edited 460 files across
       // drizzle-kit, react-dom and alepha's own installed `dist` - a regex
       // rewritten in `drizzle-kit/bin.cjs` is not a diff anyone asked for.
