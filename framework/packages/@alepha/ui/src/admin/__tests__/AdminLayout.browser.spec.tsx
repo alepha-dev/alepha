@@ -14,7 +14,7 @@ import {
 } from "../AdminRouterOptions.tsx";
 
 /**
- * The three seams `adminRouterOptionsAtom` opens into the layout itself —
+ * The three seams `adminRouterOptionsAtom` opens into the layout itself,
  * as opposed to the routing contract, which `AdminRouter.spec.ts` owns.
  *
  * Each exists for an application whose `/admin` lives inside a document it
@@ -22,7 +22,7 @@ import {
  * `<html class="dark">`): `className` is the fence hook, `colorScheme:
  * false` keeps the shell from rewriting the host's theme class, and the ⌘K
  * search affordance surviving a `topbarActions` replacement is what makes
- * replacing the cluster safe — the Spotlight state is local to the layout,
+ * replacing the cluster safe: the Spotlight state is local to the layout,
  * so no replacement cluster could ever rebuild the button.
  */
 describe("AdminLayout options", () => {
@@ -69,7 +69,7 @@ describe("AdminLayout options", () => {
     const root = container.firstElementChild;
     expect(root).not.toBeNull();
     expect(root!.classList.contains("admin-fence")).toBe(true);
-    // Merged, not replaced — the viewport bound stays.
+    // Merged, not replaced: the viewport bound stays.
     expect(root!.classList.contains("h-svh")).toBe(true);
     // axe: the admin layout (#Q3338).
     await expectAccessible();

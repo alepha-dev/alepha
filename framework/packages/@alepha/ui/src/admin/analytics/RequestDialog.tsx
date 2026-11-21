@@ -76,8 +76,12 @@ export const RequestDialog = (props: RequestDialogProps) => {
           <Button
             type="button"
             onClick={() => {
-              void navigator.clipboard?.writeText(json).catch(() => {});
-              setCopied(true);
+              // "Copied" only once the clipboard took it: there is none on
+              // plain http off localhost, and a write can be refused.
+              void navigator.clipboard?.writeText(json).then(
+                () => setCopied(true),
+                () => {},
+              );
             }}
           >
             <Copy className="size-3.5" />

@@ -15,7 +15,7 @@ export interface JobRetentionLabels {
 /**
  * Localised phrases for a job's effective retention.
  *
- * Every key is a literal `tr()`, never a computed one: `i18n-fr.spec.ts` only
+ * Every key is a literal `tr()`, never a computed one: `uiFr.spec.ts` only
  * sees keys written out after `tr(`, so a template key could not be given its
  * French value at all. The rule and its fragments are assembled from those,
  * which is why a cadence or a source maps to a key through a switch rather
@@ -39,6 +39,11 @@ export const useJobRetentionLabels = (): JobRetentionLabels => {
         default: `last ${value.last}`,
         args: [String(value.last)],
       });
+    }
+    if (value.days === undefined) {
+      // `{}`: the server read a `days` function answering zero or less as
+      // no age limit, and there is no count either.
+      return tr("admin.jobs.retention.keptAll", { default: "kept, no limit" });
     }
     return tr("admin.jobs.retention.days", {
       default: `${value.days} days`,

@@ -98,7 +98,7 @@ describe("profileUpdateBody", () => {
       policy,
       user,
     );
-    // `users` is uniquely indexed on (realm, email) — sending "" writes a
+    // `users` is uniquely indexed on (realm, email): sending "" writes a
     // value that the next user to be saved collides with.
     expect(body).not.toHaveProperty("email");
     expect(body).not.toHaveProperty("emailVerified");

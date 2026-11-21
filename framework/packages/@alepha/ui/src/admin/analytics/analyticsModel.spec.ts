@@ -293,6 +293,47 @@ describe("analyticsRequestBody", () => {
     ]);
   });
 
+  it("falls back to the default order when the sorted key is no longer queried", () => {
+    // Sorted by a measure, then that measure deselected: the server would
+    // compare every row as missing and the limit would keep arbitrary groups.
+    const patched = state({
+      groupBy: ["path"],
+      measures: ["count"],
+      orderBy: { key: "engaged", direction: "desc" },
+    });
+    const window = analyticsWindow(analyticsToday(NOW), patched);
+    expect(analyticsRequestBody(views, patched, window, NOW).orderBy).toEqual({
+      key: "count",
+      direction: "desc",
+    });
+  });
+
+  it("falls back to the default order when the sorted grain is swapped out", () => {
+    // Sorted by `hour`, then a window too wide for it: `day` is sent instead.
+    const patched = state({
+      days: 90,
+      groupBy: ["hour"],
+      orderBy: { key: "hour", direction: "desc" },
+    });
+    const window = analyticsWindow(analyticsToday(NOW), patched);
+    expect(analyticsRequestBody(views, patched, window, NOW).orderBy).toEqual({
+      key: "day",
+      direction: "asc",
+    });
+  });
+
+  it("keeps a chosen order on a key that is still queried", () => {
+    const patched = state({
+      groupBy: ["path"],
+      orderBy: { key: "engaged", direction: "asc" },
+    });
+    const window = analyticsWindow(analyticsToday(NOW), patched);
+    expect(analyticsRequestBody(views, patched, window, NOW).orderBy).toEqual({
+      key: "engaged",
+      direction: "asc",
+    });
+  });
+
   it("omits groupBy rather than sending an empty list", () => {
     const patched = state({ groupBy: [] });
     const window = analyticsWindow(analyticsToday(NOW), patched);

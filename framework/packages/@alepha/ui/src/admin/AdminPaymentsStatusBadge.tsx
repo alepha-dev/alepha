@@ -13,7 +13,7 @@ export interface AdminPaymentsStatusBadgeProps {
 /**
  * A payment intent's status, as a tinted chip with a glyph: the design of
  * the other admin status chips and of Lore's statuses (#Q2247). The tone and
- * the glyph come from `admin-payments-status-tones`.
+ * the glyph come from `adminPaymentsStatusTones.ts`.
  *
  * The label is still the raw status, as it was before the chip changed:
  * the payment statuses have no translated labels yet.

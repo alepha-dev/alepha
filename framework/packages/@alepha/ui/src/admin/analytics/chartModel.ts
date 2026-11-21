@@ -262,27 +262,29 @@ export const analyticsHeatRows = (
     byHour.set(hour, (byHour.get(hour) ?? 0) + Number(row[measure] ?? 0));
     grid.set(day, byHour);
   }
+  // Scaled by the days that are drawn: a spike on a day cut off by the
+  // slice would otherwise flatten every cell that is shown.
+  const days = [...grid.keys()].sort().slice(-16);
   let max = 1;
-  for (const byHour of grid.values()) {
-    for (const value of byHour.values()) max = Math.max(max, value);
+  for (const day of days) {
+    for (const value of grid.get(day)?.values() ?? []) {
+      max = Math.max(max, value);
+    }
   }
-  return [...grid.keys()]
-    .sort()
-    .slice(-16)
-    .map((day) => {
-      const byHour = grid.get(day) ?? new Map<number, number>();
-      let total = 0;
-      const cells = Array.from({ length: 24 }, (_, hour) => {
-        const value = byHour.get(hour) ?? 0;
-        total += value;
-        return {
-          hour,
-          value,
-          intensity: value === 0 ? 0.06 : 0.16 + (value / max) * 0.84,
-        };
-      });
-      return { day, label: day.slice(5), total, cells };
+  return days.map((day) => {
+    const byHour = grid.get(day) ?? new Map<number, number>();
+    let total = 0;
+    const cells = Array.from({ length: 24 }, (_, hour) => {
+      const value = byHour.get(hour) ?? 0;
+      total += value;
+      return {
+        hour,
+        value,
+        intensity: value === 0 ? 0.06 : 0.16 + (value / max) * 0.84,
+      };
     });
+    return { day, label: day.slice(5), total, cells };
+  });
 };
 
 /**
@@ -343,8 +345,10 @@ export const analyticsChartModel = (
     input.shape && available.includes(input.shape) ? input.shape : available[0];
 
   // Only bars and 100% share draw the breakdown; every other shape sums
-  // across it, and says so in its note.
-  const stacked = !!breakdown && (shape === "bars" || shape === "share");
+  // across it, and says so in its note. A gauge never stacks: its bar is the
+  // max (or min, or last) over the breakdown, which its parts do not sum to.
+  const stacked =
+    !gaugeFold && !!breakdown && (shape === "bars" || shape === "share");
 
   let slots: string[] = [];
   const cross = new Map<string, number>();

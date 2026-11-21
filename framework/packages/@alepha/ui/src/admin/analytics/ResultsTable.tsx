@@ -169,7 +169,7 @@ export const ResultsTable = (props: ResultsTableProps) => {
                             shown as absent, never as a measured zero. */}
                         {measure && value !== null && value !== undefined
                           ? analyticsNumber(Number(value))
-                          : String(value ?? "–")}
+                          : String(value ?? "-")}
                       </span>
                     </div>
                   );

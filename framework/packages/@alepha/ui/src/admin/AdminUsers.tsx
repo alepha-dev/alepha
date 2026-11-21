@@ -495,7 +495,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
                         "hover:text-foreground inline-flex max-w-full items-center gap-1.5 truncate font-medium",
                       )}
                     >
-                      <span className="truncate">{u.email ?? "—"}</span>
+                      <span className="truncate">{u.email ?? "-"}</span>
                       {u.emailVerified && u.email && (
                         <Check
                           className="size-3.5 shrink-0 text-emerald-500"
@@ -524,7 +524,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
                   @{u.username}
                 </Link>
               ) : (
-                <span className="text-muted-foreground">—</span>
+                <span className="text-muted-foreground">-</span>
               ),
           },
           firstName: {
@@ -533,7 +533,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
               u.firstName ? (
                 <span className="truncate">{u.firstName}</span>
               ) : (
-                <span className="text-muted-foreground">—</span>
+                <span className="text-muted-foreground">-</span>
               ),
           },
           lastName: {
@@ -542,7 +542,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
               u.lastName ? (
                 <span className="truncate">{u.lastName}</span>
               ) : (
-                <span className="text-muted-foreground">—</span>
+                <span className="text-muted-foreground">-</span>
               ),
           },
           roles: {

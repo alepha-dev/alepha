@@ -321,7 +321,7 @@ export const AdminFiles = () => {
           bucket: {
             label: tr("admin.files.colBucket", { default: "Bucket" }),
             sortable: true,
-            cell: (f) => <code className="text-xs">{f.bucket ?? "—"}</code>,
+            cell: (f) => <code className="text-xs">{f.bucket ?? "-"}</code>,
           },
           createdAt: {
             label: tr("admin.files.colUploaded", { default: "Uploaded" }),

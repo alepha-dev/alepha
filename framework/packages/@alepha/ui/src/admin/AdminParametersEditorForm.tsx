@@ -67,7 +67,7 @@ export const AdminParametersEditorForm = (
    * (`parameters.<name>.desc`, so it can be translated and edited without a
    * deploy), then the `description` declared on the `$parameter`, then the
    * tree path as a last resort. A key like "reducedFactor" means nothing to
-   * an operator — this line is what turns the panel into documentation.
+   * an operator: this line is what turns the panel into documentation.
    */
   const description = useMemo(() => {
     const key = `parameters.${props.name}.desc`;

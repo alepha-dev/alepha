@@ -10,7 +10,7 @@ import type { NotificationStatus } from "./adminNotificationsStatusTones.ts";
  * to `uiFr.spec.ts`, which finds keys by matching a literal after `tr(`,
  * so the French entries could not be added at all: the spec would report
  * every one of them as a translation nothing asks for, and the statuses would
- * render in English inside a French UI. Same trap `admin-jobs-status-labels`
+ * render in English inside a French UI. Same trap `useJobStatusLabels.ts`
  * documents.
  *
  * A record rather than a function, because both callers want the whole set:

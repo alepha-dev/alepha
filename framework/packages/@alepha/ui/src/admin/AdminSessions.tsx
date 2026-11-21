@@ -6,10 +6,10 @@ void React;
 
 import { z } from "alepha";
 import type { AdminSessionController, SessionResource } from "alepha/api/users";
-import { useAction, useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { CircleDot, Clock, Globe, LogOut } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
@@ -45,6 +45,9 @@ const LAST_USED_WINDOWS = [
   },
 ] as const;
 
+// Stable while the countries load.
+const NO_COUNTRIES: string[] = [];
+
 export const AdminSessions = () => {
   const client = useClient<AdminSessionController>();
   const toast = useToast();
@@ -53,21 +56,16 @@ export const AdminSessions = () => {
 
   // Same shape as the audit log's action facet: the values come from the
   // rows, so the control offers the countries this instance has actually seen
-  // rather than all 249. Failure costs the facet, not the page.
-  const [countries, setCountries] = useState<string[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    client
-      .getSessionCountries()
-      .then((rows) => {
-        if (alive) setCountries(rows);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [client]);
+  // rather than all 249. Failure costs the facet, not the page, and reaches
+  // the action-error toaster.
+  const countriesQuery = useQuery(
+    {
+      key: ["admin-session-countries"],
+      handler: () => client.getSessionCountries(),
+    },
+    [client],
+  );
+  const countries = countriesQuery.data ?? NO_COUNTRIES;
 
   /**
    * The filter bar this page rendered empty until #1319.
@@ -241,7 +239,7 @@ export const AdminSessions = () => {
             label: tr("admin.sessions.colIp", { default: "IP" }),
             cell: (s) => (
               <span className="flex items-center gap-1.5">
-                <code className="text-xs">{s.ip ?? "—"}</code>
+                <code className="text-xs">{s.ip ?? "-"}</code>
                 {s.country ? (
                   <span className="text-muted-foreground text-xs uppercase">
                     {s.country}
@@ -263,7 +261,7 @@ export const AdminSessions = () => {
                   ? [ua.browser, ua.os]
                       .filter((part) => part && part !== "Unknown")
                       .join(" • ")
-                  : "") || "—";
+                  : "") || "-";
               return (
                 <span className="text-muted-foreground line-clamp-1 text-xs">
                   {text}

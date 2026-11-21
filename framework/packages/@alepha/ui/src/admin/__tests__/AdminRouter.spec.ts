@@ -19,8 +19,8 @@ import { adminRouterOptionsAtom } from "../AdminRouterOptions.tsx";
  * way `PagePrimitive.deriveCanFromGuards` does: walk `options.use`, find the
  * `$secure` middleware by its structural name (`alepha/react/router` cannot
  * import `alepha/security` to compare types), and read the permissions off
- * its metadata. Reading it back this way — rather than re-reading
- * `options.permission`, the value a page was built from — is what makes the
+ * its metadata. Reading it back this way, rather than re-reading
+ * `options.permission`, the value a page was built from, is what makes the
  * test catch a page whose `permission` was dropped: the route gate is the
  * thing that would actually change.
  */
@@ -55,8 +55,8 @@ const permissionsOf = (page: PagePrimitive): string[] => {
  * its own pages off this shell writes `/admin/...` paths against these.
  *
  * `:userId` rather than `:id` is deliberate. Param names must be unique
- * across the whole route table — two routes with different param names at the
- * same position silently lose the inner value — and `:id` is the name an
+ * across the whole route table: two routes with different param names at the
+ * same position silently lose the inner value, and `:id` is the name an
  * application is most likely to collide with.
  */
 describe("AdminRouter", () => {
@@ -69,7 +69,7 @@ describe("AdminRouter", () => {
       .map((page) => ({ path: page.options.path, name: page.name }));
   };
 
-  it("mounts the shell and its thirteen pages", async () => {
+  it("mounts the shell and its fifteen pages", async () => {
     const pages = await mount();
 
     expect(pages).toEqual(
@@ -87,6 +87,8 @@ describe("AdminRouter", () => {
         { path: "/files", name: "files" },
         { path: "/parameters", name: "parameters" },
         { path: "/payments", name: "payments" },
+        { path: "/webhooks", name: "webhooks" },
+        { path: "/webhooks/:endpointId", name: "webhookDetail" },
         { path: "/analytics", name: "analytics" },
       ]),
     );
@@ -109,6 +111,8 @@ describe("AdminRouter", () => {
       [router.files, ["admin:file:read"]],
       [router.parameters, ["admin:parameter:read"]],
       [router.payments, ["admin:payment:read"]],
+      [router.webhooks, ["admin:webhook:read"]],
+      [router.webhookDetail, ["admin:webhook:read"]],
       [router.analytics, ["admin:analytics:read"]],
     ];
 
@@ -173,7 +177,7 @@ describe("AdminRouter", () => {
     expect(usersCan!({ has: () => true })).toBe(true);
 
     // The audits module is not: `findAudits` is absent from the registry, so
-    // the entry goes — even though `admin:audit:read` (a permission-shaped
+    // the entry goes, even though `admin:audit:read` (a permission-shaped
     // name) would be granted here, which is exactly why the permission alone
     // can never be the gate.
     expect(auditsCan!({ has: () => true })).toBe(false);
@@ -293,6 +297,8 @@ describe("AdminRouter", () => {
       router.files,
       router.parameters,
       router.payments,
+      router.webhooks,
+      router.webhookDetail,
       router.analytics,
     ];
 
@@ -302,7 +308,7 @@ describe("AdminRouter", () => {
       // permission-shaped name (colon in it) is granted, but no action name
       // is. A `can` derived only from `permission` (e.g. via `$page`'s
       // `deriveCanFromGuards` fallback) would answer `true` here, since the
-      // permission it checks is exactly the kind of name this `has` grants —
+      // permission it checks is exactly the kind of name this `has` grants,
       // which is why this must go false, and only does because `can` is
       // wired to a `$client` action independently of `permission`.
       expect(page.options.can!({ has: (name) => name.includes(":") })).toBe(
@@ -377,7 +383,7 @@ describe("AdminRouter", () => {
 
     const nav = router.dashboard.options.nav;
     // No group puts it in `useNavEntries`' `""` bucket, whose groupOrder is
-    // its smallest member — 0, ahead of every real group.
+    // its smallest member: 0, ahead of every real group.
     expect(nav?.group).toBeUndefined();
     expect(nav?.order).toBe(0);
 

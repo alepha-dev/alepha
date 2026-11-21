@@ -11,7 +11,7 @@ import type {
   AuditEntity,
 } from "alepha/api/audits";
 import type { AdminUserController } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -23,7 +23,7 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
@@ -39,6 +39,9 @@ import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
+// Stable while the pairs load: `actions` is a dependency of the fetcher.
+const NO_ACTIONS: AuditActionPair[] = [];
+
 export const AdminAudits = () => {
   const client = useClient<AdminAuditController>();
   const userClient = useClient<AdminUserController>();
@@ -46,21 +49,16 @@ export const AdminAudits = () => {
   const router = useRouter<any>();
   const { tr } = useI18n();
 
-  const [actions, setActions] = useState<AuditActionPair[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    client
-      .getAuditActions()
-      .then((rows) => {
-        if (!alive) return;
-        setActions(rows);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [client]);
+  // A query, so a failure reaches the action-error toaster instead of
+  // leaving the Type and Action filters empty with nothing said.
+  const actionsQuery = useQuery(
+    {
+      key: ["admin-audit-actions"],
+      handler: () => client.getAuditActions(),
+    },
+    [client],
+  );
+  const actions = actionsQuery.data ?? NO_ACTIONS;
 
   /**
    * Every filter optional, so this page stays the view that shows everything:
@@ -120,9 +118,8 @@ export const AdminAudits = () => {
     },
     /**
      * Several types at once (`?type=auth,security`), mapped to the
-     * comma-separated `type` the query already takes. The dashboard's Failed
-     * sign-ins tile links here with the two types it counts; the `action`
-     * filter below is one `type:action` pair and could not say that.
+     * comma-separated `type` the query already takes; the `action` filter
+     * below is one `type:action` pair and could not say that.
      */
     type: {
       schema: z.array(z.string()),
@@ -306,7 +303,8 @@ export const AdminAudits = () => {
             onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
-        // The dashboard's Failed sign-ins tile links here with these three.
+        // The dashboard's Failed audits tile links here with `status` and
+        // `createdAt`.
         filters={{
           fields: filterFields,
           fromQuery: ["type", "status", "createdAt"],
@@ -366,8 +364,8 @@ export const AdminAudits = () => {
               return (
                 <span className="font-mono text-xs">
                   {a.resourceType
-                    ? `${a.resourceType}:${a.resourceId ?? "—"}`
-                    : "—"}
+                    ? `${a.resourceType}:${a.resourceId ?? "-"}`
+                    : "-"}
                 </span>
               );
             },
@@ -376,7 +374,7 @@ export const AdminAudits = () => {
             label: tr("admin.audits.colActor", { default: "Actor" }),
             /*
              * Audit rows carry a write-time `userEmail` snapshot rather than
-             * a live join — the actor's address as it was when the action
+             * a live join: the actor's address as it was when the action
              * happened is itself audit data.
              */
             cell: (a) => (

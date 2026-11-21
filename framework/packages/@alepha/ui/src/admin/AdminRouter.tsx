@@ -47,12 +47,12 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * `main.server.ts` → `$module` → `alepha.inject(AdminRouter)` runs these class
  * fields at import time, unlike every page below, which is behind `lazy()`.
  * `alepha db migrations create` imports that graph in a child process under
- * `tsx`, and `tsx` applies a single tsconfig resolved from the **cwd** — the
+ * `tsx`, and `tsx` applies a single tsconfig resolved from the **cwd**: the
  * app root. A file outside that tsconfig's `include` (which this one is, being
  * in a sibling workspace) gets esbuild's defaults instead, and the default JSX
  * transform is the *classic* one. The emitted `React.createElement` then fails
  * with `ReferenceError: React is not defined`, breaking migration generation
- * for the whole app — with a stack that points here and explains none of this.
+ * for the whole app, with a stack that points here and explains none of this.
  *
  * ```ts
  * import { AdminRouter } from "@alepha/ui/admin";
@@ -66,14 +66,14 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * ### Every page is mounted; none is conditionally registered
  *
  * A page whose permission the signed-in admin does not hold hides itself, and
- * so does a page whose module is not registered — but through two separate
+ * so does a page whose module is not registered, but through two separate
  * gates, not one. Each `$pageNav` here declares `permission`, and its `can`
  * calls a typed `$client` action, and the entry is hidden when either fails.
  *
  * `permission` alone cannot cover "the module is not registered": `$pageNav`
  * wires it into `use: [$secure({ permissions })]` on the page itself, and
  * `$secure` registers that permission into `SecurityProvider` eagerly, at
- * definition time — so the permission exists whether or not any controller
+ * definition time, so the permission exists whether or not any controller
  * backing the page does, and an admin holding the `*` wildcard is granted it
  * regardless. `can` closes that gap with an action instead of a permission:
  * `this.userApi.findUsers.can()` is `LinkProvider.can("findUsers")` against
@@ -81,7 +81,7 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * registered, so an action nothing declared never appears there for anyone
  * to be granted. The action is read off a `$client<AdminUserController>()`
  * field, so a rename on the controller is a compile error here rather than a
- * silently dead sidebar entry — the failure mode a plain string name would
+ * silently dead sidebar entry, the failure mode a plain string name would
  * have.
  *
  * This is why there is no `pages: [...]` allowlist. A second gate on top of
@@ -92,7 +92,7 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * ### Extending the shell
  *
  * {@link $pageAdmin} (`@alepha/ui/admin`) is the
- * way to add a page to this shell — the one-call form an application, or a
+ * way to add a page to this shell: the one-call form an application, or a
  * satellite package such as `@alepha/commerce/admin`, whose pages
  * deliberately live outside this design system so it never depends on a
  * domain, reaches for:
@@ -107,16 +107,16 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * }
  * ```
  *
- * See `$pageAdmin`'s own JSDoc for the rules this composition must follow —
+ * See `$pageAdmin`'s own JSDoc for the rules this composition must follow:
  * the `AdminRouter` registration it triggers, the `order` / `nav.group`
  * contract, and gating with `can` rather than `permission` alone.
  *
  * `layout` stays public as the seam underneath: `$pageAdmin` is exactly
  * `$inject(AdminRouter)` plus `parent: this.admin.layout`, done for you. An
  * application that wants that composition without going through `$pageAdmin`
- * — for instance to control itself whether and when `AdminRouter` gets
+ * (for instance to control itself whether and when `AdminRouter` gets
  * registered, rather than as an unconditional side effect of a field
- * initializer — injects `AdminRouter` and sets `parent: this.admin.layout`
+ * initializer) injects `AdminRouter` and sets `parent: this.admin.layout`
  * directly, the same way `$pageAdmin` does internally.
  *
  * ### Labels are catalogue keys, not text
@@ -142,7 +142,7 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * The built-in pages are parked in a reserved high band: `Identity`
  * (1000-1003) and `System` (1010-1016). Everything below 1000 belongs to the
  * application, so a page declaring its own group at the conventional
- * `order: 100` sorts **above** the built-ins without having to ask — an
+ * `order: 100` sorts **above** the built-ins without having to ask: an
  * application's own domain outranks Users and Jobs. `useNavEntries` sorts
  * groups by their smallest member, so only an `order` of 1000 or more sinks a
  * page in among them.
@@ -153,7 +153,7 @@ import { AdminUsersTile } from "./AdminUsersTile.tsx";
  * `jobDetail`, `notifications`, `audits`, `files`, `parameters`, `payments`,
  * `webhooks`, `webhookDetail` and `analytics` each carry an explicit `name:` so a future rename of the
  * field itself (done for readability, without touching the string) never
- * silently changes the public route name — the same reason `AuthRouter`'s
+ * silently changes the public route name, the same reason `AuthRouter`'s
  * pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
@@ -223,7 +223,7 @@ export class AdminRouter {
   }
 
   /**
-   * Anchors the shell and the first breadcrumb. Not itself a nav entry — a
+   * Anchors the shell and the first breadcrumb. Not itself a nav entry: a
    * shell root is excluded from its own sidebar.
    *
    * Named `admin` because `NavShell root="admin"` and `Spotlight root="admin"`
@@ -256,7 +256,7 @@ export class AdminRouter {
    *
    * It declares no `permission` and no `can`. Reaching it already means
    * passing the layout's `admin:ui`, and it renders only the cards that pass
-   * their own gate — so an administrator with nothing to see gets the empty
+   * their own gate, so an administrator with nothing to see gets the empty
    * state rather than a locked door.
    */
   dashboard = $pageNav({
@@ -291,8 +291,8 @@ export class AdminRouter {
    * Three, each a number an operator acts on and each opening its list
    * filtered to that same number: **Users** (every account, with sign-ups
    * against the week before), **Connected** (distinct users signed in or
-   * refreshed in 24 hours) and **Failed sign-ins** (7 days, warning above a
-   * threshold). An application that wants none of them sets
+   * refreshed in 24 hours) and **Failed audits** (every type, 7 days, warning
+   * above a threshold). An application that wants none of them sets
    * `builtinDashboardCards: false`; the tiles are code, never a stored
    * layout (#Q3667).
    *

@@ -28,7 +28,7 @@ export interface AdminDashboardProps {
  * an admin rearranges).
  *
  * An admin whose deployment registers no module a card can read sees the
- * empty state rather than a page of dashes — which is the honest rendering of
+ * empty state rather than a page of dashes, which is the honest rendering of
  * "there is nothing to summarise here", and the same reasoning that hides a
  * nav entry whose backend never shipped.
  */

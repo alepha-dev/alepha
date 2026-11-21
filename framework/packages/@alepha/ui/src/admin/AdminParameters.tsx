@@ -24,14 +24,15 @@ import {
 } from "./adminParametersTree.ts";
 import { AdminParametersTreePane } from "./AdminParametersTreePane.tsx";
 import { downloadJson } from "./downloadJson.ts";
+import { useConfirmedAction } from "./useConfirmedAction.tsx";
 import { useParameterHistoryCollapsed } from "./useParameterHistoryCollapsed.ts";
 
 export interface AdminParametersProps {
   /**
    * Per-parameter field overrides, keyed by parameter name, forwarded to the
    * generated form (same shape as `AutoForm`'s `fields`). This is how an app
-   * attaches a domain widget to a field the generic form cannot render well —
-   * a fare zone matrix, a colour picker, a code editor — without forking this
+   * attaches a domain widget to a field the generic form cannot render well,
+   * a fare zone matrix, a colour picker, a code editor, without forking this
    * panel. Reach nested fields through `objectProps.controlProps`.
    *
    * @example
@@ -70,7 +71,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
   const toast = useToast();
   const dialog = useDialog();
   // Selected parameter is bound to the URL (`?param=<name>`) via useQueryParams
-  // in querystring mode (replaceState — picking a parameter does not add a
+  // in querystring mode (replaceState: picking a parameter does not add a
   // browser-history entry), mirroring the admin user-detail tab pattern.
   const [query, setQuery] = useQueryParams(parameterQuerySchema, {
     format: "querystring",
@@ -83,6 +84,8 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
   // leftover from a rename or a module this process did not load, which is
   // also why nothing here deletes one on its own.
   const [showOrphans, setShowOrphans] = useState(false);
+  // Which orphan's DELETE is in flight, for the busy state of its button.
+  const [deletingOrphan, setDeletingOrphan] = useState<string>();
   const [historyCollapsed, toggleHistory] = useParameterHistoryCollapsed();
 
   const { data: treeNodes } = useQuery(
@@ -102,33 +105,41 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
     [treeNodes, showOrphans],
   );
 
-  const deleteOrphan = async (name: string) => {
-    const ok = await dialog.confirm({
-      title: tr("admin.parameters.orphanDeleteTitle", {
-        default: "Delete this parameter?",
+  // An action, so its button is busy while the DELETE is in flight and a
+  // refusal reaches the app's action-error toaster.
+  const deleteOrphan = useConfirmedAction<[string]>(
+    {
+      confirm: (name) => ({
+        title: tr("admin.parameters.orphanDeleteTitle", {
+          default: "Delete this parameter?",
+        }),
+        description: tr("admin.parameters.orphanDeleteDescription", {
+          default: `No $parameter declares "${name}" in this process. If a module that is not loaded here still reads it, deleting it throws that configuration away. Every stored version of it is removed.`,
+          args: [name],
+        }),
+        confirmLabel: tr("admin.parameters.orphanDelete", {
+          default: "Delete",
+        }),
+        destructive: true,
       }),
-      description: tr("admin.parameters.orphanDeleteDescription", {
-        default: `No $parameter declares "${name}" in this process. If a module that is not loaded here still reads it, deleting it throws that configuration away. Every stored version of it is removed.`,
-        args: [name],
-      }),
-      confirmLabel: tr("admin.parameters.orphanDelete", { default: "Delete" }),
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await client.deleteParameter({ params: { name } });
-      toast.success(
+      handler: async (name) => {
+        setDeletingOrphan(name);
+        try {
+          await client.deleteParameter({ params: { name } });
+        } finally {
+          setDeletingOrphan(undefined);
+        }
+        if (selected === name) setQuery({ param: undefined });
+        setReloadKey((k) => k + 1);
+      },
+      success: (name) =>
         tr("admin.parameters.orphanDeleted", {
           default: `"${name}" deleted.`,
           args: [name],
         }),
-      );
-      if (selected === name) setQuery({ param: undefined });
-      setReloadKey((k) => k + 1);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+    },
+    [client, selected, tr],
+  );
 
   const leafNames = useMemo(
     () => collectLeafNames(treeNodes ?? []),
@@ -301,7 +312,8 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
         orphanCount={orphanCount}
         showOrphans={showOrphans}
         onToggleOrphans={() => setShowOrphans((v) => !v)}
-        onDeleteOrphan={deleteOrphan}
+        onDeleteOrphan={(name) => void deleteOrphan.run(name)}
+        deletingOrphan={deleteOrphan.loading ? deletingOrphan : undefined}
       />
       <AdminParametersEditorPane
         key={selected ?? "none"}

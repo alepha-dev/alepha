@@ -53,7 +53,7 @@ export const AdminUserDetailSessionsTab = (
         columns={{
           ip: {
             label: tr("admin.userDetail.colIp", { default: "IP" }),
-            cell: (s) => <code className="text-xs">{s.ip ?? "—"}</code>,
+            cell: (s) => <code className="text-xs">{s.ip ?? "-"}</code>,
           },
           userAgent: {
             label: tr("admin.userDetail.colDevice", {
@@ -70,7 +70,7 @@ export const AdminUserDetailSessionsTab = (
                   ? [ua.browser, ua.os]
                       .filter((part) => part && part !== "Unknown")
                       .join(" • ")
-                  : "") || "—";
+                  : "") || "-";
               return (
                 <span className="text-muted-foreground line-clamp-1 text-xs">
                   {text}

@@ -68,7 +68,7 @@ export const AdminPayments = () => {
           provider: {
             label: tr("admin.payments.colProvider", { default: "Provider" }),
             cell: (p) => (
-              <code className="text-xs">{p.providerRef ?? "—"}</code>
+              <code className="text-xs">{p.providerRef ?? "-"}</code>
             ),
           },
           status: {

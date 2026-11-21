@@ -15,9 +15,11 @@ export interface ToggleChipProps {
    */
   order?: number;
   /**
-   * Refuses the click and draws a lock. Rendered with `aria-disabled` rather
-   * than `disabled`: browsers suppress the native tooltip on a truly disabled
-   * button, and for a locked chip that tooltip is the entire explanation.
+   * Refuses the press and draws a lock. A pressed chip still takes the click
+   * that unpresses it: the key is in the query until it is removed. Rendered
+   * with `aria-disabled` rather than `disabled`: browsers suppress the native
+   * tooltip on a truly disabled button, and for a locked chip that tooltip is
+   * the entire explanation.
    */
   locked?: boolean;
   title?: string;
@@ -35,10 +37,10 @@ export const ToggleChip = (props: ToggleChipProps) => (
     type="button"
     variant={props.pressed ? "solid" : "outlined"}
     aria-pressed={props.pressed}
-    aria-disabled={props.locked || undefined}
+    aria-disabled={(props.locked && !props.pressed) || undefined}
     title={props.title}
     onClick={() => {
-      if (!props.locked) props.onToggle();
+      if (!props.locked || props.pressed) props.onToggle();
     }}
     className={cn(
       "h-[26px] gap-1.5 rounded-md px-[9px] font-normal",

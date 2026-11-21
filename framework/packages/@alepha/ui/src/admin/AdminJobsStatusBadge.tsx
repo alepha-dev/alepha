@@ -11,7 +11,7 @@ export interface AdminJobsStatusBadgeProps {
 /**
  * A job execution's status, as a tinted chip with a glyph: the design of
  * `AdminNotificationsStatusBadge` and of Lore's statuses (#Q2247). The tone
- * and the glyph come from `admin-jobs-status-tones`.
+ * and the glyph come from `adminJobsStatusTones.ts`.
  */
 export const AdminJobsStatusBadge = (props: AdminJobsStatusBadgeProps) => {
   const labels = useJobStatusLabels();

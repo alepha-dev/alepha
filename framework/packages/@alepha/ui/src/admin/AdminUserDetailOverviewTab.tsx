@@ -19,7 +19,7 @@ export interface AdminUserDetailOverviewTabProps {
   availableRoles: ReadonlyArray<{ name: string; default?: boolean }>;
   /**
    * Which identity fields the realm collects. A field the realm has turned
-   * off is not rendered at all — an Email input on a username-only realm is
+   * off is not rendered at all: an Email input on a username-only realm is
    * an invitation to write a value nothing can use.
    */
   policy: ProfilePolicy;

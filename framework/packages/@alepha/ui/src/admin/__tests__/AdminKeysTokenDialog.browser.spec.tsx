@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
@@ -11,7 +11,7 @@ import { AdminKeysTokenDialog } from "../AdminKeysTokenDialog.tsx";
  * The dialog is the single moment a freshly minted API key token is readable
  * (the server stores only a hash), so what matters is that the token is
  * actually on screen while set, that nothing renders once cleared, and that
- * both dismissal affordances funnel through `onClose` — a token dialog that
+ * both dismissal affordances (Done and Escape) funnel through `onClose`: a token dialog that
  * cannot close would pin a live credential on screen.
  */
 describe("AdminKeysTokenDialog", () => {
@@ -59,5 +59,16 @@ describe("AdminKeysTokenDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onClose when the dialog is dismissed with Escape", async () => {
+    const onClose = vi.fn();
+    await mount("ak_test_1234567890", onClose);
+
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 });

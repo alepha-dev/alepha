@@ -51,7 +51,7 @@ const fieldPolicy = (
 ): ProfileFieldPolicy => {
   // No settings means the realm config could not be read. Inventing a
   // requirement the realm may not have is what broke this form for
-  // username-only realms in the first place — and nothing server-side
+  // username-only realms in the first place, and nothing server-side
   // requires either field, so "optional" is both the safe default and the
   // accurate one.
   const req = requirement ?? "optional";
@@ -71,7 +71,7 @@ const fieldPolicy = (
  *
  * The form itself must not decide this: a realm configured for username-only
  * sign-in (`email: "none"`) has users with no email at all, and demanding one
- * makes every save fail — including a save that only touches roles.
+ * makes every save fail, including a save that only touches roles.
  */
 export const profilePolicy = (
   settings?: ProfileRealmSettings,
@@ -100,8 +100,8 @@ export const profileIssues = (
     }
     // Blanking a field that has a value is not a no-op the user should be
     // left guessing about. `username` and `email` are both unique-indexed,
-    // so a blank cannot be written as `""` — the second user to try it
-    // collides with the first — and a partial PATCH has no way to spell
+    // so a blank cannot be written as `""` (the second user to try it
+    // collides with the first), and a partial PATCH has no way to spell
     // "unset". Refuse it rather than drop the key and report success on a
     // save that changed nothing.
     if ((user?.[field] ?? "") !== "") {
@@ -114,7 +114,7 @@ export const profileIssues = (
 /**
  * Build the PATCH body from the form values.
  *
- * Fields the realm does not collect — and blank optional ones — are omitted
+ * Fields the realm does not collect, and blank optional ones, are omitted
  * entirely rather than sent as `""`: `users` is uniquely indexed on
  * `(realm, username)` and `(realm, email)`, so an empty string is a value
  * that collides, not an absence.

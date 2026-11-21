@@ -22,7 +22,7 @@ import { AdminUserDetailPasskeys } from "./AdminUserDetailPasskeys.tsx";
 
 export interface AdminUserDetailSecurityTabProps {
   /**
-   * Whether a `credentials` identity exists — i.e. a password is set.
+   * Whether a `credentials` identity exists, i.e. a password is set.
    */
   hasPassword: boolean;
   /**

@@ -2,9 +2,9 @@ import type {
   AdminAnalyticsController,
   AdminDatasetDescriptor,
 } from "alepha/api/analytics";
-import { useClient } from "alepha/react";
+import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { AnalyticsTransport } from "./analytics/analyticsTypes.ts";
 import { QueryPanel } from "./analytics/QueryPanel.tsx";
@@ -52,7 +52,6 @@ export interface AdminAnalyticsProps {
 export const AdminAnalytics = (props: AdminAnalyticsProps) => {
   const client = useClient<AdminAnalyticsController>();
   const { tr } = useI18n();
-  const [datasets, setDatasets] = useState<AdminDatasetDescriptor[]>();
   const [requestOpen, setRequestOpen] = useState(false);
 
   // Memoised because it is an effect dependency in both hooks below: a fresh
@@ -68,12 +67,26 @@ export const AdminAnalytics = (props: AdminAnalyticsProps) => {
   );
   const transport = props.transport ?? adminTransport;
 
+  // A failure reaches the root toaster as any query's does, and the page
+  // says so below instead of staying an empty pane.
+  const datasetsQuery = useQuery<AdminDatasetDescriptor[]>(
+    { handler: () => transport.listDatasets() },
+    [transport],
+  );
+  const datasets = datasetsQuery.data;
+
   const query = useAnalyticsQuery(datasets, transport);
   const panel = usePanelWidth();
 
-  useEffect(() => {
-    void transport.listDatasets().then(setDatasets);
-  }, [transport]);
+  if (!datasets && datasetsQuery.error) {
+    return (
+      <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center p-6 text-sm">
+        {tr("admin.analytics.datasetsError", {
+          default: "The analytics datasets could not be loaded.",
+        })}
+      </div>
+    );
+  }
 
   if (datasets?.length === 0) {
     return (

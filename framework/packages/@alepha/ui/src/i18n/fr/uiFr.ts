@@ -386,6 +386,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.analytics.comparePreviousSpanNote": "vs les $1 précédents ($2)",
   "admin.analytics.copied": "Copié",
   "admin.analytics.copy": "Copier",
+  "admin.analytics.datasetsError":
+    "Les jeux de données analytics n'ont pas pu être chargés.",
   "admin.analytics.csv": "Télécharger le CSV",
   "admin.analytics.donutTotal": "total",
   "admin.analytics.empty": "Aucune donnée pour cette requête.",
@@ -655,6 +657,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.jobs.statsRunning": "En cours",
   "admin.jobs.statsWaiting": "$1 en attente",
   "admin.jobs.retention.default": "par défaut",
+  "admin.jobs.retention.keptAll": "conservées, sans limite",
   "admin.jobs.retention.custom": "personnalisée",
   "admin.jobs.retention.last": "les $1 dernières",
   "admin.jobs.retention.lastWithinDays": "les $1 dernières sur $2 jours",
@@ -1168,7 +1171,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.userDetail.saved": "Profil enregistré",
   "admin.userDetail.setPassword": "Définir un mot de passe",
   "admin.userDetail.setPasswordSub":
-    "L'utilisateur pourra se connecter avec ce mot de passe immédiatement. Les sessions en cours ne sont pas révoquées.",
+    "L'utilisateur pourra se connecter avec ce mot de passe immédiatement. Toutes ses sessions ouvertes sont fermées.",
   "admin.userDetail.setPasswordTitle": "Définir un nouveau mot de passe",
   "admin.userDetail.tabAudits": "Journal d'audit",
   "admin.userDetail.tabOverview": "Vue d'ensemble",
