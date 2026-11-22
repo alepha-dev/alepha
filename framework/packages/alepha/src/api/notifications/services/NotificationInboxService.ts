@@ -1,17 +1,21 @@
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { notificationInboxEntity } from "../entities/notificationInboxEntity.ts";
 
 /**
- * The two writes over `notification_inbox` that belong to nobody's request.
+ * The writes over `notification_inbox` that belong to nobody's request.
  *
  * The channel writes messages and the controller reads them; these are the
- * housekeeping paths, and they are here rather than on either because both
- * are called by something outside the notification flow entirely - an hourly
- * cron, and whatever hook an app runs when it deletes an account.
+ * housekeeping paths, and they are here rather than on either because each
+ * is called by something outside the notification flow entirely: an hourly
+ * cron, whatever hook an app runs when it deletes an account, and an app
+ * page that is itself what a message announced.
  */
 export class NotificationInboxService {
   protected readonly repo = $repository(notificationInboxEntity);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * Delete **read** messages older than the cutoff, in one bounded batch.
@@ -44,6 +48,33 @@ export class NotificationInboxService {
 
     await this.repo.deleteMany({ id: { inArray: expired.map((r) => r.id) } });
     return expired.length;
+  }
+
+  /**
+   * Mark read every unread message of one account that points at `href`,
+   * optionally within one scope.
+   *
+   * For an app whose page IS what a message announces: a chat room read on
+   * screen has read the mentions that link to it, and the inbox should say
+   * so without the reader opening each one. Returns how many it marked.
+   */
+  public async markReadByHref(
+    userId: string,
+    href: string,
+    options: { scope?: string } = {},
+  ): Promise<number> {
+    const updated = await this.repo.updateMany(
+      {
+        userId: { eq: userId },
+        href: { eq: href },
+        readAt: { isNull: true },
+        ...(options.scope !== undefined
+          ? { scope: { eq: options.scope } }
+          : {}),
+      },
+      { readAt: this.dateTime.nowISOString() },
+    );
+    return updated.length;
   }
 
   /**
