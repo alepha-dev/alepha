@@ -650,16 +650,16 @@ export class SigilBrowserProvider {
       this.trail.addPage(ev.state?.url?.pathname ?? location.pathname);
     });
     this.alepha.events.on("react:action:begin", (ev) => {
-      if (ev.type === "transition") return;
-      this.trail.beginAction(this.actionName(ev));
+      const name = this.actionName(ev);
+      if (name) this.trail.beginAction(name);
     });
     this.alepha.events.on("react:action:success", (ev) => {
-      if (ev.type === "transition") return;
-      this.trail.endAction(this.actionName(ev), "success");
+      const name = this.actionName(ev);
+      if (name) this.trail.endAction(name, "success");
     });
     this.alepha.events.on("react:action:error", (ev) => {
-      if (ev.type !== "transition")
-        this.trail.endAction(this.actionName(ev), "error");
+      const name = this.actionName(ev);
+      if (name) this.trail.endAction(name, "error");
       if (this.isInputRefusal(ev) || !this.isCrash(ev.error)) return;
       this.trailError(ev.error);
     });
@@ -678,11 +678,14 @@ export class SigilBrowserProvider {
   }
 
   /**
-   * An action's name in the trail: its id when the caller gave one, else
-   * its kind (`custom`, `form`).
+   * An action's name in the trail, or nothing when it does not belong there
+   * (#Q4106): an action with no `id` said only "custom" and crowded out the
+   * ones that say something, a transition is already a page, and a query
+   * is a read the page made, not something the visitor did.
    */
-  protected actionName(ev: { id?: string; type?: string }): string {
-    return ev.id ?? ev.type ?? "action";
+  protected actionName(ev: { id?: string; type?: string }): string | undefined {
+    if (ev.type === "transition" || ev.type === "query") return undefined;
+    return ev.id || undefined;
   }
 
   protected trailError(error: unknown): void {

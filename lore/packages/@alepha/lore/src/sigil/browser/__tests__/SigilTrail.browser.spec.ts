@@ -10,7 +10,7 @@ import { SigilTrail } from "../SigilTrail.ts";
  * crash filter as the error queue, whatever the sink's switches say.
  */
 describe("SigilTrail", () => {
-  it("keeps the last 5 crashes, 10 paths and 20 actions", () => {
+  it("keeps the last 5 crashes, 5 paths and 5 actions", () => {
     let now = 0;
     const trail = new SigilTrail(() => now);
     for (let i = 0; i < 8; i++) trail.addError(`boom ${i}`, "/");
@@ -76,6 +76,31 @@ describe("SigilTrail", () => {
     expect(trail.actions.map((it) => [it.name, it.outcome])).toEqual([
       ["login", "error"],
       ["save", "error"],
+    ]);
+    await alepha.stop();
+  });
+
+  it("records only named actions: no nameless one, no query, no transition (#Q4106)", async () => {
+    const alepha = Alepha.create({
+      env: { NODE_ENV: "production", APP_SECRET: "test", SERVER_PORT: 0 },
+    });
+    const provider = alepha.inject(SigilBrowserProvider);
+    await alepha.start();
+
+    const run = async (ev: { type: string; id?: string }) => {
+      await (alepha.events as any).emit("react:action:begin", ev);
+      await (alepha.events as any).emit("react:action:success", ev);
+    };
+    await run({ type: "custom" });
+    await run({ type: "form" });
+    await run({ type: "query", id: '["users",1]' });
+    await run({ type: "transition", id: "settings" });
+    await run({ type: "custom", id: "saveSettings" });
+    await run({ type: "form", id: "login" });
+
+    expect(provider.trail.snapshot().actions.map((it) => it.name)).toEqual([
+      "saveSettings",
+      "login",
     ]);
     await alepha.stop();
   });

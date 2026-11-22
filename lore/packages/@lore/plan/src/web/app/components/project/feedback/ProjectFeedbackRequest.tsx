@@ -57,10 +57,10 @@ import type { FeedbackSource } from "../../../../../api/schemas/feedbackSourceSc
 import {
   type FeedbackTrail,
   feedbackTrailSchema,
+  newestFeedbackTrail,
 } from "../../../../../api/schemas/feedbackTrailSchema.ts";
 import { feedbackTypeSchema } from "../../../../../api/schemas/feedbackTypeSchema.ts";
 import { FeedbackTypeTags } from "../../../../../api/services/FeedbackTypeTags.ts";
-import FeedbackTrailList from "./FeedbackTrailList.tsx";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
 // Unlike the attachment bucket name (see FeedbackRateLimiter.ATTACHMENT_BUCKET),
@@ -314,7 +314,7 @@ const ProjectFeedbackRequest = () => {
       if (event.source !== window.opener || event.origin !== origin) return;
       if (event.data?.type !== SIGIL_FEEDBACK_TRAIL_MESSAGE) return;
       const parsed = feedbackTrailSchema.safeParse(event.data.trail);
-      if (parsed.success) setTrail(parsed.data);
+      if (parsed.success) setTrail(newestFeedbackTrail(parsed.data));
     };
     window.addEventListener("message", onMessage);
     window.opener.postMessage({ type: SIGIL_FEEDBACK_READY_MESSAGE }, origin);
@@ -380,10 +380,10 @@ const ProjectFeedbackRequest = () => {
     schema: z.object({
       type: feedbackTypeSchema,
       message: z.string().max(10_000),
-      // Send the trail along (#Q4038), on by default; the reporter may not.
-      includeTrail: z.boolean(),
     }),
-    initialValues: { message: "", includeTrail: true },
+    // Bug unless a `?type=` names another (#Q4106): a fresh form already
+    // answers the required type.
+    initialValues: { type: "bug", message: "" },
     handler: async (body) => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
@@ -423,10 +423,9 @@ const ProjectFeedbackRequest = () => {
           // said nothing in the inbox. The type is one, first, and never
           // twice, whatever a `?type=` put there (#Q4037).
           tags: FeedbackTypeTags.fold(tags, body.type),
-          source:
-            source && trail && body.includeTrail
-              ? { ...source, trail }
-              : source,
+          // The trail rides along whenever the opener sent one (#Q4106);
+          // the report page shows it to the owner.
+          source: source && trail ? { ...source, trail } : source,
         },
       });
       clearDraft();
@@ -772,6 +771,10 @@ const ProjectFeedbackRequest = () => {
                             : tr("feedback.request.placeholder.other")
                     }
                     area
+                    // The reporter types at once (#Q4106): the page exists for
+                    // this one field, opened on purpose from a button.
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- the page's only text field, opened to be typed in
+                    autoFocus
 
                     rows={12}
                   />
@@ -779,35 +782,6 @@ const ProjectFeedbackRequest = () => {
                     {tr("feedback.request.pasteHint")}
                   </p>
                 </div>
-
-                {/* What the sigil saw just before (#Q4038): readable, and
-                    left out at the reporter's word. */}
-                {trail && (
-                  <div
-                    className="flex flex-col gap-2 rounded-md border p-3"
-                    data-testid="feedback-request-trail"
-                  >
-                    <Control
-                      input={form.input.includeTrail}
-                      label={tr("feedback.request.trail.include")}
-                      switch
-                    />
-                    <details className="text-sm">
-                      <summary className="text-muted-foreground cursor-pointer text-xs">
-                        {tr("feedback.request.trail.summary", {
-                          args: [
-                            String(trail.errors.length),
-                            String(trail.pages.length),
-                            String(trail.actions.length),
-                          ],
-                        })}
-                      </summary>
-                      <div className="mt-2">
-                        <FeedbackTrailList trail={trail} />
-                      </div>
-                    </details>
-                  </div>
-                )}
 
                 <div className="flex flex-col gap-2">
                   <span className="flex items-center gap-1.5">

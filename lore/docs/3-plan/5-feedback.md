@@ -135,12 +135,12 @@ Lore reads these parameters when the page opens, keeps them for that browser
 tab, and removes them from the address, so they survive the sign-in and stay
 out of the browser's history.
 
-| Parameter                                               | What it does                                                                             |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `tags`                                                  | A tag for the report. Repeat it for several. A report holds at most 20, `type` included. |
-| `type`                                                  | `bug` or `feature`: picks **Bug** or **Idea** on the form, never tagged twice.           |
-| `url`                                                   | The page the report is about. Without it, the parameters below are ignored.              |
-| `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz` | That page's path and title, the referrer, and the reporter's browser settings.           |
+| Parameter                                               | What it does                                                                                                         |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `tags`                                                  | A tag for the report. Repeat it for several. A report holds at most 20, `type` included.                             |
+| `type`                                                  | `bug` or `feature`: picks **Bug** or **Idea** on the form, never tagged twice. Without it the form opens on **Bug**. |
+| `url`                                                   | The page the report is about. Without it, the parameters below are ignored.                                          |
+| `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz` | That page's path and title, the referrer, and the reporter's browser settings.                                       |
 
 A report sent from the form always carries its type's tag.
 
@@ -154,11 +154,11 @@ wiring. Any other app uses the link above.
 The sigil mounts a floating button that opens the form in a popup, carrying
 the page, the browser and the viewport the report was made from. It also
 hands the form a short trail of what happened on that page just before: the
-last five crashes, the last ten pages visited and the last twenty actions,
-each with its outcome and duration, never what was typed or returned. The
-trail stays in the page's memory until a report is filed; the form shows it,
-and the reporter can leave it out. The report's details show it, errors
-first. When the report is sent, the popup closes by itself. Five keys of
+last five crashes, the last five pages visited and the last five named
+actions (an action the app gave an `id`), each with its outcome and
+duration, never what was typed or returned. The trail stays in the page's
+memory until a report is filed, and always rides along with it. The
+report's details show it, errors first. When the report is sent, the popup closes by itself. Five keys of
 `SIGIL_CONFIG` control the button:
 
 | Key                           | Default        | What it does                                              |
