@@ -32,6 +32,7 @@ export const hostJobInputSchema = z.object({
       writeRefPrefix: z.string().max(200).optional(),
       questId: z.integer().optional(),
       feedbackId: z.integer().optional(),
+      feedbackIds: z.array(z.integer()).max(50).optional(),
     })
     .optional(),
 });

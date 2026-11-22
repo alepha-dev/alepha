@@ -86,8 +86,26 @@ lore host agent agent-1
 project's Triage prompt (see [Agent prompts](/lore/docs/agents-prompts)) on that
 one item. The agent reads the item and the code, then does one of three things:
 files a todo quest for sound feedback, leaves a question for a member when it is
-unsure, or rejects what is not actionable. **Triage the pending feedback with
-Claude**, in the same menu, starts one job per pending item.
+unsure, or rejects what is not actionable.
+
+**Triage all feedback and errors with Claude**, in the same menu, is one run
+over the whole inbox. The agent reads every pending item, and the project's
+open errors when it tracks them (Ship ▸ Track), before it changes anything.
+Then it groups what belongs together:
+
+- one quest per real problem, however many reports describe it. The quest
+  names every report and error in it, and each other report gets a comment
+  pointing to the quest;
+- a report an open quest already covers joins that quest instead of filing a
+  second one;
+- an error that is the cause of a report is forwarded to the same quest. An
+  error that is noise is resolved, and one it cannot place stays open;
+- an item it is unsure about stays pending with a question, and one that is
+  not actionable is rejected.
+
+Its key reaches only the items it was given, and its turns and time grow with
+their number. Feedback written outside the team never joins this run: each
+such item gets a run of its own (see [Untrusted input](#untrusted-input)).
 
 Both entries show only while the project's Agent host passes its agent check.
 Once an item is triaged, its **Agent job** link opens the job and its log.

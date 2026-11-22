@@ -1,0 +1,1 @@
+ALTER TABLE "job_keys" ADD COLUMN "feedback_numbers" integer[];

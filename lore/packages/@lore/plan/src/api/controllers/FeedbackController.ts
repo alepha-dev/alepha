@@ -742,9 +742,12 @@ export class FeedbackController {
   });
 
   /**
-   * Triage the inbox with Claude (#Q3988): one agent job per pending item,
-   * oldest first. Untrusted items on a host that runs jobs as a process are
-   * skipped, each with a comment saying a member must triage it.
+   * Triage the inbox with Claude (#Q3988, #Q4183): ONE global job over the
+   * pending team-written items and the open errors, which merges duplicates
+   * and links reports to their errors; each untrusted item its own job.
+   * Untrusted items on a host that runs jobs as a process are skipped, each
+   * with a comment saying a member must triage it. `global` is the global
+   * job, also first in `started`.
    */
   triageInboxWithAgent = $action({
     use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
@@ -755,6 +758,7 @@ export class FeedbackController {
       response: z.object({
         started: z.array(z.uuid()),
         skipped: z.array(z.integer()),
+        global: z.uuid().optional(),
       }),
     },
     handler: async ({ params, user }) => {

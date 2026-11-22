@@ -78,6 +78,38 @@ describe("JobKeyService", () => {
     ).not.toThrow();
   });
 
+  it("holds a global triage's key to its set of feedback items, quest links included (#Q4183)", ({
+    expect,
+  }) => {
+    const triage = key({
+      questNumber: undefined,
+      tools: ["feedback_get", "feedback_accept", "quest_create"],
+      feedbackNumbers: [4, 9],
+    });
+    expect(() =>
+      keys.check(triage, "feedback_get", { shortId: 9 }),
+    ).not.toThrow();
+    expect(() => keys.check(triage, "feedback_accept", { shortId: 5 })).toThrow(
+      "reaches feedback 4, 9 only",
+    );
+    expect(() =>
+      keys.check(triage, "quest_create", { feedback_shortId: 4 }),
+    ).not.toThrow();
+    expect(() =>
+      keys.check(triage, "quest_create", { feedback_shortId: 5 }),
+    ).toThrow("reaches feedback 4, 9 only");
+    expect(() => keys.check(triage, "quest_create", {})).not.toThrow();
+    // A one-item key links only its own item too.
+    const one = key({
+      questNumber: undefined,
+      tools: ["quest_create"],
+      feedbackNumber: 4,
+    });
+    expect(() =>
+      keys.check(one, "quest_create", { feedback_shortId: 5 }),
+    ).toThrow("reaches feedback 4 only");
+  });
+
   it("refuses a revoked key", ({ expect }) => {
     expect(() =>
       keys.check(key({ revokedAt: new Date().toISOString() }), "quest_get", {

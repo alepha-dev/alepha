@@ -3120,8 +3120,13 @@ export default {
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":
     "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne la traite tant que l'hôte d'agent exécute les tâches comme un processus de l'hôte ; sur un hôte à conteneurs, un agent ne fait que la lire.",
+  "feedback.agent.triage": "Trier avec Claude",
+  "feedback.agent.triageInbox":
+    "Trier tous les retours et les erreurs avec Claude",
   "feedback.agent.startedMany":
     "$1 tâches de tri lancées ; $2 laissées à un membre",
+  "feedback.agent.startedGlobal":
+    "Claude trie les retours et les erreurs en une seule passe ; $1 laissés à un membre",
   "feedback.agent.job": "Tâche d'agent",
   "quest.agent.work": "Travailler avec Claude",
   "quest.agent.started":

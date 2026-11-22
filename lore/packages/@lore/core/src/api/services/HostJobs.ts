@@ -70,6 +70,11 @@ export interface HostJobKeyScope {
   writeRefPrefix?: string;
   questId?: number;
   feedbackId?: number;
+  /**
+   * A set of feedback items instead of one (#Q4183): the global triage
+   * reaches the pending items it was given, and no other.
+   */
+  feedbackIds?: number[];
 }
 
 export interface HostJobSummary {
@@ -108,6 +113,12 @@ export interface HostJobKeyIssuer {
 export interface HostJobQueue {
   start(request: HostJobRequest): Promise<HostJobSummary>;
   get(jobId: string): Promise<HostJobSummary | undefined>;
+  /** The project's job on a subject that is still queued or running. */
+  active(
+    projectId: number,
+    subjectType: string,
+    subjectId: string,
+  ): Promise<HostJobSummary | undefined>;
   cancel(jobId: string, by?: string): Promise<HostJobSummary>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
@@ -209,6 +220,14 @@ export class HostJobs {
 
   public async get(jobId: string): Promise<HostJobSummary | undefined> {
     return this.queue?.get(jobId);
+  }
+
+  public async active(
+    projectId: number,
+    subjectType: string,
+    subjectId: string,
+  ): Promise<HostJobSummary | undefined> {
+    return this.queue?.active(projectId, subjectType, subjectId);
   }
 
   public async cancel(jobId: string, by?: string): Promise<HostJobSummary> {

@@ -394,13 +394,15 @@ export class FeedbackCommand {
   public readonly triage = $command({
     name: "triage",
     description:
-      "Triage with Claude on the project's Agent host: one pending item, or the whole pending inbox with --all",
+      "Triage with Claude on the project's Agent host: one pending item, or with --all the whole inbox and the open errors in one run",
     args: FeedbackCommand.REF_ARG.optional(),
     flags: z.object({
       ...FeedbackCommand.PROJECT_FLAG,
       all: z
         .boolean()
-        .describe("Every pending item, one agent job each, oldest first")
+        .describe(
+          "The whole pending inbox and the open errors, in one run that merges duplicates; untrusted items get a run each",
+        )
         .optional(),
       ...LoreOutput.FLAGS,
     }),
@@ -425,7 +427,9 @@ export class FeedbackCommand {
             print,
             flags.output,
             result,
-            `Started ${result.started.length} triage job${result.started.length === 1 ? "" : "s"}${skipped}. Follow them with lore job list`,
+            result.global
+              ? `Triaging the inbox in one run: job ${result.global}${result.started.length > 1 ? `, and ${result.started.length - 1} run${result.started.length === 2 ? "" : "s"} for untrusted items` : ""}${skipped}. Follow it with lore job logs ${result.global} --follow`
+              : `Started ${result.started.length} triage job${result.started.length === 1 ? "" : "s"}${skipped}. Follow them with lore job list`,
           );
           return;
         }

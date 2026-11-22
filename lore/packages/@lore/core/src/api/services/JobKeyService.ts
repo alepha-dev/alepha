@@ -114,6 +114,7 @@ export class JobKeyService {
       tools: scope.tools,
       questNumber: scope.questId,
       feedbackNumber: scope.feedbackId,
+      feedbackNumbers: scope.feedbackIds,
       repositoryId: scope.repositoryId,
       writeRefPrefix: scope.writeRefPrefix,
       expiresAt: expiresAt.toISOString(),
@@ -220,17 +221,44 @@ export class JobKeyService {
         `This job key reaches quest ${key.questNumber} only`,
       );
     }
+    const pinned = this.feedbackPins(key);
     if (
-      key.feedbackNumber !== undefined &&
-      key.feedbackNumber !== null &&
+      pinned &&
       name.startsWith("feedback_") &&
       !JobKeyService.UNPINNED_TOOLS.has(name) &&
-      named !== key.feedbackNumber
+      (named === undefined || !pinned.includes(named))
     ) {
-      throw new ForbiddenError(
-        `This job key reaches feedback ${key.feedbackNumber} only`,
-      );
+      throw new ForbiddenError(this.feedbackRefusal(pinned));
     }
+    // A quest links a feedback item by `feedback_shortId`: a pinned key
+    // links only its own, or a triage could accept and file against an
+    // item it was never given.
+    const linked = args.feedback_shortId;
+    if (
+      pinned &&
+      typeof linked === "number" &&
+      linked !== 0 &&
+      !pinned.includes(linked)
+    ) {
+      throw new ForbiddenError(this.feedbackRefusal(pinned));
+    }
+  }
+
+  /**
+   * The feedback items a key is pinned to, or undefined when it is not.
+   */
+  protected feedbackPins(key: JobKey): number[] | undefined {
+    if (key.feedbackNumbers?.length) return key.feedbackNumbers;
+    if (key.feedbackNumber !== undefined && key.feedbackNumber !== null) {
+      return [key.feedbackNumber];
+    }
+    return undefined;
+  }
+
+  protected feedbackRefusal(pinned: number[]): string {
+    return pinned.length === 1
+      ? `This job key reaches feedback ${pinned[0]} only`
+      : `This job key reaches feedback ${pinned.join(", ")} only`;
   }
 
   /**

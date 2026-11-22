@@ -13,6 +13,7 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import {
   AGENT_BASE_EGRESS,
+  AGENT_BUDGET_CEILING,
   AGENT_JOB_PROFILES,
   AGENT_MCP_SERVER,
   AGENT_PUSH_EGRESS,
@@ -119,6 +120,7 @@ export class AgentJobService {
       );
     }
     const profile = AGENT_JOB_PROFILES[request.profile];
+    const budget = this.budgetOf(profile, request.budget);
     const loreTools = request.tools.map(
       (tool) => `mcp__${AGENT_MCP_SERVER}__${tool}`,
     );
@@ -142,8 +144,8 @@ export class AgentJobService {
           ref: request.ref ?? repository.defaultBranch,
         },
         prompt: request.prompt,
-        maxTurns: profile.maxTurns,
-        timeoutSeconds: profile.timeoutSeconds,
+        maxTurns: budget.maxTurns,
+        timeoutSeconds: budget.timeoutSeconds,
         allowedTools: [...profile.allowedTools, ...loreTools],
         disallowedTools: profile.disallowedTools,
         ...(profile.permissionMode
@@ -167,9 +169,38 @@ export class AgentJobService {
           ...(request.feedbackNumber === undefined
             ? {}
             : { feedbackId: request.feedbackNumber }),
+          ...(request.feedbackNumbers?.length
+            ? { feedbackIds: request.feedbackNumbers }
+            : {}),
         },
       },
     });
+  }
+
+  /**
+   * The turns and time a job runs under: the profile's, raised by a
+   * request's budget (#Q4183) up to {@link AGENT_BUDGET_CEILING}, never
+   * lowered below the profile's own.
+   */
+  protected budgetOf(
+    profile: { maxTurns: number; timeoutSeconds: number },
+    asked?: { maxTurns: number; timeoutSeconds: number },
+  ): { maxTurns: number; timeoutSeconds: number } {
+    if (!asked) return profile;
+    const clamp = (value: number, low: number, high: number) =>
+      Math.min(Math.max(Math.round(value), low), high);
+    return {
+      maxTurns: clamp(
+        asked.maxTurns,
+        profile.maxTurns,
+        AGENT_BUDGET_CEILING.maxTurns,
+      ),
+      timeoutSeconds: clamp(
+        asked.timeoutSeconds,
+        profile.timeoutSeconds,
+        AGENT_BUDGET_CEILING.timeoutSeconds,
+      ),
+    };
   }
 
   /**
