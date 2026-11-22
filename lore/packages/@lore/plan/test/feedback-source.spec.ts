@@ -198,6 +198,60 @@ describe("feedback source field", () => {
     ).rejects.toThrow();
   });
 
+  it("trims an older bundle's longer pages and actions to the newest 5 (#Q4106)", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    const created = await ctx.feedbackController.submitFeedback.fetch(
+      {
+        params: { projectId },
+        body: {
+          title: "Embedded bug",
+          description: "From an older sigil bundle",
+          source: {
+            hostUrl: "https://shop.example.com/",
+            hostPath: "/",
+            userAgent: "Mozilla/5.0",
+            trail: {
+              errors: [],
+              pages: Array.from({ length: 10 }, (_, at) => ({
+                path: `/p${at}`,
+                at,
+              })),
+              actions: Array.from({ length: 20 }, (_, i) => ({
+                name: `a${i}`,
+                outcome: "success" as const,
+                ms: i,
+              })),
+            },
+          },
+        },
+      },
+      { user: owner },
+    );
+    const detail = await ctx.feedbackController.getFeedback.fetch(
+      { params: { projectId, feedbackId: created.data.id } },
+      { user: owner },
+    );
+
+    expect(detail.data.source?.trail?.pages.map((it) => it.path)).toEqual([
+      "/p5",
+      "/p6",
+      "/p7",
+      "/p8",
+      "/p9",
+    ]);
+    expect(detail.data.source?.trail?.actions.map((it) => it.name)).toEqual([
+      "a15",
+      "a16",
+      "a17",
+      "a18",
+      "a19",
+    ]);
+  });
+
   it("persists the full page-context source with no sigilId (sigil-button flow)", async ({
     expect,
   }) => {

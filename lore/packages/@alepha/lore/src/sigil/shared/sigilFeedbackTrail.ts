@@ -22,8 +22,8 @@ export interface SigilFeedbackTrail {
    */
   pages: Array<{ path: string; at: number }>;
   /**
-   * The last actions: name, outcome and duration. Never arguments or
-   * responses.
+   * The last named actions: name, outcome and duration. Never arguments or
+   * responses, and never an action without an `id` (#Q4106).
    */
   actions: Array<{
     name: string;
@@ -37,8 +37,8 @@ export interface SigilFeedbackTrail {
  */
 export const SIGIL_FEEDBACK_TRAIL_LIMITS = {
   errors: 5,
-  pages: 10,
-  actions: 20,
+  pages: 5,
+  actions: 5,
   message: 500,
   path: 500,
   name: 100,

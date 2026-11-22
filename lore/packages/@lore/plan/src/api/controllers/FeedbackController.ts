@@ -34,6 +34,7 @@ import {
   feedbackResourceSchema,
 } from "../schemas/feedbackResourceSchema.ts";
 import type { FeedbackSource } from "../schemas/feedbackSourceSchema.ts";
+import { newestFeedbackTrail } from "../schemas/feedbackTrailSchema.ts";
 import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
@@ -279,6 +280,8 @@ export class FeedbackController {
       ...source,
       hostUrl: sigilScrubUrl(source.hostUrl),
       hostPath: sigilScrubUrl(source.hostPath),
+      // An older sigil bundle sends longer lists: kept to the newest.
+      ...(source.trail ? { trail: newestFeedbackTrail(source.trail) } : {}),
     };
   }
 
