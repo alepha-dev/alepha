@@ -269,6 +269,12 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
       "Reproduced on Safari",
     );
 
+    // Triage with Claude needs an Agent host: the refusal says which.
+    const noHost = await lore.fail("feedback triage", [ref]);
+    expect(noHost?.message).toContain("names no Agent host");
+    const neither = await lore.fail("feedback triage");
+    expect(neither?.message).toContain("or pass --all");
+
     await lore.run("feedback accept", [ref]);
     await lore.run("feedback reject", [`P${second.shortId}`]);
     expect(await lore.run("feedback list")).toContain("No feedback here.");

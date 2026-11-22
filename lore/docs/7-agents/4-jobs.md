@@ -92,6 +92,16 @@ Claude**, in the same menu, starts one job per pending item.
 Both entries show only while the project's Agent host passes its agent check.
 Once an item is triaged, its **Agent job** link opens the job and its log.
 
+From the CLI, one item or the whole pending inbox:
+
+```bash
+lore feedback triage P120
+```
+
+```bash
+lore feedback triage --all
+```
+
 ### A quest to a branch
 
 **Work it with Claude**, on an accepted quest, clones the repository, works the

@@ -17,7 +17,7 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore feedback list | get | attachment get | comment add | accept | reject`.
+ * `lore feedback list | get | attachment get | comment add | accept | reject | triage`.
  *
  * ```bash
  * lore feedback list -p alepha
@@ -386,6 +386,69 @@ export class FeedbackCommand {
     },
   });
 
+  /**
+   * Triage with Claude from a shell: the robot menu's two entries. One item,
+   * or every pending one with `--all`, each a job on the project's Agent
+   * host that files quests, asks a question or rejects.
+   */
+  public readonly triage = $command({
+    name: "triage",
+    description:
+      "Triage with Claude on the project's Agent host: one pending item, or the whole pending inbox with --all",
+    args: FeedbackCommand.REF_ARG.optional(),
+    flags: z.object({
+      ...FeedbackCommand.PROJECT_FLAG,
+      all: z
+        .boolean()
+        .describe("Every pending item, one agent job each, oldest first")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        if (!args === !flags.all) {
+          throw new UsageError("Name one feedback item, or pass --all.");
+        }
+        if (flags.all) {
+          const { projectId } = await this.projects.named(
+            flags.project,
+            context,
+          );
+          const result = await this.feedbackApi.triageInboxWithAgent({
+            params: { projectId },
+          });
+          const skipped = result.skipped.length
+            ? `; skipped ${result.skipped.map((id) => `P${id}`).join(", ")}, for a member to triage`
+            : "";
+          this.render.written(
+            print,
+            flags.output,
+            result,
+            `Started ${result.started.length} triage job${result.started.length === 1 ? "" : "s"}${skipped}. Follow them with lore job list`,
+          );
+          return;
+        }
+        const { projectId, feedbackId, shortId } = await this.target(
+          args as string,
+          flags.project,
+          context,
+        );
+        const result = await this.feedbackApi.triageFeedbackWithAgent({
+          params: { projectId, feedbackId },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          result,
+          result.jobId
+            ? `Triaging P${shortId}: job ${result.jobId}. Follow it with lore job logs ${result.jobId} --follow`
+            : `P${shortId} was not triaged: ${result.skipped ?? "no job started"}`,
+        );
+      });
+    },
+  });
+
   public readonly targets = $command({
     name: "targets",
     description:
@@ -484,7 +547,7 @@ export class FeedbackCommand {
   public readonly feedback = $command({
     name: "feedback",
     description:
-      "A project's feedback: list, read, comment on, accept and reject it, or file one",
+      "A project's feedback: list, read, comment on, accept, reject or triage it with Claude, or file one",
     children: [
       this.list,
       this.targets,
@@ -494,6 +557,7 @@ export class FeedbackCommand {
       this.comment,
       this.accept,
       this.reject,
+      this.triage,
     ],
     handler: async ({ help }) => {
       help();
