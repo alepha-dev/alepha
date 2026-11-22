@@ -74,6 +74,37 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
   );
   const uploading = uploadAvatar.loading || removeAvatar.loading;
 
+  // Verify my address (#Q4096): a code to the address on file, typed back
+  // here, so the account owner never leaves the page. A wrong or expired
+  // code is the server's 400, toasted by the app's ActionErrorToaster.
+  const verifyEmail = useAction<[]>(
+    {
+      handler: async () => {
+        await api.requestMyEmailVerification();
+        const code = await dialog.prompt({
+          title: tr("account.profile.verifyTitle", {
+            default: "Verify your email",
+          }),
+          description: tr("account.profile.verifyDescription", {
+            default:
+              "We sent a code to your address. Enter it here to confirm the address is yours.",
+          }),
+          label: tr("account.profile.verifyCode", { default: "Code" }),
+          confirmLabel: tr("account.profile.verifyConfirm", {
+            default: "Verify",
+          }),
+        });
+        if (!code?.trim()) return;
+        setProfile(await api.verifyMyEmail({ body: { code: code.trim() } }));
+        toaster.show(
+          tr("account.profile.verified", { default: "Email verified" }),
+          "success",
+        );
+      },
+    },
+    [api, dialog, toaster, tr],
+  );
+
   /*
    * Does this realm have usernames at all?
    *
@@ -360,10 +391,27 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
               "Changing your email needs verification, so it is not a profile edit.",
           })}
         >
-          <span className="text-muted-foreground text-sm">
-            {profile.email ??
-              tr("account.profile.emailUnset", { default: "Not set" })}
-          </span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="text-muted-foreground text-sm">
+              {profile.email ??
+                tr("account.profile.emailUnset", { default: "Not set" })}
+            </span>
+            {profile.email &&
+              !profile.emailVerified &&
+              api.requestMyEmailVerification.can() && (
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => void verifyEmail.run()}
+                  disabled={verifyEmail.loading}
+                  data-testid="account-verify-email"
+                >
+                  {tr("account.profile.verifyEmail", {
+                    default: "Verify my address",
+                  })}
+                </Button>
+              )}
+          </div>
         </SettingsRow>
         <SettingsRow label={tr("account.profile.roles", { default: "Roles" })}>
           <div className="flex flex-wrap gap-1">

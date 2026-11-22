@@ -32,6 +32,11 @@ let realm: RealmConfig | undefined;
 const updates: unknown[] = [];
 
 /**
+ * Every verify-my-address call, in order (#Q4096).
+ */
+const verifications: string[] = [];
+
+/**
  * Every action exists: the section fetches the profile and the realm, and
  * every other call answers nothing.
  */
@@ -44,6 +49,15 @@ class Links extends LinkProvider {
           const action: any = async (request?: unknown) => {
             if (name === "getMyProfile") return profile;
             if (name === "getRealmConfig") return realm;
+            if (name === "requestMyEmailVerification") {
+              verifications.push("request");
+              return { ok: true };
+            }
+            if (name === "verifyMyEmail") {
+              const body = (request as { body: { code: string } }).body;
+              verifications.push(`verify:${body.code}`);
+              return { ...profile, emailVerified: true };
+            }
             if (name === "updateMyProfile") {
               const body = (request as { body: Record<string, unknown> }).body;
               updates.push(body);
@@ -159,6 +173,35 @@ describe("AccountProfile", () => {
       );
       expect(screen.queryByRole("alertdialog")).toBeNull();
     });
+  });
+
+  /**
+   * Verify my address (#Q4096): offered while the address is unverified, a
+   * code sent and typed back here, and gone once it is verified.
+   */
+  it("verifies an unverified address with the code sent to it", async () => {
+    verifications.length = 0;
+    await mount();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Verify my address" }),
+      );
+    });
+    fireEvent.change(await screen.findByLabelText("Code"), {
+      target: { value: "123456" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    });
+
+    await vi.waitFor(() =>
+      expect(verifications).toEqual(["request", "verify:123456"]),
+    );
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Verify my address" }),
+      ).toBeNull(),
+    );
   });
 
   it("hides the username in a none realm", async () => {

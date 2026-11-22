@@ -1,6 +1,11 @@
-import { $inject } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
-import { $action, BadRequestError, ConflictError } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ConflictError,
+  okSchema,
+} from "alepha/server";
 
 import type { UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -8,6 +13,7 @@ import { myProfileSchema } from "../schemas/myProfileSchema.ts";
 import { updateMyProfileBodySchema } from "../schemas/updateMyProfileBodySchema.ts";
 import { UsernameSlugger } from "../services/UsernameSlugger.ts";
 import { UserProfileMapper } from "../services/UserProfileMapper.ts";
+import { UserService } from "../services/UserService.ts";
 
 /**
  * Self-service profile, the "who am I" page of an account area.
@@ -33,6 +39,7 @@ export class MyProfileController {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly mapper = $inject(UserProfileMapper);
   protected readonly usernameSlugger = $inject(UsernameSlugger);
+  protected readonly userService = $inject(UserService);
 
   protected users(realm?: string) {
     return this.realmProvider.userRepository(realm);
@@ -55,6 +62,66 @@ export class MyProfileController {
         where: { id: { eq: user.id } },
       });
       return this.toMyProfile(row);
+    },
+  });
+
+  /**
+   * Send a verification code to the caller's own address (#Q4096), for the
+   * account page's "Verify" while `emailVerified` is false. The address is
+   * the one on file, never a parameter: nothing here reaches anybody
+   * else's mailbox. An address already verified gets nothing, and answers
+   * the same.
+   */
+  requestMyEmailVerification = $action({
+    method: "POST",
+    path: "/users/me/email-verification",
+    use: [$secure({ sessionOnly: true })],
+    description: "Send a verification code to the caller's own email address",
+    schema: {
+      response: okSchema,
+    },
+    handler: async ({ user }) => {
+      const row = await this.users(user.realm).getOne({
+        where: { id: { eq: user.id } },
+      });
+      if (!row.email) {
+        throw new BadRequestError("This account has no email address");
+      }
+      await this.userService.requestEmailVerification(
+        row.email,
+        user.realm,
+        "code",
+      );
+      return { ok: true };
+    },
+  });
+
+  /**
+   * Confirm the caller's own address with the code
+   * {@link requestMyEmailVerification} sent (#Q4096). Answers the profile,
+   * `emailVerified` now true.
+   */
+  verifyMyEmail = $action({
+    method: "POST",
+    path: "/users/me/email-verification/verify",
+    use: [$secure({ sessionOnly: true })],
+    description: "Verify the caller's own email address with the code sent",
+    schema: {
+      body: z.object({ code: z.string().min(1).max(64) }),
+      response: myProfileSchema,
+    },
+    handler: async ({ body, user }) => {
+      const repo = this.users(user.realm);
+      const row = await repo.getOne({ where: { id: { eq: user.id } } });
+      if (!row.email) {
+        throw new BadRequestError("This account has no email address");
+      }
+      if (!row.emailVerified) {
+        await this.userService.verifyEmail(row.email, body.code, user.realm);
+      }
+      return this.toMyProfile(
+        await repo.getOne({ where: { id: { eq: user.id } } }),
+      );
     },
   });
 
