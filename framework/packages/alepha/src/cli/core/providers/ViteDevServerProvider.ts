@@ -8,11 +8,11 @@ import {
   AlephaError,
   type AlephaMeta,
 } from "alepha";
-import { EnvUtils } from "alepha/command";
+import { CommandError, EnvUtils } from "alepha/command";
 import { __alephaRef } from "alepha/internal";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
-import type { Plugin, ViteDevServer } from "vite";
+import type { Logger, Plugin, ViteDevServer } from "vite";
 
 import { metaOptions } from "../atoms/metaOptions.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
@@ -60,6 +60,17 @@ export interface DevServerOptions {
    * dev, Vite's `define` never reaches client modules.
    */
   define?: Record<string, string>;
+
+  /**
+   * Exit instead of waiting for an edit when the first boot fails.
+   *
+   * In a terminal a failed boot waits for the save that fixes it. Without one
+   * (an agent's background task, CI, `> dev.log`) nobody is there to save, and
+   * a process that stays alive without ever listening only makes the caller's
+   * wait loop time out with no reason given. Reloads after a successful boot
+   * keep retrying either way.
+   */
+  exitOnStartupError?: boolean;
 }
 
 /**
@@ -165,10 +176,7 @@ export class ViteDevServerProvider {
     try {
       return await this.loadAlepha(true);
     } catch (err) {
-      this.hasError = true;
-      this.currentError = err instanceof Error ? err : new Error(String(err));
-      this.logError("Startup failed", err);
-      this.alepha = null;
+      await this.onStartupError(err);
       return await this.waitForSuccessfulLoad();
     }
   }
@@ -190,10 +198,7 @@ export class ViteDevServerProvider {
         await this.alepha?.start();
         break;
       } catch (err) {
-        this.hasError = true;
-        this.currentError = err instanceof Error ? err : new Error(String(err));
-        this.logError("Startup failed", err);
-        this.alepha = null;
+        await this.onStartupError(err);
         this.alepha = await this.waitForSuccessfulLoad();
       }
     }
@@ -235,7 +240,8 @@ export class ViteDevServerProvider {
    * Create the Vite server with Alepha plugin.
    */
   protected async createServer(): Promise<void> {
-    const { createServer, resolveConfig } = await this.viteUtils.importVite();
+    const { createServer, createLogger, resolveConfig } =
+      await this.viteUtils.importVite();
     const viteReact = await this.viteUtils.importViteReact();
 
     const plugins: Plugin[] = [];
@@ -283,6 +289,7 @@ export class ViteDevServerProvider {
     this.server = await createServer({
       root: this.options.root,
       plugins,
+      customLogger: this.createViteLogger(createLogger),
       appType: "custom",
       // Without this, `alepha.meta` under `alepha dev` silently falls back to
       // the no-build record and `/version` reports name "unknown" - no error
@@ -1031,16 +1038,121 @@ createHotContext("/@alepha/reload").on("alepha:reload", async () => {
   }
 
   /**
+   * The first boot failed: report it, then either wait for the fix or end the
+   * command (see {@link DevServerOptions.exitOnStartupError}).
+   */
+  protected async onStartupError(err: unknown): Promise<void> {
+    this.hasError = true;
+    this.currentError = err instanceof Error ? err : new Error(String(err));
+    this.alepha = null;
+
+    const hint = await this.missingWorkspaceHint(err);
+    const exit = !!this.options.exitOnStartupError;
+    this.logError("Startup failed", err, { hint, retrying: !exit });
+
+    if (exit) {
+      // The watcher and the HTTP server would keep the process alive past the
+      // exit code the CLI sets.
+      await this.server?.close();
+      throw new CommandError(
+        `alepha dev: failed reason=${JSON.stringify(this.currentError.message)}`,
+        { cause: err },
+      );
+    }
+  }
+
+  /**
+   * Name a stale install when the module that failed to load is one of the
+   * app's own workspace dependencies.
+   *
+   * A `workspace:` dependency added since the last install is the usual
+   * cause: its folder exists, but nothing linked it into `node_modules`, and
+   * Vite's "Cannot find module '@acme/core/api'" reads like a bad import.
+   */
+  protected async missingWorkspaceHint(
+    err: unknown,
+  ): Promise<string | undefined> {
+    const message = err instanceof Error ? err.message : String(err);
+    const specifier = /Cannot find (?:module|package) '([^']+)'/.exec(
+      message,
+    )?.[1];
+    if (!specifier || specifier.startsWith(".") || specifier.startsWith("/")) {
+      return undefined;
+    }
+
+    const parts = specifier.split("/");
+    const name = specifier.startsWith("@")
+      ? parts.slice(0, 2).join("/")
+      : parts[0];
+
+    try {
+      const pkg = JSON.parse(
+        await this.fs.readTextFile(join(this.options.root, "package.json")),
+      );
+      const range =
+        pkg.dependencies?.[name] ??
+        pkg.devDependencies?.[name] ??
+        pkg.peerDependencies?.[name];
+      if (typeof range !== "string" || !range.startsWith("workspace:")) {
+        return undefined;
+      }
+    } catch {
+      return undefined;
+    }
+
+    let dir = this.options.root;
+    while (true) {
+      if (await this.fs.exists(join(dir, "node_modules", name))) {
+        return undefined;
+      }
+      const parent = join(dir, "..");
+      if (parent === dir) break;
+      dir = parent;
+    }
+
+    return `${name} is a workspace dependency of this app but is not linked into node_modules: run the install again (yarn install, pnpm install, ...).`;
+  }
+
+  /**
+   * Vite's logger, minus its copy of an SSR evaluation error.
+   *
+   * Vite logs "Error when evaluating SSR module" itself and then rethrows, and
+   * every `ssrLoadModule` here reports what it catches, so each failed boot
+   * printed the same stack twice.
+   */
+  protected createViteLogger(createLogger: () => Logger): Logger {
+    const logger = createLogger();
+    const error = logger.error.bind(logger);
+    logger.error = (msg, options) => {
+      if (msg.includes("Error when evaluating SSR module")) return;
+      error(msg, options);
+    };
+    return logger;
+  }
+
+  /**
    * Log a formatted error with stack trace.
    */
-  protected logError(title: string, err: unknown): void {
+  protected logError(
+    title: string,
+    err: unknown,
+    options: { hint?: string; retrying?: boolean } = {},
+  ): void {
     const c = this.colors;
 
     console.log();
     console.log(c.set("RED", `  ✗ ${title}`));
     this.logErrorWithCause(err);
-    console.log();
-    console.log(c.set("GREY_DARK", "    Waiting for file changes to retry..."));
+    if (options.hint) {
+      console.log();
+      console.log(c.set("ORANGE", `    Hint: ${options.hint}`));
+    }
+    if (options.retrying ?? true) {
+      console.log();
+      console.log(
+        c.set("GREY_DARK", "    Waiting for file changes to retry..."),
+      );
+    }
     console.log();
   }
 

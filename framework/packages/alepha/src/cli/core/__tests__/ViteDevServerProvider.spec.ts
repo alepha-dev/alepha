@@ -341,6 +341,7 @@ class RecordingViteUtils extends ViteUtils {
         this.configs.push(config);
         throw new AlephaError("stop: the config is all this spec reads");
       },
+      createLogger: () => ({ error: () => {} }),
       resolveConfig: async () => ({ server: {} }),
     };
   }

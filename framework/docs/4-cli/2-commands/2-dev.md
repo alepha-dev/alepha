@@ -36,6 +36,12 @@ export default defineConfig({
 });
 ```
 
+### Without a terminal
+
+A script, a CI job or a coding agent usually starts `alepha dev` in the background with its output going to a file. When there is no terminal, a first boot that fails (a syntax error, a missing module) exits with code 1 and one line, `alepha dev: failed reason="..."`, instead of waiting for a file save that nobody will make. Pass `--retry` to keep waiting anyway. In a terminal, `dev` still waits for the fix and reloads.
+
+When a missing module is one of the app's own `workspace:` dependencies that is not linked into `node_modules`, the error says so and tells you to run the install again.
+
 You get:
 
 - **Hot Module Replacement**: Changes appear instantly without full page reload
