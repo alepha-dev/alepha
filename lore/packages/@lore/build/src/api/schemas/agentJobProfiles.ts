@@ -66,6 +66,16 @@ export const AGENT_PUSH_EGRESS = [
 ];
 
 /**
+ * The most a request's budget raises a profile to (#Q4183): the global
+ * triage scales with its items, and stops here. Bay's own limits are wider
+ * (500 turns, 4 h).
+ */
+export const AGENT_BUDGET_CEILING = {
+  maxTurns: 300,
+  timeoutSeconds: 2 * 3600,
+};
+
+/**
  * Every agent job reaches these.
  */
 export const AGENT_BASE_EGRESS = ["api.anthropic.com"];

@@ -37,6 +37,9 @@ export const jobKeys = $entity({
     tools: z.array(z.string().max(100)).max(64),
     questNumber: z.integer().optional(),
     feedbackNumber: z.integer().optional(),
+    // The global triage's set of items (#Q4183); a key holds this or
+    // `feedbackNumber`, never both.
+    feedbackNumbers: z.array(z.integer()).max(50).optional(),
     repositoryId: z.string().max(64).optional(),
     writeRefPrefix: z.string().max(200).optional(),
     expiresAt: z.string(),

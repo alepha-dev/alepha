@@ -17,6 +17,14 @@ export interface AgentJobRequest {
   ref?: string;
   questNumber?: number;
   feedbackNumber?: number;
+  /** The global triage's items (#Q4183), instead of `feedbackNumber`. */
+  feedbackNumbers?: number[];
+  /**
+   * More turns and time than the profile's, for a job that works through
+   * many items (#Q4183). Set by Lore code, never from a prompt; clamped to
+   * the profile's own values below and to a ceiling above.
+   */
+  budget?: { maxTurns: number; timeoutSeconds: number };
   startedBy?: string;
   startedByJobId?: string;
   subjectType: string;

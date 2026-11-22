@@ -315,7 +315,7 @@ name it stored. To read a file back, use `lore quest attachment get` or
 | `lore feedback comment add <ref>`    | Comment on an item. The reporter is told, and can answer.                            | `--body` (required), `--as <name>` (marks it as written by an agent)              |
 | `lore feedback accept <ref>`         | Accept a pending item: the request is valid.                                         |                                                                                   |
 | `lore feedback reject <ref>`         | Reject a pending item. The item stays, for the record.                               |                                                                                   |
-| `lore feedback triage <ref>`         | Triage with Claude: a job on the project's Agent host files quests, asks or rejects. | `--all` (every pending item instead, one job each)                                |
+| `lore feedback triage <ref>`         | Triage with Claude: a job on the project's Agent host files quests, asks or rejects. | `--all` (the whole inbox and the open errors, in one run)                         |
 | `lore feedback targets`              | The projects you belong to that accept feedback: where `submit` can file.            |                                                                                   |
 | `lore feedback submit`               | File a feedback item, pending in the project's inbox.                                | `--title`, `--description` (both required), `--type`, `--tags a,b`, `--as <name>` |
 

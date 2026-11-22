@@ -103,6 +103,17 @@ export class HostJobService {
         const job = await this.jobs.findOne({ where: { id: { eq: id } } });
         return job ? this.summary(job) : undefined;
       },
+      active: async (projectId, subjectType, subjectId) => {
+        const job = await this.jobs.findOne({
+          where: {
+            projectId: { eq: projectId },
+            subjectType: { eq: subjectType },
+            subjectId: { eq: subjectId },
+            status: { inArray: ["queued", "running"] },
+          },
+        });
+        return job ? this.summary(job) : undefined;
+      },
       cancel: async (id, by) => this.summary(await this.cancel(id, by)),
       chainHolds: (id, kind) => this.chainHolds(id, kind),
       stdout: (id) => this.text(id, "stdout"),

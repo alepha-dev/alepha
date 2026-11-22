@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f3920cfa-24a5-48d9-b65e-1a9bca264ca5",
+  "prevIds": ["05002ada-28df-4365-aa13-6761e4df82d1"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "job_keys", "feedback_numbers"],
+      "writes": [
+        "s|col|public.job_keys.feedback_numbers",
+        "n|col|public.job_keys.feedback_numbers",
+        "e|col|public.job_keys.feedback_numbers"
+      ],
+      "reads": ["n|tbl|public.job_keys", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "job_keys",
+        "name": "feedback_numbers",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

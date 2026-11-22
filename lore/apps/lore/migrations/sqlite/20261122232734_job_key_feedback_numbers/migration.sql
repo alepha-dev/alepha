@@ -1,0 +1,1 @@
+ALTER TABLE `job_keys` ADD `feedback_numbers` text;

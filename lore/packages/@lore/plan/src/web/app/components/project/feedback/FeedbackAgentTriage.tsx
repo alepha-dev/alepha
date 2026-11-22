@@ -61,9 +61,16 @@ export const useFeedbackAgentTriage = (
             params: { projectId: project.id },
           });
           toaster.show(
-            tr("feedback.agent.startedMany", {
-              args: [String(out.started.length), String(out.skipped.length)],
-            }),
+            out.global
+              ? tr("feedback.agent.startedGlobal", {
+                  args: [String(out.skipped.length)],
+                })
+              : tr("feedback.agent.startedMany", {
+                  args: [
+                    String(out.started.length),
+                    String(out.skipped.length),
+                  ],
+                }),
             "success",
           );
         }

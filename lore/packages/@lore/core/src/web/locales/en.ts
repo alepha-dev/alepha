@@ -3114,7 +3114,11 @@ export default {
     "Written by someone outside the project's team. No agent works on it while the Agent host runs jobs as a host process; on a container host an agent only reads it.",
   "feedback.agent.started":
     "Claude is triaging this feedback on the Agent host",
+  "feedback.agent.triage": "Triage with Claude",
+  "feedback.agent.triageInbox": "Triage all feedback and errors with Claude",
   "feedback.agent.startedMany": "Started $1 triage jobs; $2 left for a member",
+  "feedback.agent.startedGlobal":
+    "Claude is triaging the feedback and errors in one run; $1 left for a member",
   "feedback.agent.job": "Agent job",
   "quest.agent.work": "Work it with Claude",
   "quest.agent.started":
