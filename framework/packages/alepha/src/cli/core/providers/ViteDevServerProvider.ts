@@ -1,3 +1,4 @@
+import { createServer as createNetServer } from "node:net";
 import { join } from "node:path";
 
 import {
@@ -9,6 +10,7 @@ import {
   type AlephaMeta,
 } from "alepha";
 import { CommandError, EnvUtils } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import { __alephaRef } from "alepha/internal";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -101,6 +103,7 @@ export class ViteDevServerProvider {
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly metaOverride = $store(metaOptions);
 
   /**
@@ -138,6 +141,7 @@ export class ViteDevServerProvider {
     on: "stop",
     handler: async () => {
       await this.destroyAlepha();
+      await this.removeStateFile();
     },
   });
 
@@ -213,6 +217,74 @@ export class ViteDevServerProvider {
     const url = `http://${host}:${port}/`;
     const log = this.alepha?.log ?? this.log;
     log.info(`Listening on ${this.colors.set("CYAN", url)}`);
+
+    await this.writeStateFile({ status: "ready", url, port });
+    // One plain line, never coloured nor prefixed, that a script or an agent
+    // waits for instead of polling the port: `grep -m1 "alepha dev: ready"`.
+    // A failed boot prints `alepha dev: failed reason=...` instead.
+    console.log(`alepha dev: ready url=${url} pid=${process.pid}`);
+  }
+
+  /**
+   * Where this dev server says what it is doing:
+   * `node_modules/.alepha/dev.json`, beside the dev database.
+   *
+   * Holds `status` (`ready` or `failed`), `url`, `port`, `pid`, `reason` on a
+   * failure, and `at`. A tool finds a running server, its port and the pid to
+   * stop from it, without parsing the log. Removed when the server stops.
+   */
+  public get stateFile(): string {
+    return join(this.options.root, "node_modules", ".alepha", "dev.json");
+  }
+
+  protected async writeStateFile(state: {
+    status: "ready" | "failed";
+    url?: string;
+    port?: number;
+    reason?: string;
+  }): Promise<void> {
+    try {
+      await this.fs.mkdir(join(this.stateFile, ".."), { recursive: true });
+      await this.fs.writeFile(
+        this.stateFile,
+        `${JSON.stringify(
+          { ...state, pid: process.pid, at: this.dateTime.nowISOString() },
+          null,
+          2,
+        )}\n`,
+      );
+    } catch (error) {
+      this.log.debug("Could not write the dev state file", { error });
+    }
+  }
+
+  protected async removeStateFile(): Promise<void> {
+    if (!this.options) return;
+    try {
+      await this.fs.rm(this.stateFile, { force: true });
+    } catch (error) {
+      this.log.debug("Could not remove the dev state file", { error });
+    }
+  }
+
+  /**
+   * A port nothing listens on, for `SERVER_PORT=0`.
+   *
+   * Resolved before the app boots rather than left to the listen call, so the
+   * app reads the port it is really served on (redirect URIs, absolute links)
+   * instead of `0`.
+   */
+  protected findFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const probe = createNetServer();
+      probe.unref();
+      probe.on("error", reject);
+      probe.listen(0, () => {
+        const address = probe.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        probe.close(() => resolve(port));
+      });
+    });
   }
 
   /**
@@ -267,6 +339,13 @@ export class ViteDevServerProvider {
     } else {
       const config = await resolveConfig({}, "serve", "development");
       port = config.server?.port ? Number(config.server.port) : 5173;
+    }
+
+    // `SERVER_PORT=0`: any free port, which the ready line and the state file
+    // report. Two agents starting servers at once no longer pick by hand.
+    if (port === 0) {
+      port = await this.findFreePort();
+      process.env.SERVER_PORT = String(port);
     }
 
     // The dev server's own build metadata. `dev: true` is what stops the
@@ -1049,6 +1128,10 @@ createHotContext("/@alepha/reload").on("alepha:reload", async () => {
     const hint = await this.missingWorkspaceHint(err);
     const exit = !!this.options.exitOnStartupError;
     this.logError("Startup failed", err, { hint, retrying: !exit });
+    await this.writeStateFile({
+      status: "failed",
+      reason: this.currentError.message,
+    });
 
     if (exit) {
       // The watcher and the HTTP server would keep the process alive past the
