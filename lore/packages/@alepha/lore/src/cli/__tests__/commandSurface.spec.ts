@@ -177,6 +177,7 @@ describe("the Lore CLI command surface", () => {
         "comment",
         "accept",
         "reject",
+        "triage",
       ],
       folio: [
         "list",
