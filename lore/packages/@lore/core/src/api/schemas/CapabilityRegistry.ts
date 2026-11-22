@@ -251,17 +251,6 @@ export class CapabilityRegistry {
           preselected: false,
         },
         {
-          // Each new feedback item triaged by an agent job on the project's
-          // Agent host (#Q3988), at most once per item. Off by default, and
-          // never offered at creation: a project has no Agent host yet.
-          key: "agentTriage",
-          labelKey: "project.capability.plan.option.agentTriage.label",
-          descriptionKey:
-            "project.capability.plan.option.agentTriage.description",
-          wizard: false,
-          preselected: false,
-        },
-        {
           // Personas, use cases and requirements (#E153): a part of Plan, not
           // a capability of its own, whose code lives in
           // `@lore/plan-requirements`. Offered in the wizard and never

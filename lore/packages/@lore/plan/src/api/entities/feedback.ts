@@ -100,8 +100,7 @@ export const feedback = $entity({
     untrusted: db.default(z.boolean(), false),
     /**
      * The last agent job that triaged this item (#Q3988), a host job id,
-     * and when it was started. Automatic triage starts at most one job per
-     * item: a set `agentTriagedAt` is the claim.
+     * and when it was started.
      */
     agentJobId: z.uuid().optional(),
     agentTriagedAt: z.string().optional(),

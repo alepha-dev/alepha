@@ -1,42 +1,56 @@
-import { Button, cn, textLinkUnderlineClassName, useToast } from "@alepha/ui";
-import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
-import { useAction, useClient, useStore } from "alepha/react";
+import { cn, textLinkUnderlineClassName, useToast } from "@alepha/ui";
+import {
+  type AgentPromptsMenuAction,
+  currentProjectAtom,
+  type I18n,
+  useRank,
+} from "@lore/core/web";
+import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Bot } from "lucide-react";
+import { Bot, ListChecks } from "lucide-react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
 
-export interface FeedbackAgentTriageProps {
-  /** One item, or the whole inbox when absent. */
-  feedback?: FeedbackResource;
-  onStarted?: () => void;
-  /** Icon only, for the inbox's narrow header band. */
-  compact?: boolean;
-}
-
 /**
- * **Triage with Claude** (#Q3988): an agent job on the project's Agent host
- * runs the project's Triage prompt, on this item or on each pending one.
- * Hidden without a default Agent host, or without `feedback:triage`.
+ * **Triage with Claude** (#Q3988), as entries of the robot menu (#Q4126):
+ * an agent job on the project's Agent host runs the project's Triage prompt,
+ * on this item while it is pending, or on each pending one.
+ *
+ * Offered only when the job can run: `feedback:triage`, a default Agent
+ * host, and that host's last agent check `available`. The readiness is read
+ * from the server, since the client only knows the host's id.
  */
-const FeedbackAgentTriage = ({
-  feedback,
-  onStarted,
-  compact,
-}: FeedbackAgentTriageProps) => {
+export const useFeedbackAgentTriage = (
+  feedback: FeedbackResource,
+  onStarted?: () => void,
+): AgentPromptsMenuAction[] => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
   const toaster = useToast();
   const api = useClient<FeedbackController>();
   const [project] = useStore(currentProjectAtom);
+  const allowed =
+    Boolean(project?.defaultAgentHostId) && can("feedback:triage");
 
-  const triage = useAction<[], void>(
+  const readiness = useQuery(
     {
-      handler: async () => {
+      enabled: allowed && !!project?.id,
+      handler: () =>
+        api.getFeedbackAgentTriage({
+          params: { projectId: project?.id as number },
+        }),
+      onError: () => {},
+    },
+    [api, project?.id, project?.defaultAgentHostId, allowed],
+  );
+
+  const triage = useAction<[one: boolean], void>(
+    {
+      handler: async (_ctx, one) => {
         if (!project) return;
-        if (feedback) {
+        if (one) {
           const out = await api.triageFeedbackWithAgent({
             params: { projectId: project.id, feedbackId: feedback.id },
           });
@@ -56,33 +70,35 @@ const FeedbackAgentTriage = ({
         onStarted?.();
       },
     },
-    [api, project?.id, feedback?.id, toaster, tr],
+    [api, project?.id, feedback.id, toaster, tr, onStarted],
   );
 
-  if (!project?.defaultAgentHostId || !can("feedback:triage")) return null;
-  const label = feedback
-    ? tr("feedback.agent.triage")
-    : tr("feedback.agent.triageInbox");
-  return (
-    <Button
-      variant={compact ? "minimal" : "outlined"}
-      size={compact ? "sm" : undefined}
-      onClick={() => void triage.run()}
-      disabled={triage.loading}
-      aria-label={label}
-      title={label}
-      data-testid={
-        feedback ? "feedback-agent-triage" : "feedback-agent-triage-inbox"
-      }
-    >
-      <Bot className="size-4" />
-      {compact ? null : label}
-    </Button>
-  );
+  if (!allowed || !readiness.data?.ready) return [];
+  return [
+    ...(feedback.status === "pending"
+      ? [
+          {
+            key: "feedback-triage",
+            icon: Bot,
+            label: tr("feedback.agent.triage"),
+            onSelect: () => void triage.run(true),
+            disabled: triage.loading,
+          },
+        ]
+      : []),
+    {
+      key: "feedback-triage-inbox",
+      icon: ListChecks,
+      label: tr("feedback.agent.triageInbox"),
+      onSelect: () => void triage.run(false),
+      disabled: triage.loading,
+    },
+  ];
 };
 
 /**
- * The agent job that last triaged an item, linked to its page.
+ * The agent job that last triaged an item, linked to its page, which
+ * streams the job's log.
  */
 export const FeedbackAgentJobLink = ({
   feedback,
@@ -103,5 +119,3 @@ export const FeedbackAgentJobLink = ({
     </Link>
   );
 };
-
-export default FeedbackAgentTriage;

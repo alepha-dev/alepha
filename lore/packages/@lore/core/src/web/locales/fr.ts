@@ -3123,13 +3123,6 @@ export default {
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":
     "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne la traite tant que l'hôte d'agent exécute les tâches comme un processus de l'hôte ; sur un hôte à conteneurs, un agent ne fait que la lire.",
-  "project.capability.plan.option.agentTriage.label":
-    "Trier les nouveaux retours avec Claude",
-  "project.capability.plan.option.agentTriage.description":
-    "Chaque nouveau retour est trié une fois par une tâche d'agent sur l'hôte d'agent du projet : un retour fondé devient une quête à faire, un retour douteux reçoit une question pour un humain, un retour invalide est rejeté.",
-  "feedback.agent.triage": "Trier avec Claude",
-  "feedback.agent.triageInbox": "Trier les retours en attente avec Claude",
-  "feedback.agent.started": "Claude trie ce retour sur l'hôte d'agent",
   "feedback.agent.startedMany":
     "$1 tâches de tri lancées ; $2 laissées à un membre",
   "feedback.agent.job": "Tâche d'agent",

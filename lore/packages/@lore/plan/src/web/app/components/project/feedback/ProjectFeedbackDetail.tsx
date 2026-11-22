@@ -40,8 +40,9 @@ import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
-import FeedbackAgentTriage, {
+import {
   FeedbackAgentJobLink,
+  useFeedbackAgentTriage,
 } from "./FeedbackAgentTriage.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 import FeedbackTrailList from "./FeedbackTrailList.tsx";
@@ -118,6 +119,9 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         },
       ]
     : [];
+  // Triage with Claude, run on the Agent host (#Q4126): entries of the same
+  // robot menu, offered only while that host's agent check passes.
+  const agentActions = useFeedbackAgentTriage(feedback, props.onChanged);
   const feedbackApi = useClient<FeedbackController>();
   const router = useRouter();
   const toaster = useToast();
@@ -492,11 +496,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <FeedbackAgentTriage
-            feedback={feedback}
-            onStarted={props.onChanged}
-          />
-          <AgentPromptsMenu items={promptItems} />
+          <AgentPromptsMenu items={promptItems} actions={agentActions} />
         </div>
       )}
 
@@ -511,7 +511,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu items={promptItems} />
+          <AgentPromptsMenu items={promptItems} actions={agentActions} />
         </div>
       )}
 
@@ -527,7 +527,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               disappear on something unrelated to what it does. `promptItems`
               drops `feedbackWork` here on its own: there is nothing to work
               on in a rejected report. */}
-          <AgentPromptsMenu items={promptItems} />
+          <AgentPromptsMenu items={promptItems} actions={agentActions} />
         </div>
       )}
 

@@ -209,10 +209,6 @@ export class FeedbackController {
         metadata: { id: created.id },
       });
 
-      // Automatic triage by an agent, when the project asked for it
-      // (#Q3988): once per item, and never in the submit's way.
-      await this.agentTriage.onSubmitted(created);
-
       return { id: created.id, shortId: created.shortId };
     },
   });
@@ -760,6 +756,24 @@ export class FeedbackController {
       await this.assertFeedbackOpen(params.projectId);
       return this.agentTriage.triageInbox(params.projectId, user.id);
     },
+  });
+
+  /**
+   * Whether Triage with Claude can run now (#Q4126): the project names an
+   * Agent host and its last agent check passed. The robot menu offers the
+   * triage entries only then.
+   */
+  getFeedbackAgentTriage = $action({
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
+    method: "GET",
+    path: "/projects/:projectId/feedback/agent-triage",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ ready: z.boolean() }),
+    },
+    handler: async ({ params }) => ({
+      ready: await this.agentTriage.agentHostReady(params.projectId),
+    }),
   });
 
   /**

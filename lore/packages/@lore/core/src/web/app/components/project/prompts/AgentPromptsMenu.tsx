@@ -3,12 +3,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   useDialog,
 } from "@alepha/ui";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot } from "lucide-react";
+import type { ComponentType } from "react";
 
 import type { AgentPromptKind } from "../../../../../api/schemas/agentPromptKindSchema.ts";
 import type { AgentPromptSubject } from "../../../../../api/schemas/renderPromptTemplate.ts";
@@ -53,8 +55,23 @@ export interface AgentPromptsMenuItem {
   confirm?: { title: string; description: string; confirmLabel: string };
 }
 
+/**
+ * An entry that RUNS something rather than copying a prompt (#Q4126): an
+ * agent job started on the project's Agent host. Listed above the prompts,
+ * and shown whatever the `agentPrompts` option says, since it copies
+ * nothing; the caller decides whether the job can run and omits it if not.
+ */
+export interface AgentPromptsMenuAction {
+  key: string;
+  icon: ComponentType;
+  label: string;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
 export interface AgentPromptsMenuProps {
   items: AgentPromptsMenuItem[];
+  actions?: AgentPromptsMenuAction[];
 }
 
 /**
@@ -82,8 +99,8 @@ export interface AgentPromptsMenuProps {
  * same gesture, and three copies would eventually disagree about the icon,
  * the button variant or the label.
  *
- * ⚠️ **Renders nothing when the project has the option off, and nothing when
- * `items` is empty.** The second half matters: callers build their entries
+ * ⚠️ **Renders nothing when it has no entry to show**: the prompts count
+ * only with the project's option on, the run `actions` always. The second half matters: callers build their entries
  * under status gates, so an epic that is `done` hands over an empty list, and
  * a button opening an empty menu is worse than no button. Same rule
  * `DataTable` applies to an empty group.
@@ -97,7 +114,9 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
   const agentPrompt = useAgentPrompt();
   const dialog = useDialog();
 
-  if (!agentPrompt.enabled || props.items.length === 0) {
+  const items = agentPrompt.enabled ? props.items : [];
+  const actions = props.actions ?? [];
+  if (items.length === 0 && actions.length === 0) {
     return null;
   }
 
@@ -116,7 +135,19 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
         <Bot className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {props.items.map((item) => {
+        {actions.map((action) => (
+          <DropdownMenuItem
+            key={action.key}
+            disabled={action.disabled}
+            onClick={action.onSelect}
+            data-testid={`agent-action-${action.key}`}
+          >
+            <action.icon />
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+        {actions.length > 0 && items.length > 0 && <DropdownMenuSeparator />}
+        {items.map((item) => {
           const meta = kinds.get(item.kind);
           return (
             // The label alone, on the default one-line row (feedback

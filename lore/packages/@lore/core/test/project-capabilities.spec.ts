@@ -109,7 +109,6 @@ describe("Project capabilities", () => {
       reminder: false,
       agentPrompts: false,
       feedback: false,
-      agentTriage: false,
       requirements: false,
       blockFailingMust: false,
     });
