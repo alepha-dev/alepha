@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { CodeRepositoryService } from "@lore/build/api";
-import { projectCapabilities, projectPrompts } from "@lore/core/schemas";
+import { projectPrompts } from "@lore/core/schemas";
 import { FeedbackAgentService } from "@lore/plan/api";
 import { feedback, feedbackComments } from "@lore/plan/schemas";
 import {
@@ -42,7 +42,6 @@ class Repos {
   feedback = $repository(feedback);
   comments = $repository(feedbackComments);
   prompts = $repository(projectPrompts);
-  capabilities = $repository(projectCapabilities);
 }
 
 const setup = async () => {
@@ -200,28 +199,14 @@ describe("feedback triaged by an agent job", () => {
     expect(out.skipped).toHaveLength(1);
   });
 
-  it("triages a new item automatically once, when the project asked for it", async ({
+  it("reads the Agent host as ready only while its agent check passes", async ({
     expect,
   }) => {
-    const [plan] = await w.repos.capabilities.findMany({
-      where: { projectId: { eq: w.projectId }, key: { eq: "plan" } },
-    });
-    if (plan) {
-      await w.repos.capabilities.updateById(plan.id, {
-        options: { ...plan.options, agentTriage: true },
-      });
-    } else {
-      await w.repos.capabilities.create({
-        projectId: w.projectId,
-        key: "plan",
-        options: { agentTriage: true },
-      });
-    }
-    const item = await file(w, false);
-    await w.triage.onSubmitted(item);
-    await w.triage.onSubmitted(item);
-    expect(
-      await w.repos.jobs.findMany({ where: { kind: { eq: "agent" } } }),
-    ).toHaveLength(1);
+    await w.repos.hosts.updateById(w.hostId, { agentStatus: "available" });
+    expect(await w.triage.agentHostReady(w.projectId)).toBe(true);
+    await w.repos.hosts.updateById(w.hostId, { agentStatus: "unavailable" });
+    expect(await w.triage.agentHostReady(w.projectId)).toBe(false);
+    await w.repos.hosts.updateById(w.hostId, { agentStatus: "checking" });
+    expect(await w.triage.agentHostReady(w.projectId)).toBe(false);
   });
 });

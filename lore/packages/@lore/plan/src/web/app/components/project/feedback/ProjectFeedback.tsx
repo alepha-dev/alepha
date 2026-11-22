@@ -25,7 +25,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
-import FeedbackAgentTriage from "./FeedbackAgentTriage.tsx";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
@@ -344,7 +343,6 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               size="sm"
             />
             <div className="ms-auto shrink-0" />
-            <FeedbackAgentTriage compact />
             <SubscriptionBell
               events={["feedback.created"]}
               label={tr("feedback.subscription.label")}

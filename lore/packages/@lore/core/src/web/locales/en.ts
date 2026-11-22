@@ -3115,12 +3115,6 @@ export default {
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
     "Written by someone outside the project's team. No agent works on it while the Agent host runs jobs as a host process; on a container host an agent only reads it.",
-  "project.capability.plan.option.agentTriage.label":
-    "Triage new feedback with Claude",
-  "project.capability.plan.option.agentTriage.description":
-    "Each new feedback item is triaged by an agent job on the project's Agent host, once: a sound item becomes a todo quest, a doubtful one gets a question for a human, an invalid one is rejected.",
-  "feedback.agent.triage": "Triage with Claude",
-  "feedback.agent.triageInbox": "Triage the pending feedback with Claude",
   "feedback.agent.started":
     "Claude is triaging this feedback on the Agent host",
   "feedback.agent.startedMany": "Started $1 triage jobs; $2 left for a member",

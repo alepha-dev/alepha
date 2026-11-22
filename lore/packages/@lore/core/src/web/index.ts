@@ -135,7 +135,10 @@ export {
   SECTION_HREF_ROUTES,
   SECTION_LABEL_KEYS,
 } from "./app/components/project/projectViewRoutes.ts";
-export { AgentPromptsMenu } from "./app/components/project/prompts/AgentPromptsMenu.tsx";
+export {
+  AgentPromptsMenu,
+  type AgentPromptsMenuAction,
+} from "./app/components/project/prompts/AgentPromptsMenu.tsx";
 export { useAgentPrompt } from "./app/components/project/prompts/useAgentPrompt.ts";
 export { useAgentPromptSubject } from "./app/components/project/prompts/useAgentPromptSubject.ts";
 export {

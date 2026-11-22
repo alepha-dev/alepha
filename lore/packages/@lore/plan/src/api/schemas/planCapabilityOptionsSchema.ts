@@ -39,8 +39,6 @@ export const planCapabilityOptionsSchema = z.object({
   reminder: z.boolean().default(false),
   agentPrompts: z.boolean().default(false),
   feedback: z.boolean().default(false),
-  /** New feedback triaged by an agent job, once per item (#Q3988). */
-  agentTriage: z.boolean().default(false),
   requirements: z.boolean().default(false),
   /**
    * Refuse to publish a release while one of its Must requirements fails

@@ -82,15 +82,15 @@ lore host agent agent-1
 
 ### Feedback to quests
 
-**Triage with Claude**, on a feedback item, runs the project's Triage prompt
-(see [Agent prompts](/lore/docs/agents-prompts)) on that one item. The agent
-reads the item and the code, then does one of three things: files a todo quest
-for sound feedback, leaves a question for a member when it is unsure, or
-rejects what is not actionable. On the inbox, **Triage the pending feedback with
-Claude** starts one job per pending item.
+**Triage with Claude**, in the robot menu of a pending feedback item, runs the
+project's Triage prompt (see [Agent prompts](/lore/docs/agents-prompts)) on that
+one item. The agent reads the item and the code, then does one of three things:
+files a todo quest for sound feedback, leaves a question for a member when it is
+unsure, or rejects what is not actionable. **Triage the pending feedback with
+Claude**, in the same menu, starts one job per pending item.
 
-To triage every new item as it arrives, turn on **Triage new feedback with
-Claude** in **Settings ▸ Plan ▸ Features**. Each item is triaged once.
+Both entries show only while the project's Agent host passes its agent check.
+Once an item is triaged, its **Agent job** link opens the job and its log.
 
 ### A quest to a branch
 

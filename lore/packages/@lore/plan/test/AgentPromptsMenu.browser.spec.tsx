@@ -5,6 +5,7 @@ import {
   projectPromptsAtom,
   type AgentPromptSubject,
   AgentPromptsMenu,
+  type AgentPromptsMenuAction,
   I18n,
 } from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -13,6 +14,7 @@ import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/testing/react";
+import { Bot } from "lucide-react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { WorkShell } from "../src/web/index.ts";
@@ -52,6 +54,7 @@ describe("AgentPromptsMenu", () => {
       onSelect?: () => void;
     }>,
     project: unknown = projectFixture(),
+    actions: AgentPromptsMenuAction[] = [],
   ) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     alepha.inject(I18n);
@@ -68,6 +71,7 @@ describe("AgentPromptsMenu", () => {
         <DialogProvider>
           <AgentPromptsMenu
             items={items.map((it) => ({ ...it, subject: () => subject }))}
+            actions={actions}
           />
         </DialogProvider>
       </AlephaContext.Provider>,
@@ -255,5 +259,55 @@ describe("AgentPromptsMenu", () => {
 
     await waitFor(() => expect(written).toHaveLength(1));
     expect(order).toEqual(["copy", "ready"]);
+  });
+
+  it("lists run actions above the prompts, and runs the clicked one", async () => {
+    // Triage with Claude (#Q4126): an entry that starts a job, beside the
+    // ones that copy a prompt.
+    const ran: string[] = [];
+    await mount([{ kind: "epicReview" }], projectFixture(), [
+      {
+        key: "run",
+        icon: Bot,
+        label: "Triage with Claude",
+        onSelect: () => ran.push("run"),
+      },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: /agent prompts/i }));
+    const items = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')];
+      if (found.length === 0) throw new Error("not open yet");
+      return found;
+    });
+    expect(items.map((it) => it.textContent)).toEqual([
+      "Triage with Claude",
+      "Review Epic",
+    ]);
+    fireEvent.click(items[0]!);
+    expect(ran).toEqual(["run"]);
+  });
+
+  it("shows its run actions even with agent prompts off", async () => {
+    await mount(
+      [{ kind: "epicReview" }],
+      projectFixture({ options: { plan: { agentPrompts: false } } }),
+      [
+        {
+          key: "run",
+          icon: Bot,
+          label: "Triage with Claude",
+          onSelect: () => {},
+        },
+      ],
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /agent prompts/i }));
+    const items = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')];
+      if (found.length === 0) throw new Error("not open yet");
+      return found;
+    });
+    expect(items.map((it) => it.textContent)).toEqual(["Triage with Claude"]);
   });
 });
