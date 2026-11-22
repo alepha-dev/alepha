@@ -271,7 +271,10 @@ export class DevCommand {
         ...process.env,
         APP_NAME: app.name.toUpperCase(),
         SERVER_PORT: String(port),
-        FORCE_COLOR: "1",
+        // The children write through this process's stdout, which they see
+        // as a pipe: colour is forced only when that stdout is a terminal,
+        // so `alepha dev > dev.log` stays plain text.
+        ...(process.stdout.isTTY ? { FORCE_COLOR: "1" } : {}),
       },
     });
 
