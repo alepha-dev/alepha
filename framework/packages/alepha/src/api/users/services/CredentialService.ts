@@ -458,6 +458,17 @@ export class CredentialService {
       },
     });
 
+    // The code reached the address on file, so the reset proves it
+    // (#Q4096, the owner's decision of 2026-11-22). Only while the account
+    // still holds that address: one changed since the intent was made
+    // proves nothing.
+    const owner = await this.users(intent.realmName).findById(intent.userId);
+    if (owner && owner.email === intent.email && !owner.emailVerified) {
+      await this.users(intent.realmName).updateById(owner.id, {
+        emailVerified: true,
+      });
+    }
+
     // Invalidate all existing sessions for this user
     await this.sessions(intent.realmName).deleteMany({
       userId: { eq: intent.userId },

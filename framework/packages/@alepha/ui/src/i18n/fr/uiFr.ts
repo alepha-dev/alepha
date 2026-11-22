@@ -1475,6 +1475,13 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "account.profile.pictureTitle": "Photo de profil",
   "account.profile.roles": "Rôles",
   "account.profile.updated": "Profil mis à jour",
+  "account.profile.verified": "E-mail vérifié",
+  "account.profile.verifyCode": "Code",
+  "account.profile.verifyConfirm": "Vérifier",
+  "account.profile.verifyDescription":
+    "Nous avons envoyé un code à votre adresse. Saisissez-le ici pour confirmer qu'elle est bien la vôtre.",
+  "account.profile.verifyEmail": "Vérifier mon adresse",
+  "account.profile.verifyTitle": "Vérifier votre e-mail",
   "account.profile.username": "Nom d'utilisateur",
   "account.profile.usernameDescription": "Unique sur ce site.",
   "account.profile.usernameConfirmTitle":
