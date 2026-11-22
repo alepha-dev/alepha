@@ -47,11 +47,28 @@ export class ConsoleColorProvider {
       return true;
     }
 
-    if (this.alepha.isBrowser() && !navigator.userAgent.includes("Chrome")) {
+    if (this.alepha.isBrowser()) {
+      return (
+        navigator.userAgent.includes("Chrome") && !this.alepha.isProduction()
+      );
+    }
+
+    // A server writing to a file or a pipe (`yarn dev > dev.log`, an agent's
+    // background task, CI) gets plain text: escape codes there only cost
+    // whoever reads or greps the log. `FORCE_COLOR` above still turns them on.
+    if (!this.isTerminal()) {
       return false;
     }
 
     return !this.alepha.isProduction();
+  }
+
+  /**
+   * Whether stdout is an interactive terminal. False on a runtime with no
+   * `process.stdout` (workerd), where output goes to a log collector.
+   */
+  protected isTerminal(): boolean {
+    return typeof process !== "undefined" && !!process.stdout?.isTTY;
   }
 
   public set(
