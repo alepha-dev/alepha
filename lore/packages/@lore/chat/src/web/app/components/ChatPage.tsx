@@ -2,6 +2,7 @@ import { PaneResizer, useDialog, useIsMobile } from "@alepha/ui";
 import {
   canInProject,
   currentProjectAtom,
+  DOCK_UNREAD_KEY,
   displayName,
   type I18n,
   mentionHandle,
@@ -225,6 +226,9 @@ const ChatPage = () => {
           body: { messageId },
         });
         queries.invalidate(unreadKey);
+        // The room's mentions were marked read with it: the dock's badge,
+        // which counts them, reads again in this tab at once (#Q4191).
+        queries.invalidate([DOCK_UNREAD_KEY]);
         unreadBadge.refresh(projectId);
       },
       // A read state that did not move is retried by the next message: it

@@ -146,3 +146,50 @@ describe("inbox retention", () => {
     await ctx.alepha.stop();
   });
 });
+
+describe("inbox mark read by href", () => {
+  it("marks the caller's unread messages pointing at one page, and nobody else's", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    await seed(ctx, {
+      title: "mine",
+      href: "/acme/chat/general",
+      scope: "project:1",
+    });
+    await seed(ctx, {
+      title: "other page",
+      href: "/acme/chat/other",
+      scope: "project:1",
+    });
+    await seed(ctx, {
+      title: "other scope",
+      href: "/acme/chat/general",
+      scope: "project:2",
+    });
+    await seed(ctx, {
+      title: "not mine",
+      href: "/acme/chat/general",
+      scope: "project:1",
+      userId: SOMEBODY_ELSE,
+    });
+
+    const marked = await ctx.inbox.markReadByHref(ME, "/acme/chat/general", {
+      scope: "project:1",
+    });
+
+    expect(marked).toBe(1);
+    const read = (await ctx.rows.repo.findMany({}))
+      .filter((it) => it.readAt)
+      .map((it) => it.title);
+    expect(read).toEqual(["mine"]);
+    // Nothing left to mark: a second call is a no-op.
+    expect(
+      await ctx.inbox.markReadByHref(ME, "/acme/chat/general", {
+        scope: "project:1",
+      }),
+    ).toBe(0);
+
+    await ctx.alepha.stop();
+  });
+});

@@ -212,4 +212,35 @@ describe("chat mention notifications", () => {
       .toBe(true);
     expect(await ctx.inbox()).toHaveLength(2);
   });
+  it("marks the room's mentions read in the inbox when the member reads the room (#Q4191)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const general = await ctx.createRoom("general", false);
+    const other = await ctx.createRoom("other", false);
+    const handle = await ctx.handleOf(ctx.member.id);
+    await ctx.rooms.joinChatRoom.fetch(
+      { params: { projectId: ctx.project.id, roomId: general.id } },
+      { user: ctx.member.user as never },
+    );
+    const sent = await ctx.send(general.id, `@${handle} look here`);
+    await ctx.send(other.id, `@${handle} and here`);
+    await ctx.settled();
+    await expect.poll(async () => (await ctx.inbox()).length).toBe(2);
+
+    await ctx.messages.markChatRoomRead.fetch(
+      {
+        params: { projectId: ctx.project.id, roomId: general.id },
+        body: { messageId: sent.id },
+      },
+      { user: ctx.member.user as never },
+    );
+
+    const rows = await ctx.inbox();
+    const read = (room: string) =>
+      rows.find((it) => it.href.endsWith(`/chat/${room}`))!.readAt;
+    // The room read is read in the inbox too; the other room is not.
+    expect(read("general")).toBeTruthy();
+    expect(read("other")).toBeFalsy();
+  });
 });

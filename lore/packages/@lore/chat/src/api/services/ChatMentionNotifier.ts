@@ -1,6 +1,7 @@
 import { LoreInboxNotifications, ProjectRoster } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $hook, $inject, Alepha } from "alepha";
+import { NotificationInboxService } from "alepha/api/notifications";
 import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -42,6 +43,7 @@ export class ChatMentionNotifier {
   protected readonly projects = $repository(projects);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly inbox = $inject(NotificationInboxService);
   protected readonly stopping = new AbortController();
 
   protected readonly onStop = $hook({
@@ -89,7 +91,7 @@ export class ChatMentionNotifier {
     if (!project) return;
     const roster = await this.roster.of(room.projectId);
     const author = roster.find((it) => it.userId === authorId);
-    const href = `/${project.slug}/chat/${room.name}`;
+    const href = this.hrefOf(project.slug, room);
     const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
 
     for (const userId of recipients) {
@@ -123,6 +125,23 @@ export class ChatMentionNotifier {
         this.log.warn("A chat mention was not notified", { userId, error });
       }
     }
+  }
+
+  /**
+   * A member who read the room has read its mentions of them (#Q4191): their
+   * inbox items pointing at the room are marked read, so the dock's badge,
+   * which counts them, drops with the room's own unread.
+   */
+  public async markRead(room: ChatRoom, userId: string): Promise<number> {
+    const project = await this.projects.findById(room.projectId);
+    if (!project) return 0;
+    return this.inbox.markReadByHref(userId, this.hrefOf(project.slug, room), {
+      scope: `project:${room.projectId}`,
+    });
+  }
+
+  protected hrefOf(projectSlug: string | undefined, room: ChatRoom): string {
+    return `/${projectSlug}/chat/${room.name}`;
   }
 
   protected excerpt(body: string, max = 280): string {

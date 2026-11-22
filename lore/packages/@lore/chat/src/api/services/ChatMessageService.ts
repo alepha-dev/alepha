@@ -340,6 +340,8 @@ export class ChatMessageService {
     await this.roomMembers.updateById(membership.id, {
       lastReadMessageId: messageId,
     });
+    // Its mentions in the inbox go with it (#Q4191).
+    await this.alepha.inject(ChatMentionNotifier).markRead(room, userId);
   }
 
   public async setNotifyLevel(
