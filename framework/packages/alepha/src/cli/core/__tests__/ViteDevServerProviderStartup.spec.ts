@@ -19,6 +19,9 @@ class TestViteDevServerProvider extends ViteDevServerProvider {
   public testOnStartupError = this.onStartupError.bind(this);
   public testHint = this.missingWorkspaceHint.bind(this);
   public testViteLogger = this.createViteLogger.bind(this);
+  public testWriteState = this.writeStateFile.bind(this);
+  public testRemoveState = this.removeStateFile.bind(this);
+  public testFreePort = this.findFreePort.bind(this);
 
   public setup(options: Partial<DevServerOptions>): void {
     this.options = { root: "/repo/apps/web", entry: {}, ...options } as any;
@@ -152,5 +155,54 @@ describe("ViteDevServerProvider: Vite's logger", () => {
     logger.error("Pre-transform error: something else");
 
     expect(seen).toEqual(["Pre-transform error: something else"]);
+  });
+});
+
+describe("ViteDevServerProvider: the state file", () => {
+  it("writes node_modules/.alepha/dev.json, and removes it", async ({
+    expect,
+  }) => {
+    const { provider, fs } = create();
+    provider.setup({});
+
+    await provider.testWriteState({
+      status: "ready",
+      url: "http://localhost:3390/",
+      port: 3390,
+    });
+
+    expect(provider.stateFile).toBe(
+      "/repo/apps/web/node_modules/.alepha/dev.json",
+    );
+    const state = JSON.parse(await fs.readTextFile(provider.stateFile));
+    expect(state).toMatchObject({
+      status: "ready",
+      url: "http://localhost:3390/",
+      port: 3390,
+      pid: process.pid,
+    });
+
+    await provider.testRemoveState();
+    expect(await fs.exists(provider.stateFile)).toBe(false);
+  });
+
+  it("records a failed boot with its reason", async ({ expect }) => {
+    const { provider, fs } = create();
+    provider.setup({ exitOnStartupError: false });
+
+    await provider.testOnStartupError(new AlephaError("boom"));
+
+    const state = JSON.parse(await fs.readTextFile(provider.stateFile));
+    expect(state).toMatchObject({ status: "failed", reason: "boom" });
+  });
+});
+
+describe("ViteDevServerProvider: SERVER_PORT=0", () => {
+  it("finds a port nothing listens on", async ({ expect }) => {
+    const { provider } = create();
+
+    const port = await provider.testFreePort();
+
+    expect(port).toBeGreaterThan(0);
   });
 });

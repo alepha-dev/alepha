@@ -42,6 +42,16 @@ A script, a CI job or a coding agent usually starts `alepha dev` in the backgrou
 
 When a missing module is one of the app's own `workspace:` dependencies that is not linked into `node_modules`, the error says so and tells you to run the install again.
 
+Once the server listens, it prints one plain line to wait for, instead of polling the port:
+
+```bash
+SERVER_PORT=0 alepha dev > dev.log 2>&1 &
+grep -m1 "alepha dev: " <(tail -f dev.log)
+# alepha dev: ready url=http://localhost:54012/ pid=4242
+```
+
+`SERVER_PORT=0` takes any free port, so two servers started at once never collide, and the app reads the real port rather than `0`. The same facts are in `node_modules/.alepha/dev.json` (`status`, `url`, `port`, `pid`, and `reason` after a failure), which is deleted when the server stops. Colours are left out whenever the output is not a terminal; `FORCE_COLOR=1` brings them back.
+
 You get:
 
 - **Hot Module Replacement**: Changes appear instantly without full page reload
