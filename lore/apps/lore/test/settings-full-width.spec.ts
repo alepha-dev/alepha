@@ -10,7 +10,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
  *
  * 51e794e71 widened every settings page to let the Hosts table fill the
  * page. The choice is now each tab's `fullWidth`: this pins the tables
- * and lists that ask for it, and a few pages of setting blocks that must not.
+ * that ask for it, and a few pages of setting blocks that must not.
  */
 describe("settings tabs fullWidth", () => {
   let alepha: Alepha;
@@ -38,10 +38,6 @@ describe("settings tabs fullWidth", () => {
     expect(shell.findSettingsTab("projectSettingsRanks")?.tab.fullWidth).toBe(
       true,
     );
-    // A list rather than setting blocks (#Q4053).
-    expect(shell.findSettingsTab("projectSettingsMembers")?.tab.fullWidth).toBe(
-      true,
-    );
   });
 
   it("should keep pages of setting blocks in the centred column", ({
@@ -50,6 +46,8 @@ describe("settings tabs fullWidth", () => {
     for (const route of [
       "projectSettingsBanner",
       "projectSettingsCapabilities",
+      // #Q4053 widened it alongside Ranks; it keeps the column (#Q4118).
+      "projectSettingsMembers",
       "projectSettingsQuality",
     ]) {
       const found = shell.findSettingsTab(route);

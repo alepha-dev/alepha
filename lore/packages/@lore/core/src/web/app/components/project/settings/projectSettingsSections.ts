@@ -129,8 +129,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         // The member list carries emails and full records: a custom rank
         // may leave it out.
         requires: "member:read",
-        // A list, not setting blocks: it runs the body's width (#Q4053).
-        fullWidth: true,
       },
       {
         route: "projectSettingsRanks",
