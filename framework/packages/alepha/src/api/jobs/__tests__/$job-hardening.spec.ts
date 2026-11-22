@@ -99,16 +99,21 @@ describe("$job: long-delay hardening", () => {
     const clock = alepha.inject(DateTimeProvider) as RecordingClock;
     const hour = 60 * 60 * 1000;
 
+    // Only what the pushes arm counts. The hourly crons armed at start land in
+    // the same one-hour window during the first minute of every hour.
+    const armedAtStart = clock.armed.length;
+
     // 30 days is past setTimeout's 32-bit range (~24.85 days): an unclamped
     // timer overflows and fires within milliseconds.
     const id = await app.work.push({ v: 1 }, { delay: [30, "day"] });
     await app.work.push({ v: 2 }, { delay: [1, "hour"] });
+    const armed = clock.armed.slice(armedAtStart);
 
     // The one-hour delay is armed, the 30-day one is left to the sweep.
-    expect(
-      clock.armed.filter((ms) => ms > hour - 60_000 && ms <= hour),
-    ).toHaveLength(1);
-    expect(clock.armed.filter((ms) => ms > hour)).toEqual([]);
+    expect(armed.filter((ms) => ms > hour - 60_000 && ms <= hour)).toHaveLength(
+      1,
+    );
+    expect(armed.filter((ms) => ms > hour)).toEqual([]);
     expect((await app.executions.findById(id))?.status).toBe("scheduled");
     await alepha.stop();
   });
