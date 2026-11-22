@@ -57,6 +57,9 @@ jobs:
     permissions:
       actions: read
       contents: read
+      # Verify's deploy job asks for it (Deploy's agent-image job pushes to
+      # ghcr.io, #Q3997), and a caller that grants less fails at startup.
+      packages: write
     uses: ./.github/workflows/verify.yml
     secrets: inherit
 
