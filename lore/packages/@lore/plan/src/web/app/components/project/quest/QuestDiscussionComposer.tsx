@@ -1,5 +1,10 @@
 import { Button } from "@alepha/ui";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  DiscussionAttachments,
+  type DiscussionAttachment,
+  type I18n,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -10,9 +15,6 @@ import type { QuestCommentController } from "../../../../../api/controllers/Ques
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestCommentResource } from "../../../../../api/schemas/questCommentResourceSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
-import DiscussionAttachments, {
-  type DiscussionAttachment,
-} from "../discussion/DiscussionAttachments.tsx";
 import DiscussionComposer from "../discussion/DiscussionComposer.tsx";
 
 export interface QuestDiscussionComposerProps {

@@ -46,6 +46,12 @@ export const chatRooms = $entity({
      * ⚠️ Unused since #Q3972, with `personalOf`.
      */
     agent: z.text({ maxLength: 40 }).optional(),
+    /**
+     * The room's place in the project's list, set by dragging it (a rank
+     * with chat:manage). Absent until the list is first reordered: such a
+     * room follows the placed ones, by creation date.
+     */
+    position: z.integer().optional(),
   }),
   indexes: [
     { columns: ["projectId", "name"], unique: true },

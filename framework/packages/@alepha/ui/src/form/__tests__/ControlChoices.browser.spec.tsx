@@ -128,4 +128,34 @@ describe("Control choices", () => {
       ui.container.querySelector('input[type="file"]')?.getAttribute("accept"),
     ).toBe(".csv");
   });
+
+  it("sizes a segmented field with `size`, the default staying md", async () => {
+    const Probe = (props: { size?: "sm" }) => {
+      const form = useForm({
+        schema: z.object({ kind: z.enum(["bug", "idea"]) }),
+        initialValues: { kind: "bug" as const },
+        handler: () => {},
+      });
+      return (
+        <Control
+          input={form.input.kind}
+          label="Kind"
+          segmented
+          size={props.size}
+          items={["bug", "idea"]}
+        />
+      );
+    };
+    const segmented = (ui: Awaited<ReturnType<typeof mount>>) =>
+      ui.container
+        .querySelector('[data-slot="segmented"]')!
+        .className.split(/\s+/);
+
+    const small = await mount(<Probe size="sm" />);
+    expect(segmented(small)).toContain("h-7");
+    small.unmount();
+
+    const plain = await mount(<Probe />);
+    expect(segmented(plain)).not.toContain("h-7");
+  });
 });

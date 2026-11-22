@@ -13,6 +13,11 @@ import { FolioAttachmentService } from "./FolioAttachmentService.ts";
  */
 export class KnowledgeBuckets {
   /**
+   * One folio attachment's cap, in megabytes.
+   */
+  public static readonly MAX_SIZE_MB = 10;
+
+  /**
    * Storage for Folio attachments. Declared here so `?bucket=archive-blobs`
    * resolves — without it every Folio upload 404s with
    * "Storage 'archive-blobs' not found." (Bucket value kept as
@@ -24,6 +29,9 @@ export class KnowledgeBuckets {
   public readonly folioAttachments = $storage({
     name: FolioAttachmentService.BUCKET,
     description: "Folio attachments",
+    // Spelled out, the default's own value: the upload route declares the
+    // same, or the framework's 5 MB multipart default wins.
+    maxSize: KnowledgeBuckets.MAX_SIZE_MB,
     // The folio editor uploads here straight from the browser.
     clientUploads: true,
   });

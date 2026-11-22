@@ -13,8 +13,10 @@ export interface ChatRoomUnread {
 
 export interface OrderedRooms {
   /**
-   * What the list shows: rooms with something unread first, then by last
-   * activity, newest first.
+   * What the list shows, in the order a manager set by dragging, else oldest
+   * room first: a room keeps its place whatever is said
+   * in it, so a message sent or received never moves a row under the
+   * pointer. Unread is shown on the row (bold, a count), not by its place.
    */
   active: ChatRoomResource[];
   /**
@@ -41,9 +43,10 @@ export const lastActivityOf = (room: ChatRoomResource): string =>
 /**
  * The room list of the Chat page, ordered and folded (#E161, #Q3929).
  *
- * One flat list, never a tree: what needs the reader comes first. The room
- * being read is never folded, so opening a quiet room by its link does not
- * make it vanish from the list it is selected in.
+ * One flat list, never a tree, in creation order: sorting by the last message
+ * moved the open room to the top on every message sent. The room being
+ * read is never folded, so opening a quiet room by its link does not make
+ * it vanish from the list it is selected in.
  */
 export const orderRooms = (
   rooms: ChatRoomResource[],
@@ -57,12 +60,19 @@ export const orderRooms = (
     return true;
   });
 
+  // The order someone set by dragging first, then the rooms never placed,
+  // oldest first, the name breaking a tie: a new room joins the end.
   const sorted = [...kept].sort((a, b) => {
-    const byUnread = Number(unreadOf(b) > 0) - Number(unreadOf(a) > 0);
-    if (byUnread !== 0) return byUnread;
-    const byActivity = lastActivityOf(b).localeCompare(lastActivityOf(a));
-    if (byActivity !== 0) return byActivity;
-    return a.name.localeCompare(b.name);
+    const placed =
+      Number(b.position !== undefined) - Number(a.position !== undefined);
+    if (placed !== 0) return placed;
+    if (a.position !== undefined && b.position !== undefined) {
+      const byPosition = a.position - b.position;
+      if (byPosition !== 0) return byPosition;
+    }
+    return (
+      a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name)
+    );
   });
 
   const isQuiet = (room: ChatRoomResource) =>

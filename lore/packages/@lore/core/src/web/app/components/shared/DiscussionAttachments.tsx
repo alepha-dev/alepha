@@ -1,12 +1,11 @@
 import { FileImage } from "@alepha/ui";
-import {
-  AttachmentLightbox,
-  attachmentPreview,
-  type I18n,
-} from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { FileText, Loader2, X } from "lucide-react";
+import { FileText, Loader2, Play, X } from "lucide-react";
 import { type MouseEvent, useState } from "react";
+
+import type { I18n } from "../../services/I18n.ts";
+import AttachmentLightbox from "./AttachmentLightbox.tsx";
+import { attachmentPreview } from "./attachmentPreview.ts";
 
 /**
  * One file on a comment, posted or waiting in the composer.
@@ -38,17 +37,24 @@ export interface DiscussionAttachmentsProps {
 
 /**
  * A comment's files as tiles, the same in the composer and in the thread:
- * an image is its own thumbnail and zooms in the lightbox, any other file is
- * a tile with its name and size that opens in a tab.
+ * an image is its own thumbnail and zooms in the lightbox, a video shows its
+ * first frame under a play badge and plays there, any other file is a tile
+ * with its name and size that opens in a tab.
  *
- * Shared by a quest's and a feedback item's discussion, so a file looks the
- * same before it is sent and after.
+ * Shared by a quest's and a feedback item's discussion and by Chat (in core
+ * since Chat needed it, and Chat may not import Plan), so a file looks the
+ * same before it is sent and after, wherever it is.
  */
 const DiscussionAttachments = (props: DiscussionAttachmentsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [openId, setOpenId] = useState<string | null>(null);
-  const isImage = (file: DiscussionAttachment) =>
-    attachmentPreview(file.name, file.mimeType).kind === "image";
+  const kindOf = (file: DiscussionAttachment) =>
+    attachmentPreview(file.name, file.mimeType).kind;
+  const isImage = (file: DiscussionAttachment) => kindOf(file) === "image";
+  const isVideo = (file: DiscussionAttachment) => kindOf(file) === "video";
+  // What opens in the viewer on a plain click rather than in a tab.
+  const isVisual = (file: DiscussionAttachment) =>
+    isImage(file) || isVideo(file);
   const href = (file: DiscussionAttachment) =>
     file.url ?? `/api/files/${file.id}`;
 
@@ -73,7 +79,7 @@ const DiscussionAttachments = (props: DiscussionAttachmentsProps) => {
               href={href(file)}
               target="_blank"
               rel="noreferrer"
-              onClick={isImage(file) ? zoom(file) : undefined}
+              onClick={isVisual(file) ? zoom(file) : undefined}
               title={file.name}
               className="border-border bg-background hover:border-foreground/30 block size-20 overflow-hidden rounded-lg border transition-colors"
             >
@@ -83,12 +89,32 @@ const DiscussionAttachments = (props: DiscussionAttachmentsProps) => {
                   alt={file.name}
                   className="size-full cursor-zoom-in object-cover"
                 />
+              ) : isVideo(file) ? (
+                // Its first frame as the thumbnail (`#t=0.1`, as `poster`
+                // needs an image), under a play badge; it plays in the viewer.
+                <span className="relative block size-full cursor-zoom-in bg-black">
+                  <video
+                    src={`${href(file)}#t=0.1`}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    aria-label={file.name}
+                    className="pointer-events-none size-full object-cover"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-black/60 text-white">
+                      <Play className="size-3.5 translate-x-px fill-current" />
+                    </span>
+                  </span>
+                </span>
               ) : (
                 <span className="flex size-full flex-col justify-between p-2 text-xs">
                   <FileText className="text-muted-foreground size-4" />
                   <span className="line-clamp-2 break-all">{file.name}</span>
                   <span className="text-muted-foreground">
-                    {Math.max(1, Math.round(file.size / 1024))} KB
+                    {file.size < 1024 * 1024
+                      ? `${Math.max(1, Math.round(file.size / 1024))} KB`
+                      : `${Math.round((file.size / (1024 * 1024)) * 10) / 10} MB`}
                   </span>
                 </span>
               )}
@@ -116,7 +142,7 @@ const DiscussionAttachments = (props: DiscussionAttachmentsProps) => {
         ))}
       </ul>
       <AttachmentLightbox
-        items={props.items.filter(isImage).map((file) => ({
+        items={props.items.filter(isVisual).map((file) => ({
           fileId: file.id,
           name: file.name,
           mimeType: file.mimeType,

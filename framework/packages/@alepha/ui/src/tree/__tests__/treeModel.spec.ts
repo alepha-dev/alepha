@@ -5,7 +5,9 @@ import {
   findNode,
   flattenTree,
   nodeHolds,
+  dropContainerOf,
   resolveDrop,
+  TREE_ROOT_ID,
   type TreeItem,
   type TreeNode,
 } from "../treeModel.ts";
@@ -437,5 +439,28 @@ describe("resolveDrop", () => {
     expect(resolveDrop(fixture(), "f-conv", "f-runtime", "before")).toEqual({
       parentId: "d-arch",
     });
+  });
+});
+
+describe("resolveDrop - the root, and the folder a drop names", () => {
+  const tree = buildTree([
+    { id: "dir", name: "Dir", branch: true },
+    { id: "in", name: "In", branch: false, parentId: "dir" },
+    { id: "top", name: "Top", branch: false },
+  ]);
+
+  it("moves a nested item to the root, and refuses one already there", () => {
+    expect(resolveDrop(tree, "in", TREE_ROOT_ID, "inside")).toEqual({
+      parentId: undefined,
+    });
+    expect(resolveDrop(tree, "top", TREE_ROOT_ID, "inside")).toBeUndefined();
+  });
+
+  it("names a branch itself, a leaf its parent, a root-level leaf the root", () => {
+    expect(dropContainerOf(tree, "dir")).toBe("dir");
+    expect(dropContainerOf(tree, "in")).toBe("dir");
+    expect(dropContainerOf(tree, "top")).toBeNull();
+    expect(dropContainerOf(tree, TREE_ROOT_ID)).toBeNull();
+    expect(dropContainerOf(tree, "missing")).toBeUndefined();
   });
 });

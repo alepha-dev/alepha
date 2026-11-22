@@ -1,4 +1,4 @@
-import { useIsMobile } from "@alepha/ui";
+import { PaneResizer, useDialog, useIsMobile } from "@alepha/ui";
 import {
   canInProject,
   currentProjectAtom,
@@ -19,7 +19,6 @@ import {
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { useSidebarState } from "alepha/react/ui";
 import { MessagesSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -31,13 +30,16 @@ import type {
   ChatRoomResource,
   ChatServerFrame,
 } from "../../../schemas/index.ts";
+import { chatRoomListWidthAtom } from "../atoms/chatRoomListWidthAtom.ts";
 import { useRoomMessages } from "../hooks/useRoomMessages.ts";
+import { roomRenameFormSchema } from "../schemas/roomRenameFormSchema.ts";
 import { ChatFeedHub } from "../services/ChatFeedHub.ts";
 import { ChatUnread } from "../services/ChatUnread.ts";
 import type { ChatMentionCandidate, ChatPendingFile } from "./ChatComposer.tsx";
 import Conversation from "./Conversation.tsx";
 import NewRoomDialog from "./NewRoomDialog.tsx";
 import RoomList from "./RoomList.tsx";
+import type { RoomListRowAction } from "./RoomListRow.tsx";
 import RoomMembersPanel from "./RoomMembersPanel.tsx";
 
 /**
@@ -49,8 +51,8 @@ const TYPING_EVERY_MS = 3000;
 
 /**
  * The Chat page (#E161, #Q3929), layout C of the mockup: the room inbox on
- * the left, the open room on the right, the project sidebar folded to icons
- * while it is shown. `/<project>/chat/<room>` opens a room by its name.
+ * the left, the open room on the right. The project sidebar is left as the
+ * reader set it. `/<project>/chat/<room>` opens a room by its name.
  *
  * On a phone the list and the conversation are two screens.
  */
@@ -64,6 +66,11 @@ const ChatPage = () => {
   const roomName = state.params.room as string | undefined;
   const me = useAuth().user?.id;
   const isMobile = useIsMobile();
+  const dialogs = useDialog();
+  // The room list's width: the cookie's, and the drag's while one is under
+  // way, so a drag repaints without writing the cookie on every move.
+  const [listWidth, setListWidth] = useStore(chatRoomListWidthAtom);
+  const [dragWidth, setDragWidth] = useState<number | undefined>();
   const users = useProjectUsers();
   const roomsApi = useClient<ChatRoomController>();
   const messagesApi = useClient<ChatMessageController>();
@@ -71,8 +78,6 @@ const ChatPage = () => {
   const hub = useInject(ChatFeedHub);
   const unreadBadge = useInject(ChatUnread);
   const dateTime = useInject(DateTimeProvider);
-
-  useFoldedSidebar();
 
   const roomsKey = ["chat-rooms", projectId];
   const unreadKey = ["chat-unread", projectId];
@@ -301,7 +306,12 @@ const ChatPage = () => {
           params: { projectId },
           body: { file },
         });
-        return { id: uploaded.id, name: uploaded.name };
+        return {
+          id: uploaded.id,
+          name: uploaded.name,
+          mimeType: uploaded.mimeType,
+          size: uploaded.size,
+        };
       },
     },
     [messagesApi, projectId],
@@ -416,6 +426,131 @@ const ChatPage = () => {
   const [panelOpen, setPanelOpen] = useState(false);
   const canManage = !!project && canInProject(project, "chat:manage");
 
+  // A room row's "...": join, rename, archive or unarchive, leave. The
+  // members panel shows members only; the server checks each verb again.
+  type RoomVerb = "join" | "archive" | "unarchive" | "leave";
+  const roomVerb = useAction<[target: ChatRoomResource, verb: RoomVerb], void>(
+    {
+      handler: async (_context, target, verb) => {
+        const params = { projectId, roomId: target.id };
+        if (verb === "join") await roomsApi.joinChatRoom({ params });
+        else if (verb === "leave") await roomsApi.leaveChatRoom({ params });
+        else if (verb === "archive") await roomsApi.archiveChatRoom({ params });
+        else await roomsApi.unarchiveChatRoom({ params });
+        queries.invalidate(["chat-room-members", target.id]);
+        refreshLists();
+      },
+    },
+    [roomsApi, projectId, queries, refreshLists],
+  );
+  const renameRoom = useAction<[target: ChatRoomResource, name: string], void>(
+    {
+      handler: async (_context, target, name) => {
+        const renamed = await roomsApi.renameChatRoom({
+          params: { projectId, roomId: target.id },
+          body: { name },
+        });
+        refreshLists();
+        // The open room is addressed by its name: follow it.
+        if (target.id === room?.id) open(renamed);
+      },
+    },
+    [roomsApi, projectId, refreshLists, room?.id],
+  );
+  const askRename = async (target: ChatRoomResource) => {
+    const name = await dialogs.prompt({
+      title: tr("chat.room.rename.title"),
+      label: tr("chat.room.rename"),
+      defaultValue: target.name,
+      confirmLabel: tr("chat.room.rename.submit"),
+      validate: (value) =>
+        roomRenameFormSchema.safeParse({ name: value }).success
+          ? null
+          : tr("chat.room.new.nameHelp"),
+    });
+    if (name && name !== target.name) void renameRoom.run(target, name);
+  };
+  const notifyLevel = useAction<[level: "mentions" | "muted"], void>(
+    {
+      handler: async (_context, level) => {
+        if (!room) return;
+        await messagesApi.setChatRoomNotifyLevel({
+          params: { projectId, roomId: room.id },
+          body: { level },
+        });
+        refreshLists();
+      },
+    },
+    [messagesApi, projectId, room?.id, refreshLists],
+  );
+  // The list's order, for everyone: saved on a drop, by chat:manage only.
+  const reorderRooms = useAction<[roomIds: string[]], void>(
+    {
+      handler: async (_context, roomIds) => {
+        await roomsApi.reorderChatRooms({
+          params: { projectId },
+          body: { roomIds },
+        });
+        refreshLists();
+      },
+    },
+    [roomsApi, projectId, refreshLists],
+  );
+
+  const actionsFor = (target: ChatRoomResource): RoomListRowAction[] => {
+    const actions: RoomListRowAction[] = [];
+    const busy = roomVerb.loading || renameRoom.loading;
+    const manages = canManage || (!!me && target.createdBy === me);
+    if (
+      !target.private &&
+      !target.joined &&
+      !target.archivedAt &&
+      roomsApi.joinChatRoom.can()
+    ) {
+      actions.push({
+        key: "join",
+        label: tr("chat.room.join"),
+        disabled: busy,
+        onSelect: () => void roomVerb.run(target, "join"),
+      });
+    }
+    if (manages && !target.archivedAt) {
+      actions.push({
+        key: "rename",
+        label: tr("chat.room.rename.action"),
+        disabled: busy,
+        onSelect: () => void askRename(target),
+      });
+    }
+    if (manages) {
+      actions.push(
+        target.archivedAt
+          ? {
+              key: "unarchive",
+              label: tr("chat.room.unarchive"),
+              disabled: busy,
+              onSelect: () => void roomVerb.run(target, "unarchive"),
+            }
+          : {
+              key: "archive",
+              label: tr("chat.room.archive"),
+              disabled: busy,
+              onSelect: () => void roomVerb.run(target, "archive"),
+            },
+      );
+    }
+    if (target.joined) {
+      actions.push({
+        key: "leave",
+        label: tr("chat.room.leave"),
+        destructive: true,
+        disabled: busy,
+        onSelect: () => void roomVerb.run(target, "leave"),
+      });
+    }
+    return actions;
+  };
+
   const list = (
     <RoomList
       onCreate={
@@ -426,12 +561,19 @@ const ChatPage = () => {
       selectedId={room?.id}
       now={now}
       onOpen={open}
+      actionsFor={actionsFor}
+      onReorder={
+        canManage ? (roomIds) => void reorderRooms.run(roomIds) : undefined
+      }
     />
   );
 
   const right = room ? (
     <Conversation
       room={room}
+      onNotify={
+        room.joined ? (level) => void notifyLevel.run(level) : undefined
+      }
       projectId={projectId}
       projectSlug={projectSlug}
       me={me}
@@ -443,8 +585,6 @@ const ChatPage = () => {
       loading={conversation.loading}
       canWrite={messagesApi.sendChatMessage.can()}
       canManage={canManage}
-      rooms={rooms}
-      onOpenRoom={open}
       panelOpen={panelOpen}
       onTogglePanel={() => setPanelOpen((value) => !value)}
       candidates={candidates}
@@ -474,7 +614,9 @@ const ChatPage = () => {
       onTyping={onTyping}
     />
   ) : (
-    <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+    // Content, on `bg-card` as the conversation it stands in for, not the
+    // page's dotted background.
+    <div className="bg-card flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
       <MessagesSquare className="text-muted-foreground size-8" />
       <p className="text-muted-foreground max-w-md text-sm">
         {roomName ? tr("chat.room.notFound") : tr("chat.page.pick")}
@@ -492,7 +634,6 @@ const ChatPage = () => {
         users={users}
         members={memberPage?.items ?? []}
         onClose={() => setPanelOpen(false)}
-        onRenamed={(renamed) => open(renamed)}
       />
     ) : undefined;
 
@@ -514,15 +655,31 @@ const ChatPage = () => {
     );
   }
 
+  const width = dragWidth ?? listWidth.width ?? LIST_DEFAULT_WIDTH;
+
   return (
     <div
-      className={
-        panel
-          ? "grid h-full min-h-0 grid-cols-[18.5rem_1fr_18rem]"
-          : "grid h-full min-h-0 grid-cols-[18.5rem_1fr]"
-      }
+      className="grid h-full min-h-0"
+      style={{
+        gridTemplateColumns: panel ? `${width}px 1fr 18rem` : `${width}px 1fr`,
+      }}
     >
-      <div className="min-h-0 border-r">{list}</div>
+      {/* Resized by dragging its edge, with the shared handle the quest log
+          and the folio tree use: it draws the edge's rule itself. */}
+      <div className="relative min-h-0">
+        {list}
+        <PaneResizer
+          width={listWidth.width ?? LIST_DEFAULT_WIDTH}
+          minWidth={LIST_MIN_WIDTH}
+          maxWidth={LIST_MAX_WIDTH}
+          defaultWidth={LIST_DEFAULT_WIDTH}
+          onResize={setDragWidth}
+          onWidth={(next) => {
+            setDragWidth(undefined);
+            setListWidth({ width: next });
+          }}
+        />
+      </div>
       <div className="min-h-0">{right}</div>
       {panel}
       {dialog}
@@ -531,25 +688,11 @@ const ChatPage = () => {
 };
 
 /**
- * The project sidebar folds to icons while Chat is open, and goes back to
- * how it was on the way out. The header toggle still opens it.
+ * The room list's width bounds and default, in pixels: 296 is the 18.5rem
+ * it had when it was fixed.
  */
-const useFoldedSidebar = () => {
-  const { collapsed, setCollapsed } = useSidebarState();
-  const before = useRef(collapsed);
-  useEffect(() => {
-    before.current = collapsed;
-    setCollapsed(true);
-    // The fold is remembered in a cookie, so it is undone on the way out:
-    // on unmount for a navigation inside the app, on `pagehide` for a
-    // reload or a link that leaves the page, which unmounts nothing.
-    const restore = () => setCollapsed(before.current);
-    window.addEventListener("pagehide", restore);
-    return () => {
-      window.removeEventListener("pagehide", restore);
-      restore();
-    };
-  }, []);
-};
+const LIST_MIN_WIDTH = 220;
+const LIST_MAX_WIDTH = 480;
+const LIST_DEFAULT_WIDTH = 296;
 
 export default ChatPage;

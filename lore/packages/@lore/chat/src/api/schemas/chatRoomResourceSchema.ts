@@ -14,6 +14,10 @@ export const chatRoomResourceSchema = z.object({
   createdBy: z.uuid().optional(),
   createdAt: z.datetime(),
   memberCount: z.integer(),
+  /**
+   * The room's place in the project's list, when someone has ordered it.
+   */
+  position: z.integer().optional(),
   joined: z.boolean(),
   notifyLevel: z.enum(["mentions", "muted"]).optional(),
   /**

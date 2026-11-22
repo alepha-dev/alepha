@@ -91,17 +91,17 @@ export interface TreeViewRowProps<T = undefined> {
    */
   isDragActive: boolean;
   /**
-   * Where this row's drop marker is drawn, if the pointer is over it.
+   * Whether a drop over this row would move anything: its folder (the
+   * branch, or a leaf's parent) is neither the dragged node's own folder nor
+   * inside the dragged branch. Refused, the row still REPORTS the hover, so
+   * the highlight leaves the last folder, but the cursor says "no drop".
    */
-  dropHere?: TreeDropPosition;
+  dropAllowed: boolean;
   /**
-   * This row is the dragged node or sits beneath it, so a drop here would
-   * orphan the branch and will be refused. The row still REPORTS the zone, so
-   * the marker follows the pointer rather than sticking to the last legal row,
-   * but it draws nothing: a marker promising a move that will not happen is
-   * worse than no marker at all.
+   * This row belongs to the folder the drop targets (the folder's row and
+   * everything shown beneath it), highlighted as one block.
    */
-  isDropForbidden: boolean;
+  inDropBlock: boolean;
   /**
    * Whether the consumer supplied a `renderMenu` slot. A primitive rather than
    * the slot itself, so the memo still holds: the slot travels on the facade.
@@ -128,8 +128,12 @@ export interface TreeViewRowProps<T = undefined> {
  * for a library built around a single drop target per area. Recorded so it is
  * not re-litigated.
  *
- * A branch row splits **28% / 44% / 28%** into before / inside / after. A leaf
- * splits 50/50 with no inside area, because it cannot hold children.
+ * A drop names a FOLDER, as in a file manager: over a branch, that branch;
+ * over a leaf, the folder that holds it. The tree is sorted by its
+ * comparator, so it draws no line between two rows (the 28/44/28 zones did,
+ * and promised a place the sort then ignored): it lights the target folder's
+ * rows as one block, refuses with the "no drop" cursor a drop that would
+ * change nothing, and the dragged image is a compact label of the name.
  *
  * The row reports gestures and resolves nothing: `resolveDrop` is the
  * consumer's to call, because only it knows whether the resulting parent
@@ -183,6 +187,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
     e.stopPropagation();
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", node.id);
+    setDragLabel(e);
     facade.onDragStart(node.id);
   };
 
@@ -195,18 +200,12 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       e.dataTransfer.dropEffect = facade.acceptsFiles() ? "copy" : "none";
       return;
     }
-    if (!props.isDragActive || props.isDragging) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const position: TreeDropPosition = node.branch
-      ? y < rect.height * 0.28
-        ? "before"
-        : y > rect.height * 0.72
-          ? "after"
-          : "inside"
-      : y < rect.height / 2
-        ? "before"
-        : "after";
+    if (!props.isDragActive) return;
+    // One zone per row: a drop names a folder, never a place between rows,
+    // which a sorted tree could not keep. A branch is the folder; a leaf
+    // stands for the folder that holds it (`resolveDrop` reads `before` so).
+    e.dataTransfer.dropEffect = props.dropAllowed ? "move" : "none";
+    const position: TreeDropPosition = node.branch ? "inside" : "before";
     facade.onDragOver(node.id, position);
   };
 
@@ -242,6 +241,8 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
     // Selection is otherwise only a background class, which is not
     // something a test (or a future stylesheet) can address.
     "data-selected": isSelected || undefined,
+    // The target folder's block, addressable as the selection is.
+    "data-drop-block": props.inDropBlock || undefined,
     draggable: props.isDraggable && !props.isRenaming,
     onDragStart: props.isDraggable ? handleDragStart : undefined,
     onDragOver: props.isDraggable ? handleDragOver : undefined,
@@ -254,7 +255,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       // slot tracks this row's hover and selected background through it,
       // and a bare group here would also be captured by any `group-*`
       // utility inside the parts nested below.
-      "group/tree-row hover:bg-hover relative flex cursor-default items-center gap-1 py-1 pe-2 text-sm outline-none select-none",
+      "group/tree-row hover:bg-hover-weak relative flex cursor-default items-center gap-1 py-1 pe-2 text-sm outline-none select-none",
       // ⚠️ Named properties, never `transition-all`. This element is
       // also an HTML5 drag SOURCE that animates `opacity` while dragging
       // and carries the drop markers; a blanket transition puts all
@@ -267,11 +268,11 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       "focus-visible:bg-muted/60",
       depth > 0 &&
         "[background-image:repeating-linear-gradient(to_right,var(--border)_0_1px,transparent_1px_var(--tree-guide-step))] [background-position:var(--tree-guide-origin)_0] rtl:[background-image:repeating-linear-gradient(to_left,var(--border)_0_1px,transparent_1px_var(--tree-guide-step))] rtl:[background-position:right_var(--tree-guide-origin)_top_0]",
-      isSelected && "bg-muted font-medium",
+      isSelected && "bg-hover font-medium",
       props.isDragging && "opacity-45",
-      props.dropHere === "inside" &&
-        !props.isDropForbidden &&
-        "bg-primary/10 ring-primary/60 ring-1 ring-inset",
+      // The folder the drop targets, as one block: its row and all of its
+      // shown rows, the way a file manager lights the folder a file goes in.
+      props.inDropBlock && "bg-primary/15",
     ),
     style: {
       paddingInlineStart: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px`,
@@ -299,18 +300,6 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
         <span
           aria-hidden
           className="bg-primary pointer-events-none absolute inset-y-0 start-0 w-0.5"
-        />
-      )}
-      {props.dropHere === "before" && !props.isDropForbidden && (
-        <div
-          data-slot="tree-view-drop-before"
-          className="bg-primary pointer-events-none absolute inset-x-0 top-0 h-0.5"
-        />
-      )}
-      {props.dropHere === "after" && !props.isDropForbidden && (
-        <div
-          data-slot="tree-view-drop-after"
-          className="bg-primary pointer-events-none absolute inset-x-0 bottom-0 h-0.5"
         />
       )}
       {node.branch ? (
@@ -443,3 +432,36 @@ const isFileDrag = (e: DragEvent<HTMLElement>): boolean =>
  * the facade.
  */
 export const TreeViewRow = memo(TreeViewRowImpl) as typeof TreeViewRowImpl;
+
+/**
+ * The image dragged under the pointer: a compact label of the row's name,
+ * not the browser's snapshot of the whole row with its indent and trailing
+ * icons. Built off-screen, handed to the browser, and removed on the next
+ * frame, once the browser has rendered it.
+ */
+const setDragLabel = (e: DragEvent<HTMLDivElement>): void => {
+  if (typeof e.dataTransfer.setDragImage !== "function") return;
+  const text = e.currentTarget.textContent?.trim() ?? "";
+  if (!text) return;
+  const label = document.createElement("div");
+  label.textContent = text;
+  const style = getComputedStyle(e.currentTarget);
+  Object.assign(label.style, {
+    position: "fixed",
+    top: "-1000px",
+    left: "-1000px",
+    maxWidth: "240px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    padding: "2px 8px",
+    borderRadius: "6px",
+    font: style.font,
+    color: style.color,
+    background: "var(--popover, white)",
+    boxShadow: "0 1px 3px rgb(0 0 0 / 0.2)",
+  });
+  document.body.appendChild(label);
+  e.dataTransfer.setDragImage(label, -12, -8);
+  requestAnimationFrame(() => label.remove());
+};

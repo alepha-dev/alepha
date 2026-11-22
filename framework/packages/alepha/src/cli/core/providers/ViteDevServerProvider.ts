@@ -175,6 +175,14 @@ export class ViteDevServerProvider {
    */
   public async init(options: DevServerOptions): Promise<Alepha> {
     this.options = options;
+
+    // Before Vite exists, never in `setupEnvironment`: Vite watches `.env` and
+    // restarts on its creation, and a restart fired during the first load ran
+    // a second `loadAlepha` that tore the first one down, so `listen()` was
+    // never reached and a fresh clone's first `alepha dev` hung with its port
+    // unbound.
+    await this.envUtils.ensureEnvFile(this.options.root);
+
     await this.createServer();
 
     try {
@@ -949,11 +957,6 @@ createHotContext("/@alepha/reload").on("alepha:reload", async () => {
 
     process.env.VITE_ALEPHA_DEV = "true";
     process.env.NODE_ENV ??= "development";
-
-    // Before `loadEnv` reads the directory: a fresh clone has an example and
-    // no `.env`, and this is the first thing it runs. A no-op once the file
-    // exists, so it costs one `exists` per reload.
-    await this.envUtils.ensureEnvFile(this.options.root);
 
     const mode = process.env.NODE_ENV;
     const env = loadEnv(mode, this.options.root, "");

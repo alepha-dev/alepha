@@ -12,10 +12,12 @@
 
 export {
   buildTree,
+  dropContainerOf,
   findNode,
   flattenTree,
   nodeHolds,
   resolveDrop,
+  TREE_ROOT_ID,
   type TreeDropPosition,
   type TreeDropTarget,
   type TreeItem,

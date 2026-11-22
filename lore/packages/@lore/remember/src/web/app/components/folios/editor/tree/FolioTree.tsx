@@ -4,8 +4,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  cn,
 } from "@alepha/ui";
-import { TreeView } from "@alepha/ui/tree";
+import { TREE_ROOT_ID, TreeView } from "@alepha/ui/tree";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -124,6 +125,22 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   // shared row's memo hold removed the need for the workaround too.
   const { onActions } = props;
   const { commands, canWrite } = tree;
+
+  // The root as a drop target, the way the tree judges any folder: a drag
+  // over the empty space, or over a root-level folio, lands in the root, and
+  // that means something only when the dragged item is not there already.
+  const dragged = tree.dragId
+    ? tree.rows.find((row) => row.node.id === tree.dragId)?.node
+    : undefined;
+  const rootAllowed =
+    !!dragged && (dragged.declaredParentId ?? dragged.parentId) !== undefined;
+  const dropOver = tree.drop
+    ? tree.rows.find((row) => row.node.id === tree.drop?.id)?.node
+    : undefined;
+  const rootTargeted =
+    rootAllowed &&
+    (tree.drop?.id === TREE_ROOT_ID ||
+      (!!dropOver && !dropOver.branch && dropOver.parentId === undefined));
 
   // A CSV import (#Q3517): from the New menu, or a `.csv` dropped on the
   // tree (a directory row imports into it, a folio row into its directory,
@@ -275,7 +292,27 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           rows leave and is the right-click target for the root. Rows are
           unaffected: a flex item's `min-height` is `auto`, so the tree
           keeps its content height and the container still scrolls. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-1">
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-y-auto py-1 transition-colors",
+          // The root folder is the drop's target: the whole pane lights up,
+          // as a file manager lights the folder a file goes in.
+          rootTargeted && "bg-primary/15",
+        )}
+        // A drag released over the empty space, or between the rows'
+        // padding, goes to the root. A row handles its own drop and stops it.
+        onDragOver={(event) => {
+          if (!tree.dragId) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = rootAllowed ? "move" : "none";
+          commands.onDragOver(TREE_ROOT_ID, "inside");
+        }}
+        onDrop={(event) => {
+          if (!tree.dragId) return;
+          event.preventDefault();
+          void commands.onDrop(TREE_ROOT_ID);
+        }}
+      >
         {!tree.loading && tree.rows.length === 0 && (
           <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
             {tr("folios.editor.tree.empty")}

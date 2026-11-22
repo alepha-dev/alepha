@@ -50,7 +50,7 @@ export const QueryPanel = (props: QueryPanelProps) => {
       // obvious place to aim for lands on the panel and nothing happens.
       // Nothing else needs the clip, since the clause list scrolls in its own
       // box.
-      className="border-border bg-card/30 relative flex flex-none flex-col border-e"
+      className="border-border chrome relative flex flex-none flex-col border-e"
     >
       {/* A 7px hit strip centred on the border: the border itself is 1px,
           which is not a target anyone hits on the first try. */}

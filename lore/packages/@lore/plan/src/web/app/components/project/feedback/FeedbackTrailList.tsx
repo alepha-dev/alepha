@@ -12,15 +12,20 @@ export interface FeedbackTrailListProps {
  * visited and the actions, newest last as recorded. Every value is the
  * reporter's page's, so attacker-controlled: rendered as escaped plain text
  * only, never as a link or markdown (folio #12).
+ *
+ * Its root is `display: contents`, so each section is a cell of the Context
+ * grid around it (`ProjectFeedbackDetail`): one column on a narrow pane;
+ * from `@2xl` the facts, the pages and the actions side by side, with the
+ * crashes as a full row above them.
  */
 const FeedbackTrailList = (props: FeedbackTrailListProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const time = (at: number) => l(new Date(at), { date: "LTS" });
 
   return (
-    <div className="flex flex-col gap-2 text-xs" data-testid="feedback-trail">
+    <div className="contents text-xs" data-testid="feedback-trail">
       {props.trail.errors.length > 0 && (
-        <section className="flex flex-col gap-0.5">
+        <section className="flex flex-col gap-0.5 @2xl:order-first @2xl:col-span-3">
           <span className="text-muted-foreground font-medium">
             {tr("feedback.trail.errors")}
           </span>

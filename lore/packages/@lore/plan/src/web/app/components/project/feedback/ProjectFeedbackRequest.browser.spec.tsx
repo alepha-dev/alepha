@@ -1,6 +1,6 @@
 import { describe, it } from "vitest";
 
-import { readDraftFromQuery } from "./ProjectFeedbackRequest.tsx";
+import { readDraftFromQuery } from "./readDraftFromQuery.ts";
 
 describe("readDraftFromQuery", () => {
   const manyTags = (count: number) => {

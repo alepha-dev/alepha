@@ -10,9 +10,14 @@ import {
   useDialog,
   UserAvatar,
 } from "@alepha/ui";
-import { type I18n, LoreViewer, type ProjectUser } from "@lore/core/web";
+import {
+  DiscussionAttachments,
+  type I18n,
+  LoreViewer,
+  type ProjectUser,
+} from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Bot, FileText, Pencil, SmilePlus, Trash2 } from "lucide-react";
+import { Bot, Pencil, SmilePlus, Trash2 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import type {
@@ -249,33 +254,16 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
                 {tr("chat.message.edited")}
               </span>
             )}
+            {/* The files, as tiles: an image zooms in the lightbox, as on a
+                quest or a feedback item. */}
             {message.attachments.length > 0 && (
-              <ul
-                className="mt-1 flex flex-wrap gap-2"
+              <div
+                className="mt-1"
+                role="group"
                 aria-label={tr("chat.message.files")}
               >
-                {message.attachments.map((file) => (
-                  <li key={file.id}>
-                    {file.mimeType.startsWith("image/") ? (
-                      <a href={file.url} target="_blank" rel="noreferrer">
-                        <img
-                          src={file.url}
-                          alt={file.name}
-                          className="max-h-64 max-w-xs rounded-md border object-contain"
-                        />
-                      </a>
-                    ) : (
-                      <a
-                        href={file.url}
-                        className="hover:bg-accent flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
-                      >
-                        <FileText className="size-3.5" />
-                        {file.name}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                <DiscussionAttachments items={message.attachments} />
+              </div>
             )}
           </div>
         )}

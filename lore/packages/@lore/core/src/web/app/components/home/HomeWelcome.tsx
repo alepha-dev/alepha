@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { BellRing, Bot, Server } from "lucide-react";
+import { BellRing, Bot, MessagesSquare, Server } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
 import LoreLogoAnimated from "../shared/LoreLogoAnimated.tsx";
@@ -23,11 +23,10 @@ export interface HomeWelcomeProps {
  * at the gutters, a line under the header and one above the footer. The
  * pillars are a band ruled rail to rail; under them, a thinner band of small
  * features that are not modules, one under each pillar: Agents under Plan,
- * Notifications under Remember, Chat under Build once Lore Chat ships (an
- * empty cell until then), Self-hosting under Ship. Each links to its guide,
- * as each pillar does, and the column lines run on down to the footer. On a
- * phone the pillars stack, the empty cell is dropped, and the button moves to
- * a bar pinned to the bottom of the screen.
+ * Notifications under Remember, Chat under Build, Self-hosting under Ship.
+ * Each links to its guide, as each pillar does, and the column lines run on
+ * down to the footer. On a phone the pillars stack, and the button moves to a
+ * bar pinned to the bottom of the screen.
  */
 const HomeWelcome = (props: HomeWelcomeProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -109,8 +108,12 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
                 description={tr("home.feature.notifications.description")}
                 href={`${HomeWelcome.docs}/docs/project-notifications`}
               />
-              {/* Under Build: Lore Chat's card, once it ships. */}
-              <div aria-hidden className="max-md:hidden" />
+              <HomeWelcomeFeature
+                icon={MessagesSquare}
+                title={tr("home.feature.chat.title")}
+                description={tr("home.feature.chat.description")}
+                href={`${HomeWelcome.docs}/docs/project-chat`}
+              />
               <HomeWelcomeFeature
                 icon={Server}
                 title={tr("home.feature.selfHost.title")}

@@ -198,10 +198,12 @@ describe("multipart cap resolution", () => {
           routeWith(z.object({ file: z.file({ maxBytes: 1_000 }) })),
           request,
         ),
-      ).rejects.toThrow(/exceeds size limit/i);
+      ).rejects.toThrow(/is too large\. The limit is/i);
     });
 
-    it("names the field that overflowed", async ({ expect }) => {
+    it("names the file that overflowed, by its own name", async ({
+      expect,
+    }) => {
       const provider = await setup();
       const raw = `--${BOUNDARY}\r\nContent-Disposition: form-data; name="avatar"; filename="a.bin"\r\n\r\n${"x".repeat(5_000)}\r\n--${BOUNDARY}--\r\n`;
 
@@ -214,13 +216,14 @@ describe("multipart cap resolution", () => {
       });
 
       // "a part exceeds 1000 bytes" is a worse thing to read than the name of
-      // the input that did it: the parser cannot know, so the HTTP layer says.
+      // the file that did it, which is the name the person uploading knows:
+      // the parser cannot know, so the HTTP layer says. Not the form field's.
       await expect(
         provider.parseMultipart(
           routeWith(z.object({ avatar: z.file({ maxBytes: 1_000 }) })),
           request,
         ),
-      ).rejects.toThrow(/"avatar"/);
+      ).rejects.toThrow(/"a\.bin" is too large\. The limit is/);
     });
   });
 });

@@ -46,8 +46,8 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
         }
       }}
       className={cn(
-        "hover:bg-hover flex items-center gap-2 border-b px-3 py-2.5 transition-colors select-none",
-        props.selected && "bg-accent text-accent-foreground",
+        "hover:bg-hover-weak flex items-center gap-2 border-b px-3 py-2.5 transition-colors select-none",
+        props.selected && "bg-hover text-foreground",
       )}
     >
       <span className="flex size-4 shrink-0 items-center justify-center">

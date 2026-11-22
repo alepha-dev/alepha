@@ -1,7 +1,15 @@
-import { Button, cn, Textarea } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
+import {
+  Button,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Textarea,
+} from "@alepha/ui";
+import { DiscussionAttachments, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowUp, Bot, CirclePlus, X } from "lucide-react";
+import { ArrowUp, Bot, FileUp, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
   useId,
@@ -33,6 +41,8 @@ export interface ChatMentionCandidate {
 export interface ChatPendingFile {
   id: string;
   name: string;
+  mimeType: string;
+  size: number;
 }
 
 export interface ChatComposerProps {
@@ -195,38 +205,6 @@ const ChatComposer = (props: ChatComposerProps) => {
         void send();
       }}
     >
-      {(pending.length > 0 || uploading > 0) && (
-        <ul
-          className="mb-1.5 flex w-full flex-wrap gap-1.5"
-          aria-label={tr("chat.composer.files")}
-          data-testid="chat-pending-files"
-        >
-          {pending.map((file) => (
-            <li
-              key={file.id}
-              className="bg-muted flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
-            >
-              {file.name}
-              <button
-                type="button"
-                aria-label={tr("chat.composer.removeFile", {
-                  args: [file.name],
-                })}
-                onClick={() =>
-                  setPending((held) => held.filter((it) => it.id !== file.id))
-                }
-              >
-                <X className="size-3" />
-              </button>
-            </li>
-          ))}
-          {uploading > 0 && (
-            <li className="text-muted-foreground text-xs">
-              {tr("chat.composer.uploading")}
-            </li>
-          )}
-        </ul>
-      )}
       <input
         ref={picker}
         type="file"
@@ -263,7 +241,7 @@ const ChatComposer = (props: ChatComposerProps) => {
               }}
               className={cn(
                 "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm",
-                index === active && "bg-accent text-accent-foreground",
+                index === active && "bg-hover text-foreground",
               )}
             >
               {candidate.agent && <Bot className="size-3.5 shrink-0" />}
@@ -280,70 +258,109 @@ const ChatComposer = (props: ChatComposerProps) => {
       {/* Discord's message bar: one filled block, the attach button on the
           left, Enter sends. The send button is kept for touch screens only,
           where there is no Enter to rely on. */}
-      <div className="bg-background border-foreground/20 hover:border-foreground/35 focus-within:border-foreground/35 flex items-start gap-1 rounded-lg border pr-2 pl-1 transition-colors">
-        <Button
-          type="button"
-          variant="minimal"
-          size="icon-sm"
-          className="text-muted-foreground hover:text-foreground my-2 rounded-full"
-          aria-label={tr("chat.composer.attach")}
-          onClick={() => picker.current?.click()}
-        >
-          <CirclePlus className="size-5" />
-        </Button>
-        <Textarea
-          ref={input}
-          data-testid="chat-composer"
-          role="combobox"
-          aria-label={tr("chat.composer.label")}
-          aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls={open ? listId : undefined}
-          aria-activedescendant={open ? optionId(active) : undefined}
-          placeholder={tr("chat.composer.placeholder", {
-            args: [props.room.name],
-          })}
-          value={value}
-          rows={1}
-          onChange={(event) => {
-            setValue(event.target.value);
-            track(event.target.value, event.target.selectionStart);
-            if (event.target.value.trim()) props.onTyping?.();
-          }}
-          onSelect={(event) =>
-            track(event.currentTarget.value, event.currentTarget.selectionStart)
-          }
-          onBlur={() => setMention(undefined)}
-          // Dropped on the text, as pasted: the files join the next message.
-          onDragOver={(event) => {
-            if (event.dataTransfer.types.includes("Files"))
+      <div className="bg-muted hover:border-border-hover focus-within:border-border-hover flex flex-col rounded-lg border shadow-xs transition-colors">
+        {/* The files waiting for the next message, inside the box above the
+            text: the same tiles as a quest's or a feedback's discussion,
+            an image zooming in the lightbox, each with its remove cross. */}
+        {(pending.length > 0 || uploading > 0) && (
+          <div
+            className="px-2.5 pt-3"
+            role="group"
+            aria-label={tr("chat.composer.files")}
+            data-testid="chat-pending-files"
+          >
+            <DiscussionAttachments
+              items={pending}
+              uploading={uploading}
+              onRemove={(id) =>
+                setPending((held) => held.filter((it) => it.id !== id))
+              }
+            />
+          </div>
+        )}
+        <div className="flex items-start gap-1.5 pr-2 pl-2">
+          {/* The `+` opens a menu, as on Discord: one entry today, room for
+            more (a poll, a thread) without moving the button. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="minimal"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-foreground my-2"
+                  aria-label={tr("chat.composer.more")}
+                  data-testid="chat-composer-more"
+                />
+              }
+            >
+              <Plus className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="w-48">
+              <DropdownMenuItem onClick={() => picker.current?.click()}>
+                <FileUp />
+                {tr("chat.composer.attach")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Textarea
+            ref={input}
+            data-testid="chat-composer"
+            role="combobox"
+            aria-label={tr("chat.composer.label")}
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls={open ? listId : undefined}
+            aria-activedescendant={open ? optionId(active) : undefined}
+            placeholder={tr("chat.composer.placeholder", {
+              args: [props.room.name],
+            })}
+            value={value}
+            rows={1}
+            onChange={(event) => {
+              setValue(event.target.value);
+              track(event.target.value, event.target.selectionStart);
+              if (event.target.value.trim()) props.onTyping?.();
+            }}
+            onSelect={(event) =>
+              track(
+                event.currentTarget.value,
+                event.currentTarget.selectionStart,
+              )
+            }
+            onBlur={() => setMention(undefined)}
+            // Dropped on the text, as pasted: the files join the next message.
+            onDragOver={(event) => {
+              if (event.dataTransfer.types.includes("Files"))
+                event.preventDefault();
+            }}
+            onDrop={(event) => {
+              if (event.dataTransfer.files.length === 0) return;
               event.preventDefault();
-          }}
-          onDrop={(event) => {
-            if (event.dataTransfer.files.length === 0) return;
-            event.preventDefault();
-            void attach([...event.dataTransfer.files]);
-          }}
-          onPaste={(event) => {
-            const files = [...event.clipboardData.files];
-            if (files.length === 0) return;
-            event.preventDefault();
-            void attach(files);
-          }}
-          onKeyDown={onKeyDown}
-          className="max-h-48 min-h-11 flex-1 resize-none rounded-none border-0 bg-transparent px-1 py-[11px] leading-[22px] shadow-none focus-visible:ring-0 dark:bg-transparent"
-        />
-        <Button
-          type="submit"
-          size="icon-sm"
-          className="my-2 md:hidden"
-          aria-label={tr("chat.composer.send")}
-          disabled={
-            uploading > 0 || (value.trim().length === 0 && pending.length === 0)
-          }
-        >
-          <ArrowUp className="size-4" />
-        </Button>
+              void attach([...event.dataTransfer.files]);
+            }}
+            onPaste={(event) => {
+              const files = [...event.clipboardData.files];
+              if (files.length === 0) return;
+              event.preventDefault();
+              void attach(files);
+            }}
+            onKeyDown={onKeyDown}
+            className="max-h-48 min-h-11 flex-1 resize-none rounded-none border-0 bg-transparent px-1 py-[11px] leading-[22px] shadow-none focus-visible:ring-0 dark:bg-transparent"
+          />
+          <Button
+            type="submit"
+            size="icon-sm"
+            className="my-2 md:hidden"
+            aria-label={tr("chat.composer.send")}
+            disabled={
+              uploading > 0 ||
+              (value.trim().length === 0 && pending.length === 0)
+            }
+          >
+            <ArrowUp className="size-4" />
+          </Button>
+        </div>
       </div>
     </form>
   );

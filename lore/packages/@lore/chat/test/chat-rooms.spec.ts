@@ -218,6 +218,64 @@ describe("chat rooms", () => {
     expect(back.data.archivedAt).toBeUndefined();
   });
 
+  it("orders the room list for everyone, by chat:manage only", async ({
+    expect,
+  }) => {
+    const design = await create(kit.member, "design");
+    const releases = await create(kit.member, "releases");
+    const general = (
+      await rooms.listChatRooms.fetch(
+        { params: { projectId: kit.projectId } },
+        { user: kit.owner },
+      )
+    ).data.items.find((it) => it.name === "general")!;
+    const order = [releases.id, general.id, design.id];
+    const params = { projectId: kit.projectId };
+
+    // A member, even the rooms' creator, may not order the list.
+    expect(
+      await status(
+        rooms.reorderChatRooms.fetch(
+          { params, body: { roomIds: order } },
+          { user: kit.member },
+        ),
+      ),
+    ).toBe(403);
+
+    await rooms.reorderChatRooms.fetch(
+      { params, body: { roomIds: order } },
+      { user: kit.owner },
+    );
+    // Every reader sees the positions the owner set.
+    const seen = (
+      await rooms.listChatRooms.fetch({ params }, { user: kit.viewer })
+    ).data.items;
+    const positionOf = (id: string) =>
+      seen.find((it) => it.id === id)?.position;
+    expect([releases.id, general.id, design.id].map(positionOf)).toEqual([
+      0, 1, 2,
+    ]);
+
+    // A room twice, or one the caller cannot see, is refused, not guessed at.
+    const secret = await create(kit.member, "secret", true);
+    expect(
+      await status(
+        rooms.reorderChatRooms.fetch(
+          { params, body: { roomIds: [design.id, design.id] } },
+          { user: kit.owner },
+        ),
+      ),
+    ).toBe(400);
+    expect(
+      await status(
+        rooms.reorderChatRooms.fetch(
+          { params, body: { roomIds: [secret.id] } },
+          { user: kit.owner },
+        ),
+      ),
+    ).toBe(404);
+  });
+
   it("lets a Viewer read open rooms, and join, create or invite nothing", async ({
     expect,
   }) => {

@@ -29,8 +29,8 @@ export const DataTablePresetRailButton = (
       aria-pressed={props.active}
       data-preset={props.presetKey}
       className={cn(
-        "text-muted-foreground hover:bg-hover hover:text-foreground relative flex w-13 shrink-0 cursor-pointer flex-col items-center gap-0.5 rounded-lg border border-transparent px-0.5 pt-2 pb-1 text-[11px] leading-none transition-colors",
-        props.active && "bg-background text-foreground border-border",
+        "text-muted-foreground hover:bg-hover-weak hover:text-foreground relative flex w-13 shrink-0 cursor-pointer flex-col items-center gap-0.5 rounded-lg border border-transparent px-0.5 pt-2 pb-1 text-[11px] leading-none transition-colors",
+        props.active && "bg-hover text-foreground",
       )}
     >
       {/* A marker on the rail's edge, as a selected sidebar entry has. */}

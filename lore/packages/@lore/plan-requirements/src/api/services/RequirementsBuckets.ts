@@ -5,6 +5,11 @@ import { $storage } from "alepha/api/files";
  */
 export class RequirementsBuckets {
   public static readonly EVIDENCE_BUCKET = "use-case-evidence";
+  /**
+   * One evidence file's cap, in megabytes, the bucket's and its upload
+   * route's.
+   */
+  public static readonly EVIDENCE_MAX_SIZE_MB = 50;
 
   /**
    * Run evidence: screenshots and recordings. 50 MB a file: a quest's 10 MB
@@ -14,6 +19,6 @@ export class RequirementsBuckets {
   public readonly evidence = $storage({
     name: RequirementsBuckets.EVIDENCE_BUCKET,
     description: "Use case run evidence",
-    maxSize: 50,
+    maxSize: RequirementsBuckets.EVIDENCE_MAX_SIZE_MB,
   });
 }

@@ -13,6 +13,14 @@ import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
  */
 export class WorkBuckets {
   /**
+   * One file's cap, in megabytes, for each bucket below and its upload
+   * route, which must declare the same or the framework's 5 MB multipart
+   * default wins.
+   */
+  public static readonly FEEDBACK_MAX_SIZE_MB = 10;
+  public static readonly QUEST_MAX_SIZE_MB = 10;
+
+  /**
    * Bucket for feedback attachments. Size cap mirrors `feedbackOptionsAtom`
    * — the bucket-level limit acts as a hard backstop in case the controller
    * check is bypassed. MIME whitelist is enforced at upload time (not here)
@@ -20,7 +28,7 @@ export class WorkBuckets {
    */
   public readonly feedbackAttachments = $storage({
     name: FeedbackRateLimiter.ATTACHMENT_BUCKET,
-    maxSize: 5,
+    maxSize: WorkBuckets.FEEDBACK_MAX_SIZE_MB,
   });
 
   public readonly questAttachments = $storage({
@@ -30,7 +38,7 @@ export class WorkBuckets {
     description: "Quest attachments",
     // Megabytes. This read `10 * 1024 * 1024`, i.e. a ten-million-megabyte
     // cap — no cap at all.
-    maxSize: 10,
+    maxSize: WorkBuckets.QUEST_MAX_SIZE_MB,
     // No `mimeTypes`, on purpose: a quest carries whatever the work needs,
     // an HTML mockup included. `$storage` reads an absent list as "any
     // type", the same as the folio attachment bucket. A member is someone the

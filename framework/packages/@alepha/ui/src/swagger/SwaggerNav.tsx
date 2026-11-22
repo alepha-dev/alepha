@@ -65,8 +65,8 @@ export const SwaggerNav = (props: SwaggerNavProps) => {
                       props.selected === entry.id ? "true" : undefined
                     }
                     className={cn(
-                      "hover:bg-hover flex w-full items-center gap-2 rounded-md px-2 py-1 text-start",
-                      props.selected === entry.id && "bg-muted",
+                      "hover:bg-hover-weak flex w-full items-center gap-2 rounded-md px-2 py-1 text-start",
+                      props.selected === entry.id && "bg-hover font-medium",
                       entry.operation.deprecated && "opacity-60",
                     )}
                   >

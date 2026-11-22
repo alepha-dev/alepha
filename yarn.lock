@@ -2186,6 +2186,8 @@ __metadata:
   resolution: "@lore/chat@workspace:lore/packages/@lore/chat"
   dependencies:
     "@alepha/ui": "workspace:*"
+    "@dnd-kit/core": "npm:^6.3.1"
+    "@dnd-kit/utilities": "npm:^3.2.2"
     "@lore/core": "workspace:*"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"

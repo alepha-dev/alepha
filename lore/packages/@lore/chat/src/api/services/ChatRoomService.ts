@@ -378,6 +378,35 @@ export class ChatRoomService {
    * `chat:manage`, or the room's creator. A 403 is safe here: the caller
    * already sees the room, so it confirms nothing.
    */
+  /**
+   * Order the project's rooms (#E161): each listed room takes its index as
+   * its position. The action is gated on chat:manage. A room the caller
+   * cannot see (a private room they are not in) is not theirs to place, so
+   * an id outside the project's visible rooms is refused, not guessed at.
+   */
+  public async reorder(
+    projectId: number,
+    userId: string,
+    roomIds: string[],
+  ): Promise<void> {
+    const visible = new Set(
+      (await this.visibleRooms(projectId, userId)).map((room) => room.id),
+    );
+    if (new Set(roomIds).size !== roomIds.length) {
+      throw new BadRequestError("A room is listed twice");
+    }
+    const unknown = roomIds.find((id) => !visible.has(id));
+    if (unknown) {
+      throw new NotFoundError(`No room '${unknown}' in this project`);
+    }
+    // One write per room: a project has tens of rooms. In order, so a write
+    // that fails leaves a prefix placed and the rest where they were.
+    for (const [position, id] of roomIds.entries()) {
+      // In the project: every id was checked against its visible rooms.
+      await this.rooms.updateById(id, { position });
+    }
+  }
+
   protected async assertManages(room: ChatRoom, userId: string): Promise<void> {
     if (room.createdBy === userId) {
       return;
@@ -415,6 +444,7 @@ export class ChatRoomService {
       ...(room.archivedAt ? { archivedAt: room.archivedAt } : {}),
       ...(room.createdBy ? { createdBy: room.createdBy } : {}),
       createdAt: room.createdAt,
+      ...(room.position !== undefined ? { position: room.position } : {}),
       memberCount,
       joined: !!mine,
       ...(mine ? { notifyLevel: mine.notifyLevel } : {}),

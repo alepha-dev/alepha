@@ -143,8 +143,8 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
               : props.requirements.map((req) => (
                   <tr
                     key={req.id}
-                    className={`hover:bg-muted/40 cursor-pointer border-b ${
-                      props.selected === req.number ? "bg-muted/60" : ""
+                    className={`hover:bg-hover-weak cursor-pointer border-b ${
+                      props.selected === req.number ? "bg-hover" : ""
                     }`}
                     data-testid="matrix-row"
                     onClick={() => props.onSelect(req.number)}

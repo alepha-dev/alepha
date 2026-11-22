@@ -158,8 +158,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   "flex items-center gap-2 rounded-md px-2 text-start whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0",
                   isMobile ? "h-11 text-sm" : "h-8 text-sm",
                   current && !isMobile
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                    ? "bg-hover text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-hover-weak hover:text-foreground",
                 )}
               >
                 {section.options.icon}
@@ -198,7 +198,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
             <div
               className={cn(
                 "flex min-h-0 flex-col",
-                isMobile ? "flex-1" : "bg-muted/40 w-56 shrink-0 border-e",
+                isMobile ? "flex-1" : "chrome w-56 shrink-0 border-e",
               )}
             >
               {nav}

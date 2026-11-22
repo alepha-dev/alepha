@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -74,6 +74,7 @@ interface FakeDataTransfer {
   files?: File[];
   effectAllowed?: string;
   setData?: () => void;
+  setDragImage?: (element: HTMLElement) => void;
 }
 
 const dispatchDrag = (
@@ -118,35 +119,23 @@ describe("TreeView drag and drop", () => {
     expect(seen).toEqual([]);
   });
 
-  it("splits a branch row into three zones", () => {
+  it("names a folder: a branch row itself, a leaf row its folder", () => {
+    // One zone per row: the tree is sorted, so there is no place
+    // between two rows to report, only the folder a drop lands in.
     const seen: [string, TreeDropPosition][] = [];
     render(
       <Harness dragId="leaf" onDragOver={(id, p) => seen.push([id, p])} />,
     );
 
-    // 28% / 44% / 28% of a 20px row: before under 5.6, after over 14.4.
     dragOver(rowOf("Branch"), 2);
-    dragOver(rowOf("Branch"), 10);
     dragOver(rowOf("Branch"), 18);
+    dragOver(rowOf("Leaf"), 10);
 
     expect(seen).toEqual([
-      ["d-0", "before"],
       ["d-0", "inside"],
-      ["d-0", "after"],
+      ["d-0", "inside"],
+      ["leaf", "before"],
     ]);
-  });
-
-  it("splits a leaf row into two, with no inside zone", () => {
-    // A leaf cannot hold children, so there is nothing an inside drop could
-    // mean on one.
-    const seen: TreeDropPosition[] = [];
-    render(<Harness dragId="d-0" onDragOver={(_, p) => seen.push(p)} />);
-
-    dragOver(rowOf("Leaf"), 2);
-    dragOver(rowOf("Leaf"), 10);
-    dragOver(rowOf("Leaf"), 18);
-
-    expect(seen).toEqual(["before", "after", "after"]);
   });
 
   it("refuses an OS file drag rather than treating it as a re-parent", () => {
@@ -166,14 +155,6 @@ describe("TreeView drag and drop", () => {
     // the frame before an internal drag's `dragstart` state lands.
     const seen: string[] = [];
     render(<Harness onDragOver={(id) => seen.push(id)} />);
-
-    dragOver(rowOf("Branch"), 10);
-    expect(seen).toEqual([]);
-  });
-
-  it("reports nothing for the row being dragged onto itself", () => {
-    const seen: string[] = [];
-    render(<Harness dragId="d-0" onDragOver={(id) => seen.push(id)} />);
 
     dragOver(rowOf("Branch"), 10);
     expect(seen).toEqual([]);
@@ -242,84 +223,113 @@ describe("TreeView drag and drop", () => {
     expect(received).toEqual([["d-0", ["budget.csv"]]]);
   });
 
-  it("draws no marker where a drop would orphan the dragged branch", () => {
-    // The one legality question the component answers on its own: a branch
-    // dropped inside its own subtree. The consumer's `resolveDrop` refuses it
-    // at the end anyway, so a marker here promises a move that never happens.
-    const NESTED = buildTree([
-      { id: "d-0", name: "Branch", branch: true },
-      { id: "child", name: "Child", branch: false, parentId: "d-0" },
-    ]);
+  const NESTED = buildTree([
+    { id: "d-0", name: "Branch", branch: true },
+    { id: "a", name: "Alpha", branch: false, parentId: "d-0" },
+    { id: "b", name: "Bravo", branch: false, parentId: "d-0" },
+    { id: "top", name: "Top", branch: false },
+  ]);
 
-    render(
-      <TreeView
-        label="Files"
-        rows={flattenTree(NESTED, new Set())}
-        collapsed={new Set()}
-        onSelect={() => {}}
-        onToggle={() => {}}
-        draggable
-        dragId="d-0"
-        drop={{ id: "child", position: "before" }}
-        onDragOver={() => {}}
-      />,
-    );
+  const Nested = (props: {
+    dragId?: string;
+    drop?: { id: string; position: TreeDropPosition };
+    collapsed?: Set<string>;
+    onToggle?: (id: string) => void;
+  }): ReactElement => (
+    <TreeView
+      label="Files"
+      rows={flattenTree(NESTED, props.collapsed ?? new Set())}
+      collapsed={props.collapsed ?? new Set()}
+      onSelect={() => {}}
+      onToggle={props.onToggle ?? (() => {})}
+      draggable
+      dragId={props.dragId}
+      drop={props.drop}
+      onDragOver={() => {}}
+    />
+  );
 
+  it("refuses with the no-drop cursor a drop into the item's own folder", () => {
+    // The lie this replaced: a line between two siblings promised a place,
+    // and the sort put the item straight back.
+    render(<Nested dragId="a" />);
+
+    expect(dragOver(rowOf("Bravo"), 10).dropEffect).toBe("none");
+    expect(dragOver(rowOf("Branch"), 10).dropEffect).toBe("none");
+    expect(dragOver(rowOf("Top"), 10).dropEffect).toBe("move");
+  });
+
+  it("refuses a branch dropped on itself or inside its own subtree", () => {
+    render(<Nested dragId="d-0" />);
+
+    expect(dragOver(rowOf("Branch"), 10).dropEffect).toBe("none");
+    expect(dragOver(rowOf("Alpha"), 10).dropEffect).toBe("none");
+  });
+
+  it("lights the target folder's whole block, and draws no line", () => {
+    render(<Nested dragId="top" drop={{ id: "b", position: "before" }} />);
+
+    // Over a file in Branch: Branch is the target, so its row and its rows.
+    for (const label of ["Branch", "Alpha", "Bravo"]) {
+      expect(rowOf(label).className).toContain("bg-primary/15");
+    }
+    expect(rowOf("Top").className).not.toContain("bg-primary/15");
+    // The dragged row is dimmed, and its press suppressed: a transform on a
+    // drag source moves the browser's own drag image with it.
+    expect(rowOf("Top").className).toContain("opacity-45");
+    expect(rowOf("Top").className).not.toContain("active:translate-y-px");
     expect(
-      rowOf("Child").querySelector('[data-slot="tree-view-drop-before"]'),
+      document.querySelector(
+        '[data-slot="tree-view-drop-before"], [data-slot="tree-view-drop-after"]',
+      ),
     ).toBeNull();
-    // The row is otherwise untouched; only the promise is withheld.
-    expect(rowOf("Child")).toBeTruthy();
   });
 
-  it("withholds the inside ring on a forbidden target too", () => {
-    // ⚠️ A case of its own, because the ring is a CLASS on the row while the
-    // before/after markers are elements: guarding one and not the other looks
-    // identical in a diff, and only the browser notices.
-    const NESTED = buildTree([
-      { id: "d-0", name: "Branch", branch: true },
-      { id: "inner", name: "Inner", branch: true, parentId: "d-0" },
-    ]);
+  it("lights nothing where the drop would do nothing", () => {
+    // A branch inside its own subtree, and a file over its own folder.
+    const { rerender } = render(
+      <Nested dragId="d-0" drop={{ id: "a", position: "before" }} />,
+    );
+    expect(rowOf("Branch").className).not.toContain("bg-primary/15");
 
+    rerender(<Nested dragId="a" drop={{ id: "b", position: "before" }} />);
+    expect(rowOf("Branch").className).not.toContain("bg-primary/15");
+  });
+
+  it("flags the root as the target for a root-level file", () => {
+    render(<Nested dragId="a" drop={{ id: "top", position: "before" }} />);
+
+    expect(screen.getByRole("tree").hasAttribute("data-drop-root")).toBe(true);
+  });
+
+  it("opens a closed folder held under the pointer", async () => {
+    const toggled: string[] = [];
     render(
-      <TreeView
-        label="Files"
-        rows={flattenTree(NESTED, new Set())}
-        collapsed={new Set()}
-        onSelect={() => {}}
-        onToggle={() => {}}
-        draggable
-        dragId="d-0"
-        drop={{ id: "inner", position: "inside" }}
-        onDragOver={() => {}}
+      <Nested
+        dragId="top"
+        drop={{ id: "d-0", position: "inside" }}
+        collapsed={new Set(["d-0"])}
+        onToggle={(id) => toggled.push(id)}
       />,
     );
 
-    expect(rowOf("Inner").className).not.toContain("ring-inset");
+    expect(toggled).toEqual([]);
+    await waitFor(() => expect(toggled).toEqual(["d-0"]), { timeout: 2000 });
   });
 
-  it("marks the dragged row and draws the drop marker where the drop is", () => {
-    const { rerender } = render(
-      <Harness dragId="leaf" drop={{ id: "d-0", position: "inside" }} />,
-    );
+  it("drags a compact label of the name, not the whole row", () => {
+    const images: string[] = [];
+    render(<Harness dragId={undefined} />);
 
-    // A transform on a drag source moves the browser's own drag image with
-    // it, so the press is suppressed for exactly as long as the drag lasts.
-    expect(rowOf("Leaf").className).toContain("opacity-45");
-    expect(rowOf("Leaf").className).not.toContain("active:translate-y-px");
-    expect(rowOf("Branch").className).toContain("ring-inset");
+    dispatchDrag(rowOf("Leaf"), "dragstart", 0, {
+      types: [],
+      dropEffect: "",
+      effectAllowed: "",
+      setData: () => {},
+      setDragImage: (element: HTMLElement) =>
+        images.push(element.textContent ?? ""),
+    } as FakeDataTransfer);
 
-    rerender(
-      <Harness dragId="leaf" drop={{ id: "d-0", position: "before" }} />,
-    );
-    expect(
-      rowOf("Branch").querySelector('[data-slot="tree-view-drop-before"]'),
-    ).toBeTruthy();
-    expect(rowOf("Branch").className).not.toContain("ring-inset");
-
-    rerender(<Harness dragId="leaf" drop={{ id: "d-0", position: "after" }} />);
-    expect(
-      rowOf("Branch").querySelector('[data-slot="tree-view-drop-after"]'),
-    ).toBeTruthy();
+    expect(images).toEqual(["Leaf"]);
   });
 });

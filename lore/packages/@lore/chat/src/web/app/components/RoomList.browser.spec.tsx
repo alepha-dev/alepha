@@ -15,15 +15,22 @@ const DAY = 24 * 60 * 60 * 1000;
 
 const room = (
   name: string,
-  options: { private?: boolean; lastAt?: number; archived?: boolean } = {},
+  options: {
+    private?: boolean;
+    lastAt?: number;
+    archived?: boolean;
+    createdAt?: number;
+    position?: number;
+  } = {},
 ): ChatRoomResource => ({
   id: crypto.randomUUID(),
   projectId: 1,
   name,
   private: options.private ?? false,
-  createdAt: new Date(NOW - 30 * DAY).toISOString(),
+  createdAt: new Date(options.createdAt ?? NOW - 30 * DAY).toISOString(),
   memberCount: 2,
   joined: true,
+  ...(options.position !== undefined ? { position: options.position } : {}),
   ...(options.archived
     ? { archivedAt: new Date(NOW - DAY).toISOString() }
     : {}),
@@ -39,8 +46,8 @@ const room = (
 });
 
 /**
- * The Chat page's room list (#E161, #Q3929): one flat list, what has
- * something unread first, then by last activity, and the rooms nothing has
+ * The Chat page's room list (#E161, #Q3929): one flat list in creation
+ * order, which nothing said in a room changes, and the rooms nothing has
  * happened in for a week folded behind one row.
  */
 describe("RoomList", () => {
@@ -89,9 +96,34 @@ describe("RoomList", () => {
       .queryAllByTestId("chat-room-row")
       .map((row) => row.getAttribute("data-room"));
 
-  it("puts rooms with something unread first, then the most recently active", async ({
+  it("orders rooms oldest first, whatever is unread or newest", async ({
     expect,
   }) => {
+    await mount(
+      [
+        room("zeta", { createdAt: NOW - 40 * DAY, lastAt: NOW - 2 * DAY }),
+        room("alpha", { createdAt: NOW - 10 * DAY, lastAt: NOW - 60_000 }),
+        room("mid", { createdAt: NOW - 20 * DAY, lastAt: NOW - 60_000 }),
+      ],
+      { alpha: 3 },
+    );
+
+    expect(shown()).toEqual(["zeta", "mid", "alpha"]);
+  });
+
+  it("puts the rooms a manager placed first, in their order", async ({
+    expect,
+  }) => {
+    await mount([
+      room("old", { createdAt: NOW - 40 * DAY, lastAt: NOW - 60_000 }),
+      room("second", { createdAt: NOW - 20 * DAY, position: 1, lastAt: NOW }),
+      room("first", { createdAt: NOW - 10 * DAY, position: 0, lastAt: NOW }),
+    ]);
+
+    expect(shown()).toEqual(["first", "second", "old"]);
+  });
+
+  it("breaks a tie on the creation date by name", async ({ expect }) => {
     await mount(
       [
         room("design", { lastAt: NOW - 3 * 60_000 }),
@@ -101,7 +133,7 @@ describe("RoomList", () => {
       { release: 2 },
     );
 
-    expect(shown()).toEqual(["release", "general", "design"]);
+    expect(shown()).toEqual(["design", "general", "release"]);
   });
 
   it("folds rooms quiet for a week, and archived ones, behind one row", async ({
@@ -116,7 +148,7 @@ describe("RoomList", () => {
 
     expect(shown()).toEqual(["general"]);
     fireEvent.click(screen.getByText("Show 3 quiet rooms"));
-    expect(shown()).toEqual(["general", "closed", "old", "never"]);
+    expect(shown()).toEqual(["general", "closed", "never", "old"]);
   });
 
   it("never folds the room being read, nor one with something unread", async ({
@@ -132,21 +164,6 @@ describe("RoomList", () => {
       "old",
     );
 
-    expect(shown()).toEqual(["older", "general", "old"]);
-  });
-
-  it("filters to the unread or the private rooms", async ({ expect }) => {
-    await mount(
-      [
-        room("general", { lastAt: NOW - 60_000 }),
-        room("secret", { lastAt: NOW - 2 * 60_000, private: true }),
-      ],
-      { general: 1 },
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "Unread" }));
-    expect(shown()).toEqual(["general"]);
-    fireEvent.click(screen.getByRole("tab", { name: "Private" }));
-    expect(shown()).toEqual(["secret"]);
+    expect(shown()).toEqual(["general", "old", "older"]);
   });
 });

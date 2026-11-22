@@ -127,6 +127,26 @@
 }
 
 /*
+ * Surfaces: three rules, the same in light, dark and every theme.
+ *
+ * 1. CONTENT is `bg-card`: messages, table rows, a form's card, a detail
+ *    pane. White in light; one step above the page in dark.
+ * 2. CHROME is `chrome` (below): what frames content - rails, a list that
+ *    picks what the content shows, headers, toolbars, footers, a composer's
+ *    band. One step off the content in either theme.
+ * 3. STATES are washes of the text colour, never a surface token: selected
+ *    is `bg-hover` (10%, with `font-medium`), hovered is `bg-hover-weak`
+ *    (5%). A wash moves away from whatever it sits on.
+ *
+ * Why not a surface token for a state: the tokens do not keep their order
+ * across modes. In light `card` = `background` (white) and `muted` is
+ * darker; in dark `background` < `card` < `muted`, and `accent` = `muted`.
+ * So `bg-accent` on chrome vanishes in dark, and `bg-background` makes a
+ * black hole in it. Fields keep their own rule: `bg-background` with a
+ * border, an input on whatever surface it sits.
+ */
+
+/*
  * Chrome: the surface of everything that frames content rather than being
  * it - a table's filter bar, sticky header, summary and footer, a tab strip,
  * a menu's header, an application's own toolbar over a board or a report.

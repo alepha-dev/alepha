@@ -308,7 +308,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 
 - Uploaded one-at-a-time via `POST /projects/:projectId/feedback/attachments`. Returns a file id; the client collects ids and includes them in the feedback body.
 - Allowed types: png/jpg/jpeg/webp/gif/csv/txt/json/xlsx/xls/pdf. Both MIME and extension are checked (neither alone is trustworthy).
-- 5 MB / file, 10 / feedback item.
+- 10 MB / file, 10 / feedback item.
 - Stored in the `petition-attachments` bucket (`alepha/api/files`) — **kept un-renamed on purpose**: it's a value already persisted on every existing `files` row, not just an in-code identifier. Renaming it would orphan every attachment ever uploaded (the bucket lookup would 404 for files stored under the old name). The same reasoning keeps the folio-blob bucket at `archive-blobs` (see Folios section) and the project-icon bucket at `campaign-icons` un-renamed. The feedback row carries `attachments: uuid[]` (mirrors `quests.attachments`).
 - `assertAttachmentsBelongToUser` blocks cross-user file id reuse — the controller verifies every claimed attachment was uploaded by the same user.
 
@@ -317,7 +317,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 - `maxFeedbackPerUserPerDay: 5` — per user, across all projects. Applies only to non-members; project owners/members submit without limit.
 - There is **no per-sigil cap**, and adding one is not a matter of wiring up a counter. `maxFeedbackPerSigilPerDay: 50` sat on the atom unread for months, described as capping a leaked sigil token; it was removed because it cannot be computed. A sigil token opens `POST /sigils/ingest` and nothing else, that route does not accept feedback (`absorb` never reads its own `gates.feedback`), and the only submission path requires a signed-in Lore account and carries no sigil identity - `source.sigilId` is optional exactly because the popup-redirect flow keeps the id server-side, and a browser-supplied one would be forgeable by the very caller the cap was for. `maxFeedbackPerUserPerDay` is what bounds a flood. See the atom's own docstring.
 - `maxAttachmentsPerUserPerDay: 50` — per user, across all feedback.
-- `maxAttachmentsPerFeedback: 10`, `maxFileSizeBytes: 5 MB`.
+- `maxAttachmentsPerFeedback: 10`, `maxFileSizeBytes: 10 MB`.
 - All counts are DB-derived (no in-memory windows) so they survive restarts and are correct across workers.
 
 **Visibility / access**

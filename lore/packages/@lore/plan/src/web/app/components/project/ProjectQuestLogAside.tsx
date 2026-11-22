@@ -44,7 +44,7 @@ const ProjectQuestLogAside = () => {
   return (
     <div
       data-testid="quest-log"
-      className="bg-sidebar/40 relative hidden min-h-0 shrink-0 lg:flex"
+      className="chrome relative hidden min-h-0 shrink-0 lg:flex"
       style={{ width }}
     >
       {/* The list is the lazy part; the frame around it already holds its

@@ -68,7 +68,12 @@ const HomeWelcomePillar = (props: HomeWelcomePillarProps) => {
           className="hidden size-full object-cover object-top dark:block"
         />
       </div>
-      <div className="relative flex min-h-56 flex-col justify-end gap-1 p-5 md:min-h-72 md:p-6">
+      {/*
+        Bottom-aligned while the pillars stack; side by side, the words start
+        at one height in every cell, so a shorter description (Ship's) no
+        longer drops its title below the others. A longer one grows the row.
+      */}
+      <div className="relative flex min-h-56 flex-col justify-end gap-1 p-5 md:min-h-72 md:justify-start md:p-6 md:pt-44">
         <span className="flex items-center gap-1 text-base font-semibold">
           {props.title}
           <ArrowUpRight className="text-muted-foreground size-4 opacity-0 transition-opacity group-hover:opacity-100" />

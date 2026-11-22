@@ -25,10 +25,10 @@ Share that link with the people you want to hear from. Inside the project, the
 
 ![The feedback request form](/screenshots/lore/feedback-form-light.png)
 
-The form opens with four buttons, **Bug**, **Idea**, **Question** and
-**Other**, one of them required. The choice becomes the report's first tag
-(`bug`, `feature`, `question` or `other`), so the inbox is sorted before anyone
-reads it. The attachment limits are on the info icon beside **Attachments**.
+The form opens with four buttons, **Suggestion**, **Problem**, **Question**
+and **Other**, one of them required, **Suggestion** selected. The choice becomes
+the report's first tag (`feature`, `bug`, `question` or `other`), so the inbox
+is sorted before anyone reads it. The attachment limits are on the info icon beside **Attachments**.
 
 ⚠️ **The form needs a sign-in.** There is no anonymous report. A visitor who is
 not signed in sees a sign-in prompt instead of the form. Any Lore account can
@@ -42,7 +42,7 @@ on the form, or pasted anywhere on the page.
 | Limit                                        | Value                                                     |
 | -------------------------------------------- | --------------------------------------------------------- |
 | Attachments on one report                    | 10                                                        |
-| Size of one attachment                       | 5 MB                                                      |
+| Size of one attachment                       | 10 MB                                                     |
 | Attachment types                             | png, jpg, jpeg, webp, gif, csv, txt, json, xlsx, xls, pdf |
 | Reports per account, per 24 hours            | 5, across all projects                                    |
 | Attachment uploads per account, per 24 hours | 50, across all reports                                    |
@@ -134,12 +134,12 @@ Lore reads these parameters when the page opens, keeps them for that browser
 tab, and removes them from the address, so they survive the sign-in and stay
 out of the browser's history.
 
-| Parameter                                               | What it does                                                                                                         |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `tags`                                                  | A tag for the report. Repeat it for several. A report holds at most 20, `type` included.                             |
-| `type`                                                  | `bug` or `feature`: picks **Bug** or **Idea** on the form, never tagged twice. Without it the form opens on **Bug**. |
-| `url`                                                   | The page the report is about. Without it, the parameters below are ignored.                                          |
-| `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz` | That page's path and title, the referrer, and the reporter's browser settings.                                       |
+| Parameter                                               | What it does                                                                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `tags`                                                  | A tag for the report. Repeat it for several. A report holds at most 20, `type` included.                                              |
+| `type`                                                  | `bug` or `feature`: picks **Problem** or **Suggestion** on the form, never tagged twice. Without it the form opens on **Suggestion**. |
+| `url`                                                   | The page the report is about. Without it, the parameters below are ignored.                                                           |
+| `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz` | That page's path and title, the referrer, and the reporter's browser settings.                                                        |
 
 A report sent from the form always carries its type's tag.
 

@@ -82,7 +82,11 @@ export class ChatMessageController {
       "Upload a file to attach to the next message you send, 10 MB at most. Pass its id in `sendChatMessage`'s `attachments`.",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      body: z.object({ file: z.file() }),
+      // The bucket's own cap: without it the framework's 5 MB default for a
+      // multipart file refused anything between 5 and 10 MB.
+      body: z.object({
+        file: z.file({ maxBytes: ChatBuckets.MAX_SIZE_MB * 1024 * 1024 }),
+      }),
       response: z.object({
         id: z.uuid(),
         name: z.text(),

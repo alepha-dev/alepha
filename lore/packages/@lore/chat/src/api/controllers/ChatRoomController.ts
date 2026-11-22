@@ -99,6 +99,23 @@ export class ChatRoomController {
       ),
   });
 
+  reorderChatRooms = $action({
+    method: "POST",
+    path: "/projects/:projectId/chat/rooms/order",
+    use: [this.ownsProject("chat:manage")],
+    description:
+      "Set the order of the project's room list, for everyone: the rooms in the order given. chat:manage.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({ roomIds: z.array(z.uuid()).max(500) }),
+      response: okSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.service.reorder(params.projectId, user!.id, body.roomIds);
+      return { ok: true };
+    },
+  });
+
   archiveChatRoom = $action({
     method: "POST",
     path: "/projects/:projectId/chat/rooms/:roomId/archive",

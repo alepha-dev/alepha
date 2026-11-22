@@ -276,7 +276,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
 
     expect(resp.status).toBe(413);
     const body = await resp.json();
-    expect(body.message).toMatch(/exceeds size limit/i);
+    expect(body.message).toMatch(/is too large\. The limit is/i);
   });
 
   it("should reject request exceeding total size limit", async ({ expect }) => {
@@ -320,7 +320,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
 
     expect(resp.status).toBe(413);
     const body = await resp.json();
-    expect(body.message).toMatch(/size limit exceeded/i);
+    expect(body.message).toMatch(/upload is too large/i);
   });
 
   it("should abort oversized streamed upload without buffering it", async ({
@@ -375,7 +375,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     } as never;
 
     await expect(provider.parseMultipart(route, request)).rejects.toThrow(
-      /size limit/i,
+      /too large/i,
     );
 
     // The parser must stop reading at the limit, not consume the stream.
@@ -465,7 +465,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
 
     expect(resp.status).toBe(413);
     const body = await resp.json();
-    expect(body.message).toMatch(/exceeds size limit/i);
+    expect(body.message).toMatch(/is too large\. The limit is/i);
   });
 
   it("should reject via content-length pre-check", async ({ expect }) => {
@@ -490,7 +490,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
 
     expect(resp.status).toBe(413);
     const body = await resp.json();
-    expect(body.message).toMatch(/size limit exceeded/i);
+    expect(body.message).toMatch(/upload is too large/i);
   });
 
   it("should count text fields toward the part limit", async ({ expect }) => {
@@ -562,7 +562,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
     });
     const refused = await upload(alepha, { file: tooBig });
     expect(refused.status).toBe(413);
-    expect(refused.text).toMatch(/exceeds size limit/i);
+    expect(refused.text).toMatch(/is too large\. The limit is/i);
   });
 });
 
