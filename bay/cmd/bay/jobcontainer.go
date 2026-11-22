@@ -41,7 +41,7 @@ type jobDocker interface {
 	RemoveJobVolume(name string) error
 	RunJob(ctx context.Context, c runner.JobContainer, stdout, stderr io.Writer) (int, error)
 	HasRuntime(name string) (bool, error)
-	StartEgress(ctx context.Context, s runner.EgressSidecar, out io.Writer) (func(), error)
+	StartEgress(ctx context.Context, s runner.EgressSidecar, out io.Writer) (func(), string, error)
 }
 
 type jobContainerRunner struct {
@@ -130,7 +130,7 @@ func (r *jobContainerRunner) run(ctx context.Context, id string, spec jobSpec, l
 	if err != nil {
 		return nil, fmt.Errorf("could not find Bay's binary for the egress proxy: %w", err)
 	}
-	stop, err := docker.StartEgress(ctx, runner.EgressSidecar{
+	stop, egressAddr, err := docker.StartEgress(ctx, runner.EgressSidecar{
 		Name: network + "-egress", Image: egressImage, Binary: binary,
 		Allow: spec.Egress, Network: network,
 	}, egressLog{log})
@@ -152,6 +152,8 @@ func (r *jobContainerRunner) run(ctx context.Context, id string, spec jobSpec, l
 			Env: append(append([]string{}, env...), extra...), WorkDir: workDir,
 			Workspace: workspace, Cache: cache, Network: network,
 			MemoryBytes: jobMemoryBytes, PidsLimit: jobPidsLimit, Runtime: runtime,
+			// `egress` by /etc/hosts, not Docker's DNS: see StartEgress.
+			Hosts: []string{"egress:" + egressAddr},
 		}, log.writer("stdout"), log.writer("stderr"))
 		if err != nil {
 			return nil, err
