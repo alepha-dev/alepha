@@ -61,3 +61,60 @@ describe("Button loading", () => {
     );
   });
 });
+
+/**
+ * A page translator (Chrome's "Translate this page") replaces every text node
+ * it translates with `<font>` elements. React still holds the original node,
+ * so the next `insertBefore(newIcon, textNode)` throws `NotFoundError` and the
+ * whole tree falls to the error boundary. A label beside a conditional icon is
+ * exactly that shape: the label must be an element of its own.
+ */
+describe("Button under a page translator", () => {
+  const translate = (root: HTMLElement) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes: Text[] = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode as Text);
+    for (const node of nodes) {
+      const font = document.createElement("font");
+      font.textContent = `fr:${node.data}`;
+      node.replaceWith(font);
+    }
+  };
+
+  const IconSwap = (props: { busy: boolean }) => (
+    <Button>
+      {props.busy ? <i data-testid="busy" /> : <b data-testid="idle" />}
+      Attach
+    </Button>
+  );
+
+  it("swaps an icon beside a translated label without throwing", () => {
+    const view = render(<IconSwap busy={false} />);
+    translate(view.container);
+
+    expect(() => view.rerender(<IconSwap busy />)).not.toThrow();
+    expect(screen.getByTestId("busy")).toBeTruthy();
+    expect(screen.queryByTestId("idle")).toBeNull();
+  });
+
+  it("mounts a conditional icon beside a translated label without throwing", () => {
+    const Submit = (props: { busy: boolean }) => (
+      <Button>
+        {props.busy && <i data-testid="busy" />}
+        Send
+      </Button>
+    );
+    const view = render(<Submit busy={false} />);
+    translate(view.container);
+
+    expect(() => view.rerender(<Submit busy />)).not.toThrow();
+    expect(screen.getByTestId("busy")).toBeTruthy();
+  });
+
+  it("leaves a lone label as the content itself", () => {
+    render(<Button>Save</Button>);
+
+    expect(screen.getByText("Save").getAttribute("data-slot")).toBeNull();
+    expect(screen.getByText("Save").className).toContain("contents");
+  });
+});
