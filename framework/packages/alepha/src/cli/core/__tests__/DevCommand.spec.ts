@@ -39,6 +39,16 @@ describe("DevCommand", () => {
       ]);
     });
 
+    it("should forward --retry to each spawned app", () => {
+      const dev = create();
+
+      expect(dev.testSpawnArgs("yarn", undefined, true)).toEqual([
+        "alepha",
+        "dev",
+        "--retry",
+      ]);
+    });
+
     it("should omit --mode when there is none", () => {
       const dev = create();
 

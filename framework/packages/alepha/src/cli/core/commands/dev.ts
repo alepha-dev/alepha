@@ -42,6 +42,12 @@ export class DevCommand {
           "Run only specific apps (comma-separated: --only api,companion)",
         )
         .optional(),
+      retry: z
+        .boolean()
+        .describe(
+          "Keep a server whose first boot failed alive, waiting for the edit that fixes it (the default in a terminal; without one a failed boot exits 1)",
+        )
+        .optional(),
     }),
     handler: async ({ root, flags, mode }) => {
       const apps = await this.discoverApps(root);
@@ -49,7 +55,9 @@ export class DevCommand {
       if (apps.length > 0) {
         await this.runMultiple(root, apps, flags, mode);
       } else {
-        await this.runSingle(root);
+        await this.runSingle(root, {
+          exitOnStartupError: !flags.retry && !process.stdout.isTTY,
+        });
       }
     },
   });
@@ -103,7 +111,10 @@ export class DevCommand {
   /**
    * Run a single app (existing behavior).
    */
-  protected async runSingle(root: string): Promise<void> {
+  protected async runSingle(
+    root: string,
+    opts: { exitOnStartupError?: boolean } = {},
+  ): Promise<void> {
     await this.scaffolder.ensureConfig(root, {
       tsconfigJson: true,
     });
@@ -120,6 +131,7 @@ export class DevCommand {
       entry,
       noViteReactPlugin: options.noViteReactPlugin ?? false,
       port: options.port,
+      exitOnStartupError: opts.exitOnStartupError,
     });
 
     await this.viteDevServer.start();
@@ -200,7 +212,7 @@ export class DevCommand {
 
     const packageManager = await this.pm.getPackageManager(root);
     const processes = selected.map((app) =>
-      this.spawnApp(app, app.port, packageManager, mode),
+      this.spawnApp(app, app.port, packageManager, mode, !!flags.retry),
     );
 
     // Handle graceful shutdown
@@ -236,8 +248,13 @@ export class DevCommand {
   protected spawnArgs(
     packageManager: "yarn" | "pnpm" | "npm" | "bun",
     mode?: string,
+    retry = false,
   ): string[] {
-    const args = ["dev", ...(mode ? ["--mode", mode] : [])];
+    const args = [
+      "dev",
+      ...(mode ? ["--mode", mode] : []),
+      ...(retry ? ["--retry"] : []),
+    ];
 
     return packageManager === "npm"
       ? ["run", "alepha", "--", ...args]
@@ -260,23 +277,28 @@ export class DevCommand {
     port: number,
     packageManager: "yarn" | "pnpm" | "npm" | "bun" = "yarn",
     mode?: string,
+    retry = false,
   ): ReturnType<typeof spawn> {
-    const proc = spawn(packageManager, this.spawnArgs(packageManager, mode), {
-      cwd: app.path,
-      // Windows package managers are `.cmd` shims, which `spawn` cannot
-      // execute without a shell.
-      shell: process.platform === "win32",
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        APP_NAME: app.name.toUpperCase(),
-        SERVER_PORT: String(port),
-        // The children write through this process's stdout, which they see
-        // as a pipe: colour is forced only when that stdout is a terminal,
-        // so `alepha dev > dev.log` stays plain text.
-        ...(process.stdout.isTTY ? { FORCE_COLOR: "1" } : {}),
+    const proc = spawn(
+      packageManager,
+      this.spawnArgs(packageManager, mode, retry),
+      {
+        cwd: app.path,
+        // Windows package managers are `.cmd` shims, which `spawn` cannot
+        // execute without a shell.
+        shell: process.platform === "win32",
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          APP_NAME: app.name.toUpperCase(),
+          SERVER_PORT: String(port),
+          // The children write through this process's stdout, which they see
+          // as a pipe: colour is forced only when that stdout is a terminal,
+          // so `alepha dev > dev.log` stays plain text.
+          ...(process.stdout.isTTY ? { FORCE_COLOR: "1" } : {}),
+        },
       },
-    });
+    );
 
     proc.on("exit", (code) => {
       if (code !== 0 && code !== null) {
