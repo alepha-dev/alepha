@@ -2,6 +2,7 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { Link } from "alepha/react/router";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2Icon } from "lucide-react";
+import { Children, type ReactNode } from "react";
 
 import { textLinkUnderlineClassName } from "./TextLink.tsx";
 import { cn } from "./utils.ts";
@@ -386,10 +387,34 @@ const Button = (props: ButtonProps) => {
           "text-transparent [&_*]:opacity-0": loading,
         })}
       >
-        {children}
+        {Children.count(children) > 1
+          ? Children.map(children, wrapLabelText)
+          : children}
       </span>
     </ButtonPrimitive>
   );
 };
+
+/**
+ * Gives a label that sits beside other children an element of its own.
+ *
+ * A page translator (Chrome's "Translate this page") replaces each text node
+ * it translates with `<font>` elements, while React keeps the original node.
+ * The next icon swap beside it, `{busy ? <Loader2 /> : <Paperclip />}`, calls
+ * `insertBefore(newIcon, textNode)` with a node that is no longer a child, and
+ * the whole tree throws `NotFoundError` (#Q4189). Inside a `<span>` the label
+ * is replaced in place and the span stays the reference node.
+ *
+ * A lone label is left bare: with no sibling there is no insert against it.
+ * Whitespace stays bare too, since a flex container ignores it and a span of
+ * it would add a gap.
+ */
+const wrapLabelText = (child: ReactNode): ReactNode =>
+  (typeof child === "string" && child.trim() !== "") ||
+  typeof child === "number" ? (
+    <span>{child}</span>
+  ) : (
+    child
+  );
 
 export { Button, buttonVariants };
