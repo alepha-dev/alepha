@@ -62,6 +62,12 @@ export class HostJobService {
    * deploying Lore. A process runner ignores it. Unset, a container host
    * refuses agent jobs ("the spec names none").
    */
+  /**
+   * The one host an Agent host check reaches on a container runner: the
+   * Anthropic API Claude Code asks. It needs no Lore, no clone and no MCP.
+   */
+  public static readonly CHECK_EGRESS = ["api.anthropic.com"];
+
   public static readonly DIGEST_REF =
     /^[a-z0-9./_-]{1,200}@sha256:[0-9a-f]{64}$/;
 
@@ -226,12 +232,15 @@ export class HostJobService {
     if (job.kind === "check") {
       const image = this.image(input.image);
       // On a container host the check runs in the agent image too, so it
-      // checks the CLI the jobs use (#Q3997).
+      // checks the CLI the jobs use (#Q3997). Its egress proxy lets out
+      // only what the list names, so the check names the API it asks: with
+      // no list, a container check could never pass.
       return {
         kind: "check",
         profile: "check",
         maxTurns: 1,
         timeoutSeconds: input.timeoutSeconds,
+        egress: HostJobService.CHECK_EGRESS,
         ...(image ? { image } : {}),
       };
     }

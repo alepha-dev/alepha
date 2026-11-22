@@ -292,6 +292,21 @@ describe("HostJobService", () => {
     expect(again.retries).toBe(1);
   });
 
+  it("lets a check reach the Anthropic API and nothing else", async ({
+    expect,
+  }) => {
+    const check = await w.service.start({
+      projectId: w.projectId,
+      hostId: w.host.id,
+      kind: "check",
+      input: { profile: "check", maxTurns: 1, timeoutSeconds: 60 },
+    });
+    const row = await w.repos.jobs.getOne({ where: { id: { eq: check.id } } });
+    const spec = await w.service.spec(row, "https://lore.test");
+    expect(spec.egress).toEqual(["api.anthropic.com"]);
+    expect(spec.mcpUrl).toBeUndefined();
+  });
+
   it("pins the agent image this Lore was deployed with, by digest only (#Q3997)", async ({
     expect,
   }) => {
