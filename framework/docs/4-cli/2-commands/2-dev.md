@@ -52,6 +52,8 @@ grep -m1 "alepha dev: " <(tail -f dev.log)
 
 `SERVER_PORT=0` takes any free port, so two servers started at once never collide, and the app reads the real port rather than `0`. The same facts are in `node_modules/.alepha/dev.json` (`status`, `url`, `port`, `pid`, and `reason` after a failure), which is deleted when the server stops. Colours are left out whenever the output is not a terminal; `FORCE_COLOR=1` brings them back.
 
+The page's `console.error` and `console.warn` calls and its uncaught errors are printed in the dev server's output too, with source-mapped stacks, so a broken page shows up in the same log as the server. Vite does this by itself when it recognises a coding agent; without a terminal, `dev` turns it on for any caller.
+
 You get:
 
 - **Hot Module Replacement**: Changes appear instantly without full page reload

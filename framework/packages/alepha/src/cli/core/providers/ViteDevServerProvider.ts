@@ -398,6 +398,12 @@ export class ViteDevServerProvider {
         // 5173 (devtools, OAuth redirect URIs) breaks with nothing in the
         // output naming the cause. Same reasoning as `playwright.port.ts`.
         strictPort: true,
+        // The page's `console.error` / `console.warn` and its uncaught errors,
+        // source-mapped, printed in this terminal. Vite turns it on by itself
+        // only when it recognises a coding agent; a script or a CI job
+        // writing the log to a file needs it as much, and has no browser
+        // console to look at. In a terminal, Vite's default stands.
+        forwardConsole: process.stdout.isTTY ? undefined : true,
       },
       optimizeDeps: {
         entries: this.options.entry.browser ? [this.options.entry.browser] : [],
