@@ -85,7 +85,7 @@ const TableRow = (props: TableRowProps) => {
         // passes under the pointer on the way to anything else, so the full
         // state layer reads as a flash across the page. Every other clickable
         // surface uses `bg-hover`; this is the documented exception.
-        "hover:bg-hover-weak has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+        "hover:bg-hover-weak has-aria-expanded:bg-hover-weak data-[state=selected]:bg-hover border-b transition-colors",
         className,
       )}
       {...rest}

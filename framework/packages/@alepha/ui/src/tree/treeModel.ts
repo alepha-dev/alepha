@@ -62,8 +62,21 @@ export interface TreeRow<T = undefined> {
 
 /**
  * Where a dragged node landed relative to the row under the cursor.
+ *
+ * `TreeView` reports `inside` over a branch and `before` over a leaf, which
+ * `resolveDrop` reads as "the folder that holds it": a tree sorted by a
+ * comparator has no position between two rows to offer, so a drop names a
+ * folder, as a file manager's does. `after` stays in the type for a consumer
+ * that resolves drops itself.
  */
 export type TreeDropPosition = "before" | "after" | "inside";
+
+/**
+ * The drop target meaning "the tree's root", for the empty space a consumer
+ * draws below the rows: `onDragOver(TREE_ROOT_ID, "inside")` and
+ * `onDrop(TREE_ROOT_ID)`. Never a node id.
+ */
+export const TREE_ROOT_ID = "__tree-root__";
 
 /**
  * The only thing a drop can change: a new parent. There is no index, because
@@ -349,8 +362,15 @@ export const resolveDrop = <T>(
   if (dragId === targetId) return undefined;
 
   const dragged = findNode(nodes, dragId);
+  if (!dragged) return undefined;
+
+  if (targetId === TREE_ROOT_ID) {
+    const storedParentId = dragged.declaredParentId ?? dragged.parentId;
+    return storedParentId === undefined ? undefined : { parentId: undefined };
+  }
+
   const target = findNode(nodes, targetId);
-  if (!dragged || !target) return undefined;
+  if (!target) return undefined;
 
   if (nodeHolds(dragged, targetId)) return undefined;
 
@@ -366,4 +386,21 @@ export const resolveDrop = <T>(
 
   if (target.parentId === draggedStoredParentId) return undefined;
   return { parentId: target.parentId };
+};
+
+/**
+ * The folder a drop over `targetId` lands in: the branch itself, or a leaf's
+ * parent, or the root (`null`) for a root-level leaf and {@link TREE_ROOT_ID}.
+ * `undefined` when `targetId` is not in the tree. What `TreeView` highlights,
+ * and what a consumer drawing the root area asks.
+ */
+export const dropContainerOf = <T>(
+  nodes: TreeNode<T>[],
+  targetId: string,
+): string | null | undefined => {
+  if (targetId === TREE_ROOT_ID) return null;
+  const target = findNode(nodes, targetId);
+  if (!target) return undefined;
+  if (target.branch) return target.id;
+  return target.parentId ?? null;
 };

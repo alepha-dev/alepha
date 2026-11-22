@@ -16,6 +16,7 @@ import {
   useRank,
   AgentPromptsMenu,
   CollapsibleBlock,
+  DiscussionAttachments,
 } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -36,7 +37,6 @@ import { Fragment, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
-import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
@@ -281,20 +281,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="font-mono text-[11px]"
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
         {/* Collapsible blocks, as on the quest page. */}
         <CollapsibleBlock
           icon={<FileText className="size-5" />}
@@ -379,54 +365,76 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           </CollapsibleBlock>
         )}
 
-        {(feedback.reporter || feedback.source) && (
+        {(tags.length > 0 || feedback.reporter || feedback.source) && (
           <CollapsibleBlock
             icon={<Info className="size-5" />}
             label={tr("feedback.context.title")}
             defaultOpen
           >
-            {/* Provenance fields are attacker-controlled — rendered as escaped
-                plain text only (never as links/markdown). See folio #12. */}
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
-              {feedback.reporter && (
-                <>
-                  <dt className="text-muted-foreground">
-                    {tr("feedback.context.reporter")}
-                  </dt>
-                  <dd>
-                    {feedback.reporter.name ??
-                      feedback.reporter.username ??
-                      feedback.reporter.id}
-                  </dd>
-                </>
-              )}
-              {feedback.source &&
-                (
-                  [
-                    ["feedback.context.page", feedback.source.hostUrl],
-                    ["feedback.context.title2", feedback.source.title],
-                    ["feedback.context.referrer", feedback.source.referrer],
-                    ["feedback.context.userAgent", feedback.source.userAgent],
-                    ["feedback.context.language", feedback.source.language],
-                    ["feedback.context.viewport", feedback.source.viewport],
-                    ["feedback.context.screen", feedback.source.screen],
-                    ["feedback.context.timezone", feedback.source.timezone],
-                  ] as const
-                )
-                  .filter(([, value]) => !!value)
-                  .map(([labelKey, value]) => (
-                    <Fragment key={labelKey}>
-                      <dt className="text-muted-foreground">{tr(labelKey)}</dt>
-                      <dd className="break-all">{value}</dd>
-                    </Fragment>
-                  ))}
-            </dl>
-            {/* What happened just before (#Q4038), errors first. */}
-            {feedback.source?.trail && (
-              <div className="mt-3">
-                <FeedbackTrailList trail={feedback.source.trail} />
+            {/* On a wide pane (`@2xl`, a container query: the pane, not the
+                window, is what has room) three columns: the facts, the
+                pages visited and the actions; one column otherwise. The
+                trail's sections are cells of this grid. */}
+            <div className="@container">
+              <div className="grid gap-4 @2xl:grid-cols-3">
+                {/* Provenance fields are attacker-controlled: rendered as escaped
+                    plain text only (never as links/markdown). See folio #12. */}
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                  {/* The tags (the kind, `bug` or `feature`, and any other) are
+                      one more fact about the item, so they are plain text with
+                      the others, not chips on a line above the description. */}
+                  {tags.length > 0 && (
+                    <>
+                      <dt className="text-muted-foreground">
+                        {tr("feedback.context.tags")}
+                      </dt>
+                      <dd data-testid="feedback-tags">{tags.join(", ")}</dd>
+                    </>
+                  )}
+                  {feedback.reporter && (
+                    <>
+                      <dt className="text-muted-foreground">
+                        {tr("feedback.context.reporter")}
+                      </dt>
+                      <dd>
+                        {feedback.reporter.name ??
+                          feedback.reporter.username ??
+                          feedback.reporter.id}
+                      </dd>
+                    </>
+                  )}
+                  {feedback.source &&
+                    (
+                      [
+                        ["feedback.context.page", feedback.source.hostUrl],
+                        ["feedback.context.title2", feedback.source.title],
+                        ["feedback.context.referrer", feedback.source.referrer],
+                        [
+                          "feedback.context.userAgent",
+                          feedback.source.userAgent,
+                        ],
+                        ["feedback.context.language", feedback.source.language],
+                        ["feedback.context.viewport", feedback.source.viewport],
+                        ["feedback.context.screen", feedback.source.screen],
+                        ["feedback.context.timezone", feedback.source.timezone],
+                      ] as const
+                    )
+                      .filter(([, value]) => !!value)
+                      .map(([labelKey, value]) => (
+                        <Fragment key={labelKey}>
+                          <dt className="text-muted-foreground">
+                            {tr(labelKey)}
+                          </dt>
+                          <dd className="break-all">{value}</dd>
+                        </Fragment>
+                      ))}
+                </dl>
+                {/* What happened just before (#Q4038), errors first. */}
+                {feedback.source?.trail && (
+                  <FeedbackTrailList trail={feedback.source.trail} />
+                )}
               </div>
-            )}
+            </div>
           </CollapsibleBlock>
         )}
 

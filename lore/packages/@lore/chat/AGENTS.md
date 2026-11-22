@@ -15,6 +15,10 @@
 
 Both 404 when the project has chat off or the rank lacks `chat:read`. A room is named in the URL by its name, unique in its project; with none, a wide screen opens `general` and a phone shows the room list.
 
+## The room list
+
+One order for the whole project (`chat_rooms.position`): a rank with `chat:manage` drags a room, or moves it from the keyboard, as the project dock is reordered (`ProjectRail`), and `reorderChatRooms` stores every listed room's index. Rooms never placed follow, oldest first. Nothing said in a room moves it: the list was sorted by its last message until a sent message kept moving the open room to the top. Rooms quiet for a week, and archived ones, fold behind one row.
+
 ## Live
 
 - **One socket per member**, `/ws/chat?roomId=<own user id>`, declared once in `src/schemas/ChatChannels.ts` for both sides: `ChatSocketController` serves it (`$secure` plus `canJoin` on the user's own id), `useChatFeed` subscribes to it. The browser module imports `AlephaWebSocket` and registers `ChatChannels` at boot: a page that injects either later meets a locked container.

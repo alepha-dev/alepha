@@ -5,11 +5,11 @@ import {
   LoreViewer,
   type ProjectUser,
   mentionHandle,
+  DiscussionAttachments,
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
 import DiscussionComment from "../discussion/DiscussionComment.tsx";
 import { expandCommentReferences } from "./commentReferences.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";

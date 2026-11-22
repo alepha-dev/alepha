@@ -46,17 +46,6 @@ export interface PlateLayoutProps {
    */
   tabsVariant?: "underline" | "folder";
   /**
-   * Draw a rule under the whole tab bar, the active folder tile included,
-   * separating the tabs from the body. Off by default: a folder tab opens
-   * into the body below it, which is the look most pages want. A page whose
-   * body is its own surface (a table, a board) asks for the rule.
-   *
-   * The `underline` variant always has it.
-   *
-   * @default false
-   */
-  tabsBorder?: boolean;
-  /**
    * Whether the layout wraps the body in its own scroll region. Default
    * `true`, which is what keeps the plate still while the content moves.
    *
@@ -93,11 +82,12 @@ export const PlateLayout = (props: PlateLayoutProps) => (
     <div
       data-slot="plate-band"
       className={cn(
-        "bg-card/30 border-border shrink-0",
-        // The folder band draws its own bottom line, which the active tile
-        // covers to open into the body. A border here runs under the tile
-        // too, cutting it off from the body: what `tabsBorder` asks for.
-        (props.tabsVariant === "underline" || props.tabsBorder) && "border-b",
+        // Solid `bg-card`, not a `/30` tint: a tint over the page is the
+        // page's black in dark mode. In light it is the same white.
+        "bg-card border-border shrink-0",
+        // Folder tabs end on their own ruled strip (below), so only the
+        // underline variant takes the band's bottom border.
+        props.tabsVariant === "underline" && "border-b",
       )}
     >
       {props.plate}
@@ -105,33 +95,47 @@ export const PlateLayout = (props: PlateLayoutProps) => (
         // The actions sit beside the strip, never in it: the strip is a
         // `tablist`, which holds tabs only. They carry the band's bottom
         // line on, so the band reads as one.
-        <div className="flex items-stretch">
-          <PlateFolderTabs
-            testId={props.tabsTestId}
-            className="min-w-0 flex-1 rounded-none border-x-0 border-t-0 bg-transparent px-4"
-            tabs={props.tabs.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              icon: tab.icon,
-              count: tab.count,
-              href: tab.href,
-              prefetch: tab.prefetch,
-              active: tab.key === props.active,
-              onSelect:
-                tab.href === undefined
-                  ? () => props.onSelect?.(tab.key)
-                  : undefined,
-            }))}
+        <>
+          <div className="flex items-stretch">
+            <PlateFolderTabs
+              testId={props.tabsTestId}
+              className="min-w-0 flex-1 rounded-none border-x-0 border-t-0 bg-transparent px-4"
+              tabs={props.tabs.map((tab) => ({
+                key: tab.key,
+                label: tab.label,
+                icon: tab.icon,
+                count: tab.count,
+                href: tab.href,
+                prefetch: tab.prefetch,
+                active: tab.key === props.active,
+                onSelect:
+                  tab.href === undefined
+                    ? () => props.onSelect?.(tab.key)
+                    : undefined,
+              }))}
+            />
+            {props.tabsActions ? (
+              <div
+                data-slot="plate-tabs-actions"
+                className="flex shrink-0 items-center gap-1.5 px-3 pt-1.5 shadow-[inset_0_-1px_0_0_var(--border)]"
+              >
+                {props.tabsActions}
+              </div>
+            ) : null}
+          </div>
+          {/*
+            A thin strip in the active tile's fill, ruled at its foot: the
+            tile opens into it with no seam, and the body below is content,
+            on `bg-card` (the surface rules in `styles.css`). It replaced a
+            body filled grey to match the tile, which made every tab a grey
+            page.
+          */}
+          <div
+            aria-hidden
+            data-slot="plate-tabs-strip"
+            className="bg-muted h-2 border-b"
           />
-          {props.tabsActions ? (
-            <div
-              data-slot="plate-tabs-actions"
-              className="flex shrink-0 items-center gap-1.5 px-3 pt-1.5 shadow-[inset_0_-1px_0_0_var(--border)]"
-            >
-              {props.tabsActions}
-            </div>
-          ) : null}
-        </div>
+        </>
       ) : (
         <div className="flex items-center">
           <div className="min-w-0 flex-1">
@@ -157,20 +161,9 @@ export const PlateLayout = (props: PlateLayoutProps) => (
 
     {props.scroll === false ? (
       // A body that owns its scroll is a page of content under a toolbar of
-      // its own. Under folder tabs it fades from `--muted`, the active
-      // tile's fill, down to the page's background, as the scrolling body
-      // does: the tile opens into the content with no seam, even when the
-      // content starts with a margin. It ends opaque, never transparent:
-      // without a fill the shell behind it shows through. Underline tabs
-      // have no tile to join and keep the page's background.
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col",
-          props.tabsVariant === "underline"
-            ? "bg-background"
-            : "from-muted to-background bg-linear-to-b",
-        )}
-      >
+      // its own, on the content surface. Opaque, never transparent: without a
+      // fill the shell behind it shows through.
+      <div className="bg-card flex min-h-0 flex-1 flex-col">
         {props.children}
       </div>
     ) : (
@@ -179,18 +172,11 @@ export const PlateLayout = (props: PlateLayoutProps) => (
       <div
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll region must take focus for the keyboard to scroll it (WCAG 2.1.1); the lint rule does not know scroll containers
         tabIndex={0}
-        // Under folder tabs, a fade from `--muted`, the active tile's own
-        // fill, to transparent (#Q3837): at the top the tile opens into the
-        // body with no seam, and the page shows through below. The
-        // gradient is the scroll container's own background, so it spans
-        // the visible region and stays put while the content scrolls: the
-        // top always matches the tile. Underline tabs have no tile to join
-        // and keep the flat fill.
+        // Folder tabs end on their grey strip, so the body is content, on
+        // `bg-card`. Underline tabs have no tile and keep the flat fill.
         className={cn(
           "focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset",
-          props.tabsVariant === "underline"
-            ? "bg-muted"
-            : "from-muted bg-linear-to-b to-transparent",
+          props.tabsVariant === "underline" ? "bg-muted" : "bg-card",
         )}
       >
         {props.children}

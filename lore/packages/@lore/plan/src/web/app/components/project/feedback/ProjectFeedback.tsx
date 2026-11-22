@@ -303,7 +303,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
         {/* Left list */}
         <aside
           className={cn(
-            "bg-muted/40 flex w-full flex-col border-r md:w-[380px] md:shrink-0",
+            "chrome flex w-full flex-col border-r md:w-[380px] md:shrink-0",
             active && "hidden md:flex",
           )}
         >
@@ -407,7 +407,9 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
           // the whole of what feedback #P2139 asked for.
           data-testid="feedback-detail"
           className={cn(
-            "bg-background min-w-0 flex-1",
+            // Content: the card surface, as the rules in `@alepha/ui`'s
+            // `styles.css` have it, never the page's own background.
+            "bg-card min-w-0 flex-1",
             !active && "hidden md:block",
           )}
         >

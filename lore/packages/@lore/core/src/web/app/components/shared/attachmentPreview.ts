@@ -13,6 +13,11 @@
  */
 export type AttachmentPreview =
   | { kind: "image" }
+  /**
+   * Played in the viewer with the browser's own controls. The file route
+   * answers range requests, which seeking (and Safari at all) needs.
+   */
+  | { kind: "video" }
   | { kind: "markdown" }
   | {
       kind: "text";
@@ -60,6 +65,11 @@ const LANGUAGES: Record<string, string> = {
 };
 
 /**
+ * Video by its name, for a file whose type the browser left blank.
+ */
+const VIDEO = new Set(["mp4", "m4v", "webm", "mov", "ogv"]);
+
+/**
  * Extensions shown as text with no language hint.
  */
 const PLAIN = new Set(["txt", "csv", "tsv", "log", "env", "diff", "patch"]);
@@ -72,6 +82,9 @@ export const attachmentPreview = (
 
   if (mimeType.startsWith("image/")) {
     return { kind: "image" };
+  }
+  if (mimeType.startsWith("video/") || VIDEO.has(ext)) {
+    return { kind: "video" };
   }
   if (ext === "md" || ext === "markdown") {
     return { kind: "markdown" };

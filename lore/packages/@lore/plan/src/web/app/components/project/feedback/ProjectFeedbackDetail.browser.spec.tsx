@@ -269,6 +269,18 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
       expect(anchor?.getAttribute("target")).toBe("_blank");
     }
   });
+
+  it("lists the tags as plain text in Context, the reserved one left out", async ({
+    expect,
+  }) => {
+    const view = await show({ ...pendingFeedback, tags: ["feedback", "bug"] });
+
+    const tags = view.getByTestId("feedback-tags");
+    expect(tags.textContent).toBe("bug");
+    // A row of the Context list, not a chip above the description.
+    expect(tags.tagName).toBe("DD");
+    expect(tags.querySelector("[data-slot=badge]")).toBeNull();
+  });
 });
 
 /**

@@ -1,11 +1,11 @@
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
   Segmented,
   cn,
-  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
@@ -15,6 +15,7 @@ import {
   Download,
   Maximize2,
   Minimize2,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -197,6 +198,9 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   return (
     <Dialog open={!!props.openId} onOpenChange={props.onOpenChange}>
       <DialogContent
+        // The close cross is in the header row with the other two actions,
+        // not the dialog's own, which floated above them out of line.
+        showCloseButton={false}
         data-maximized={maximized ? "" : undefined}
         className={cn(
           "grid-cols-[minmax(0,1fr)]",
@@ -205,24 +209,31 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
             : "max-w-[92vw] sm:max-w-3xl",
         )}
       >
-        <div className="flex items-center gap-2 pr-8">
+        {/* One header row: the name, then three icon buttons of one size,
+            Download, maximize and close, on a single line. */}
+        <div className="flex items-center gap-1">
           <DialogTitle className="min-w-0 flex-1 truncate text-sm">
             {current.name}
           </DialogTitle>
           {/* Same-origin, so `download` is honoured and saves under the real
               filename. The endpoint serves inline, which is right for the
               preview beside it and useless when you actually want the file. */}
-          <a
-            href={current.src ?? `/api/files/${current.fileId}`}
-            download={current.name}
-            className={cn(
-              textLinkUnderlineClassName,
-              "text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs",
-            )}
+          <Button
+            variant="minimal"
+            intent="none"
+            size="icon-sm"
+            nativeButton={false}
+            aria-label={tr("common.download")}
+            title={tr("common.download")}
+            render={
+              <a
+                href={current.src ?? `/api/files/${current.fileId}`}
+                download={current.name}
+              />
+            }
           >
-            <Download className="size-3.5" />
-            {tr("common.download")}
-          </a>
+            <Download className="size-4" />
+          </Button>
           <Button
             type="button"
             variant="minimal"
@@ -239,11 +250,24 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
             onClick={() => setMaximized((value) => !value)}
           >
             {maximized ? (
-              <Minimize2 className="size-3.5" />
+              <Minimize2 className="size-4" />
             ) : (
-              <Maximize2 className="size-3.5" />
+              <Maximize2 className="size-4" />
             )}
           </Button>
+          <DialogClose
+            render={
+              <Button
+                variant="minimal"
+                intent="none"
+                size="icon-sm"
+                aria-label={tr("common.close")}
+                title={tr("common.close")}
+              />
+            }
+          >
+            <X className="size-4" />
+          </DialogClose>
         </div>
 
         {isHtml && (
@@ -265,6 +289,24 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
             maximized && "min-h-0 flex-1",
           )}
         >
+          {preview.kind === "video" && (
+            // `key`: a new file is a new element, so the carousel never
+            // plays the previous video's stream under the next one's name.
+            // oxlint-disable-next-line jsx-a11y/media-has-caption -- a file someone attached: it carries no caption track to offer
+            <video
+              key={current.fileId}
+              src={current.src ?? `/api/files/${current.fileId}`}
+              controls
+              playsInline
+              preload="metadata"
+              data-testid="attachment-video"
+              className={cn(
+                "w-auto max-w-full rounded-md bg-black",
+                maximized ? "h-full max-h-full" : "max-h-[70vh]",
+              )}
+            />
+          )}
+
           {preview.kind === "image" && (
             <img
               src={current.src ?? `/api/files/${current.fileId}`}

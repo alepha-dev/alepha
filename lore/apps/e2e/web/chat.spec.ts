@@ -35,8 +35,8 @@ test.describe("Chat", () => {
       await page.goto(`/${slug}/chat`);
       await member.page.goto(`/${slug}/chat/general`);
 
-      // The sidebar folds to icons while Chat is shown.
-      await expect(page.locator("html")).toHaveAttribute(
+      // Chat leaves the sidebar as the reader set it: it no longer folds it.
+      await expect(page.locator("html")).not.toHaveAttribute(
         "data-sidebar",
         "collapsed",
       );
@@ -73,12 +73,12 @@ test.describe("Chat", () => {
       // The line break is kept as typed, not folded into a space.
       await expect(twoLines.locator("br")).toHaveCount(1);
 
-      // The room row previews the newest message, and nothing is unread on
-      // the page that has the room open.
+      // The room row is one line, its name with no preview of the newest
+      // message, and nothing is unread on the page that has the room open.
       const row = page.locator(
         '[data-testid="chat-room-row"][data-room="general"]',
       );
-      await expect(row).toContainText("first line");
+      await expect(row).toHaveText("general");
       await expect(row.getByText(/unread/)).toHaveCount(0);
 
       // The @ popup: the member is offered, arrows and Enter insert them.
@@ -297,12 +297,16 @@ test.describe("Chat", () => {
           .filter({ hasText: "after you left" }),
       ).toHaveCount(0);
 
-      // The room name opens the jump list, which lists only what one can see.
+      // The room list shows only what one can see: the private room the
+      // member left is gone from it.
       await member.page.goto(`/${slug}/chat/general`);
-      await member.page.getByTestId("chat-room-jump").click();
-      const jump = member.page.getByTestId("chat-room-jump-list");
-      await expect(jump.getByRole("button", { name: "general" })).toBeVisible();
-      await expect(jump.getByRole("button", { name: "secret" })).toHaveCount(0);
+      const list = member.page.getByTestId("chat-room-list");
+      await expect(
+        list.locator('[data-testid="chat-room-row"][data-room="general"]'),
+      ).toBeVisible();
+      await expect(
+        list.locator('[data-testid="chat-room-row"][data-room="secret"]'),
+      ).toHaveCount(0);
     } finally {
       await member.ctx.close();
     }

@@ -68,8 +68,8 @@ const QuestItem = (props: QuestItemProps) => {
       className={[
         "group/item relative flex h-8 items-center gap-2 rounded-md pr-2 pl-6 text-sm transition-colors",
         isActive
-          ? "bg-accent text-accent-foreground font-medium"
-          : "hover:bg-hover",
+          ? "bg-hover text-foreground font-medium"
+          : "hover:bg-hover-weak",
       ].join(" ")}
     >
       {/* The open quest wears an accent bar at its left edge, so it is

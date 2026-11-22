@@ -157,7 +157,8 @@ export interface ControlSelectProps {
    */
   triggerClassName?: string;
   /**
-   * Trigger height and type scale. Defaults to `default`.
+   * Trigger height and type scale, the segmented control's included.
+   * Defaults to `default`.
    */
   size?: ControlSelectSize;
   /**
@@ -361,6 +362,9 @@ export const ControlSelect = (props: ControlSelectProps) => {
             value: optValue(o),
             label: segmentedLabel(o),
           }))}
+          // The field's size, in `Segmented`'s scale: `default` is its `md`,
+          // which lines up with a default `Button`, as the trigger does.
+          size={props.size === "default" || !props.size ? "md" : props.size}
           fullWidth
         />
       </FormField>

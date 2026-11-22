@@ -1,4 +1,16 @@
-import { Button, UserAvatar } from "@alepha/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UserAvatar,
+} from "@alepha/ui";
 import {
   displayName,
   type I18n,
@@ -6,7 +18,15 @@ import {
   type ProjectUser,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowLeft, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  BellOff,
+  Hash,
+  Lock,
+  MessagesSquare,
+  Users,
+} from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import type {
@@ -19,7 +39,6 @@ import ChatComposer, {
   type ChatPendingFile,
 } from "./ChatComposer.tsx";
 import ChatMessageRow from "./ChatMessageRow.tsx";
-import RoomJumpList from "./RoomJumpList.tsx";
 
 /**
  * Two messages by the same author this close together share one header.
@@ -83,13 +102,13 @@ export interface ConversationProps {
    * as pending, with no actions.
    */
   sending?: ReadonlySet<string>;
-  /**
-   * Every room the reader can see, for the jump list.
-   */
-  rooms: ChatRoomResource[];
-  onOpenRoom: (room: ChatRoomResource) => void;
   panelOpen: boolean;
   onTogglePanel: () => void;
+  /**
+   * The bell in the header: the reader's notify level for this room. Only
+   * for a member; a room one has not joined notifies nothing.
+   */
+  onNotify?: (level: "mentions" | "muted") => void;
   /**
    * The phone layout's way back to the room list.
    */
@@ -240,12 +259,14 @@ const Conversation = (props: ConversationProps) => {
   return (
     <section
       aria-label={room.name}
-      // The room on the page's own background (#Q4057), where a message's
-      // hover tint shows; the composer is a band of its own below.
-      className="bg-background flex h-full min-h-0 flex-col"
+      // The scheme of a DataTable: the messages are content on `bg-card`,
+      // as a table's rows are, between two chrome bands, the header above
+      // and the composer below. The page's black background (#Q4057) beside
+      // the tinted list read as a hole.
+      className="bg-card flex h-full min-h-0 flex-col"
       data-testid="chat-conversation"
     >
-      <header className="flex h-[46px] shrink-0 items-center gap-2 border-b pr-2.5 pl-3">
+      <header className="chrome flex h-[46px] shrink-0 items-center gap-2 border-b pr-2.5 pl-3">
         {props.onBack && (
           <Button
             variant="minimal"
@@ -256,12 +277,65 @@ const Conversation = (props: ConversationProps) => {
             <ArrowLeft className="size-4" />
           </Button>
         )}
-        <RoomJumpList
-          room={room}
-          rooms={props.rooms}
-          onOpen={props.onOpenRoom}
-        />
+        {/* The room's name, plain: the list beside it is how one switches. */}
+        <h2
+          className="flex min-w-0 items-center gap-1.5 text-sm font-semibold"
+          data-testid="chat-room-title"
+        >
+          <Hash className="text-muted-foreground size-4 shrink-0" />
+          <span className="truncate">{room.name}</span>
+          {room.private && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    className="text-muted-foreground flex shrink-0"
+                    aria-label={tr("chat.room.private")}
+                  />
+                }
+              >
+                <Lock className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>{tr("chat.room.private")}</TooltipContent>
+            </Tooltip>
+          )}
+        </h2>
         <div className="flex-1" />
+        {props.onNotify && (
+          // The bell, as on Discord: the level is a choice in its menu, and
+          // a muted room shows it crossed out.
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="minimal"
+                  size="icon"
+                  aria-label={tr("chat.room.notify.bell")}
+                  data-testid="chat-room-notify"
+                />
+              }
+            >
+              {room.notifyLevel === "muted" ? <BellOff /> : <Bell />}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuRadioGroup
+                value={room.notifyLevel ?? "mentions"}
+                onValueChange={(value) => {
+                  if (value === "mentions" || value === "muted")
+                    props.onNotify?.(value);
+                }}
+              >
+                <DropdownMenuLabel>{tr("chat.room.notify")}</DropdownMenuLabel>
+                <DropdownMenuRadioItem value="mentions">
+                  {tr("chat.room.notify.mentions")}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="muted">
+                  {tr("chat.room.notify.muted")}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <Button
           variant="minimal"
           className="gap-1 px-1.5"
@@ -287,7 +361,7 @@ const Conversation = (props: ConversationProps) => {
       </header>
       <div
         ref={scroller}
-        className="min-h-0 flex-1 overflow-y-auto pt-3 pb-6"
+        className="relative min-h-0 flex-1 overflow-y-auto pt-3 pb-6"
         onScroll={(event) => {
           const element = event.currentTarget;
           pinned.current =
@@ -301,23 +375,29 @@ const Conversation = (props: ConversationProps) => {
             {tr("chat.message.older")}
           </p>
         )}
+        {/* Centred in the room, icon over text, as the page's own "no
+            such room" state is. */}
         {props.messages.length === 0 && !props.loading && (
-          <p className="text-muted-foreground p-6 text-center text-sm">
-            {tr("chat.room.empty")}
-          </p>
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-8 text-center"
+            data-testid="chat-room-empty"
+          >
+            <MessagesSquare className="text-muted-foreground size-8" />
+            <p className="text-muted-foreground max-w-md text-sm">
+              {tr("chat.room.empty")}
+            </p>
+          </div>
         )}
         {/* A log: a screen reader announces each new message politely. */}
         <div ref={log} role="log" aria-label={tr("chat.room.messages")}>
           <ul>{rows}</ul>
         </div>
       </div>
-      {/* The composer's band (#Q4057): the chrome tint, the box white on it. */}
-      <div
-        className="bg-muted shrink-0 border-t pt-3"
-        data-testid="chat-composer-band"
-      >
+      {/* No band: the composer's box floats over the messages, raised on
+          `bg-muted`, as on Discord. */}
+      <div className="shrink-0 pt-1" data-testid="chat-composer-band">
         {room.archivedAt ? (
-          <p className="text-muted-foreground bg-background border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
+          <p className="text-muted-foreground bg-muted mx-3.5 rounded-lg border p-3 text-center text-sm">
             {tr("chat.room.archivedNotice")}
           </p>
         ) : props.canWrite ? (
@@ -329,12 +409,14 @@ const Conversation = (props: ConversationProps) => {
             onTyping={props.onTyping}
           />
         ) : (
-          <p className="text-muted-foreground bg-background border-foreground/20 mx-3.5 rounded-lg border p-3 text-center text-sm">
+          <p className="text-muted-foreground bg-muted mx-3.5 rounded-lg border p-3 text-center text-sm">
             {tr("chat.room.readOnly")}
           </p>
         )}
-        {/* Under the bar, as on Discord: who is typing, else how to talk. */}
-        <div className="text-muted-foreground flex h-6 items-center px-[18px] text-[11px]">
+        {/* Under the bar, as on Discord: who is typing. 14px tall, the box's
+            side margin, so the space under the box equals the space beside
+            it; the line sits in that space. */}
+        <div className="text-muted-foreground flex h-3.5 items-center px-[18px] text-[11px] leading-[14px]">
           <span aria-live="polite" data-testid="chat-typing">
             {props.typing.length === 1
               ? tr("chat.room.typing.one", {
@@ -346,10 +428,6 @@ const Conversation = (props: ConversationProps) => {
                   })
                 : ""}
           </span>
-          {props.typing.length === 0 &&
-            !room.archivedAt &&
-            props.canWrite &&
-            tr("chat.composer.hint")}
         </div>
       </div>
     </section>

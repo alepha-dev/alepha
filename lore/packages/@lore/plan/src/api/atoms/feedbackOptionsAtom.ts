@@ -49,7 +49,7 @@ export const feedbackOptionsAtom = $atom({
     maxFileSizeBytes: z
       .integer()
       .min(1)
-      .default(5 * 1024 * 1024),
+      .default(10 * 1024 * 1024),
     /**
      * Allowed attachment MIME types. Both extension and MIME are validated at
      * upload time — neither can be fully trusted alone.
@@ -91,7 +91,7 @@ export const feedbackOptionsAtom = $atom({
     maxFeedbackPerUserPerDay: 5,
     maxAttachmentsPerUserPerDay: 50,
     maxAttachmentsPerFeedback: 10,
-    maxFileSizeBytes: 5 * 1024 * 1024,
+    maxFileSizeBytes: 10 * 1024 * 1024,
     allowedMimeTypes: [
       "image/png",
       "image/jpeg",

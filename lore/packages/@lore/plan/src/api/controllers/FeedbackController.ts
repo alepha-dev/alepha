@@ -295,7 +295,7 @@ export class FeedbackController {
    * has to state.
    *
    * The limits are here rather than hardcoded in the browser because the form
-   * *quotes them to the user* ("max 5 MB each, up to 10 files") while the
+   * *quotes them to the user* ("max 10 MB each, up to 10 files") while the
    * server enforces them from `feedbackOptionsAtom` — which is `serverOnly`
    * and overridable per deployment. Three copies of the same number (the
    * atom, the client constant, the sentence) is two too many: whichever
@@ -370,7 +370,11 @@ export class FeedbackController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
-        file: z.file(),
+        // The bucket's cap, so the framework's 5 MB multipart default does
+        // not refuse first; `maxFileSizeBytes` is checked in the handler.
+        file: z.file({
+          maxBytes: WorkBuckets.FEEDBACK_MAX_SIZE_MB * 1024 * 1024,
+        }),
       }),
       response: z.object({
         id: z.uuid(),
@@ -639,7 +643,8 @@ export class FeedbackController {
    * its thread. Backs the
    * `feedback_attachment_get` MCP tool, which wraps the bytes into an MCP
    * `image` content block so an agent can actually see the screenshot. The
-   * 5 MB upload cap bounds the base64 payload (~6.7 MB).
+   * 10 MB upload cap bounds the base64 payload (~13.4 MB), as the quest
+   * attachment bucket's same cap does for `quest_attachment_get`.
    *
    * ⚠️ Gated on `feedback:triage`, not `feedback:read` alone: an attachment
    * is the end user's own data (a screenshot of their screen), read to

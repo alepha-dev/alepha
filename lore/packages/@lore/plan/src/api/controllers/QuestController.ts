@@ -947,7 +947,7 @@ export class QuestController {
     path: "/quests/attachments",
     schema: {
       body: z.object({
-        file: z.file(),
+        file: z.file({ maxBytes: WorkBuckets.QUEST_MAX_SIZE_MB * 1024 * 1024 }),
       }),
       response: z.object({
         fileId: z.uuid(),

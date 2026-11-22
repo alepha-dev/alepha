@@ -164,6 +164,10 @@ export {
 export { default as ProjectSettingsCapabilitySection } from "./app/components/project/settings/ProjectSettingsCapabilitySection.tsx";
 export { default as ProjectSettingsThreshold } from "./app/components/project/settings/ProjectSettingsThreshold.tsx";
 export { default as AttachmentLightbox } from "./app/components/shared/AttachmentLightbox.tsx";
+export {
+  default as DiscussionAttachments,
+  type DiscussionAttachment,
+} from "./app/components/shared/DiscussionAttachments.tsx";
 export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";
 export { default as CommitLink } from "./app/components/shared/CommitLink.tsx";
 export { OutboundLink } from "./app/components/shared/OutboundLink.tsx";

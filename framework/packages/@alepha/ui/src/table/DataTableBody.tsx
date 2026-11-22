@@ -195,8 +195,8 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
           // a row is only clickable when a handler was given.
           props.onRowClick && "cursor-pointer",
           props.striped && "even:bg-muted/40",
-          isSelected && "bg-muted/30",
-          isActive && "bg-muted/60 hover:bg-muted/60",
+          isSelected && "bg-hover-weak",
+          isActive && "bg-hover hover:bg-hover",
         )}
       >
         {hasCheckbox && (

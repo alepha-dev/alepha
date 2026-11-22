@@ -23,8 +23,10 @@ export interface TreeDragSpecimenProps {
 /**
  * Tier two: the drag gesture.
  *
- * The 28/44/28 zones on a branch, 50/50 on a leaf, the markers, and the guard
- * that refuses a branch dropped into its own subtree.
+ * A drop names a folder, as in a file manager: a branch row is itself, a leaf
+ * row the folder that holds it. That folder's rows light up as one block, and
+ * a drop that would change nothing (its own folder, or a branch into its own
+ * subtree) lights nothing and shows the "no drop" cursor.
  *
  * ⚠️ The "resolved parent" line beside the tree is not decoration. A drop that
  * is refused and a drop that lands somewhere unexpected look identical while
@@ -99,10 +101,11 @@ export const TreeDragSpecimen = (
           Resolved parent: <span className="font-medium">{lastMove}</span>
         </p>
         <p className="mt-2 text-xs">
-          A branch row splits 28% / 44% / 28% into before, inside and after. A
-          leaf splits in half, because it cannot hold children. Drag a branch
-          onto anything inside itself and nothing happens: the line above does
-          not move.
+          A drop goes into a folder: over a folder row, that folder; over a
+          file, the folder that holds it, lit as one block. A closed folder
+          opens when you hold a drag over it. Drag a branch onto anything inside
+          itself, or a file onto its own folder, and nothing lights up: the line
+          above does not move.
         </p>
       </div>
     </div>

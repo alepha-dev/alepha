@@ -205,7 +205,11 @@ export class FolioAttachmentController {
     path: "/folio/attachments/upload",
     description: "Upload the bytes of a folio attachment.",
     schema: {
-      body: z.object({ file: z.file() }),
+      body: z.object({
+        file: z.file({
+          maxBytes: KnowledgeBuckets.MAX_SIZE_MB * 1024 * 1024,
+        }),
+      }),
       response: z.object({ fileId: z.uuid() }),
     },
     handler: async ({ body, user }) => {

@@ -2,6 +2,7 @@ import {
   type KeyboardEvent,
   type ReactElement,
   type ReactNode,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -9,6 +10,7 @@ import {
 
 import { inlineArrowKey } from "../core/inlineArrowKey.ts";
 import {
+  TREE_ROOT_ID,
   type TreeDropPosition,
   type TreeNode,
   type TreeRow,
@@ -139,7 +141,10 @@ export interface TreeViewProps<T = undefined> {
    */
   dragId?: string;
   /**
-   * Where the drop marker is drawn right now. #Q1940.
+   * The row the pointer is over during a drag (or {@link TREE_ROOT_ID}), as
+   * `onDragOver` reported it. The tree highlights the FOLDER it targets,
+   * as a file manager does: the branch itself, or a leaf's parent, and all
+   * of that folder's rows. #Q1940.
    */
   drop?: { id: string; position: TreeDropPosition };
   /**
@@ -147,9 +152,10 @@ export interface TreeViewProps<T = undefined> {
    */
   onDragStart?: (id: string) => void;
   /**
-   * The pointer is over this row, in this zone. A branch splits 28/44/28
-   * into before / inside / after; a leaf splits 50/50 with no inside area.
-   * #Q1940.
+   * The pointer is over this row: `inside` on a branch, `before` on a leaf,
+   * which `resolveDrop` reads as "into the folder that holds it". The tree is
+   * sorted by its comparator, so there is no place BETWEEN two rows to drop
+   * on: the 28/44/28 zones and their before / after lines promised one. #Q1940.
    */
   onDragOver?: (id: string, position: TreeDropPosition) => void;
   /**
@@ -380,6 +386,63 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
     return ids;
   }, [props.dragId, props.rows]);
 
+  /**
+   * Where a drop over each row would land, and whether it means anything.
+   *
+   * A row's folder is the branch itself or a leaf's parent (`null` for the
+   * root). A drop there is REFUSED (no highlight, the "no drop" cursor) when
+   * it is the dragged node's own folder, since a sorted tree would put it
+   * back where it was, or inside the dragged branch's subtree.
+   */
+  const drag = useMemo(() => {
+    const byId = new Map(props.rows.map((row) => [row.node.id, row.node]));
+    const dragged =
+      props.dragId === undefined ? undefined : byId.get(props.dragId);
+    const draggedParent = dragged
+      ? (dragged.declaredParentId ?? dragged.parentId ?? null)
+      : undefined;
+    const containerOf = (id: string): string | null | undefined => {
+      if (id === TREE_ROOT_ID) return null;
+      const node = byId.get(id);
+      if (!node) return undefined;
+      return node.branch ? node.id : (node.parentId ?? null);
+    };
+    const allows = (container: string | null | undefined): boolean =>
+      dragged !== undefined &&
+      container !== undefined &&
+      container !== draggedParent &&
+      (container === null || !forbidden.has(container));
+    return { byId, containerOf, allows };
+  }, [props.dragId, props.rows, forbidden]);
+
+  // The folder the current drop targets, when the drop would do something.
+  const target = props.drop ? drag.containerOf(props.drop.id) : undefined;
+  const targetAllowed = drag.allows(target);
+
+  // Its rows: the folder's own row and everything beneath it that is shown.
+  const block = useMemo(() => {
+    const ids = new Set<string>();
+    if (!targetAllowed || typeof target !== "string") return ids;
+    const walk = (node: TreeNode<T>): void => {
+      ids.add(node.id);
+      for (const child of node.children ?? []) walk(child);
+    };
+    const folder = drag.byId.get(target);
+    if (folder) walk(folder);
+    return ids;
+  }, [target, targetAllowed, drag]);
+
+  // A closed folder held under the pointer opens, so a drop can go deep in
+  // one gesture (as in a file manager). Only while a drag is on.
+  const opensAfterHover = targetAllowed && typeof target === "string";
+  const hoveredClosed =
+    opensAfterHover && props.drop?.id === target && props.collapsed.has(target);
+  useEffect(() => {
+    if (!hoveredClosed || typeof target !== "string") return;
+    const timer = setTimeout(() => facade.toggle(target), 600);
+    return () => clearTimeout(timer);
+  }, [hoveredClosed, target, facade]);
+
   return (
     // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- a roving tab stop: the rows take the focus, the tree only hears their arrow keys
     <div
@@ -387,6 +450,10 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
       aria-label={props.label}
       aria-multiselectable={props.selectedIds ? true : undefined}
       className={props.className}
+      // The root is the target. Flagged rather than painted: the pane around
+      // the tree (and its empty space below the rows) is the root folder,
+      // and only the consumer draws that.
+      data-drop-root={targetAllowed && target === null ? "" : undefined}
       onKeyDown={onKeyDown}
     >
       {props.rows.map((row) => (
@@ -404,10 +471,8 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
           isDragging={props.dragId === row.node.id}
           isDraggable={props.draggable === true}
           isDragActive={isDragActive}
-          isDropForbidden={forbidden.has(row.node.id)}
-          dropHere={
-            props.drop?.id === row.node.id ? props.drop.position : undefined
-          }
+          dropAllowed={drag.allows(drag.containerOf(row.node.id))}
+          inDropBlock={block.has(row.node.id)}
           hasMenu={props.renderMenu !== undefined}
           isTabStop={row.node.id === tabStopId}
         />

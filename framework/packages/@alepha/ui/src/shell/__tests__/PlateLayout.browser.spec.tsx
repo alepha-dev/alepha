@@ -96,69 +96,49 @@ describe("PlateLayout", () => {
   });
 
   /**
-   * A folder tile opens into the body, so the band draws no rule under the
-   * tabs unless a page asks for one with `tabsBorder`.
+   * Folder tabs end on a thin strip in the active tile's fill, ruled at its
+   * foot, and the body below it is content, on `bg-card`. The band itself
+   * draws no rule, or there would be two.
    */
-  it("draws a rule under folder tabs only with tabsBorder", async () => {
+  it("ends folder tabs on a ruled grey strip over a content body", async () => {
     // Whole class tokens: `border-border` contains `border-b` as text.
-    const band = (view: Awaited<ReturnType<typeof mount>>) =>
-      view
-        .getByTestId("probe-tabs")
-        .closest('[data-slot="plate-band"]')!
-        .className.split(/\s+/);
+    const classes = (el: Element | null) => el!.className.split(/\s+/);
 
-    const plain = await mount(
+    const folder = await mount(
       <PlateLayout tabs={stateTabs} active="overview" tabsTestId="probe-tabs">
         <p>body</p>
       </PlateLayout>,
     );
-    expect(band(plain)).not.toContain("border-b");
-    plain.unmount();
+    const band = folder
+      .getByTestId("probe-tabs")
+      .closest('[data-slot="plate-band"]');
+    expect(classes(band)).not.toContain("border-b");
+    const strip = band!.querySelector('[data-slot="plate-tabs-strip"]');
+    expect(classes(strip)).toEqual(
+      expect.arrayContaining(["bg-muted", "border-b"]),
+    );
+    const body = classes(folder.getByText("body").parentElement);
+    expect(body).toContain("bg-card");
+    expect(body).not.toContain("bg-muted");
+    expect(body).not.toContain("bg-linear-to-b");
+    folder.unmount();
 
-    const ruled = await mount(
+    const underline = await mount(
       <PlateLayout
         tabs={stateTabs}
         active="overview"
         tabsTestId="probe-tabs"
-        tabsBorder
+        tabsVariant="underline"
       >
         <p>body</p>
       </PlateLayout>,
     );
-    expect(band(ruled)).toContain("border-b");
-  });
-
-  /**
-   * Under folder tabs the body fades from the active tile's fill to
-   * transparent, so the tile joins it at the top and the page shows below
-   * (#Q3837). Underline tabs have no tile, and keep the flat fill.
-   */
-  it("fades the body from the tile's fill under folder tabs only", async () => {
-    const body = (view: Awaited<ReturnType<typeof mount>>) =>
-      view.getByText("body").parentElement!.className.split(/\s+/);
-
-    const folder = await mount(
-      <PlateLayout tabs={stateTabs} active="overview">
-        <p>body</p>
-      </PlateLayout>,
+    expect(
+      underline.container.querySelector('[data-slot="plate-tabs-strip"]'),
+    ).toBeNull();
+    expect(classes(underline.getByText("body").parentElement)).toContain(
+      "bg-muted",
     );
-    expect(body(folder)).toEqual(
-      expect.arrayContaining([
-        "bg-linear-to-b",
-        "from-muted",
-        "to-transparent",
-      ]),
-    );
-    expect(body(folder)).not.toContain("bg-muted");
-    folder.unmount();
-
-    const underline = await mount(
-      <PlateLayout tabs={stateTabs} active="overview" tabsVariant="underline">
-        <p>body</p>
-      </PlateLayout>,
-    );
-    expect(body(underline)).toContain("bg-muted");
-    expect(body(underline)).not.toContain("bg-linear-to-b");
   });
 
   /**

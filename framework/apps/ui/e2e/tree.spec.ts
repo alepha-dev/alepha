@@ -24,9 +24,9 @@ import { expect, type Locator, type Page, test } from "./fixtures.ts";
  * `dragTo` hop leaves the drop target without a `dragover` and the row lands
  * nowhere. The same finding is written on Lore's own tree drag case.
  *
- * `ratio` is a fraction of the target row's height, because that is what the
- * zones are: a branch splits 28% / 44% / 28% into before / inside / after, and
- * a leaf splits in half with no inside area.
+ * `ratio` is a fraction of the target row's height. A row has one zone since
+ * the tree names folders rather than places between rows, so any ratio lands
+ * the same; it stays a parameter for a row's vertical centre.
  */
 const dragOnto = async (
   page: Page,
@@ -104,9 +104,8 @@ test.describe("TreeView drag and drop", () => {
     await src.scrollIntoViewIfNeeded();
 
     await dragOnto(page, rowIn(tree, "LICENSE"), src, 0.5, async () => {
-      // The middle 44% of a branch row is the "inside" zone, and the ring
-      // is how it says so.
-      await expect(src).toHaveClass(/ring-inset/);
+      // A branch row is the folder itself, lit as the head of its block.
+      await expect(src).toHaveAttribute("data-drop-block", "true");
     });
 
     await expect(page.getByTestId("resolved-parent")).toContainText(
@@ -114,7 +113,7 @@ test.describe("TreeView drag and drop", () => {
     );
   });
 
-  test("a leaf dropped between two rows takes their parent", async ({
+  test("a leaf dropped on a file goes into that file's folder", async ({
     page,
   }) => {
     const tree = dragTree(page);
@@ -127,12 +126,16 @@ test.describe("TreeView drag and drop", () => {
     // scrolled out, where `boundingBox()` still answers and the mouse lands
     // nowhere. That reads as a drag that did nothing.
     //
-    // The bottom half of a LEAF is "after", which resolves to that leaf's own
-    // parent - one level deeper than where LICENSE starts.
+    // A LEAF row stands for the folder that holds it: one level deeper than
+    // where LICENSE starts. Its whole block is lit, the file included, and
+    // nothing draws a line between two rows.
     await dragOnto(page, rowIn(tree, "LICENSE"), target, 0.85, async () => {
+      await expect(target).toHaveAttribute("data-drop-block", "true");
       await expect(
-        target.locator('[data-slot="tree-view-drop-after"]'),
-      ).toBeVisible();
+        tree.locator(
+          '[data-slot="tree-view-drop-before"], [data-slot="tree-view-drop-after"]',
+        ),
+      ).toHaveCount(0);
     });
 
     await expect(page.getByTestId("resolved-parent")).toContainText(
@@ -140,7 +143,7 @@ test.describe("TreeView drag and drop", () => {
     );
   });
 
-  test("a branch dropped into its own subtree is refused, with no marker", async ({
+  test("a branch dropped into its own subtree is refused, lighting nothing", async ({
     page,
   }) => {
     // `nodeHolds`, the guard that keeps a drop from orphaning a whole
@@ -152,13 +155,7 @@ test.describe("TreeView drag and drop", () => {
     await inner.scrollIntoViewIfNeeded();
 
     await dragOnto(page, rowIn(tree, "src"), inner, 0.5, async () => {
-      await expect(inner).not.toHaveClass(/ring-inset/);
-      await expect(
-        tree.locator('[data-slot="tree-view-drop-before"]'),
-      ).toHaveCount(0);
-      await expect(
-        tree.locator('[data-slot="tree-view-drop-after"]'),
-      ).toHaveCount(0);
+      await expect(tree.locator("[data-drop-block]")).toHaveCount(0);
     });
 
     // Nothing moved, so the line still says what it said at load.

@@ -58,7 +58,7 @@ const Tree = (): ReactElement => (
 
         <TreeSection
           heading="Drag and drop"
-          description="The 28/44/28 zones, the drop markers, and a branch dropped into its own subtree refused."
+          description="A drop names a folder and lights its rows as one block; a drop that would change nothing is refused."
         >
           <TreeDragSpecimen depth={Number(v.depth)} />
         </TreeSection>

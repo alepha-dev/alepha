@@ -253,7 +253,7 @@ const MenubarSubTrigger = (props: MenubarSubTriggerProps) => {
       data-slot="menubar-sub-trigger"
       data-inset={inset}
       className={cn(
-        "focus:bg-hover focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm data-inset:ps-7 [&_svg:not([class*='size-'])]:size-4",
+        "focus:bg-hover focus:text-accent-foreground data-open:bg-hover data-open:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm data-inset:ps-7 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...rest}

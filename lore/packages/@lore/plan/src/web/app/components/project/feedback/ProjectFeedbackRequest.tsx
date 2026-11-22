@@ -13,8 +13,7 @@ import {
   TooltipTrigger,
   useToast,
   UserAvatar,
-  cn,
-  textLinkUnderlineClassName,
+  TextLink,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
@@ -37,7 +36,7 @@ import {
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter, useRouterState } from "alepha/react/router";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
 import {
   ArrowLeft,
@@ -61,6 +60,7 @@ import {
 } from "../../../../../api/schemas/feedbackTrailSchema.ts";
 import { feedbackTypeSchema } from "../../../../../api/schemas/feedbackTypeSchema.ts";
 import { FeedbackTypeTags } from "../../../../../api/services/FeedbackTypeTags.ts";
+import { type DraftContext, readDraftFromQuery } from "./readDraftFromQuery.ts";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
 // Unlike the attachment bucket name (see FeedbackRateLimiter.ATTACHMENT_BUCKET),
@@ -78,18 +78,7 @@ const DRAFT_STORAGE_KEY = "lor.feedback.draft";
  * the default.
  */
 const DEFAULT_MAX_FILES = 10;
-const DEFAULT_MAX_FILE_SIZE_MB = 5;
-const MAX_TAGS = 20;
-const MAX_TAG_LENGTH = 100;
-
-type DraftContext = {
-  tags?: string[];
-  /**
-   * Page-context provenance captured by the sigil button (see source schema).
-   */
-  source?: FeedbackSource;
-};
-
+const DEFAULT_MAX_FILE_SIZE_MB = 10;
 type Attachment = {
   id: string;
   name: string;
@@ -108,55 +97,6 @@ type ProjectContext = {
   icon?: string | null;
   maxAttachments: number;
   maxFileSizeMb: number;
-};
-
-export const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
-  const tags = query
-    .getAll("tags")
-    .map((v) => v.trim())
-    .filter((v) => v.length > 0 && v.length <= MAX_TAG_LENGTH);
-
-  // The embed launcher sends `type=bug|feature` — fold it into the tag set
-  // (feedback has no first-class type column; tags carry the taxonomy).
-  const typeParam = query.get("type")?.trim().toLowerCase();
-  if (
-    (typeParam === "bug" || typeParam === "feature") &&
-    !tags.includes(typeParam)
-  ) {
-    tags.unshift(typeParam);
-  }
-
-  // Capped last: `feedbackBodySchema` refuses a 21st tag, and `type` counts.
-  const draft: DraftContext = {};
-  if (tags.length > 0) draft.tags = tags.slice(0, MAX_TAGS);
-
-  // Page-context provenance forwarded by the sigil button via the
-  // `/sigil/request` popup (keys defined in `@alepha/lore`). `url`
-  // is the signal that this feedback originated from an embedded button; the
-  // server schema (`feedbackSourceSchema`) re-validates every field on submit.
-  const url = query.get("url")?.trim();
-  if (url) {
-    const source: FeedbackSource = {
-      hostUrl: url,
-      hostPath: query.get("path")?.trim() || url,
-      userAgent: query.get("ua")?.trim() || "",
-    };
-    const title = query.get("title")?.trim();
-    const referrer = query.get("ref")?.trim();
-    const language = query.get("lang")?.trim();
-    const viewport = query.get("vp")?.trim();
-    const screen = query.get("scr")?.trim();
-    const timezone = query.get("tz")?.trim();
-    if (title) source.title = title;
-    if (referrer) source.referrer = referrer;
-    if (language) source.language = language;
-    if (viewport) source.viewport = viewport;
-    if (screen) source.screen = screen;
-    if (timezone) source.timezone = timezone;
-    draft.source = source;
-  }
-
-  return draft;
 };
 
 /**
@@ -222,7 +162,7 @@ const ProjectFeedbackRequest = () => {
 
   // This page sits outside the project layout, so it has no sidebar: a
   // member who came from the project's own "+" had no way back but the
-  // browser's. A way back to the inbox is offered to a member only (the membership list
+  // browser's. A way back to the project is offered to a member only (the membership list
   // the shell already holds), and never inside the sigil popup, where a
   // client-side navigation would replace the form in a chrome-less window.
   // `window.name` is read on the client only: the page server-renders, and
@@ -234,17 +174,24 @@ const ProjectFeedbackRequest = () => {
     ProjectFeedbackRequestPopup.read,
     ProjectFeedbackRequestPopup.server,
   );
+  // An arrow before the title and its line, over a plain `href`, so leaving
+  // the form is a page load into the project, not a client-side swap of this
+  // out-of-layout page. Named for what it does, since it shows no text.
   const backLink =
     memberProject && !inPopup ? (
-      <Link
-        href={router.path("projectFeedback", { params: { projectSlug } })}
-        className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1.5 text-sm"
+      <Button
+        variant="minimal"
+        size="icon"
+        className="shrink-0"
+        nativeButton={false}
+        aria-label={tr("feedback.request.backToProject")}
+        title={tr("feedback.request.backToProject")}
+        render={
+          <a href={router.path("project", { params: { projectSlug } })} />
+        }
       >
         <ArrowLeft className="size-4 rtl:-scale-x-100" />
-        {tr("feedback.request.backToProject", {
-          args: [memberProject.title],
-        })}
-      </Link>
+      </Button>
     ) : null;
 
   // Keyed on the slug rather than the integer id: the id is not known until
@@ -383,7 +330,7 @@ const ProjectFeedbackRequest = () => {
     }),
     // Bug unless a `?type=` names another (#Q4106): a fresh form already
     // answers the required type.
-    initialValues: { type: "bug", message: "" },
+    initialValues: { type: "idea", message: "" },
     handler: async (body) => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
@@ -589,7 +536,7 @@ const ProjectFeedbackRequest = () => {
         <PageHeader />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
-            <Card className="shadow">
+            <Card className="border shadow">
               <CardContent className="flex flex-col gap-4">
                 <h1 className="text-xl font-semibold">
                   {tr("feedback.request.loginRequiredTitle")}
@@ -623,21 +570,23 @@ const ProjectFeedbackRequest = () => {
         <PageHeader />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
-            {backLink}
             {contextState === "loading" ? (
               <div className="flex justify-center py-16">
                 <Loader2 className="text-muted-foreground size-6 animate-spin" />
               </div>
             ) : (
-              <Card className="shadow">
+              <Card className="border shadow">
                 <CardContent className="flex flex-col gap-4">
-                  <h1 className="text-xl font-semibold">
-                    {tr(
-                      contextState === "closed"
-                        ? "feedback.request.closedTitle"
-                        : "feedback.request.unavailableTitle",
-                    )}
-                  </h1>
+                  <div className="flex items-center gap-3">
+                    {backLink}
+                    <h1 className="text-xl font-semibold">
+                      {tr(
+                        contextState === "closed"
+                          ? "feedback.request.closedTitle"
+                          : "feedback.request.unavailableTitle",
+                      )}
+                    </h1>
+                  </div>
                   <p className="text-muted-foreground text-sm">
                     {tr(
                       contextState === "closed"
@@ -662,17 +611,19 @@ const ProjectFeedbackRequest = () => {
       <PageHeader />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
-          {backLink}
-          <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-bold">
-              {tr("feedback.request.title")}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {tr("feedback.request.description")}
-            </p>
+          <div className="flex items-center gap-3">
+            {backLink}
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl font-bold">
+                {tr("feedback.request.title")}
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                {tr("feedback.request.description")}
+              </p>
+            </div>
           </div>
 
-          <Card className="py-4 shadow">
+          <Card className="border py-4 shadow">
             <CardContent className="px-4">
               <div className="border-border bg-muted/30 mb-4 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <div className="flex min-w-0 items-center gap-3">
@@ -714,16 +665,17 @@ const ProjectFeedbackRequest = () => {
                   input={form.input.type}
                   label=""
                   segmented
+                  size="sm"
                   items={[
-                    {
-                      value: "bug",
-                      label: tr("feedback.request.type.bug"),
-                      icon: <Bug className="size-4" />,
-                    },
                     {
                       value: "idea",
                       label: tr("feedback.request.type.idea"),
                       icon: <Lightbulb className="size-4" />,
+                    },
+                    {
+                      value: "bug",
+                      label: tr("feedback.request.type.bug"),
+                      icon: <Bug className="size-4" />,
                     },
                     {
                       value: "question",
@@ -769,7 +721,7 @@ const ProjectFeedbackRequest = () => {
                     // the question already. The height is a class because
                     // `Textarea` is `field-sizing-content`, which ignores
                     // `rows`; it still grows with what is typed.
-                    inputProps={{ className: "min-h-48" }}
+                    inputProps={{ className: "min-h-32" }}
                   />
                   <p className="text-muted-foreground text-xs">
                     {tr("feedback.request.pasteHint")}
@@ -903,17 +855,14 @@ const ProjectFeedbackRequest = () => {
                     a 540×790 chrome-less window. `target="_blank"` opens it in
                     the parent browser, which is right in a normal tab too.
                   */}
-                  <a
+                  <TextLink
                     href="/?account=feedback"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={cn(
-                      textLinkUnderlineClassName,
-                      "text-muted-foreground hover:text-foreground text-xs",
-                    )}
+                    className="text-xs"
                   >
                     {tr("feedback.request.myFeedbackLink")}
-                  </a>
+                  </TextLink>
                   <Button type="submit" disabled={submitting || uploading}>
                     {submitting && <Loader2 className="size-4 animate-spin" />}
                     {tr("feedback.request.submit")}

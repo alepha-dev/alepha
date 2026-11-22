@@ -1,0 +1,1 @@
+ALTER TABLE "chat_rooms" ADD COLUMN "position" integer;

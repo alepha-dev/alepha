@@ -17,11 +17,13 @@ import { I18n } from "../../services/I18n.ts";
 import AttachmentLightbox, {
   type PreviewableAttachment,
 } from "./AttachmentLightbox.tsx";
+import { attachmentPreview } from "./attachmentPreview.ts";
 
 const ITEMS: PreviewableAttachment[] = [
   { fileId: "a", name: "first.png", mimeType: "image/png" },
   { fileId: "b", name: "second.png", mimeType: "image/png" },
   { fileId: "c", name: "page.html", mimeType: "text/html" },
+  { fileId: "d", name: "clip.mp4", mimeType: "video/mp4" },
 ];
 
 /**
@@ -142,5 +144,27 @@ describe("AttachmentLightbox", () => {
 
     await waitFor(() => expect(toggle()).toBeTruthy());
     expect(toggle().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  /**
+   * A video plays in the viewer with the browser's own controls, where it
+   * used to be a plain file tile with nothing to show.
+   */
+  it("plays a video with the browser's controls", async ({ expect }) => {
+    // Mounted closed and then opened on the video, as a tile click does.
+    const ui = await show(null);
+    ui.rerender("d");
+    const video = await screen.findByTestId("attachment-video");
+    expect(video.tagName).toBe("VIDEO");
+    expect(video.hasAttribute("controls")).toBe(true);
+    expect(video.getAttribute("src")).toBe("/api/files/d");
+  });
+
+  it("knows a video by its name when the browser left its type blank", ({
+    expect,
+  }) => {
+    expect(attachmentPreview("holiday.MOV", "").kind).toBe("video");
+    expect(attachmentPreview("clip.webm", "video/webm").kind).toBe("video");
+    expect(attachmentPreview("notes.txt", "text/plain").kind).toBe("text");
   });
 });

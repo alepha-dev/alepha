@@ -4,6 +4,7 @@ import {
   currentProjectAtom,
   useProjectUsers,
   mentionHandle,
+  DiscussionAttachments,
 } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -21,7 +22,6 @@ import { useRef, useState } from "react";
 import type { FeedbackCommentController } from "../../../../../api/controllers/FeedbackCommentController.ts";
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackCommentResource } from "../../../../../api/schemas/feedbackCommentResourceSchema.ts";
-import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
 import DiscussionComment from "../discussion/DiscussionComment.tsx";
 import DiscussionComposer from "../discussion/DiscussionComposer.tsx";
 import FeedbackThreadBody from "./FeedbackThreadBody.tsx";

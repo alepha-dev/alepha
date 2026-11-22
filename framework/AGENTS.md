@@ -187,6 +187,7 @@ Not obvious from the code, so read them before writing any.
 
 ⚠️ In `packages/@alepha/ui/src`, `check:conventions` enforces the component shape, one component per file and the context rule. Everywhere else, apps included, they are enforced by review.
 
+- **Surfaces, three rules** (the note above `chrome` in `@alepha/ui`'s `styles.css`): content is `bg-card`; chrome (rails, lists that frame content, headers, toolbars, footers) is `chrome`; a selected item is `bg-hover` with `font-medium`, a hovered one `bg-hover-weak`. Never `bg-background`, `bg-accent` or `bg-muted` to mark a state: `accent` equals `muted` in dark, and `background` is a black hole there. Fields stay `bg-background` with a border. Check a change in light AND dark.
 - **One component per file.** An extracted inner `Header` of `ParentComponent.tsx` becomes `ParentComponentHeader.tsx`. The exemption is a compound primitive family (`UI_COMPOUND_FILES` in the script, such as `src/core/DropdownMenu.tsx`).
 - **File order:** props interface, component, the rest.
 - **Arrow functions, never `function`**, and **props never destructured in the parameter list**: `const MyComponent = (props: MyComponentProps) => {}`, with `MyComponentProps` a named exported interface in the same file.

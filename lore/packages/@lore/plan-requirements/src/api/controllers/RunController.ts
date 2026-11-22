@@ -201,7 +201,11 @@ export class RunController {
     // `addRunEvidence` places it, and that write is gated on the run.
     use: [$secure({ permissions: ["usecase:write"] })],
     schema: {
-      body: z.object({ file: z.file() }),
+      body: z.object({
+        file: z.file({
+          maxBytes: RequirementsBuckets.EVIDENCE_MAX_SIZE_MB * 1024 * 1024,
+        }),
+      }),
       response: z.object({ fileId: z.uuid() }),
     },
     handler: async ({ body, user }) => {

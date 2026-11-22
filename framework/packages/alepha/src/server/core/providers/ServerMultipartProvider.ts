@@ -154,7 +154,7 @@ export class ServerMultipartProvider {
           throw new HttpError(
             { status: 413 },
             {
-              message: `Request body size limit exceeded. Maximum allowed: ${caps.maxTotalBytes} bytes`,
+              message: `This upload is too large. The limit is ${this.megabytes(caps.maxTotalBytes)}.`,
             },
           );
         }
@@ -318,6 +318,8 @@ export class ServerMultipartProvider {
 
     const body: Record<string, any> = {};
     let field: string | undefined;
+    // The file's own name, which is what the person uploading knows.
+    let filename: string | undefined;
     let parts: AsyncGenerator<MultipartPart, void, unknown> | undefined;
 
     try {
@@ -343,6 +345,7 @@ export class ServerMultipartProvider {
         // has no idea what a form field is, and "a part exceeds 100 bytes" is
         // a worse thing to read than the name of the input that did it.
         field = key ?? undefined;
+        filename = part.filename ?? undefined;
         // A field the schema does not declare is walked past, not refused: the
         // body is shaped by the route, and a client sending extra parts is not
         // an error the route has an opinion about.
@@ -386,7 +389,7 @@ export class ServerMultipartProvider {
       }
     } catch (error) {
       await this.close(parts);
-      throw this.asHttpError(error, field);
+      throw this.asHttpError(error, field, filename);
     }
 
     return body;
@@ -414,12 +417,17 @@ export class ServerMultipartProvider {
   /**
    * Turns the parser's error vocabulary into the HTTP one.
    *
-   * The wording is deliberately the one this endpoint has always used. These
-   * messages reach clients and are asserted by tests, so they are an interface:
-   * changing them because the engine underneath changed would break callers for
-   * no benefit they can see.
+   * These messages reach clients and are asserted by tests, so they are an
+   * interface: not changed because the engine underneath changed. The size
+   * refusals were reworded once, on purpose, because an app shows them to
+   * the person uploading: they name the file and the limit in megabytes,
+   * where they named the form field and a byte count.
    */
-  protected asHttpError(error: unknown, field?: string): HttpError {
+  protected asHttpError(
+    error: unknown,
+    field?: string,
+    filename?: string,
+  ): HttpError {
     if (error instanceof HttpError) {
       return error;
     }
@@ -427,7 +435,7 @@ export class ServerMultipartProvider {
     if (error instanceof MultipartLimitError) {
       // The caller's upload was too large: a 413, not a fault.
       this.log.warn(error.message);
-      const message = this.limitMessage(error, field);
+      const message = this.limitMessage(error, field, filename);
       return new HttpError({ status: 413 }, { message, cause: error });
     }
 
@@ -437,23 +445,46 @@ export class ServerMultipartProvider {
     );
   }
 
-  protected limitMessage(error: MultipartLimitError, field?: string): string {
+  /**
+   * The refusal as a person reads it: the file by its own name and the
+   * limit in megabytes, never the form field's name (`file`) or a raw byte
+   * count. The field and the bytes stay in the warning logged above.
+   */
+  protected limitMessage(
+    error: MultipartLimitError,
+    _field?: string,
+    filename?: string,
+  ): string {
     switch (error.data.kind) {
       case "file":
-        return field
-          ? `File "${field}" exceeds size limit. Maximum allowed: ${error.data.limit} bytes`
-          : `File exceeds size limit. Maximum allowed: ${error.data.limit} bytes`;
+        return filename
+          ? `"${filename}" is too large. The limit is ${this.megabytes(error.data.limit)}.`
+          : `This file is too large. The limit is ${this.megabytes(error.data.limit)}.`;
       case "total":
         // The same sentence the `Content-Length` check above uses. It is one
         // condition (the body is bigger than the budget) and it used to
         // carry two different messages depending on which guard happened to
         // notice first, which made the same refusal look like two.
-        return `Request body size limit exceeded. Maximum allowed: ${error.data.limit} bytes`;
+        return `This upload is too large. The limit is ${this.megabytes(error.data.limit)}.`;
       case "parts":
-        return `Too many files. Maximum allowed: ${error.data.limit}`;
+        return `Too many files in one upload. The limit is ${error.data.limit}.`;
       case "header":
-        return `Part headers exceed size limit. Maximum allowed: ${error.data.limit} bytes`;
+        return `This upload could not be read: its headers are too large.`;
     }
+  }
+
+  /**
+   * A byte limit as a person writes it: `10 MB` for 10 MiB, `5 MB` for the
+   * decimal 5,000,000 of the default, one decimal otherwise, and kilobytes
+   * under a megabyte.
+   */
+  protected megabytes(bytes: number): string {
+    if (bytes < 1_000_000) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    const binary = bytes / (1024 * 1024);
+    if (Number.isInteger(binary)) return `${binary} MB`;
+    const decimal = bytes / 1_000_000;
+    if (Number.isInteger(decimal)) return `${decimal} MB`;
+    return `${Math.round(binary * 10) / 10} MB`;
   }
 
   /**
@@ -479,7 +510,7 @@ export class ServerMultipartProvider {
           try {
             yield* part.data;
           } catch (error) {
-            throw self.asHttpError(error, field);
+            throw self.asHttpError(error, field, part.filename ?? undefined);
           } finally {
             // The handler is done with the bytes (drained, or given up on)
             // so the walk that was deliberately left open can end. This is the

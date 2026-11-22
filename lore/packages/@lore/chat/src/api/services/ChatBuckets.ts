@@ -7,10 +7,15 @@ import { $storage } from "alepha/api/files";
  */
 export class ChatBuckets {
   public static readonly ATTACHMENT_BUCKET = "chat-attachments";
+  /**
+   * One file's cap, in megabytes: the bucket's and the upload route's, which
+   * must agree or the framework's 5 MB multipart default wins.
+   */
+  public static readonly MAX_SIZE_MB = 10;
 
   attachments = $storage({
     name: ChatBuckets.ATTACHMENT_BUCKET,
     description: "Chat message attachments",
-    maxSize: 10,
+    maxSize: ChatBuckets.MAX_SIZE_MB,
   });
 }
