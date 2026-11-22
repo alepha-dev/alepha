@@ -546,6 +546,19 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 	go c.pingLoop(pingCtx, conn)
 	go c.statsLoop(pingCtx)
 	go c.eventsLoop(pingCtx)
+	// A poke while connected (`bay connector set` to another Lore, or
+	// `clear`) ends this session, so the next dial reads the file again.
+	// Left to the wait between dials alone, a healthy session kept the old
+	// sink until it happened to drop.
+	reloaded := make(chan struct{})
+	go func() {
+		select {
+		case <-pingCtx.Done():
+		case <-c.Reload:
+			close(reloaded)
+			_ = conn.Close()
+		}
+	}()
 
 	// The machine speaks first.
 	if err := c.Send(map[string]string{"type": "hello"}); err != nil {
@@ -558,6 +571,13 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 		if err := conn.ReadJSON(&frame); err != nil {
 			if ctx.Err() != nil {
 				return true
+			}
+			select {
+			case <-reloaded:
+				c.Status.Down(nil)
+				c.Log.Info("lore connector reloaded", "sink", cfg.Sink)
+				return true
+			default:
 			}
 			c.dropWith(cfg, outage, err)
 			return true

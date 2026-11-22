@@ -458,17 +458,35 @@ func TestClientDialsNobodyUntilConfiguredThenWakesOnReload(t *testing.T) {
 	}
 
 	// `bay connector clear` does the reverse: the open session is dropped
-	// on the next event and no new one is dialed.
+	// by the poke alone, and no new one is dialed.
 	if err := f.store.Clear(); err != nil {
 		t.Fatal(err)
 	}
-	_ = s.conn.Close()
 	f.reload <- struct{}{}
 	eventually(t, "status to read down", func() bool { return !f.client.Status.Snapshot().Connected })
 	before := f.lore.dials.Load()
 	time.Sleep(60 * time.Millisecond)
 	if f.lore.dials.Load() != before {
 		t.Fatal("a cleared connector must stop dialing")
+	}
+}
+
+func TestClientMovesToANewSinkOnReloadWhileConnected(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{configured: true})
+	first := f.lore.session(t)
+	if first.frame(t)["type"] != "hello" {
+		t.Fatal("the first session must say hello")
+	}
+
+	// `bay connector set` to another Lore while the session is healthy.
+	other := newFakeLore(t)
+	if err := f.store.Set(Config{Sink: other.sink(), Secret: clientSecret}); err != nil {
+		t.Fatal(err)
+	}
+	f.reload <- struct{}{}
+	moved := other.session(t)
+	if moved.frame(t)["type"] != "hello" {
+		t.Fatal("a reload while connected must dial the new sink")
 	}
 }
 
