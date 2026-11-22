@@ -47,6 +47,10 @@ type JobContainer struct {
 	PidsLimit   int64
 	// Runtime is the OCI runtime, `runsc` for gVisor; empty is the daemon's.
 	Runtime string
+	// Hosts are `name:ip` lines for the container's /etc/hosts: the egress
+	// proxy's, so a step finds it without Docker's embedded DNS, which a
+	// gVisor sandbox cannot reach.
+	Hosts []string
 }
 
 const (
@@ -98,6 +102,9 @@ func jobCreateBody(c JobContainer) map[string]any {
 	}
 	if c.Runtime != "" {
 		host["Runtime"] = c.Runtime
+	}
+	if len(c.Hosts) > 0 {
+		host["ExtraHosts"] = c.Hosts
 	}
 	return map[string]any{
 		"Image":      c.Image,
@@ -301,11 +308,20 @@ type EgressSidecar struct {
 // EgressPort is where a job's egress proxy listens.
 const EgressPort = 3128
 
-// StartEgress starts a job's egress proxy and answers how to stop it; its
-// output (one JSON line per refusal) goes to out until it stops.
-func (d *Docker) StartEgress(ctx context.Context, s EgressSidecar, out io.Writer) (func(), error) {
+/*
+StartEgress starts a job's egress proxy and answers how to stop it, and its
+address on the job's network; its output (one JSON line per refusal) goes to
+out until it stops.
+
+The address is what a step's /etc/hosts maps `egress` to. The alias alone is
+answered by Docker's embedded DNS, at 127.0.0.11 inside the container, which
+the daemon reaches through iptables rules in the container's network
+namespace: gVisor's own network stack never sees them, so under `runsc` the
+name did not resolve and every job failed to reach anything.
+*/
+func (d *Docker) StartEgress(ctx context.Context, s EgressSidecar, out io.Writer) (func(), string, error) {
 	if err := d.EnsureImage(s.Image); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	body := map[string]any{
 		"Image": s.Image,
@@ -327,20 +343,36 @@ func (d *Docker) StartEgress(ctx context.Context, s EgressSidecar, out io.Writer
 		ID string `json:"Id"`
 	}
 	if err := d.api.do("POST", "/containers/create", url.Values{"name": {s.Name}}, body, &created, dockerCallTimeout); err != nil {
-		return nil, fmt.Errorf("create the egress proxy: %w", err)
+		return nil, "", fmt.Errorf("create the egress proxy: %w", err)
 	}
 	stop := func() {
 		_ = d.api.do("DELETE", "/containers/"+created.ID, url.Values{"force": {"true"}}, nil, nil, dockerCallTimeout)
 	}
 	if err := d.api.do("POST", "/containers/"+created.ID+"/start", nil, nil, nil, dockerCallTimeout); err != nil {
 		stop()
-		return nil, fmt.Errorf("start the egress proxy: %w", err)
+		return nil, "", fmt.Errorf("start the egress proxy: %w", err)
 	}
 	if err := d.ConnectNetwork(s.Network, created.ID, "egress"); err != nil {
 		stop()
-		return nil, fmt.Errorf("attach the egress proxy to the job's network: %w", err)
+		return nil, "", fmt.Errorf("attach the egress proxy to the job's network: %w", err)
+	}
+	var inspected struct {
+		NetworkSettings struct {
+			Networks map[string]struct {
+				IPAddress string `json:"IPAddress"`
+			} `json:"Networks"`
+		} `json:"NetworkSettings"`
+	}
+	if err := d.api.do("GET", "/containers/"+created.ID+"/json", nil, nil, &inspected, dockerCallTimeout); err != nil {
+		stop()
+		return nil, "", fmt.Errorf("read the egress proxy's address: %w", err)
+	}
+	addr := inspected.NetworkSettings.Networks[s.Network].IPAddress
+	if addr == "" {
+		stop()
+		return nil, "", fmt.Errorf("the egress proxy has no address on the job's network %s", s.Network)
 	}
 	logs, cancel := context.WithCancel(ctx)
 	go func() { _ = d.follow(logs, created.ID, out, io.Discard) }()
-	return func() { cancel(); stop() }, nil
+	return func() { cancel(); stop() }, addr, nil
 }

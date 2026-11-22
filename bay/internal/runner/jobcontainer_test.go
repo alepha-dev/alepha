@@ -15,6 +15,7 @@ func TestJobContainerIsHardened(t *testing.T) {
 		Name: "bay-job-1-claude", Image: "ghcr.io/x/agent@sha256:" + strings.Repeat("a", 64),
 		Cmd: []string{"claude", "-p", "x"}, Workspace: "bay-job-1", Cache: "bay-job-cache-1",
 		Network: "bay-job-1", MemoryBytes: 1 << 30, PidsLimit: 512, Runtime: "runsc",
+		Hosts: []string{"egress:172.30.0.2"},
 	})
 	raw, _ := json.Marshal(body)
 	text := string(raw)
@@ -33,6 +34,9 @@ func TestJobContainerIsHardened(t *testing.T) {
 	}
 	if host["NetworkMode"] != "bay-job-1" || host["Memory"] != int64(1<<30) || host["PidsLimit"] != int64(512) || host["Runtime"] != "runsc" {
 		t.Fatalf("network or limits wrong: %v", host)
+	}
+	if hosts, _ := host["ExtraHosts"].([]string); len(hosts) != 1 || hosts[0] != "egress:172.30.0.2" {
+		t.Fatalf("ExtraHosts = %v, want the egress proxy's line", host["ExtraHosts"])
 	}
 	if body["User"] != JobUser {
 		t.Fatalf("user = %v, want the image's non-root user", body["User"])

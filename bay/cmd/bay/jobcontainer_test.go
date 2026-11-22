@@ -28,12 +28,12 @@ func (f *fakeJobDocker) RemoveJobNetwork(n string) error { f.log("network- " + n
 func (f *fakeJobDocker) CreateJobVolume(n string) error  { f.log("volume+ " + n); return nil }
 func (f *fakeJobDocker) RemoveJobVolume(n string) error  { f.log("volume- " + n); return nil }
 func (f *fakeJobDocker) HasRuntime(string) (bool, error) { return f.runsc, nil }
-func (f *fakeJobDocker) StartEgress(_ context.Context, s runner.EgressSidecar, out io.Writer) (func(), error) {
+func (f *fakeJobDocker) StartEgress(_ context.Context, s runner.EgressSidecar, out io.Writer) (func(), string, error) {
 	f.log("egress+ " + s.Network + " " + strings.Join(s.Allow, ","))
 	f.mu.Lock()
 	f.egressOut = out
 	f.mu.Unlock()
-	return func() { f.log("egress-") }, nil
+	return func() { f.log("egress-") }, "172.30.0.2", nil
 }
 func (f *fakeJobDocker) RunJob(_ context.Context, c runner.JobContainer, stdout, _ io.Writer) (int, error) {
 	f.mu.Lock()
@@ -74,6 +74,11 @@ func TestContainerRunner(t *testing.T) {
 		for _, step := range fake.steps {
 			if step.Image != agentImage || step.Network == "" || step.Workspace == "" {
 				t.Fatalf("a step ran outside the job's image, network or workspace: %+v", step)
+			}
+			// gVisor cannot reach Docker's embedded DNS: the proxy's name
+			// comes from /etc/hosts.
+			if len(step.Hosts) != 1 || step.Hosts[0] != "egress:172.30.0.2" {
+				t.Fatalf("a step does not map egress to the proxy's address: %v", step.Hosts)
 			}
 		}
 		if strings.Contains(strings.Join(clone.Env, " "), "CLAUDE_CODE_OAUTH_TOKEN") {
