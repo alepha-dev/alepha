@@ -3290,17 +3290,10 @@ export default {
   "feedback.request.title": "Submit feedback",
   "feedback.request.description":
     "Report a bug or request a feature. The project owner will review it.",
-  "feedback.request.type": "What is it?",
   "feedback.request.type.bug": "Bug",
   "feedback.request.type.idea": "Idea",
   "feedback.request.type.question": "Question",
   "feedback.request.type.other": "Other",
-  "feedback.request.placeholder.bug":
-    "What broke, and what did you expect to happen instead?",
-  "feedback.request.placeholder.idea":
-    "What would you like to do that you can't today?",
-  "feedback.request.placeholder.question": "What are you trying to figure out?",
-  "feedback.request.placeholder.other": "Tell us what's on your mind.",
   "feedback.request.messageField": "What's the problem or idea?",
   "feedback.request.messageHelper":
     "Tell us what happened or what you'd like, and be as specific as you can.",

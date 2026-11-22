@@ -35,7 +35,7 @@ import {
   useStore,
 } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { useForm, useFormState, useFormValues } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
@@ -459,7 +459,6 @@ const ProjectFeedbackRequest = () => {
     },
   });
   const { loading: submitting } = useFormState(form, ["loading"]);
-  const chosenType = useFormValues(form).type;
 
   // A `?type=` from the embed launcher preselects its button, once.
   const [preselected, setPreselected] = useState(false);
@@ -709,10 +708,11 @@ const ProjectFeedbackRequest = () => {
               </div>
 
               <form {...form.props} className="flex flex-col gap-4">
-                {/* What the report is, first and required (#Q4037). */}
+                {/* What the report is, first and required (#Q4037). No label
+                    (#Q4119): the four options say what they are. */}
                 <Control
                   input={form.input.type}
-                  label={tr("feedback.request.type")}
+                  label=""
                   segmented
                   items={[
                     {
@@ -760,23 +760,16 @@ const ProjectFeedbackRequest = () => {
                     input={form.input.message}
                     label={tr("feedback.request.messageField")}
                     description={tr("feedback.request.messageHelper")}
-                    // The question follows the type (#Q4037).
-                    placeholder={
-                      chosenType === "bug"
-                        ? tr("feedback.request.placeholder.bug")
-                        : chosenType === "idea"
-                          ? tr("feedback.request.placeholder.idea")
-                          : chosenType === "question"
-                            ? tr("feedback.request.placeholder.question")
-                            : tr("feedback.request.placeholder.other")
-                    }
                     area
                     // The reporter types at once (#Q4106): the page exists for
                     // this one field, opened on purpose from a button.
                     // oxlint-disable-next-line jsx-a11y/no-autofocus -- the page's only text field, opened to be typed in
                     autoFocus
-
-                    rows={12}
+                    // No placeholder (#Q4119): the label and the helper ask
+                    // the question already. The height is a class because
+                    // `Textarea` is `field-sizing-content`, which ignores
+                    // `rows`; it still grows with what is typed.
+                    inputProps={{ className: "min-h-48" }}
                   />
                   <p className="text-muted-foreground text-xs">
                     {tr("feedback.request.pasteHint")}

@@ -25,11 +25,10 @@ Share that link with the people you want to hear from. Inside the project, the
 
 ![The feedback request form](/screenshots/lore/feedback-form-light.png)
 
-The form opens with **What is it?**: **Bug**, **Idea**, **Question** or
+The form opens with four buttons, **Bug**, **Idea**, **Question** and
 **Other**, one of them required. The choice becomes the report's first tag
 (`bug`, `feature`, `question` or `other`), so the inbox is sorted before anyone
-reads it, and the text box asks the question that fits it. The attachment
-limits are on the info icon beside **Attachments**.
+reads it. The attachment limits are on the info icon beside **Attachments**.
 
 ⚠️ **The form needs a sign-in.** There is no anonymous report. A visitor who is
 not signed in sees a sign-in prompt instead of the form. Any Lore account can
