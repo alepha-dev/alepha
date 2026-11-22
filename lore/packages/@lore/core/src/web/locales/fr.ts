@@ -3299,17 +3299,10 @@ export default {
   "feedback.request.title": "Soumettre un retour",
   "feedback.request.description":
     "Signalez un bogue ou demandez une fonctionnalité. Le propriétaire du projet examinera votre requête.",
-  "feedback.request.type": "De quoi s’agit-il ?",
   "feedback.request.type.bug": "Bogue",
   "feedback.request.type.idea": "Idée",
   "feedback.request.type.question": "Question",
   "feedback.request.type.other": "Autre",
-  "feedback.request.placeholder.bug":
-    "Qu’est-ce qui ne fonctionne pas, et qu’attendiez-vous à la place ?",
-  "feedback.request.placeholder.idea":
-    "Qu’aimeriez-vous faire que vous ne pouvez pas faire aujourd’hui ?",
-  "feedback.request.placeholder.question": "Que cherchez-vous à comprendre ?",
-  "feedback.request.placeholder.other": "Dites-nous ce que vous avez en tête.",
   "feedback.request.messageField": "Quel est le problème ou l'idée ?",
   "feedback.request.messageHelper":
     "Dites-nous ce qui s'est passé ou ce que vous aimeriez, et soyez aussi précis que possible.",
