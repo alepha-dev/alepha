@@ -198,7 +198,25 @@ jobs:
           docker run -d --name postgres -p 15432:5432 --shm-size=1g \
             -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
             postgres -c max_locks_per_transaction=1024
-          until docker exec postgres pg_isready -U postgres; do sleep 1; done
+          # The image's entrypoint initialises the cluster with a temporary
+          # server, stops it, then starts the real one: a check over the Unix
+          # socket can answer from the temporary server, which then shuts down
+          # under the next step ("the database system is shutting down"). The
+          # temporary server listens on no TCP port, so the check goes over
+          # 127.0.0.1, and must pass three times in a row.
+          ok=0
+          for _ in $(seq 1 90); do
+            if docker exec -e PGPASSWORD=postgres postgres psql -h 127.0.0.1 -U postgres -tAc 'select 1' >/dev/null 2>&1; then
+              ok=$((ok + 1))
+              if [ "$ok" -ge 3 ]; then exit 0; fi
+            else
+              ok=0
+            fi
+            sleep 1
+          done
+          docker logs postgres
+          echo "Postgres was not ready after 90 s" >&2
+          exit 1
 
       # Each of ~580 spec files builds Lore's ~90-table schema, three at a
       # time on four cores beside the server: a setup hook took past the
