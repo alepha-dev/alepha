@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "alepha": {
+      "command": "yarn",
+      "args": ["--cwd", "framework", "alepha", "mcp"]
+    }
+  }
+}
