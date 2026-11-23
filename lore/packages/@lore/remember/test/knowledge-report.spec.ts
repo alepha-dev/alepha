@@ -43,23 +43,30 @@ describe("ProjectKnowledgeReportService", () => {
 
   const service = () => alepha.inject(ProjectKnowledgeReportService);
 
-  it("puts a stale pinned folio first, and reads no period into staleness", async ({
-    expect,
-  }) => {
-    const project = await createTestProject(alepha);
-    await createTestFolio(alepha, project, { title: "Older" });
-    await createTestFolio(alepha, project, { title: "Pinned", pinned: true });
-    const fresh = await createTestFolio(alepha, project, { title: "Fresh" });
-    // Travelled rather than patched: every update stamps `updatedAt` itself.
-    await alepha.inject(DateTimeProvider).travel(120 * day);
-    await repos.folios.updateById(fresh.id, { summary: "Touched" });
+  // ⚠️ `travel()` fires every cron in the container, and core's host offline
+  // sweep runs each minute since #E166: 120 days is 172,800 of them, several
+  // seconds on a loaded runner.
+  it(
+    "puts a stale pinned folio first, and reads no period into staleness",
+    {
+      timeout: 60_000,
+    },
+    async ({ expect }) => {
+      const project = await createTestProject(alepha);
+      await createTestFolio(alepha, project, { title: "Older" });
+      await createTestFolio(alepha, project, { title: "Pinned", pinned: true });
+      const fresh = await createTestFolio(alepha, project, { title: "Fresh" });
+      // Travelled rather than patched: every update stamps `updatedAt` itself.
+      await alepha.inject(DateTimeProvider).travel(120 * day);
+      await repos.folios.updateById(fresh.id, { summary: "Touched" });
 
-    const report = await service().report(project.id, { staleDays: 90 });
+      const report = await service().report(project.id, { staleDays: 90 });
 
-    expect(report.stale.map((row) => row.title)).toEqual(["Pinned", "Older"]);
-    expect(report.staleCount).toBe(2);
-    expect(report.total).toBe(3);
-  });
+      expect(report.stale.map((row) => row.title)).toEqual(["Pinned", "Older"]);
+      expect(report.staleCount).toBe(2);
+      expect(report.total).toBe(3);
+    },
+  );
 
   it("calls a folio an orphan until something links to it", async ({
     expect,

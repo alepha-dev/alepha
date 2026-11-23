@@ -83,16 +83,17 @@ describe("dashboard hosts and uptime cards", () => {
       )
     )[0]!;
 
-  it("both are offered in the Add card panel, in the apps group", ({
+  it("both are offered in the Add card panel: hosts in core's group, uptime in apps", ({
     expect,
   }) => {
     const catalog = alepha.inject(DashboardMetricCatalog);
+    // Hosts are core's since #E166: the card needs no capability.
     expect(catalog.get("hosts")).toMatchObject({
-      group: "apps",
+      group: "core",
       boards: ["project"],
       requires: "host:read",
-      needs: { capability: "ship" },
     });
+    expect(catalog.get("hosts")?.needs).toBeUndefined();
     expect(catalog.get("uptime")).toMatchObject({
       group: "apps",
       boards: ["project"],

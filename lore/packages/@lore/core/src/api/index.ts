@@ -48,6 +48,7 @@ import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
 import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 import { HostJobJobs } from "./jobs/HostJobJobs.ts";
+import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { HourlyJobs } from "./jobs/HourlyJobs.ts";
 import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
@@ -94,6 +95,8 @@ import { HostProjectDeletion } from "./services/HostProjectDeletion.ts";
 import { HostProjectEvents } from "./services/HostProjectEvents.ts";
 import { HostProjectMerge } from "./services/HostProjectMerge.ts";
 import { HostService } from "./services/HostService.ts";
+import { HostsMetric } from "./services/HostsMetric.ts";
+import { HostStatsService } from "./services/HostStatsService.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostTypeRegistry } from "./services/HostTypeRegistry.ts";
 import { HostUpgradeService } from "./services/HostUpgradeService.ts";
@@ -328,6 +331,11 @@ export const LoreCoreApi = $module({
     HostAnchorHooks,
     HostExpiryJobs,
     HostHomeGuards,
+    // The monitor role (#E166, #Q4101): a host's stats, its offline and
+    // online alerts, and the hosts card's resolver.
+    HostStatsService,
+    HostOfflineJobs,
+    HostsMetric,
     HostProjectMerge,
     HostProjectDeletion,
     HostJobService,
@@ -708,6 +716,9 @@ export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
+export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
+export { HostStatsService } from "./services/HostStatsService.ts";
+export { HostsMetric } from "./services/HostsMetric.ts";
 export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 export { HostUpgradeService } from "./services/HostUpgradeService.ts";
 export { HostInventoryService } from "./services/HostInventoryService.ts";

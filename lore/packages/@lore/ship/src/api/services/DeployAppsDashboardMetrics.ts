@@ -3,12 +3,11 @@ import { $inject } from "alepha";
 
 import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
-import { hostsCardFiltersSchema } from "../schemas/hostsCardFiltersSchema.ts";
 import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
 
 /**
  * Deploy's apps tiles of #E77 (#Q2657): per-copy health and the error trend
- * with its deployments; then hosts and uptime (#Q3781). Coverage is Build's
+ * with its deployments; then uptime (#Q3781). Coverage is Build's
  * since #E162. Declarative and browser-safe, like
  * `DeployDashboardMetrics`; project boards only.
  */
@@ -61,27 +60,8 @@ export class DeployAppsDashboardMetrics {
             }
           : undefined,
     });
-    // The machines and the monitors (#Q3781): what runs the apps, and
-    // whether they answer.
-    this.catalog.register({
-      ...common,
-      key: "hosts",
-      order: 84,
-      labelKey: "dashboard.metric.hosts",
-      hintKey: "dashboard.metric.hosts.hint",
-      icon: "server",
-      presentation: "list",
-      filters: hostsCardFiltersSchema,
-      needs: { capability: "ship" },
-      requires: "host:read",
-      link: (_scope, target) =>
-        target.projectSlug
-          ? {
-              route: "projectSettingsHosts",
-              params: { projectSlug: target.projectSlug },
-            }
-          : undefined,
-    });
+    // The monitors (#Q3781): whether the apps answer. The hosts card is
+    // core's since #E166.
     this.catalog.register({
       ...common,
       key: "uptime",

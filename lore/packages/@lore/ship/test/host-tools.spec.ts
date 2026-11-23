@@ -1,3 +1,4 @@
+import { HostStatsService } from "@lore/core/api";
 import { hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -10,7 +11,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
   HostController,
-  HostStatsService,
   LoreShipApi,
   ProjectHostController,
 } from "../src/api/index.ts";
