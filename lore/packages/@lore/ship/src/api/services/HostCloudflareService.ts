@@ -1,5 +1,10 @@
 import { HostProjectEvents } from "@lore/core/api";
-import { SourceRepository, CredentialSealService } from "@lore/core/api";
+import {
+  SourceRepository,
+  CredentialSealService,
+  HostTypeRegistry,
+  type HostCredentialCheck,
+} from "@lore/core/api";
 import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,29 +13,6 @@ import { ConflictError } from "alepha/server";
 
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
 import { HostEventFields } from "./HostEventFields.ts";
-
-/**
- * Which field on the create form a failure belongs beside.
- *
- * Carried on the error's `data` so the dialog (#1865) can render the message
- * against the account id or the token rather than as a toast the person is
- * left to interpret. A wrong account id and a missing permission are not the
- * same mistake and are not fixed in the same field.
- */
-export type HostCredentialField = "accountId" | "token";
-
-/**
- * What Lore knows about a Cloudflare credential after asking Cloudflare.
- *
- * Three answers, not two. **A transport failure is no verdict**: a network
- * error, a timeout, a `5xx` or a `429` means Lore does not know, and "does
- * not know" must never be written to a row as "invalid", or a Cloudflare
- * outage at midnight would flip every host at once and email every owner.
- */
-export type HostCredentialCheck =
-  | { outcome: "passed"; expiresAt?: string }
-  | { outcome: "failed"; message: string; field: HostCredentialField }
-  | { outcome: "inconclusive"; message: string };
 
 /**
  * One permission group, and the cheap `GET` that proves a token carries it.
@@ -210,6 +192,18 @@ export class HostCloudflareService {
   protected readonly sources = $inject(SourceRepository.of(hosts));
   protected readonly projects = $repository(projects);
   protected readonly fields = $inject(HostEventFields);
+  protected readonly types = $inject(HostTypeRegistry);
+
+  constructor() {
+    // The `cloudflare` type's behaviour, told to core (#E166, #Q4098): core
+    // owns the host, Ship owns what a Cloudflare credential is.
+    this.types.register("cloudflare", {
+      credentialStatus: (host) => this.credentialStatus(host),
+      mask: (token) => this.mask(token),
+      check: (input) => this.check(input),
+      recheck: (host) => this.recheck(host),
+    });
+  }
 
   /**
    * The first characters of a token, enough for a person to tell two apart

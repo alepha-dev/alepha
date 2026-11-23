@@ -1,3 +1,4 @@
+import { HostTypeRegistry } from "@lore/core/api";
 import { LoreAudits } from "@lore/core/api";
 import {
   projects,
@@ -14,7 +15,6 @@ import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
-import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostService } from "../services/HostService.ts";
 
 /**
@@ -40,7 +40,7 @@ export class AdminHostController {
   protected readonly users = $repository(users);
   protected readonly projects = $repository(projects);
   protected readonly service = $inject(HostService);
-  protected readonly cloudflare = $inject(HostCloudflareService);
+  protected readonly types = $inject(HostTypeRegistry);
   protected readonly audits = $inject(LoreAudits);
 
   public readonly findHosts = $action({
@@ -87,8 +87,7 @@ export class AdminHostController {
               (!query.state ||
                 this.service.isOnline(host) === (query.state === "online")) &&
               (!query.credentialStatus ||
-                this.cloudflare.credentialStatus(host) ===
-                  query.credentialStatus),
+                this.types.credentialStatus(host) === query.credentialStatus),
           )
           .map((host) => host.id);
         // `inArray: []` throws: an id is never null, so this matches nothing
@@ -169,7 +168,7 @@ export class AdminHostController {
               ? { creator: { id: host.createdBy, name: creatorName } }
               : {}),
             online: this.service.isOnline(host),
-            credentialStatus: this.cloudflare.credentialStatus(host),
+            credentialStatus: this.types.credentialStatus(host),
             deployAllowed: host.deployAllowed,
             lastSeenAt: host.lastSeenAt,
             createdAt: String(host.createdAt),

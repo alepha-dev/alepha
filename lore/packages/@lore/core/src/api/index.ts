@@ -76,8 +76,11 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
+import { HostCommandHandlerRegistry } from "./services/HostCommandHandlerRegistry.ts";
 import { HostJobs } from "./services/HostJobs.ts";
 import { HostProjectEvents } from "./services/HostProjectEvents.ts";
+import { HostTypeRegistry } from "./services/HostTypeRegistry.ts";
+import { HostUsageRegistry } from "./services/HostUsageRegistry.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
 import { JobKeyService } from "./services/JobKeyService.ts";
 import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
@@ -180,6 +183,11 @@ export const LoreCoreApi = $module({
     BayReleaseTarget,
     // The host project events (#Q4115): Core, so they exist with Ship off.
     HostProjectEvents,
+    // The host registries a module fills (#E166, #Q4098): what points at a
+    // host, what its type does, and the command kinds core does not handle.
+    HostUsageRegistry,
+    HostTypeRegistry,
+    HostCommandHandlerRegistry,
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
@@ -646,3 +654,20 @@ export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 // ---- hosts (#E166) ----
 export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 export { HostProjectEvents } from "./services/HostProjectEvents.ts";
+export {
+  HostUsageRegistry,
+  type HostReferenceReader,
+  type HostTrackedApp,
+  type HostTrackedAppReader,
+} from "./services/HostUsageRegistry.ts";
+export {
+  HostTypeRegistry,
+  type HostCredentialCheck,
+  type HostCredentialField,
+  type HostTypeBehaviour,
+} from "./services/HostTypeRegistry.ts";
+export {
+  HostCommandHandlerRegistry,
+  type HostCommandHandler,
+  type HostCommandHandlerInput,
+} from "./services/HostCommandHandlerRegistry.ts";

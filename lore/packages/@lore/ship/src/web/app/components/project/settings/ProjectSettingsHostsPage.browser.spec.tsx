@@ -12,6 +12,7 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
+import { DeployHostRoles } from "../../../shell/DeployHostRoles.ts";
 import ProjectSettingsHostsPage from "./ProjectSettingsHostsPage.tsx";
 
 const HOME_ID = "00000000-0000-4000-8000-0000000000a1";
@@ -134,6 +135,7 @@ describe("ProjectSettingsHostsPage", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    alepha.inject(DeployHostRoles);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
@@ -187,6 +189,7 @@ describe("ProjectSettingsHostsPage", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    alepha.inject(DeployHostRoles);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     (alepha.inject(LinkProvider) as HostLinks).extraHome = [
@@ -232,6 +235,7 @@ describe("ProjectSettingsHostsPage", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    alepha.inject(DeployHostRoles);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     (alepha.inject(LinkProvider) as HostLinks).agents = [HOME_ID, BORROWED_ID];

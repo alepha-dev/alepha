@@ -1,4 +1,4 @@
-import { BayReleaseTarget } from "@lore/core/api";
+import { BayReleaseTarget, HostUsageRegistry } from "@lore/core/api";
 import {
   projects,
   hostInventories,
@@ -18,8 +18,6 @@ import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-
-import { appInstances } from "../entities/appInstances.ts";
 
 /**
  * What Lore does with an inventory push: one row per host, updated in
@@ -43,7 +41,7 @@ export class HostInventoryService {
   protected readonly log = $logger();
   protected readonly inventories = $repository(hostInventories);
   protected readonly hosts = $repository(hosts);
-  protected readonly instances = $repository(appInstances);
+  protected readonly usage = $inject(HostUsageRegistry);
   protected readonly projects = $repository(projects);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly target = $inject(BayReleaseTarget);
@@ -118,10 +116,9 @@ export class HostInventoryService {
   async reconcile(host: Host): Promise<HostInventoryResource> {
     const [stored, tracked] = await Promise.all([
       this.findFor(host.id),
-      this.instances.findMany({
-        where: { hostId: { eq: host.id } },
-        columns: ["id", "app", "env", "projectId"],
-      }),
+      // The copies Lore expects here, from whichever module deploys
+      // (Ship), through core's registry (#E166).
+      this.usage.trackedApps(host.id),
     ]);
 
     const named = await this.projectsOf(tracked.map((row) => row.projectId));

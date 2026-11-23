@@ -3,6 +3,8 @@ import {
   ProjectPermissions,
   ProjectSecurityService,
   CredentialSealService,
+  HostTypeRegistry,
+  HostUsageRegistry,
 } from "@lore/core/api";
 import {
   projects,
@@ -29,11 +31,7 @@ import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 
-import { appInstances } from "../entities/appInstances.ts";
-import { stackEnvironments } from "../entities/stackEnvironments.ts";
-import { stacks } from "../entities/stacks.ts";
 import { HostCredentialRefused } from "../errors/HostCredentialRefused.ts";
-import { HostCloudflareService } from "./HostCloudflareService.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
 import { HostTokenService } from "./HostTokenService.ts";
 
@@ -51,10 +49,7 @@ import { HostTokenService } from "./HostTokenService.ts";
  */
 export class HostService {
   protected readonly hosts = $repository(hosts);
-  protected readonly instances = $repository(appInstances);
   protected readonly grants = $repository(hostProjects);
-  protected readonly stacks = $repository(stacks);
-  protected readonly stackEnvironments = $repository(stackEnvironments);
   protected readonly projects = $repository(projects);
   protected readonly members = $repository(organizationMembers);
   protected readonly users = $repository(users);
@@ -64,7 +59,8 @@ export class HostService {
   protected readonly tokens = $inject(HostTokenService);
   protected readonly inventories = $inject(HostInventoryService);
   protected readonly seal = $inject(CredentialSealService);
-  protected readonly cloudflare = $inject(HostCloudflareService);
+  protected readonly types = $inject(HostTypeRegistry);
+  protected readonly usage = $inject(HostUsageRegistry);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -154,7 +150,7 @@ export class HostService {
       online: this.isOnline(host),
       overdue: this.isOverdue(host),
       acceptedRuntimes: this.acceptedRuntimes(host.type),
-      credentialStatus: this.cloudflare.credentialStatus(host),
+      credentialStatus: this.types.credentialStatus(host),
     });
   }
 
@@ -251,7 +247,7 @@ export class HostService {
         slug,
         label: input.label?.trim() || undefined,
         accountId: input.accountId,
-        secretPrefix: this.cloudflare.mask(input.token),
+        secretPrefix: this.types.mask("cloudflare", input.token),
         credential: await this.seal.seal(
           input.token,
           CredentialSealService.HOST_PURPOSE,
@@ -315,7 +311,7 @@ export class HostService {
     });
 
     await this.hosts.updateById(host.id, {
-      secretPrefix: this.cloudflare.mask(token),
+      secretPrefix: this.types.mask("cloudflare", token),
       credential: await this.seal.seal(
         token,
         CredentialSealService.HOST_PURPOSE,
@@ -358,7 +354,7 @@ export class HostService {
     accountId: string;
     token: string;
   }): Promise<{ expiresAt?: string }> {
-    const check = await this.cloudflare.check(input);
+    const check = await this.types.check("cloudflare", input);
     if (check.outcome === "failed") {
       // `data.field` survives the round trip, which is what lets the dialog
       // put the message beside the field it concerns (#1865).
@@ -420,28 +416,7 @@ export class HostService {
    * cannot delete their account while they own it.
    */
   async assertUnreferenced(hostId: string, projectId?: number): Promise<void> {
-    const referencing = await this.instances.findMany({
-      where: {
-        hostId: { eq: hostId },
-        ...(projectId === undefined ? {} : { projectId: { eq: projectId } }),
-      },
-      columns: ["app", "env", "projectId"],
-      orderBy: [
-        { column: "app", direction: "asc" },
-        { column: "env", direction: "asc" },
-      ],
-    });
-    // A deleted project deploys nothing (#Q3169): its copies do not hold the
-    // host, even those left from before its deletion freed them.
-    const live = await this.liveProjects(
-      referencing.map((instance) => instance.projectId),
-    );
-    const named = [
-      ...referencing
-        .filter((instance) => live.has(instance.projectId))
-        .map((instance) => `${instance.app}/${instance.env}`),
-      ...(await this.stacksReferencing(hostId, projectId)),
-    ];
+    const named = await this.usage.references(hostId, projectId);
     if (named.length === 0) {
       return;
     }
@@ -454,80 +429,6 @@ export class HostService {
         rest > 0 ? ` and ${rest} more` : ""
       }. Repoint or remove ${named.length === 1 ? "it" : "them"} first.`,
     );
-  }
-
-  /**
-   * Which of these projects still exist: the repository leaves out a
-   * soft-deleted row, so a project its owner deleted is not among them.
-   */
-  protected async liveProjects(ids: number[]): Promise<Set<number>> {
-    const unique = [...new Set(ids)];
-    if (unique.length === 0) {
-      return new Set();
-    }
-    const rows = await this.projects.findMany({
-      where: { id: { inArray: unique } },
-      columns: ["id"],
-    });
-    return new Set(rows.map((row) => row.id));
-  }
-
-  /**
-   * The stacks and stack environments that deploy to a host, named as
-   * `stack (stack)` for a stack's default host and `stack/env (stack)` for
-   * an environment's own override (#Q3131).
-   *
-   * Both columns are `set null` at the database for the reason
-   * `app_instances.hostId` is: without this, deleting a host silently
-   * left a stack with nowhere to deploy. With a `projectId`, only that
-   * project's stacks count, as for instances.
-   */
-  protected async stacksReferencing(
-    hostId: string,
-    projectId?: number,
-  ): Promise<string[]> {
-    const scope =
-      projectId === undefined ? {} : { projectId: { eq: projectId } };
-    const allDefaults = await this.stacks.findMany({
-      where: { hostId: { eq: hostId }, ...scope },
-      columns: ["name", "projectId"],
-      orderBy: [{ column: "name", direction: "asc" }],
-    });
-    const liveDefaults = await this.liveProjects(
-      allDefaults.map((stack) => stack.projectId),
-    );
-    const defaults = allDefaults.filter((stack) =>
-      liveDefaults.has(stack.projectId),
-    );
-    const overrides = await this.stackEnvironments.findMany({
-      where: { hostId: { eq: hostId } },
-      columns: ["stackId", "env"],
-      orderBy: [{ column: "env", direction: "asc" }],
-    });
-    const owners = overrides.length
-      ? await this.stacks.findMany({
-          where: {
-            id: { inArray: [...new Set(overrides.map((row) => row.stackId))] },
-            ...scope,
-          },
-          columns: ["id", "name", "projectId"],
-        })
-      : [];
-    const liveOwners = await this.liveProjects(
-      owners.map((stack) => stack.projectId),
-    );
-    const nameOf = new Map(
-      owners
-        .filter((stack) => liveOwners.has(stack.projectId))
-        .map((stack) => [stack.id, stack.name]),
-    );
-    return [
-      ...defaults.map((stack) => `${stack.name} (stack)`),
-      ...overrides
-        .filter((row) => nameOf.has(row.stackId))
-        .map((row) => `${nameOf.get(row.stackId)}/${row.env} (stack)`)
-        .sort(),
-    ];
   }
 
   /**

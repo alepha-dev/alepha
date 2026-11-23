@@ -1,3 +1,4 @@
+import { HostTypeRegistry } from "@lore/core/api";
 import {
   $ownsProject,
   LoreAudits,
@@ -27,7 +28,6 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
 import { HostService } from "../services/HostService.ts";
 
@@ -69,7 +69,7 @@ export class ProjectHostController {
   protected readonly ranks = $inject(RankService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly service = $inject(HostService);
-  protected readonly cloudflare = $inject(HostCloudflareService);
+  protected readonly types = $inject(HostTypeRegistry);
   protected readonly inventories = $inject(HostInventoryService);
   protected readonly audits = $inject(LoreAudits);
 
@@ -392,7 +392,7 @@ export class ProjectHostController {
         agentHost: host.agentHost,
         ...(host.agentStatus ? { agentStatus: host.agentStatus } : {}),
         acceptedRuntimes: this.service.acceptedRuntimes(host.type),
-        credentialStatus: this.cloudflare.credentialStatus(host),
+        credentialStatus: this.types.credentialStatus(host),
         lastSeenAt: host.lastSeenAt ?? undefined,
         expiresAt: host.expiresAt ?? undefined,
         overdue: this.service.isOverdue(host),

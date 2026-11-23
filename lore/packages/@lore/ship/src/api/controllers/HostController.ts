@@ -1,3 +1,4 @@
+import { HostTypeRegistry } from "@lore/core/api";
 import {
   $ownsProject,
   LoreAudits,
@@ -33,7 +34,6 @@ import {
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { AgentHostService } from "../services/AgentHostService.ts";
-import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostCommandTransport } from "../services/HostCommandTransport.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
 import { HostService } from "../services/HostService.ts";
@@ -75,7 +75,7 @@ export class HostController {
   protected readonly hosts = $repository(hosts);
   protected readonly service = $inject(HostService);
   protected readonly tokens = $inject(HostTokenService);
-  protected readonly cloudflare = $inject(HostCloudflareService);
+  protected readonly types = $inject(HostTypeRegistry);
   protected readonly transport = $inject(HostCommandTransport);
   protected readonly agents = $inject(AgentHostService);
   protected readonly inventories = $inject(HostInventoryService);
@@ -667,7 +667,7 @@ export class HostController {
         );
       }
 
-      const check = await this.cloudflare.recheck(host);
+      const check = await this.types.recheck(host);
       if (check.outcome === "inconclusive") {
         // No verdict, so no row change and no pretending otherwise: the
         // drawer shows this sentence and the host keeps the status it
