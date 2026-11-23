@@ -1,9 +1,11 @@
-import { BayReleaseTarget, HostCommandService } from "@lore/core/api";
-import type { HostCommand, Host } from "@lore/core/schemas";
-import { BayUpgrade } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
+import type { HostCommand } from "../entities/hostCommands.ts";
+import type { Host } from "../entities/hosts.ts";
+import { BayUpgrade } from "../schemas/BayUpgrade.ts";
+import { BayReleaseTarget } from "./BayReleaseTarget.ts";
+import { HostCommandService } from "./HostCommandService.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
 import { HostService } from "./HostService.ts";
 

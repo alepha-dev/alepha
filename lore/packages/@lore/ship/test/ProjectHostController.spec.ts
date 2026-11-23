@@ -1,4 +1,8 @@
-import { ProjectDeletionService, ProjectSecurityService } from "@lore/core/api";
+import {
+  ProjectDeletionService,
+  ProjectSecurityService,
+  HostService,
+} from "@lore/core/api";
 import { projects, hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
@@ -17,7 +21,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
   LoreShipApi,
-  HostService,
   AppController,
   HostController,
   ProjectHostController,

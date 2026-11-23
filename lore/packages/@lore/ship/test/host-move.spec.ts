@@ -102,7 +102,7 @@ describe("a host's home project changes", () => {
     });
 
   describe("moving", () => {
-    it("needs host:delete in the home and host:create in a target with Apps on", async ({
+    it("needs host:delete in the home and host:create in the target, Ship on or off", async ({
       expect,
     }) => {
       const owner = await person("owner");
@@ -144,15 +144,15 @@ describe("a host's home project changes", () => {
           { user: owner },
         ),
       ).rejects.toThrow(BadRequestError);
-      // A target with Apps off could manage it through no page.
-      await appsOff(target.id);
-      await expect(
-        hostsApi.moveHost(
-          { params, body: { projectId: target.id } },
-          { user: owner },
-        ),
-      ).rejects.toThrow(/Ship/);
       expect((await repos.hosts.getById(host.id)).projectId).toBe(home.id);
+      // A target with Ship off takes it (#E166): hosts are core's, and a
+      // project may exist only to store hosts and lend them.
+      await appsOff(target.id);
+      await hostsApi.moveHost(
+        { params, body: { projectId: target.id } },
+        { user: owner },
+      );
+      expect((await repos.hosts.getById(host.id)).projectId).toBe(target.id);
     });
 
     it("refuses a slug the target holds, and never rewrites one", async ({
@@ -263,7 +263,7 @@ describe("a host's home project changes", () => {
   });
 
   describe("the admin's assign", () => {
-    it("refuses a target with Apps off, and needs admin:host:update", async ({
+    it("needs admin:host:update, and takes a target with Ship off", async ({
       expect,
     }) => {
       const dan = await person("dan");
@@ -284,13 +284,13 @@ describe("a host's home project changes", () => {
           { user: owner },
         ),
       ).rejects.toThrow(ForbiddenError);
+      // Ship off is no refusal (#E166).
       await appsOff(project.id);
-      await expect(
-        assign(
-          { params: { id: host.id }, body: { projectId: project.id } },
-          { user: admin },
-        ),
-      ).rejects.toThrow(/Ship/);
+      await assign(
+        { params: { id: host.id }, body: { projectId: project.id } },
+        { user: admin },
+      );
+      expect((await repos.hosts.getById(host.id)).projectId).toBe(project.id);
     });
   });
 
@@ -318,7 +318,7 @@ describe("a host's home project changes", () => {
       ).rejects.toThrow(ConflictError);
     });
 
-    it("does not lose Apps", async ({ expect }) => {
+    it("turns Ship off, and is still not deleted", async ({ expect }) => {
       const owner = await person("owner");
       const home = await createTestProject(alepha, { createdBy: owner.id });
       await createTestHost(
@@ -328,21 +328,24 @@ describe("a host's home project changes", () => {
         { projectId: home.id },
       );
 
-      await expect(
-        alepha.inject(ProjectCapabilityController).setCapability(
-          {
-            params: { projectId: home.id, key: "ship" },
-            body: { enabled: false },
-          },
-          { user: owner },
-        ),
-      ).rejects.toThrow(/ovh-1/);
+      // A host is core's (#E166): Ship goes, the host stays at home.
+      await alepha.inject(ProjectCapabilityController).setCapability(
+        {
+          params: { projectId: home.id, key: "ship" },
+          body: { enabled: false },
+        },
+        { user: owner },
+      );
       expect(
         await repos.capabilities.count({
           projectId: { eq: home.id },
           key: { eq: "ship" },
         }),
-      ).toBe(1);
+      ).toBe(0);
+      // Deleting the project is still refused, naming the host.
+      await expect(
+        alepha.inject(ProjectDeletionService).deleteProject(home.id),
+      ).rejects.toThrow(/ovh-1/);
     });
 
     it("deletes once the host moved away", async ({ expect }) => {
@@ -388,7 +391,7 @@ describe("a host's home project changes", () => {
       expect(row.ownerUserId).toBe(bob.id);
     });
 
-    it("refuses before any write on a slug collision or a target with Apps off", async ({
+    it("refuses before any write on a slug collision, and merges into a target with Ship off", async ({
       expect,
     }) => {
       const ann = await person("ann");
@@ -412,14 +415,16 @@ describe("a host's home project changes", () => {
       await expect(merge.merge(source.id, target.id)).rejects.toThrow(
         /host "ovh-1"/,
       );
+      const refused = await repos.hosts.getById(host.id);
+      expect(refused.projectId).toBe(source.id);
+      expect(refused.ownerUserId).toBe(ann.id);
+      // Ship off in the target is no conflict any more (#E166).
       await repos.hosts.deleteMany({ projectId: { eq: target.id } });
       await appsOff(target.id);
-      await expect(merge.merge(source.id, target.id)).rejects.toThrow(
-        /Ship is off/,
-      );
+      await merge.merge(source.id, target.id);
       const row = await repos.hosts.getById(host.id);
-      expect(row.projectId).toBe(source.id);
-      expect(row.ownerUserId).toBe(ann.id);
+      expect(row.projectId).toBe(target.id);
+      expect(row.ownerUserId).toBe(bob.id);
     });
   });
 });

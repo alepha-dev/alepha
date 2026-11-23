@@ -1,31 +1,28 @@
-import {
-  ProjectCapabilityGuards,
-  ProjectDeletionService,
-} from "@lore/core/api";
-import { hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
+import { hosts } from "../entities/hosts.ts";
+import { ProjectDeletionService } from "./ProjectDeletionService.ts";
+
 /**
- * A project that is the home of a host is not deleted and does not lose
- * Apps (#Q3280, epic #E126): refused, naming the hosts, until they are moved
- * or deleted. Never a cascade (folio #1194, rule 1): other projects may
- * deploy onto those hosts, and cascading would break them in silence.
+ * A project that is the home of a host is not deleted (#Q3280, epic #E126):
+ * refused, naming the hosts, until they are moved or deleted. Never a cascade
+ * (folio #1194, rule 1): other projects may deploy onto those hosts, and
+ * cascading would break them in silence.
  *
- * Both refusals are guards core runs before anything is written: the
- * deletion one before the project's slug is freed and before any deletion
- * step, for the owner's delete, the admin's and the admin's bulk delete; the
- * capability one before the capability row is deleted.
+ * A guard core runs before anything is written: before the project's slug is
+ * freed and before any deletion step, for the owner's delete, the admin's and
+ * the admin's bulk delete. Turning Ship off is no longer refused (#E166): a
+ * host is core's and works without it.
  *
  * `hosts.projectId` is `restrict`, and never fires on a project's soft
  * delete: this guard is what keeps a soft-deleted project from being the home
  * of a live host. Nothing injects this; it registers itself.
  */
-export class DeployHostHomeGuards {
+export class HostHomeGuards {
   protected readonly hosts = $repository(hosts);
   protected readonly deletion = $inject(ProjectDeletionService);
-  protected readonly capabilities = $inject(ProjectCapabilityGuards);
 
   /**
    * How many hosts a refusal names before it counts the rest.
@@ -34,24 +31,12 @@ export class DeployHostHomeGuards {
 
   constructor() {
     this.deletion.registerGuard({
-      name: "deploy",
+      name: "hosts",
       check: async (projectId) => {
         const named = await this.homedIn(projectId);
         if (named) {
           throw new ConflictError(
             `This project is the home of ${named}. Move or delete them first: other projects may deploy onto them.`,
-          );
-        }
-      },
-    });
-    this.capabilities.register({
-      key: "ship",
-      name: "deploy",
-      check: async (projectId) => {
-        const named = await this.homedIn(projectId);
-        if (named) {
-          throw new ConflictError(
-            `This project is the home of ${named}, which only Apps can manage. Move or delete them before turning Apps off.`,
           );
         }
       },

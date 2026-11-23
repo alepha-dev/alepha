@@ -1,15 +1,15 @@
-import {
-  HostProjectEvents,
-  SourceRepository,
-  HostEventFields,
-} from "@lore/core/api";
-import { projects, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
+
+import { hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { HostEventFields } from "../services/HostEventFields.ts";
+import { HostProjectEvents } from "../services/HostProjectEvents.ts";
+import { SourceRepository } from "../services/SourceRepository.ts";
 
 /**
  * Raises `host.expired`, once, when a throwaway host is past the TTL it was

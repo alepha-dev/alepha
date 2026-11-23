@@ -448,7 +448,8 @@ test.describe("Project hosts", () => {
     expect(survived.status).toBe(200);
     expect(survived.body.projects).toHaveLength(2);
 
-    // 9. The first project cannot be deleted, keeps its slug, and keeps Apps.
+    // 9. The first project cannot be deleted and keeps its slug. Turning
+    //    Ship off is no longer refused (#E166): a host is core's.
     const notDeleted = await call(page, "deleteProjectById", "POST", {
       id: first.id,
     });
@@ -465,7 +466,23 @@ test.describe("Project hosts", () => {
       { projectId: first.id, key: "ship" },
       { enabled: false },
     );
-    expect(appsOff.status).toBe(409);
+    expect(appsOff.status).toBe(200);
+    expect(
+      (
+        await call(page, "deleteProjectById", "POST", {
+          id: first.id,
+        })
+      ).status,
+    ).toBe(409);
+    // Back on, for the rest of the walk.
+    const appsOn = await call(
+      page,
+      "setCapability",
+      "PUT",
+      { projectId: first.id, key: "ship" },
+      { enabled: true },
+    );
+    expect(appsOn.status).toBe(200);
 
     // 10. Owner moves it to the second project: slug, machine and both loans
     //     unchanged.

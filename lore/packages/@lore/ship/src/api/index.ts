@@ -30,7 +30,6 @@ import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
-import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -56,7 +55,6 @@ import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployedBuildService } from "./services/DeployedBuildService.ts";
 import { DeployGate } from "./services/DeployGate.ts";
-import { DeployHostHomeGuards } from "./services/DeployHostHomeGuards.ts";
 import { DeployHostUsage } from "./services/DeployHostUsage.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
@@ -68,12 +66,9 @@ import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorThreshold } from "./services/ErrorThreshold.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
-import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
-import { HostService } from "./services/HostService.ts";
 import { HostsMetric } from "./services/HostsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
-import { HostUpgradeService } from "./services/HostUpgradeService.ts";
 import { LiveQuestService } from "./services/LiveQuestService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
@@ -139,11 +134,6 @@ export const LoreShipApi = $module({
     DeployProjectMerge,
     // Frees the hosts a deleted project held (#Q3169); nothing injects it.
     DeployProjectDeletion,
-    // Keeps a homed host's cascade anchor on its project's owner (#Q3278).
-    HostAnchorHooks,
-    // Refuses deleting a project, or turning Apps off, while it is the home of
-    // a host (#Q3280); nothing injects it.
-    DeployHostHomeGuards,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
     // The apps tiles of #E77 (#Q2657).
@@ -160,7 +150,6 @@ export const LoreShipApi = $module({
     UptimeSocketProber,
     SigilJobs,
     HostCredentialJobs,
-    HostExpiryJobs,
     HostOfflineJobs,
     ArtifactTarReader,
     ArtifactDetailService,
@@ -236,7 +225,6 @@ export const LoreShipApi = $module({
     // core's host registries (#E166); nothing injects either.
     DeployHostUsage,
     ShipHostCommands,
-    HostService,
     // The command and job queues are core's since #E166 (`HostCommandService`,
     // `HostJobService`).
     // Agent hosts (#Q3985): hosts that run Claude Code jobs, their daily
@@ -244,8 +232,6 @@ export const LoreShipApi = $module({
     AgentHostService,
     AgentHostController,
     AgentHostJobs,
-    // The upgrade of Bay itself (#E152); its target is core's.
-    HostUpgradeService,
     HostStatsService,
     // The real transport, substituted for `HostCommandTransport` in
     // `main.server.ts`. Listed so DI scanning sees the class.
@@ -312,7 +298,7 @@ export { LiveQuestService } from "./services/LiveQuestService.ts";
 export { QuestBitmap } from "./services/QuestBitmap.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
-export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
+
 export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
@@ -338,10 +324,6 @@ export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
 export { DeployService } from "./services/DeployService.ts";
 export { HostCloudflareService } from "./services/HostCloudflareService.ts";
 
-export { HostUpgradeService } from "./services/HostUpgradeService.ts";
-
-export { HostInventoryService } from "./services/HostInventoryService.ts";
-export { HostService } from "./services/HostService.ts";
 export { HostStatsService } from "./services/HostStatsService.ts";
 
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";

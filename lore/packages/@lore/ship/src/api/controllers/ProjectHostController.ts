@@ -1,8 +1,10 @@
-import { HostTypeRegistry } from "@lore/core/api";
 import {
+  HostTypeRegistry,
   $ownsProject,
   LoreAudits,
   ProjectSecurityService,
+  HostInventoryService,
+  HostService,
 } from "@lore/core/api";
 import {
   projects,
@@ -27,9 +29,6 @@ import {
   NotFoundError,
   okSchema,
 } from "alepha/server";
-
-import { HostInventoryService } from "../services/HostInventoryService.ts";
-import { HostService } from "../services/HostService.ts";
 
 export type { LentHostResource, MintedLentHost };
 

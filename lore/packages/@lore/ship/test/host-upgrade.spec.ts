@@ -2,6 +2,7 @@ import {
   BayReleaseTarget,
   HostCommandTransport,
   HostCommandService,
+  HostInventoryService,
 } from "@lore/core/api";
 import {
   BayUpgrade,
@@ -25,7 +26,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   HostCommandController,
   HostController,
-  HostInventoryService,
   LoreShipApi,
   ProjectHostController,
 } from "../src/api/index.ts";

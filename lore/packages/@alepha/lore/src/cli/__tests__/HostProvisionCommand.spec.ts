@@ -240,15 +240,16 @@ describe("lore host provision", () => {
     expect(calls.map((call) => call.name)).not.toContain("deleteHost");
   });
 
-  it("refuses an existing project with Apps off before buying a server", async ({
+  it("provisions into an existing project with Ship off, saying deploys wait for Ship (#E166)", async ({
     expect,
   }) => {
-    const { run, calls, shell } = create({ projectExists: true });
-    await expect(
-      run("--provider scaleway --name tmp-vps --project hello-world"),
-    ).rejects.toThrow("does not have Ship on");
-    expect(calls).toEqual([]);
-    expect(shell.wasCalledMatching(/server create/)).toBe(false);
+    const { run, calls, printed, shell } = create({ projectExists: true });
+    await run("--provider scaleway --name tmp-vps --project hello-world");
+    expect(calls.map((call) => call.name)).not.toContain("createProject");
+    expect(shell.wasCalledMatching(/server create/)).toBe(true);
+    expect(printed.join("\n")).toContain(
+      "hello-world does not have Ship on: the host is kept and monitored there",
+    );
   });
 
   it("says so when --project names an existing project, and that it cannot deploy until its deploy option is on", async ({

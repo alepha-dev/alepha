@@ -1,3 +1,4 @@
+import { HostService } from "@lore/core/api";
 import { hostProjects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
@@ -5,7 +6,6 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 
 import type { AppInstance } from "../entities/appInstances.ts";
 import { HostCloudflareService } from "./HostCloudflareService.ts";
-import { HostService } from "./HostService.ts";
 
 /**
  * Everything that has to be true before a deploy has a single side effect.

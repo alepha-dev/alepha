@@ -1,23 +1,22 @@
-import { BayReleaseTarget, HostUsageRegistry } from "@lore/core/api";
-import {
-  projects,
-  hostInventories,
-  type Host,
-  hosts,
-  BayUpgrade,
-} from "@lore/core/schemas";
-import type {
-  HostInventoryFrame,
-  HostInventoryExpectedApp,
-  HostInventoryProject,
-  HostInventoryReportedApp,
-  HostInventoryResource,
-  HostInventorySummary,
-} from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+
+import { hostInventories } from "../entities/hostInventories.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { BayUpgrade } from "../schemas/BayUpgrade.ts";
+import type { HostInventoryFrame } from "../schemas/hostInventoryFrameSchema.ts";
+import type {
+  HostInventoryExpectedApp,
+  HostInventoryProject,
+  HostInventoryReportedApp,
+  HostInventoryResource,
+} from "../schemas/hostInventoryResourceSchema.ts";
+import type { HostInventorySummary } from "../schemas/ownedHostResourceSchema.ts";
+import { BayReleaseTarget } from "./BayReleaseTarget.ts";
+import { HostUsageRegistry } from "./HostUsageRegistry.ts";
 
 /**
  * What Lore does with an inventory push: one row per host, updated in

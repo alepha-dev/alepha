@@ -1,4 +1,4 @@
-import { HostCommandService } from "@lore/core/api";
+import { HostCommandService, HostInventoryService } from "@lore/core/api";
 import type { HostCommand } from "@lore/core/schemas";
 import { hostProjects, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -7,7 +7,6 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import type { StackServicesResource } from "../schemas/stackServicesResourceSchema.ts";
-import { HostInventoryService } from "./HostInventoryService.ts";
 import { StackService } from "./StackService.ts";
 
 /**

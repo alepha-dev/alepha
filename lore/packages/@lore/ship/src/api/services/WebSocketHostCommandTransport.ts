@@ -1,9 +1,8 @@
-import { HostCommandTransport } from "@lore/core/api";
+import { HostCommandTransport, HostService } from "@lore/core/api";
 import type { Host, HostServerFrame } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 
 import { HostSocketController } from "../controllers/HostSocketController.ts";
-import { HostService } from "./HostService.ts";
 
 /**
  * The real transport: a frame goes out over the host's open websocket.

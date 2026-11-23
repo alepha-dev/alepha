@@ -2,6 +2,7 @@ import {
   DashboardMetricRegistry,
   type DashboardMetricResolver,
   type DashboardResolvable,
+  HostService,
 } from "@lore/core/api";
 import {
   type DashboardCardValue,
@@ -12,8 +13,6 @@ import {
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
-
-import { HostService } from "./HostService.ts";
 
 /**
  * The Hosts card (#Q3781): the project's hosts, the ones it is home to and

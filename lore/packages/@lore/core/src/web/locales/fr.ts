@@ -3002,8 +3002,6 @@ export default {
   "hosts.home.lend": "Prêter à ce projet",
   "hosts.blocker.delete":
     "Ce projet est le propriétaire de $1. Déplacez ces hôtes vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
-  "hosts.blocker.apps":
-    "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
   "hosts.online": "en ligne",

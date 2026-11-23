@@ -5,6 +5,8 @@ import {
   ProjectSecurityService,
   HostCommandTransport,
   HostTokenService,
+  HostInventoryService,
+  HostService,
 } from "@lore/core/api";
 import {
   projects,
@@ -36,8 +38,6 @@ import {
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { AgentHostService } from "../services/AgentHostService.ts";
-import { HostInventoryService } from "../services/HostInventoryService.ts";
-import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 
 export type {

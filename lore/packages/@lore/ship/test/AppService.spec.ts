@@ -1,3 +1,4 @@
+import { HostService } from "@lore/core/api";
 import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -12,7 +13,7 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreShipApi, AppService, HostService } from "../src/api/index.ts";
+import { LoreShipApi, AppService } from "../src/api/index.ts";
 import { appInstances, type Sigil, sigils } from "../src/schemas/index.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 

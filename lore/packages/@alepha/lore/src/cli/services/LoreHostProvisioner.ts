@@ -334,9 +334,10 @@ export class LoreHostProvisioner {
   }
 
   /**
-   * The project the host belongs to, created with Apps on when it does not
-   * exist yet. An existing one with Apps off is refused here, before a server
-   * is bought (#Q3282): the host could be managed through no page there.
+   * The project the host belongs to, created with Ship on when it does not
+   * exist yet. An existing one with Ship off is accepted since #E166 (it was
+   * refused by #Q3282): it keeps and monitors the host, and is told that
+   * deploying there needs Ship.
    */
   protected async ensureProject(
     slug: string,
@@ -356,14 +357,17 @@ export class LoreHostProvisioner {
       // Said, because an existing project is a different act from a new one
       // (the walk of #Q3169 lent a server to an old project silently).
       const apps = existing.capabilities?.find((row) => row.key === "ship");
-      if (!apps) {
-        throw this.refusal(
-          `${existing.slug ?? slug} does not have Ship on, so a host could not be managed there. Turn it on first: lore project capability enable ship --option deploy -p ${existing.slug ?? slug}`,
-        );
-      }
       print(
         `It will belong to your existing project ${existing.slug ?? slug}.`,
       );
+      if (!apps) {
+        // A host is core's (#E166): a project with Ship off keeps it, reads
+        // its stats and lends it; only deploying there waits for Ship.
+        print(
+          `${existing.slug ?? slug} does not have Ship on: the host is kept and monitored there, and takes deploys once Ship is on: lore project capability enable ship --option deploy -p ${existing.slug ?? slug}`,
+        );
+        return { id: existing.id, slug: existing.slug ?? slug, created: false };
+      }
       const options = (apps.options ?? {}) as Record<string, unknown>;
       if (options.deploy !== true) {
         print(
