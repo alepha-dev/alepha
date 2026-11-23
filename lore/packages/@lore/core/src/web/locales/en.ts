@@ -3455,6 +3455,10 @@ export default {
   "requirements.run.verdict.notRun": "$1 not run",
   "requirements.run.score": "$1 of $2 criteria passed",
   "requirements.run.observation": "Observation",
+  "requirements.run.evidence.expected": "Expected",
+  "requirements.run.evidence.seen": "Seen",
+  "requirements.run.evidence.also": "Also",
+  "requirements.run.evidence.details": "Details (for the developer)",
   "requirements.run.result.passed": "Passed",
   "requirements.run.stale": "Stale",
   "requirements.run.staleBanner":

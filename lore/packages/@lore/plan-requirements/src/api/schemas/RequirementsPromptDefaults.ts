@@ -18,7 +18,7 @@ Acceptance criteria:
 {{criteria}}
 
 1. Play the main flow and every alternative, in each actor's role.
-2. For each criterion, decide passed, failed or not_run, with a one-line note for a failure (what you saw).
+2. For each criterion, decide passed, failed or not_run. A failure's note reads for a person first, one line per label: \`Expected: <what should happen>\`, \`Seen: <what happened>\`, \`Also: <anything else worth knowing>\` if any, then \`Details: <page, state, repro steps, ids>\` for the developer. Lore shows the first three as rows and folds the details.
 3. Record ONE run with \`usecase_run_record\` (project_name "{{project}}", number {{number}}, by "agent", your client name, app and env as above, one result per criterion), or \`lore usecase run record {{reference}} --by agent --result C1=passed,C2=failed:why\`.
 4. Attach your screenshots or recording to the criterion they show with \`lore attachments push <file> --run <runId> --criterion C2\` (\`usecase_run_attachment_add\` gives you that line).
 5. A failure opens an error only once every quest covering the use case is done and the project tracks errors; do not open quests or fix code yourself. Report what failed and where.`;

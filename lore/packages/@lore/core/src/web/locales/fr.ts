@@ -3466,6 +3466,10 @@ export default {
   "requirements.run.verdict.notRun": "$1 non joué(s)",
   "requirements.run.score": "$1 critères sur $2 passés",
   "requirements.run.observation": "Observation",
+  "requirements.run.evidence.expected": "Attendu",
+  "requirements.run.evidence.seen": "Constaté",
+  "requirements.run.evidence.also": "Aussi",
+  "requirements.run.evidence.details": "Détails (pour le développeur)",
   "requirements.run.result.passed": "Réussi",
   "requirements.run.stale": "Périmé",
   "requirements.run.staleBanner":
