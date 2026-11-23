@@ -202,3 +202,8 @@ func writeRunFile(pattern string, content []byte) (string, func(), error) {
 	}
 	return filepath.Clean(path), cleanup, nil
 }
+
+// jobTools are the tools beside the agent CLIs a job may need, which the
+// inventory reports (#Q4220): git and gh for work on a repository, lore for
+// a prompt that asks for the CLI. Bay runs none of them itself.
+var jobTools = []string{"git", "gh", "lore"}

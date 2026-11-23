@@ -1,4 +1,8 @@
-import { HostInventoryService, HostController } from "@lore/core/api";
+import {
+  AgentHostService,
+  HostInventoryService,
+  HostController,
+} from "@lore/core/api";
 import {
   hostInventories,
   type Host,
@@ -167,6 +171,31 @@ describe("HostInventoryService", () => {
    * a host with no apps and a host that never spoke are two different
    * sentences.
    */
+  it("keeps on the host what its jobs user has, for the Agent card and the agent gate (#Q4220)", async ({
+    expect,
+  }) => {
+    const { host } = await createHost(ctx, "agent-1");
+    const tools = [
+      { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+      {
+        name: "gemini",
+        kind: "agent",
+        found: false,
+        error: "gemini is not on the jobs user's PATH",
+      },
+      { name: "git", kind: "tool", found: true, version: "2.43.0" },
+    ];
+    await ctx.service.record(host, {
+      ...frame([]),
+      jobs: { runner: "process", user: "bay-agent", tools },
+    });
+    const row = await ctx.repos.hosts.getOne({
+      where: { id: { eq: host.id } },
+    });
+    expect(row.jobsTools).toEqual(tools);
+    expect(AgentHostService.agentsOf(row.jobsTools)).toEqual(["claude"]);
+  });
+
   it("answers nothing for a machine that has never reported", async ({
     expect,
   }) => {

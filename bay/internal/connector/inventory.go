@@ -32,22 +32,34 @@ type Inventory struct {
 /*
 InventoryJobs is the job runner as the machine reports it.
 
-`runner` is what Lore's trust rule reads: `process` runs a job as a Unix user
-on this host, with the user's own shell and credentials in reach, so Lore
-refuses untrusted input on it; `container` (a later runner) is the one that
-lifts the refusal. `running` is the job-run command id in progress, if any.
+`runner` is how it runs jobs (`process`, a Unix user on this host). `running`
+is the job-run command ids in progress, comma-joined. `tools` is what the
+jobs user has on its PATH (#Q4220): each supported agent CLI, then git, gh
+and lore, found or not, with a version or the error of its version command.
+Bay only reports them: the host's owner installs what the jobs need.
 */
 type InventoryJobs struct {
-	Runner        string `json:"runner"`
-	User          string `json:"user,omitempty"`
-	ClaudeVersion string `json:"claudeVersion,omitempty"`
-	// ClaudeError says why the version could not be read (no claude on the
-	// user's PATH, most often), so the console can say it before a job fails.
-	ClaudeError string `json:"claudeError,omitempty"`
-	Running     string `json:"running,omitempty"`
+	Runner  string `json:"runner"`
+	User    string `json:"user,omitempty"`
+	Running string `json:"running,omitempty"`
 	// Secrets are the NAMES of the host-local secrets (`bay secret set`),
 	// never a value: what Lore shows as set (#Q3999).
-	Secrets []string `json:"secrets,omitempty"`
+	Secrets []string        `json:"secrets,omitempty"`
+	Tools   []InventoryTool `json:"tools,omitempty"`
+}
+
+/*
+InventoryTool is one tool on the jobs user's PATH. `kind` is `agent` for an
+agent CLI Bay has an adapter for (what a job's `agent` names), `tool` for
+the others. Whether a tool is signed in is not checked: a job that needs it
+fails with the tool's own message.
+*/
+type InventoryTool struct {
+	Name    string `json:"name"`
+	Kind    string `json:"kind"`
+	Found   bool   `json:"found"`
+	Version string `json:"version,omitempty"`
+	Error   string `json:"error,omitempty"`
 }
 
 // InventoryStack is one stack environment as the machine sees it.

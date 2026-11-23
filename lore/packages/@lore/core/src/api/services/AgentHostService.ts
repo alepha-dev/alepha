@@ -8,6 +8,7 @@ import { hostJobs } from "../entities/hostJobs.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
 import { projects } from "../entities/projects.ts";
+import type { HostJobTool } from "../schemas/hostInventoryJobsSchema.ts";
 import { HostJobs } from "./HostJobs.ts";
 import { HostJobService } from "./HostJobService.ts";
 
@@ -33,6 +34,16 @@ import { HostJobService } from "./HostJobService.ts";
  */
 export class AgentHostService {
   /**
+   * The agent CLIs a host reports as answering (#Q4220): found, and its
+   * version command did not fail.
+   */
+  public static agentsOf(tools: HostJobTool[] | undefined | null): string[] {
+    return (tools ?? [])
+      .filter((tool) => tool.kind === "agent" && tool.found && !tool.error)
+      .map((tool) => tool.name);
+  }
+
+  /**
    * A check's time: two minutes for a cold CLI.
    */
   public static readonly CHECK_TIMEOUT_SECONDS = 120;
@@ -57,6 +68,9 @@ export class AgentHostService {
               slug: host.slug,
               ...(host.agentStatus ? { status: host.agentStatus } : {}),
               ...(host.jobsRunner ? { runner: host.jobsRunner } : {}),
+              ...(host.jobsTools
+                ? { agents: AgentHostService.agentsOf(host.jobsTools) }
+                : {}),
             }
           : undefined;
       },

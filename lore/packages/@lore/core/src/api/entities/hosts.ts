@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
+import { hostJobToolSchema } from "../schemas/hostInventoryJobsSchema.ts";
 import { projects } from "./projects.ts";
 
 /**
@@ -219,6 +220,13 @@ export const hosts = $entity({
      * (#Q3987).
      */
     jobsRunner: z.string().max(20).optional(),
+    /**
+     * What the machine's jobs user has (#Q4220), from its inventory: each
+     * agent CLI, git, gh and lore, found or not, with a version or an error.
+     * The Agent role card lists it; an agent job naming an agent it does
+     * not report is refused before it is queued.
+     */
+    jobsTools: z.array(hostJobToolSchema).optional(),
     /**
      * The last capability check: `checking` while one runs, then `available`
      * or `unavailable` with the CLI's message in `agentError` (an expired

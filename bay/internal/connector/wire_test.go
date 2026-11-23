@@ -333,8 +333,15 @@ func sampleInventoryFrame() Inventory {
 				},
 			},
 		},
-		Jobs: &InventoryJobs{Runner: "process", User: "bay-agent", ClaudeVersion: "2.0.14",
-			Running: "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e"},
+		Jobs: &InventoryJobs{Runner: "process", User: "bay-agent",
+			Running: "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
+			Tools: []InventoryTool{
+				{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},
+				{Name: "gemini", Kind: "agent", Error: "gemini is not on the jobs user's PATH"},
+				{Name: "git", Kind: "tool", Found: true, Version: "2.43.0"},
+				{Name: "gh", Kind: "tool", Found: true, Error: "gh --version exited with status 1"},
+				{Name: "lore", Kind: "tool", Error: "lore is not on the jobs user's PATH"},
+			}},
 	}
 }
 

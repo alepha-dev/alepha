@@ -202,6 +202,26 @@ describe("the agent job", () => {
     expect(job).toMatchObject({ kind: "agent", hostId: w.host.id });
   });
 
+  it("refuses an agent the host does not report, before anything is queued (#Q4220)", async ({
+    expect,
+  }) => {
+    await makeAgentHost(w);
+    await w.repos.hosts.updateById(w.host.id, {
+      jobsTools: [
+        { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+        { name: "gemini", kind: "agent", found: false },
+      ],
+    });
+    await expect(triage(w, { agent: "gemini" })).rejects.toThrow(
+      'Host "agent-1" reports no gemini agent: it has claude',
+    );
+    expect(
+      await w.repos.jobs.findMany({ where: { kind: { eq: "agent" } } }),
+    ).toHaveLength(0);
+    const job = await triage(w, { agent: "claude" });
+    expect(job.input.agent).toBe("claude");
+  });
+
   it("succeeds or fails by its exit code, and reads nothing of what the agent printed", async ({
     expect,
   }) => {

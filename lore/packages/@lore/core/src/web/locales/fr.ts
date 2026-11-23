@@ -3146,6 +3146,9 @@ export default {
   "hosts.agent.status.checking": "Vérification",
   "hosts.agent.status.available": "Disponible",
   "hosts.agent.status.unavailable": "Indisponible",
+  "hosts.agent.tool.missing": "non installé",
+  "hosts.agent.tools.noAgent":
+    "Aucune CLI d'agent ne répond pour l'utilisateur des jobs : cet hôte ne peut pas exécuter de jobs d'agent.",
   "hosts.agent.check": "Vérifier",
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":

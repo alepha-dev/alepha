@@ -69,10 +69,18 @@ export class HostInventoryService {
         : { bayVersion: frame.host.bayVersion }),
     };
 
-    // How it runs jobs, on the host row the job gates read (#Q3987).
+    // How it runs jobs, on the host row the job gates read (#Q3987), and
+    // what its jobs user has (#Q4220), which the agent gate reads.
     const runner = frame.jobs?.runner ?? null;
-    if ((host.jobsRunner ?? null) !== runner) {
-      await this.hosts.updateById(host.id, { jobsRunner: runner });
+    const tools = frame.jobs?.tools ?? null;
+    if (
+      (host.jobsRunner ?? null) !== runner ||
+      JSON.stringify(host.jobsTools ?? null) !== JSON.stringify(tools)
+    ) {
+      await this.hosts.updateById(host.id, {
+        jobsRunner: runner,
+        jobsTools: tools,
+      });
     }
 
     const existing = await this.findFor(host.id);

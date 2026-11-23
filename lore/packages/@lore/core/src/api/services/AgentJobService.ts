@@ -1,7 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
-import { ForbiddenError } from "alepha/server";
+import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import type { AgentJobRequest } from "./AgentJobs.ts";
 import { HostJobs, type HostJobSummary } from "./HostJobs.ts";
@@ -56,6 +56,13 @@ export class AgentJobService {
     if (!host) {
       throw new ForbiddenError(
         "This project names no Agent host: pick one on its hosts settings page",
+      );
+    }
+    // An agent the host does not report is refused before anything is
+    // queued (#Q4220): Bay would fail the job at once, after a pull.
+    if (request.agent && host.agents && !host.agents.includes(request.agent)) {
+      throw new BadRequestError(
+        `Host "${host.slug}" reports no ${request.agent} agent: it has ${host.agents.length ? host.agents.join(", ") : "none"}`,
       );
     }
     if (request.untrusted) {
