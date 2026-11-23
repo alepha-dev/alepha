@@ -4,7 +4,7 @@ import type { Infer } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { FileText, Folder, FolderGit2 } from "lucide-react";
+import { FileText, Folder, FolderGit2, History } from "lucide-react";
 
 import type { CodeBrowserController } from "../../../../../api/controllers/CodeBrowserController.ts";
 import type { codeTreeSchema } from "../../../../../api/schemas/codeTreeSchema.ts";
@@ -74,9 +74,23 @@ const CodeTreePage = (props: CodeTreePageProps) => {
           revision={revision}
           path={tree.path}
         />
+        <Link
+          href={codeHref(
+            "commits",
+            project.slug,
+            repoSlug,
+            revision,
+            tree.path,
+          )}
+          className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-1 text-xs"
+          data-testid="code-tree-commits"
+        >
+          <History className="size-3.5" aria-hidden />
+          {tr("code.tab.commits")}
+        </Link>
         {commits?.indexing && (
           <span
-            className="text-muted-foreground ml-auto text-xs"
+            className="text-muted-foreground text-xs"
             data-testid="code-tree-indexing"
           >
             {tr("code.repo.indexing")}

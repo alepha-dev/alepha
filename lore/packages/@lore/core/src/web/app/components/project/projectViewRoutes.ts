@@ -72,6 +72,8 @@ export const ROUTES_CODE = [
   "codeRepoHome",
   "codeRepoTree",
   "codeRepoBlob",
+  "codeRepoCommits",
+  "codeRepoCommit",
 ];
 
 const ROUTES_SETTINGS = [

@@ -1075,9 +1075,6 @@ export default {
   "project.create.name.firstChar": "Commencez par une lettre ou un chiffre.",
   "project.create.name.badChar":
     "Le caractère $1 n'est pas autorisé. Utilisez des lettres, des chiffres, des espaces, - et _.",
-  "project.update.repositoryUrl.label": "Dépôt",
-  "project.update.repositoryUrl.helper":
-    "Le dépôt où vivent les commits de ce projet. Renseignez-le et les références de commit d'une quête deviennent des liens.",
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
     "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios).",
@@ -5200,4 +5197,15 @@ export default {
   "code.diff.previous": "Précédent",
   "code.diff.next": "Suivant",
   "code.diff.page": "Page $1 sur $2",
+  "code.tab.commits": "Commits",
+  "code.file.history": "Historique",
+  "code.commits.none": "Aucun commit n'a touché ce chemin.",
+  "code.commit.authored": "Écrit par $1",
+  "code.commit.committed": "Commité par $1",
+  "code.commit.browse": "Parcourir les fichiers",
+  "code.commit.root": "Le premier commit : comparé à rien.",
+  "code.commit.parent": "Parent",
+  "code.commit.parents": "Parents",
+  "code.commit.mergeDiff":
+    "Une fusion : le diff est contre $1, son premier parent.",
 };

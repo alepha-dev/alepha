@@ -2,7 +2,7 @@ import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { NestedView, useRouter, useRouterState } from "alepha/react/router";
+import { NestedView, useRouterState } from "alepha/react/router";
 import { FolderGit2 } from "lucide-react";
 
 import { currentCodeRepoAtom } from "../../../atoms/currentCodeRepoAtom.ts";
@@ -15,21 +15,20 @@ import { CODE_REPO_TABS } from "./codeRepoTabs.ts";
  */
 const CodeRepoLayout = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
   const state = useRouterState();
   const [project] = useStore(currentProjectAtom);
   const [detail] = useStore(currentCodeRepoAtom);
   if (!project || !detail) return null;
 
   const active = state.name ?? "";
-  const params = {
-    projectSlug: project.slug,
-    repoSlug: detail.repository.slug,
-  };
   const tabs: PlateTab[] = CODE_REPO_TABS.map((tab) => ({
     key: tab.key,
     label: tr(tab.labelKey),
-    href: router.path(tab.route as never, { params } as never),
+    href: tab.href(
+      project.slug,
+      detail.repository.slug,
+      detail.repository.defaultBranch,
+    ),
   }));
   const activeTab =
     CODE_REPO_TABS.find((tab) => tab.routes.includes(active))?.key ?? "files";

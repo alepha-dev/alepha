@@ -18,6 +18,7 @@ import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
 import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
 import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
+import { CodeAuthors } from "./services/CodeAuthors.ts";
 import { CodeBrowserService } from "./services/CodeBrowserService.ts";
 import { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
 import { CodeDiffService } from "./services/CodeDiffService.ts";
@@ -86,6 +87,7 @@ export const LoreBuildApi = $module({
     CodeIndexJobs,
     // The code browser's reads (#E167), behind one gate.
     CodeReadAccess,
+    CodeAuthors,
     CodeBrowserService,
     // One line diff, in JS, on both backends (#Q4135).
     CodeDiffService,

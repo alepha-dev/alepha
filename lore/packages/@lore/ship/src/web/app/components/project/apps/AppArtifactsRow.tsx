@@ -139,10 +139,7 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
           title={tr("app.artifacts.commit", { args: [group.commitSha] })}
         >
           <GitCommitHorizontal className="size-3.5 shrink-0" aria-hidden />
-          <CommitLink
-            sha={group.commitSha}
-            repositoryUrl={project?.repositoryUrl}
-          />
+          <CommitLink sha={group.commitSha} />
         </span>
       )}
 

@@ -1,0 +1,25 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "d277becd-4582-48a2-afa1-eb4be6c99bf0",
+  "prevIds": ["48cff5a9-2365-4d8c-ba58-4ef3eeb25d1e"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "projects", "repository_url"],
+      "writes": [
+        "s|col|public.projects.repository_url",
+        "n|col|public.projects.repository_url",
+        "e|col|public.projects.repository_url"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"projects\",\"repository_url\"]"
+    }
+  ]
+}

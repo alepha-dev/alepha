@@ -240,12 +240,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
               {quest.commits.map((commit) => {
                 // Linked or not, and why it carries no icon, is `CommitLink`'s
                 // to decide, shared with both artifact views (#Q2336).
-                const sha = (
-                  <CommitLink
-                    sha={commit.sha}
-                    repositoryUrl={project?.repositoryUrl}
-                  />
-                );
+                const sha = <CommitLink sha={commit.sha} repo={commit.repo} />;
 
                 // `quest_commit_add` accepts a bare sha, so a tooltip with
                 // nothing in it is a real case rather than a defensive one.

@@ -43,7 +43,6 @@ import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
 import { projectNameAvailabilitySchema } from "../schemas/projectNameAvailabilitySchema.ts";
-import { projectRepositoryUrlSchema } from "../schemas/projectRepositoryUrlSchema.ts";
 import {
   projectOverviewResourceSchema,
   projectResourceSchema,
@@ -1143,9 +1142,6 @@ export class ProjectController {
         // dual-writing was rejected: a second source of truth for the length
         // of an epic is how the two come to disagree.
         preferredLanguage: z.string().max(8).nullable().optional(),
-        // The repository a quest's commit shas link into. `null` clears it,
-        // and the shas go back to being plain text.
-        repositoryUrl: projectRepositoryUrlSchema.nullable().optional(),
         // Errors retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
@@ -1220,13 +1216,6 @@ export class ProjectController {
         // "unset" cleanly with a falsy check.
         const lang = body.preferredLanguage?.trim();
         project.preferredLanguage = lang ? lang : undefined;
-      }
-
-      if ("repositoryUrl" in body) {
-        // Same normalisation as `preferredLanguage`: an empty string from a
-        // cleared form field means "unset", not "the empty URL".
-        const url = body.repositoryUrl?.trim();
-        project.repositoryUrl = url ? url : undefined;
       }
 
       await this.projects.save(project);

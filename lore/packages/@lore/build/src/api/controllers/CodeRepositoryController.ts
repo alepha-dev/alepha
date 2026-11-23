@@ -54,9 +54,17 @@ export class CodeRepositoryController {
       "The project's git repositories, with their clone URLs and the default branch's last commit.",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        /**
+         * Also answer each default branch's last commit: one backend read
+         * a repository, so the Code page asks for it and a commit link does
+         * not.
+         */
+        lastCommit: z.boolean().optional(),
+      }),
       response: z.object({ repositories: z.array(codeRepositorySchema) }),
     },
-    handler: async ({ params, url, user }) => {
+    handler: async ({ params, query, url, user }) => {
       await this.access.assertRepositories(params.projectId);
       const base = this.repositories.baseUrl(url);
       const rows = await this.access.readable(
@@ -67,7 +75,9 @@ export class CodeRepositoryController {
         repositories: await Promise.all(
           rows.map(async (row) => ({
             ...(await this.repositories.toResource(row, base)),
-            lastCommit: await this.browser.head(row),
+            lastCommit: query.lastCommit
+              ? await this.browser.head(row)
+              : undefined,
           })),
         ),
       };

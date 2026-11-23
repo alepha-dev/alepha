@@ -19,6 +19,7 @@ import { HostRouter } from "./app/HostRouter.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
 import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
 import { CapabilityRowRegistry } from "./app/registries/CapabilityRowRegistry.ts";
+import { CommitLinkRegistry } from "./app/registries/CommitLinkRegistry.ts";
 import { HostConsoleRegistry } from "./app/registries/HostConsoleRegistry.ts";
 import { HostRoleRegistry } from "./app/registries/HostRoleRegistry.ts";
 import { HostTypeUiRegistry } from "./app/registries/HostTypeUiRegistry.ts";
@@ -77,6 +78,9 @@ export const LoreCoreWeb = $module({
     // Read by General > Capabilities (#Q4184), whether or not a module
     // registers a row on it.
     alepha.inject(CapabilityRowRegistry);
+    // Read by every `CommitLink` (#Q4136), whether or not Build registers
+    // where a commit links.
+    alepha.inject(CommitLinkRegistry);
     // Read by `HostCapabilityBadges` (#E166), whose page may render before
     // any module registers a role on it.
     alepha.inject(HostRoleRegistry);
@@ -325,6 +329,10 @@ export {
   type ProjectCreateDialogProps,
   ProjectShellRegistry,
 } from "./app/registries/ProjectShellRegistry.ts";
+export {
+  type CommitHrefHook,
+  CommitLinkRegistry,
+} from "./app/registries/CommitLinkRegistry.ts";
 export { visibleSettingsTabs } from "./app/components/project/settings/projectSettingsSections.ts";
 export {
   type ReportsFilter,

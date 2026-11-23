@@ -101,10 +101,7 @@ const ArtifactPlate = (props: ArtifactPlateProps) => {
             )}
             {detail.commitSha && (
               <>
-                <CommitLink
-                  sha={detail.commitSha}
-                  repositoryUrl={project.repositoryUrl}
-                />
+                <CommitLink sha={detail.commitSha} />
                 <span aria-hidden>·</span>
               </>
             )}

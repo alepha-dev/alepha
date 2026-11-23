@@ -116,6 +116,7 @@ export class BuildRouter {
       const project = this.requireCode();
       const { repositories } = await this.repoApi.listCodeRepositories({
         params: { projectId: project.id },
+        query: { lastCommit: true },
       });
       if (repositories.length === 1) {
         throw new Redirection({
@@ -139,7 +140,13 @@ export class BuildRouter {
     name: "projectCodeRepo",
     path: "/code/:repoSlug",
     schema: { params: z.object({ repoSlug: z.text() }) },
-    children: () => [this.codeRepoHome, this.codeRepoTree, this.codeRepoBlob],
+    children: () => [
+      this.codeRepoHome,
+      this.codeRepoTree,
+      this.codeRepoBlob,
+      this.codeRepoCommits,
+      this.codeRepoCommit,
+    ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Code`,
     }),
@@ -236,6 +243,61 @@ export class BuildRouter {
           ),
         });
       }
+    },
+  });
+
+  /**
+   * A revision's history, `/commits/<revision>/<path>` (#Q4136), of one
+   * file or folder when the tail names a path. `?page=` pages it.
+   */
+  codeRepoCommits = $page({
+    name: "codeRepoCommits",
+    path: "/commits/*",
+    schema: {
+      params: z.object({ "*": z.text({ maxLength: 4096 }).optional() }),
+      query: z.object({ page: z.integer().min(0).optional() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Commits`,
+    }),
+    lazy: () => import("./components/project/code/CodeCommitsPage.tsx"),
+    loader: async ({ params, query }) => {
+      const repo = this.currentRepo();
+      return {
+        log: await this.codeApi.getCodeLog({
+          params: { projectId: repo.projectId, slug: repo.slug },
+          query: { at: decodeCodePath(params["*"]), page: query.page },
+        }),
+      };
+    },
+  });
+
+  /**
+   * One commit, `/commit/:sha` (#Q4136): its message, parents, quests and
+   * its diff against its first parent.
+   */
+  codeRepoCommit = $page({
+    name: "codeRepoCommit",
+    path: "/commit/:sha",
+    schema: {
+      params: z.object({ sha: z.text({ maxLength: 40 }) }),
+      query: z.object({ page: z.integer().min(0).optional() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Commit`,
+    }),
+    lazy: () => import("./components/project/code/CodeCommitPage.tsx"),
+    loader: async ({ params, query }) => {
+      const repo = this.currentRepo();
+      const ids = { projectId: repo.projectId, slug: repo.slug };
+      const commit = await this.codeApi.getCodeCommit({
+        params: { ...ids, sha: params.sha },
+      });
+      const diff = await this.codeApi.getCodeDiff({
+        params: ids,
+        query: { from: commit.parents[0], to: commit.sha, page: query.page },
+      });
+      return { commit, diff };
     },
   });
 

@@ -1,5 +1,10 @@
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n, ResourceRailRegistry } from "@lore/core/web";
+import {
+  CommitLinkRegistry,
+  currentProjectAtom,
+  I18n,
+  ResourceRailRegistry,
+} from "@lore/core/web";
 import { render } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -82,8 +87,8 @@ describe("QuestViewRail commits", () => {
   const MESSAGE = "feat(lore): a fixed formatting bar above description fields";
 
   const mount = async (
-    commits: Array<{ sha: string; message?: string }>,
-    repositoryUrl?: string,
+    commits: Array<{ sha: string; message?: string; repo?: string }>,
+    linked = false,
   ) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -97,6 +102,15 @@ describe("QuestViewRail commits", () => {
     alepha.inject(I18n);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
+    // Build's part (#Q4136): a commit links into the project's own
+    // repository, which a hook Build registers decides.
+    if (linked) {
+      alepha
+        .inject(CommitLinkRegistry)
+        .register(
+          (sha, repo) => `/alepha/code/${repo ?? "alepha"}/commit/${sha}`,
+        );
+    }
     await alepha.start();
 
     // The atom validates against `projectResourceSchema`, so the fixture has
@@ -112,7 +126,6 @@ describe("QuestViewRail commits", () => {
         slug: "alepha",
         capabilities: [],
       }),
-      ...(repositoryUrl ? { repositoryUrl } : {}),
     });
 
     const quest = alepha.inject(Links).quest(commits);
@@ -157,24 +170,22 @@ describe("QuestViewRail commits", () => {
     expect(trigger?.textContent).toContain("7a8ac2d");
   });
 
-  it("links the sha into the repository when the project has one", async ({
+  it("links the sha into the Lore repository the trail names (#Q4136)", async ({
     expect,
   }) => {
     const view = await mount(
-      [{ sha: SHA, message: MESSAGE }],
-      "https://github.com/alepha-dev/alepha",
+      [{ sha: SHA, message: MESSAGE, repo: "api" }],
+      true,
     );
 
     const link = view.container.querySelector<HTMLAnchorElement>(
-      `a[href="https://github.com/alepha-dev/alepha/commit/${SHA}"]`,
+      `a[href="/alepha/code/api/commit/${SHA}"]`,
     );
     expect(link).not.toBeNull();
     expect(link?.textContent).toBe("7a8ac2d");
   });
 
-  it("renders plain text when the project has no repository", async ({
-    expect,
-  }) => {
+  it("renders plain text when nothing links it", async ({ expect }) => {
     // A row that looks clickable and is not is worse than a row that does
     // not (#1571), and that has to survive the tooltip.
     const view = await mount([{ sha: SHA, message: MESSAGE }]);

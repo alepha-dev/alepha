@@ -518,10 +518,7 @@ const ProjectArtifacts = () => {
                         className="size-3.5 shrink-0"
                         aria-hidden
                       />
-                      <CommitLink
-                        sha={row.commitSha}
-                        repositoryUrl={project?.repositoryUrl}
-                      />
+                      <CommitLink sha={row.commitSha} />
                     </span>
                   ) : (
                     "—"

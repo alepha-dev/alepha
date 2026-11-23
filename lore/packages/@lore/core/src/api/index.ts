@@ -602,6 +602,8 @@ export {
   ChannelRoomRegistry,
 } from "./services/ChannelRoomRegistry.ts";
 export {
+  type CommitQuest,
+  type CommitQuestReader,
   type CommitReferenceInput,
   type CommitReferenceRecorder,
   type CommitReferenceResult,

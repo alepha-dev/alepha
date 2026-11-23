@@ -263,7 +263,7 @@ const questCommitInputSchema = z.object({
     .string()
     .max(200)
     .describe(
-      "Which repository, e.g. `alepha-dev/alepha`. Free text, recorded as given and never resolved into a link: the quest rail links a sha through the project's own `repositoryUrl`, not through this.",
+      "Which repository, e.g. `api` or `alepha/api`. Free text, recorded as given: the quest rail links the sha to the commit page of the project's Lore repository this names, or of its only one.",
     )
     .optional(),
 });

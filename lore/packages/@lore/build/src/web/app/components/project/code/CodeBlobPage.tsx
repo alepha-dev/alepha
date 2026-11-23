@@ -4,8 +4,8 @@ import { currentProjectAtom, type I18n } from "@lore/core/web";
 import type { Infer } from "alepha";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
-import { Download, Link2 } from "lucide-react";
+import { Link, useRouter } from "alepha/react/router";
+import { Download, History, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { codeFileSchema } from "../../../../../api/schemas/codeFileSchema.ts";
@@ -114,6 +114,26 @@ const CodeBlobPage = (props: CodeBlobPageProps) => {
               ]}
             />
           )}
+          <Button
+            variant="outlined"
+            size="sm"
+            nativeButton={false}
+            render={
+              <Link
+                href={codeHref(
+                  "commits",
+                  project.slug,
+                  repoSlug,
+                  file.revision.name,
+                  file.path,
+                )}
+                data-testid="code-history"
+              />
+            }
+          >
+            <History className="size-3.5" />
+            {tr("code.file.history")}
+          </Button>
           {file.revision.kind !== "commit" && (
             <Button
               variant="outlined"

@@ -3,10 +3,12 @@ import { $inject, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
+import { codeCommitDetailSchema } from "../schemas/codeCommitDetailSchema.ts";
 import { codeDiffFileSchema } from "../schemas/codeDiffFileSchema.ts";
 import { codeDiffSchema } from "../schemas/codeDiffSchema.ts";
 import { codeFileSchema } from "../schemas/codeFileSchema.ts";
 import { codeLocationQuerySchema } from "../schemas/codeLocationQuerySchema.ts";
+import { codeLogSchema } from "../schemas/codeLogSchema.ts";
 import { codeRepositoryDetailSchema } from "../schemas/codeRepositoryDetailSchema.ts";
 import { codeRepositorySlugSchema } from "../schemas/codeRepositorySlugSchema.ts";
 import { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
@@ -280,6 +282,52 @@ export class CodeBrowserController {
       );
       if (!lines) throw new NotFoundError("No such text blob.");
       return { lines };
+    },
+  });
+
+  getCodeLog = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/log",
+    description:
+      "A revision's history, optionally of one file or folder, a page of 30 newest first, each commit with its quests.",
+    schema: {
+      params: this.repoParams,
+      query: codeLocationQuerySchema.extend({
+        page: z.integer().min(0).optional(),
+      }),
+      response: codeLogSchema,
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      const { page, ...location } = query;
+      return this.browser.log(row, location, page);
+    },
+  });
+
+  getCodeCommit = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/commits/:sha",
+    description:
+      "One commit, by a full sha or a unique prefix: its message, author, committer, parents and quests.",
+    schema: {
+      params: this.repoParams.extend({
+        sha: z.text({ minLength: 4, maxLength: 40 }),
+      }),
+      response: codeCommitDetailSchema,
+    },
+    handler: async ({ params, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      return this.browser.commitOf(row, params.sha);
     },
   });
 }
