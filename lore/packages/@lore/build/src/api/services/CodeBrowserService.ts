@@ -6,7 +6,9 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { GitBackend, type GitRefTip } from "../backends/GitBackend.ts";
 import type { CodeCommitRow } from "../entities/codeCommits.ts";
 import type { CodeRepository } from "../entities/codeRepositories.ts";
+import { CodeBlameJobs } from "../jobs/CodeBlameJobs.ts";
 import { CodeIndexJobs } from "../jobs/CodeIndexJobs.ts";
+import type { codeBlameSchema } from "../schemas/codeBlameSchema.ts";
 import type { codeBranchSchema } from "../schemas/codeBranchSchema.ts";
 import type { codeCommitDetailSchema } from "../schemas/codeCommitDetailSchema.ts";
 import type { codeCommitSummarySchema } from "../schemas/codeCommitSummarySchema.ts";
@@ -22,6 +24,7 @@ import type { codeTagSchema } from "../schemas/codeTagSchema.ts";
 import type { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
 import type { codeTreeSchema } from "../schemas/codeTreeSchema.ts";
 import { CodeAuthors } from "./CodeAuthors.ts";
+import { CodeBlameService } from "./CodeBlameService.ts";
 import { CodeCommitIndex } from "./CodeCommitIndex.ts";
 import { CodeCompareService } from "./CodeCompareService.ts";
 import { CodeRepositoryService } from "./CodeRepositoryService.ts";
@@ -44,6 +47,8 @@ export class CodeBrowserService {
   protected readonly references = $inject(CommitReferenceRegistry);
   protected readonly comparer = $inject(CodeCompareService);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly blames = $inject(CodeBlameService);
+  protected readonly blameJobs = $inject(CodeBlameJobs);
 
   /**
    * One commit's summary: the index's row, or the backend's commit while
@@ -700,5 +705,43 @@ export class CodeBrowserService {
       description: name,
       metadata: { branch: name, sha: tip.sha },
     });
+  }
+
+  /**
+   * A file's blame at a location (#Q4138), each run's commit with its
+   * quests. A walk the request did not finish is handed to `code.blame`.
+   */
+  public async blame(
+    repository: CodeRepository,
+    location: Location,
+  ): Promise<Infer<typeof codeBlameSchema>> {
+    const { revision, path } = await this.locate(repository, location);
+    const answer = await this.blames.blame(repository, revision.sha, path);
+    if (answer.kind === "not_found") {
+      throw new NotFoundError(`No file ${path} at ${revision.name}.`);
+    }
+    if (answer.kind !== "row") {
+      if (answer.kind === "indexing") await this.indexJobs.start(repository.id);
+      return { revision, path, status: answer.kind, ranges: [], commits: [] };
+    }
+    const { row, text } = answer;
+    if (row.status === "pending") await this.blameJobs.start(row.id);
+    const shas = [
+      ...new Set(
+        row.ranges.flatMap((it) => (it.commitSha ? [it.commitSha] : [])),
+      ),
+    ];
+    return {
+      revision,
+      path,
+      status: row.status,
+      text,
+      ranges: row.ranges,
+      commits: await this.decorate(
+        repository,
+        await this.index.many(repository.id, shas),
+      ),
+      stoppedAtSha: row.stoppedAtSha,
+    };
   }
 }

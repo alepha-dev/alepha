@@ -5179,4 +5179,11 @@ export default {
   "code.compare.counts": "$1 commits ahead, $2 behind",
   "code.compare.capped": "The merge base is too far back to find here.",
   "code.compare.unrelated": "These two revisions share no history.",
+  "code.file.blame": "Blame",
+  "code.blame.pending": "Finding the older lines…",
+  "code.blame.tooLarge":
+    "Too large to blame here: over 256 KiB or 5,000 lines.",
+  "code.blame.partial": "The walk stopped at $1: the lines left are older.",
+  "code.blame.older": "Older than $1",
+  "code.blame.before": "Blame before this commit",
 };

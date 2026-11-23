@@ -149,6 +149,7 @@ export class BuildRouter {
       this.codeRepoBranches,
       this.codeRepoTags,
       this.codeRepoCompare,
+      this.codeRepoBlame,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Code`,
@@ -364,6 +365,30 @@ export class BuildRouter {
           })
         : undefined;
       return { compare, diff };
+    },
+  });
+
+  /**
+   * A file's blame, `/blame/<revision>/<path>` (#Q4138).
+   */
+  codeRepoBlame = $page({
+    name: "codeRepoBlame",
+    path: "/blame/*",
+    schema: {
+      params: z.object({ "*": z.text({ maxLength: 4096 }).optional() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Blame`,
+    }),
+    lazy: () => import("./components/project/code/CodeBlamePage.tsx"),
+    loader: async ({ params }) => {
+      const repo = this.currentRepo();
+      return {
+        blame: await this.codeApi.getCodeBlame({
+          params: { projectId: repo.projectId, slug: repo.slug },
+          query: { at: decodeCodePath(params["*"]) },
+        }),
+      };
     },
   });
 

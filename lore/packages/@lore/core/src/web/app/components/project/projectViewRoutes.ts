@@ -77,6 +77,7 @@ export const ROUTES_CODE = [
   "codeRepoBranches",
   "codeRepoTags",
   "codeRepoCompare",
+  "codeRepoBlame",
 ];
 
 const ROUTES_SETTINGS = [

@@ -5,7 +5,7 @@ import type { Infer } from "alepha";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Download, History, Link2 } from "lucide-react";
+import { Download, History, Link2, ScanText } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { codeFileSchema } from "../../../../../api/schemas/codeFileSchema.ts";
@@ -134,6 +134,28 @@ const CodeBlobPage = (props: CodeBlobPageProps) => {
             <History className="size-3.5" />
             {tr("code.file.history")}
           </Button>
+          {file.status === "ok" && (
+            <Button
+              variant="outlined"
+              size="sm"
+              nativeButton={false}
+              render={
+                <Link
+                  href={codeHref(
+                    "blame",
+                    project.slug,
+                    repoSlug,
+                    file.revision.name,
+                    file.path,
+                  )}
+                  data-testid="code-blame-link"
+                />
+              }
+            >
+              <ScanText className="size-3.5" />
+              {tr("code.file.blame")}
+            </Button>
+          )}
           {file.revision.kind !== "commit" && (
             <Button
               variant="outlined"

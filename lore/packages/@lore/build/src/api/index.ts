@@ -10,6 +10,7 @@ import { GitHttpController } from "./controllers/GitHttpController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { CodeBackupJobs } from "./jobs/CodeBackupJobs.ts";
+import { CodeBlameJobs } from "./jobs/CodeBlameJobs.ts";
 import { CodeIndexJobs } from "./jobs/CodeIndexJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { AgentJobService } from "./services/AgentJobService.ts";
@@ -19,6 +20,7 @@ import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
 import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
 import { CodeAuthors } from "./services/CodeAuthors.ts";
+import { CodeBlameService } from "./services/CodeBlameService.ts";
 import { CodeBrowserService } from "./services/CodeBrowserService.ts";
 import { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
 import { CodeCompareService } from "./services/CodeCompareService.ts";
@@ -90,6 +92,9 @@ export const LoreBuildApi = $module({
     CodeReadAccess,
     CodeAuthors,
     CodeCompareService,
+    // Blame from the index, cached, finished by a job (#Q4138).
+    CodeBlameService,
+    CodeBlameJobs,
     CodeBrowserService,
     // One line diff, in JS, on both backends (#Q4135).
     CodeDiffService,
@@ -175,6 +180,9 @@ export {
 } from "./services/GitTreeDiff.ts";
 export { codeCommits, type CodeCommitRow } from "./entities/codeCommits.ts";
 export { codeCommitPaths } from "./entities/codeCommitPaths.ts";
+export { codeBlameCache } from "./entities/codeBlameCache.ts";
+export { CodeBlameService } from "./services/CodeBlameService.ts";
+export { CodeBlameJobs } from "./jobs/CodeBlameJobs.ts";
 export { codeCommitParents } from "./entities/codeCommitParents.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";

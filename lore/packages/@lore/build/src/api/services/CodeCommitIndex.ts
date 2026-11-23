@@ -121,6 +121,46 @@ export class CodeCommitIndex {
   }
 
   /**
+   * The rows of the commits that wrote `blobSha` at `path` (#Q4138): who
+   * produced a version of a file. The `(repositoryId, path)` index answers
+   * it; the blob narrows it to one row almost always.
+   */
+  public async producers(repositoryId: string, path: string, blobSha: string) {
+    return this.paths.findMany({
+      where: {
+        repositoryId: { eq: repositoryId },
+        path: { eq: path },
+        newBlobSha: { eq: blobSha },
+      },
+    });
+  }
+
+  /**
+   * Whether `sha` is reachable from `from` (itself included), on the index.
+   */
+  public async reaches(
+    repositoryId: string,
+    from: string,
+    sha: string,
+  ): Promise<boolean> {
+    if (from === sha) return true;
+    const p = this.parents.table;
+    const col = (name: string) => sql.identifier(name);
+    const rows = await this.parents.query(
+      sql`WITH RECURSIVE reach(sha) AS (
+          SELECT ${from}
+          UNION
+          SELECT e.${col(p.parentSha.name)} FROM ${p} AS e
+          JOIN reach ON e.${col(p.sha.name)} = reach.sha
+          WHERE e.${col(p.repositoryId.name)} = ${repositoryId}
+        )
+        SELECT sha FROM reach WHERE sha = ${sha} LIMIT 1`,
+      CodeCommitIndex.FrontierRow,
+    );
+    return rows.length > 0;
+  }
+
+  /**
    * The shas of `shas` the index holds, asked 50 at a time: D1 binds at
    * most 100 values per statement.
    */
