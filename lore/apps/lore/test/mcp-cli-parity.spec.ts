@@ -86,6 +86,8 @@ const POSITIONAL = new Set([
   // `lore code tree|cat|log|blame <path>` and `show <sha>` (#Q4139).
   "path",
   "sha",
+  // A chat agent, by what a message mentions (#E170).
+  "handle",
 ]);
 
 /**

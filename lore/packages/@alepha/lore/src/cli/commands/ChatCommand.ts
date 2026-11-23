@@ -1,8 +1,15 @@
-import type { ChatMessageController, ChatRoomController } from "@lore/chat/api";
+import type {
+  ChatAgentController,
+  ChatAgentResource,
+  ChatMessageController,
+  ChatRoomController,
+} from "@lore/chat/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";
+import { FileSystemProvider } from "alepha/system";
 
+import { AttachmentUploader } from "../services/AttachmentUploader.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -14,7 +21,9 @@ import {
 /**
  * `lore chat` (#E161, #Q3933): a project's chat rooms from a terminal or a
  * script. The pairs of `chat_room_list`, `chat_message_list` and
- * `chat_message_send`.
+ * `chat_message_send`, and since #E170 (#Q4200) of the `chat_agent_*`
+ * tools, `lore chat agent ...`, which also uploads an agent's avatar: MCP
+ * carries no file.
  */
 export class ChatCommand {
   protected readonly client = $inject(LoreClientService);
@@ -25,6 +34,9 @@ export class ChatCommand {
   protected readonly messages = $client<ChatMessageController>(
     this.client.scope(),
   );
+  protected readonly agents = $client<ChatAgentController>(this.client.scope());
+  protected readonly uploader = $inject(AttachmentUploader);
+  protected readonly fs = $inject(FileSystemProvider);
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -112,7 +124,11 @@ export class ChatCommand {
         });
         const rows = page.items.map((message) => ({
           id: message.id,
-          author: message.agent ?? message.authorId ?? "a removed member",
+          author:
+            message.agentName ??
+            message.agent ??
+            message.authorId ??
+            "a removed member",
           body: message.body,
           createdAt: message.createdAt,
           edited: !!message.editedAt,
@@ -137,7 +153,7 @@ export class ChatCommand {
   public readonly messageSend = $command({
     name: "send",
     description:
-      "Post a message as you. @name notifies a member; @lore asks the agent, with your rights",
+      "Post a message as you. @name notifies a member; @lore or an agent's handle asks that agent, with your rights",
     args: z.tuple([
       z.text({ title: "room", description: "The room's name: general." }),
       z.text({ title: "text", description: "The message, in Markdown." }),
@@ -205,10 +221,279 @@ export class ChatCommand {
     },
   });
 
+  protected static readonly HANDLE_ARG = z.text({
+    title: "handle",
+    description: "The agent's handle: jarvis.",
+  });
+
+  protected static readonly AGENT_FLAGS = {
+    name: z.text({ description: "The display name: Jarvis." }).optional(),
+    "pre-prompt": z
+      .text({
+        size: "rich",
+        atFile: true,
+        description:
+          "The persona and its playbook, in Markdown: inline, @playbook.md for a file, or @- for stdin.",
+      })
+      .optional(),
+    model: z
+      .text({
+        description:
+          "A model id; empty is the instance default. The AI budget counts tokens whatever the model.",
+      })
+      .optional(),
+    avatar: z
+      .text({ description: "An image to upload as its avatar, 2 MB at most." })
+      .optional(),
+  };
+
+  public readonly agentList = $command({
+    name: "list",
+    description:
+      "The agents a message can mention here: lore and the project's own",
+    flags: z.object({ ...ChatCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const page = await this.agents.listChatAgents({
+          params: { projectId },
+        });
+        const rows = page.items.map((agent) => this.toAgent(agent));
+        if (flags.output === "json") {
+          this.render.json(print, { agents: rows, enabled: page.enabled });
+          return;
+        }
+        if (!page.enabled) {
+          print("AI is off on this Lore: no agent answers until it is on.");
+        }
+        this.render.list(
+          print,
+          rows.map((agent) => ({
+            handle: `@${agent.handle}`,
+            title: agent.name,
+            fields: [
+              agent.builtin ? "built-in" : (agent.model ?? "default model"),
+            ],
+          })),
+          undefined,
+          "No agent here.",
+        );
+      });
+    },
+  });
+
+  public readonly agentGet = $command({
+    name: "get",
+    description: "One agent, its persona and playbook included",
+    args: ChatCommand.HANDLE_ARG,
+    flags: z.object({ ...ChatCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId, agentId } = await this.resolveAgent(
+          args,
+          flags.project,
+          context,
+        );
+        const agent = this.toAgent(
+          await this.agents.getChatAgent({ params: { projectId, agentId } }),
+        );
+        if (flags.output === "json") {
+          this.render.json(print, agent);
+          return;
+        }
+        print(`@${agent.handle}  ${agent.name}`);
+        print(`model: ${agent.model ?? "the instance default"}`);
+        print("");
+        print(agent.pre_prompt ?? "");
+      });
+    },
+  });
+
+  public readonly agentCreate = $command({
+    name: "create",
+    description:
+      "Create an agent (needs chat:agent): its handle, name, playbook, model and avatar",
+    flags: z.object({
+      ...ChatCommand.PROJECT_FLAG,
+      handle: z.text({
+        description:
+          "What a message mentions: 2 to 32 lowercase letters, digits or dashes.",
+      }),
+      ...ChatCommand.AGENT_FLAGS,
+      name: z.text({ description: "The display name: Jarvis." }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print, root }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const avatar = flags.avatar
+          ? await this.upload(projectId, root, flags.avatar)
+          : undefined;
+        const agent = await this.agents.createChatAgent({
+          params: { projectId },
+          body: {
+            handle: flags.handle,
+            name: flags.name,
+            prePrompt: flags["pre-prompt"] ?? "",
+            ...(flags.model ? { model: flags.model } : {}),
+            ...(avatar ? { avatar } : {}),
+          },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          this.toAgent(agent),
+          `Created @${agent.handle}`,
+        );
+      });
+    },
+  });
+
+  public readonly agentUpdate = $command({
+    name: "update",
+    description:
+      "Edit an agent (needs chat:agent): only the flags given change",
+    args: ChatCommand.HANDLE_ARG,
+    flags: z.object({
+      ...ChatCommand.PROJECT_FLAG,
+      "new-handle": z.text({ description: "Its new handle." }).optional(),
+      ...ChatCommand.AGENT_FLAGS,
+      "no-avatar": z
+        .boolean()
+        .describe("Remove its avatar: initials on a colour instead.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        if (flags.avatar && flags["no-avatar"]) {
+          throw new AlephaError("Pass --avatar or --no-avatar, not both.");
+        }
+        const { projectId, agentId } = await this.resolveAgent(
+          args,
+          flags.project,
+          context,
+        );
+        const avatar = flags.avatar
+          ? await this.upload(projectId, root, flags.avatar)
+          : flags["no-avatar"]
+            ? null
+            : undefined;
+        const agent = await this.agents.updateChatAgent({
+          params: { projectId, agentId },
+          body: {
+            ...(flags["new-handle"] ? { handle: flags["new-handle"] } : {}),
+            ...(flags.name ? { name: flags.name } : {}),
+            ...(flags["pre-prompt"] !== undefined
+              ? { prePrompt: flags["pre-prompt"] }
+              : {}),
+            ...(flags.model !== undefined
+              ? { model: flags.model.trim() ? flags.model : null }
+              : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
+          },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          this.toAgent(agent),
+          `Updated @${agent.handle}`,
+        );
+      });
+    },
+  });
+
+  public readonly agentDelete = $command({
+    name: "delete",
+    description:
+      "Delete an agent (needs chat:agent): its past answers stay, its handle is freed",
+    args: ChatCommand.HANDLE_ARG,
+    flags: z.object({ ...ChatCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId, agentId } = await this.resolveAgent(
+          args,
+          flags.project,
+          context,
+        );
+        await this.agents.deleteChatAgent({ params: { projectId, agentId } });
+        this.render.written(
+          print,
+          flags.output,
+          { ok: true },
+          `Deleted @${args.replace(/^@/, "")}`,
+        );
+      });
+    },
+  });
+
+  protected toAgent(agent: ChatAgentResource) {
+    return {
+      handle: agent.handle,
+      name: agent.name,
+      builtin: agent.builtin,
+      ...(agent.model ? { model: agent.model } : {}),
+      avatar: !!agent.avatarId,
+      ...(agent.prePrompt !== undefined ? { pre_prompt: agent.prePrompt } : {}),
+    };
+  }
+
+  protected async upload(
+    projectId: number,
+    root: string,
+    path: string,
+  ): Promise<string> {
+    const { fileId } = await this.uploader.pushChatAgentAvatar({
+      projectId,
+      filePath: this.fs.resolve(root, path),
+    });
+    return fileId;
+  }
+
+  /**
+   * A project's own agent by its handle; the built-in lore is not one.
+   */
+  protected async resolveAgent(
+    handle: string,
+    project: string | undefined,
+    context: LoreRefusalContext,
+  ): Promise<{ projectId: number; agentId: string }> {
+    const { projectId } = await this.projects.named(project, context);
+    const wanted = handle.replace(/^@/, "").toLowerCase();
+    const page = await this.agents.listChatAgents({ params: { projectId } });
+    const agent = page.items.find((it) => !it.builtin && it.handle === wanted);
+    if (!agent) {
+      throw new AlephaError(
+        `No agent @${wanted} in this project: lore chat agent list gives their handles.`,
+      );
+    }
+    return { projectId, agentId: agent.id };
+  }
+
+  public readonly agent = $command({
+    name: "agent",
+    description: "A project's chat agents: list, read, create, edit, delete",
+    children: [
+      this.agentList,
+      this.agentGet,
+      this.agentCreate,
+      this.agentUpdate,
+      this.agentDelete,
+    ],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   public readonly chat = $command({
     name: "chat",
-    description: "A project's chat: rooms and messages",
-    children: [this.room, this.message],
+    description: "A project's chat: rooms, messages and agents",
+    children: [this.room, this.message, this.agent],
     handler: async ({ help }) => {
       help();
     },

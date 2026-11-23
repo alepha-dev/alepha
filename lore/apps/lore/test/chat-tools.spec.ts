@@ -1,4 +1,4 @@
-import { ChatRoomController } from "@lore/chat/api";
+import { ChatAgentRunner, ChatRoomController } from "@lore/chat/api";
 import { ChatTools } from "@lore/chat/mcp";
 import {
   createTestMemberByProjectId,
@@ -15,8 +15,8 @@ import { bootAssistant } from "./fixtures/bootAssistant.ts";
  * the caller is not in does not exist for them.
  */
 describe("chat tools", () => {
-  const boot = async () => {
-    const ctx = await bootAssistant({ enabled: "0" });
+  const boot = async (enabled = "0") => {
+    const ctx = await bootAssistant({ enabled });
     const project = await createTestProject(ctx.alepha, {
       title: "Acme",
       capabilities: [{ key: "plan" }, { key: "chat" }],
@@ -97,5 +97,105 @@ describe("chat tools", () => {
         }),
       ),
     ).rejects.toThrow(/No room named "secret"/);
+  });
+
+  it("creates, reads, edits and deletes an agent, as chat:agent only", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const as = (userId: string) => ({
+      run: <R>(fn: () => R) => ctx.call(userId, fn),
+    });
+    const owner = as(ctx.owner.id);
+
+    await expect(
+      as(ctx.member.id).run(() =>
+        ctx.tools.chat_agent_create.execute({
+          project: ctx.project.id,
+          handle: "jarvis",
+          name: "Jarvis",
+        }),
+      ),
+    ).rejects.toThrow();
+    const created = await owner.run(() =>
+      ctx.tools.chat_agent_create.execute({
+        project: ctx.project.id,
+        handle: "jarvis",
+        name: "Jarvis",
+        pre_prompt: "Check the feedback.",
+        model: "claude-haiku-5-5",
+      }),
+    );
+    expect(created).toMatchObject({
+      handle: "jarvis",
+      model: "claude-haiku-5-5",
+      avatar: false,
+    });
+
+    // Every chat reader reads the playbook.
+    const read = await as(ctx.member.id).run(() =>
+      ctx.tools.chat_agent_get.execute({
+        project: ctx.project.id,
+        handle: "@jarvis",
+      }),
+    );
+    expect(read.pre_prompt).toBe("Check the feedback.");
+
+    const updated = await owner.run(() =>
+      ctx.tools.chat_agent_update.execute({
+        project: ctx.project.id,
+        handle: "jarvis",
+        new_handle: "friday",
+        model: "",
+      }),
+    );
+    expect(updated.handle).toBe("friday");
+    expect(updated.model).toBeUndefined();
+
+    await owner.run(() =>
+      ctx.tools.chat_agent_delete.execute({
+        project: ctx.project.id,
+        handle: "friday",
+      }),
+    );
+    const listed = await owner.run(() =>
+      ctx.tools.chat_agent_list.execute({ project: ctx.project.id }),
+    );
+    expect(listed).toEqual({ agents: [], enabled: false });
+  });
+
+  it("starts the agent's run from a message sent over MCP", async ({
+    expect,
+  }) => {
+    const ctx = await boot("1");
+    await ctx.call(ctx.owner.id, () =>
+      ctx.tools.chat_agent_create.execute({
+        project: ctx.project.id,
+        handle: "jarvis",
+        name: "Jarvis",
+        pre_prompt: "Answer as Jarvis.",
+      }),
+    );
+    ctx.ai.script([{ type: "text", text: "At your service." }]);
+
+    await ctx.call(ctx.member.id, () =>
+      ctx.tools.chat_message_send.execute({
+        project: ctx.project.id,
+        room: "general",
+        body: "@jarvis time to check",
+      }),
+    );
+    await ctx.alepha.inject(ChatAgentRunner).settled();
+
+    const page = await ctx.call(ctx.member.id, () =>
+      ctx.tools.chat_message_list.execute({
+        project: ctx.project.id,
+        room: "general",
+      }),
+    );
+    expect(page.messages[0]).toMatchObject({
+      author: "Jarvis",
+      body: "At your service.",
+    });
   });
 });

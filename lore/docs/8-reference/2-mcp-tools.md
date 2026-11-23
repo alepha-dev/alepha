@@ -228,14 +228,19 @@ and [Traceability](/lore/docs/plan-traceability).
 ## Chat
 
 A project's chat rooms. A private room you are not in does not exist for
-these tools. A sent `@lore` starts the agent with your rights, under the
-same limits as the app.
+these tools. A sent `@lore`, or a project agent's handle, starts that agent
+with your rights, under the same limits as the app.
 
-| Tool                | What it does                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| `chat_room_list`    | The rooms you can see, with how many messages and mentions of you are unread in each. |
-| `chat_message_list` | A room's latest messages, newest first, paged with `before`.                          |
-| `chat_message_send` | Post a message in a room, as you.                                                     |
+| Tool                | What it does                                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `chat_room_list`    | The rooms you can see, with how many messages and mentions of you are unread in each.                          |
+| `chat_message_list` | A room's latest messages, newest first, paged with `before`.                                                   |
+| `chat_message_send` | Post a message in a room, as you.                                                                              |
+| `chat_agent_list`   | The agents a message can mention: `lore` and the project's own, and whether AI is on.                          |
+| `chat_agent_get`    | One agent by its handle, its pre-prompt included.                                                              |
+| `chat_agent_create` | Create an agent: handle, name, pre-prompt and model. An avatar goes through `lore chat agent create --avatar`. |
+| `chat_agent_update` | Edit an agent by its handle: only the fields given change.                                                     |
+| `chat_agent_delete` | Delete an agent: its past answers stay, its handle is freed.                                                   |
 
 ## Notifications
 
