@@ -284,10 +284,23 @@ describe("HostJobService", () => {
     const spec = await w.service.spec(row, "https://lore.test");
     expect(spec).toMatchObject({
       kind: "agent",
-      profile: "read",
+      agent: "claude",
       mcpUrl: "https://lore.test/mcp",
       workspace: "triage",
     });
+    // Bay's adapter builds the command line: none of Claude's vocabulary
+    // travels (#Q4219).
+    for (const gone of [
+      "profile",
+      "maxTurns",
+      "allowedTools",
+      "disallowedTools",
+      "permissionMode",
+      "egress",
+      "image",
+    ]) {
+      expect(spec).not.toHaveProperty(gone);
+    }
     // The project's directory on the host is its slug (#Q4218).
     expect(spec.project).toMatch(/^[a-z0-9][a-z0-9_-]*$/);
     expect(spec).not.toHaveProperty("repository");
@@ -328,55 +341,28 @@ describe("HostJobService", () => {
     expect(again.retries).toBe(1);
   });
 
-  it("lets a check reach the Anthropic API and nothing else", async ({
+  it("sends a check its agent and model, and nothing in reach (#Q4219)", async ({
     expect,
   }) => {
     const check = await w.service.start({
       projectId: w.projectId,
       hostId: w.host.id,
       kind: "check",
-      input: { profile: "check", maxTurns: 1, timeoutSeconds: 60 },
+      input: {
+        profile: "check",
+        maxTurns: 1,
+        timeoutSeconds: 60,
+        agent: "gemini",
+        model: "gemini-2.5-pro",
+      },
     });
     const row = await w.repos.jobs.getOne({ where: { id: { eq: check.id } } });
     const spec = await w.service.spec(row, "https://lore.test");
-    expect(spec.egress).toEqual(["api.anthropic.com"]);
-    expect(spec.mcpUrl).toBeUndefined();
-  });
-
-  it("pins the agent image this Lore was deployed with, by digest only (#Q3997)", async ({
-    expect,
-  }) => {
-    const digest = `ghcr.io/alepha-dev/lore-agent@sha256:${"a".repeat(64)}`;
-    const pinned = await setup({ AGENT_IMAGE: digest });
-    const job = await start(pinned);
-    const row = await pinned.repos.jobs.getOne({
-      where: { id: { eq: job.id } },
-    });
-    expect((await pinned.service.spec(row, "https://lore.test")).image).toBe(
-      digest,
-    );
-    const check = await pinned.service.start({
-      projectId: pinned.projectId,
-      hostId: pinned.host.id,
+    expect(spec).toEqual({
       kind: "check",
-      input: { profile: "check", maxTurns: 1, timeoutSeconds: 60 },
+      agent: "gemini",
+      model: "gemini-2.5-pro",
+      timeoutSeconds: 60,
     });
-    const checkRow = await pinned.repos.jobs.getOne({
-      where: { id: { eq: check.id } },
-    });
-    expect(
-      (await pinned.service.spec(checkRow, "https://lore.test")).image,
-    ).toBe(digest);
-
-    const tagged = await setup({
-      AGENT_IMAGE: "ghcr.io/alepha-dev/lore-agent:latest",
-    });
-    const other = await start(tagged);
-    const otherRow = await tagged.repos.jobs.getOne({
-      where: { id: { eq: other.id } },
-    });
-    expect(
-      (await tagged.service.spec(otherRow, "https://lore.test")).image,
-    ).toBeUndefined();
   });
 });

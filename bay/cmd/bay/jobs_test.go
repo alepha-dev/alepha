@@ -119,18 +119,14 @@ func (w *jobWorld) stub(t *testing.T, name, script string) {
 
 func (w *jobWorld) agentSpec(overrides map[string]any) []byte {
 	spec := map[string]any{
-		"kind":            "agent",
-		"profile":         "read",
-		"project":         "acme",
-		"workspace":       "triage",
-		"key":             "lore_job_0123456789abcdef",
-		"mcpUrl":          w.sink.URL + "/mcp",
-		"prompt":          "Triage the inbox.",
-		"maxTurns":        30,
-		"timeoutSeconds":  60,
-		"allowedTools":    []string{"Read", "Grep", "Glob", "Bash(git log:*)", "mcp__lore__feedback_get"},
-		"disallowedTools": []string{"Write", "Edit", "WebFetch", "WebSearch"},
-		"egress":          []string{"api.anthropic.com"},
+		"kind":           "agent",
+		"agent":          "claude",
+		"project":        "acme",
+		"workspace":      "triage",
+		"key":            "lore_job_0123456789abcdef",
+		"mcpUrl":         w.sink.URL + "/mcp",
+		"prompt":         "Triage the inbox.",
+		"timeoutSeconds": 60,
 	}
 	for k, v := range overrides {
 		if v == nil {
@@ -144,7 +140,7 @@ func (w *jobWorld) agentSpec(overrides map[string]any) []byte {
 }
 
 func (w *jobWorld) checkSpec(overrides map[string]any) []byte {
-	spec := map[string]any{"kind": "check", "profile": "check", "maxTurns": 1, "timeoutSeconds": 60}
+	spec := map[string]any{"kind": "check", "agent": "claude", "timeoutSeconds": 60}
 	for k, v := range overrides {
 		spec[k] = v
 	}
@@ -166,6 +162,7 @@ func TestJobRun(t *testing.T) {
 		w.stub(t, "claude", `#!/bin/sh
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 pwd > "`+w.bin+`/claude.cwd"
+printf '%s' "$LORE_JOB_KEY" > "`+w.bin+`/claude.key"
 echo '{"type":"system","subtype":"init"}'
 echo '{"type":"result","total_cost_usd":0.01}'
 echo 'a warning' >&2
@@ -185,19 +182,24 @@ touch cloned-here
 			t.Fatalf("stderr reached Lore as %q", stderr)
 		}
 		// Each step of the run is a timestamped line of the log.
-		for _, step := range []string{"workspace acme/triage ready", "agent started", "agent exited with status 0"} {
+		for _, step := range []string{"workspace acme/triage ready", "agent claude started", "agent exited with status 0"} {
 			if !strings.Contains(stderr, step) {
 				t.Fatalf("the log lacks the step %q: %q", step, stderr)
 			}
 		}
 		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
-		mcp := `{"mcpServers":{"lore":{"headers":{"Authorization":"Bearer lore_job_0123456789abcdef"},"type":"http","url":"` + w.sink.URL + `/mcp"}}}`
+		// The key is in the environment, the MCP config names its variable.
+		mcp := `{"mcpServers":{"lore":{"headers":{"Authorization":"Bearer ${LORE_JOB_KEY}"},"type":"http","url":"` + w.sink.URL + `/mcp"}}}`
 		want := []string{"-p", "Triage the inbox.", "--output-format", "stream-json", "--verbose",
-			"--max-turns", "30", "--mcp-config", mcp, "--strict-mcp-config",
-			"--allowedTools", "Read,Grep,Glob,Bash(git log:*),mcp__lore__feedback_get",
-			"--disallowedTools", "Write,Edit,WebFetch,WebSearch"}
+			"--permission-mode", "bypassPermissions", "--mcp-config", mcp, "--strict-mcp-config"}
 		if got := strings.Split(strings.TrimSuffix(string(args), "\n"), "\n"); !equalStrings(got, want) {
 			t.Fatalf("claude ran as %q\nwant        %q", got, want)
+		}
+		if key, _ := os.ReadFile(filepath.Join(w.bin, "claude.key")); string(key) != "lore_job_0123456789abcdef" {
+			t.Fatalf("the job key reached claude's environment as %q", key)
+		}
+		if strings.Contains(string(args), "lore_job_0123456789abcdef") {
+			t.Fatal("the job key is on the command line")
 		}
 		cwd, _ := os.ReadFile(filepath.Join(w.bin, "claude.cwd"))
 		work, _ := filepath.EvalSymlinks(w.work)
@@ -220,52 +222,124 @@ touch cloned-here
 		}
 	})
 
-	t.Run("a check asks claude its fixed question with nothing in reach", func(t *testing.T) {
+	t.Run("a check asks the agent its version, then its fixed question, with nothing in reach", func(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+if [ "$1" = "--version" ]; then echo "2.1.7 (Claude Code)"; exit 0; fi
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
-echo '{"type":"result","result":"OK","modelUsage":{"claude-sonnet-4-5":{}}}'
+printf '%s' "$LORE_JOB_KEY" > "`+w.bin+`/claude.key"
+echo 'OK'
 `)
 		rec := w.run("check-1", w.checkSpec(nil))
 		if rec.last().Status != "done" {
 			t.Fatalf("ack = %+v", rec.last())
 		}
 		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
-		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--max-turns", "1", "--output-format", "stream-json", "--verbose"}) {
+		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--output-format", "stream-json", "--verbose", "--permission-mode", "bypassPermissions"}) {
 			t.Fatalf("a check ran claude as %q", got)
+		}
+		if key, _ := os.ReadFile(filepath.Join(w.bin, "claude.key")); len(key) != 0 {
+			t.Fatal("a check was handed a key")
+		}
+		if !strings.Contains(w.frames.text("stderr"), "claude 2.1.7") {
+			t.Fatalf("the check's log does not say the version: %q", w.frames.text("stderr"))
 		}
 		if entries, _ := os.ReadDir(w.work); len(entries) != 0 {
 			t.Fatalf("a check made a workspace: %v", entries)
 		}
 	})
 
-	t.Run("the host's model reaches claude on a check and on an agent job", func(t *testing.T) {
+	t.Run("a check fails when the agent's version command does", func(t *testing.T) {
 		w := newJobWorld(t)
-		cfg, err := loadJobsConfig(w.f.root)
-		if err != nil {
-			t.Fatal(err)
+		w.stub(t, "claude", "#!/bin/sh\nexit 2\n")
+		last := w.run("check-broken", w.checkSpec(nil)).last()
+		if last.Status != "failed" || !strings.Contains(last.Reason, "claude --version exited with status 2") {
+			t.Fatalf("ack = %+v", last)
 		}
-		cfg.Model = "claude-opus-5-5"
-		if err := saveJobsConfig(w.f.root, cfg); err != nil {
-			t.Fatal(err)
-		}
+	})
+
+	t.Run("the run's model reaches the agent, and none leaves the CLI's own default", func(t *testing.T) {
+		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+if [ "$1" = "--version" ]; then echo "2.1.7"; exit 0; fi
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
-echo '{"type":"result","result":"OK"}'
 `)
-		if rec := w.run("check-model", []byte(`{"kind":"check","profile":"check","maxTurns":1,"timeoutSeconds":60}`)); rec.last().Status != "done" {
+		if rec := w.run("check-model", w.checkSpec(map[string]any{"model": "claude-opus-5-5"})); rec.last().Status != "done" {
 			t.Fatalf("ack = %+v", rec.last())
 		}
 		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
-		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--max-turns", "1", "--output-format", "stream-json", "--verbose", "--model", "claude-opus-5-5"}) {
-			t.Fatalf("a check ran claude as %q", got)
+		if !strings.Contains(string(args), "--model\nclaude-opus-5-5\n") {
+			t.Fatalf("a check ran claude as %q", args)
 		}
-		if rec := w.run("job-model", w.agentSpec(nil)); rec.last().Status != "done" {
+		if rec := w.run("job-model", w.agentSpec(map[string]any{"model": "sonnet"})); rec.last().Status != "done" {
 			t.Fatalf("ack = %+v", rec.last())
 		}
 		args, _ = os.ReadFile(filepath.Join(w.bin, "claude.args"))
-		if !strings.Contains(string(args), "--strict-mcp-config\n--model\nclaude-opus-5-5\n") {
+		if !strings.Contains(string(args), "--model\nsonnet\n") {
 			t.Fatalf("an agent job ran claude as %q", args)
+		}
+		if rec := w.run("job-default", w.agentSpec(nil)); rec.last().Status != "done" {
+			t.Fatalf("ack = %+v", rec.last())
+		}
+		args, _ = os.ReadFile(filepath.Join(w.bin, "claude.args"))
+		if strings.Contains(string(args), "--model") {
+			t.Fatalf("a run with no model named one: %q", args)
+		}
+	})
+
+	t.Run("runs Gemini CLI with a settings file of its own for Lore's MCP, removed after", func(t *testing.T) {
+		w := newJobWorld(t)
+		w.stub(t, "gemini", `#!/bin/sh
+printf '%s\n' "$@" > "`+w.bin+`/gemini.args"
+printf '%s' "$GEMINI_CLI_SYSTEM_SETTINGS_PATH" > "`+w.bin+`/gemini.path"
+cat "$GEMINI_CLI_SYSTEM_SETTINGS_PATH" > "`+w.bin+`/gemini.settings"
+printf '%s' "$LORE_JOB_KEY" > "`+w.bin+`/gemini.key"
+pwd > "`+w.bin+`/gemini.cwd"
+`)
+		last := w.run("job-gemini", w.agentSpec(map[string]any{"agent": "gemini", "model": "gemini-2.5-pro", "workspace": "q12"})).last()
+		if last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		args, _ := os.ReadFile(filepath.Join(w.bin, "gemini.args"))
+		want := []string{"-p", "Triage the inbox.", "--output-format", "stream-json", "--approval-mode", "yolo", "--skip-trust",
+			"--model", "gemini-2.5-pro", "--allowed-mcp-server-names", "lore"}
+		if got := strings.Split(strings.TrimSuffix(string(args), "\n"), "\n"); !equalStrings(got, want) {
+			t.Fatalf("gemini ran as %q\nwant        %q", got, want)
+		}
+		settings, _ := os.ReadFile(filepath.Join(w.bin, "gemini.settings"))
+		wantSettings := `{"mcpServers":{"lore":{"headers":{"Authorization":"Bearer ${LORE_JOB_KEY}"},"httpUrl":"` + w.sink.URL + `/mcp"}}}`
+		if string(settings) != wantSettings {
+			t.Fatalf("gemini's settings = %s", settings)
+		}
+		if key, _ := os.ReadFile(filepath.Join(w.bin, "gemini.key")); string(key) != "lore_job_0123456789abcdef" {
+			t.Fatalf("the key reached gemini's environment as %q", key)
+		}
+		path, _ := os.ReadFile(filepath.Join(w.bin, "gemini.path"))
+		if _, err := os.Stat(string(path)); !os.IsNotExist(err) {
+			t.Fatalf("the settings file %s outlived the run", path)
+		}
+		cwd, _ := os.ReadFile(filepath.Join(w.bin, "gemini.cwd"))
+		if !strings.HasSuffix(strings.TrimSpace(string(cwd)), filepath.Join("acme", "q12")) {
+			t.Fatalf("gemini ran in %q", cwd)
+		}
+		if entries, _ := os.ReadDir(filepath.Join(w.work, "acme", "q12")); len(entries) != 0 {
+			t.Fatalf("the workspace holds %v: the settings belong outside it", entries)
+		}
+	})
+
+	t.Run("an agent this bay has no adapter for is refused with the ones it has", func(t *testing.T) {
+		w := newJobWorld(t)
+		last := w.run("job-codex", w.agentSpec(map[string]any{"agent": "codex"})).last()
+		if last.Status != "failed" || last.Step != "validating" || !strings.Contains(last.Reason, "claude, gemini") {
+			t.Fatalf("ack = %+v", last)
+		}
+	})
+
+	t.Run("an agent missing from the jobs user's PATH is a failed job that says so", func(t *testing.T) {
+		w := newJobWorld(t)
+		last := w.run("job-nogemini", w.agentSpec(map[string]any{"agent": "gemini"})).last()
+		if last.Status != "failed" || !strings.Contains(last.Reason, "gemini is not on the jobs user's PATH") {
+			t.Fatalf("ack = %+v", last)
 		}
 	})
 
@@ -375,7 +449,7 @@ func TestJobRunRefusals(t *testing.T) {
 		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
-		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent started") })
+		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent claude started") })
 		last := w.run("job-same", w.agentSpec(nil)).last()
 		if last.Status != "failed" || !strings.Contains(last.Reason, "already runs in the workspace acme/triage") {
 			t.Fatalf("ack = %+v", last)
@@ -408,7 +482,7 @@ func TestJobRunRefusals(t *testing.T) {
 	t.Run("a spec this bay does not accept runs nothing", func(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", "#!/bin/sh\ntouch \""+w.bin+"/ran\"\n")
-		last := w.run("job-bad", w.agentSpec(map[string]any{"permissionMode": "bypassPermissions"})).last()
+		last := w.run("job-bad", w.agentSpec(map[string]any{"allowedTools": []string{"Bash"}})).last()
 		if last.Status != "failed" || last.Step != "validating" {
 			t.Fatalf("ack = %+v", last)
 		}
@@ -440,7 +514,7 @@ func TestJobsUser(t *testing.T) {
 }
 
 func TestModelPattern(t *testing.T) {
-	for _, ok := range []string{"opus", "sonnet", "claude-opus-5-5", "claude-sonnet-5-5", "sonnet[1m]", "claude-haiku-4.5"} {
+	for _, ok := range []string{"opus", "sonnet", "claude-opus-5-5", "claude-sonnet-5-5", "sonnet[1m]", "claude-haiku-4.5", "gemini-2.5-pro", "flash"} {
 		if !modelPattern.MatchString(ok) {
 			t.Errorf("%q refused", ok)
 		}
@@ -456,15 +530,13 @@ func TestJobSpecValidation(t *testing.T) {
 	sink := "https://lore.example.com"
 	base := func() map[string]any {
 		return map[string]any{
-			"kind": "agent", "profile": "push",
+			"kind": "agent", "agent": "claude", "model": "opus",
 			"project":        "acme",
 			"workspace":      "q12",
 			"key":            "lore_job_0123456789abcdef",
 			"mcpUrl":         sink + "/mcp",
 			"prompt":         "Work on it.",
-			"maxTurns":       100,
 			"timeoutSeconds": 3600,
-			"permissionMode": "acceptEdits",
 		}
 	}
 	parse := func(m map[string]any) error {
@@ -473,30 +545,31 @@ func TestJobSpecValidation(t *testing.T) {
 		return err
 	}
 	if err := parse(base()); err != nil {
-		t.Fatalf("a valid push spec was refused: %v", err)
+		t.Fatalf("a valid spec was refused: %v", err)
 	}
 	refused := map[string]func(m map[string]any){
-		"an unknown field":            func(m map[string]any) { m["shell"] = "rm -rf /" },
-		"a repository to clone":       func(m map[string]any) { m["repository"] = map[string]any{"cloneUrl": sink + "/a.git", "ref": "main"} },
-		"no workspace":                func(m map[string]any) { delete(m, "workspace") },
-		"no project":                  func(m map[string]any) { delete(m, "project") },
-		"a workspace climbing":        func(m map[string]any) { m["workspace"] = "../etc" },
-		"a dotted workspace":          func(m map[string]any) { m["workspace"] = ".ssh" },
-		"a nested workspace":          func(m map[string]any) { m["workspace"] = "a/b" },
-		"a workspace option":          func(m map[string]any) { m["workspace"] = "-rf" },
-		"an uppercase project":        func(m map[string]any) { m["project"] = "Acme" },
-		"an MCP URL off the sink":     func(m map[string]any) { m["mcpUrl"] = "https://evil.example/mcp" },
-		"a tool that is a flag":       func(m map[string]any) { m["allowedTools"] = []string{"Read --dangerously-skip-permissions"} },
-		"a Bash rule with a comma":    func(m map[string]any) { m["allowedTools"] = []string{"Bash(rm:*),Write"} },
-		"bypassPermissions":           func(m map[string]any) { m["permissionMode"] = "bypassPermissions" },
-		"acceptEdits on read":         func(m map[string]any) { m["profile"] = "read" },
-		"an unknown kind":             func(m map[string]any) { m["kind"] = "shell" },
-		"no key":                      func(m map[string]any) { delete(m, "key") },
-		"too many turns":              func(m map[string]any) { m["maxTurns"] = 501 },
-		"a timeout past four hours":   func(m map[string]any) { m["timeoutSeconds"] = 4*3600 + 1 },
-		"an egress entry with a path": func(m map[string]any) { m["egress"] = []string{"github.com/evil"} },
-		"an image by tag":             func(m map[string]any) { m["image"] = "ghcr.io/x/agent:latest" },
-		"a prompt with a NUL":         func(m map[string]any) { m["prompt"] = "a\x00b" },
+		"an unknown field":          func(m map[string]any) { m["shell"] = "rm -rf /" },
+		"a repository to clone":     func(m map[string]any) { m["repository"] = map[string]any{"cloneUrl": sink + "/a.git", "ref": "main"} },
+		"Claude's own vocabulary":   func(m map[string]any) { m["allowedTools"] = []string{"Read"} },
+		"a turn budget":             func(m map[string]any) { m["maxTurns"] = 30 },
+		"a profile":                 func(m map[string]any) { m["profile"] = "push" },
+		"an egress list":            func(m map[string]any) { m["egress"] = []string{"github.com"} },
+		"an image":                  func(m map[string]any) { m["image"] = "sha256:00" },
+		"no agent":                  func(m map[string]any) { delete(m, "agent") },
+		"an unknown agent":          func(m map[string]any) { m["agent"] = "codex" },
+		"a model that is a flag":    func(m map[string]any) { m["model"] = "--dangerously-skip-permissions" },
+		"no workspace":              func(m map[string]any) { delete(m, "workspace") },
+		"no project":                func(m map[string]any) { delete(m, "project") },
+		"a workspace climbing":      func(m map[string]any) { m["workspace"] = "../etc" },
+		"a dotted workspace":        func(m map[string]any) { m["workspace"] = ".ssh" },
+		"a nested workspace":        func(m map[string]any) { m["workspace"] = "a/b" },
+		"a workspace option":        func(m map[string]any) { m["workspace"] = "-rf" },
+		"an uppercase project":      func(m map[string]any) { m["project"] = "Acme" },
+		"an MCP URL off the sink":   func(m map[string]any) { m["mcpUrl"] = "https://evil.example/mcp" },
+		"an unknown kind":           func(m map[string]any) { m["kind"] = "shell" },
+		"no key":                    func(m map[string]any) { delete(m, "key") },
+		"a timeout past four hours": func(m map[string]any) { m["timeoutSeconds"] = 4*3600 + 1 },
+		"a prompt with a NUL":       func(m map[string]any) { m["prompt"] = "a\x00b" },
 	}
 	for name, mutate := range refused {
 		m := base()
@@ -505,7 +578,7 @@ func TestJobSpecValidation(t *testing.T) {
 			t.Errorf("%s was accepted", name)
 		}
 	}
-	check := map[string]any{"kind": "check", "profile": "check", "maxTurns": 1, "timeoutSeconds": 60}
+	check := map[string]any{"kind": "check", "agent": "gemini", "timeoutSeconds": 60}
 	if err := parse(check); err != nil {
 		t.Fatalf("a check was refused: %v", err)
 	}

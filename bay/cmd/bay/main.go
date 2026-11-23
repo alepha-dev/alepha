@@ -371,10 +371,11 @@ func usageText() string {
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
   bay config jobs (--user NAME|--clear) [--runner process|container]
                 [--credential NAME] [--gvisor|--no-gvisor] [--max-jobs N]
-                # the Unix user one-shot jobs from Lore run as (agent jobs:
-                # claude -p in a workspace kept under ~NAME/bay-jobs), and how
-                # many run at once (1 by default). Never root, never bay's own user;
-                # claude must be on its PATH, logged in by hand as that user.
+                # the Unix user one-shot jobs from Lore run as (agent jobs: an
+                # agent CLI run on a prompt in a workspace kept under
+                # ~NAME/bay-jobs), and how many run at once (1 by default).
+                # Never root, never bay's own user; an agent CLI (claude,
+                # gemini) must be on its PATH, signed in by hand as that user.
                 # Lore must also allow jobs on the host. ⚠ A host that runs
                 # jobs this way does NOTHING else: no production app, no other
                 # project's secrets, since the job has that user's shell here.

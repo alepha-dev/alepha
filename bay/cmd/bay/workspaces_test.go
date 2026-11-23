@@ -71,7 +71,7 @@ func TestJobWorkspaces(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
-		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent started") })
+		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent claude started") })
 		rm := &ackRecorder{}
 		w.acts.Command(context.Background(), connector.Command{ID: "rm-busy", Kind: "job-workspace-remove", Project: "acme"}, rm.send)
 		if rm.last().Status != "failed" || !strings.Contains(rm.last().Reason, "already runs") {

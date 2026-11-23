@@ -11,6 +11,14 @@ import { type Infer, z } from "alepha";
  */
 export const hostJobInputSchema = z.object({
   profile: z.enum(["check", "read", "push"]),
+  agent: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,31}$/)
+    .optional(),
+  model: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9.-]{0,79}(?:\[1m\])?$/)
+    .optional(),
   workspace: z
     .string()
     .regex(/^[a-z0-9][a-z0-9_-]{0,62}$/)

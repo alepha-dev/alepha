@@ -44,6 +44,13 @@ export interface HostJobRequest {
 export interface HostJobInput {
   profile: "check" | "read" | "push";
   /**
+   * The agent CLI the job runs, by the name of Bay's adapter (`claude`,
+   * `gemini`, #Q4219), and the model passed to it; no model leaves the
+   * CLI's own default.
+   */
+  agent?: string;
+  model?: string;
+  /**
    * The workspace an agent job runs in on the host (#Q4218), a short key
    * such as `triage` or `q12`: Bay runs it in
    * `<jobs base>/<project slug>/<workspace>`, kept between runs.

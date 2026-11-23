@@ -610,6 +610,8 @@ describe("Bay connector against a real Lore", () => {
       join(stubs, "claude"),
       [
         "#!/bin/sh",
+        // The check asks the version first (#Q4219), then one prompt.
+        `if [ "$1" = "--version" ]; then echo "9.9.9 (Claude Code)"; exit 0; fi`,
         `echo '{"type":"system","subtype":"init","model":"claude-stub-1","apiKeySource":"none","claude_code_version":"9.9.9"}'`,
         `echo '{"type":"result","subtype":"success","is_error":false,"result":"OK","modelUsage":{"claude-stub-1":{}}}'`,
         "",
