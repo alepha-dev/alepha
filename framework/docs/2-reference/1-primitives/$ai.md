@@ -38,17 +38,20 @@ tool loop that runs them as the signed-in user.
 
 ## Options
 
-| Option      | Type                                                       | Required | Description                                                                        |
-| ----------- | ---------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------- |
-| `name`      | `string`                                                   | No       | Name of the assistant, in logs                                                     |
-| `model`     | `string`                                                   | No       | Model id for this assistant                                                        |
-| `system`    | `string \| ((ctx: { user?: UserAccountToken }) => string)` | Yes      | The system prompt, or a function of the user                                       |
-| `tools`     | `AiToolList \| (() => AiToolList)`                         | No       | The tools: `$action`s, `$tool`s (`alepha/mcp`), and client tools from `clientTool` |
-| `allow`     | `Object`                                                   | No       | The tools this user is offered on a turn, by name: what the model sees             |
-| `confirm`   | `Object`                                                   | No       | Whether a call to this tool waits for the user's approval                          |
-| `maxSteps`  | `number`                                                   | No       | Model calls per turn before the loop stops with `end: length`.                     |
-| `timeout`   | `DurationLike`                                             | No       | Wall-clock bound on one `stream()`, aborting the model call in flight.             |
-| `maxTokens` | `number`                                                   | No       | Upper bound on the tokens of each model response.                                  |
+| Option            | Type                                                       | Required | Description                                                                          |
+| ----------------- | ---------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `name`            | `string`                                                   | No       | Name of the assistant, in logs                                                       |
+| `model`           | `string`                                                   | No       | Model id for this assistant                                                          |
+| `system`          | `string \| ((ctx: { user?: UserAccountToken }) => string)` | Yes      | The system prompt, or a function of the user                                         |
+| `tools`           | `AiToolList \| (() => AiToolList)`                         | No       | The tools: `$action`s, `$tool`s (`alepha/mcp`), and client tools from `clientTool`   |
+| `allow`           | `Object`                                                   | No       | The tools this user is offered on a turn, by name: what the model sees               |
+| `confirm`         | `Object`                                                   | No       | Whether a call to this tool waits for the user's approval                            |
+| `maxSteps`        | `number`                                                   | No       | Model calls per turn before the loop stops with `end: length`.                       |
+| `turnTokens`      | `number`                                                   | No       | Tokens (input plus output, summed over the model calls) one turn may spend           |
+| `maxCallsPerTool` | `number`                                                   | No       | Calls of one tool a turn may make                                                    |
+| `maxResultLength` | `number`                                                   | No       | Characters of one tool result the model reads; the rest is cut with `...[truncated]` |
+| `timeout`         | `DurationLike`                                             | No       | Wall-clock bound on one `stream()`, aborting the model call in flight.               |
+| `maxTokens`       | `number`                                                   | No       | Upper bound on the tokens of each model response.                                    |
 
 ## Examples
 

@@ -19,6 +19,8 @@ const WRITE_SET = [
   "quest_update",
   "quest_complete",
   "folio_create",
+  "dashboard_card_add",
+  "dashboard_card_update",
   "feedback_submit",
 ];
 
@@ -37,6 +39,9 @@ const READ_SET = [
   "feedback_targets",
   "search",
   "searchDocs",
+  "dashboard_list",
+  "dashboard_metric_catalog",
+  "dashboard_card_list",
 ];
 
 /**

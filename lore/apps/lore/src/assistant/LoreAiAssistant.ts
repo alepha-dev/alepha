@@ -33,6 +33,15 @@ export class LoreAiAssistant {
     tools: () => this.toolset.tools,
     allow: (ctx) => this.access.offered(ctx),
     maxTokens: 1024,
+    // Every model call resends ~55 KB of tool definitions with the whole
+    // run, so a run's cost grows with its calls (#Q4213: eight calls spent
+    // 200k tokens). A run wraps up with an answer at 100k, or before the
+    // user's budget; a tool is called four times at most, the same call
+    // once; a result is cut at 12 KB, which every tool's typical answer
+    // fits (`LoreAiToolset`).
+    turnTokens: 100_000,
+    maxCallsPerTool: 4,
+    maxResultLength: 12 * 1024,
   });
 
   /**

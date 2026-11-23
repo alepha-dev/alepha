@@ -135,6 +135,14 @@ class Support {
   the model as a tool error, never to the browser as a 403.
 - **Bounds.** `maxSteps` (10 model calls by default) ends the turn with `end: length`;
   `timeout` and the ambient abort signal cancel the call in flight.
+- **Cost.** Every model call resends the system prompt, the tool definitions and the whole
+  turn so far, so a turn of eight tool calls costs about eight times its context. `turnTokens`
+  bounds what one turn spends: when the next call would cross it, the last tool results tell
+  the model to answer, a call it still asks for is answered with an error and not run, and the
+  turn ends with `end: length`. A turn's `tokenBudget` lowers it (`alepha/api/ai` passes what is
+  left of the user's budget). An identical call (same tool, same input) never runs twice in a
+  turn, `maxCallsPerTool` caps the calls of one tool, and `maxResultLength` (32768 characters
+  by default) cuts each tool result.
 
 ### One definition for the assistant and for outside agents
 
@@ -289,8 +297,8 @@ Runtime settings, editable by an operator without a redeploy (`alepha/api/parame
 | `turnsPerMinute`    | 20      | turns one user may start per minute (`$rateLimit`)                           |
 | `retentionDays`     | unset   | days a conversation is kept after its last activity; unset is keep           |
 
-The budget is checked before a turn from the stored token counts, so a turn can overshoot by its
-own size. Retention is a daily `$job` that reads the parameter at every tick. Page data and tool
+The budget is checked before a turn from the stored token counts, and the turn is handed what is
+left as its `tokenBudget`, so it wraps up with an answer and overshoots by one model call at most. Retention is a daily `$job` that reads the parameter at every tick. Page data and tool
 results live in the messages, so retention is a privacy setting as much as a storage one.
 
 ## The client side: `@alepha/ui/ai`
