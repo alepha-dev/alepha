@@ -1296,12 +1296,8 @@ export default {
   "project.settings.areas.column.total": "Total",
   "project.settings.areas.column.lastActivity": "Last activity",
   "project.settings.areas.column.summary": "Description",
-  "project.settings.areas.column.select": "Select",
-  "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
     "No areas yet. Create a quest and pick an area, and it appears here.",
-  "project.settings.areas.selected": "$1 selected",
-  "project.settings.areas.selected.one": "1 selected",
   "project.settings.areas.merge.action": "Merge into...",
   "project.settings.areas.merge.title": "Merge areas",
   "project.settings.areas.merge.target": "Target area",
