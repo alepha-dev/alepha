@@ -69,7 +69,7 @@ export class ProjectChannelService {
     const resources: ProjectChannelResource[] = [];
     for (const row of rows) resources.push(await this.resource(row, managing));
     return [
-      { id: "inbox", kind: "inbox", name: "In-app", builtIn: true },
+      { id: "inbox", kind: "inbox", name: "Inbox", builtIn: true },
       { id: "email", kind: "email", name: "Email", builtIn: true },
       ...resources,
     ];

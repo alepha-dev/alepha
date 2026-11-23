@@ -222,10 +222,14 @@ test.describe("Account dialog", () => {
       ).toHaveAttribute("aria-checked", "false", { timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
 
-    // The in-app row is a statement, not a control: there is no switch to
+    // The Inbox row is a statement, not a control: there is no switch to
     // find, which is what stops it reading as a broken one.
-    await expect(dialog.getByText("In-app", { exact: true })).toBeVisible();
-    await expect(dialog.getByRole("switch", { name: "In-app" })).toHaveCount(0);
+    // Found by its description: "Inbox" is also the dialog's own section
+    // of that name, in its navigation.
+    await expect(
+      dialog.getByText(/^Always on\. Messages wait for you in the bell/),
+    ).toBeVisible();
+    await expect(dialog.getByRole("switch", { name: "Inbox" })).toHaveCount(0);
   });
 
   test("changes the password and reports the revoked sessions", async ({

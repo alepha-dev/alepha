@@ -61,7 +61,7 @@ export class ChannelCommand {
   public readonly list = $command({
     name: "list",
     description:
-      "The project's channels: In-app and Email, then its Discord and webhook channels (never a Discord URL)",
+      "The project's channels: Inbox and Email, then its Discord and webhook channels (never a Discord URL)",
     flags: z.object({
       ...ChannelCommand.PROJECT_FLAG,
       ...LoreOutput.FLAGS,

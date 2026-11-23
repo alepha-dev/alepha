@@ -47,7 +47,7 @@ export default {
   "notifications.form.filter.any": "Tous",
   "notifications.form.save": "Enregistrer",
   "notifications.form.cancel": "Annuler",
-  "notifications.channel.inapp": "Dans l'application",
+  "notifications.channel.inapp": "Boîte de réception",
   "notifications.channel.email": "Par e-mail",
   "notifications.unavailable": "Indisponible",
   "notifications.unavailable.option": "Activez $1 dans $2 pour l'obtenir.",
@@ -141,7 +141,7 @@ export default {
   "notifications.event.quest.reminder_due": "Rappel de quête",
   "notifications.channels.add": "Ajouter un canal",
   "notifications.channels.kind": "Type",
-  "notifications.channels.kind.inbox": "Dans l'application",
+  "notifications.channels.kind.inbox": "Boîte de réception",
   "notifications.channels.kind.email": "E-mail",
   "notifications.channels.kind.discord": "Discord",
   "notifications.channels.kind.webhook": "Webhook",
@@ -3231,7 +3231,7 @@ export default {
   "account.notifications.email": "E-mail",
   "account.notifications.email.description":
     "Désactivez ceci et plus rien ne vous sera envoyé par e-mail. Les codes de connexion et les réinitialisations de mot de passe ne sont pas concernés.",
-  "account.notifications.inbox": "Dans l'application",
+  "account.notifications.inbox": "Boîte de réception",
   "account.notifications.inbox.description":
     "Toujours actif. Les messages vous attendent dans la cloche, et un message invisible équivaut à un message jamais envoyé.",
   "account.notifications.categories": "Types de message",

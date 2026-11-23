@@ -37,7 +37,7 @@ export interface NotificationChannelsTabProps {
 
 /**
  * The project's notification channels (#Q3614, #Q3891, #Q3900, a
- * `DataTable` since #Q3912): In-app and Email, a member's own, then the
+ * `DataTable` since #Q3912): Inbox and Email, a member's own, then the
  * project's Discord channels and webhook endpoints. Adding and editing one
  * happen in a dialog. A Discord URL is typed there and never shown again; a
  * webhook's URL is shown to whoever manages notifications, and its signing

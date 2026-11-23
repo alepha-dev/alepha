@@ -693,7 +693,7 @@ which the callers (epic completion among them) catch.
   former member, a disabled account, or a missing read permission receives
   nothing, silently.
 - `ProjectEventDelivery` runs one memoised step per subscription and channel.
-  In-app goes to contact `lore-user:<id>`; email through the member's
+  Inbox goes to contact `lore-user:<id>`; email through the member's
   preferences (category `notifications`); Discord through the
   `lore:project-event:discord` template; a webhook through
   `WebhookOutbox.enqueueIds`, with the envelope id equal to the event id, so a
