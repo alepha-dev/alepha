@@ -776,6 +776,27 @@ describe("Bay connector against a real Lore", () => {
       call(lore, owner, "getJobLog", { params: { jobId: check?.id ?? "" } }),
     );
     expect(log.stdout).toContain('"result":"OK"');
+
+    // The inventory says what the jobs user has (#Q4220): the stub agent
+    // with its version, the agents and tools it lacks as not found.
+    const tools = await until(
+      "the inventory to report the jobs user's tools",
+      async () => {
+        const row = (await readHost()) as HostRow & {
+          jobsTools?: Array<{ name: string; found: boolean; version?: string }>;
+        };
+        return row.jobsTools?.length ? row.jobsTools : undefined;
+      },
+      60_000,
+    );
+    expect(tools.map((tool) => tool.name)).toEqual([
+      "claude",
+      "gemini",
+      "git",
+      "gh",
+      "lore",
+    ]);
+    expect(tools[0]).toMatchObject({ found: true, version: "9.9.9" });
   });
 
   it("runs an agent job in a durable workspace: no repository, the key in the agent's env, the end by its exit code (#Q4218, #Q4222)", async () => {

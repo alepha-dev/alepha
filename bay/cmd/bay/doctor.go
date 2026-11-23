@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/connector"
 	"github.com/alepha-dev/bay/internal/runner"
 )
 
@@ -76,6 +78,59 @@ func runDoctor(root string, probeKeys bool) []check {
 		checks = append(checks, c)
 	}
 	checks = append(checks, storageChecks(root, probeKeys)...)
+	checks = append(checks, jobChecks(root)...)
+	return checks
+}
+
+/*
+jobChecks lists what the jobs user has (#Q4220), the same list the inventory
+reports: each agent CLI, then git, gh and lore. None of it is required of a
+host that only deploys, so a missing tool is a warning; no agent CLI at all
+says plainly that the host cannot run agent jobs. Nothing is printed when
+no jobs user is configured. Whether gh and lore are signed in is not
+checked, and the last line says so.
+*/
+func jobChecks(root string) []check {
+	cfg, err := loadJobsConfig(root)
+	if err != nil || cfg.User == "" {
+		return nil
+	}
+	r := newProcessRunner(root)
+	u, err := r.jobsUser()
+	if err != nil {
+		return []check{{Name: "jobs user", Warn: true, Detail: err.Error()}}
+	}
+	return toolChecks(r.tools(context.Background(), u), u.Username)
+}
+
+// toolChecks turns the jobs user's tools into doctor lines.
+func toolChecks(tools []connector.InventoryTool, username string) []check {
+	var checks []check
+	agents := 0
+	for _, t := range tools {
+		c := check{Name: t.Name, OK: t.Found && t.Error == ""}
+		switch {
+		case c.OK:
+			c.Detail = t.Version
+			if t.Kind == "agent" {
+				agents++
+				c.Detail += " (agent CLI)"
+			}
+		case t.Found:
+			c.Warn = true
+			c.Detail = "found, but " + t.Error
+		default:
+			c.Warn = true
+			c.Detail = "not installed for " + username
+		}
+		checks = append(checks, c)
+	}
+	if agents == 0 {
+		checks = append(checks, check{Name: "agent jobs", Warn: true,
+			Detail: fmt.Sprintf("no supported agent CLI (%s) answers for %s: this host cannot run agent jobs", strings.Join(adapterNames(), ", "), username)})
+	}
+	checks = append(checks, check{Name: "sign-ins", OK: true,
+		Detail: "not checked: a job that needs gh, lore or an agent's login fails with the tool's own message"})
 	return checks
 }
 

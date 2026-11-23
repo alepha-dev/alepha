@@ -695,9 +695,33 @@ func TestJobLogReplay(t *testing.T) {
 func TestJobsInventory(t *testing.T) {
 	w := newJobWorld(t)
 	w.stub(t, "claude", "#!/bin/sh\necho '2.0.14 (Claude Code)'\n")
+	w.stub(t, "git", "#!/bin/sh\necho 'git version 2.43.0'\n")
+	w.stub(t, "gh", "#!/bin/sh\nexit 1\n")
 	inv, _ := w.acts.Inventory(context.Background())
-	if inv.Jobs == nil || inv.Jobs.Runner != "process" || inv.Jobs.ClaudeVersion != "2.0.14" {
+	if inv.Jobs == nil || inv.Jobs.Runner != "process" {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
+	}
+	// Every adapter's CLI, then git, gh and lore, in that order (#Q4220).
+	byName := map[string]connector.InventoryTool{}
+	var names []string
+	for _, tool := range inv.Jobs.Tools {
+		byName[tool.Name] = tool
+		names = append(names, tool.Name)
+	}
+	if strings.Join(names, ",") != "claude,gemini,git,gh,lore" {
+		t.Fatalf("tools = %v", names)
+	}
+	if c := byName["claude"]; c.Kind != "agent" || !c.Found || c.Version != "2.0.14" {
+		t.Fatalf("claude = %+v", c)
+	}
+	if g := byName["gemini"]; g.Kind != "agent" || g.Found || !strings.Contains(g.Error, "not on the jobs user's PATH") {
+		t.Fatalf("gemini = %+v", g)
+	}
+	if g := byName["git"]; g.Kind != "tool" || g.Version != "2.43.0" {
+		t.Fatalf("git = %+v", g)
+	}
+	if g := byName["gh"]; !g.Found || !strings.Contains(g.Error, "gh --version exited with status 1") {
+		t.Fatalf("gh = %+v", g)
 	}
 	if err := saveJobsConfig(w.f.root, jobsConfig{}); err != nil {
 		t.Fatal(err)

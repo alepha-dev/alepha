@@ -141,6 +141,11 @@ export interface AgentHostRef {
   id: string;
   slug: string;
   status?: string;
+  /**
+   * The agent CLIs the host's inventory reports as answering (#Q4220), by
+   * adapter name. Undefined when it reported none yet.
+   */
+  agents?: string[];
   runner?: string;
 }
 

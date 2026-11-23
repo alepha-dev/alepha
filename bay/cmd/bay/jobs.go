@@ -544,17 +544,22 @@ func exitCodeOf(cmd *exec.Cmd, err error) (*int, error) {
 	return nil, err
 }
 
-// agentVersion asks an agent CLI for its version, as the jobs user: the first
-// word of what its version command prints that holds a digit. Cached by the
-// inventory's caller.
+// agentVersion asks an agent CLI for its version, as the jobs user.
 func (r *processRunner) agentVersion(ctx context.Context, u *user.User, adapter agentAdapter) (string, error) {
-	bin, err := r.lookPath(u.HomeDir, adapter.Binary)
+	return r.toolVersion(ctx, u, adapter.Binary, adapter.VersionArgs, adapter.Env)
+}
+
+// toolVersion runs a tool's version command as the jobs user, and answers
+// the first word of what it prints that holds a digit: `2.1.7 (Claude
+// Code)`, `git version 2.43.0`, `gh version 2.40.1 (2024-01-01)`.
+func (r *processRunner) toolVersion(ctx context.Context, u *user.User, binary string, args, env []string) (string, error) {
+	bin, err := r.lookPath(u.HomeDir, binary)
 	if err != nil {
 		return "", err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	cmd, err := r.command(ctx, u, u.HomeDir, bin, adapter.VersionArgs, append(r.jobEnv(u), adapter.Env...))
+	cmd, err := r.command(ctx, u, u.HomeDir, bin, args, append(r.jobEnv(u), env...))
 	if err != nil {
 		return "", err
 	}
@@ -565,14 +570,46 @@ func (r *processRunner) agentVersion(ctx context.Context, u *user.User, adapter 
 		return "", err
 	}
 	if code != nil && *code != 0 {
-		return "", fmt.Errorf("%s %s exited with status %d", adapter.Binary, strings.Join(adapter.VersionArgs, " "), *code)
+		return "", fmt.Errorf("%s %s exited with status %d", binary, strings.Join(args, " "), *code)
 	}
 	for _, field := range strings.Fields(out.String()) {
 		if strings.ContainsAny(field, "0123456789") {
 			return cut(field, 100), nil
 		}
 	}
-	return "", fmt.Errorf("%s %s printed no version", adapter.Binary, strings.Join(adapter.VersionArgs, " "))
+	return "", fmt.Errorf("%s %s printed no version", binary, strings.Join(args, " "))
+}
+
+/*
+tools is what the jobs user has (#Q4220): each adapter's CLI, then git, gh
+and lore, each found or not on its PATH, with its version or the error of
+its version command. Whether a tool is signed in is not checked.
+*/
+func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.InventoryTool {
+	var out []connector.InventoryTool
+	read := func(name, kind, binary string, args, env []string) {
+		tool := connector.InventoryTool{Name: name, Kind: kind}
+		if _, err := r.lookPath(u.HomeDir, binary); err != nil {
+			tool.Error = cut(binary+" is not on the jobs user's PATH", 500)
+			out = append(out, tool)
+			return
+		}
+		tool.Found = true
+		if v, err := r.toolVersion(ctx, u, binary, args, env); err != nil {
+			tool.Error = cut(err.Error(), 500)
+		} else {
+			tool.Version = v
+		}
+		out = append(out, tool)
+	}
+	for _, name := range adapterNames() {
+		a := agentAdapters[name]
+		read(a.Name, "agent", a.Binary, a.VersionArgs, a.Env)
+	}
+	for _, name := range jobTools {
+		read(name, "tool", name, []string{"--version"}, nil)
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------
@@ -580,7 +617,7 @@ func (r *processRunner) agentVersion(ctx context.Context, u *user.User, adapter 
 // ---------------------------------------------------------------------------
 
 // jobs is the executor's state for one-shot jobs: the ones running now, and
-// the agent version the inventory reports.
+// the tools the inventory reports.
 type jobs struct {
 	runner *processRunner
 	// container is the container runner (#Q3999), used when the config says.
@@ -589,10 +626,9 @@ type jobs struct {
 	mu      sync.Mutex
 	running map[string]context.CancelCauseFunc
 
-	versionMu sync.Mutex
-	version   string
-	versionAt time.Time
-	versionEr string
+	toolsMu sync.Mutex
+	tools   []connector.InventoryTool
+	toolsAt time.Time
 }
 
 // jobSecond is what a spec's timeoutSeconds counts in: a second, and a
@@ -684,25 +720,18 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 		// is what the check job reports, not a reading of this host.
 		return out
 	}
-	j.versionMu.Lock()
-	defer j.versionMu.Unlock()
-	if time.Since(j.versionAt) > 10*time.Minute {
-		j.version, j.versionEr = "", ""
-		// The inventory's one version field until it lists every tool
-		// (#Q4220).
-		u, err := j.runner.jobsUser()
-		var v string
-		if err == nil {
-			v, err = j.runner.agentVersion(ctx, u, agentAdapters["claude"])
+	// What the jobs user has, read again when older than ten minutes: a
+	// version command per tool is cheap, but not on every inventory.
+	j.toolsMu.Lock()
+	defer j.toolsMu.Unlock()
+	if time.Since(j.toolsAt) > 10*time.Minute {
+		j.tools = nil
+		if u, err := j.runner.jobsUser(); err == nil {
+			j.tools = j.runner.tools(ctx, u)
 		}
-		if err != nil {
-			j.versionEr = cut(err.Error(), 500)
-		} else {
-			j.version = v
-		}
-		j.versionAt = time.Now()
+		j.toolsAt = time.Now()
 	}
-	out.ClaudeVersion, out.ClaudeError = j.version, j.versionEr
+	out.Tools = j.tools
 	return out
 }
 

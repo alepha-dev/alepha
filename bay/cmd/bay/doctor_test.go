@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alepha-dev/bay/internal/connector"
 	"github.com/alepha-dev/bay/internal/runner"
 )
 
@@ -162,4 +164,45 @@ func TestPortHeldByBayItself(t *testing.T) {
 	if !c.OK || !strings.Contains(c.Detail, "a Bay answers") {
 		t.Fatalf("check = %+v", c)
 	}
+}
+
+func TestDoctorToolChecks(t *testing.T) {
+	t.Run("lists the tools, warns on what is missing, and says what it does not check", func(t *testing.T) {
+		checks := toolChecks([]connector.InventoryTool{
+			{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},
+			{Name: "gemini", Kind: "agent"},
+			{Name: "gh", Kind: "tool", Found: true, Error: "gh --version exited with status 1"},
+		}, "bay-agent")
+		var lines []string
+		for _, c := range checks {
+			lines = append(lines, fmt.Sprintf("%s ok=%v warn=%v %s", c.Name, c.OK, c.Warn, c.Detail))
+		}
+		got := strings.Join(lines, "\n")
+		for _, want := range []string{
+			"claude ok=true warn=false 2.1.7 (agent CLI)",
+			"gemini ok=false warn=true not installed for bay-agent",
+			"gh ok=false warn=true found, but gh --version exited with status 1",
+			"sign-ins ok=true",
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("doctor said:\n%s\nwant a line %q", got, want)
+			}
+		}
+		if strings.Contains(got, "cannot run agent jobs") {
+			t.Fatal("a host with an agent CLI was said to have none")
+		}
+	})
+
+	t.Run("says plainly when no agent CLI answers", func(t *testing.T) {
+		checks := toolChecks([]connector.InventoryTool{{Name: "claude", Kind: "agent"}, {Name: "gemini", Kind: "agent"}}, "bay-agent")
+		var found bool
+		for _, c := range checks {
+			if c.Name == "agent jobs" && c.Warn && strings.Contains(c.Detail, "this host cannot run agent jobs") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("checks = %+v", checks)
+		}
+	})
 }

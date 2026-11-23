@@ -3138,6 +3138,9 @@ export default {
   "hosts.agent.status.checking": "Checking",
   "hosts.agent.status.available": "Available",
   "hosts.agent.status.unavailable": "Unavailable",
+  "hosts.agent.tool.missing": "not installed",
+  "hosts.agent.tools.noAgent":
+    "No agent CLI answers for the jobs user: this host cannot run agent jobs.",
   "hosts.agent.check": "Check now",
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
