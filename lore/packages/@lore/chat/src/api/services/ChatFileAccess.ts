@@ -3,6 +3,7 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 
+import { chatAgents } from "../entities/chatAgents.ts";
 import { chatMessages } from "../entities/chatMessages.ts";
 import { ChatBuckets } from "./ChatBuckets.ts";
 import { ChatRoomService } from "./ChatRoomService.ts";
@@ -18,8 +19,22 @@ import { ChatRoomService } from "./ChatRoomService.ts";
 export class ChatFileAccess {
   protected readonly messages = $repository(chatMessages);
   protected readonly rooms = $inject(ChatRoomService);
+  protected readonly agents = $repository(chatAgents);
 
   constructor() {
+    // An agent's picture (#E170): whoever reads the project's chat, a
+    // deleted agent's too, since its past answers still show it.
+    $inject(FileAccessRegistry).register(
+      ChatBuckets.AGENT_AVATAR_BUCKET,
+      async (fileId) => {
+        const agent = await this.agents.findOne({
+          where: { avatar: { eq: fileId } },
+        });
+        return agent
+          ? { projectId: agent.projectId, permission: "chat:read" }
+          : undefined;
+      },
+    );
     $inject(FileAccessRegistry).register(
       ChatBuckets.ATTACHMENT_BUCKET,
       async (fileId, reader) => {

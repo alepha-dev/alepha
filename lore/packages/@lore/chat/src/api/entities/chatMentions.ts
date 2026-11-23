@@ -28,6 +28,10 @@ export const chatMentions = $entity({
       onDelete: "cascade",
     }),
     agent: z.text({ maxLength: 40 }).optional(),
+    /**
+     * The project's agent the handle named (#Q4196), none for `@lore`.
+     */
+    agentId: z.uuid().optional(),
   }),
   indexes: [
     { columns: ["userId", "roomId", "messageId"] },

@@ -2,11 +2,13 @@ import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
 import { AlephaWebSocket } from "alepha/websocket";
 
+import { ChatAgentController } from "./controllers/ChatAgentController.ts";
 import { ChatMessageController } from "./controllers/ChatMessageController.ts";
 import { ChatRoomController } from "./controllers/ChatRoomController.ts";
 import { ChatSocketController } from "./controllers/ChatSocketController.ts";
 import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
 import { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
+import { ChatAgentService } from "./services/ChatAgentService.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
 import { ChatBuckets } from "./services/ChatBuckets.ts";
 import { ChatChannelRooms } from "./services/ChatChannelRooms.ts";
@@ -54,16 +56,20 @@ export const LoreChatApi = $module({
     ChatMentionNotifier,
     ChatTyping,
     ChatResponderRegistry,
+    ChatAgentService,
     ChatAgentRunner,
     ChatMessageController,
+    ChatAgentController,
     // Room channels (#Q4052): registered on core's registry at boot.
     ChatChannelRooms,
   ],
 });
 
+export { ChatAgentController } from "./controllers/ChatAgentController.ts";
 export { ChatMessageController } from "./controllers/ChatMessageController.ts";
 export { ChatRoomController } from "./controllers/ChatRoomController.ts";
 export { ChatSocketController } from "./controllers/ChatSocketController.ts";
+export { type ChatAgent, chatAgents } from "./entities/chatAgents.ts";
 export { type ChatMention, chatMentions } from "./entities/chatMentions.ts";
 export { type ChatMessage, chatMessages } from "./entities/chatMessages.ts";
 export { type ChatReaction, chatReactions } from "./entities/chatReactions.ts";
@@ -71,10 +77,18 @@ export { ChatBuckets } from "./services/ChatBuckets.ts";
 export { chatRoomMembers } from "./entities/chatRoomMembers.ts";
 export { type ChatRoom, chatRooms } from "./entities/chatRooms.ts";
 export { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
+export { ChatAgentService } from "./services/ChatAgentService.ts";
+export {
+  type ChatAgentBody,
+  type ChatAgentResource,
+  chatAgentBodySchema,
+  chatAgentResourceSchema,
+} from "./schemas/chatAgentResourceSchema.ts";
 export { ChatAudience } from "./services/ChatAudience.ts";
 export {
   type ChatAgentDecision,
   type ChatAgentEvent,
+  type ChatAgentMatch,
   type ChatAgentRequest,
   type ChatResponder,
   ChatResponderRegistry,

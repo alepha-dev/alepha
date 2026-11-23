@@ -23,6 +23,7 @@ import { useRouter, useRouterState } from "alepha/react/router";
 import { MessagesSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { ChatAgentController } from "../../../api/controllers/ChatAgentController.ts";
 import type { ChatMessageController } from "../../../api/controllers/ChatMessageController.ts";
 import type { ChatRoomController } from "../../../api/controllers/ChatRoomController.ts";
 import type {
@@ -75,6 +76,7 @@ const ChatPage = () => {
   const users = useProjectUsers();
   const roomsApi = useClient<ChatRoomController>();
   const messagesApi = useClient<ChatMessageController>();
+  const agentsApi = useClient<ChatAgentController>();
   const queries = useQueryClient();
   const hub = useInject(ChatFeedHub);
   const unreadBadge = useInject(ChatUnread);
@@ -375,13 +377,14 @@ const ChatPage = () => {
     {
       key: ["chat-agents", projectId],
       enabled: projectId > 0,
-      handler: () => messagesApi.listChatAgents({ params: { projectId } }),
+      handler: () => agentsApi.listChatAgents({ params: { projectId } }),
     },
-    [messagesApi, projectId],
+    [agentsApi, projectId],
   );
-  const agents = agentPage?.items ?? [];
+  // With AI off no agent answers, so none is offered (#E170).
+  const agents = agentPage?.enabled ? agentPage.items : [];
   const agentLabels = Object.fromEntries(
-    agents.map((agent) => [agent.name, agent.label]),
+    agents.map((agent) => [agent.handle, agent.name]),
   );
 
   const decide = useAction<
@@ -417,8 +420,8 @@ const ChatPage = () => {
         }));
   const candidates: ChatMentionCandidate[] = [
     ...agents.map((agent) => ({
-      handle: agent.name,
-      label: agent.label,
+      handle: agent.handle,
+      label: agent.name,
       agent: true,
     })),
     ...people,

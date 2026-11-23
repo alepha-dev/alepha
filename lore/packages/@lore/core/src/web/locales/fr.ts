@@ -4724,6 +4724,8 @@ export default {
     "Écrire dans les salons, en créer et rejoindre les salons ouverts",
   "permission.chat.manage":
     "Renommer et archiver tout salon, supprimer tout message",
+  "permission.chat.agent":
+    "Créer, modifier et supprimer les agents de discussion du projet",
   "folios.wikilink.broken.requirementNotFound":
     "Aucune exigence ne correspond à cette référence.",
   "project.settings.nav.ranks": "Rangs",

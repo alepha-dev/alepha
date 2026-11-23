@@ -7,9 +7,10 @@ import { chatRooms } from "./chatRooms.ts";
 /**
  * One message of a room (#E161, #Q3926).
  *
- * Written by a member (`authorId`) or by an agent (`agent`, the responder's
- * name, `lore`). An agent's message also carries `aiMessageId`, the
- * framework's `ai_messages` row its text mirrors: `ai_*` stays the run log
+ * Written by a member (`authorId`) or by an agent (`agent`, the handle it was
+ * mentioned by, `lore` or `jarvis`, and `agentId` for a project's own). An
+ * agent's message also carries `aiMessageId`, the framework's `ai_messages`
+ * row its text mirrors: `ai_*` stays the run log
  * (budget, rate limit, paused calls, audit, retention), and the room keeps a
  * copy of the answer.
  *
@@ -30,6 +31,12 @@ export const chatMessages = $entity({
       onDelete: "set null",
     }),
     agent: z.text({ maxLength: 40 }).optional(),
+    /**
+     * The project's `chat_agents` row that wrote it (#Q4196), none for
+     * `@lore`. Its name and avatar are read from that row, so a rename shows
+     * on past answers too. No foreign key: an agent is soft-deleted.
+     */
+    agentId: z.uuid().optional(),
     /**
      * Markdown, capped by {@link chatMessageBodySchema}. Empty once deleted.
      */

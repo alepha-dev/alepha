@@ -10,6 +10,10 @@ export const chatMessageResourceSchema = z.object({
   createdAt: z.datetime(),
   authorId: z.uuid().optional(),
   agent: z.text().optional(),
+  /**
+   * The project's agent that wrote it (#E170), none for `@lore`.
+   */
+  agentId: z.uuid().optional(),
   body: z.text({ size: "rich" }),
   editedAt: z.datetime().optional(),
   deletedAt: z.datetime().optional(),

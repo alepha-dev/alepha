@@ -58,6 +58,8 @@ export class LoreChatResponder {
     this.registry.register({
       name: LoreChatResponder.NAME,
       label: "Lore",
+      // It answers the project's own agents too (#E170).
+      engine: true,
       respond: (request) => this.respond(request),
       resume: (decision) => this.resume(decision),
     });

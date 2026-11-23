@@ -4697,6 +4697,7 @@ export default {
   "permission.chat.read": "Read the open rooms and the rooms they are in",
   "permission.chat.write": "Write in rooms, create rooms and join open ones",
   "permission.chat.manage": "Rename and archive any room, delete any message",
+  "permission.chat.agent": "Create, edit and delete the project's chat agents",
   "folios.wikilink.broken.requirementNotFound":
     "No requirement matches this reference.",
   "project.settings.nav.ranks": "Ranks",

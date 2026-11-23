@@ -8,7 +8,6 @@ import { chatReactionSchema } from "../schemas/chatReactionSchema.ts";
 import { ChatAgentRunner } from "../services/ChatAgentRunner.ts";
 import { ChatBuckets } from "../services/ChatBuckets.ts";
 import { ChatMessageService } from "../services/ChatMessageService.ts";
-import { ChatResponderRegistry } from "../services/ChatResponderRegistry.ts";
 
 /**
  * The messages of a room (#E161, #Q3926). Gated on the `chat` capability and
@@ -106,29 +105,6 @@ export class ChatMessageController {
         mimeType: file.mimeType,
         size: file.size,
         url: `/api/files/${file.id}`,
-      };
-    },
-  });
-
-  listChatAgents = $action({
-    method: "GET",
-    path: "/projects/:projectId/chat/agents",
-    use: [this.ownsProject("chat:read")],
-    description:
-      "The agents a message can mention here: `lore` when AI is on for this Lore.",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.object({
-        items: z.array(z.object({ name: z.text(), label: z.text() })),
-      }),
-    },
-    handler: async () => {
-      const registry = this.alepha.inject(ChatResponderRegistry);
-      return {
-        items: registry.names().map((name) => ({
-          name,
-          label: registry.get(name)!.label,
-        })),
       };
     },
   });

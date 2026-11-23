@@ -121,9 +121,14 @@ describe("@lore in a chat room", () => {
 
   it("is offered only when AI is on", async ({ expect }) => {
     const off = await bootAssistant({ enabled: "0" });
-    expect(off.alepha.inject(ChatResponderRegistry).names()).toEqual([]);
+    expect(off.alepha.inject(ChatResponderRegistry).builtins()).toEqual([]);
     const on = await bootAssistant({ enabled: "1" });
-    expect(on.alepha.inject(ChatResponderRegistry).names()).toEqual(["lore"]);
+    expect(
+      on.alepha
+        .inject(ChatResponderRegistry)
+        .builtins()
+        .map((it) => it.name),
+    ).toEqual(["lore"]);
   });
 
   it("answers a mention in the room, logged as the mentioner's run", async ({
