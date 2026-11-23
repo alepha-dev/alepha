@@ -1,6 +1,6 @@
 import { virtualClientFake } from "@lore/core/testing";
 import { I18n } from "@lore/core/web";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -52,6 +52,19 @@ const RUN = {
       name: "session.webm",
       mimeType: "video/webm",
       size: 10,
+    },
+    {
+      fileId: "44444444-4444-4444-8444-444444444444",
+      name: "trace.txt",
+      mimeType: "text/plain",
+      size: 2048,
+    },
+    {
+      fileId: "55555555-5555-4555-8555-555555555555",
+      name: "old.png",
+      mimeType: "image/png",
+      size: 10,
+      removedAt: "2026-11-21T10:00:00.000Z",
     },
   ],
 } as unknown as UseCaseRunResource;
@@ -116,14 +129,49 @@ describe("UseCaseRuns", () => {
     await mount();
     const c1 = document.querySelector('[data-criterion="C1"]')!;
     const c2 = document.querySelector('[data-criterion="C2"]')!;
-    expect(c1.textContent).toContain("order.png");
-    expect(c1.textContent).not.toContain("inbox.png");
-    expect(c2.textContent).toContain("inbox.png");
-    const loose = screen.getByText("session.webm");
+    const tile = (name: string) =>
+      document.querySelector(`a[title="${name}"]`) as HTMLAnchorElement;
+    expect(c1.contains(tile("order.png"))).toBe(true);
+    expect(c1.contains(tile("inbox.png"))).toBe(false);
+    expect(c2.contains(tile("inbox.png"))).toBe(true);
+    const loose = tile("session.webm");
     expect(c1.contains(loose) || c2.contains(loose)).toBe(false);
-    expect(screen.getByText("order.png").getAttribute("href")).toBe(
-      "/api/files/11111111-1111-4111-8111-111111111111",
+  });
+
+  it("opens a file in a tab, never through the router that answered 404 (#Q4208)", async ({
+    expect,
+  }) => {
+    await mount();
+    const link = document.querySelector(
+      'a[title="trace.txt"]',
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(
+      "/api/files/44444444-4444-4444-8444-444444444444",
     );
+    // A `target` is what makes the router leave the click to the browser.
+    expect(link.getAttribute("target")).toBe("_blank");
+    // Not an image: a tile with its name, no thumbnail.
+    expect(link.querySelector("img")).toBeNull();
+    expect(link.textContent).toContain("trace.txt");
+  });
+
+  it("previews an image evidence and opens it larger on a click (#Q4208)", async ({
+    expect,
+  }) => {
+    await mount();
+    const thumbnail = await screen.findByAltText("order.png");
+    expect(thumbnail.tagName).toBe("IMG");
+    fireEvent.click(thumbnail);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("order.png");
+  });
+
+  it("keeps a removed file's name, as text and not a link", async ({
+    expect,
+  }) => {
+    await mount();
+    expect(document.querySelector('a[title="old.png"]')).toBeNull();
+    expect(screen.getByText(/old\.png/).textContent).toContain("old.png");
   });
 
   it("reads as a header with the score and verdict, one row per criterion with its title and Markdown evidence, then the observation (#Q3975)", async ({
