@@ -5,18 +5,26 @@
 # dependency cache are volumes mounted there, on a read-only root filesystem.
 #
 # Pinned: Lore names this image by DIGEST in every job spec, so updating the
-# agent is deploying Lore. Bump CLAUDE_CODE_VERSION here to move the CLI.
+# agent is deploying Lore. Claude Code's version is the one package.json and
+# package-lock.json beside this file pin, installed with `npm ci`; Dependabot
+# bumps it there (#Q4175).
+#
+# ⚠️ That package-lock.json is the image's own, not a second lockfile of the
+# Yarn project: no workspace reaches this folder, and nothing outside this
+# image installs from it. It exists because Dependabot reads a version from a
+# manifest, never from a `RUN npm install -g pkg@x.y.z`.
 #
 # Its test variant, with a fake claude, is bay/testdata/agent-stub.
 ARG NODE_VERSION=26
 FROM node:${NODE_VERSION}-slim
 
-ARG CLAUDE_CODE_VERSION=2.1.330
+COPY package.json package-lock.json /opt/claude-code/
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends git ca-certificates openssh-client \
   && rm -rf /var/lib/apt/lists/* \
-  && npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+  && npm ci --prefix /opt/claude-code --omit=dev \
+  && ln -s /opt/claude-code/node_modules/.bin/claude /usr/local/bin/claude \
   && npm install -g corepack \
   && npm cache clean --force \
   && corepack enable \
