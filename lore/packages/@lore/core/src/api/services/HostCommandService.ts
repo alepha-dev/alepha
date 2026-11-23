@@ -145,6 +145,8 @@ export class HostCommandService {
       "job-run": 4 * 3600 + 600,
       // A kill of a process group.
       "job-cancel": 60,
+      // An `rm -rf` of a clone or two.
+      "job-workspace-remove": 300,
     };
 
   protected readonly log = $logger();
@@ -196,6 +198,16 @@ export class HostCommandService {
       throw new ForbiddenError(
         `Host "${host.slug}" does not accept changes to its apps; its home project has to allow deploys first`,
       );
+    }
+    // A workspace removal names a project and maybe one of its workspaces,
+    // and no instance; held to no switch (#Q4218).
+    if (kind === "job-workspace-remove") {
+      if (payload && (payload.app || payload.environment || !payload.project)) {
+        throw new BadRequestError(
+          "A job-workspace-remove names a project and no app or environment",
+        );
+      }
+      return;
     }
     // A job runs on its own switch, never on the deploy one (#Q3984): it
     // names no instance, a `job-run` carries the job, a `job-cancel` the run.
@@ -503,8 +515,13 @@ export class HostCommandService {
       // sends its backups and removal, under the name with the segment
       // (#Q3285). On a `deploy` only: a `stack-deploy` records the slug in its
       // payload, and Bay names a stack without it.
-      ...(command.kind === "deploy" && command.payload.project
+      ...((command.kind === "deploy" ||
+        command.kind === "job-workspace-remove") &&
+      command.payload.project
         ? { project: command.payload.project }
+        : {}),
+      ...(command.kind === "job-workspace-remove" && command.payload.workspace
+        ? { workspace: command.payload.workspace }
         : {}),
       ...(command.payload.artifact
         ? { artifact: command.payload.artifact }

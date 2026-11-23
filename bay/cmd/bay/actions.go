@@ -111,11 +111,11 @@ const (
 	// way `bay stack destroy` does without `--purge`: its volumes, variables
 	// and registry credentials are kept. Same switch, same rule on purge.
 	actionStackRemove actionKind = "stack-remove"
-	// actionJobRun runs one one-shot job to its end: Claude Code against a
-	// fresh clone for now, CI later (#Q3983, jobs.go). It carries nothing but
+	// actionJobRun runs one one-shot job to its end: an agent CLI in a
+	// durable workspace (#Q3983, #Q4218, jobs.go). It carries nothing but
 	// its id: the spec is pulled by that id and validated, and Bay builds the
 	// command line itself. Refused unless the welcome frame said
-	// `jobsAllowed`, one at a time, and never under the machine mutex.
+	// `jobsAllowed`, held to the host's job limit, and never under the machine mutex.
 	//
 	// ⚠️ On the process runner a job has the jobs user's shell on this host,
 	// so such a host does nothing else (jobs.go says why).
@@ -124,6 +124,10 @@ const (
 	// killing its process group. Its own ack is `done`; the job's says
 	// `cancelled`.
 	actionJobCancel actionKind = "job-cancel"
+	// actionJobWorkspaceRemove deletes a project's job workspace, or all of
+	// them (#Q4218, workspaces.go): asked by Lore when a project is deleted
+	// or a quest's build is done with. Refused while a job runs in it.
+	actionJobWorkspaceRemove actionKind = "job-workspace-remove"
 	// actionUpgrade replaces Bay's own binary with a released version and
 	// hands over to it. The most powerful verb here; what bounds it is in
 	// upgrade.go, and it is refused while deployAllowed is off.
@@ -227,14 +231,14 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	switch actionKind(cmd.Kind) {
 	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel:
+		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobWorkspaceRemove:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
 			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel)
+			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobWorkspaceRemove)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -276,6 +280,9 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		}
 	case actionJobCancel:
 		status, step, reason = a.jobCancel(cmd)
+	case actionJobWorkspaceRemove:
+		// Outside the machine mutex like the jobs it cleans up after.
+		status, step, reason = a.jobWorkspaceRemove(ctx, cmd)
 	case actionBackup:
 		// Outside the machine-wide mutex, deliberately. A snapshot, a verify
 		// and an upload is minutes on a real database, and holding that lock

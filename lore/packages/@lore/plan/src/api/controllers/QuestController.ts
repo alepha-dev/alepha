@@ -2,6 +2,7 @@ import {
   $ownsProject,
   BestEffort,
   BoundParameters,
+  HostJobs,
   LoreAudits,
   ProjectSecurityService,
   ResourceLinkService,
@@ -236,6 +237,7 @@ export class QuestController {
   linkService = $inject(ResourceLinkService);
   bound = $inject(BoundParameters);
   bestEffort = $inject(BestEffort);
+  hostJobs = $inject(HostJobs);
 
   /**
    * The bucket, declared on `WorkBuckets` so that this controller holds no boot
@@ -2993,6 +2995,11 @@ export class QuestController {
             )
           : undefined,
         this.logQuest("complete", quest, user),
+        // The quest's build workspace on the Agent hosts that ran it
+        // (#Q4218), best effort: a clone left behind is disk, not data.
+        this.bestEffort.run("completeQuest: workspace removal failed", () =>
+          this.hostJobs.removeWorkspaces(quest.projectId, `q${quest.shortId}`),
+        ),
         // The epic's two automatic moves (#Q2223), after the save so both
         // see this quest completed. The first only fires for a quest
         // accepted in a ready epic before that epic could start, which only

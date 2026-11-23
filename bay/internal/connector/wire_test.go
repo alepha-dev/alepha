@@ -159,6 +159,15 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if cancel.Kind != "job-cancel" || cancel.JobCommand != run.ID {
 		t.Fatalf("job-cancel decoded wrong: %+v", cancel)
 	}
+	// A workspace removal names a project and one of its workspaces, and no
+	// app (#Q4218).
+	rm, err := decodeFrame(fixture(t, "command-job-workspace-remove.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rm.Kind != "job-workspace-remove" || rm.Project != "acme" || rm.Workspace != "q12" || rm.App != "" {
+		t.Fatalf("job-workspace-remove decoded wrong: %+v", rm)
+	}
 }
 
 func TestWireClientFramesEncode(t *testing.T) {

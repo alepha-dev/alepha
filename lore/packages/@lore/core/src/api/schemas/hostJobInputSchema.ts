@@ -11,11 +11,9 @@ import { type Infer, z } from "alepha";
  */
 export const hostJobInputSchema = z.object({
   profile: z.enum(["check", "read", "push"]),
-  repository: z
-    .object({
-      cloneUrl: z.string().max(500),
-      ref: z.string().max(200),
-    })
+  workspace: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,62}$/)
     .optional(),
   prompt: z.string().max(131_072).optional(),
   maxTurns: z.integer().min(1).max(500),

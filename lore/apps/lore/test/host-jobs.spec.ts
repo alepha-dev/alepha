@@ -47,7 +47,7 @@ class Repos {
 
 const input = {
   profile: "read" as const,
-  repository: { cloneUrl: "https://lore.test/acme.git", ref: "main" },
+  workspace: "triage",
   prompt: "Triage the inbox.",
   maxTurns: 30,
   timeoutSeconds: 900,
@@ -107,6 +107,35 @@ describe("HostJobService", () => {
   let w: World;
   beforeEach(async () => {
     w = await setup();
+  });
+
+  it("asks every host that ran the project's agent jobs to delete its workspaces (#Q4218)", async ({
+    expect,
+  }) => {
+    expect(await w.service.removeWorkspaces(w.projectId)).toBe(0);
+    await start(w);
+    // A workspace no job of the project ran in asks no host.
+    expect(await w.service.removeWorkspaces(w.projectId, "q12")).toBe(0);
+    await w.service.start({
+      projectId: w.projectId,
+      hostId: w.host.id,
+      kind: "agent",
+      input: { ...input, workspace: "q12" },
+      startedBy: w.ownerId,
+    });
+    expect(await w.service.removeWorkspaces(w.projectId, "q12")).toBe(1);
+    const asked = await w.repos.commands.findMany({
+      where: {
+        hostId: { eq: w.host.id },
+        kind: { eq: "job-workspace-remove" },
+      },
+    });
+    expect(asked).toHaveLength(1);
+    const project = await w.service.projectDirName(w.projectId);
+    expect(asked[0]?.payload).toMatchObject({ project, workspace: "q12" });
+    // Held to no switch: a host whose jobs were turned off still holds them.
+    await w.repos.hosts.updateById(w.host.id, { jobsAllowed: false });
+    expect(await w.service.removeWorkspaces(w.projectId)).toBe(1);
   });
 
   it("dispatches one job at a time per host, the others waiting in order", async ({
@@ -257,8 +286,11 @@ describe("HostJobService", () => {
       kind: "agent",
       profile: "read",
       mcpUrl: "https://lore.test/mcp",
-      repository: input.repository,
+      workspace: "triage",
     });
+    // The project's directory on the host is its slug (#Q4218).
+    expect(spec.project).toMatch(/^[a-z0-9][a-z0-9_-]*$/);
+    expect(spec).not.toHaveProperty("repository");
     expect(String(spec.key)).toMatch(/^ak_lorejob_/);
     const command = await commandOf(w, job.id);
     await w.commands.ack(w.host.id, { id: command.id, status: "failed" });

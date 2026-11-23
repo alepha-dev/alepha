@@ -61,58 +61,51 @@ func containerWorld(t *testing.T) (*jobWorld, *fakeJobDocker) {
 }
 
 func TestContainerRunner(t *testing.T) {
-	t.Run("clones then runs claude in the agent image, the credential in claude's env only", func(t *testing.T) {
+	t.Run("runs a check in the agent image, the credential in claude's env", func(t *testing.T) {
 		w, fake := containerWorld(t)
-		last := w.run("job-c1", w.agentSpec(map[string]any{"image": agentImage})).last()
+		last := w.run("job-c1", w.checkSpec(map[string]any{"image": agentImage, "egress": []string{"api.anthropic.com"}})).last()
 		if last.Status != "done" {
 			t.Fatalf("ack = %+v", last)
 		}
-		if len(fake.steps) != 2 || fake.steps[0].Cmd[0] != "git" || fake.steps[1].Cmd[0] != "claude" {
+		if len(fake.steps) != 1 || fake.steps[0].Cmd[0] != "claude" {
 			t.Fatalf("steps = %+v", fake.steps)
 		}
-		clone, claude := fake.steps[0], fake.steps[1]
-		for _, step := range fake.steps {
-			if step.Image != agentImage || step.Network == "" || step.Workspace == "" {
-				t.Fatalf("a step ran outside the job's image, network or workspace: %+v", step)
-			}
-			// gVisor cannot reach Docker's embedded DNS: the proxy's name
-			// comes from /etc/hosts.
-			if len(step.Hosts) != 1 || step.Hosts[0] != "egress:172.30.0.2" {
-				t.Fatalf("a step does not map egress to the proxy's address: %v", step.Hosts)
-			}
+		claude := fake.steps[0]
+		if claude.Image != agentImage || claude.Network == "" || claude.Workspace == "" {
+			t.Fatalf("the check ran outside the job's image, network or workspace: %+v", claude)
 		}
-		if strings.Contains(strings.Join(clone.Env, " "), "CLAUDE_CODE_OAUTH_TOKEN") {
-			t.Fatal("the clone step was handed the Claude credential")
+		// gVisor cannot reach Docker's embedded DNS: the proxy's name comes
+		// from /etc/hosts.
+		if len(claude.Hosts) != 1 || claude.Hosts[0] != "egress:172.30.0.2" {
+			t.Fatalf("the step does not map egress to the proxy's address: %v", claude.Hosts)
 		}
 		if !strings.Contains(strings.Join(claude.Env, " "), "CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat-test") {
 			t.Fatalf("claude ran without its credential: %v", claude.Env)
-		}
-		if claude.WorkDir != runner.JobWorkspacePath+"/repo" || claude.Cache == "" {
-			t.Fatalf("claude ran in %s with cache %q", claude.WorkDir, claude.Cache)
-		}
-		args := strings.Join(claude.Cmd, " ")
-		if !strings.Contains(args, `--mcp-config {`) || !strings.Contains(args, "Bearer lore_job_0123456789abcdef") {
-			t.Fatalf("the MCP config is not passed as a JSON string: %s", args)
 		}
 		calls := strings.Join(fake.calls, ",")
 		if !strings.Contains(calls, "network-") || !strings.Contains(calls, "volume- bay-job-") || !strings.Contains(calls, "egress-") {
 			t.Fatalf("the job left its network, workspace or proxy: %s", calls)
 		}
-		// Its one way out: the proxy, on the spec's list, named in its env.
 		if !strings.Contains(calls, "egress+ bay-job-") || !strings.Contains(calls, "api.anthropic.com") {
 			t.Fatalf("the egress proxy was not started on the job's list: %s", calls)
 		}
-		for _, step := range fake.steps {
-			if !strings.Contains(strings.Join(step.Env, " "), "HTTPS_PROXY=http://egress:3128") {
-				t.Fatalf("a step has no proxy: %v", step.Env)
-			}
+		if !strings.Contains(strings.Join(claude.Env, " "), "HTTPS_PROXY=http://egress:3128") {
+			t.Fatalf("the step has no proxy: %v", claude.Env)
+		}
+	})
+
+	t.Run("refuses an agent job: it runs in a workspace on the host now (#Q4218)", func(t *testing.T) {
+		w, fake := containerWorld(t)
+		last := w.run("job-c7", w.agentSpec(map[string]any{"image": agentImage})).last()
+		if last.Status != "failed" || !strings.Contains(last.Reason, "process runner") || len(fake.steps) != 0 {
+			t.Fatalf("ack = %+v, steps %d", last, len(fake.steps))
 		}
 	})
 
 	t.Run("a refused host is a line of the job's log", func(t *testing.T) {
 		w, fake := containerWorld(t)
 		fake.exitWith["claude"] = 0
-		done := w.run("job-c6", w.agentSpec(map[string]any{"image": agentImage})).last()
+		done := w.run("job-c6", w.checkSpec(map[string]any{"image": agentImage})).last()
 		if done.Status != "done" {
 			t.Fatalf("ack = %+v", done)
 		}
@@ -128,7 +121,7 @@ func TestContainerRunner(t *testing.T) {
 
 	t.Run("refuses a spec that names no image", func(t *testing.T) {
 		w, fake := containerWorld(t)
-		last := w.run("job-c2", w.agentSpec(nil)).last()
+		last := w.run("job-c2", w.checkSpec(nil)).last()
 		if last.Status != "failed" || !strings.Contains(last.Reason, "names none") || len(fake.steps) != 0 {
 			t.Fatalf("ack = %+v, steps %d", last, len(fake.steps))
 		}
@@ -137,12 +130,12 @@ func TestContainerRunner(t *testing.T) {
 	t.Run("refuses gVisor on a daemon without runsc", func(t *testing.T) {
 		w, fake := containerWorld(t)
 		_ = saveJobsConfig(w.f.root, jobsConfig{Runner: "container", GVisor: true})
-		last := w.run("job-c3", w.agentSpec(map[string]any{"image": agentImage})).last()
+		last := w.run("job-c3", w.checkSpec(map[string]any{"image": agentImage})).last()
 		if last.Status != "failed" || !strings.Contains(last.Reason, "no runsc") || len(fake.steps) != 0 {
 			t.Fatalf("ack = %+v", last)
 		}
 		fake.runsc = true
-		last = w.run("job-c4", w.agentSpec(map[string]any{"image": agentImage})).last()
+		last = w.run("job-c4", w.checkSpec(map[string]any{"image": agentImage})).last()
 		if last.Status != "done" || fake.steps[0].Runtime != "runsc" {
 			t.Fatalf("ack = %+v, runtime %q", last, fake.steps[0].Runtime)
 		}
@@ -151,7 +144,7 @@ func TestContainerRunner(t *testing.T) {
 	t.Run("refuses to run claude without the credential it names", func(t *testing.T) {
 		w, _ := containerWorld(t)
 		_ = saveHostSecrets(w.f.root, map[string]string{})
-		last := w.run("job-c5", w.agentSpec(map[string]any{"image": agentImage})).last()
+		last := w.run("job-c5", w.checkSpec(map[string]any{"image": agentImage})).last()
 		if last.Status != "failed" || !strings.Contains(last.Reason, "bay secret set CLAUDE_CODE_OAUTH_TOKEN") {
 			t.Fatalf("ack = %+v", last)
 		}

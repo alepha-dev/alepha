@@ -133,6 +133,14 @@ export const hostCommandPayloadSchema = z.object({
    */
   jobCommandId: z.uuid().optional(),
   /**
+   * The job workspace a `job-workspace-remove` deletes, under `project`
+   * (#Q4218). Absent deletes every workspace of the project.
+   */
+  workspace: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,62}$/)
+    .optional(),
+  /**
    * The `host_jobs` row a `job-run` carries. Lore's own, never sent to the
    * machine: it is how the spec pull and the log frames find the job.
    */

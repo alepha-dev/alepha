@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -59,4 +60,25 @@ func killGroup(pid int, hard bool) {
 		sig = syscall.SIGKILL
 	}
 	_ = syscall.Kill(-pid, sig)
+}
+
+// lockFile takes an exclusive, non-blocking lock on path, created if it is
+// missing. The kernel releases it when the process dies, so a Bay that died
+// mid-job leaves no stale lock behind.
+func lockFile(path string) (func(), bool, error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, false, err
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return func() {
+		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		f.Close()
+	}, true, nil
 }

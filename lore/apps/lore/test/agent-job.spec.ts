@@ -132,10 +132,8 @@ describe("the agent job", () => {
       profile: "read",
       maxTurns: 30,
       timeoutSeconds: 900,
-      repository: {
-        cloneUrl: expect.stringMatching(/\/acme\.git$/),
-        ref: "main",
-      },
+      // A triage runs in the project's `triage` workspace (#Q4218).
+      workspace: "triage",
       disallowedTools: ["Write", "Edit", "WebFetch", "WebSearch"],
       key: { tools: ["feedback_get", "feedback_comment_add"], feedbackId: 4 },
     });
@@ -151,9 +149,8 @@ describe("the agent job", () => {
 
     const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
     const spec = await w.hostRows.spec(row, "https://lore.test");
-    expect(spec.repository).toMatchObject({
-      cloneUrl: expect.stringMatching(/^https:\/\/lore\.test\/.*acme\.git$/),
-    });
+    expect(spec).toMatchObject({ workspace: "triage" });
+    expect(spec).not.toHaveProperty("repository");
     expect(spec.egress).toEqual(
       expect.arrayContaining(["api.anthropic.com", "lore.test"]),
     );

@@ -71,6 +71,11 @@ export const HOST_COMMAND_KINDS = [
   // half.
   "job-run",
   "job-cancel",
+  // Deletes a project's job workspace on the machine, or all of them
+  // (#Q4218): `project` and an optional `workspace`, nothing else. Asked when
+  // a project is deleted or a quest's build is done with. Held to no switch:
+  // it frees disk and touches no app. Bay's `actionJobWorkspaceRemove`.
+  "job-workspace-remove",
 ] as const;
 
 export type HostCommandKind = (typeof HOST_COMMAND_KINDS)[number];

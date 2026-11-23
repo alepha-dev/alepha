@@ -134,15 +134,11 @@ export class AgentJobService {
       subjectId: request.subjectId,
       input: {
         profile: request.profile,
-        // A path: the spec pull puts it on the origin the machine asks on.
-        repository: {
-          cloneUrl: this.repositories.cloneUrl(
-            projectSlug,
-            repository.slug,
-            "",
-          ),
-          ref: request.ref ?? repository.defaultBranch,
-        },
+        workspace:
+          request.workspace ??
+          (request.questNumber === undefined
+            ? "triage"
+            : `q${request.questNumber}`),
         prompt: request.prompt,
         maxTurns: budget.maxTurns,
         timeoutSeconds: budget.timeoutSeconds,

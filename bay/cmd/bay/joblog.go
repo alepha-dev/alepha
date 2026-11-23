@@ -127,6 +127,12 @@ func (l *jobLog) append(stream string, p []byte) {
 // the job could not print itself (a refused clone, a timeout).
 func (l *jobLog) Note(line string) { l.append("stderr", []byte("bay: "+line+"\n")) }
 
+// Step notes a step of the run with its time (#Q4218), so a slow job's log
+// says where its time went: workspace ready, agent started, agent exited.
+func (l *jobLog) Step(what string) {
+	l.Note(time.Now().UTC().Format("15:04:05.000") + " " + what)
+}
+
 /*
 flush sends what is pending, up to jobFramesPerFlush frames, and reports
 whether anything is still pending. `gen` is the current connection; `final`
