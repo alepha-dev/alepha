@@ -5140,4 +5140,22 @@ export default {
   "code.file.binary": "A binary file: download it to open it.",
   "code.file.tooLarge":
     "Too large to show here: download it, or clone the repository.",
+  "code.diff.files": "$1 changed files",
+  "code.diff.partial":
+    "(only the first ones: the diff is too large to list whole)",
+  "code.diff.added": "Added",
+  "code.diff.modified": "Modified",
+  "code.diff.deleted": "Deleted",
+  "code.diff.renamed": "Renamed",
+  "code.diff.collapse": "Collapse the file",
+  "code.diff.expand": "Expand the file",
+  "code.diff.loading": "Loading the diff…",
+  "code.diff.binary": "A binary file changed.",
+  "code.diff.tooLarge": "Too large to show here.",
+  "code.diff.submodule": "Submodule $1",
+  "code.diff.noChange": "The content did not change.",
+  "code.diff.more": "Show $1 hidden lines",
+  "code.diff.previous": "Previous",
+  "code.diff.next": "Next",
+  "code.diff.page": "Page $1 of $2",
 };

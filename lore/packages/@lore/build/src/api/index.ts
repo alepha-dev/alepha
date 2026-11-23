@@ -20,6 +20,7 @@ import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
 import { CodeBrowserService } from "./services/CodeBrowserService.ts";
 import { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
+import { CodeDiffService } from "./services/CodeDiffService.ts";
 import { CodePushRecorder } from "./services/CodePushRecorder.ts";
 import { CodeReadAccess } from "./services/CodeReadAccess.ts";
 import { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
@@ -86,6 +87,8 @@ export const LoreBuildApi = $module({
     // The code browser's reads (#E167), behind one gate.
     CodeReadAccess,
     CodeBrowserService,
+    // One line diff, in JS, on both backends (#Q4135).
+    CodeDiffService,
     CodeBrowserController,
     // A browser opening a `.git` URL lands on its page (#Q4133).
     GitBrowserRedirect,
@@ -142,6 +145,8 @@ export { LocalGitBackend } from "./backends/LocalGitBackend.ts";
 export { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
 export { CodeBrowserController } from "./controllers/CodeBrowserController.ts";
 export { CodeBrowserService } from "./services/CodeBrowserService.ts";
+export { CodeDiffService } from "./services/CodeDiffService.ts";
+export { LineDiff, type LineDiffOp } from "./services/LineDiff.ts";
 export { CodeReadAccess } from "./services/CodeReadAccess.ts";
 export { GitBrowserRedirect } from "./services/GitBrowserRedirect.ts";
 export { GitHttpController } from "./controllers/GitHttpController.ts";
