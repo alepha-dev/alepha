@@ -5,7 +5,9 @@ import {
   type BulkAction,
   type DataTableFilterFields,
   type DataTableStatCard,
+  readPersisted,
   type RowActionEntry,
+  writePersisted,
 } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
@@ -184,14 +186,31 @@ const ProjectSettingsNotificationsPage = () => {
   // The grouping, outside the table's filters: it arranges the rows and
   // narrows none of them. Empty is "No grouping", the select's placeholder
   // (#Q4054): clearing the selected value returns to it.
-  const grouping = useForm({
-    id: "notifications-grouping",
-    schema: z.object({
-      group: z.enum(["resource", "recipient"]).optional(),
-    }),
-    initialValues: { group: "resource" as const },
-    handler: async () => {},
-  });
+  // Remembered as the table's filters are (#Q4192): under the same
+  // `persistenceKey`, with "none" for No grouping, since an empty value
+  // reads back as "never chosen", which is By resource.
+  const persistenceKey = `lore.notifications.${projectId}`;
+  const storedGroup = readPersisted<string>(persistenceKey, "group");
+  const grouping = useForm(
+    {
+      id: "notifications-grouping",
+      schema: z.object({
+        group: z.enum(["resource", "recipient"]).optional(),
+      }),
+      initialValues: {
+        group:
+          storedGroup === "none"
+            ? undefined
+            : storedGroup === "recipient"
+              ? ("recipient" as const)
+              : ("resource" as const),
+      },
+      handler: async () => {},
+      onChange: (_key, value) =>
+        writePersisted(persistenceKey, "group", value ?? "none"),
+    },
+    [persistenceKey],
+  );
   const group = useFormValues(grouping).group;
 
   const nameOf = (id: string) => {
@@ -487,7 +506,7 @@ const ProjectSettingsNotificationsPage = () => {
           key={project.id}
           className="min-h-0 flex-1"
           flat
-          persistenceKey={`lore.notifications.${project.id}`}
+          persistenceKey={persistenceKey}
           data={rows}
           pagination={false}
           rowKey={(row) => row.id}
@@ -536,7 +555,11 @@ const ProjectSettingsNotificationsPage = () => {
                 label=""
                 select
                 icon={Layers}
-                aria-label={tr("notifications.group.by")}
+                // On the trigger, where a select's name is read.
+                inputProps={{
+                  "aria-label": tr("notifications.group.by"),
+                  "data-testid": "notifications-group-by",
+                }}
                 placeholder={tr("notifications.group.none")}
                 items={[
                   {

@@ -6,6 +6,7 @@ import {
   createProjectViaWizard,
   newUserContext,
   openAccount,
+  pickSelectOption,
   registerAndVerify,
   signInAsAdmin,
 } from "./_helpers.ts";
@@ -83,6 +84,15 @@ test.describe("Notifications", () => {
       await expect(
         page.getByTestId("notification-event-monitor.down"),
       ).toHaveCount(1);
+
+      // The grouping is remembered as the filters are (#Q4192): chosen,
+      // then still chosen after a reload.
+      await pickSelectOption(page, "notifications-group-by", "By recipient");
+      await page.reload();
+      await expect(page.getByTestId("notifications-group-by")).toContainText(
+        "By recipient",
+        { timeout: 15_000 },
+      );
 
       // At phone width the page fits.
       await page.setViewportSize({ width: 375, height: 812 });

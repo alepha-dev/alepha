@@ -21,7 +21,10 @@ node beside them. A `help` node sits behind a `?` at the end of the
 toolbar's icons. A page with views of one table is a `PlateLayout`, whose
 folder tabs sit above it.
 `DataTableFilterMenu`, `DataTableFilterDialog` and `DataTableBulkMenu`
-are its parts, and `useTableSelection` its selection state. `PermissionMatrix` is the grid of
+are its parts, and `useTableSelection` its selection state.
+`readPersisted` and `writePersisted` are where a table keeps what it
+remembers under its `persistenceKey`, for a page control beside the table
+(a grouping, a view) to be remembered the same way. `PermissionMatrix` is the grid of
 roles against permissions the admin and account kits draw.
 
 ## API Reference
