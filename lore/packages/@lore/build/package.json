@@ -21,6 +21,7 @@
     "@alepha/ui": "workspace:*",
     "@lore/core": "workspace:*",
     "alepha": "workspace:*",
+    "lucide-react": "^1.73.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "recharts": "^3.10.1"

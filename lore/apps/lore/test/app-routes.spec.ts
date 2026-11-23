@@ -49,6 +49,12 @@ const NAV_ROUTE_NAMES = [
   "projectReports",
   "projectSettingsBanner",
   "projectSettingsHosts",
+  // Build's band and the code browser (#Q4133): capabilityNav.ts,
+  // BuildShell.ts, codeRepoTabs.ts.
+  "projectCode",
+  "projectCodeRepo",
+  "codeRepoHome",
+  "reportsQuality",
   // Apps section + the per-app tab bar — capabilityNav.ts, AppLayout.tsx,
   // AppSettings.tsx
   "projectApps",
@@ -277,6 +283,7 @@ describe("the route table", () => {
       analyticsDimension: "path",
       monitorId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
       hostSlug: "ovh-1",
+      repoSlug: "api",
     };
 
     for (const name of NAV_ROUTE_NAMES) {

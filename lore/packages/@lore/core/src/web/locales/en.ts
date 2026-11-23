@@ -5114,4 +5114,19 @@ export default {
   "assistant.confirm.folio_create": "Write this folio?",
   "assistant.confirm.project": "In",
   "assistant.confirm.elsewhere": "(not the project you are looking at)",
+  // Build's code browser (#E167)
+  "project.menu.code": "Code",
+  "code.clone.lore": "Lore",
+  "code.clone.url": "HTTPS",
+  "code.clone.copy": "Copy",
+  "code.clone.copied": "Copied",
+  "code.repos.empty.title": "No repository yet",
+  "code.repos.empty.admin": "Create one from a shell, then push to it.",
+  "code.repos.empty.member": "A project Admin creates one from a shell.",
+  "code.repo.empty.title": "Nothing pushed yet",
+  "code.repo.empty.description":
+    "Clone it, or add it as a remote of a repository you have, and push.",
+  "code.repo.defaultBranch": "Default branch $1",
+  "code.repo.indexing": "Indexing history…",
+  "code.tab.files": "Files",
 };
