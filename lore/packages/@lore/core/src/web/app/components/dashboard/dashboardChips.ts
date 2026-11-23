@@ -68,7 +68,7 @@ export const dashboardFilterChipKeys = (
   }
 
   if (card.metric === "uniqueVisitors") {
-    return ["dashboard.filter.yesterday"];
+    return ["dashboard.filter.dailyAverage", "dashboard.filter.humans"];
   }
 
   return [];

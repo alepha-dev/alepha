@@ -4503,14 +4503,16 @@ export default {
   "dashboard.metric.untriagedFeedback.card": "Retours",
   "dashboard.metric.untriagedFeedback.hint": "un projet ou tous",
   "dashboard.metric.uniqueVisitors": "Visiteurs uniques",
-  "dashboard.metric.uniqueVisitors.hint": "par app, hier contre avant-hier",
+  "dashboard.metric.uniqueVisitors.hint":
+    "visiteurs humains par jour, en moyenne sur la période du tableau",
 
   "dashboard.filter.todoInProgress": "à faire + en cours",
   "dashboard.filter.todo": "à faire",
   "dashboard.filter.inProgress": "en cours",
   "dashboard.filter.untriaged": "non traites",
   "dashboard.filter.allStatuses": "tous les statuts",
-  "dashboard.filter.yesterday": "hier",
+  "dashboard.filter.dailyAverage": "moyenne par jour",
+  "dashboard.filter.humans": "humains",
   "dashboard.filter.noTags": "Ce projet n'a pas encore de tag de quete.",
   "dashboard.filterField.statuses": "Statut",
   "dashboard.filterField.status": "Statut",
@@ -4521,7 +4523,7 @@ export default {
   "dashboard.filterValue.open": "Ouverts",
   "dashboard.filterValue.all": "Tous",
   "dashboard.filterValue.pending": "Non traites",
-  "dashboard.filterValue.yesterday": "Hier",
+  "dashboard.filterValue.window": "La période du tableau",
 
   "dashboard.footer.questSplit": "$1 en cours, $2 à faire",
   "dashboard.footer.epic.done": "$1 sur $2 terminees, hors abandonnees",
@@ -4548,8 +4550,8 @@ export default {
   "dashboard.footer.feedback.today": "le plus ancien est arrive aujourd'hui",
   "dashboard.footer.feedback.oneDay": "le plus ancien attend depuis 1 jour",
   "dashboard.footer.feedback.days": "le plus ancien attend depuis $1 jours",
-  "dashboard.footer.visitors.delta": "$1% contre la veille",
-  "dashboard.footer.visitors.flat": "identique a la veille",
+  "dashboard.footer.visitors.delta": "$1% contre les $2 jours précédents",
+  "dashboard.footer.visitors.flat": "identique aux $1 jours précédents",
   "dashboard.footer.visitors.noCompare": "pas encore de comparaison",
   "dashboard.footer.noBeacon": "aucune app ici ne remonte de pages vues",
 

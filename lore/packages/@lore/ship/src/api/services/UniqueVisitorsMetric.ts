@@ -17,7 +17,9 @@ import { DailyVisitorsService } from "./DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 
 /**
- * Yesterday's audience, against the day before.
+ * The average day's human audience over the board's window, against the
+ * window of the same length before it (#Q4215; yesterday against the day
+ * before until then).
  *
  * ## Uniques, never views
  *
@@ -99,26 +101,29 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
     }
 
     const ids = beacons.map((it) => it.id);
-    const daily = await this.visitors.read(ids);
-    // The sparkline (#Q2657): one point per complete day of the board's
-    // window, ending on the day the headline counts, zero-filled.
-    const days = Array.from({ length: entry.windowDays }, (_, index) =>
-      new Date(
-        Date.parse(`${daily.day}T00:00:00.000Z`) -
-          (entry.windowDays - 1 - index) * 86_400_000,
-      )
-        .toISOString()
-        .slice(0, 10),
-    );
+    // The board's window, in complete UTC days ending yesterday, and the
+    // window of the same length before it for the delta (#Q4215).
+    const until = this.visitors.lastCompleteDay();
+    const length = Math.max(1, entry.windowDays);
+    const days = this.daysBack(until, length);
+    const previousDays = this.daysBack(this.shift(days[0]!, -1), length);
+    // Humans only: a crawler is not an audience. `humans` means "did not
+    // declare itself a bot", the same population as the Insights page's
+    // default (`trafficFilterSchema`).
     const byDay = new Map(
       (
         await this.analytics.uniqueVisitorsByDay({
           sigilIds: ids,
-          since: days[0]!,
-          until: daily.day,
+          traffic: "humans",
+          since: previousDays[0]!,
+          until,
         })
       ).map((row) => [row.day, row.uniques]),
     );
+    const sum = (list: string[]) =>
+      list.reduce((total, day) => total + (byDay.get(day) ?? 0), 0);
+    const current = sum(days);
+    const previous = sum(previousDays);
     // The apps slot's data gate (#Q2657): an app heard from in 30 days.
     const since = this.dateTime.now().subtract(30, "day").toISOString();
     const heard = apps.some(
@@ -135,12 +140,20 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
     });
 
     return {
-      value: daily.uniqueVisitors,
-      delta: daily.delta,
+      // The average day, not a sum: per-visitor hashes are collapsed after
+      // two days (`SigilJobs.UNIQUES_COLLAPSE_AFTER_DAYS`), so a distinct
+      // count across the whole window cannot be computed, and a sum of daily
+      // uniques would read as one. Both windows have the same length, so
+      // the delta of the sums is the delta of the averages.
+      value: Math.round(current / length),
+      delta: this.visitors.percentChange(previous, current),
+      // The sparkline (#Q2657): one point per day of the window, zero-filled.
       series: days.map((at) => ({ at, value: byDay.get(at) ?? 0 })),
       detail: {
-        day: daily.day,
-        previous: daily.previousUniqueVisitors,
+        since: days[0],
+        until,
+        days: length,
+        previous: Math.round(previous / length),
         heard,
       },
       // A single app has one destination. With several, the link targets the
@@ -152,6 +165,24 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
         env: instance?.env,
       }),
     };
+  }
+
+  /**
+   * `length` consecutive UTC days ending on `last`, oldest first.
+   */
+  protected daysBack(last: string, length: number): string[] {
+    return Array.from({ length }, (_, index) =>
+      this.shift(last, index - (length - 1)),
+    );
+  }
+
+  /**
+   * `YYYY-MM-DD` shifted by whole days, UTC.
+   */
+  protected shift(day: string, days: number): string {
+    return new Date(Date.parse(`${day}T00:00:00.000Z`) + days * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
   }
 
   /**

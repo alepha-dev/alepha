@@ -75,7 +75,7 @@ describe("lore dashboard", () => {
               {
                 key: "uniqueVisitors",
                 scopeKinds: ["apps", "projects"],
-                defaultFilters: { period: "yesterday" },
+                defaultFilters: { period: "window" },
                 needs: { capability: "ship", option: "track" },
               },
             ],
@@ -165,7 +165,7 @@ describe("lore dashboard", () => {
 
   it("updates, reorders and removes cards", async ({ expect }) => {
     const { run, sent, dashboard } = create();
-    await run(dashboard.update, '3 --size 2 --filters {"period":"yesterday"}');
+    await run(dashboard.update, '3 --size 2 --filters {"period":"window"}');
     await run(dashboard.reorder, "4,3");
     await run(dashboard.remove, "3");
     expect(sent).toEqual([
@@ -173,7 +173,7 @@ describe("lore dashboard", () => {
         "updateProjectDashboardCard",
         {
           params: { projectId: 7, cardId: 3 },
-          body: { filters: { period: "yesterday" }, size: 2 },
+          body: { filters: { period: "window" }, size: 2 },
         },
       ],
       [

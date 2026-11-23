@@ -168,9 +168,13 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       // honest percentage to show and the card says so rather than
       // inventing `+100%`.
       if (delta === undefined) return tr("dashboard.footer.visitors.noCompare");
-      if (delta === 0) return tr("dashboard.footer.visitors.flat");
+      if (delta === 0) {
+        return tr("dashboard.footer.visitors.flat", {
+          args: [String(detail.days ?? "")],
+        });
+      }
       return tr("dashboard.footer.visitors.delta", {
-        args: [`${delta > 0 ? "+" : ""}${delta}`],
+        args: [`${delta > 0 ? "+" : ""}${delta}`, String(detail.days ?? "")],
       });
     }
     if (props.metric === "releaseOutlook") {
