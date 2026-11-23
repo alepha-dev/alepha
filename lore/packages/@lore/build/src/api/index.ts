@@ -98,6 +98,7 @@ export type {
   ArtifactsBinding,
   ArtifactsCommit,
   ArtifactsRepoHandle,
+  ArtifactsTreeEntry,
 } from "./backends/ArtifactsGitBackend.ts";
 export { GitBackend } from "./backends/GitBackend.ts";
 export { AgentJobService } from "./services/AgentJobService.ts";
@@ -107,6 +108,13 @@ export {
 } from "./schemas/agentJobProfiles.ts";
 export type {
   GitBackendToken,
+  GitBlobResult,
+  GitCommitDetail,
+  GitPerson,
+  GitReadOptions,
+  GitRefTip,
+  GitTreeEntry,
+  GitWalkCommit,
   GitRepositoryInfo,
   GitRpcRequest,
   GitRpcResponse,

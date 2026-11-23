@@ -32,6 +32,11 @@ import {
   ArtifactsGitBackend,
   type ArtifactsRepoHandle,
 } from "../src/api/backends/ArtifactsGitBackend.ts";
+import {
+  assertGitBackendContract,
+  buildContractFixture,
+  pushContractFixture,
+} from "./git-backend-contract.ts";
 
 class RestArtifactsBinding implements ArtifactsBinding {
   protected readonly account: string;
@@ -68,6 +73,21 @@ class RestArtifactsBinding implements ArtifactsBinding {
       });
     }
     return json.result;
+  }
+
+  /**
+   * A route that answers raw bytes (`/blob/:hash`), or null on a 404.
+   */
+  protected async raw(path: string): Promise<Blob | null> {
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${this.account}/artifacts/namespaces/${this.namespace}${path}`,
+      { headers: { authorization: `Bearer ${this.token}` } },
+    );
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new AlephaError(`GET ${path}: ${response.status}`);
+    }
+    return new Blob([await response.arrayBuffer()]);
   }
 
   async create(name: string, options?: { setDefaultBranch?: string }) {
@@ -110,6 +130,14 @@ class RestArtifactsBinding implements ArtifactsBinding {
           return null;
         }
       },
+      readTree: async (hash) => {
+        try {
+          return await this.call("GET", `/repos/${name}/tree/${hash}`);
+        } catch {
+          return null;
+        }
+      },
+      readBlob: (hash) => this.raw(`/repos/${name}/blob/${hash}`),
     };
   }
 
@@ -162,6 +190,8 @@ alepha.set(
 );
 const backend = alepha.inject(ArtifactsGitBackend);
 const ref = backend.refFor({ projectId: 0, repoId: crypto.randomUUID() });
+// A second repository for the reads, whose history is the fixture's alone.
+const readsRef = backend.refFor({ projectId: 0, repoId: crypto.randomUUID() });
 const work = mkdtempSync(join(tmpdir(), "artifacts-contract-"));
 
 try {
@@ -286,12 +316,26 @@ try {
   }
   console.log(`cloned ${cloned}`);
 
+  // The reads (#Q4131): the same assertions Vitest runs on disk.
+  await backend.create(readsRef, { defaultBranch: "main" });
+  const readsWrite = await backend.token(readsRef, "write");
+  if (!readsWrite) throw new AlephaError("no write token for the reads");
+  const fixture = buildContractFixture(join(work, "reads"));
+  pushContractFixture(
+    join(work, "reads"),
+    fixture,
+    withToken(readsWrite.remote, readsWrite.token),
+  );
+  await assertGitBackendContract(backend, readsRef, fixture);
+  console.log("reads: ok");
+
   if (!(await backend.list()).includes(ref)) {
     throw new AlephaError(`${ref} is not listed`);
   }
 } finally {
   await backend.delete(ref);
   await backend.delete(ref);
+  await backend.delete(readsRef);
   console.log(`deleted ${ref}`);
   rmSync(work, { recursive: true, force: true });
 }

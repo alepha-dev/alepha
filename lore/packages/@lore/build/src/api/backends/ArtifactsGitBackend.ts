@@ -9,8 +9,12 @@ import {
 import {
   GitBackend,
   type GitBackendToken,
+  type GitBlobResult,
   type GitCommit,
+  type GitCommitDetail,
+  type GitReadOptions,
   type GitRefTip,
+  type GitTreeEntry,
   type GitRepositoryInfo,
   type GitRpcRequest,
   type GitRpcResponse,
@@ -240,7 +244,8 @@ export class ArtifactsGitBackend extends GitBackend {
 
   /**
    * The `<sha> <name>` lines of a v0 advertisement: branches, tags and
-   * `HEAD`, never a peeled `^{}` entry.
+   * `HEAD`. A peeled `<tag>^{}` line is no tip of its own: it sets the
+   * annotated tag's `targetSha` (#Q4131).
    */
   public static advertisedRefs(bytes: Uint8Array): GitRefTip[] {
     const decoder = new TextDecoder();
@@ -264,7 +269,12 @@ export class ArtifactsGitBackend extends GitBackend {
       const match = /^([0-9a-f]{40}) (\S+)$/.exec(line);
       if (!match) continue;
       const [, sha, name] = match as unknown as [string, string, string];
-      if (/^0+$/.test(sha) || name.endsWith("^{}")) continue;
+      if (/^0+$/.test(sha)) continue;
+      if (name.endsWith("^{}")) {
+        const tag = tips.find((tip) => tip.name === name.slice(0, -3));
+        if (tag) tag.targetSha = sha;
+        continue;
+      }
       if (name === "HEAD" || /^refs\/(heads|tags)\//.test(name)) {
         tips.push({ sha, name });
       }
@@ -412,7 +422,7 @@ export class ArtifactsGitBackend extends GitBackend {
    *    {@link ArtifactsGitBackend.INCOMING_PREFIX}; the pack streams
    *    through unchanged, and the client's report capabilities are kept,
    *    `report-status-v2` read as `report-status`, whose lines it accepts.
-   * 2. Once Artifacts reports it `ok`, {@link ArtifactsGitBackend.isAncestor}
+   * 2. Once Artifacts reports it `ok`, {@link ArtifactsGitBackend.ancestry}
    *    tells whether the old tip is an ancestor of the new one.
    * 3. A fast-forward moves the branch from the old id to the new one and
    *    deletes the incoming ref, in one command-only receive-pack; anything
@@ -529,7 +539,7 @@ export class ArtifactsGitBackend extends GitBackend {
     const head = `refs/heads/${defaultBranch}`;
     let forward: boolean | undefined;
     try {
-      forward = await this.isAncestor(ref, command.oldId, command.newId);
+      forward = await this.ancestry(ref, command.oldId, command.newId);
     } catch (error) {
       this.log.warn("The fast-forward check failed", { ref, error });
     }
@@ -613,10 +623,11 @@ export class ArtifactsGitBackend extends GitBackend {
    * ancestor, which cannot lead to it unless a clock lied that much: such a
    * push is refused, the safe side.
    */
-  protected async isAncestor(
+  protected async ancestry(
     ref: string,
     ancestor: string,
     tip: string,
+    maxReads = ArtifactsGitBackend.MAX_COMMIT_READS,
   ): Promise<boolean | undefined> {
     const repo = await this.repo(ref);
     if (!repo?.readCommit) return undefined;
@@ -646,7 +657,7 @@ export class ArtifactsGitBackend extends GitBackend {
       const first = await read(tip);
       if (first) queue.push(first);
       while (queue.length) {
-        if (reads > ArtifactsGitBackend.MAX_COMMIT_READS) return undefined;
+        if (reads > maxReads) return undefined;
         queue.sort((a, b) => seconds(b.committedAt) - seconds(a.committedAt));
         const batch = queue.slice(0, 25);
         queue = queue.slice(25);
@@ -666,6 +677,265 @@ export class ArtifactsGitBackend extends GitBackend {
     } finally {
       repo[Symbol.dispose]?.();
     }
+  }
+
+  /**
+   * A full sha is read back (`readCommit`), so a sha the repository does
+   * not hold resolves to nothing; a name is looked up in the advertisement
+   * in {@link GitBackend.refCandidates}'s order, an annotated tag
+   * peeled.
+   */
+  public async resolve(
+    ref: string,
+    revision: string,
+  ): Promise<string | undefined> {
+    if (GitBackend.isSha(revision)) {
+      return (await this.commit(ref, revision))?.sha;
+    }
+    const candidates = GitBackend.refCandidates(revision);
+    if (candidates.length === 0) return undefined;
+    const tips = await this.refs(ref);
+    for (const candidate of candidates) {
+      const tip = tips.find((it) => it.name === candidate);
+      if (tip) return tip.targetSha ?? tip.sha;
+    }
+    return undefined;
+  }
+
+  /**
+   * The commit's root tree, then one `readTree` per path segment.
+   */
+  public async tree(
+    ref: string,
+    commit: string,
+    path: string,
+  ): Promise<GitTreeEntry[] | undefined> {
+    const clean = GitBackend.cleanPath(path);
+    if (!GitBackend.isSha(commit) || clean === undefined) return undefined;
+    return this.withRepo(ref, async (repo) => {
+      const root = await this.readCommitOf(repo, commit);
+      if (!root?.treeHash) return undefined;
+      let entries = await this.readTreeOf(repo, root.treeHash);
+      for (const segment of clean ? clean.split("/") : []) {
+        const next = entries?.find(
+          (entry) => entry.name === segment && entry.type === "tree",
+        );
+        if (!next) return undefined;
+        entries = await this.readTreeOf(repo, next.sha);
+      }
+      return entries;
+    });
+  }
+
+  public async blob(
+    ref: string,
+    sha: string,
+    options: GitReadOptions = {},
+  ): Promise<GitBlobResult> {
+    if (!GitBackend.isSha(sha)) return { kind: "not_found" };
+    return (
+      (await this.withRepo(ref, (repo) =>
+        this.readSized(() => repo.readBlob?.(sha), options),
+      )) ?? { kind: "not_found" }
+    );
+  }
+
+  /**
+   * By path in the commit's tree, then by blob sha: `readFile` would
+   * answer a symlink's target and no tree entry, where git answers the
+   * link itself.
+   */
+  public async file(
+    ref: string,
+    commit: string,
+    path: string,
+    options: GitReadOptions = {},
+  ): Promise<GitBlobResult> {
+    const clean = GitBackend.cleanPath(path);
+    if (!clean) return { kind: "not_found" };
+    const at = clean.lastIndexOf("/");
+    const entries = await this.tree(
+      ref,
+      commit,
+      at === -1 ? "" : clean.slice(0, at),
+    );
+    const entry = entries?.find(
+      (it) => it.name === clean.slice(at + 1) && it.type === "blob",
+    );
+    if (!entry) return { kind: "not_found" };
+    return this.blob(ref, entry.sha, options);
+  }
+
+  public async commit(
+    ref: string,
+    sha: string,
+  ): Promise<GitCommitDetail | undefined> {
+    if (!GitBackend.isSha(sha)) return undefined;
+    const read = await this.withRepo(ref, (repo) =>
+      this.readCommitOf(repo, sha),
+    );
+    if (!read) return undefined;
+    return {
+      sha: read.hash,
+      parents: read.parents ?? [],
+      treeSha: read.treeHash ?? "",
+      author: {
+        name: read.author?.name ?? "",
+        email: read.author?.email ?? "",
+        at: this.seconds(read.authoredAt ?? read.committedAt),
+      },
+      committer: {
+        name: read.committer?.name ?? read.author?.name ?? "",
+        email: read.committer?.email ?? read.author?.email ?? "",
+        at: this.seconds(read.committedAt),
+      },
+      ...GitBackend.splitMessage(read.message ?? ""),
+    };
+  }
+
+  public async mergeBase(
+    ref: string,
+    a: string,
+    b: string,
+    options: { maxReads?: number } = {},
+  ): Promise<{ kind: "ok"; sha: string | undefined } | { kind: "cap" }> {
+    if (!GitBackend.isSha(a) || !GitBackend.isSha(b)) {
+      return { kind: "ok", sha: undefined };
+    }
+    const answer = await this.withRepo(ref, (repo) =>
+      GitBackend.paintMergeBase(
+        async (sha) => {
+          const commit = await this.readCommitOf(repo, sha);
+          return commit
+            ? {
+                parents: commit.parents ?? [],
+                committedAt: this.seconds(commit.committedAt),
+              }
+            : undefined;
+        },
+        a,
+        b,
+        options.maxReads ?? ArtifactsGitBackend.MAX_COMMIT_READS,
+      ),
+    );
+    return answer ?? { kind: "ok", sha: undefined };
+  }
+
+  public async isAncestor(
+    ref: string,
+    ancestor: string,
+    tip: string,
+    options: { maxReads?: number } = {},
+  ): Promise<{ kind: "ok"; value: boolean } | { kind: "cap" }> {
+    if (!GitBackend.isSha(ancestor) || !GitBackend.isSha(tip)) {
+      return { kind: "ok", value: false };
+    }
+    if (ancestor === tip) {
+      return { kind: "ok", value: Boolean(await this.commit(ref, tip)) };
+    }
+    const value = await this.ancestry(ref, ancestor, tip, options.maxReads);
+    return value === undefined ? { kind: "cap" } : { kind: "ok", value };
+  }
+
+  /**
+   * Run `fn` on the repository's handle, disposed after; undefined when
+   * the namespace holds no repository by that ref.
+   */
+  protected async withRepo<T>(
+    ref: string,
+    fn: (repo: ArtifactsRepoHandle) => Promise<T>,
+  ): Promise<T | undefined> {
+    const repo = await this.repo(ref);
+    if (!repo) return undefined;
+    try {
+      return await fn(repo);
+    } finally {
+      repo[Symbol.dispose]?.();
+    }
+  }
+
+  protected async readCommitOf(
+    repo: ArtifactsRepoHandle,
+    sha: string,
+  ): Promise<ArtifactsCommit | undefined> {
+    if (!repo.readCommit) {
+      throw new AlephaError("The Artifacts binding cannot read a commit");
+    }
+    try {
+      return (await repo.readCommit(sha)) ?? undefined;
+    } catch (error) {
+      // A malformed or unknown hash reads as none, as on disk.
+      if (["INVALID_INPUT", "NOT_FOUND"].includes(this.codeOf(error) ?? "")) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  protected async readTreeOf(
+    repo: ArtifactsRepoHandle,
+    sha: string,
+  ): Promise<GitTreeEntry[] | undefined> {
+    if (!repo.readTree) {
+      throw new AlephaError("The Artifacts binding cannot read a tree");
+    }
+    const entries = await repo.readTree(sha);
+    if (!entries) return undefined;
+    return entries.map((entry) => ({
+      name: entry.name,
+      // Artifacts writes a tree's mode as git does (`40000`).
+      mode: entry.mode,
+      type:
+        entry.type === "tree"
+          ? "tree"
+          : entry.type === "gitlink"
+            ? "commit"
+            : "blob",
+      sha: entry.hash,
+    }));
+  }
+
+  /**
+   * A `Blob` the binding answered, its size read before its bytes:
+   * `Blob.size` is known before `arrayBuffer()` brings anything in. A
+   * blob Artifacts itself refuses to read (`MEMORY_LIMIT`, over 32 MiB)
+   * is too large too.
+   */
+  protected async readSized(
+    read: () => Promise<Blob | null> | undefined,
+    options: GitReadOptions,
+  ): Promise<GitBlobResult> {
+    let blob: Blob | null | undefined;
+    try {
+      blob = await read();
+    } catch (error) {
+      const code = this.codeOf(error);
+      if (code === "MEMORY_LIMIT") {
+        return {
+          kind: "too_large",
+          size: ArtifactsGitBackend.MEMORY_LIMIT_BYTES,
+        };
+      }
+      if (code === "INVALID_INPUT" || code === "NOT_FOUND") {
+        return { kind: "not_found" };
+      }
+      throw error;
+    }
+    if (!blob) return { kind: "not_found" };
+    return GitBackend.sized(
+      blob.size,
+      options.maxBytes,
+      async () => new Uint8Array(await blob.arrayBuffer()),
+    );
+  }
+
+  /**
+   * The largest blob Artifacts reads: a bigger one throws `MEMORY_LIMIT`.
+   */
+  public static readonly MEMORY_LIMIT_BYTES = 32 * 1024 * 1024;
+
+  protected seconds(at: number | undefined): number {
+    return at === undefined ? 0 : at > 1e11 ? Math.floor(at / 1000) : at;
   }
 
   /**
@@ -798,6 +1068,15 @@ export interface ArtifactsRepoHandle {
    * by that id.
    */
   readCommit?(hash: string): Promise<ArtifactsCommit | null>;
+  /**
+   * A tree's immediate children; null when there is no tree by that id.
+   */
+  readTree?(hash: string): Promise<ArtifactsTreeEntry[] | null>;
+  /**
+   * A blob's bytes, untyped; null when there is no blob by that id.
+   * Throws `MEMORY_LIMIT` past 32 MiB.
+   */
+  readBlob?(hash: string): Promise<Blob | null>;
   [Symbol.dispose]?: () => void;
 }
 
@@ -811,4 +1090,21 @@ export interface ArtifactsCommit {
   message: string;
   parents: string[];
   committedAt?: number;
+  treeHash?: string;
+  author?: { name: string; email: string };
+  committer?: { name: string; email: string };
+  authoredAt?: number;
+}
+
+/**
+ * A tree entry as the binding answers it (`readTree`).
+ */
+export interface ArtifactsTreeEntry {
+  name: string;
+  /**
+   * git's mode: `100644`, `40000`, ...
+   */
+  mode: string;
+  hash: string;
+  type: "tree" | "blob" | "symlink" | "gitlink" | "exec";
 }
