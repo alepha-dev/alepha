@@ -23,7 +23,7 @@ const HomeWelcomeFeature = (props: HomeWelcomeFeatureProps) => {
       href={props.href}
       target="_blank"
       rel="noreferrer"
-      className="bg-background hover:bg-muted/40 group flex items-start gap-3 px-5 py-4 transition-colors md:px-6"
+      className="bg-card hover:bg-hover-weak group flex items-start gap-3 px-5 py-4 transition-colors md:px-6"
     >
       <Icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
       <div className="flex min-w-0 flex-col gap-0.5">

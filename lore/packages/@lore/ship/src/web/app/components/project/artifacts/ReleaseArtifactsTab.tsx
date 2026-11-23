@@ -187,7 +187,7 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
         </div>
       )}
 
-      <div className="bg-muted/60 text-muted-foreground flex items-start gap-2.5 rounded-[10px] px-[14px] py-3 text-[11.5px] leading-[1.55]">
+      <div className="chrome text-muted-foreground flex items-start gap-2.5 rounded-[10px] px-[14px] py-3 text-[11.5px] leading-[1.55]">
         <Link2 className="mt-px size-3.5 shrink-0" aria-hidden />
         <span>{tr("release.artifacts.joinNote")}</span>
       </div>

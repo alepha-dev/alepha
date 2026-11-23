@@ -163,7 +163,7 @@ const UseCaseRunCard = (props: UseCaseRunCardProps) => {
         <RunEvidenceLinks files={loose} />
         {run.note ? (
           <footer
-            className="bg-muted/40 rounded-md p-2 text-xs"
+            className="chrome rounded-md p-2 text-xs"
             data-testid="run-observation"
           >
             <span className="font-semibold">

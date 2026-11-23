@@ -136,7 +136,7 @@ export const HomeSearch = (props: HomeSearchProps) => {
             className="size-auto overflow-visible rounded-none! bg-transparent p-0"
           >
             <div className="bg-background rounded-2xl border">
-              <div className="bg-muted/50 [&_[data-slot=input-group]]:bg-background! [&_[data-slot=input-group]]:border-border! rounded-[inherit] p-1.5 [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group]]:h-11! [&_[data-slot=input-group]]:rounded-xl! [&_[data-slot=input-group]]:shadow-xs!">
+              <div className="chrome [&_[data-slot=input-group]]:bg-background! [&_[data-slot=input-group]]:border-border! rounded-[inherit] p-1.5 [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group]]:h-11! [&_[data-slot=input-group]]:rounded-xl! [&_[data-slot=input-group]]:shadow-xs!">
                 <CommandInput
                   placeholder={tr("home.search.placeholder")}
                   aria-label={tr("home.search.placeholder")}
@@ -173,7 +173,7 @@ export const HomeSearch = (props: HomeSearchProps) => {
                     </CommandGroup>
                   )}
                 </CommandList>
-                <div className="bg-muted/40 text-muted-foreground flex items-center gap-5 border-t px-4 py-2.5 text-xs max-sm:hidden">
+                <div className="chrome text-muted-foreground flex items-center gap-5 border-t px-4 py-2.5 text-xs max-sm:hidden">
                   <span className="flex items-center gap-1.5">
                     <Kbd>
                       <ArrowUp />

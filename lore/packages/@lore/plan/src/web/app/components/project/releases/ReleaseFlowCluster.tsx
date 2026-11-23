@@ -59,7 +59,7 @@ const ReleaseFlowCluster = (props: ReleaseFlowClusterProps) => {
 
   return (
     <div
-      className="bg-card/40 border-border absolute rounded-xl border"
+      className="bg-card border-border absolute rounded-xl border"
       style={{
         left: group.x,
         top: group.y,
