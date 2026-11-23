@@ -1,4 +1,4 @@
-import { AgentJobs, HostJobs } from "@lore/core/api";
+import { AgentJobs, AgentRunPreamble, HostJobs } from "@lore/core/api";
 import {
   type AgentRun,
   projectPrompts,
@@ -15,24 +15,22 @@ import { questWorkPromptDefault } from "../../web/app/prompts/questWorkPrompt.ts
 import { type Quest, quests } from "../entities/quests.ts";
 
 /**
- * Quest to branch (#Q3989): an accepted quest worked by an agent job with the
- * `push` profile on the project's Agent host, pushing `lore/q<n>` of the
- * project's Lore repository.
+ * Build (#Q3989, light since #Q4224): an accepted quest worked by an agent job
+ * on one of the project's Agent hosts, in its own workspace `q<n>`, removed
+ * when the quest completes (#Q4218). The agent works with the host's own git
+ * and `gh`: it branches, commits naming the quest, pushes and opens a pull
+ * request, which it records on the quest.
  *
  * The gates, each in code:
  * - only an **accepted** quest, not completed nor shelved: the human
  *   acceptance is what stands between untrusted text and code;
  * - an **untrusted** quest (born of feedback written outside the team) only
  *   once a member confirmed its text, recorded with who and when;
- * - the key writes `refs/heads/lore/q<n>` and below only, refused by
- *   receive-pack anywhere else, and reaches this quest's `quest_get`,
- *   `quest_objective_set`, `quest_comment_add` and `quest_commit_add`: no
- *   `quest_complete`, since a branch is not the default branch.
+ * - the key reaches Lore's MCP only, pinned to this quest.
  *
- * The prompt is the project's `questWork` template first, rendered here,
- * under a fixed preamble that overrides it where they differ: the branch is
- * `lore/q<n>` pushed to Lore, there is no pull request yet and no quest
- * completion, and the run ends with a summary comment naming the branch.
+ * The prompt is Lore's preamble (the workspace, the repository, Lore through
+ * its MCP tools), then fixed rules that override the project's `questWork`
+ * template where they differ, then that template.
  */
 export class QuestAgentService {
   /**
@@ -45,6 +43,7 @@ export class QuestAgentService {
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(projectPrompts);
   protected readonly agents = $inject(AgentJobs);
+  protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -132,7 +131,6 @@ export class QuestAgentService {
     const slug = project.slug ?? String(project.id);
     const base = String(this.alepha.env.PUBLIC_URL ?? "");
     const reference = formatReference("quest", quest.shortId);
-    const branch = `lore/q${quest.shortId}`;
     const work = renderPromptTemplate(template, {
       project: project.title,
       slug,
@@ -143,13 +141,16 @@ export class QuestAgentService {
       title: quest.title,
     });
     return [
+      await this.preamble.render(project.id, true),
+      "",
       `## This run's rules, which override the procedure below where they differ`,
       "",
-      `- You are in a fresh clone of the project's Lore repository, as an agent job on its Agent host. Follow the repository's AGENTS.md (or CLAUDE.md).`,
-      `- Work on the branch \`${branch}\` (create it from the checked-out branch), and push only that branch to \`origin\`. Your key writes \`refs/heads/${branch}\` and below, and nothing else: a push anywhere else is refused.`,
-      `- Commit as the project asks, each message naming ${reference}. Run the project's checks (\`yarn\`, then what AGENTS.md names, \`yarn v\` for this repository) and fix what is red before you push.`,
-      "- Open no pull request, and do not complete the quest: a branch is not the default branch, and you hold no `quest_complete`. Tick the objectives you met with `quest_objective_set`, record your commit with `quest_commit_add`.",
-      `- End with \`quest_comment_add\` on ${reference}: what you changed, what is left, and the branch \`${branch}\`.`,
+      `- Follow the repository's own agent instructions (AGENTS.md or CLAUDE.md), the branch naming its convention gives included: Lore states none.`,
+      `- Update the workspace first, then branch from the default branch.`,
+      `- Do the work of ${reference}, then run the project's checks and fix what is red before you commit.`,
+      `- Commit as the project asks, each message naming ${reference}: the merged commit naming it is what completes the quest later, so do not complete it yourself.`,
+      "- Push the branch and open a pull request with `gh`. Turn auto-merge on only when the repository's instructions ask for it.",
+      `- Record the pull request on the quest with \`quest_pull_request_add\`, tick the objectives you met with \`quest_objective_set\`, and end with \`quest_comment_add\` on ${reference}: what you changed, what is left, and the pull request.`,
       "",
       work,
     ].join("\n");

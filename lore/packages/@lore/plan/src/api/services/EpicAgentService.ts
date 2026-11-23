@@ -1,4 +1,9 @@
-import { AgentJobs, HostJobs, JobKeyService } from "@lore/core/api";
+import {
+  AgentJobs,
+  AgentRunPreamble,
+  HostJobs,
+  JobKeyService,
+} from "@lore/core/api";
 import {
   type AgentRun,
   projectPrompts,
@@ -56,6 +61,7 @@ export class EpicAgentService {
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(projectPrompts);
   protected readonly agents = $inject(AgentJobs);
+  protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly keys = $inject(JobKeyService);
 
@@ -157,9 +163,11 @@ export class EpicAgentService {
       title: epic.title,
     });
     return [
+      await this.preamble.render(project.id, false),
+      "",
       `## This run's rules, which override the procedure below where they differ`,
       "",
-      `- You are an agent job on the project's Agent host, in a fresh clone of its Lore repository: read the code to check the plan against it. You hold no push right: do not create branches, commit or push.`,
+      `- Read the code to check the plan against it. Do not create branches, commit or push.`,
       `- Your Lore key reaches ${reference} and its quests only: \`epic_*\` tools on epic ${epic.number}, \`quest_create\` and \`folio_create\` with \`epic_number\` ${epic.number}, quest writes on its own quests. You do not answer the review: the owner does.`,
       `- Nobody reads this run's chat. The review you file with \`epic_review_create\` is the report: put every question's context, suggestions and recommendation there, not in your reply. End with a short summary naming the review's item numbers and anything you changed.`,
       "",
