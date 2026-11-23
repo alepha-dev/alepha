@@ -603,10 +603,10 @@ const ProjectSettingsNotificationsPage = () => {
                 </span>
               ),
             },
+            // No header (#Q4193): the cell says what it narrows to, and a
+            // header with no name has no sort button either.
             filter: {
-              label: tr("notifications.table.filter"),
-              sortable: true,
-              sortValue: (row) => row.filterLabel ?? "",
+              label: "",
               cell: (row) =>
                 row.filterLabel ? (
                   <span className="truncate">{row.filterLabel}</span>
