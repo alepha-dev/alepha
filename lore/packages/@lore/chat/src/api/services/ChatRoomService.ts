@@ -1,4 +1,5 @@
 import {
+  ChannelRoomRegistry,
   ProjectCapabilityHooks,
   ProjectRoster,
   ProjectSecurityService,
@@ -220,6 +221,10 @@ export class ChatRoomService {
     await this.assertNameFree(projectId, name);
     const renamed = await this.rooms.updateById(room.id, { name });
     await this.changed(renamed);
+    // A notification channel named after the room follows it (#Q4187).
+    await this.alepha
+      .inject(ChannelRoomRegistry)
+      .renamed(projectId, room.id, room.name, name);
     return renamed;
   }
 

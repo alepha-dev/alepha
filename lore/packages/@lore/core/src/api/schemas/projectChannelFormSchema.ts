@@ -6,7 +6,10 @@ import { z } from "alepha";
  */
 export const projectChannelFormSchema = z.object({
   kind: z.enum(["discord", "webhook", "chat"]).optional(),
-  name: z.string().min(1).max(64),
+  /**
+   * Not asked for a room channel, which is named after its room (#Q4187).
+   */
+  name: z.string().max(64).optional(),
   url: z.string().max(2048).optional(),
   /**
    * A chat room channel's room (#Q4052).

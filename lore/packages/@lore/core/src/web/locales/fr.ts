@@ -145,10 +145,10 @@ export default {
   "notifications.channels.kind.email": "E-mail",
   "notifications.channels.kind.discord": "Discord",
   "notifications.channels.kind.webhook": "Webhook",
-  "notifications.channels.kind.chat": "Salon de discussion",
+  "notifications.channels.kind.chat": "Salon",
   "notifications.channels.room": "Salon",
   "notifications.channels.chatHelp":
-    "Lore publie chaque événement dans un salon ouvert de ce projet, en tant que Lore. Les salons privés ne sont pas proposés.",
+    "Lore publie chaque événement dans un salon ouvert de ce projet, en tant que Lore. Le canal porte le nom de son salon, et le suit quand le salon est renommé. Les salons privés ne sont pas proposés.",
   "notifications.channels.roomArchived": "Salon archivé",
   "notifications.channels.name": "Nom",
   "notifications.channels.discordUrl": "URL du webhook Discord",

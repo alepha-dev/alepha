@@ -1,4 +1,6 @@
-import { AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
+
+import { ProjectChannelService } from "./ProjectChannelService.ts";
 
 /**
  * Chat rooms as a notification channel (#Q4052). Notifications are core's
@@ -13,6 +15,7 @@ import { AlephaError } from "alepha";
  * Without Chat no room is offered and a room channel delivers nothing.
  */
 export class ChannelRoomRegistry {
+  protected readonly alepha = $inject(Alepha);
   protected provider?: ChannelRoomProvider;
 
   public register(provider: ChannelRoomProvider): void {
@@ -40,6 +43,23 @@ export class ChannelRoomRegistry {
     body: string,
   ): Promise<boolean> {
     return this.provider ? this.provider.post(projectId, roomId, body) : false;
+  }
+
+  /**
+   * Chat tells core a room was renamed (#Q4187), so a channel named after it
+   * follows.
+   */
+  public async renamed(
+    projectId: number,
+    roomId: string,
+    from: string,
+    to: string,
+  ): Promise<void> {
+    // Resolved here, not as a field: the channel service injects this
+    // registry.
+    await this.alepha
+      .inject(ProjectChannelService)
+      .roomRenamed(projectId, roomId, from, to);
   }
 }
 

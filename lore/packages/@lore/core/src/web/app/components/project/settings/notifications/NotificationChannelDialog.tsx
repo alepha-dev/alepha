@@ -50,7 +50,7 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
     [
       values: {
         kind?: "discord" | "webhook" | "chat";
-        name: string;
+        name?: string;
         url?: string;
         roomId?: string;
       },
@@ -63,7 +63,7 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
         if (editing) {
           await api.updateProjectChannel({
             params: { projectId: props.projectId, id: editing.id },
-            body: { name: values.name, ...(url ? { url } : {}) },
+            body: { name: values.name ?? "", ...(url ? { url } : {}) },
           });
           props.onOpenChange(false);
           return;
@@ -73,8 +73,9 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
           params: { projectId: props.projectId },
           body:
             kind === "chat"
-              ? { kind, name: values.name, roomId: values.roomId ?? "" }
-              : { kind, name: values.name, url: url ?? "" },
+              ? // Named after its room by the server (#Q4187).
+                { kind, roomId: values.roomId ?? "" }
+              : { kind, name: values.name ?? "", url: url ?? "" },
         });
         props.onOpenChange(false);
         if (created.secret) props.onSecret(created.secret);
@@ -167,11 +168,14 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
               disabled={busy}
             />
           )}
-          <Control
-            input={form.input.name}
-            label={tr("notifications.channels.name")}
-            disabled={busy}
-          />
+          {/* A room channel is named after its room (#Q4187). */}
+          {!chat && (
+            <Control
+              input={form.input.name}
+              label={tr("notifications.channels.name")}
+              disabled={busy}
+            />
+          )}
           {chat ? (
             !editing && (
               <Control

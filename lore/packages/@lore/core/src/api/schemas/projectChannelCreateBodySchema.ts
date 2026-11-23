@@ -8,7 +8,11 @@ import { type Infer, z } from "alepha";
 export const projectChannelCreateBodySchema = z
   .object({
     kind: z.enum(["discord", "webhook", "chat"]).optional(),
-    name: z.string().min(1).max(64),
+    /**
+     * Required, except for a `chat` channel, whose name is generated from its
+     * room (`Room #general`, #Q4187).
+     */
+    name: z.string().min(1).max(64).optional(),
     /**
      * Discord's webhook URL or the webhook endpoint's. Not for a room.
      */

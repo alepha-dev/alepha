@@ -114,15 +114,20 @@ export class ChannelCommand {
             "For --kind chat: the id of an open room of the project.",
         })
         .optional(),
-      name: z.text({
-        description: "The channel's name, as the page lists it.",
-      }),
+      name: z
+        .text({
+          description:
+            "The channel's name, as the page lists it. Not for --kind chat: a room channel is named after its room (Room #general).",
+        })
+        .optional(),
       ...ChannelCommand.URL_STDIN,
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
       const chat = flags.kind === "chat";
       if (chat && !flags.room) throw new UsageError("--kind chat needs --room");
+      if (!chat && !flags.name)
+        throw new UsageError("--name is needed, except for --kind chat");
       const url = chat ? undefined : await this.url(flags["url-stdin"], true);
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
@@ -131,7 +136,7 @@ export class ChannelCommand {
           params: { projectId },
           body: {
             ...(flags.kind ? { kind: flags.kind } : {}),
-            name: flags.name,
+            ...(chat ? {} : { name: flags.name }),
             ...(chat ? { roomId: flags.room } : { url: url! }),
           },
         });
