@@ -22,6 +22,7 @@ import {
   hasCapability,
   formatReference,
   AgentPromptsMenu,
+  StackTraceViewer,
   useAgentPromptSubject,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
@@ -527,9 +528,19 @@ const ProjectErrors = () => {
               {stackView.sourceUrl}
             </p>
           )}
-          <pre className="bg-muted max-h-[60vh] overflow-auto rounded-md border p-3 font-mono text-xs break-words whitespace-pre-wrap">
-            {stackView?.stack || "—"}
-          </pre>
+          {/* Read, not dumped (#Q4186): one section per error of the chain,
+              frames one per line. Plain React text, as above. */}
+          <div className="max-h-[60vh] min-w-0 overflow-auto">
+            {stackView?.stack ? (
+              <StackTraceViewer
+                stack={stackView.stack}
+                name={stackView.name}
+                message={stackView.message}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">—</p>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
