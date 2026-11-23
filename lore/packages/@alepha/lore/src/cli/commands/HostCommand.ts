@@ -1,10 +1,10 @@
-import type { AgentHostController } from "@lore/core/api";
 import type {
+  AgentHostController,
   AdminHostController,
   HostCommandController,
   HostController,
   ProjectHostController,
-} from "@lore/ship/api";
+} from "@lore/core/api";
 import { $inject, AlephaError, z } from "alepha";
 import {
   $command,

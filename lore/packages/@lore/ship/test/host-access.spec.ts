@@ -1,6 +1,12 @@
-import { ProjectSecurityService } from "@lore/core/api";
+import {
+  ProjectSecurityService,
+  HostCommandController,
+  HostController,
+  ProjectHostController,
+} from "@lore/core/api";
 import { projectCapabilities, hosts } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import {
   MemberService,
@@ -12,22 +18,10 @@ import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
-import {
-  AlephaServer,
-  BadRequestError,
-  ForbiddenError,
-  NotFoundError,
-} from "alepha/server";
+import { AlephaServer, ForbiddenError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  BackupController,
-  HostCommandController,
-  HostController,
-  LoreShipApi,
-  ProjectHostController,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
+import { BackupController, LoreShipApi } from "../src/api/index.ts";
 import {
   createTestMemberByProjectId,
   createTestProject,
@@ -373,7 +367,7 @@ describe("host access by the home project's rank", () => {
     ).resolves.toMatchObject({ isHome: false });
   });
 
-  it("refuses to create a host in a project with Apps off, and still lets it be read", async ({
+  it("creates, updates and reads a host in a project with Ship off (#E166)", async ({
     expect,
   }) => {
     const w = await world();
@@ -382,19 +376,18 @@ describe("host access by the home project's rank", () => {
       key: { eq: "ship" },
     });
 
-    await expect(
-      lending.createProjectHost(
-        { params: { projectId: w.project.id }, body: { slug: "ovh-9" } },
-        { user: w.owner },
-      ),
-    ).rejects.toThrow(BadRequestError);
+    // A host is core's: no capability gates managing one.
+    const created = await lending.createProjectHost(
+      { params: { projectId: w.project.id }, body: { slug: "ovh-9" } },
+      { user: w.owner },
+    );
+    expect(created.slug).toBe("ovh-9");
     await expect(
       hostsApi.updateHost(
         { params: { hostId: w.host.id }, body: { label: "x" } },
         { user: w.owner },
       ),
-    ).rejects.toThrow(BadRequestError);
-    // Disabling hides and never refuses a read.
+    ).resolves.toMatchObject({ label: "x" });
     await expect(
       hostsApi.getHost({ params: { hostId: w.host.id } }, { user: w.owner }),
     ).resolves.toMatchObject({ id: w.host.id });

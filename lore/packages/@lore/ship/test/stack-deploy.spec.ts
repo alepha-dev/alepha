@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { HostCommandService } from "@lore/core/api";
 import { hostCommandFrameSchema } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import type { Alepha } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -14,7 +15,6 @@ import {
   StackVariableController,
 } from "../src/api/index.ts";
 import { stackDeployOutcomeSchema } from "../src/schemas/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import {
   bootStackSpec,
   createEnvironment,

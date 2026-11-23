@@ -2223,6 +2223,7 @@ __metadata:
     "@types/bun": "npm:^1.4.4"
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
+    "@types/ws": "npm:^8.18.2"
     alepha: "workspace:*"
     lucide-react: "npm:^1.73.0"
     react: "npm:^19.3.1"
@@ -2231,6 +2232,7 @@ __metadata:
     recharts: "npm:^3.10.1"
     vite: "npm:^8.3.8"
     vitest: "npm:^5.1.1"
+    ws: "npm:^8.23.0"
   languageName: unknown
   linkType: soft
 

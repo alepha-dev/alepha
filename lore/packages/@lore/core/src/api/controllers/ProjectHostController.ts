@@ -1,23 +1,3 @@
-import {
-  HostTypeRegistry,
-  $ownsProject,
-  LoreAudits,
-  ProjectSecurityService,
-  HostInventoryService,
-  HostService,
-} from "@lore/core/api";
-import {
-  projects,
-  hostProjects,
-  type Host,
-  hosts,
-  createHostBodySchema,
-  type LentHostResource,
-  lentHostResourceSchema,
-  type MintedLentHost,
-  mintedLentHostSchema,
-  ownedHostResourceSchema,
-} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
@@ -29,6 +9,24 @@ import {
   NotFoundError,
   okSchema,
 } from "alepha/server";
+
+import { hostProjects } from "../entities/hostProjects.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { createHostBodySchema } from "../schemas/createHostBodySchema.ts";
+import {
+  type LentHostResource,
+  lentHostResourceSchema,
+  type MintedLentHost,
+  mintedLentHostSchema,
+} from "../schemas/lentHostResourceSchema.ts";
+import { ownedHostResourceSchema } from "../schemas/ownedHostResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
+import { HostInventoryService } from "../services/HostInventoryService.ts";
+import { HostService } from "../services/HostService.ts";
+import { HostTypeRegistry } from "../services/HostTypeRegistry.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { LentHostResource, MintedLentHost };
 
@@ -193,7 +191,6 @@ export class ProjectHostController {
       $ownsProject({
         requires: "host:create",
         param: "projectId",
-        capability: { key: "ship", action: "create a host" },
       }),
     ],
     method: "POST",

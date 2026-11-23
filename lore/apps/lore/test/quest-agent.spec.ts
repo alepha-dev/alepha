@@ -14,6 +14,7 @@ import {
   hostJobs,
   hosts,
 } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { QuestAgentService, QuestService } from "@lore/plan/api";
 import { quests } from "@lore/plan/schemas";
 import { Alepha } from "alepha";
@@ -25,7 +26,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { createTestHost } from "../../../packages/@lore/ship/src/testing/hosts.ts";
 import { bootLore } from "./fixtures/bootLore.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 

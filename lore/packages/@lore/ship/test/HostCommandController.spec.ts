@@ -1,5 +1,10 @@
-import { HostCommandService } from "@lore/core/api";
+import {
+  HostCommandService,
+  HostCommandController,
+  HostController,
+} from "@lore/core/api";
 import { projects, hostProjects, type Host, hosts } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -9,13 +14,8 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ForbiddenError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  LoreShipApi,
-  HostCommandController,
-  HostController,
-} from "../src/api/index.ts";
+import { LoreShipApi } from "../src/api/index.ts";
 import { appInstances, artifacts } from "../src/schemas/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class Repos {

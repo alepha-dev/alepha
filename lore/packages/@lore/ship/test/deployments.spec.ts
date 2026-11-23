@@ -1,5 +1,9 @@
-import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
-import { HostService } from "@lore/core/api";
+import {
+  ProjectCapabilityController,
+  ProjectController,
+  HostService,
+  ProjectHostController,
+} from "@lore/core/api";
 import {
   projects,
   projectCapabilities,
@@ -31,7 +35,6 @@ import {
   ArtifactService,
   CloudflareProbeService,
   LoreShipApi,
-  ProjectHostController,
 } from "../src/api/index.ts";
 import { appInstances, artifacts, deployments } from "../src/schemas/index.ts";
 import {

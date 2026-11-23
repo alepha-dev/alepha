@@ -1,3 +1,4 @@
+import type { LentHostResource } from "@lore/core/api";
 import { I18n } from "@lore/core/web";
 import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
@@ -7,7 +8,6 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { LentHostResource } from "../../../../../api/controllers/ProjectHostController.ts";
 import ProjectSettingsHostNameCell from "./ProjectSettingsHostNameCell.tsx";
 
 /**

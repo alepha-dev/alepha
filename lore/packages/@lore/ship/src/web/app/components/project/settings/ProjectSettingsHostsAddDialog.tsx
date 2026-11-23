@@ -9,20 +9,18 @@ import {
   useToast,
   cn,
 } from "@alepha/ui";
+import type {
+  HostController,
+  HostResource,
+  LentHostResource,
+  ProjectHostController,
+} from "@lore/core/api";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
-import type {
-  HostController,
-  HostResource,
-} from "../../../../../api/controllers/HostController.ts";
-import type {
-  LentHostResource,
-  ProjectHostController,
-} from "../../../../../api/controllers/ProjectHostController.ts";
 import {
   type HostCreateDraft,
   emptyHostDraft,

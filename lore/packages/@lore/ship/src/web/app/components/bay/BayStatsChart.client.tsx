@@ -5,13 +5,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import type { HostController } from "@lore/core/api";
 import type { I18n } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
-import type { HostController } from "../../../../api/controllers/HostController.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 /**

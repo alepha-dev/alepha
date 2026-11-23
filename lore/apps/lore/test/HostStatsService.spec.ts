@@ -1,8 +1,12 @@
-import { ProjectAnalytics, HostStatsService } from "@lore/core/api";
+import {
+  ProjectAnalytics,
+  HostStatsService,
+  HostController,
+} from "@lore/core/api";
 import { type Host, hosts, type HostStatsFrame } from "@lore/core/schemas";
-import { HostController, LoreShipApi } from "@lore/ship/api";
+import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
 import { DeployTestEntities } from "@lore/ship/testing";
-import { createTestHost } from "@lore/ship/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

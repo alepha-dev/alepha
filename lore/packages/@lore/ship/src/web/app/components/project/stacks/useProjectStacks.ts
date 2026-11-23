@@ -1,7 +1,7 @@
+import type { ProjectHostController } from "@lore/core/api";
 import { currentProjectAtom } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 
-import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 import type { StackController } from "../../../../../api/controllers/StackController.ts";
 
 /**

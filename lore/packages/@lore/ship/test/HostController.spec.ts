@@ -3,6 +3,7 @@ import {
   HostTokenService,
   HostCommandService,
   HostService,
+  HostController,
 } from "@lore/core/api";
 import {
   hostInventories,
@@ -12,6 +13,7 @@ import {
   createHostBodySchema,
   type HostServerFrame,
 } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -31,9 +33,7 @@ import {
   LoreShipApi,
   CloudflareProbeService,
   CredentialSealService,
-  HostController,
 } from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import {
   createTestProject,
   DeployTestEntities,

@@ -4,7 +4,6 @@ import { $module } from "alepha";
 import { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 import { ArtifactTools } from "./tools/ArtifactTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
-import { HostTools } from "./tools/HostTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
 import { MonitorTools } from "./tools/MonitorTools.ts";
 import { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
@@ -30,8 +29,6 @@ export const LoreShipMcp = $module({
     InsightsTools,
     // Stacks for agents (#Q2697).
     StackTools,
-    // A host's stats, read-only, for the members of its home project (#Q3047).
-    HostTools,
     // Uptime monitors for agents (#Q3591).
     MonitorTools,
     // The coverage and open-errors thresholds (#Q3914).
@@ -44,7 +41,6 @@ export { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 export { ArtifactTools } from "./tools/ArtifactTools.ts";
 export { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
-export { HostTools } from "./tools/HostTools.ts";
 
 export { InsightsTools } from "./tools/InsightsTools.ts";
 export { MonitorTools } from "./tools/MonitorTools.ts";

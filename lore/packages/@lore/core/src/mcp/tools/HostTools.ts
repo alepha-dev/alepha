@@ -1,4 +1,3 @@
-import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
@@ -8,6 +7,7 @@ import {
   hostStatsParamsSchema,
   hostStatsResultSchema,
 } from "../schemas/hostSchemas.ts";
+import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * A host's CPU and memory over time, for agents (#Q3047), the twin of

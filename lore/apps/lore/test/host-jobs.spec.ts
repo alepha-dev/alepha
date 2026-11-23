@@ -12,11 +12,11 @@ import {
   type Host,
   hosts,
 } from "@lore/core/schemas";
-import { LoreShipApi } from "@lore/ship/api";
-import { DeployTestEntities } from "@lore/ship/testing";
 // Its own subpath: `./testing` is loaded by browser specs, and this one
 // boots the host controllers (#E166).
-import { createTestHost } from "@lore/ship/testing/hosts";
+import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

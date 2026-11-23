@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { HostCommandPullController } from "@lore/core/api";
 import {
   hostBackupsListResultSchema,
   hostBackupVerifyResultSchema,
@@ -8,8 +9,6 @@ import {
   hostTargetProbeResultSchema,
 } from "@lore/core/schemas";
 import { describe, expect, it } from "vitest";
-
-import { HostPullController } from "../src/api/controllers/HostPullController.ts";
 
 /**
  * The backup answers, pinned from the Lore side, as `logs-result.json` is.
@@ -39,13 +38,13 @@ describe("The results backup commands upload, shared with Bay", () => {
     });
 
     it(`routes a ${kind} answer to that schema`, () => {
-      expect(HostPullController.RESULT_SCHEMAS[kind]).toBe(schema);
+      expect(HostCommandPullController.RESULT_SCHEMAS[kind]).toBe(schema);
     });
   }
 
   it("has no answer for the verbs that only ack", () => {
     for (const kind of ["backup", "backup-policy", "restart"] as const) {
-      expect(HostPullController.RESULT_SCHEMAS[kind]).toBeUndefined();
+      expect(HostCommandPullController.RESULT_SCHEMAS[kind]).toBeUndefined();
     }
   });
 

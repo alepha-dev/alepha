@@ -2,8 +2,8 @@ import { $pageAdmin } from "@alepha/ui/admin";
 import type {
   AdminMcpController,
   AdminProjectController,
+  AdminHostController,
 } from "@lore/core/api";
-import type { AdminHostController } from "@lore/ship/api";
 import { $client } from "alepha/server/links";
 import { FolderKanban, Plug, Server } from "lucide-react";
 

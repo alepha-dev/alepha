@@ -1,4 +1,5 @@
-import type { AppController, ProjectHostController } from "@lore/ship/api";
+import type { ProjectHostController } from "@lore/core/api";
+import type { AppController } from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

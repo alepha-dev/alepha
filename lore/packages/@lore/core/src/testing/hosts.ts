@@ -1,19 +1,20 @@
-/**
- * The host a spec needs, made through the controllers that make one in
- * production.
- *
- * Its own subpath, `@lore/ship/testing/hosts`, beside `./testing`: it boots
- * the host controllers, and browser specs load `./testing` (#E166).
- *
- * @module
- */
-import type { CreateHostBody, OwnedHostResource } from "@lore/core/schemas";
-import { createTestProject } from "@lore/core/testing";
 import type { Alepha } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 
 import { HostController } from "../api/controllers/HostController.ts";
 import { ProjectHostController } from "../api/controllers/ProjectHostController.ts";
+/**
+ * The host a spec needs, made through the controllers that make one in
+ * production.
+ *
+ * Its own subpath, `@lore/core/testing/hosts`, beside `./testing`: it boots
+ * the host controllers, and browser specs load `./testing` (#E166).
+ *
+ * @module
+ */
+import type { CreateHostBody } from "../api/schemas/createHostBodySchema.ts";
+import type { OwnedHostResource } from "../api/schemas/ownedHostResourceSchema.ts";
+import { createTestProject } from "./entities.ts";
 
 /**
  * A host created the one way a host comes to exist (#E126): inside a

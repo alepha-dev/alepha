@@ -1,3 +1,4 @@
+import type { ProjectHostController } from "@lore/core/api";
 import { reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
@@ -19,7 +20,6 @@ import { createElement } from "react";
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { MonitorController } from "../../api/controllers/MonitorController.ts";
-import type { ProjectHostController } from "../../api/controllers/ProjectHostController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentHostAtom } from "./atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";

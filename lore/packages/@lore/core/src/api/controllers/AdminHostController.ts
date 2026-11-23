@@ -1,18 +1,18 @@
-import { HostTypeRegistry, LoreAudits, HostService } from "@lore/core/api";
-import {
-  projects,
-  hostProjects,
-  HOST_TYPES,
-  hosts,
-  adminHostResourceSchema,
-  hostSlugSchema,
-} from "@lore/core/schemas";
-import { displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
+
+import { displayName } from "../../web/app/services/displayName.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { HOST_TYPES, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { adminHostResourceSchema } from "../schemas/adminHostResourceSchema.ts";
+import { hostSlugSchema } from "../schemas/hostSlugSchema.ts";
+import { HostService } from "../services/HostService.ts";
+import { HostTypeRegistry } from "../services/HostTypeRegistry.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 
 /**
  * Instance-wide view of every host, for the admin shell (#1838).
