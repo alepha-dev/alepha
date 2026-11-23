@@ -41,42 +41,12 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
  * The prompt is the project's own `feedbackLoop` template, else the default,
  * rendered here on the server, scoped to the one item, with the trust
  * paragraph and, for untrusted feedback, the item's text between the guard's
- * delimiters under its caution section (#Q3987). The job holds the `read`
- * profile and a key with the triage tools only: it accepts and files a todo
- * quest, asks a human in the discussion, or rejects. It pushes nothing.
+ * delimiters under its caution section (#Q3987). The job's key is pinned to
+ * its items (#Q4222: no tool allowlist, its starter's rank bounds it): it
+ * accepts and files a todo quest, asks a human in the discussion, or
+ * rejects.
  */
 export class FeedbackAgentService {
-  /**
-   * The tools the triage job's key reaches, and nothing else.
-   */
-  public static readonly TOOLS = [
-    "project_context",
-    "quest_list",
-    "folio_search",
-    "folio_get",
-    "feedback_get",
-    "feedback_attachment_get",
-    "feedback_accept",
-    "feedback_reject",
-    "feedback_comment_add",
-    "quest_create",
-  ];
-
-  /**
-   * The error tools the global triage adds when the project tracks errors.
-   */
-  public static readonly ERROR_TOOLS = [
-    "error_list",
-    "error_resolve",
-    "error_forward",
-  ];
-
-  /**
-   * What the global triage adds to an item triage: a note on an open quest
-   * a report duplicates, instead of a second quest.
-   */
-  public static readonly GLOBAL_TOOLS = ["quest_comment_add"];
-
   /**
    * The subject a global triage job is filed under: the project's inbox.
    */
@@ -94,13 +64,15 @@ export class FeedbackAgentService {
     "Not triaged by an agent: this feedback was written outside the team, and no member has trusted it yet. A member must read it, then trust it or triage it by hand.";
 
   /**
-   * The global triage's budget: the read profile's, plus this much per
-   * feedback item and once for the errors (#Q4183). Agent jobs clamp it.
+   * One item's triage time.
    */
-  public static readonly GLOBAL_BUDGET = {
-    baseTurns: 40,
-    turnsPerItem: 8,
-    errorTurns: 60,
+  public static readonly ITEM_SECONDS = 15 * 60;
+
+  /**
+   * The global triage's time: a base, plus this much per feedback item and
+   * once for the errors (#Q4183). Agent jobs clamp it.
+   */
+  public static readonly GLOBAL_TIME = {
     baseSeconds: 15 * 60,
     secondsPerItem: 120,
     errorSeconds: 15 * 60,
@@ -174,9 +146,8 @@ export class FeedbackAgentService {
     }
     const job = await this.agents.start({
       projectId,
-      profile: "read",
       prompt: await this.prompt(project, item),
-      tools: FeedbackAgentService.TOOLS,
+      timeoutSeconds: FeedbackAgentService.ITEM_SECONDS,
       feedbackNumber: item.shortId,
       startedBy,
       subjectType: "feedback",
@@ -251,29 +222,17 @@ export class FeedbackAgentService {
     if (!trusted.length && !errors) {
       return { started, skipped };
     }
-    const b = FeedbackAgentService.GLOBAL_BUDGET;
+    const t = FeedbackAgentService.GLOBAL_TIME;
     const job = await this.agents.start({
       projectId,
-      profile: "read",
       prompt: await this.globalPrompt(project, trusted, errors),
-      tools: [
-        ...FeedbackAgentService.TOOLS,
-        ...FeedbackAgentService.GLOBAL_TOOLS,
-        ...(errors ? FeedbackAgentService.ERROR_TOOLS : []),
-      ],
       // An empty set pins nothing, so the key would reach every item: with
       // no feedback the job's feedback tools are refused by the pin below.
       feedbackNumbers: trusted.length ? trusted.map((it) => it.shortId) : [0],
-      budget: {
-        maxTurns:
-          b.baseTurns +
-          b.turnsPerItem * trusted.length +
-          (errors ? b.errorTurns : 0),
-        timeoutSeconds:
-          b.baseSeconds +
-          b.secondsPerItem * trusted.length +
-          (errors ? b.errorSeconds : 0),
-      },
+      timeoutSeconds:
+        t.baseSeconds +
+        t.secondsPerItem * trusted.length +
+        (errors ? t.errorSeconds : 0),
       startedBy,
       subjectType: FeedbackAgentService.GLOBAL_SUBJECT,
       subjectId: String(projectId),

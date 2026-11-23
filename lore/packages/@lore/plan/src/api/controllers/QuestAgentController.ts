@@ -19,19 +19,10 @@ export class QuestAgentController {
     path: "/projects/:projectId/quests/:shortId/agent-work",
     schema: {
       params: z.object({ projectId: z.integer(), shortId: z.integer() }),
-      body: z.object({
-        /** The repository's slug, when the project has several. */
-        repository: z.text({ maxLength: 64 }).optional(),
-      }),
       response: z.object({ jobId: z.uuid() }),
     },
-    handler: async ({ params, body, user }) =>
-      this.service.work(
-        params.projectId,
-        params.shortId,
-        user.id,
-        body.repository,
-      ),
+    handler: async ({ params, user }) =>
+      this.service.work(params.projectId, params.shortId, user.id),
   });
 
   confirmUntrustedQuest = $action({

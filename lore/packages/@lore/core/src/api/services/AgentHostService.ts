@@ -12,21 +12,20 @@ import { HostJobs } from "./HostJobs.ts";
 import { HostJobService } from "./HostJobService.ts";
 
 /**
- * Agent hosts (#Q3985): hosts that run Claude Code jobs, and Lore's check
- * that they still can.
+ * Agent hosts (#Q3985): hosts that run agent CLI jobs, and Lore's check that
+ * they still can.
  *
  * Hosts stay what they are (review answer 1): one boolean, `agentHost`, on
- * a host that already runs jobs (`jobsAllowed`). Its operator sets Claude
- * Code up by hand for Bay's jobs user; Lore never configures it and never
- * sees the credential. What Lore does is ask: a **check job**, Claude Code
- * told to reply OK in one turn with nothing in reach, whose output gives the
- * CLI's version, the model, the kind of credential and, on a failure, the
- * CLI's own message.
+ * a host that already runs jobs (`jobsAllowed`). Its operator installs an
+ * agent CLI and signs it in by hand for Bay's jobs user; Lore never
+ * configures it and never sees the credential. What Lore does is ask: a
+ * **check job**, the agent's version then a one-line prompt with nothing in
+ * reach. It passes on exit 0 (#Q4222: Lore reads nothing of its output); a
+ * failure keeps the tail of what it printed on stderr as the host's error.
  *
- * A check runs when a host becomes an Agent host, once a day, on demand, and
- * whenever an agent job fails on an auth or usage-limit message
- * ({@link recheck}). A failing check marks the host `unavailable` with the
- * message; the next passing one clears it, which is how a usage limit lifts.
+ * A check runs when a host becomes an Agent host, once a day, and on
+ * demand. A failing check marks the host `unavailable` with the message;
+ * the next passing one clears it.
  *
  * Each project names one default Agent host (`projects.defaultAgentHostId`),
  * its own or a lent one, for its agent jobs; without one the agent buttons
@@ -34,7 +33,7 @@ import { HostJobService } from "./HostJobService.ts";
  */
 export class AgentHostService {
   /**
-   * A check's budget: one turn, and two minutes for a cold CLI.
+   * A check's time: two minutes for a cold CLI.
    */
   public static readonly CHECK_TIMEOUT_SECONDS = 120;
 
@@ -48,8 +47,7 @@ export class AgentHostService {
   protected readonly port = $inject(HostJobs);
 
   constructor() {
-    // Build's agent kind finds its host, and asks for a recheck, through the
-    // port: no feature module imports another.
+    // The agent kind finds its host through the port.
     this.port.registerAgentHosts({
       defaultFor: async (projectId) => {
         const host = await this.defaultFor(projectId);
@@ -62,7 +60,6 @@ export class AgentHostService {
             }
           : undefined;
       },
-      recheck: (hostId) => this.recheck(hostId),
     });
   }
 
@@ -121,8 +118,6 @@ export class AgentHostService {
       hostId,
       kind: "check",
       input: {
-        profile: "check",
-        maxTurns: 1,
         timeoutSeconds: AgentHostService.CHECK_TIMEOUT_SECONDS,
       },
       startedBy: userId,
@@ -130,19 +125,6 @@ export class AgentHostService {
       subjectId: hostId,
     });
     return job.id;
-  }
-
-  /**
-   * What an agent job calls when it failed on an auth or usage-limit
-   * message: the host is checked again, so its state says why.
-   */
-  public async recheck(hostId: string): Promise<void> {
-    await this.check(hostId).catch((error) => {
-      this.log.warn("An Agent host recheck could not start", {
-        hostId,
-        error,
-      });
-    });
   }
 
   /**
@@ -212,81 +194,30 @@ export class AgentHostService {
   }
 
   /**
-   * A check's end: the host's state from what the CLI printed.
+   * A check's end: available on exit 0, unavailable otherwise with the tail
+   * of what the agent wrote on stderr, or the reason Bay gave.
    */
   protected readonly onJobEnded = $hook({
     on: "host:job:ended",
     handler: async ({ job }) => {
       if (job.kind !== "check" || !job.hostId) return;
-      const output = await this.jobs.text(job.id, "stdout");
-      const errors = await this.jobs.text(job.id, "stderr");
-      const read = this.read(output);
-      const passed =
-        job.status === "succeeded" && read.ok && read.isError !== true;
+      const passed = job.status === "succeeded";
+      const errors = passed ? "" : await this.jobs.text(job.id, "stderr");
       const message = passed
         ? undefined
-        : (read.isError ? read.text : undefined) ||
-          errors.trim().split("\n").slice(-3).join("\n") ||
+        : errors
+            .trim()
+            .split("\n")
+            .filter((line) => !line.startsWith("bay: "))
+            .slice(-3)
+            .join("\n") ||
           job.reason ||
           `The check ended ${job.status}`;
       await this.hosts.updateById(job.hostId, {
         agentStatus: passed ? "available" : "unavailable",
         agentCheckedAt: new Date(this.dateTime.nowMillis()).toISOString(),
         agentError: message ? message.slice(0, 2000) : null,
-        ...(read.version
-          ? { agentCliVersion: read.version.slice(0, 100) }
-          : {}),
-        ...(read.model ? { agentModel: read.model.slice(0, 100) } : {}),
-        ...(read.credential ? { agentCredential: read.credential } : {}),
       });
     },
   });
-
-  /**
-   * What a check's stream-json output says: the init line (version, model,
-   * where the key came from), then the result (`is_error`, its text, the
-   * models it used). Lines that are not JSON are skipped.
-   */
-  public read(output: string): {
-    ok: boolean;
-    isError?: boolean;
-    text?: string;
-    version?: string;
-    model?: string;
-    credential?: "oauth" | "api_key";
-  } {
-    const out: ReturnType<AgentHostService["read"]> = { ok: false };
-    for (const line of output.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("{")) continue;
-      let event: Record<string, unknown>;
-      try {
-        event = JSON.parse(trimmed) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-      if (event.type === "system" && event.subtype === "init") {
-        if (typeof event.claude_code_version === "string") {
-          out.version = event.claude_code_version;
-        }
-        if (typeof event.model === "string") out.model = event.model;
-        if (typeof event.apiKeySource === "string") {
-          // `none` is a login or a setup-token (OAuth); anything else names
-          // where an API key came from.
-          out.credential = event.apiKeySource === "none" ? "oauth" : "api_key";
-        }
-      }
-      if (event.type === "result") {
-        out.ok = true;
-        out.isError = event.is_error === true;
-        if (typeof event.result === "string") out.text = event.result;
-        const usage = event.modelUsage;
-        if (usage && typeof usage === "object") {
-          const [first] = Object.keys(usage as Record<string, unknown>);
-          if (first) out.model = first;
-        }
-      }
-    }
-    return out;
-  }
 }

@@ -24,7 +24,6 @@ export const HOST_JOB_STATUSES = [
   "failed",
   "cancelled",
   "timed_out",
-  "paused",
 ] as const;
 
 export type HostJobStatus = (typeof HOST_JOB_STATUSES)[number];
@@ -34,5 +33,4 @@ export const HOST_JOB_TERMINAL: readonly HostJobStatus[] = [
   "failed",
   "cancelled",
   "timed_out",
-  "paused",
 ];

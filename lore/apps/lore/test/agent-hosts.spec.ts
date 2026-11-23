@@ -36,14 +36,6 @@ class Repos {
   projects = $repository(projects);
 }
 
-const INIT = JSON.stringify({
-  type: "system",
-  subtype: "init",
-  model: "claude-sonnet-4-5",
-  apiKeySource: "none",
-  claude_code_version: "2.0.14",
-});
-
 const setup = async () => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
@@ -82,8 +74,9 @@ const host = (w: World) =>
  */
 const finishCheck = async (
   w: World,
-  stdout: string,
+  output: string,
   status: "done" | "failed",
+  stream: "stdout" | "stderr" = "stdout",
 ) => {
   const [job] = await w.repos.jobs.findMany({
     where: { hostId: { eq: w.hostId }, kind: { eq: "check" } },
@@ -94,9 +87,9 @@ const finishCheck = async (
   await w.jobs.appendLog(await host(w), {
     type: "log",
     id: job.commandId,
-    stream: "stdout",
+    stream,
     offset: 0,
-    data: stdout,
+    data: output,
   });
   await w.commands.ack(w.hostId, { id: job.commandId, status });
 };
@@ -115,50 +108,42 @@ describe("Agent hosts", () => {
     );
   });
 
-  it("checks a new Agent host, and records the version, model and credential kind", async ({
+  it("checks a new Agent host, and passes it on exit 0 whatever the agent printed (#Q4222)", async ({
     expect,
   }) => {
     await w.repos.hosts.updateById(w.hostId, { jobsAllowed: true });
     await w.agents.setAgentHost(await host(w), true);
     expect((await host(w)).agentStatus).toBe("checking");
-    const result = JSON.stringify({
-      type: "result",
-      is_error: false,
-      result: "OK",
-      modelUsage: { "claude-sonnet-4-5-20250929": {} },
+    const [check] = await w.repos.jobs.findMany({
+      where: { kind: { eq: "check" } },
     });
-    await finishCheck(w, `${INIT}\n${result}\n`, "done");
+    // No Claude vocabulary in the check: Bay's adapter asks its question.
+    expect(check?.input).toEqual({ timeoutSeconds: 120 });
+    await finishCheck(w, "not JSON at all\n", "done");
     const checked = await host(w);
     expect(checked.agentStatus).toBe("available");
-    expect(checked.agentCliVersion).toBe("2.0.14");
-    expect(checked.agentModel).toBe("claude-sonnet-4-5-20250929");
-    expect(checked.agentCredential).toBe("oauth");
     expect(checked.agentError).toBeFalsy();
     expect(checked.agentCheckedAt).toBeDefined();
+    expect(checked).not.toHaveProperty("agentCliVersion");
   });
 
-  it("marks it unavailable with the CLI's message, and a passing check clears it", async ({
+  it("marks it unavailable with the tail of the agent's stderr, and a passing check clears it", async ({
     expect,
   }) => {
     await w.repos.hosts.updateById(w.hostId, { jobsAllowed: true });
     await w.agents.setAgentHost(await host(w), true);
-    const limit = JSON.stringify({
-      type: "result",
-      is_error: true,
-      result: "Claude AI usage limit reached|1763700000",
-    });
-    await finishCheck(w, `${INIT}\n${limit}\n`, "failed");
+    await finishCheck(
+      w,
+      "bay: 12:00:00.000 agent claude started\nInvalid API key · Please run /login\n",
+      "failed",
+      "stderr",
+    );
     const failed = await host(w);
     expect(failed.agentStatus).toBe("unavailable");
-    expect(failed.agentError).toContain("usage limit reached");
+    expect(failed.agentError).toBe("Invalid API key · Please run /login");
 
-    await w.agents.recheck(w.hostId);
-    const ok = JSON.stringify({
-      type: "result",
-      is_error: false,
-      result: "OK",
-    });
-    await finishCheck(w, `${INIT}\n${ok}\n`, "done");
+    await w.agents.check(w.hostId);
+    await finishCheck(w, "OK\n", "done");
     const cleared = await host(w);
     expect(cleared.agentStatus).toBe("available");
     expect(cleared.agentError).toBeFalsy();

@@ -2,7 +2,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { CodeRepositoryService } from "@lore/build/api";
 import {
   AgentHostService,
   HostCommandService,
@@ -61,9 +60,6 @@ const setup = async () => {
   const user = await entities.users.create({});
   const owner: UserAccountToken = { id: user.id, roles: ["user"] };
   const host = await createTestHost(alepha, owner, { slug: "agent-1" });
-  await alepha
-    .inject(CodeRepositoryService)
-    .create({ projectId: host.projectId, slug: "acme" });
   const agents = alepha.inject(AgentHostService);
   await repos.hosts.updateById(host.id, {
     jobsAllowed: true,
@@ -136,23 +132,18 @@ describe("an epic reviewed by an agent job", () => {
     await rm(w.dataDir, { recursive: true, force: true });
   });
 
-  it("runs the Review prompt under the job's rules, read profile, its key pinned to the epic", async ({
+  it("runs the Review prompt under the job's rules, its key pinned to the epic", async ({
     expect,
   }) => {
     const out = await w.service.review(w.projectId, 3, w.owner.id);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
-    expect(job.input.profile).toBe("read");
     expect(job.subjectType).toBe("epic");
     expect(job.subjectId).toBe("3");
-    expect(job.input.key).toMatchObject({
-      epicId: 3,
-      tools: EpicAgentService.TOOLS,
-    });
-    expect(job.input.key?.tools).not.toContain("epic_review_answer");
+    expect(job.input.key).toEqual({ epicId: 3 });
     expect(job.input.prompt).toContain("Nobody reads this run's chat");
     expect(job.input.prompt).toContain('Review the plan of epic #E3 "Search"');
-    // The read profile's 40 turns, plus 6 for each of the epic's 2 quests.
-    expect(job.input.maxTurns).toBe(52);
+    // A quarter of an hour, plus 90 s for each of the epic's 2 quests.
+    expect(job.input.timeoutSeconds).toBe(15 * 60 + 2 * 90);
     const row = await w.repos.epics.getOne({
       where: { id: { eq: w.epic.id } },
     });
@@ -172,7 +163,7 @@ describe("an epic reviewed by an agent job", () => {
     );
   });
 
-  it("refuses an epic holding an unconfirmed untrusted quest on a process host, and runs once it is confirmed", async ({
+  it("refuses an epic holding an unconfirmed untrusted quest on any host, and runs once it is confirmed", async ({
     expect,
   }) => {
     const quest = await w.quest(12, w.epic.id, { untrusted: true });
@@ -193,7 +184,6 @@ describe("an epic reviewed by an agent job", () => {
     const key = {
       projectId: w.projectId,
       epicNumber: 3,
-      tools: EpicAgentService.TOOLS,
     } as JobKey;
     await expect(
       w.keys.checkEpicQuest(key, "quest_update", { shortId: 10 }),

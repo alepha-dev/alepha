@@ -1,5 +1,4 @@
 import { JobKeyService, ProjectSecurityService } from "@lore/core/api";
-import type { JobKey } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { SecurityProvider, type UserAccountToken } from "alepha/security";
 
@@ -111,27 +110,10 @@ export class GitAccessService {
     }
     const row = await this.repositories.find(project.id, input.repoSlug);
     if (!row) return notFound;
-    // A job key (#Q3995) reads one repository of one project, and writes
-    // only below its ref prefix, which the push's commands are held to.
-    const key = await this.jobKeys.scopeOf(user);
-    if (key) {
-      if (
-        key.revokedAt ||
-        key.projectId !== project.id ||
-        (key.repositoryId !== undefined &&
-          key.repositoryId !== null &&
-          key.repositoryId !== row.id)
-      ) {
-        return notFound;
-      }
-      if (write && !key.writeRefPrefix) {
-        return {
-          allowed: false,
-          status: 403,
-          message: "This job key does not push",
-        };
-      }
-      return { allowed: true, repository: row, user, jobKey: key };
+    // A job key reaches Lore's MCP only (#Q4222): the route guard refuses
+    // it on git before it is resolved, and this is the floor under it.
+    if (await this.jobKeys.scopeOf(user)) {
+      return notFound;
     }
     return { allowed: true, repository: row, user };
   }
@@ -159,7 +141,5 @@ export type GitAccessDecision =
       allowed: true;
       repository: CodeRepository;
       user: UserAccountToken;
-      /** The pins of the job key the caller holds, if any (#Q3995). */
-      jobKey?: JobKey;
     }
   | { allowed: false; status: 400 | 401 | 403 | 404; message: string };

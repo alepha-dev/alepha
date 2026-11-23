@@ -52,16 +52,14 @@ export class CodeReadAccess {
   }
 
   /**
-   * The repositories a caller may read: all of them, or the one its job
-   * key is pinned to.
+   * The repositories a caller may read: all of them. A job key's project pin
+   * holds it to its project's (#Q4222: no repository pin any more).
    */
   public async readable(
     rows: CodeRepository[],
-    user: UserAccountToken | undefined,
+    _user: UserAccountToken | undefined,
   ): Promise<CodeRepository[]> {
-    const key = await this.jobKeys.scopeOf(user);
-    if (!key?.repositoryId) return rows;
-    return rows.filter((row) => row.id === key.repositoryId);
+    return rows;
   }
 
   protected async pinnedTo(
@@ -70,7 +68,6 @@ export class CodeReadAccess {
   ): Promise<boolean> {
     const key = await this.jobKeys.scopeOf(user);
     if (!key) return true;
-    if (key.revokedAt || key.projectId !== row.projectId) return false;
-    return !key.repositoryId || key.repositoryId === row.id;
+    return !key.revokedAt && key.projectId === row.projectId;
   }
 }

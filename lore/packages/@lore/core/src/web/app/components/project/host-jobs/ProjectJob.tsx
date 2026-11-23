@@ -94,7 +94,23 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
   const details: Array<[string, string | number]> = row
     ? [
         [tr("jobs.field.host"), row.hostSlug ?? ""],
-        [tr("jobs.field.profile"), row.input.profile],
+        // What it ran and where (#Q4222): the agent CLI, its model (the
+        // CLI's own default when none is named) and the workspace.
+        ...(row.input.agent
+          ? ([[tr("jobs.field.agent"), row.input.agent]] as Array<
+              [string, string]
+            >)
+          : []),
+        ...(row.input.model
+          ? ([[tr("jobs.field.model"), row.input.model]] as Array<
+              [string, string]
+            >)
+          : []),
+        ...(row.input.workspace
+          ? ([[tr("jobs.field.workspace"), row.input.workspace]] as Array<
+              [string, string]
+            >)
+          : []),
         ...(row.subjectType
           ? ([
               [

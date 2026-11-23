@@ -14,13 +14,11 @@ import { projects } from "./projects.ts";
  *
  * - **one project**, `projectId`: an MCP call resolving any other is refused;
  * - optionally **one quest**, **one feedback item** or **one epic**, by
- *   per-project number: an MCP call naming another is refused;
- * - **an allowlist of MCP tools**, `tools`: any other tool is refused;
- * - **git read on one repository**, `repositoryId`, and **write only to
- *   `refs/heads/<writeRefPrefix>` and below** when a prefix is set.
+ *   per-project number: an MCP call naming another is refused.
  *
- * Every check is server side (`JobKeyService`, Build's git access), never
- * the prompt's. `revokedAt` is set on every terminal job status; the api
+ * The key reaches Lore's MCP only, and any tool its owner's rank allows
+ * within those pins (#Q4222). Every check is server side (`JobKeyService`),
+ * never the prompt's. `revokedAt` is set on every terminal job status; the api
  * key is revoked with it.
  */
 export const jobKeys = $entity({
@@ -34,7 +32,6 @@ export const jobKeys = $entity({
       onDelete: "cascade",
     }),
     userId: z.uuid(),
-    tools: z.array(z.string().max(100)).max(64),
     questNumber: z.integer().optional(),
     feedbackNumber: z.integer().optional(),
     // The global triage's set of items (#Q4183); a key holds this or
@@ -43,8 +40,6 @@ export const jobKeys = $entity({
     // An epic review's epic (#Q4214): its `epic_*` tools reach this number
     // only, its creates file under it, its quest writes touch its quests.
     epicNumber: z.integer().optional(),
-    repositoryId: z.string().max(64).optional(),
-    writeRefPrefix: z.string().max(200).optional(),
     expiresAt: z.string(),
     revokedAt: z.string().optional(),
   }),

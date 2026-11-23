@@ -29,9 +29,6 @@ export const hostJobResourceSchema = z.object({
   exitCode: z.integer().optional(),
   logBytes: z.integer().optional(),
   logTruncated: z.boolean().optional(),
-  result: z.record(z.string(), z.any()).optional(),
-  retries: z.integer().optional(),
-  retryAt: z.string().optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

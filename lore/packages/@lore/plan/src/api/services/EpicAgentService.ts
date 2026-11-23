@@ -17,20 +17,18 @@ import { quests } from "../entities/quests.ts";
  * Review with Claude (#Q4214): an epic's Review prompt run as an agent job
  * on the project's Agent host, instead of being pasted into a session.
  *
- * The job holds the `read` profile: it reads the code, writes back through
- * Lore's tools only, and pushes nothing. Its key is pinned to the epic
- * (`job_keys.epic_number`, checked by `JobKeyService`): `epic_*` tools reach
- * this epic only, `quest_create` and `folio_create` file under it, and
- * `quest_get`, `quest_update` and `quest_objective_set` touch its quests
- * only. No `epic_review_answer`: answering stays with the owner.
+ * Its key is pinned to the epic (`job_keys.epic_number`, checked by
+ * `JobKeyService`): `epic_*` tools reach this epic only, `quest_create` and
+ * `folio_create` file under it, and `quest_get`, `quest_update` and
+ * `quest_objective_set` touch its quests only. Its starter's rank bounds the
+ * rest (#Q4222: no tool allowlist).
  *
  * **Untrusted quests (the decision).** An epic may hold a quest born of
  * feedback written outside the team whose text no member confirmed. Such a
- * job is started as untrusted: on a host that runs jobs as a process it is
- * refused, saying which quests to confirm (Build's gate refuses it anyway),
- * and on a container host it runs, isolated, as feedback triage does. Not
- * "keep those quests out of reach": a review that cannot read part of its
- * epic reviews a different plan than the owner's, silently.
+ * review is refused, saying which quests to confirm (#Q4222: no runner
+ * isolates outside text any more). Not "keep those quests out of reach": a
+ * review that cannot read part of its epic reviews a different plan than
+ * the owner's, silently.
  *
  * The prompt is the project's `epicReview` template, else the default,
  * rendered here under a fixed preamble: nobody reads the job's chat, so the
@@ -38,36 +36,15 @@ import { quests } from "../entities/quests.ts";
  */
 export class EpicAgentService {
   /**
-   * The tools the review job's key reaches, and nothing else.
-   */
-  public static readonly TOOLS = [
-    "project_context",
-    "epic_get",
-    "quest_list",
-    "quest_get",
-    "folio_search",
-    "folio_get",
-    "directory_list",
-    "epic_update",
-    "quest_create",
-    "quest_update",
-    "quest_objective_set",
-    "folio_create",
-    "epic_review_create",
-  ];
-
-  /**
    * The job's subject, with the epic's number as its id.
    */
   public static readonly SUBJECT = "epic";
 
   /**
-   * The read profile's budget, plus this much per quest of the epic. Agent
+   * The review's time: a base, plus this much per quest of the epic. Agent
    * jobs clamp it to their ceiling.
    */
-  public static readonly BUDGET = {
-    baseTurns: 40,
-    turnsPerQuest: 6,
+  public static readonly TIME = {
     baseSeconds: 15 * 60,
     secondsPerQuest: 90,
   };
@@ -123,33 +100,25 @@ export class EpicAgentService {
     const unconfirmed = members.filter(
       (it) => it.untrusted && !it.untrustedConfirmedAt && !it.deletedAt,
     );
-    if (unconfirmed.length && host.runner !== "container") {
+    if (unconfirmed.length) {
       throw new ForbiddenError(
         `Epic ${number} holds quests born of feedback written outside the team (${unconfirmed
           .map((it) => formatReference("quest", it.shortId))
-          .join(
-            ", ",
-          )}), and the Agent host ${host.slug} runs jobs as a host process: a member confirms their text first`,
+          .join(", ")}): a member confirms their text first`,
       );
     }
     const project = await this.projects.getOne({
       where: { id: { eq: projectId } },
     });
-    const b = EpicAgentService.BUDGET;
+    const t = EpicAgentService.TIME;
     const job = await this.agents.start({
       projectId,
-      profile: "read",
       prompt: await this.prompt(project, epic),
-      tools: EpicAgentService.TOOLS,
+      timeoutSeconds: t.baseSeconds + t.secondsPerQuest * members.length,
       epicNumber: epic.number,
-      budget: {
-        maxTurns: b.baseTurns + b.turnsPerQuest * members.length,
-        timeoutSeconds: b.baseSeconds + b.secondsPerQuest * members.length,
-      },
       startedBy,
       subjectType: EpicAgentService.SUBJECT,
       subjectId: String(epic.number),
-      untrusted: unconfirmed.length > 0,
     });
     await this.epics.updateById(epic.id, { agentReviewJobId: job.id });
     return { jobId: job.id };

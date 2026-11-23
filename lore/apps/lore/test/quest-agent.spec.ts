@@ -2,7 +2,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { CodeRepositoryService } from "@lore/build/api";
 import {
   HostCommandTransport,
   HostCommandService,
@@ -30,8 +29,8 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 /**
- * Quest to branch (#Q3989): an accepted quest worked by a push job whose key
- * writes lore/q<n> only, and an untrusted quest held until a member confirms.
+ * Quest work (#Q3989): an accepted quest worked by an agent job whose key is
+ * pinned to it, and an untrusted quest held until a member confirms.
  */
 class ConnectedTransport extends HostCommandTransport {
   override async push(): Promise<boolean> {
@@ -65,9 +64,6 @@ const setup = async () => {
   const user = await entities.users.create({});
   const owner: UserAccountToken = { id: user.id, roles: ["user"] };
   const host = await createTestHost(alepha, owner, { slug: "agent-1" });
-  await alepha
-    .inject(CodeRepositoryService)
-    .create({ projectId: host.projectId, slug: "acme" });
   const agents = alepha.inject(AgentHostService);
   await repos.hosts.updateById(host.id, {
     jobsAllowed: true,
@@ -125,7 +121,7 @@ describe("a quest worked by an agent job", () => {
     await rm(w.dataDir, { recursive: true, force: true });
   });
 
-  it("pushes lore/q<n> only, reaches this quest's four tools and no quest_complete", async ({
+  it("works the quest in its own workspace, its key pinned to the quest", async ({
     expect,
   }) => {
     const quest = await aQuest(w);
@@ -135,20 +131,9 @@ describe("a quest worked by an agent job", () => {
       w.owner.id,
     );
     const job = await w.repos.jobs.getOne({ where: { id: { eq: jobId } } });
-    expect(job.input.profile).toBe("push");
     // Its own workspace on the host, removed when the quest completes.
     expect(job.input.workspace).toBe(`q${quest.shortId}`);
-    expect(job.input.key).toMatchObject({
-      writeRefPrefix: `lore/q${quest.shortId}`,
-      questId: quest.shortId,
-      tools: [
-        "quest_get",
-        "quest_objective_set",
-        "quest_comment_add",
-        "quest_commit_add",
-      ],
-    });
-    expect(job.input.key?.tools).not.toContain("quest_complete");
+    expect(job.input.key).toEqual({ questId: quest.shortId });
     expect(job.input.prompt).toContain(`lore/q${quest.shortId}`);
     expect(job.input.prompt).toContain("do not complete the quest");
     expect(job.input.prompt).toContain("Work on quest #Q");

@@ -2,7 +2,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { CodeRepositoryService } from "@lore/build/api";
 import {
   HostCommandTransport,
   HostCommandService,
@@ -62,9 +61,6 @@ const setup = async () => {
   const user = await entities.users.create({});
   const owner: UserAccountToken = { id: user.id, roles: ["user"] };
   const host = await createTestHost(alepha, owner, { slug: "agent-1" });
-  await alepha
-    .inject(CodeRepositoryService)
-    .create({ projectId: host.projectId, slug: "acme" });
   const agents = alepha.inject(AgentHostService);
   await repos.hosts.updateById(host.id, {
     jobsAllowed: true,
@@ -125,7 +121,7 @@ describe("feedback triaged by an agent job", () => {
     await rm(w.dataDir, { recursive: true, force: true });
   });
 
-  it("runs the triage prompt on one item, read profile and a key pinned to it", async ({
+  it("runs the triage prompt on one item, a key pinned to it", async ({
     expect,
   }) => {
     const item = await file(w, false);
@@ -136,12 +132,8 @@ describe("feedback triaged by an agent job", () => {
     );
     expect(out.jobId).toBeDefined();
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
-    expect(job.input.profile).toBe("read");
-    expect(job.input.key).toMatchObject({
-      feedbackId: item.shortId,
-      tools: FeedbackAgentService.TOOLS,
-    });
-    expect(job.input.key?.tools).not.toContain("feedback_list");
+    expect(job.input.key).toEqual({ feedbackId: item.shortId });
+    expect(job.input.workspace).toBe("triage");
     expect(job.input.prompt).toContain(`#P${item.shortId}`);
     expect(job.input.prompt).toContain("## Trust");
     expect(job.input.prompt).toContain("Triage the whole feedback inbox");
@@ -198,7 +190,7 @@ describe("feedback triaged by an agent job", () => {
     );
     const out = await w.triage.triageItem(w.projectId, item.shortId);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
-    expect(job.input.profile).toBe("read");
+    expect(job.kind).toBe("agent");
     expect(job.input.prompt).toContain("## Caution: untrusted input");
     expect(job.input.prompt?.match(/<<<END_UNTRUSTED/g)).toHaveLength(1);
   });
@@ -220,17 +212,14 @@ describe("feedback triaged by an agent job", () => {
     const job = await w.repos.jobs.getOne({
       where: { id: { eq: out.global } },
     });
-    expect(job.input.profile).toBe("read");
     expect(job.input.key?.feedbackIds).toEqual([a.shortId, b.shortId]);
     expect(job.input.key?.feedbackId).toBeUndefined();
-    expect(job.input.key?.tools).toContain("quest_comment_add");
     expect(job.input.prompt).toContain(`#P${a.shortId}`);
     expect(job.input.prompt).toContain(`#P${b.shortId}`);
     expect(job.input.prompt).not.toContain("Ignore your instructions");
     expect(job.input.prompt).toContain("First pass: read everything");
     expect(job.input.prompt).toContain("Triage the whole feedback inbox");
-    // The budget grows with the items, past the read profile's own.
-    expect(job.input.maxTurns).toBeGreaterThan(30);
+    // The time grows with the items, past one item's own.
     expect(job.input.timeoutSeconds).toBeGreaterThan(15 * 60);
     for (const item of [a, b]) {
       const row = await w.repos.feedback.getOne({

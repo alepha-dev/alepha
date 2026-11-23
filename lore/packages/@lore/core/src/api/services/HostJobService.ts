@@ -3,7 +3,7 @@ import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
+import { ForbiddenError, NotFoundError } from "alepha/server";
 
 import { hostJobLogs } from "../entities/hostJobLogs.ts";
 import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
@@ -45,11 +45,6 @@ export class HostJobService {
    * How long a job's log is kept in the bucket.
    */
   public static readonly LOG_TTL_DAYS = 30;
-
-  /**
-   * How many times a `paused` job is queued again before it stays paused.
-   */
-  public static readonly MAX_RETRIES = 3;
 
   /**
    * How far the chain guard walks `startedByJobId`.
@@ -111,11 +106,6 @@ export class HostJobService {
       },
       cancel: async (id, by) => this.summary(await this.cancel(id, by)),
       chainHolds: (id, kind) => this.chainHolds(id, kind),
-      stdout: (id) => this.text(id, "stdout"),
-      setResult: async (id, result) => {
-        await this.jobs.updateById(id, { result });
-      },
-      pause: (id, retryAt, reason) => this.pause(id, retryAt, reason),
       removeWorkspaces: (projectId, workspace) =>
         this.removeWorkspaces(projectId, workspace),
     });
@@ -515,61 +505,10 @@ export class HostJobService {
   }
 
   /**
-   * Puts a job back in its host's queue, after a provider limit paused it.
-   */
-  public async requeue(jobId: string): Promise<void> {
-    const job = await this.getRow(jobId);
-    if (job.status !== "paused") {
-      throw new BadRequestError("Only a paused job is queued again");
-    }
-    await this.jobs.updateById(job.id, {
-      status: "queued",
-      queuedAt: this.now(),
-      retries: (job.retries ?? 0) + 1,
-      retryAt: null,
-      commandId: null,
-      startedAt: null,
-      endedAt: null,
-      reason: null,
-      exitCode: null,
-    });
-    await this.pump(job.hostId);
-  }
-
-  /**
-   * Marks a job paused by a provider's usage limit, to be queued again at
-   * `retryAt` (at most {@link MAX_RETRIES} times). Called by the kind's
-   * result reader, which knows the provider's words.
-   */
-  public async pause(
-    jobId: string,
-    retryAt: string,
-    reason: string,
-  ): Promise<void> {
-    const job = await this.getRow(jobId);
-    const retry = (job.retries ?? 0) < HostJobService.MAX_RETRIES;
-    await this.jobs.updateById(job.id, {
-      status: "paused",
-      reason: reason.slice(0, 2000),
-      retryAt: retry ? retryAt : null,
-    });
-  }
-
-  /**
-   * The paused jobs whose window has passed, queued again; and every host
-   * with a queued job and nothing running, dispatched. What the quarter-hour
-   * job runs, so nothing waits on an ack that was lost.
+   * Every host with a queued job and nothing running, dispatched. What the
+   * quarter-hour job runs, so nothing waits on an ack that was lost.
    */
   public async sweep(): Promise<void> {
-    const now = this.now();
-    const paused = await this.jobs.findMany({
-      where: { status: { eq: "paused" } },
-    });
-    for (const job of paused) {
-      if (job.retryAt && job.retryAt <= now) {
-        await this.requeue(job.id);
-      }
-    }
     const queued = await this.jobs.findMany({
       where: { status: { eq: "queued" } },
       columns: ["hostId"],
@@ -637,8 +576,7 @@ export class HostJobService {
       job: this.summary(ended),
     });
     await this.pump(job.hostId);
-    // The listener may have paused it (a usage limit): read it back.
-    return this.getRow(job.id);
+    return ended;
   }
 
   /**
@@ -728,7 +666,6 @@ export class HostJobService {
       startedAt: job.startedAt,
       endedAt: job.endedAt,
       input: job.input,
-      result: job.result,
     };
   }
 

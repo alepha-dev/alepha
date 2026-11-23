@@ -1,6 +1,5 @@
 import {
   CircleCheck,
-  CirclePause,
   CircleSlash,
   CircleX,
   Clock,
@@ -30,7 +29,6 @@ export const JOB_STATUS_ICON: Record<
   failed: { icon: CircleX, className: "text-danger" },
   cancelled: { icon: CircleSlash, className: "text-muted-foreground" },
   timed_out: { icon: TimerOff, className: "text-danger" },
-  paused: { icon: CirclePause, className: "text-warning" },
 };
 
 /**

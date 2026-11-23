@@ -46,12 +46,9 @@ class Repos {
 }
 
 const input = {
-  profile: "read" as const,
   workspace: "triage",
   prompt: "Triage the inbox.",
-  maxTurns: 30,
   timeoutSeconds: 900,
-  allowedTools: ["Read"],
 };
 
 const setup = async (env: Record<string, string> = {}) => {
@@ -277,7 +274,7 @@ describe("HostJobService", () => {
       projectId: w.projectId,
       hostId: w.host.id,
       kind: "agent",
-      input: { ...input, key: { tools: ["feedback_get"] } },
+      input: { ...input, key: { feedbackId: 4 } },
       startedBy: w.ownerId,
     });
     const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
@@ -321,24 +318,11 @@ describe("HostJobService", () => {
       projectId: w.projectId,
       hostId: w.host.id,
       kind: "check",
-      input: { profile: "check", maxTurns: 1, timeoutSeconds: 60 },
+      input: { timeoutSeconds: 60 },
       startedByJobId: parent.id,
     });
     expect(await w.service.chainHolds(check.id, "agent")).toBe(true);
     expect(await w.service.chainHolds(parent.id, "check")).toBe(false);
-  });
-
-  it("queues a paused job again once its window has passed", async ({
-    expect,
-  }) => {
-    const job = await start(w);
-    const command = await commandOf(w, job.id);
-    await w.commands.ack(w.host.id, { id: command.id, status: "failed" });
-    await w.service.pause(job.id, "2000-01-01T00:00:00.000Z", "usage limit");
-    await w.service.sweep();
-    const again = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
-    expect(again.status).toBe("running");
-    expect(again.retries).toBe(1);
   });
 
   it("sends a check its agent and model, and nothing in reach (#Q4219)", async ({
@@ -349,8 +333,6 @@ describe("HostJobService", () => {
       hostId: w.host.id,
       kind: "check",
       input: {
-        profile: "check",
-        maxTurns: 1,
         timeoutSeconds: 60,
         agent: "gemini",
         model: "gemini-2.5-pro",

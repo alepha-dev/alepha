@@ -1,5 +1,4 @@
-import { JobKeyService, ProjectLimits } from "@lore/core/api";
-import type { JobKey } from "@lore/core/schemas";
+import { ProjectLimits } from "@lore/core/api";
 import { $inject, type StreamLike, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route, type ServerRequest } from "alepha/server";
@@ -32,7 +31,6 @@ export class GitHttpController {
   protected readonly access = $inject(GitAccessService);
   protected readonly backend = $inject(GitBackend);
   protected readonly receivePack = $inject(GitReceivePack);
-  protected readonly jobKeys = $inject(JobKeyService);
   protected readonly limits = $inject(ProjectLimits);
   protected readonly pushes = $inject(CodePushRecorder);
 
@@ -194,13 +192,11 @@ export class GitHttpController {
         capabilities: inspected.capabilities,
         pushOptions: inspected.pushOptions,
       };
-      const refusal =
-        this.jobKeyRefusal(decision.jobKey, inspected.commands) ??
-        (await this.refusalOf(
-          repository.backendRef,
-          repository.defaultBranch,
-          inspected.commands,
-        ));
+      const refusal = await this.refusalOf(
+        repository.backendRef,
+        repository.defaultBranch,
+        inspected.commands,
+      );
       if (refusal) {
         await this.drain(body);
         const report = this.receivePack.refusal(
@@ -247,24 +243,6 @@ export class GitHttpController {
       return this.pushes.watch(response.body, push) as StreamLike;
     }
     return response.body as string | StreamLike;
-  }
-
-  /**
-   * A job key's push (#Q3995) updates only refs below its prefix,
-   * `refs/heads/lore/q<n>` and `refs/heads/lore/q<n>/*`: any other ref, the
-   * default branch first, refuses the whole push.
-   */
-  protected jobKeyRefusal(
-    key: JobKey | undefined,
-    commands: Array<{ ref: string }>,
-  ): string | undefined {
-    if (!key) return undefined;
-    const refused = commands.find(
-      (command) => !this.jobKeys.mayWriteRef(key, command.ref),
-    );
-    return refused
-      ? `a job key pushes to refs/heads/${key.writeRefPrefix ?? "(none)"} only, not ${refused.ref}`
-      : undefined;
   }
 
   /**
