@@ -38,17 +38,7 @@ import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
-import {
-  ArrowLeft,
-  Bug,
-  CircleHelp,
-  Ellipsis,
-  Info,
-  Lightbulb,
-  Loader2,
-  Paperclip,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Info, Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
@@ -58,8 +48,6 @@ import {
   feedbackTrailSchema,
   newestFeedbackTrail,
 } from "../../../../../api/schemas/feedbackTrailSchema.ts";
-import { feedbackTypeSchema } from "../../../../../api/schemas/feedbackTypeSchema.ts";
-import { FeedbackTypeTags } from "../../../../../api/services/FeedbackTypeTags.ts";
 import { type DraftContext, readDraftFromQuery } from "./readDraftFromQuery.ts";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
@@ -321,16 +309,13 @@ const ProjectFeedbackRequest = () => {
   // One free-text field. Client schema stays looser than the server's — a
   // `minLength` here would fail validation at form-construction time (empty
   // initial value). The server (`feedbackBodySchema`) enforces real bounds.
-  // The report's type comes first and is required (#Q4037); it reaches the
-  // server as a tag, `FeedbackTypeTags` folding it in.
+  // No type picker: it was removed as confusing. A `?type=` from the embed
+  // still reaches the report, folded into its tags by `readDraftFromQuery`.
   const form = useForm({
     schema: z.object({
-      type: feedbackTypeSchema,
       message: z.string().max(10_000),
     }),
-    // Bug unless a `?type=` names another (#Q4106): a fresh form already
-    // answers the required type.
-    initialValues: { type: "idea", message: "" },
+    initialValues: { message: "" },
     handler: async (body) => {
       // Read live state through the ref — the handler closure itself is
       // frozen at first render, when these were all still empty.
@@ -367,9 +352,8 @@ const ProjectFeedbackRequest = () => {
           description: message,
           attachments: attachmentIds,
           // No fallback tag: a generic `feedback` on every untagged item
-          // said nothing in the inbox. The type is one, first, and never
-          // twice, whatever a `?type=` put there (#Q4037).
-          tags: FeedbackTypeTags.fold(tags, body.type),
+          // said nothing in the inbox.
+          tags,
           // The trail rides along whenever the opener sent one (#Q4106);
           // the report page shows it to the owner.
           source: source && trail ? { ...source, trail } : source,
@@ -406,14 +390,6 @@ const ProjectFeedbackRequest = () => {
     },
   });
   const { loading: submitting } = useFormState(form, ["loading"]);
-
-  // A `?type=` from the embed launcher preselects its button, once.
-  const [preselected, setPreselected] = useState(false);
-  if (!preselected && seededTags && seededTags.length > 0) {
-    setPreselected(true);
-    const fromUrl = FeedbackTypeTags.typeOf(seededTags);
-    if (fromUrl) form.input.type.set(fromUrl);
-  }
 
   /**
    * Upload the picked, dropped or pasted files, one after another.
@@ -659,36 +635,6 @@ const ProjectFeedbackRequest = () => {
               </div>
 
               <form {...form.props} className="flex flex-col gap-4">
-                {/* What the report is, first and required (#Q4037). No label
-                    (#Q4119): the four options say what they are. */}
-                <Control
-                  input={form.input.type}
-                  label=""
-                  segmented
-                  size="sm"
-                  items={[
-                    {
-                      value: "idea",
-                      label: tr("feedback.request.type.idea"),
-                      icon: <Lightbulb className="size-4" />,
-                    },
-                    {
-                      value: "bug",
-                      label: tr("feedback.request.type.bug"),
-                      icon: <Bug className="size-4" />,
-                    },
-                    {
-                      value: "question",
-                      label: tr("feedback.request.type.question"),
-                      icon: <CircleHelp className="size-4" />,
-                    },
-                    {
-                      value: "other",
-                      label: tr("feedback.request.type.other"),
-                      icon: <Ellipsis className="size-4" />,
-                    },
-                  ]}
-                />
                 {/* Single free-text field. It doubles as a paste/drop target
                   for screenshots — global paste works regardless of focus,
                   this just makes dragging files discoverable. */}
