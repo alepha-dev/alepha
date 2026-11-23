@@ -26,6 +26,7 @@ const GUIDES = [
   "ship-artifacts",
   "ship-cloudflare-token",
   "project-dashboard",
+  "project-chat-agents",
   "plan-releases",
   "plan-personas",
   "plan-use-cases",

@@ -1,5 +1,6 @@
 import {
   $pageProject,
+  $pageProjectSettings,
   canInProject,
   currentProjectAtom,
   hasCapability,
@@ -37,6 +38,20 @@ export class ChatRouter {
     }),
     lazy: () => import("./components/ChatPage.tsx"),
     loader: async () => this.gate(),
+  });
+
+  /**
+   * Settings > Chat > Agents (#E170, #Q4199): the project's chat agents.
+   * Listed while chat is on, to every rank that reads it; writing them is
+   * `chat:agent`, which the page and the server both check.
+   */
+  projectSettingsChatAgents = $pageProjectSettings({
+    name: "projectSettingsChatAgents",
+    path: "/chat/agents",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Chat agents`,
+    }),
+    lazy: () => import("./components/settings/ChatAgentsSettingsPage.tsx"),
   });
 
   /**

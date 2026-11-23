@@ -101,6 +101,8 @@ const ROUTES_SETTINGS = [
   // Ship's page under Plan's section (#Q3703), missed here until #Q4063:
   // it rendered in the centred column under a "Plan" crumb.
   "projectSettingsErrors",
+  // Chat's agents (#E170).
+  "projectSettingsChatAgents",
 ];
 
 export const ROUTES_FULL_WIDTH = new Set([

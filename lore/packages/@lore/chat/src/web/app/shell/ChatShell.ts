@@ -37,6 +37,21 @@ export class ChatShell {
         },
       },
     ]);
+    // Settings > Chat (#E170): the project's agents.
+    this.shell.registerSettings({
+      key: "chat",
+      order: 50,
+      labelKey: "project.settings.nav.chat",
+      icon: MessagesSquare,
+      capability: "chat",
+      tabs: [
+        {
+          route: "projectSettingsChatAgents",
+          labelKey: "project.settings.tab.chatAgents",
+          requires: "chat:read",
+        },
+      ],
+    });
     this.extensions.registerOverlay({
       key: "chat-live",
       component: ChatLiveFeed,
