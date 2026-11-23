@@ -10,12 +10,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import { useSortableItem } from "@alepha/ui/sortable";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Ellipsis, Hash, Lock } from "lucide-react";
-import type { KeyboardEvent, PointerEventHandler } from "react";
+import type { KeyboardEvent } from "react";
 
 import type { ChatRoomResource } from "../../../schemas/index.ts";
 import type { ChatRoomUnread } from "../services/roomOrder.ts";
@@ -54,7 +53,7 @@ export interface RoomListRowProps {
    * The keyboard move: Space picks the room up, the arrows move it, Space or
    * Enter drops it, Escape puts it back.
    */
-  onReorderKey?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  onReorderKey?: (event: KeyboardEvent<HTMLElement>) => void;
   /**
    * The id of the hint that explains the keyboard move.
    */
@@ -75,16 +74,8 @@ const RoomListRow = (props: RoomListRowProps) => {
   const mentions = props.unread?.mentions ?? 0;
   const actions = props.actions ?? [];
   const sortable = !!props.sortable;
-  const {
-    listeners,
-    setNodeRef: setDragRef,
-    transform,
-    isDragging,
-  } = useDraggable({ id: room.id, disabled: !sortable });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({
-    id: room.id,
-    disabled: !sortable,
-  });
+  const item = useSortableItem(room.id, { disabled: !sortable });
+  const { isDragging, isOver } = item;
 
   return (
     <li
@@ -92,26 +83,14 @@ const RoomListRow = (props: RoomListRowProps) => {
       // refs and only its pointer listener, in the capture phase so the
       // menu trigger inside cannot swallow the press. The keyboard move is
       // the list's own, on the button.
-      ref={(node) => {
-        setDragRef(node);
-        setDropRef(node);
-      }}
-      onPointerDownCapture={
-        sortable
-          ? (listeners?.onPointerDown as
-              | PointerEventHandler<HTMLLIElement>
-              | undefined)
-          : undefined
-      }
-      style={{
-        transform: CSS.Translate.toString(transform),
-        zIndex: isDragging ? 10 : undefined,
-      }}
+      ref={item.ref}
+      onPointerDownCapture={item.onPointerDown}
+      style={item.style}
       className={cn(
         "group/room relative rounded-md",
         sortable && "touch-none",
         // Where a drop lands, and what the keyboard holds.
-        ((isOver && !isDragging) || props.picked) && "ring-primary ring-2",
+        (isOver || props.picked) && "ring-primary ring-2",
         // Opaque while dragged: the row it passes over must not show through.
         isDragging && "bg-card cursor-grabbing shadow-lg",
       )}

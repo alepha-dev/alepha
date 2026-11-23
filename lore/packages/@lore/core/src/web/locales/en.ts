@@ -1834,6 +1834,8 @@ export default {
   "project.settings.kanban.columns.wip": "WIP limit",
   "project.settings.kanban.columns.wip.none": "No limit",
   "project.settings.kanban.columns.delete": "Delete",
+  "project.settings.kanban.columns.reorder.hint":
+    "Press Space to move this column, then the arrow keys, and Space again to drop it.",
   "project.settings.kanban.columns.reorder": "Reorder column",
   "project.settings.roadmap.title": "Roadmap",
   "project.settings.roadmap.description":

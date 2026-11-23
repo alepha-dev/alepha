@@ -1826,6 +1826,8 @@ export default {
   "project.settings.kanban.columns.wip": "Limite d'en-cours",
   "project.settings.kanban.columns.wip.none": "Sans limite",
   "project.settings.kanban.columns.delete": "Supprimer",
+  "project.settings.kanban.columns.reorder.hint":
+    "Appuyez sur Espace pour déplacer cette colonne, puis sur les flèches, et de nouveau sur Espace pour la poser.",
   "project.settings.kanban.columns.reorder": "Réordonner la colonne",
   "project.settings.roadmap.title": "Feuille de route",
   "project.settings.roadmap.description":

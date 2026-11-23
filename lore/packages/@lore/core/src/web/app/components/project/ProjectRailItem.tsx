@@ -6,12 +6,10 @@ import {
   TooltipTrigger,
   cn,
 } from "@alepha/ui";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import { useSortableItem } from "@alepha/ui/sortable";
 import { Link, useRouter } from "alepha/react/router";
 import {
   type KeyboardEvent,
-  type PointerEventHandler,
   type ReactNode,
   useEffect,
   useRef,
@@ -45,7 +43,7 @@ export interface ProjectRailItemProps {
    * Picked up by the keyboard, and moving with the arrows (#Q3438).
    */
   picked?: boolean;
-  onKeyDown?: (event: KeyboardEvent<HTMLAnchorElement>) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
   /**
    * Describes the keyboard reorder to a screen reader.
    */
@@ -77,16 +75,9 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
   const { project, active } = props;
   const sortable = !props.temporary;
 
-  const {
-    listeners,
-    setNodeRef: setDragRef,
-    transform,
-    isDragging,
-  } = useDraggable({ id: project.id, disabled: !sortable });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({
-    id: project.id,
-    disabled: !sortable,
-  });
+  // The shared sortable item (#Q4128).
+  const item = useSortableItem(project.id, { disabled: !sortable });
+  const { isDragging, isOver } = item;
 
   // The middle of the dock scrolls when it overflows: the project being
   // looked at must not sit out of sight below the fold.
@@ -104,24 +95,14 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
     <div
       ref={(node) => {
         ref.current = node;
-        setDragRef(node);
-        setDropRef(node);
+        item.ref(node);
       }}
       // In the capture phase: the context-menu and tooltip triggers
       // inside handle `pointerdown` themselves, and a bubbling listener here
       // never heard it, so no drag ever started.
-      onPointerDownCapture={
-        sortable
-          ? (listeners?.onPointerDown as
-              | PointerEventHandler<HTMLDivElement>
-              | undefined)
-          : undefined
-      }
+      onPointerDownCapture={item.onPointerDown}
       data-testid="project-rail-slot"
-      style={{
-        transform: CSS.Translate.toString(transform),
-        zIndex: isDragging ? 10 : undefined,
-      }}
+      style={item.style}
       className={cn(
         "relative flex shrink-0 touch-none",
         isDragging && "cursor-grabbing",
@@ -183,8 +164,7 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
                     ? "ring-ring/40 rounded-xl ring-2"
                     : "rounded-2xl group-hover/rail:rounded-xl",
                   // Where a drop lands, and what the keyboard holds.
-                  ((isOver && !isDragging) || props.picked) &&
-                    "ring-primary ring-2",
+                  (isOver || props.picked) && "ring-primary ring-2",
                   isDragging && "opacity-70 shadow-lg",
                 )}
               />

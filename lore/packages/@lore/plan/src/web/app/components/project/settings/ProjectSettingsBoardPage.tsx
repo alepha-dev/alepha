@@ -3,14 +3,9 @@ import { Control } from "@alepha/ui/form";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import {
   DndContext,
-  type DragEndEvent,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+  useSortableItem,
+  useSortableList,
+} from "@alepha/ui/sortable";
 import type { ProjectController } from "@lore/core/api";
 import type { KanbanColumnSettings } from "@lore/core/schemas";
 import {
@@ -23,12 +18,11 @@ import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { type KeyboardEvent, useId, useState } from "react";
 
 import type { KanbanController } from "../../../../../api/controllers/KanbanController.ts";
 import type { ColumnKind } from "../../kanban/KanbanColumn.tsx";
 import { useKanbanColumnOps } from "../../kanban/useKanbanColumnOps.ts";
-import { KanbanColumnOrder } from "./kanbanColumnOrder.ts";
 
 const MAX_COLUMNS = 5;
 
@@ -43,11 +37,6 @@ const MAX_COLUMNS = 5;
 const columnStatusSchema = z.object({
   status: z.text(),
 });
-
-/**
- * Stateless, so one instance serves every mount.
- */
-const columnOrder = new KanbanColumnOrder();
 
 /**
  * Quests > Board: the kanban columns, their order, the lifecycle state each
@@ -70,12 +59,7 @@ const ProjectSettingsBoardPage = () => {
   // `router.path("project", …)` — the project root — so this page unmounts
   // and remounts rather than being handed another project's columns.
   const [columns, setColumns] = useState<string[]>(persisted);
-  const dndId = useId();
-  const sensors = useSensors(
-    // The grip sits beside a text input; without a distance threshold a
-    // click that grazes it starts a drag instead of focusing the field.
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
+  const hintId = useId();
 
   /**
    * Add, rename and delete go through the board's own hook, so Settings and
@@ -154,6 +138,24 @@ const ProjectSettingsBoardPage = () => {
     [kanbanApi, alepha, project],
   );
 
+  // The shared sortable list (#Q4128): dragged by the grip, or moved from
+  // the keyboard on it. The grip sits beside a text input; without a
+  // distance threshold a click that grazes it starts a drag instead of
+  // focusing the field.
+  const list = useSortableList<string>({
+    ids: columns,
+    labelOf: (name) => name,
+    activationDistance: 8,
+    onReorder: (next, previous) => void reorderAction.run(next, previous),
+    announcements: {
+      picked: (name) => tr("dock.reorder.picked", { args: [name] }),
+      moved: (name, at, total) =>
+        tr("dock.reorder.moved", { args: [name, String(at), String(total)] }),
+      dropped: (name) => tr("dock.reorder.dropped", { args: [name] }),
+      cancelled: (name) => tr("dock.reorder.cancelled", { args: [name] }),
+    },
+  });
+
   /**
    * Every column control waits while any of these runs (#E59 rule 10): the
    * rows used to be held by a key naming the operation in flight, and over
@@ -171,19 +173,6 @@ const ProjectSettingsBoardPage = () => {
 
   const handleDelete = (name: string) => void columnOps.remove(name);
 
-  const handleReorder = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const next = columnOrder.move(columns, String(active.id), String(over.id));
-    // `move` returns the input identity for a no-op — a drop on itself, or a
-    // name that is no longer in the list. The server would refuse the second
-    // and ignore the first, so neither is worth a round trip.
-    if (next === columns) return;
-
-    void reorderAction.run(next, columns);
-  };
-
   return (
     <Card className={cn(settingsCardEdge, "py-4")}>
       <CardContent className="flex flex-col gap-3 px-4">
@@ -197,11 +186,20 @@ const ProjectSettingsBoardPage = () => {
         </div>
 
         <div className="flex flex-col gap-2">
-          <DndContext id={dndId} sensors={sensors} onDragEnd={handleReorder}>
-            {columns.map((col) => (
+          <span id={hintId} className="sr-only">
+            {tr("project.settings.kanban.columns.reorder.hint")}
+          </span>
+          <span aria-live="assertive" className="sr-only">
+            {list.announcement}
+          </span>
+          <DndContext {...list.contextProps}>
+            {list.order.map((col) => (
               <ColumnRow
                 key={col}
                 name={col}
+                picked={list.picked === col}
+                onReorderKey={list.onKeyDown(col)}
+                describedBy={hintId}
                 disabled={busy || !projectApi.updateProjectById.can()}
                 status={
                   project.kanbanColumnConfig?.[col]?.status ?? "in_progress"
@@ -239,6 +237,15 @@ interface ColumnRowProps {
   name: string;
   disabled: boolean;
   /**
+   * Held by the keyboard move.
+   */
+  picked: boolean;
+  onReorderKey: (event: KeyboardEvent<HTMLElement>) => void;
+  /**
+   * The id of the hint that says how to move a column from the keyboard.
+   */
+  describedBy: string;
+  /**
    * Which lifecycle state this column collapses to. The triple stays the
    * truth; a column only maps onto it (#1227).
    */
@@ -270,33 +277,20 @@ const ColumnRow = (props: ColumnRowProps) => {
   // The name is the identity the reorder endpoint speaks in, and it is
   // unique by construction — `addKanbanColumn` / `renameKanbanColumn`
   // refuse a duplicate.
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setDragRef,
-    setActivatorNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({ id: props.name, disabled: props.disabled });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: props.name });
+  const item = useSortableItem(props.name, { disabled: props.disabled });
+  const { isDragging, isOver } = item;
 
   return (
     <div
-      ref={(node) => {
-        // One element is both the thing that moves and the thing you drop
-        // onto, so it carries both refs.
-        setDragRef(node);
-        setDropRef(node);
-      }}
+      // One element is both the thing that moves and the thing you drop
+      // onto.
+      ref={item.ref}
       data-testid="kanban-settings-column"
       data-column-name={props.name}
-      style={{
-        transform: CSS.Translate.toString(transform),
-        opacity: isDragging ? 0.5 : undefined,
-      }}
+      style={{ ...item.style, opacity: isDragging ? 0.5 : undefined }}
       className={cn(
         "border-border bg-muted/30 flex items-center gap-2 rounded-md border px-2 py-1.5",
-        isOver && !isDragging && "border-primary",
+        (isOver || props.picked) && "border-primary",
       )}
     >
       {/*
@@ -308,9 +302,10 @@ const ColumnRow = (props: ColumnRowProps) => {
       */}
       <button
         type="button"
-        ref={setActivatorNodeRef}
-        {...listeners}
-        {...attributes}
+        onPointerDown={item.onPointerDown}
+        onKeyDown={props.disabled ? undefined : props.onReorderKey}
+        aria-describedby={props.describedBy}
+        aria-pressed={props.picked}
         aria-label={tr("project.settings.kanban.columns.reorder")}
         disabled={props.disabled}
         className={cn(

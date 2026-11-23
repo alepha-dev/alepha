@@ -1,25 +1,11 @@
 import { Tooltip, TooltipContent, TooltipTrigger, cn } from "@alepha/ui";
 import { useSettingsDialog } from "@alepha/ui/settings";
-import {
-  DndContext,
-  type DragEndEvent,
-  type Modifier,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { useAlepha, useStore } from "alepha/react";
+import { DndContext, useSortableList } from "@alepha/ui/sortable";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { Home, LayoutGrid, Plus } from "lucide-react";
-import {
-  type KeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 
 import { USER_DOCK_CAP } from "../../../../api/schemas/userDockCap.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -66,23 +52,11 @@ const ProjectRail = () => {
   const leavingTo = useLeavingProject(routerState.params.projectSlug);
   const [overview] = useStore(userProjectsAtom);
   const [dock] = useStore(userDockAtom);
-  const alepha = useAlepha();
   const actions = useDock();
-  const dndId = useId();
   const hintId = useId();
   const pinsRef = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [picked, setPicked] = useState<
-    { id: number; before: number[] } | undefined
-  >(undefined);
-  const [announcement, setAnnouncement] = useState("");
   // Set while a pointer drag runs, read by the click its pointerup fires.
   const dropped = useRef(false);
-  const sensors = useSensors(
-    // Without a distance a plain click would start a drag, and a click must
-    // stay a click.
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-  );
 
   const projects = overview?.projects ?? [];
   // The server already narrows the dock to live, unarchived memberships;
@@ -93,7 +67,32 @@ const ProjectRail = () => {
     .map((id) => byId.get(id))
     .filter((it) => it !== undefined && !it.archivedAt)
     .map((it) => it!);
+  const titleOf = (id: number) => byId.get(id)?.title ?? "";
+  // The shared sortable list (#Q4128): a drop or a keyboard step is drawn at
+  // once, and `move` draws the new order in the atom and saves it.
+  const list = useSortableList<number>({
+    ids: pinned.map((it) => it.id),
+    labelOf: titleOf,
+    onReorder: (next) => void actions.move(next),
+    announcements: {
+      picked: (title) => tr("dock.reorder.picked", { args: [title] }),
+      moved: (title, at, total) =>
+        tr("dock.reorder.moved", { args: [title, String(at), String(total)] }),
+      dropped: (title) => tr("dock.reorder.dropped", { args: [title] }),
+      cancelled: (title) => tr("dock.reorder.cancelled", { args: [title] }),
+    },
+    // A drop's click is held from the moment a drag starts until the next
+    // press: the pointerup that drops an icon also clicks the link under it.
+    onDragStart: () => {
+      dropped.current = true;
+    },
+  });
+  const picked = list.picked;
   const ids = pinned.map((it) => it.id);
+  const shownPins = list.order
+    .map((id) => byId.get(id))
+    .filter((it) => it !== undefined)
+    .map((it) => it!);
 
   // The click a drop ends with must not follow the link it was released
   // on. dnd-kit stops that click's propagation at `document`, so no React
@@ -111,13 +110,13 @@ const ProjectRail = () => {
   // The keyboard move re-renders the list, which can take focus off the icon
   // being moved: give it back.
   useEffect(() => {
-    if (!picked) return;
+    if (picked === undefined) return;
     pinsRef.current
       ?.querySelector<HTMLElement>(
-        `[data-testid="project-rail-item"][data-project-id="${picked.id}"]`,
+        `[data-testid="project-rail-item"][data-project-id="${picked}"]`,
       )
       ?.focus();
-  }, [picked, dock]);
+  }, [picked, list.order.join(",")]);
 
   // Every docked project's unread, in one request (#Q3981): the pins and
   // the current project. Above the early return, as every hook is.
@@ -135,7 +134,6 @@ const ProjectRail = () => {
   const temporary = ids.includes(project.id)
     ? undefined
     : (byId.get(project.id) ?? project);
-  const titleOf = (id: number) => byId.get(id)?.title ?? "";
   const unreadLabel = (id: number) => {
     const n = unread.get(id) ?? 0;
     return n
@@ -147,91 +145,6 @@ const ProjectRail = () => {
   const full = ids.length >= USER_DOCK_CAP;
   const busy = actions.pin.loading || actions.unpin.loading;
 
-  // A drop's click is held from the moment a drag starts until the next
-  // press: the pointerup that drops an icon also clicks the link under it.
-  const onDragStart = () => {
-    setDragging(true);
-    dropped.current = true;
-  };
-
-  const settle = () => {
-    setDragging(false);
-  };
-
-  // The dock is one column (#Q3839): an icon moves up and down it, never
-  // sideways, and never past its ends. A sideways translate used to widen
-  // the pins column, whose horizontal auto-scroll then chased the pointer
-  // and carried the icon off to the right.
-  const vertical: Modifier = ({
-    transform,
-    draggingNodeRect,
-    containerNodeRect,
-  }) => {
-    let y = transform.y;
-    if (draggingNodeRect && containerNodeRect) {
-      y = Math.min(
-        Math.max(y, containerNodeRect.top - draggingNodeRect.top),
-        containerNodeRect.bottom - draggingNodeRect.bottom,
-      );
-    }
-    return { ...transform, x: 0, y };
-  };
-
-  const onDragEnd = (event: DragEndEvent) => {
-    settle();
-    const from = ids.indexOf(Number(event.active.id));
-    const to = event.over ? ids.indexOf(Number(event.over.id)) : -1;
-    if (from < 0 || to < 0 || from === to) return;
-    const next = [...ids];
-    next.splice(to, 0, ...next.splice(from, 1));
-    void actions.move(next);
-  };
-
-  const onKeyDown =
-    (id: number) => (event: KeyboardEvent<HTMLAnchorElement>) => {
-      const held = picked?.id === id;
-      if (event.key === " ") {
-        event.preventDefault();
-        if (!held) {
-          setPicked({ id, before: ids });
-          setAnnouncement(tr("dock.reorder.picked", { args: [titleOf(id)] }));
-          return;
-        }
-      }
-      if (!held) return;
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-        event.preventDefault();
-        const from = ids.indexOf(id);
-        const to = from + (event.key === "ArrowUp" ? -1 : 1);
-        if (to < 0 || to >= ids.length) return;
-        const next = [...ids];
-        next.splice(to, 0, ...next.splice(from, 1));
-        setAnnouncement(
-          tr("dock.reorder.moved", {
-            args: [titleOf(id), String(to + 1), String(ids.length)],
-          }),
-        );
-        // Drawn now, saved on the drop.
-        alepha.store.set(userDockAtom, next);
-        return;
-      }
-      if (event.key === " " || event.key === "Enter") {
-        event.preventDefault();
-        setPicked(undefined);
-        setAnnouncement(tr("dock.reorder.dropped", { args: [titleOf(id)] }));
-        if (ids.join(",") !== picked.before.join(",")) {
-          void actions.reorder.run(ids, picked.before);
-        }
-        return;
-      }
-      if (event.key === "Escape" || event.key === "Tab") {
-        if (event.key === "Escape") event.preventDefault();
-        alepha.store.set(userDockAtom, picked.before);
-        setPicked(undefined);
-        setAnnouncement(tr("dock.reorder.cancelled", { args: [titleOf(id)] }));
-      }
-    };
-
   return (
     <nav
       aria-label={tr("project.rail.label")}
@@ -242,7 +155,7 @@ const ProjectRail = () => {
         {tr("dock.reorder.hint")}
       </span>
       <span aria-live="assertive" className="sr-only">
-        {announcement}
+        {list.announcement}
       </span>
       <div className="flex shrink-0 flex-col items-center gap-2 pt-2.5">
         <RailButton
@@ -254,16 +167,7 @@ const ProjectRail = () => {
         </RailButton>
         <RailSeparator />
       </div>
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        modifiers={[vertical]}
-        // Vertical only: the column has nothing to scroll sideways.
-        autoScroll={{ threshold: { x: 0, y: 0.2 } }}
-        onDragStart={onDragStart}
-        onDragCancel={settle}
-        onDragEnd={onDragEnd}
-      >
+      <DndContext {...list.contextProps}>
         <div
           ref={pinsRef}
           data-testid="project-rail-pins"
@@ -282,16 +186,16 @@ const ProjectRail = () => {
           // no longer fit, which leaves those two at the bottom.
           className="flex min-h-0 w-full flex-initial [scrollbar-width:none] flex-col items-center gap-2 overflow-x-hidden overflow-y-auto px-3 py-1"
         >
-          {pinned.map((it) => (
+          {shownPins.map((it) => (
             <ProjectRailItem
               key={it.id}
               project={it}
               active={leavingTo ? it.slug === leavingTo : it.id === project.id}
-              dragging={dragging}
-              picked={picked?.id === it.id}
+              dragging={list.dragging}
+              picked={picked === it.id}
               unread={unread.get(it.id)}
               unreadLabel={unreadLabel(it.id)}
-              onKeyDown={onKeyDown(it.id)}
+              onKeyDown={list.onKeyDown(it.id)}
               describedBy={hintId}
               menu={
                 <ProjectRailMenu
