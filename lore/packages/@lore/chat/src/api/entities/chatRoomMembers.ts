@@ -35,10 +35,16 @@ export const chatRoomMembers = $entity({
       "mentions",
     ),
     /**
-     * The `ai_conversations` row this member's runs in this room continue
-     * (#Q3930): one run log per room and mentioner.
+     * ⚠️ Unread since #Q4197, replaced by `aiConversations`, whose `lore`
+     * key the migration filled from it. Kept until its drop ships alone.
      */
     aiConversationId: z.uuid().optional(),
+    /**
+     * The `ai_conversations` row this member's runs in this room continue,
+     * per agent (#Q3930, #Q4197): keyed by `lore` or a project agent's id,
+     * so `@jarvis` never continues `@lore`'s thread.
+     */
+    aiConversations: z.record(z.text(), z.uuid()).optional(),
   }),
   indexes: [
     { columns: ["roomId", "userId"], unique: true },

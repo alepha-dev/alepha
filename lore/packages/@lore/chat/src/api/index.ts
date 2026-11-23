@@ -89,6 +89,7 @@ export {
   type ChatAgentDecision,
   type ChatAgentEvent,
   type ChatAgentMatch,
+  type ChatAgentPersona,
   type ChatAgentRequest,
   type ChatResponder,
   ChatResponderRegistry,

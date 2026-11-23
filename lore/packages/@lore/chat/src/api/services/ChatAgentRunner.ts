@@ -7,14 +7,20 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ConflictError, ForbiddenError, NotFoundError } from "alepha/server";
 
+import { chatAgents } from "../entities/chatAgents.ts";
 import { type ChatMessage, chatMessages } from "../entities/chatMessages.ts";
-import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
+import {
+  type ChatRoomMember,
+  chatRoomMembers,
+} from "../entities/chatRoomMembers.ts";
 import type { ChatRoom } from "../entities/chatRooms.ts";
 import { ChatAudience } from "./ChatAudience.ts";
 import { ChatLive } from "./ChatLive.ts";
 import { ChatMessageService } from "./ChatMessageService.ts";
 import {
   type ChatAgentEvent,
+  type ChatAgentMatch,
+  type ChatAgentPersona,
   ChatResponderRegistry,
 } from "./ChatResponderRegistry.ts";
 import { ChatRoomService } from "./ChatRoomService.ts";
@@ -61,6 +67,7 @@ export class ChatAgentRunner {
   protected readonly log = $logger();
   protected readonly messages = $repository(chatMessages);
   protected readonly members = $repository(chatRoomMembers);
+  protected readonly agents = $repository(chatAgents);
   protected readonly registry = $inject(ChatResponderRegistry);
   protected readonly rooms = $inject(ChatRoomService);
   protected readonly audience = $inject(ChatAudience);
@@ -71,7 +78,7 @@ export class ChatAgentRunner {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
-   * Answer `trigger`, a member's message naming `agent`.
+   * Answer `trigger`, a member's message naming `handle`.
    */
   public async start(
     room: ChatRoom,
@@ -84,11 +91,12 @@ export class ChatAgentRunner {
     const { responder } = match;
     const agent = match.handle;
     const agentId = match.agent?.id;
+    const key = ChatAgentRunner.keyOf(match);
 
-    if (await this.running(room.id, agent, user.id)) {
+    if (await this.running(room.id, key, user.id)) {
       await this.note(
         room,
-        agent,
+        { agent, agentId },
         user.id,
         "failed",
         "I am still answering your last message here: ask again once it is done.",
@@ -108,7 +116,9 @@ export class ChatAgentRunner {
 
     const history = await this.history(room, trigger);
     const membership = await this.rooms.membershipOf(room.id, user.id);
-    this.detach(room, answer, () =>
+    const conversationId = this.conversationOf(membership, key);
+    const persona = ChatAgentRunner.personaOf(match);
+    this.detach(room, answer, this.nameOf(match), () =>
       responder.respond({
         projectId: room.projectId,
         roomId: room.id,
@@ -116,16 +126,17 @@ export class ChatAgentRunner {
         user,
         prompt: trigger.body,
         history,
-        ...(membership?.aiConversationId
-          ? { conversationId: membership.aiConversationId }
-          : {}),
+        ...(conversationId ? { conversationId } : {}),
+        ...(persona ? { agent: persona } : {}),
       }),
     );
   }
 
   /**
    * The mentioner approves or denies the write the run paused on; nobody
-   * else may, as the run is theirs.
+   * else may, as the run is theirs. The resume is the same agent's: its
+   * playbook and model, read from the answer's `agentId`, even once the
+   * agent was renamed.
    */
   public async decide(
     projectId: number,
@@ -150,27 +161,65 @@ export class ChatAgentRunner {
     if (run.status !== "paused" || !run.callId) {
       throw new ConflictError("This answer is not waiting for a decision");
     }
-    const responder = (await this.registry.byMessage(projectId, answer))
-      ?.responder;
+    const match = await this.registry.byMessage(projectId, answer);
     const membership = await this.rooms.membershipOf(room.id, user.id);
-    if (!responder || !membership?.aiConversationId) {
+    const conversationId = match
+      ? this.conversationOf(membership, ChatAgentRunner.keyOf(match))
+      : undefined;
+    if (!match || !conversationId) {
       throw new ConflictError("This answer can no longer be resumed");
     }
     const resumed = await this.messages.updateById(answer.id, {
       agentRun: { status: "running", mentionerId: user.id },
     });
     await this.publish(room, resumed, "message.updated");
-    const conversationId = membership.aiConversationId;
     const callId = run.callId;
-    this.detach(room, resumed, () =>
-      responder.resume({
+    const persona = ChatAgentRunner.personaOf(match);
+    this.detach(room, resumed, this.nameOf(match), () =>
+      match.responder.resume({
         projectId: room.projectId,
         user,
         conversationId,
         callId,
         decision,
+        ...(persona ? { agent: persona } : {}),
       }),
     );
+  }
+
+  /**
+   * The key an agent's run log is kept under on a membership: `lore`, or
+   * the project agent's id, which a rename does not change.
+   */
+  public static keyOf(match: ChatAgentMatch): string {
+    return match.agent?.id ?? match.handle;
+  }
+
+  protected static personaOf(
+    match: ChatAgentMatch,
+  ): ChatAgentPersona | undefined {
+    const agent = match.agent;
+    if (!agent) return undefined;
+    return {
+      id: agent.id,
+      name: agent.name,
+      instructions: agent.prePrompt,
+      ...(agent.model ? { model: agent.model } : {}),
+    };
+  }
+
+  /**
+   * What the room calls the agent in a line of its own: `Jarvis`, `Lore`.
+   */
+  protected nameOf(match: ChatAgentMatch): string {
+    return match.agent?.name ?? match.responder.label;
+  }
+
+  protected conversationOf(
+    membership: ChatRoomMember | undefined,
+    key: string,
+  ): string | undefined {
+    return membership?.aiConversations?.[key];
   }
 
   /**
@@ -188,13 +237,14 @@ export class ChatAgentRunner {
   protected detach(
     room: ChatRoom,
     answer: ChatMessage,
+    name: string,
     events: () => AsyncIterable<ChatAgentEvent>,
   ): void {
     this.background.defer(() =>
       this.alepha.context.run(
         () =>
           this.scope.pinned(room.projectId, () =>
-            this.drive(room, answer, events()),
+            this.drive(room, answer, name, events()),
           ),
         { signal: AbortSignal.timeout(ChatAgentRunner.TIMEOUT_MS) },
       ),
@@ -208,6 +258,7 @@ export class ChatAgentRunner {
   protected async drive(
     room: ChatRoom,
     answer: ChatMessage,
+    name: string,
     events: AsyncIterable<ChatAgentEvent>,
   ): Promise<void> {
     const mentionerId = answer.agentRun!.mentionerId;
@@ -242,7 +293,12 @@ export class ChatAgentRunner {
     try {
       for await (const event of events) {
         if (event.type === "conversation") {
-          await this.remember(room.id, mentionerId, event.conversationId);
+          await this.remember(
+            room.id,
+            mentionerId,
+            answer.agentId ?? answer.agent ?? "",
+            event.conversationId,
+          );
         } else if (event.type === "tool") {
           const last = tools.at(-1);
           if (
@@ -275,7 +331,7 @@ export class ChatAgentRunner {
         } else if (event.type === "error") {
           await finish(
             { status: "failed", mentionerId },
-            this.joined(text, `Lore could not finish: ${event.message}`),
+            this.joined(text, `${name} could not finish: ${event.message}`),
           );
           return;
         }
@@ -287,7 +343,7 @@ export class ChatAgentRunner {
         { status: "failed", mentionerId },
         this.joined(
           text,
-          `Lore could not finish: ${error instanceof Error ? error.message : "the run stopped"}`,
+          `${name} could not finish: ${error instanceof Error ? error.message : "the run stopped"}`,
         ),
       ).catch(() => {});
     }
@@ -298,20 +354,23 @@ export class ChatAgentRunner {
   }
 
   /**
-   * An answer of the agent's that runs or waits for its mentioner here.
+   * An answer of the agent's that runs or waits for its mentioner here,
+   * keyed on the agent's id (a built-in's handle), so a renamed agent is
+   * still the same one.
    */
   protected async running(
     roomId: string,
-    agent: string,
+    key: string,
     mentionerId: string,
   ): Promise<boolean> {
     const recent = await this.messages.findMany({
-      where: { roomId: { eq: roomId }, agent: { eq: agent } },
+      where: { roomId: { eq: roomId }, agent: { isNotNull: true } },
       orderBy: [{ column: "id", direction: "desc" }],
-      limit: 20,
+      limit: 40,
     });
     return recent.some(
       (it) =>
+        (it.agentId ?? it.agent) === key &&
         it.agentRun?.mentionerId === mentionerId &&
         (it.agentRun.status === "running" || it.agentRun.status === "paused"),
     );
@@ -322,14 +381,15 @@ export class ChatAgentRunner {
    */
   protected async note(
     room: ChatRoom,
-    agent: string,
+    by: { agent: string; agentId?: string },
     mentionerId: string,
     status: "failed",
     line: string,
   ): Promise<void> {
     const message = await this.messages.create({
       roomId: room.id,
-      agent,
+      agent: by.agent,
+      ...(by.agentId ? { agentId: by.agentId } : {}),
       body: `_${line}_`,
       references: [],
       agentRun: { status, mentionerId },
@@ -350,11 +410,29 @@ export class ChatAgentRunner {
     const names = new Map(
       (await this.roster.of(room.projectId)).map((it) => [it.userId, it.label]),
     );
+    // A project agent's answers are signed with its current name.
+    const agentIds = [
+      ...new Set(rows.flatMap((it) => (it.agentId ? [it.agentId] : []))),
+    ];
+    const agentNames = new Map(
+      agentIds.length
+        ? (
+            await this.agents.findMany({
+              where: { id: { inArray: agentIds } },
+              columns: ["id", "name"],
+            })
+          ).map((it) => [it.id, it.name])
+        : [],
+    );
     return rows
       .filter((it) => !it.deletedAt && it.body.trim())
       .toReversed()
       .map((it) => ({
-        author: it.agent ?? names.get(it.authorId ?? "") ?? "a removed member",
+        author:
+          (it.agentId ? agentNames.get(it.agentId) : undefined) ??
+          it.agent ??
+          names.get(it.authorId ?? "") ??
+          "a removed member",
         agent: !!it.agent,
         text: it.body.slice(0, 2000),
       }));
@@ -363,12 +441,16 @@ export class ChatAgentRunner {
   protected async remember(
     roomId: string,
     userId: string,
+    key: string,
     conversationId: string,
   ): Promise<void> {
     const membership = await this.rooms.membershipOf(roomId, userId);
-    if (membership && membership.aiConversationId !== conversationId) {
+    if (membership && membership.aiConversations?.[key] !== conversationId) {
       await this.members.updateById(membership.id, {
-        aiConversationId: conversationId,
+        aiConversations: {
+          ...membership.aiConversations,
+          [key]: conversationId,
+        },
       });
     }
   }
