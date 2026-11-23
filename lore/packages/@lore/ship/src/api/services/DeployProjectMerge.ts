@@ -6,12 +6,9 @@ import {
   type ProjectMergeStepPlan,
   type ProjectMergeTable,
   ProjectMergeTables,
-  projectMergeWrite,
-  ProjectSecurityService,
 } from "@lore/core/api";
-import { hostProjects, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
-import { $repository, type SQLLike } from "alepha/orm";
+import { type SQLLike } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
@@ -23,7 +20,6 @@ import { registryCredentials } from "../entities/registryCredentials.ts";
 import { sigils } from "../entities/sigils.ts";
 import { stackDeployments } from "../entities/stackDeployments.ts";
 import { stacks } from "../entities/stacks.ts";
-import { HostService } from "./HostService.ts";
 
 /**
  * Deploy's step of a project merge, registered on core's
@@ -47,9 +43,6 @@ import { HostService } from "./HostService.ts";
 export class DeployProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly tables = $inject(ProjectMergeTables);
-  protected readonly projectSecurity = $inject(ProjectSecurityService);
-  protected readonly hostService = $inject(HostService);
-  protected readonly hosts = $repository(hosts);
 
   protected static readonly moved: ProjectMergeTable[] = [
     {
@@ -91,21 +84,6 @@ export class DeployProjectMerge {
     { kind: "stack deployment", entity: stackDeployments },
     { kind: "monitor", entity: monitors },
     {
-      // The hosts the source is the home of (#Q3278): a slug is unique
-      // per home project and never rewritten, since a machine's config may
-      // record it, so one the target already holds is a conflict.
-      kind: "host",
-      entity: hosts,
-      keys: ["slug"],
-      onCollision: "refuse",
-    },
-    {
-      kind: "host loan",
-      entity: hostProjects,
-      keys: ["hostId"],
-      onCollision: "keepTarget",
-    },
-    {
       kind: "registry credential",
       entity: registryCredentials,
       keys: ["host"],
@@ -136,48 +114,6 @@ export class DeployProjectMerge {
       changed.push(...result.changed);
       conflicts.push(...result.conflicts);
       statements.push(...result.statements);
-    }
-    // The hosts the source is the home of follow it (#Q3280): their cascade
-    // anchor becomes the target's owner, in a statement after the move, and
-    // a target with Apps off is a conflict, since nobody could manage them
-    // there. Refused in the plan, so nothing is written.
-    const homed = await this.hosts.findMany({
-      where: { projectId: { eq: context.sourceProjectId } },
-      columns: ["id", "slug"],
-    });
-    if (homed.length > 0) {
-      const capabilities = await this.projectSecurity.capabilitiesOf(
-        context.targetProjectId,
-      );
-      if (!("ship" in capabilities)) {
-        for (const host of homed) {
-          conflicts.push({
-            kind: "host",
-            key: `${host.slug} (Ship is off in the target)`,
-            sourceId: host.id,
-            targetId: context.targetProjectId,
-          });
-        }
-      }
-      const owner = await this.hostService.ownerOf(context.targetProjectId);
-      if (owner) {
-        // Filtered on the TARGET, after the move, on purpose: by the time it
-        // runs the source's homed hosts belong to the target, and it
-        // repoints them all. The target's own hosts are rewritten to the
-        // value they already hold, since `HostAnchorHooks` keeps every
-        // homed host's `owner_user_id` on its home project's owner, so only
-        // the moved ones change. `owner_user_id` is the cascade anchor
-        // (#Q3278), not a stale owner column. It is a statement of the merge
-        // batch (`updateStatement`), never an `hosts.updateMany`, which
-        // would run at once, outside the batch, and break its atomicity.
-        statements.push(
-          this.hosts.updateStatement(
-            { projectId: { eq: context.targetProjectId } },
-            { ownerUserId: owner },
-            projectMergeWrite,
-          ),
-        );
-      }
     }
     return {
       moved,

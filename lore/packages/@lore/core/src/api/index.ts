@@ -46,6 +46,7 @@ import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
 import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
+import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 import { HostJobJobs } from "./jobs/HostJobJobs.ts";
 import { HourlyJobs } from "./jobs/HourlyJobs.ts";
 import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
@@ -81,14 +82,21 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
+import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 import { HostCommandHandlerRegistry } from "./services/HostCommandHandlerRegistry.ts";
 import { HostCommandService } from "./services/HostCommandService.ts";
 import { HostCommandTransport } from "./services/HostCommandTransport.ts";
+import { HostHomeGuards } from "./services/HostHomeGuards.ts";
+import { HostInventoryService } from "./services/HostInventoryService.ts";
 import { HostJobs } from "./services/HostJobs.ts";
 import { HostJobService } from "./services/HostJobService.ts";
+import { HostProjectDeletion } from "./services/HostProjectDeletion.ts";
 import { HostProjectEvents } from "./services/HostProjectEvents.ts";
+import { HostProjectMerge } from "./services/HostProjectMerge.ts";
+import { HostService } from "./services/HostService.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostTypeRegistry } from "./services/HostTypeRegistry.ts";
+import { HostUpgradeService } from "./services/HostUpgradeService.ts";
 import { HostUsageRegistry } from "./services/HostUsageRegistry.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
 import { JobKeyService } from "./services/JobKeyService.ts";
@@ -309,6 +317,19 @@ export const LoreCoreApi = $module({
     // agent jobs of #E163), their sweeps and the jobs pages' endpoints.
     HostCommandService,
     HostCommandJobs,
+    // What a host IS, its inventory, its upgrade, and its lifecycle (#E166,
+    // #Q4099): the cascade anchor kept on the home project's owner (#Q3278),
+    // the overdue sweep (#Q3138), the refusal to delete a project that is
+    // a host's home (#Q3280), and the host part of a project merge and
+    // deletion. Nothing injects the hooks, guards and steps.
+    HostService,
+    HostInventoryService,
+    HostUpgradeService,
+    HostAnchorHooks,
+    HostExpiryJobs,
+    HostHomeGuards,
+    HostProjectMerge,
+    HostProjectDeletion,
     HostJobService,
     HostJobJobs,
     HostJobController,
@@ -687,6 +708,12 @@ export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
+export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
+export { HostUpgradeService } from "./services/HostUpgradeService.ts";
+export { HostInventoryService } from "./services/HostInventoryService.ts";
+export { HostService } from "./services/HostService.ts";
+export { HostHomeGuards } from "./services/HostHomeGuards.ts";
+export { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 export { HostJobController } from "./controllers/HostJobController.ts";
 export { HostJobService } from "./services/HostJobService.ts";
 export { HostCommandService } from "./services/HostCommandService.ts";
@@ -717,3 +744,5 @@ export {
   type HostCommandHandler,
   type HostCommandHandlerInput,
 } from "./services/HostCommandHandlerRegistry.ts";
+export { HostProjectMerge } from "./services/HostProjectMerge.ts";
+export { HostProjectDeletion } from "./services/HostProjectDeletion.ts";

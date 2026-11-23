@@ -1,4 +1,4 @@
-import { HostCommandService } from "@lore/core/api";
+import { HostCommandService, HostInventoryService } from "@lore/core/api";
 import {
   type HostCommand,
   hostCommands,
@@ -13,7 +13,6 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import type { AppInstance } from "../entities/appInstances.ts";
 import type { StackEnvironment } from "../entities/stackEnvironments.ts";
 import type { Stack } from "../entities/stacks.ts";
-import { HostInventoryService } from "./HostInventoryService.ts";
 
 /**
  * Where a copy lives on a Bay, when it does: the host, and the name the

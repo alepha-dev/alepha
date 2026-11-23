@@ -3,6 +3,8 @@ import {
   HostTokenService,
   HostCommandService,
   HostJobService,
+  HostInventoryService,
+  HostService,
 } from "@lore/core/api";
 import {
   type Host,
@@ -16,8 +18,6 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $channel, $websocket } from "alepha/websocket";
 
-import { HostInventoryService } from "../services/HostInventoryService.ts";
-import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 
 /**

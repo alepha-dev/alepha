@@ -2993,8 +2993,6 @@ export default {
   "hosts.home.lend": "Lend to this project",
   "hosts.blocker.delete":
     "This project is the home of $1. Move these hosts to another project or delete them first: other projects may deploy onto them.",
-  "hosts.blocker.apps":
-    "Apps stays on while this project is the home of $1: move or delete them first.",
   "bay.settings.loans.col.project": "Project",
   "bay.settings.loans.col.lentAt": "Lent",
   "hosts.online": "online",

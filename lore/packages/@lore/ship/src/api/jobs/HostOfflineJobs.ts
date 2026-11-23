@@ -2,6 +2,7 @@ import {
   HostProjectEvents,
   SourceRepository,
   HostEventFields,
+  HostService,
 } from "@lore/core/api";
 import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -10,8 +11,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
-
-import { HostService } from "../services/HostService.ts";
 
 /**
  * Raises `host.offline` once per outage, when a Bay host has been gone for

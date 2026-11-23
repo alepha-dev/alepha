@@ -1,3 +1,4 @@
+import { HostInventoryService } from "@lore/core/api";
 import {
   hostInventories,
   type Host,
@@ -14,11 +15,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  HostController,
-  HostInventoryService,
-  LoreShipApi,
-} from "../src/api/index.ts";
+import { HostController, LoreShipApi } from "../src/api/index.ts";
 import { appInstances } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";

@@ -1,5 +1,11 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
-import { projects, hostProjects, hosts } from "@lore/core/schemas";
+import { HostService } from "@lore/core/api";
+import {
+  projects,
+  projectCapabilities,
+  hostProjects,
+  hosts,
+} from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { CloudflareDeployClient } from "alepha/cli/infra-lib";
@@ -23,10 +29,15 @@ import {
   RollbackService,
   ArtifactSchemaStore,
   ArtifactService,
+  CloudflareProbeService,
   LoreShipApi,
+  ProjectHostController,
 } from "../src/api/index.ts";
 import { appInstances, artifacts, deployments } from "../src/schemas/index.ts";
-import { packedArtifact } from "../src/testing/index.ts";
+import {
+  MemoryCloudflareProbeService,
+  packedArtifact,
+} from "../src/testing/index.ts";
 
 /**
  * The row a deploy is followed through, and the run that writes it.
@@ -56,6 +67,7 @@ class TestRows {
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
   public readonly projects = $repository(projects);
+  public readonly capabilities = $repository(projectCapabilities);
 }
 
 /**
@@ -128,6 +140,12 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
+  // A cloudflare host created through the API proves its token first: the
+  // memory probe passes it, and nothing else here asks Cloudflare.
+  alepha.with({
+    provide: CloudflareProbeService,
+    use: MemoryCloudflareProbeService,
+  });
   alepha.with(LoreShipApi);
   alepha.with(TestRows);
   // ⚠️ Registered here rather than injected on demand: the container locks at
@@ -422,6 +440,74 @@ describe("a deployment", () => {
           "my-app@0.30.0 has no `workerd` build. Run `lore apps build --tag 0.30.0 --env <env>`, then `lore artifacts push`.",
         );
       });
+    });
+  });
+
+  /**
+   * A project that only stores hosts (#E166, review item 14): Ship off, it
+   * creates a cloudflare host and lends it to a project with Ship on, which
+   * deploys an app to it as to any lent host.
+   */
+  describe("a host from a project with Ship off", () => {
+    it("is created there, lent to a Ship project, and deployed to", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const store = (
+        await alepha
+          .inject(ProjectController)
+          .createProject.fetch(
+            { body: { title: `Store ${crypto.randomUUID().slice(0, 8)}` } },
+            { user: w.user },
+          )
+      ).data;
+      const rows = alepha.inject(TestRows);
+      expect(
+        await rows.capabilities.count({
+          projectId: { eq: store.id },
+          key: { eq: "ship" },
+        }),
+      ).toBe(0);
+
+      // Through the service the controllers call (#Q4099); the endpoint's
+      // own Ship gate is dropped with the controllers' move (#Q4117).
+      const created = await alepha
+        .inject(HostService)
+        .createCloudflare(w.user, store.id, {
+          slug: "cf-store",
+          accountId: "0123456789abcdef0123456789abcdef",
+          token: `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`,
+        });
+      const hostId = created.host.id;
+      // A cloudflare host takes deploys from its creation.
+      expect(created.host.deployAllowed).toBe(true);
+      await alepha
+        .inject(ProjectHostController)
+        .attachHost.fetch(
+          { params: { projectId: w.project.id }, body: { hostId } },
+          { user: w.user },
+        );
+
+      await rows.instances.updateById(w.instance.id, { hostId });
+      await rows.artifacts.create({
+        projectId: w.project.id,
+        app: "my-app",
+        tag: "1.2.3",
+        runtime: "workerd",
+        sha256: "b".repeat(64),
+        size: 10,
+        fileId: crypto.randomUUID(),
+      } as never);
+      const deployment = await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+        createdBy: w.user.id,
+      });
+
+      expect(deployment.sha256).toBe("b".repeat(64));
+      const host = await rows.hosts.findById(hostId);
+      expect(host?.projectId).toBe(store.id);
     });
   });
 

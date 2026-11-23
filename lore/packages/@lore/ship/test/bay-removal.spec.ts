@@ -1,16 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { HostCommandService } from "@lore/core/api";
+import { HostCommandService, HostInventoryService } from "@lore/core/api";
 import type { Alepha } from "alepha";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  AppController,
-  HostInventoryService,
-  StackDeployController,
-} from "../src/api/index.ts";
+import { AppController, StackDeployController } from "../src/api/index.ts";
 import {
   bootStackSpec,
   createEnvironment,

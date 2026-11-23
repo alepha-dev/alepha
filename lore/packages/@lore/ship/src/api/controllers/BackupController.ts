@@ -2,6 +2,8 @@ import {
   $ownsProject,
   HostEventService,
   HostCommandService,
+  HostInventoryService,
+  HostService,
 } from "@lore/core/api";
 import {
   appNameSchema,
@@ -24,8 +26,6 @@ import type { AppInstance } from "../entities/appInstances.ts";
 import { appBackupViewSchema } from "../schemas/appBackupViewSchema.ts";
 import { AppService } from "../services/AppService.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";
-import { HostInventoryService } from "../services/HostInventoryService.ts";
-import { HostService } from "../services/HostService.ts";
 
 /**
  * Backups of apps that run on a Bay, as the machine reports them.

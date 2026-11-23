@@ -6,8 +6,8 @@ import type { ProjectHostController } from "../../../../../api/controllers/Proje
 
 /**
  * Deploy's line on core's `ProjectBlockerRegistry` (#Q3281): the hosts a
- * project is the home of block deleting it and turning Apps off, which the
- * server refuses (`DeployHostHomeGuards`). Named here before the click,
+ * project is the home of block deleting it, which the server refuses
+ * (`HostHomeGuards`). Named here before the click,
  * from `listHomeHosts`. Quiet while loading and on a failure: the server
  * guard is the authority, this only says it first.
  */
@@ -17,9 +17,8 @@ export const useHomeHostsBlocker = (
 ): string | undefined => {
   const api = useClient<ProjectHostController>();
   const { tr } = useI18n<I18n, "en">();
-  const relevant =
-    act === "delete" ||
-    (typeof act === "object" && act.capabilityOff === "ship");
+  // Only a delete: turning Ship off no longer touches a host (#E166).
+  const relevant = act === "delete";
 
   const homed = useQuery(
     {
@@ -33,7 +32,5 @@ export const useHomeHostsBlocker = (
 
   if (!relevant || !homed?.length) return undefined;
   const slugs = homed.map((host) => host.slug).join(", ");
-  return act === "delete"
-    ? tr("hosts.blocker.delete", { args: [slugs] })
-    : tr("hosts.blocker.apps", { args: [slugs] });
+  return tr("hosts.blocker.delete", { args: [slugs] });
 };

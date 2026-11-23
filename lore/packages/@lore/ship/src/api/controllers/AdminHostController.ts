@@ -1,5 +1,4 @@
-import { HostTypeRegistry } from "@lore/core/api";
-import { LoreAudits } from "@lore/core/api";
+import { HostTypeRegistry, LoreAudits, HostService } from "@lore/core/api";
 import {
   projects,
   hostProjects,
@@ -14,8 +13,6 @@ import { users } from "alepha/api/users";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
-
-import { HostService } from "../services/HostService.ts";
 
 /**
  * Instance-wide view of every host, for the admin shell (#1838).

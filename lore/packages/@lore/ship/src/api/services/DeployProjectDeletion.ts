@@ -1,5 +1,4 @@
 import { ProjectDeletionService } from "@lore/core/api";
-import { hostProjects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
@@ -17,14 +16,14 @@ import { stacks } from "../entities/stacks.ts";
  * host whose only user was a project already gone, with no command left
  * that could repoint it. A deleted project deploys nothing, so its rows
  * forget the host (`hostId` null, as the database's own `set null`
- * would) and its loans go. Nothing on a machine is touched.
+ * would). Its loans are core's step since #E166 (`HostProjectDeletion`).
+ * Nothing on a machine is touched.
  */
 export class DeployProjectDeletion {
   protected readonly deletion = $inject(ProjectDeletionService);
   protected readonly instances = $repository(appInstances);
   protected readonly stacks = $repository(stacks);
   protected readonly stackEnvironments = $repository(stackEnvironments);
-  protected readonly loans = $repository(hostProjects);
 
   constructor() {
     this.deletion.registerStep({
@@ -58,6 +57,5 @@ export class DeployProjectDeletion {
         { hostId: null },
       );
     }
-    await this.loans.deleteMany({ projectId: { eq: projectId } });
   }
 }

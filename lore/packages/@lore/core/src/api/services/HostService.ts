@@ -1,30 +1,3 @@
-import {
-  LoreAudits,
-  ProjectPermissions,
-  ProjectSecurityService,
-  CredentialSealService,
-  HostTypeRegistry,
-  HostUsageRegistry,
-  HostCredentialRefused,
-  HostTokenService,
-} from "@lore/core/api";
-import {
-  projects,
-  hostProjects,
-  type Host,
-  type HostType,
-  hosts,
-  acceptedRuntimes,
-  type HostResource,
-  hostResourceSchema,
-  HOST_SLUG_MAX_LENGTH,
-  HOST_SLUG_PATTERN,
-  HOST_FEATURES,
-  HOST_PROTOCOL_VERSION,
-  type HostWelcomeFrame,
-} from "@lore/core/schemas";
-import type { OwnedHostResource } from "@lore/core/schemas";
-import { displayName } from "@lore/core/web";
 import { $inject } from "alepha";
 import { organizationMembers, RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
@@ -33,7 +6,34 @@ import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 
+import { displayName } from "../../web/app/services/displayName.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { type Host, type HostType, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { HostCredentialRefused } from "../errors/HostCredentialRefused.ts";
+import { acceptedRuntimes } from "../schemas/acceptedRuntimes.ts";
+import {
+  type HostResource,
+  hostResourceSchema,
+} from "../schemas/hostResourceSchema.ts";
+import {
+  HOST_SLUG_MAX_LENGTH,
+  HOST_SLUG_PATTERN,
+} from "../schemas/hostSlugSchema.ts";
+import {
+  HOST_FEATURES,
+  HOST_PROTOCOL_VERSION,
+  type HostWelcomeFrame,
+} from "../schemas/hostWelcomeFrameSchema.ts";
+import type { OwnedHostResource } from "../schemas/ownedHostResourceSchema.ts";
+import { ProjectPermissions } from "../security/ProjectPermissions.ts";
+import { CredentialSealService } from "./CredentialSealService.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
+import { HostTokenService } from "./HostTokenService.ts";
+import { HostTypeRegistry } from "./HostTypeRegistry.ts";
+import { HostUsageRegistry } from "./HostUsageRegistry.ts";
+import { LoreAudits } from "./LoreAudits.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * What a host IS, stated once: which runtimes its type runs, when it
@@ -552,13 +552,8 @@ export class HostService {
     if (!target) {
       throw new BadRequestError("No such project");
     }
-    const capabilities =
-      await this.projectSecurity.capabilitiesOf(targetProjectId);
-    if (!("ship" in capabilities)) {
-      throw new BadRequestError(
-        `${target.title} does not have Ship on, so nobody could manage the host there. Turn Ship on first.`,
-      );
-    }
+    // Any project may be a host's home, Ship on or off (#E166): a host is
+    // core's, and a project may exist only to store hosts and lend them.
     const clash = await this.hosts.findOne({
       where: { projectId: { eq: targetProjectId }, slug: { eq: host.slug } },
     });

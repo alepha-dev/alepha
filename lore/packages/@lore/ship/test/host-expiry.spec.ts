@@ -1,4 +1,4 @@
-import { projectEvents } from "@lore/core/api";
+import { projectEvents, HostExpiryJobs } from "@lore/core/api";
 import { hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -10,11 +10,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  HostController,
-  HostExpiryJobs,
-  LoreShipApi,
-} from "../src/api/index.ts";
+import { HostController, LoreShipApi } from "../src/api/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
