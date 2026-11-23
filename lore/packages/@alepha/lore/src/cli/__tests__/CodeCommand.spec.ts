@@ -199,4 +199,48 @@ describe("lore code", () => {
       ),
     ).toBe(true);
   });
+
+  it("reads the repository this checkout's Lore remote names, and prints a file numbered (#Q4139)", async ({
+    expect,
+  }) => {
+    const { run, printed, shell, command } = create({ LORE_PROJECT: "" });
+    shell.outputs.set(
+      "git remote -v",
+      [
+        "origin\thttps://github.com/acme/elsewhere.git (fetch)",
+        "lore\thttps://lore.test/acme/api.git (fetch)",
+      ].join("\n"),
+    );
+    const asked: unknown[] = [];
+    Object.assign(command as unknown as Record<string, unknown>, {
+      api: {
+        listCodeRepositories: async () => ({
+          repositories: [{ ...REPO, slug: "api" }],
+        }),
+      },
+      browser: {
+        getCodeFile: async (request: unknown) => {
+          asked.push(request);
+          return {
+            revision: { name: "main", kind: "branch", sha: "a".repeat(40) },
+            path: "src/a.ts",
+            sha: "b".repeat(40),
+            size: 4,
+            status: "ok",
+            text: "one\ntwo\n",
+          };
+        },
+      },
+    });
+
+    await run(command.cat, "src/a.ts --end-line 1");
+
+    expect(asked).toEqual([
+      {
+        params: { projectId: 7, slug: "api" },
+        query: { ref: undefined, path: "src/a.ts" },
+      },
+    ]);
+    expect(printed).toEqual(["1\tone", "... 1 more lines: --start-line 2"]);
+  });
 });

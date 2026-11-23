@@ -39,7 +39,10 @@ export class CodeTools {
         params.project,
         params.project_name,
       );
-      return this.repositories.listCodeRepositories({ params: { projectId } });
+      return this.repositories.listCodeRepositories({
+        params: { projectId },
+        query: {},
+      });
     },
   });
 

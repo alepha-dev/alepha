@@ -8,6 +8,7 @@ import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
+import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm, DatabaseProvider } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
@@ -19,6 +20,7 @@ import {
   LocalGitBackend,
   LoreBuildApi,
 } from "../../src/api/index.ts";
+import { LoreBuildMcp } from "../../src/mcp/index.ts";
 import { createTestMemberByProjectId } from "../../src/testing/index.ts";
 import { D1CeilingProvider } from "./D1CeilingProvider.ts";
 
@@ -58,6 +60,10 @@ export const bootCodeRepo = async (
      * Classes to construct before `start()`: a spec's repository probe.
      */
     probes?: Array<new () => object>;
+    /**
+     * Also serve `/mcp` with Build's tools.
+     */
+    mcp?: boolean;
   } = {},
 ): Promise<CodeRepoContext> => {
   const dir = mkdtempSync(join(tmpdir(), "lore-code-repo-"));
@@ -79,6 +85,10 @@ export const bootCodeRepo = async (
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(LoreBuildApi);
+  if (options.mcp) {
+    alepha.with(AlephaMcp);
+    alepha.with(LoreBuildMcp);
+  }
   for (const probe of options.probes ?? []) alepha.inject(probe);
   await alepha.start();
 

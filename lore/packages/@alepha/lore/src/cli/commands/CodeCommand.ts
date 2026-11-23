@@ -1,4 +1,7 @@
-import type { CodeRepositoryController } from "@lore/build/api";
+import type {
+  CodeBrowserController,
+  CodeRepositoryController,
+} from "@lore/build/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -37,6 +40,9 @@ export class CodeCommand {
    * below it sees `undefined`.
    */
   protected readonly api = $client<CodeRepositoryController>(
+    this.client.scope(),
+  );
+  protected readonly browser = $client<CodeBrowserController>(
     this.client.scope(),
   );
 
@@ -254,10 +260,401 @@ export class CodeCommand {
     },
   });
 
+  /**
+   * The flags every read takes (#Q4139): the project and the repository,
+   * found from this checkout's Lore remote when neither is given, and the
+   * revision.
+   */
+  protected static readonly READ_FLAGS = {
+    ...CodeCommand.PROJECT_FLAG,
+    repo: z
+      .text({
+        description:
+          "The repository. Defaults to this checkout's Lore remote, else the one named like the project, else the only one.",
+      })
+      .optional(),
+    ref: z
+      .text({
+        description:
+          "A branch, a tag or a commit sha. Defaults to the default branch.",
+      })
+      .optional(),
+  };
+
+  protected static readonly LINES = 200;
+
+  public readonly tree = $command({
+    name: "tree",
+    description: "A directory of a Lore repository at a branch, tag or commit",
+    args: z
+      .text({
+        title: "path",
+        description: "The directory. Defaults to the root.",
+      })
+      .optional(),
+    flags: z.object({ ...CodeCommand.READ_FLAGS, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print, root }) => {
+      await this.read(flags, root, async (target) => {
+        const tree = await this.browser.getCodeTree({
+          params: target,
+          query: { ref: flags.ref, path: args ?? "" },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, tree.entries);
+          return;
+        }
+        for (const entry of tree.entries) {
+          print(`${entry.type === "tree" ? `${entry.name}/` : entry.name}`);
+        }
+      });
+    },
+  });
+
+  public readonly cat = $command({
+    name: "cat",
+    description:
+      "A file of a Lore repository, numbered, at most 200 lines unless --end-line says more",
+    args: z.text({ title: "path", description: "The file, from the root" }),
+    flags: z.object({
+      ...CodeCommand.READ_FLAGS,
+      "start-line": z.integer().describe("The first line, 1-based").optional(),
+      "end-line": z.integer().describe("The last line, inclusive").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      await this.read(flags, root, async (target) => {
+        const file = await this.browser.getCodeFile({
+          params: target,
+          query: { ref: flags.ref, path: args },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, file);
+          return;
+        }
+        if (file.status !== "ok" || file.text === undefined) {
+          print(`${file.path}: ${file.status} (${file.size} bytes)`);
+          return;
+        }
+        const lines = this.linesOf(file.text);
+        const from = flags["start-line"] ?? 1;
+        const to = Math.min(
+          flags["end-line"] ?? from + CodeCommand.LINES - 1,
+          lines.length,
+        );
+        for (let i = from; i <= to; i++) print(`${i}\t${lines[i - 1]}`);
+        if (to < lines.length) {
+          print(`... ${lines.length - to} more lines: --start-line ${to + 1}`);
+        }
+      });
+    },
+  });
+
+  public readonly log = $command({
+    name: "log",
+    description:
+      "A Lore repository's history, newest first, 30 a page, optionally of one file or folder",
+    args: z
+      .text({ title: "path", description: "Only the commits that touched it" })
+      .optional(),
+    flags: z.object({
+      ...CodeCommand.READ_FLAGS,
+      page: z.integer().describe("The page, from 0").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      await this.read(flags, root, async (target) => {
+        const log = await this.browser.getCodeLog({
+          params: target,
+          query: { ref: flags.ref, path: args, page: flags.page },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, log);
+          return;
+        }
+        if (log.indexing) {
+          print("Lore is still indexing this history: try again shortly.");
+          return;
+        }
+        for (const commit of log.commits) {
+          const quests = commit.quests.map((it) => `#Q${it.number}`).join(" ");
+          print(
+            `${commit.sha.slice(0, 9)}  ${new Date(commit.committedAt * 1000).toISOString().slice(0, 10)}  ${commit.authorName}  ${commit.subject}${quests ? `  ${quests}` : ""}`,
+          );
+        }
+        if (log.more) print(`... more: --page ${log.page + 1}`);
+      });
+    },
+  });
+
+  public readonly show = $command({
+    name: "show",
+    description:
+      "One commit: its message, parents, quests and the files it changed",
+    args: z.text({
+      title: "sha",
+      description: "A full sha or a unique prefix",
+    }),
+    flags: z.object({
+      ...CodeCommand.PROJECT_FLAG,
+      repo: CodeCommand.READ_FLAGS.repo,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      await this.read(flags, root, async (target) => {
+        const commit = await this.browser.getCodeCommit({
+          params: { ...target, sha: args },
+        });
+        const diff = await this.browser.getCodeDiff({
+          params: target,
+          query: { from: commit.parents[0], to: commit.sha },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, { ...commit, files: diff.files });
+          return;
+        }
+        print(`commit ${commit.sha}`);
+        if (commit.parents.length) print(`parents ${commit.parents.join(" ")}`);
+        print(`author ${commit.author.name} <${commit.author.email}>`);
+        print("");
+        print(commit.subject);
+        if (commit.body) print(`\n${commit.body}`);
+        if (commit.quests.length) {
+          print("");
+          for (const quest of commit.quests) {
+            print(`#Q${quest.number} ${quest.title} (${quest.status})`);
+          }
+        }
+        print("");
+        for (const file of diff.files) {
+          print(
+            `${file.kind.padEnd(9)} ${file.path}${file.additions !== undefined ? `  +${file.additions} -${file.deletions}` : ""}`,
+          );
+        }
+      });
+    },
+  });
+
+  public readonly diff = $command({
+    name: "diff",
+    description:
+      "The diff between two revisions, <from>..<to>: the changed files, or one file's hunks",
+    args: z
+      .tuple([
+        z.text({
+          title: "range",
+          description:
+            "<from>..<to>, or <to> alone to diff from the empty tree",
+        }),
+        z.text({ title: "path", description: "One file's hunks" }).optional(),
+      ])
+      .meta({ title: "range" }),
+    flags: z.object({
+      ...CodeCommand.PROJECT_FLAG,
+      repo: CodeCommand.READ_FLAGS.repo,
+      page: z.integer().describe("The file list's page, from 0").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      const [range, path] = args;
+      const [from, to] = range.includes("..")
+        ? range.split(/\.\.\.?/, 2)
+        : [undefined, range];
+      if (!to) throw new UsageError("Name the range as <from>..<to>.");
+      await this.read(flags, root, async (target) => {
+        if (path) {
+          const file = await this.browser.getCodeDiffFile({
+            params: target,
+            query: { from: from || undefined, to, path },
+          });
+          if (flags.output === "json") {
+            this.render.json(print, file);
+            return;
+          }
+          print(`--- ${file.oldPath ?? file.path}`);
+          print(`+++ ${file.path}`);
+          for (const hunk of file.hunks ?? []) {
+            print(
+              `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`,
+            );
+            for (const line of hunk.lines) {
+              print(
+                `${line.kind === "add" ? "+" : line.kind === "del" ? "-" : " "}${line.text}`,
+              );
+            }
+          }
+          if (file.status !== "loaded") print(`(${file.status})`);
+          return;
+        }
+        const diff = await this.browser.getCodeDiff({
+          params: target,
+          query: { from: from || undefined, to, page: flags.page },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, diff);
+          return;
+        }
+        for (const file of diff.files) {
+          print(
+            `${file.kind.padEnd(9)} ${file.path}${file.additions !== undefined ? `  +${file.additions} -${file.deletions}` : ""}`,
+          );
+        }
+        print(`${diff.total} files changed`);
+      });
+    },
+  });
+
+  public readonly blame = $command({
+    name: "blame",
+    description:
+      "Which commit, and which quest, each line of a file comes from",
+    args: z.text({ title: "path", description: "The file, from the root" }),
+    flags: z.object({
+      ...CodeCommand.READ_FLAGS,
+      "start-line": z.integer().describe("The first line, 1-based").optional(),
+      "end-line": z.integer().describe("The last line, inclusive").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      await this.read(flags, root, async (target) => {
+        const ask = () =>
+          this.browser.getCodeBlame({
+            params: target,
+            query: { ref: flags.ref, path: args },
+          });
+        let blame = await ask();
+        // A long walk finishes as a job: wait for it a little.
+        for (let tries = 0; blame.status === "pending" && tries < 10; tries++) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          blame = await ask();
+        }
+        if (flags.output === "json") {
+          this.render.json(print, blame);
+          return;
+        }
+        if (!blame.text) {
+          print(`${blame.path}: ${blame.status}`);
+          return;
+        }
+        const lines = this.linesOf(blame.text);
+        const commits = new Map(blame.commits.map((it) => [it.sha, it]));
+        const from = flags["start-line"] ?? 1;
+        const to = Math.min(
+          flags["end-line"] ?? from + CodeCommand.LINES - 1,
+          lines.length,
+        );
+        for (const range of blame.ranges) {
+          for (let line = range.startLine; line <= range.endLine; line++) {
+            if (line < from || line > to) continue;
+            const commit = range.commitSha
+              ? commits.get(range.commitSha)
+              : undefined;
+            const quests =
+              commit?.quests.map((it) => `#Q${it.number}`).join(",") ?? "";
+            print(
+              `${(range.commitSha ?? "older").slice(0, 9).padEnd(9)} ${(commit?.authorName ?? "").slice(0, 12).padEnd(12)} ${quests.padEnd(8)} ${String(line).padStart(5)}  ${lines[line - 1]}`,
+            );
+          }
+        }
+        if (blame.status === "pending") {
+          print("... still finding the older lines: run it again shortly.");
+        }
+        if (to < lines.length) {
+          print(`... ${lines.length - to} more lines: --start-line ${to + 1}`);
+        }
+      });
+    },
+  });
+
+  protected linesOf(text: string): string[] {
+    return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n");
+  }
+
+  /**
+   * Run a read on the repository the flags or this checkout name.
+   */
+  protected async read(
+    flags: { project?: string; repo?: string },
+    root: string,
+    fn: (target: { projectId: number; slug: string }) => Promise<void>,
+  ): Promise<void> {
+    const context: LoreRefusalContext = {};
+    await this.refusals.guard(context, async () => {
+      const detected =
+        flags.project || flags.repo ? undefined : await this.fromRemote(root);
+      const { project, projectId } = detected
+        ? {
+            project: detected.project,
+            projectId: await this.projects.resolve(detected.project),
+          }
+        : await this.projects.named(flags.project, context);
+      context.project = project;
+      const repository = await this.pick(
+        projectId,
+        project,
+        flags.repo ?? detected?.repo,
+      );
+      await fn({ projectId, slug: repository.slug });
+    });
+  }
+
+  /**
+   * The project and repository this checkout's Lore remote names (#Q4139):
+   * the remote `lore` first, then `origin`, then any on this Lore's host,
+   * read as `/<project>/<repo>.git` or `/<project>.git`.
+   */
+  protected async fromRemote(
+    root: string,
+  ): Promise<{ project: string; repo?: string } | undefined> {
+    const out = await this.shell
+      .run(["git", "remote", "-v"], { root, capture: true })
+      .catch(() => "");
+    const remotes = String(out)
+      .split("\n")
+      .map((line) => line.split(/\s+/))
+      .filter((parts) => parts[0] && parts[1]);
+    let host = "";
+    try {
+      host = new URL(this.client.hostname()).host;
+    } catch {
+      host = "";
+    }
+    const ordered = [
+      ...remotes.filter((it) => it[0] === "lore"),
+      ...remotes.filter((it) => it[0] === "origin"),
+      ...remotes.filter((it) => it[0] !== "lore" && it[0] !== "origin"),
+    ];
+    for (const [name, url] of ordered) {
+      let parsed: URL;
+      try {
+        parsed = new URL(url!);
+      } catch {
+        continue;
+      }
+      // Only `lore` is trusted on any host: an `origin` on another forge
+      // names a path that is no Lore project.
+      if (name !== "lore" && parsed.host !== host) continue;
+      const match = /^\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?\.git\/?$/.exec(
+        parsed.pathname,
+      );
+      if (match) return { project: match[1]!, repo: match[2] ?? match[1] };
+    }
+    return undefined;
+  }
+
   public readonly code = $command({
     name: "code",
     description: "A project's git repositories on Lore",
-    children: [this.repo, this.remote, this.import],
+    children: [
+      this.repo,
+      this.remote,
+      this.import,
+      this.tree,
+      this.cat,
+      this.log,
+      this.show,
+      this.diff,
+      this.blame,
+    ],
     handler: async ({ help }) => {
       help();
     },
