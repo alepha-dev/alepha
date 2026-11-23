@@ -1,16 +1,18 @@
 import { Button, useDialog, useToast } from "@alepha/ui";
 import type { HostController } from "@lore/core/api";
 import type { I18n } from "@lore/core/web";
+import {
+  currentHostAtom,
+  useBayCommand,
+  useBayInventory,
+} from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { isHttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
 
-import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import type { BayInstanceRow } from "./bayInstanceRow.ts";
 import { bayProcessState } from "./bayInstanceRow.ts";
-import { useBayCommand } from "./useBayCommand.ts";
-import { useBayInventory } from "./useBayInventory.ts";
 
 export interface BayActionsProps {
   row: BayInstanceRow;

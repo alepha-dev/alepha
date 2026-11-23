@@ -1,6 +1,5 @@
 import {
   ROUTES_APP,
-  ROUTES_HOST,
   lazyPart,
   ProjectBlockerRegistry,
   AgentPromptRegistry,
@@ -19,13 +18,11 @@ import { $inject } from "alepha";
 import { AppWindow, Bug, Layers, Package, Rocket } from "lucide-react";
 
 import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
-import { currentHostAtom } from "../atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { useQuestLiveRow } from "../components/project/quests/useQuestLiveRow.tsx";
-import { useHomeHostsBlocker } from "../components/project/settings/useHomeHostsBlocker.ts";
 import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 
 /**
@@ -207,27 +204,6 @@ export class DeployShell {
       },
     });
 
-    // A host's console ends its trail with the host (#Q3408): "Project >
-    // Hosts > ovh", "Hosts" climbing back to the project's hosts list.
-    // The console's tabs stay on its plate, not on this bar. It replaced an
-    // "All hosts" link in the plate, which said what the crumb already did.
-    this.shell.registerCrumb({
-      order: 15,
-      reads: [currentHostAtom],
-      crumb: (ctx) => {
-        const host = ctx.get(currentHostAtom);
-        return ROUTES_HOST.includes(ctx.routeName) && host
-          ? {
-              label: host.slug,
-              href: ctx.path("bayOverview", {
-                projectSlug: ctx.projectSlug,
-                hostSlug: host.slug,
-              }),
-            }
-          : undefined;
-      },
-    });
-
     // An artifact page ends its trail with the artifact (#Q3672): "Alepha >
     // Artifacts > shop/latest", "Artifacts" climbing back to the list
     // (`SECTION_HREF_ROUTES`). Read from the route's own params, so the
@@ -312,14 +288,6 @@ export class DeployShell {
     });
 
     this.pickers.registerApps({ useApps: useDashboardApps });
-
-    // A project that is the home of a host is not deleted and keeps Apps
-    // (#Q3280); the page says so before the click (#Q3281).
-    this.blockers.register({
-      key: "home-hosts",
-      order: 20,
-      useLine: useHomeHostsBlocker,
-    });
 
     this.reports.register({
       route: "reportsDelivery",
