@@ -2175,6 +2175,7 @@ __metadata:
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
     alepha: "workspace:*"
+    lucide-react: "npm:^1.73.0"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
     recharts: "npm:^3.10.1"

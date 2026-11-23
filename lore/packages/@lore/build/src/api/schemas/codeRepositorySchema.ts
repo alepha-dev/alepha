@@ -1,5 +1,6 @@
 import { z } from "alepha";
 
+import { codeCommitSummarySchema } from "./codeCommitSummarySchema.ts";
 import { codeRepositorySlugSchema } from "./codeRepositorySlugSchema.ts";
 
 /**
@@ -22,4 +23,9 @@ export const codeRepositorySchema = z.object({
    */
   backend: z.enum(["artifacts", "local"]),
   createdAt: z.datetime(),
+  /**
+   * The default branch's last commit, on a list (#Q4133); absent on an
+   * empty repository and on a write's answer.
+   */
+  lastCommit: codeCommitSummarySchema.optional(),
 });

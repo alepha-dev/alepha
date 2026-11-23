@@ -5155,4 +5155,20 @@ export default {
   "assistant.confirm.folio_create": "Rédiger ce folio ?",
   "assistant.confirm.project": "Dans",
   "assistant.confirm.elsewhere": "(pas le projet affiché)",
+  // Build's code browser (#E167)
+  "project.menu.code": "Code",
+  "code.clone.lore": "Lore",
+  "code.clone.url": "HTTPS",
+  "code.clone.copy": "Copier",
+  "code.clone.copied": "Copié",
+  "code.repos.empty.title": "Aucun dépôt pour l'instant",
+  "code.repos.empty.admin": "Créez-en un depuis un terminal, puis poussez-y.",
+  "code.repos.empty.member":
+    "Un Admin du projet en crée un depuis un terminal.",
+  "code.repo.empty.title": "Rien n'a encore été poussé",
+  "code.repo.empty.description":
+    "Clonez-le, ou ajoutez-le comme remote d'un dépôt existant, puis poussez.",
+  "code.repo.defaultBranch": "Branche par défaut $1",
+  "code.repo.indexing": "Indexation de l'historique…",
+  "code.tab.files": "Fichiers",
 };

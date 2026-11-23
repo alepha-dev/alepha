@@ -4,6 +4,7 @@ import { $module } from "alepha";
 import { ArtifactsGitBackend } from "./backends/ArtifactsGitBackend.ts";
 import { GitBackend } from "./backends/GitBackend.ts";
 import { LocalGitBackend } from "./backends/LocalGitBackend.ts";
+import { CodeBrowserController } from "./controllers/CodeBrowserController.ts";
 import { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
 import { GitHttpController } from "./controllers/GitHttpController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
@@ -17,11 +18,14 @@ import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
 import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
 import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
+import { CodeBrowserService } from "./services/CodeBrowserService.ts";
 import { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
 import { CodePushRecorder } from "./services/CodePushRecorder.ts";
+import { CodeReadAccess } from "./services/CodeReadAccess.ts";
 import { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 import { CoverageThreshold } from "./services/CoverageThreshold.ts";
 import { GitAccessService } from "./services/GitAccessService.ts";
+import { GitBrowserRedirect } from "./services/GitBrowserRedirect.ts";
 import { GitReceivePack } from "./services/GitReceivePack.ts";
 import { GitTreeDiff } from "./services/GitTreeDiff.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
@@ -79,6 +83,12 @@ export const LoreBuildApi = $module({
     GitTreeDiff,
     CodeCommitIndex,
     CodeIndexJobs,
+    // The code browser's reads (#E167), behind one gate.
+    CodeReadAccess,
+    CodeBrowserService,
+    CodeBrowserController,
+    // A browser opening a `.git` URL lands on its page (#Q4133).
+    GitBrowserRedirect,
     // A push's commits on the quests they name, and its activity row (#Q3945).
     CodePushRecorder,
     // Every repository as a bundle in the storage, nightly (#Q3946).
@@ -130,6 +140,10 @@ export type {
 } from "./backends/GitBackend.ts";
 export { LocalGitBackend } from "./backends/LocalGitBackend.ts";
 export { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
+export { CodeBrowserController } from "./controllers/CodeBrowserController.ts";
+export { CodeBrowserService } from "./services/CodeBrowserService.ts";
+export { CodeReadAccess } from "./services/CodeReadAccess.ts";
+export { GitBrowserRedirect } from "./services/GitBrowserRedirect.ts";
 export { GitHttpController } from "./controllers/GitHttpController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
 export { QualityReportsController } from "./controllers/QualityReportsController.ts";
