@@ -1,8 +1,7 @@
-import { projects } from "@lore/core/schemas";
+import { projects, hosts } from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { hosts } from "../entities/hosts.ts";
 import { HostService } from "./HostService.ts";
 
 /**

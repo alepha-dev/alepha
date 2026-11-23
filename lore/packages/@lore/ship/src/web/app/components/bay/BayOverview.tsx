@@ -1,11 +1,11 @@
 import { Badge, Card, CardContent } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
+import { HostCost } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import { HostCost } from "../../../../api/schemas/HostCost.ts";
 import BayStacks from "./BayStacks.tsx";
 import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";

@@ -1,4 +1,5 @@
 import { $ownsProject } from "@lore/core/api";
+import { hosts } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import {
@@ -8,7 +9,6 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { hosts } from "../entities/hosts.ts";
 import type { Stack } from "../entities/stacks.ts";
 import { stackEnvironmentResourceSchema } from "../schemas/stackEnvironmentResourceSchema.ts";
 import { stackResourceSchema } from "../schemas/stackResourceSchema.ts";

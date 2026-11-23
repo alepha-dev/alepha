@@ -3,8 +3,10 @@ import {
   type DashboardCardValue,
   DashboardMetricCatalog,
   type Project,
+  hostProjects,
+  hosts,
 } from "@lore/core/schemas";
-import { hostProjects, hosts, monitors } from "@lore/ship/schemas";
+import { monitors } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";

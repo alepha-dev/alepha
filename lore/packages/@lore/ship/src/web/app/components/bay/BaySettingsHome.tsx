@@ -1,9 +1,8 @@
 import { Button, Card, CardContent } from "@alepha/ui";
+import type { HostResource } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowRightLeft } from "lucide-react";
-
-import type { HostResource } from "../../../../api/schemas/hostResourceSchema.ts";
 
 export interface BaySettingsHomeProps {
   host: HostResource;

@@ -3,7 +3,23 @@ import {
   LoreAudits,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import {
+  projects,
+  type Host,
+  hosts,
+  cloudflareTokenSchema,
+  hostEnrolmentSchema,
+  type HostInventoryResource,
+  hostInventoryResourceSchema,
+  hostMoveResultSchema,
+  hostProvisionBodySchema,
+  type HostResource,
+  hostResourceSchema,
+  type MintedHost,
+  mintedHostSchema,
+  type OwnedHostResource,
+  ownedHostResourceSchema,
+} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { organizationMembers, RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -16,25 +32,6 @@ import {
 } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { type Host, hosts } from "../entities/hosts.ts";
-import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
-import { hostEnrolmentSchema } from "../schemas/hostEnrolmentSchema.ts";
-import {
-  type HostInventoryResource,
-  hostInventoryResourceSchema,
-} from "../schemas/hostInventoryResourceSchema.ts";
-import { hostMoveResultSchema } from "../schemas/hostMoveResultSchema.ts";
-import { hostProvisionBodySchema } from "../schemas/hostProvisionBodySchema.ts";
-import {
-  type HostResource,
-  hostResourceSchema,
-  type MintedHost,
-  mintedHostSchema,
-} from "../schemas/hostResourceSchema.ts";
-import {
-  type OwnedHostResource,
-  ownedHostResourceSchema,
-} from "../schemas/ownedHostResourceSchema.ts";
 import { AgentHostService } from "../services/AgentHostService.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostCommandTransport } from "../services/HostCommandTransport.ts";

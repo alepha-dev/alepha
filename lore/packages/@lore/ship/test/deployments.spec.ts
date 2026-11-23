@@ -1,5 +1,5 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { CloudflareDeployClient } from "alepha/cli/infra-lib";
@@ -23,15 +23,9 @@ import {
   RollbackService,
   ArtifactSchemaStore,
   ArtifactService,
+  LoreShipApi,
 } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
-import {
-  appInstances,
-  artifacts,
-  deployments,
-  hostProjects,
-  hosts,
-} from "../src/schemas/index.ts";
+import { appInstances, artifacts, deployments } from "../src/schemas/index.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 
 /**

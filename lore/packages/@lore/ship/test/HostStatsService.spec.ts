@@ -1,3 +1,4 @@
+import { type Host, hosts, type HostStatsFrame } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -12,9 +13,8 @@ import {
   HostController,
   DeployAnalytics,
   HostStatsService,
+  LoreShipApi,
 } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
-import { type Host, hosts, type HostStatsFrame } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 

@@ -1,3 +1,10 @@
+import {
+  hostCommands,
+  type Host,
+  hosts,
+  type HostCommandFrame,
+  type HostServerFrame,
+} from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -12,15 +19,8 @@ import {
   HostController,
   HostCommandService,
   HostCommandTransport,
+  LoreShipApi,
 } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
-import {
-  hostCommands,
-  type Host,
-  hosts,
-  type HostCommandFrame,
-  type HostServerFrame,
-} from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 

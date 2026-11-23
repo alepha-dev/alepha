@@ -1,9 +1,9 @@
+import { hosts } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
-import { hosts } from "../entities/hosts.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 
 /**

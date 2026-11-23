@@ -10,6 +10,13 @@ import {
   Input,
   Textarea,
 } from "@alepha/ui";
+import type {
+  HostEvent,
+  HostBackupCommandBody,
+  HostBackupsListResult,
+  HostCommandResource,
+  HostInventoryBackup,
+} from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useAction } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -22,12 +29,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
-
-import type { HostEvent } from "../../../../api/entities/hostEvents.ts";
-import type { HostBackupCommandBody } from "../../../../api/schemas/hostBackupCommandSchema.ts";
-import type { HostBackupsListResult } from "../../../../api/schemas/hostBackupResultSchemas.ts";
-import type { HostCommandResource } from "../../../../api/schemas/hostCommandResourceSchema.ts";
-import type { HostInventoryBackup } from "../../../../api/schemas/hostInventoryBackupSchema.ts";
 
 type Tr = ReturnType<typeof useI18n<I18n, "en">>["tr"];
 type TrKey = Parameters<Tr>[0];

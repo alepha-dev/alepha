@@ -9,14 +9,13 @@ import {
   projectMergeWrite,
   ProjectSecurityService,
 } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository, type SQLLike } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { deployments } from "../entities/deployments.ts";
-import { hostProjects } from "../entities/hostProjects.ts";
-import { hosts } from "../entities/hosts.ts";
 import { monitors } from "../entities/monitors.ts";
 import { projectErrorIgnoreRules } from "../entities/projectErrorIgnoreRules.ts";
 import { projectErrors } from "../entities/projectErrors.ts";

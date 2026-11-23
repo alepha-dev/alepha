@@ -4,6 +4,7 @@ import {
   ProjectController,
   type RecordedQuestCommits,
 } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { CloudflareDeployClient } from "alepha/cli/infra-lib";
@@ -30,8 +31,6 @@ import {
   artifacts,
   commitQuestSets,
   deployments,
-  hostProjects,
-  hosts,
 } from "../src/schemas/index.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 

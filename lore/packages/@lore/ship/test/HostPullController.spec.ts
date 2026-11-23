@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { hostCommands, type Host, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -10,8 +11,8 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreShipApi } from "../src/api/index.ts";
 import {
+  LoreShipApi,
   AppSecretService,
   ArtifactService,
   DeployService,
@@ -23,13 +24,13 @@ import {
   appSecrets,
   artifacts,
   deployments,
-  hostCommands,
-  type Host,
-  hosts,
 } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
-import { packedArtifact } from "../src/testing/index.ts";
-import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
+import {
+  packedArtifact,
+  createTestProject,
+  DeployTestEntities,
+} from "../src/testing/index.ts";
 
 class Repos {
   hosts = $repository(hosts);

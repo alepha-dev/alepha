@@ -1,4 +1,5 @@
 import { DialogProvider } from "@alepha/ui";
+import type { OwnedHostResource } from "@lore/core/schemas";
 import { I18n } from "@lore/core/web";
 import {
   cleanup,
@@ -17,7 +18,6 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import BayVersion from "./BayVersion.tsx";
 

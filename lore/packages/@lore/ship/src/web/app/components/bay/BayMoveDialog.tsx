@@ -8,6 +8,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { HostResource, HostLoan } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
@@ -15,8 +16,6 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { HostController } from "../../../../api/controllers/HostController.ts";
 import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
-import type { HostResource } from "../../../../api/schemas/hostResourceSchema.ts";
-import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { hostMoveFormSchema } from "../shared/hostMoveFormSchema.ts";
 
 export interface BayMoveDialogProps {

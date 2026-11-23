@@ -1,9 +1,7 @@
+import { type HostEvent, hostEvents } from "@lore/core/schemas";
+import type { Host, HostEventFrame } from "@lore/core/schemas";
 import { $logger } from "alepha/logger";
 import { $repository, DbConflictError } from "alepha/orm";
-
-import { type HostEvent, hostEvents } from "../entities/hostEvents.ts";
-import type { Host } from "../entities/hosts.ts";
-import type { HostEventFrame } from "../schemas/hostEventFrameSchema.ts";
 
 /**
  * Stores what machines report as having happened, and reads it back.

@@ -1,9 +1,9 @@
 import { $ownsProject } from "@lore/core/api";
+import { hostCommandResourceSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
 import type { StackDeployment } from "../entities/stackDeployments.ts";
-import { hostCommandResourceSchema } from "../schemas/hostCommandResourceSchema.ts";
 import { stackDeploymentResourceSchema } from "../schemas/stackDeploymentResourceSchema.ts";
 import { stackServicesResourceSchema } from "../schemas/stackServicesResourceSchema.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";

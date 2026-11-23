@@ -2,7 +2,7 @@ import type {
   HostInventoryExpectedApp,
   HostInventoryReportedApp,
   HostInventoryResource,
-} from "../../../../api/schemas/hostInventoryResourceSchema.ts";
+} from "@lore/core/schemas";
 
 /**
  * One row of the Apps table: something the machine reported, or something

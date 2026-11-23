@@ -1,6 +1,8 @@
-import { CLOUDFLARE_ACCOUNT_ID_PATTERN } from "../../../../api/schemas/cloudflareCredentialSchema.ts";
-import type { CreateHostBody } from "../../../../api/schemas/createHostBodySchema.ts";
-import { HOST_SLUG_PATTERN } from "../../../../api/schemas/hostSlugSchema.ts";
+import {
+  CLOUDFLARE_ACCOUNT_ID_PATTERN,
+  HOST_SLUG_PATTERN,
+} from "@lore/core/schemas";
+import type { CreateHostBody } from "@lore/core/schemas";
 
 /**
  * What both create dialogs hold while somebody is filling them in.

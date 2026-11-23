@@ -4,6 +4,7 @@ import {
   type DataTableFilterFields,
   type RowActionEntry,
 } from "@alepha/ui/table";
+import type { OwnedHostResource } from "@lore/core/schemas";
 import {
   SubscriptionBell,
   currentProjectAtom,
@@ -39,7 +40,6 @@ import type {
   LentHostResource,
   ProjectHostController,
 } from "../../../../../api/controllers/ProjectHostController.ts";
-import type { OwnedHostResource } from "../../../../../api/schemas/ownedHostResourceSchema.ts";
 import HostCapabilityBadges from "../../hosts/HostCapabilityBadges.tsx";
 import HostDrawer from "../../hosts/HostDrawer.tsx";
 import HostTypeBadge from "../../hosts/HostTypeBadge.tsx";

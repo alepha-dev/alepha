@@ -1,5 +1,4 @@
-import { LoreCoreApi } from "@lore/core/api";
-import { CredentialSealService } from "@lore/core/api";
+import { LoreCoreApi, CredentialSealService } from "@lore/core/api";
 import { $module } from "alepha";
 import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
@@ -50,7 +49,6 @@ import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 import { ArtifactPushCaps } from "./services/ArtifactPushCaps.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
-import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
@@ -274,8 +272,7 @@ export const LoreShipApi = $module({
     AgentHostService,
     AgentHostController,
     AgentHostJobs,
-    // The upgrade of Bay itself (#E152), and the release it targets.
-    BayReleaseTarget,
+    // The upgrade of Bay itself (#E152); its target is core's.
     HostUpgradeService,
     HostStatsService,
     // The real transport, substituted for `HostCommandTransport` in
@@ -369,7 +366,7 @@ export { DeployRegistry } from "./services/DeployRegistry.ts";
 export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
 export { DeployService } from "./services/DeployService.ts";
 export { HostCloudflareService } from "./services/HostCloudflareService.ts";
-export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
+
 export { HostCommandService } from "./services/HostCommandService.ts";
 export { HostUpgradeService } from "./services/HostUpgradeService.ts";
 export { HostCommandTransport } from "./services/HostCommandTransport.ts";

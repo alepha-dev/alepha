@@ -1,6 +1,5 @@
+import { HOST_SLUG_MAX_LENGTH } from "@lore/core/schemas";
 import { z } from "alepha";
-
-import { HOST_SLUG_MAX_LENGTH } from "../../../../api/schemas/hostSlugSchema.ts";
 
 /**
  * The create-host form, as `useForm` needs to see it.

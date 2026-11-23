@@ -1,5 +1,5 @@
 import { ProjectSecurityService } from "@lore/core/api";
-import { projectCapabilities } from "@lore/core/schemas";
+import { projectCapabilities, hosts } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import {
@@ -27,7 +27,6 @@ import {
   LoreShipApi,
   ProjectHostController,
 } from "../src/api/index.ts";
-import { hosts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import {
   createTestMemberByProjectId,

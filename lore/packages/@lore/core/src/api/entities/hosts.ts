@@ -1,7 +1,8 @@
-import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
+
+import { projects } from "./projects.ts";
 
 /**
  * The kinds of deploy destination a host can be.

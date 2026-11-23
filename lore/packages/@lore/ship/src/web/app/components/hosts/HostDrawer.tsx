@@ -14,6 +14,7 @@ import {
   cn,
   textLinkUnderlineClassName,
 } from "@alepha/ui";
+import type { OwnedHostResource } from "@lore/core/schemas";
 import { type I18n, OutboundLink } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -24,7 +25,6 @@ import { useState } from "react";
 import type { HostController } from "../../../../api/controllers/HostController.ts";
 import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
 import { cloudflareTokenTemplateUrl } from "../../../../api/schemas/cloudflareTokenTemplate.ts";
-import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import BayCommands from "../bay/BayCommands.tsx";
 import { hostErrorMessage } from "../shared/hostCreateDraft.ts";
 

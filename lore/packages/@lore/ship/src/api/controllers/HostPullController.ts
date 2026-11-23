@@ -1,3 +1,13 @@
+import {
+  type HostCommand,
+  hostCommands,
+  hostBackupsListResultSchema,
+  hostBackupVerifyResultSchema,
+  hostRestoreResultSchema,
+  hostTargetProbeResultSchema,
+  hostCommandResultSchema,
+} from "@lore/core/schemas";
+import type { HostCommandKind } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/infra-lib";
@@ -13,15 +23,6 @@ import {
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
-import { type HostCommand, hostCommands } from "../entities/hostCommands.ts";
-import {
-  hostBackupsListResultSchema,
-  hostBackupVerifyResultSchema,
-  hostRestoreResultSchema,
-  hostTargetProbeResultSchema,
-} from "../schemas/hostBackupResultSchemas.ts";
-import { hostCommandResultSchema } from "../schemas/hostCommandResultSchema.ts";
-import type { HostCommandKind } from "../schemas/hostCommandValues.ts";
 import { stackDeployOutcomeSchema } from "../schemas/stackDeployOutcomeSchema.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";

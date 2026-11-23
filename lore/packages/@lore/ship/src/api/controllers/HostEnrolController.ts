@@ -1,11 +1,10 @@
+import { hosts, hostEnrolExchangeSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $route, UnauthorizedError } from "alepha/server";
 
-import { hosts } from "../entities/hosts.ts";
-import { hostEnrolExchangeSchema } from "../schemas/hostEnrolExchangeSchema.ts";
 import { HostTokenService } from "../services/HostTokenService.ts";
 
 /**

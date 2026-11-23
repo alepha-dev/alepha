@@ -1,10 +1,9 @@
-import { projects } from "@lore/core/schemas";
+import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $hook } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
 
 /**
  * The name a deployed copy carries in its host, decided on its first deploy

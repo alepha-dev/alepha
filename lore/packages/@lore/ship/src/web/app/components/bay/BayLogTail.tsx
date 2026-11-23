@@ -1,4 +1,5 @@
 import { Button, Card, CardContent } from "@alepha/ui";
+import type { HostCommandResult } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -6,7 +7,6 @@ import { ScrollText } from "lucide-react";
 import { useState } from "react";
 
 import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
-import type { HostCommandResult } from "../../../../api/schemas/hostCommandResultSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 export interface BayLogTailProps {

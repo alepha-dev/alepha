@@ -15,12 +15,7 @@ export { artifacts } from "../api/entities/artifacts.ts";
 export { commitQuestSets } from "../api/entities/commitQuestSets.ts";
 export { projectErrors } from "../api/entities/projectErrors.ts";
 export { deployments } from "../api/entities/deployments.ts";
-export { hostCommands } from "../api/entities/hostCommands.ts";
-export { type HostJob, hostJobs } from "../api/entities/hostJobs.ts";
-export { hostEvents } from "../api/entities/hostEvents.ts";
-export { hostInventories } from "../api/entities/hostInventories.ts";
-export { hostProjects } from "../api/entities/hostProjects.ts";
-export { type Host, hosts } from "../api/entities/hosts.ts";
+
 export { registryCredentials } from "../api/entities/registryCredentials.ts";
 export type { RegistryCredentialResource } from "../api/schemas/registryCredentialResourceSchema.ts";
 export { sigilErrorGroups } from "../api/entities/sigilErrorGroups.ts";
@@ -33,7 +28,7 @@ export { stackDeployments } from "../api/entities/stackDeployments.ts";
 export type { StackDeploymentResource } from "../api/schemas/stackDeploymentResourceSchema.ts";
 export { stackDeployOutcomeSchema } from "../api/schemas/stackDeployOutcomeSchema.ts";
 export type { StackServicesResource } from "../api/schemas/stackServicesResourceSchema.ts";
-export type { HostInventoryStack } from "../api/schemas/hostInventoryStackSchema.ts";
+
 export { stackEnvironmentRoutes } from "../api/entities/stackEnvironmentRoutes.ts";
 export { stackEnvironments } from "../api/entities/stackEnvironments.ts";
 export { stackRevisions } from "../api/entities/stackRevisions.ts";
@@ -45,30 +40,16 @@ export type { StackModel } from "../api/schemas/stackModelSchema.ts";
 export type { StackModelService } from "../api/schemas/stackModelServiceSchema.ts";
 export type { StackResource } from "../api/schemas/stackResourceSchema.ts";
 export type { StackRevisionResource } from "../api/schemas/stackRevisionResourceSchema.ts";
-export type { AdminHostResource } from "../api/schemas/adminHostResourceSchema.ts";
+
 export type { AppInstanceResource } from "../api/schemas/appInstanceResourceSchema.ts";
 export { shipCapabilityOptionsSchema } from "../api/schemas/shipCapabilityOptionsSchema.ts";
 export {
   CLOUDFLARE_TOKEN_TEMPLATE,
   cloudflareTokenTemplateUrl,
 } from "../api/schemas/cloudflareTokenTemplate.ts";
-export { createHostBodySchema } from "../api/schemas/createHostBodySchema.ts";
+
 export { defaultAppInstance } from "../api/schemas/defaultAppInstance.ts";
-export {
-  hostBackupsListResultSchema,
-  hostBackupVerifyResultSchema,
-  hostRestoreResultSchema,
-  hostTargetProbeResultSchema,
-} from "../api/schemas/hostBackupResultSchemas.ts";
-export { hostClientFrameSchema } from "../api/schemas/hostClientFrameSchema.ts";
-export type { HostCommandFrame } from "../api/schemas/hostCommandFrameSchema.ts";
-export { hostCommandResultSchema } from "../api/schemas/hostCommandResultSchema.ts";
-export type { HostInventoryFrame } from "../api/schemas/hostInventoryFrameSchema.ts";
-export {
-  type HostServerFrame,
-  hostServerFrameSchema,
-} from "../api/schemas/hostServerFrameSchema.ts";
-export type { HostStatsFrame } from "../api/schemas/hostStatsFrameSchema.ts";
+
 export { insightsDimensionResourceSchema } from "../api/schemas/insightsDimensionResourceSchema.ts";
 
 // The dashboard metrics' declarative half: both runtimes register it.

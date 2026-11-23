@@ -1,8 +1,8 @@
+import { hosts } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
-import { hosts } from "../entities/hosts.ts";
 import { sigilResourceSchema } from "./sigilResourceSchema.ts";
 
 /**

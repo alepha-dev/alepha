@@ -1,4 +1,5 @@
 import { CredentialSealService } from "@lore/core/api";
+import { type Host, hosts } from "@lore/core/schemas";
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -8,7 +9,6 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";

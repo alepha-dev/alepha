@@ -1,6 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
+import type { AdminHostResource } from "@lore/core/schemas";
 import { I18n } from "@lore/core/web";
-import type { AdminHostResource } from "@lore/ship/schemas";
 import {
   cleanup,
   fireEvent,

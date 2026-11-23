@@ -1,4 +1,4 @@
-import type { Host } from "../entities/hosts.ts";
+import type { Host } from "@lore/core/schemas";
 
 /**
  * The `host.*` events, by the part after the dot.

@@ -1,9 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { hostCommandResultSchema } from "@lore/core/schemas";
 import { describe, expect, it } from "vitest";
-
-import { hostCommandResultSchema } from "../src/schemas/index.ts";
 
 /**
  * The `logs` answer, pinned from the Lore side.

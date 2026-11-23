@@ -1,5 +1,6 @@
 import { sigilConfig } from "@alepha/lore/sigil";
 import { CredentialSealService } from "@lore/core/api";
+import { hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import {
   BAY_OWNED_SECRET_KEYS,
@@ -13,7 +14,6 @@ import { appInstances } from "../entities/appInstances.ts";
 import { type AppSecret, appSecrets } from "../entities/appSecrets.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { deployments } from "../entities/deployments.ts";
-import { hosts } from "../entities/hosts.ts";
 import type { DeclaredEnvKey } from "../schemas/declaredEnvKeySchema.ts";
 
 /**

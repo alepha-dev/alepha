@@ -6,13 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui";
+import { acceptedRuntimes } from "@lore/core/schemas";
 import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
 
-import { acceptedRuntimes } from "../../../../../api/schemas/acceptedRuntimes.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppDeployPickDialog from "./AppDeployPickDialog.tsx";
 import AppDeployRuns from "./AppDeployRuns.tsx";

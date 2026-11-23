@@ -1,4 +1,5 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import { hostCommands, hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -14,9 +15,6 @@ import {
 } from "../../src/api/index.ts";
 import {
   appInstances,
-  hostCommands,
-  hostProjects,
-  hosts,
   stackEnvironments,
   stackRevisions,
   stacks,

@@ -1,15 +1,12 @@
-import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
-import {
-  HOST_JOB_KINDS,
-  HOST_JOB_STATUSES,
-} from "../schemas/hostJobConstants.ts";
 import { hostJobInputSchema } from "../schemas/hostJobInputSchema.ts";
+import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "../schemas/hostJobValues.ts";
 import { hostCommands } from "./hostCommands.ts";
 import { hosts } from "./hosts.ts";
+import { projects } from "./projects.ts";
 
 /**
  * One run of a one-shot job on a host (#Q3984): an agent job today, CI

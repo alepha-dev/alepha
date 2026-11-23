@@ -1,10 +1,10 @@
+import { type Host, hosts } from "@lore/core/schemas";
+import type { HostStatsFrame } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
-import type { HostStatsFrame } from "../schemas/hostStatsFrameSchema.ts";
 
 /**
  * One day of a host's series, averaged from what the dataset holds.

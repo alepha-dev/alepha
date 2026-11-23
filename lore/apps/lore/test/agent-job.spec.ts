@@ -4,14 +4,13 @@ import { join } from "node:path";
 
 import { AgentJobService, CodeRepositoryService } from "@lore/build/api";
 import { AgentPromptGuard, JobKeyService } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, hostJobs, hosts } from "@lore/core/schemas";
 import {
   AgentHostService,
   HostCommandService,
   HostCommandTransport,
   HostJobService,
 } from "@lore/ship/api";
-import { hostJobs, hosts } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

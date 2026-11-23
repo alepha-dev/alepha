@@ -1,5 +1,6 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { HOST_SLUG_PATTERN } from "@lore/core/schemas";
 import { loreDocsUrl, type I18n, OutboundLink } from "@lore/core/web";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -7,7 +8,6 @@ import { Cloud, Fingerprint, KeyRound, Server, Tag } from "lucide-react";
 import { useState } from "react";
 
 import { cloudflareTokenTemplateUrl } from "../../../../api/schemas/cloudflareTokenTemplate.ts";
-import { HOST_SLUG_PATTERN } from "../../../../api/schemas/hostSlugSchema.ts";
 import { type HostCreateDraft, hostDraftSlug } from "./hostCreateDraft.ts";
 import { hostCreateFormSchema } from "./hostCreateFormSchema.ts";
 

@@ -4,7 +4,12 @@ import {
   ProjectMergeService,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { projectCapabilities, projects } from "@lore/core/schemas";
+import {
+  projectCapabilities,
+  projects,
+  hostProjects,
+  hosts,
+} from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { organizationConfigAtom, RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -26,7 +31,7 @@ import {
   LoreShipApi,
   ProjectHostController,
 } from "../src/api/index.ts";
-import { appInstances, hostProjects, hosts } from "../src/schemas/index.ts";
+import { appInstances } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import {
   createTestMemberByProjectId,

@@ -64,6 +64,7 @@ import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
+import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
@@ -174,6 +175,8 @@ export const LoreCoreApi = $module({
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     CoreBuckets,
+    // The Bay release a host upgrade targets (#E152), core's since #E166.
+    BayReleaseTarget,
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
@@ -636,3 +639,6 @@ export {
 } from "./entities/eventSubscriptions.ts";
 export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
+
+// ---- hosts (#E166) ----
+export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";

@@ -2,9 +2,24 @@ import {
   LoreAudits,
   ProjectPermissions,
   ProjectSecurityService,
+  CredentialSealService,
 } from "@lore/core/api";
-import { CredentialSealService } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import {
+  projects,
+  hostProjects,
+  type Host,
+  type HostType,
+  hosts,
+  acceptedRuntimes,
+  type HostResource,
+  hostResourceSchema,
+  HOST_SLUG_MAX_LENGTH,
+  HOST_SLUG_PATTERN,
+  HOST_FEATURES,
+  HOST_PROTOCOL_VERSION,
+  type HostWelcomeFrame,
+} from "@lore/core/schemas";
+import type { OwnedHostResource } from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
 import { $inject } from "alepha";
 import { organizationMembers, RankService } from "alepha/api/organizations";
@@ -15,26 +30,9 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
-import { hostProjects } from "../entities/hostProjects.ts";
-import { type Host, type HostType, hosts } from "../entities/hosts.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stacks } from "../entities/stacks.ts";
 import { HostCredentialRefused } from "../errors/HostCredentialRefused.ts";
-import { acceptedRuntimes } from "../schemas/acceptedRuntimes.ts";
-import {
-  type HostResource,
-  hostResourceSchema,
-} from "../schemas/hostResourceSchema.ts";
-import {
-  HOST_SLUG_MAX_LENGTH,
-  HOST_SLUG_PATTERN,
-} from "../schemas/hostSlugSchema.ts";
-import {
-  HOST_FEATURES,
-  HOST_PROTOCOL_VERSION,
-  type HostWelcomeFrame,
-} from "../schemas/hostWelcomeFrameSchema.ts";
-import type { OwnedHostResource } from "../schemas/ownedHostResourceSchema.ts";
 import { HostCloudflareService } from "./HostCloudflareService.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
 import { HostTokenService } from "./HostTokenService.ts";

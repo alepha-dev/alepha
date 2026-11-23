@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   useToast,
 } from "@alepha/ui";
+import { acceptedRuntimes } from "@lore/core/schemas";
 import {
   capabilityOption,
   currentProjectAtom,
@@ -20,7 +21,6 @@ import { useState } from "react";
 
 import type { AppController } from "../../../../../api/controllers/AppController.ts";
 import type { DeployController } from "../../../../../api/controllers/DeployController.ts";
-import { acceptedRuntimes } from "../../../../../api/schemas/acceptedRuntimes.ts";
 import type { ArtifactDetail } from "../../../../../api/schemas/artifactDetailSchema.ts";
 import type { ArtifactResource } from "../../../../../api/schemas/artifactResourceSchema.ts";
 import ArtifactNewCopyDialog from "./ArtifactNewCopyDialog.tsx";

@@ -1,4 +1,5 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -10,17 +11,13 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { AppController } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
-import { LoreShipMcp } from "../src/mcp/index.ts";
-import { AppInstanceTools, DeployTools } from "../src/mcp/index.ts";
+import { AppController, LoreShipApi } from "../src/api/index.ts";
 import {
-  appInstances,
-  artifacts,
-  deployments,
-  hostProjects,
-  hosts,
-} from "../src/schemas/index.ts";
+  LoreShipMcp,
+  AppInstanceTools,
+  DeployTools,
+} from "../src/mcp/index.ts";
+import { appInstances, artifacts, deployments } from "../src/schemas/index.ts";
 import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**

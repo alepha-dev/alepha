@@ -1,4 +1,4 @@
-import { projects } from "@lore/core/schemas";
+import { projects, hostProjects, type Host, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,16 +8,13 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ForbiddenError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreShipApi } from "../src/api/index.ts";
-import { HostCommandController, HostController } from "../src/api/index.ts";
-import { HostCommandService } from "../src/api/services/HostCommandService.ts";
 import {
-  appInstances,
-  artifacts,
-  hostProjects,
-  type Host,
-  hosts,
-} from "../src/schemas/index.ts";
+  LoreShipApi,
+  HostCommandController,
+  HostController,
+} from "../src/api/index.ts";
+import { HostCommandService } from "../src/api/services/HostCommandService.ts";
+import { appInstances, artifacts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 

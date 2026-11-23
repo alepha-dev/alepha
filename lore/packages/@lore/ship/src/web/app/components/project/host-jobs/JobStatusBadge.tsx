@@ -1,6 +1,5 @@
 import { Badge } from "@alepha/ui";
-
-import type { HostJobResource } from "../../../../../api/schemas/hostJobResourceSchema.ts";
+import type { HostJobResource } from "@lore/core/schemas";
 
 export interface JobStatusBadgeProps {
   status: HostJobResource["status"];
