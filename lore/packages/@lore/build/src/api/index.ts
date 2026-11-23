@@ -21,6 +21,7 @@ import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
 import { CodeAuthors } from "./services/CodeAuthors.ts";
 import { CodeBrowserService } from "./services/CodeBrowserService.ts";
 import { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
+import { CodeCompareService } from "./services/CodeCompareService.ts";
 import { CodeDiffService } from "./services/CodeDiffService.ts";
 import { CodePushRecorder } from "./services/CodePushRecorder.ts";
 import { CodeReadAccess } from "./services/CodeReadAccess.ts";
@@ -88,6 +89,7 @@ export const LoreBuildApi = $module({
     // The code browser's reads (#E167), behind one gate.
     CodeReadAccess,
     CodeAuthors,
+    CodeCompareService,
     CodeBrowserService,
     // One line diff, in JS, on both backends (#Q4135).
     CodeDiffService,
@@ -148,6 +150,10 @@ export { CodeRepositoryController } from "./controllers/CodeRepositoryController
 export { CodeBrowserController } from "./controllers/CodeBrowserController.ts";
 export { CodeBrowserService } from "./services/CodeBrowserService.ts";
 export { CodeDiffService } from "./services/CodeDiffService.ts";
+export {
+  type CodeComparison,
+  CodeCompareService,
+} from "./services/CodeCompareService.ts";
 export { LineDiff, type LineDiffOp } from "./services/LineDiff.ts";
 export { CodeReadAccess } from "./services/CodeReadAccess.ts";
 export { GitBrowserRedirect } from "./services/GitBrowserRedirect.ts";

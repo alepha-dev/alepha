@@ -329,6 +329,23 @@ try {
   await assertGitBackendContract(backend, readsRef, fixture);
   console.log("reads: ok");
 
+  // A branch deleted where it points (#Q4137), refused once it moved.
+  await backend.deleteRef(readsRef, "refs/heads/merged", fixture.side).then(
+    () => {
+      throw new AlephaError("a stale delete was taken");
+    },
+    () => undefined,
+  );
+  await backend.deleteRef(readsRef, "refs/heads/merged", fixture.merge);
+  if (
+    (await backend.refs(readsRef)).some(
+      (tip) => tip.name === "refs/heads/merged",
+    )
+  ) {
+    throw new AlephaError("the branch survived its delete");
+  }
+  console.log("deleteRef: ok");
+
   if (!(await backend.list()).includes(ref)) {
     throw new AlephaError(`${ref} is not listed`);
   }

@@ -465,6 +465,25 @@ exit 1
     return { kind: "ok", value: code === 0 };
   }
 
+  public async deleteRef(
+    ref: string,
+    refName: string,
+    oldSha: string,
+  ): Promise<void> {
+    GitBackend.assertDeletable(refName, oldSha);
+    const { code, err } = await this.run([
+      "--git-dir",
+      this.pathOf(ref),
+      "update-ref",
+      "-d",
+      refName,
+      oldSha,
+    ]);
+    if (code !== 0) {
+      throw new AlephaError(`Could not delete ${refName}: ${err.trim()}`);
+    }
+  }
+
   /**
    * `git bundle create - --all`, streamed from the child's stdout.
    */

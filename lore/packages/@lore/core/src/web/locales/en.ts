@@ -5165,4 +5165,18 @@ export default {
   "code.commit.parent": "Parent",
   "code.commit.parents": "Parents",
   "code.commit.mergeDiff": "A merge: the diff is against $1, its first parent.",
+  "code.tab.branches": "Branches",
+  "code.tab.tags": "Tags",
+  "code.branches.default": "Default",
+  "code.branches.counts": "$1 ahead, $2 behind",
+  "code.branches.compare": "Compare with the default branch",
+  "code.branches.delete.label": "Delete $1",
+  "code.branches.delete.title": "Delete the branch $1?",
+  "code.branches.delete.description":
+    "Its commits stay reachable only if another branch or tag holds them.",
+  "code.branches.delete.confirm": "Delete",
+  "code.tags.none": "No tag yet.",
+  "code.compare.counts": "$1 commits ahead, $2 behind",
+  "code.compare.capped": "The merge base is too far back to find here.",
+  "code.compare.unrelated": "These two revisions share no history.",
 };

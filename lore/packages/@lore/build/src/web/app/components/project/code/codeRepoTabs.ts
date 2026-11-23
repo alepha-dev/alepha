@@ -33,4 +33,17 @@ export const CODE_REPO_TABS: CodeRepoTab[] = [
       codeHref("commits", projectSlug, repoSlug, branch),
     routes: ["codeRepoCommits", "codeRepoCommit"],
   },
+  {
+    key: "branches",
+    labelKey: "code.tab.branches",
+    href: (projectSlug, repoSlug) =>
+      `/${projectSlug}/code/${repoSlug}/branches`,
+    routes: ["codeRepoBranches", "codeRepoCompare"],
+  },
+  {
+    key: "tags",
+    labelKey: "code.tab.tags",
+    href: (projectSlug, repoSlug) => `/${projectSlug}/code/${repoSlug}/tags`,
+    routes: ["codeRepoTags"],
+  },
 ];

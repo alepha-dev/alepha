@@ -1,3 +1,5 @@
+import { AlephaError } from "alepha";
+
 /**
  * Where a project's git repositories live (#E162, folio #F1500, "One
  * interface, two backends"), substituted per runtime by `LoreBuildApi`:
@@ -182,6 +184,17 @@ export abstract class GitBackend {
   ): Promise<{ kind: "ok"; value: boolean } | { kind: "cap" }>;
 
   /**
+   * Delete a branch that points at `oldSha` (#Q4137): refused for anything
+   * outside `refs/heads/`, and when it moved meanwhile. The caller refuses
+   * the default branch first.
+   */
+  public abstract deleteRef(
+    ref: string,
+    refName: string,
+    oldSha: string,
+  ): Promise<void>;
+
+  /**
    * The bytes a blob read holds at most unless the caller says otherwise:
    * Artifacts refuses to read a blob over 32 MiB anyway (`MEMORY_LIMIT`).
    */
@@ -195,6 +208,19 @@ export abstract class GitBackend {
   /**
    * A full commit sha, the only kind a backend resolves by itself.
    */
+  /**
+   * Refuse a ref deletion outside `refs/heads/` or with a malformed sha.
+   */
+  public static assertDeletable(refName: string, oldSha: string): void {
+    if (
+      !refName.startsWith("refs/heads/") ||
+      GitBackend.refCandidates(refName).length === 0 ||
+      !GitBackend.isSha(oldSha)
+    ) {
+      throw new AlephaError(`Not a branch Lore deletes: ${refName}`);
+    }
+  }
+
   public static isSha(value: string): boolean {
     return /^[0-9a-f]{40}$/.test(value);
   }

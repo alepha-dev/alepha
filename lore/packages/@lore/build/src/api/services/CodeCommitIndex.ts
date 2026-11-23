@@ -72,6 +72,55 @@ export class CodeCommitIndex {
   protected readonly paths = $repository(codeCommitPaths);
 
   /**
+   * The commits reachable from `head` and not from `base` (`base..head`),
+   * newest first, at most `limit`: what a compare lists, and with `base`
+   * and `head` swapped, how far a branch is behind (#Q4137). Two recursive
+   * walks in one statement, the same SQL on D1 and on Postgres.
+   */
+  public async between(
+    repositoryId: string,
+    base: string,
+    head: string,
+    limit: number,
+  ): Promise<CodeCommitRow[]> {
+    const p = this.parents.table;
+    const c = this.commits.table;
+    const col = (name: string) => sql.identifier(name);
+    const rows = await this.commits.query(
+      sql`WITH RECURSIVE
+        rb(sha) AS (
+          SELECT ${base}
+          UNION
+          SELECT e.${col(p.parentSha.name)} FROM ${p} AS e
+          JOIN rb ON e.${col(p.sha.name)} = rb.sha
+          WHERE e.${col(p.repositoryId.name)} = ${repositoryId}
+        ),
+        rh(sha) AS (
+          SELECT ${head}
+          UNION
+          SELECT e.${col(p.parentSha.name)} FROM ${p} AS e
+          JOIN rh ON e.${col(p.sha.name)} = rh.sha
+          WHERE e.${col(p.repositoryId.name)} = ${repositoryId}
+          AND e.${col(p.parentSha.name)} NOT IN (SELECT sha FROM rb)
+        )
+        SELECT c.* FROM ${c} AS c
+        JOIN rh ON c.${col(c.sha.name)} = rh.sha
+        WHERE c.${col(c.repositoryId.name)} = ${repositoryId}
+        AND c.${col(c.sha.name)} NOT IN (SELECT sha FROM rb)
+        ORDER BY c.${col(c.committedAt.name)} DESC, c.${col(c.sha.name)}
+        LIMIT ${limit}`,
+      CodeCommitIndex.LogRow,
+    );
+    return rows.map((row) => ({
+      ...row,
+      parents:
+        typeof row.parents === "string"
+          ? (JSON.parse(row.parents) as string[])
+          : row.parents,
+    }));
+  }
+
+  /**
    * The shas of `shas` the index holds, asked 50 at a time: D1 binds at
    * most 100 values per statement.
    */
