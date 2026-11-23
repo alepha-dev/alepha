@@ -1,5 +1,12 @@
 import { useI18n } from "alepha/react/i18n";
-import { Minus, SquarePen, Sparkles, X } from "lucide-react";
+import {
+  Maximize2,
+  Minimize2,
+  Minus,
+  SquarePen,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { type ComponentType, type ReactNode, useEffect, useRef } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
@@ -81,6 +88,15 @@ export interface AiChatPanelProps extends AiChatViewProps {
    */
   onMinimize?: () => void;
   /**
+   * Toggle full screen, the way an image lightbox maximizes. Without it the
+   * header has no full screen button.
+   */
+  onMaximize?: () => void;
+  /**
+   * The panel fills the screen: the button reads as the way back.
+   */
+  maximized?: boolean;
+  /**
    * Renders the title, so a shell can give it its own element (a drawer
    * names its dialog with it). Defaults to a heading.
    */
@@ -155,6 +171,31 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
             onClick={props.onMinimize}
           >
             <Minus className="size-4" />
+          </Button>
+        )}
+        {props.onMaximize && (
+          <Button
+            size="icon-sm"
+            variant="minimal"
+            data-testid="ai-chat-maximize"
+            aria-pressed={Boolean(props.maximized)}
+            aria-label={
+              props.maximized
+                ? tr("ai.chat.exitFullscreen", { default: "Exit full screen" })
+                : tr("ai.chat.fullscreen", { default: "Full screen" })
+            }
+            title={
+              props.maximized
+                ? tr("ai.chat.exitFullscreen", { default: "Exit full screen" })
+                : tr("ai.chat.fullscreen", { default: "Full screen" })
+            }
+            onClick={props.onMaximize}
+          >
+            {props.maximized ? (
+              <Minimize2 className="size-4" />
+            ) : (
+              <Maximize2 className="size-4" />
+            )}
           </Button>
         )}
         <Button

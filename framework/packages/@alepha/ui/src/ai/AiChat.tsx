@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { Dialog, DialogContent, DialogTitle } from "../core/Dialog.tsx";
 import { Drawer, DrawerContent, DrawerTitle } from "../core/Drawer.tsx";
 import { AiChatDock } from "./AiChatDock.tsx";
 import { AiChatLauncher } from "./AiChatLauncher.tsx";
@@ -85,10 +86,40 @@ export const AiChat = (props: AiChatProps) => {
     }
   }, [props.open]);
 
+  const [maximized, setMaximized] = useState(false);
+
   const close = () => {
     setMinimized(false);
+    setMaximized(false);
     props.onOpenChange(false);
   };
+  const toggleMaximized = () => setMaximized((value) => !value);
+
+  // Full screen, from the dock or the drawer: the panel in a dialog sized as
+  // an image lightbox maximizes (a 1rem gap from the screen's edges). Escape
+  // or the backdrop restores it, and the conversation stays where it was.
+  if (props.open && maximized) {
+    return (
+      <Dialog open onOpenChange={(open) => open || setMaximized(false)}>
+        <DialogContent
+          showCloseButton={false}
+          data-testid="ai-chat-fullscreen"
+          className="flex h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)]"
+        >
+          <AiChatPanel
+            {...props}
+            chat={chat}
+            onClose={close}
+            onMaximize={toggleMaximized}
+            maximized
+            renderTitle={(title, className) => (
+              <DialogTitle className={className}>{title}</DialogTitle>
+            )}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (docked) {
     if (props.open) {
@@ -102,6 +133,7 @@ export const AiChat = (props: AiChatProps) => {
               setMinimized(true);
               props.onOpenChange(false);
             }}
+            onMaximize={toggleMaximized}
           />
         </AiChatDock>
       );
@@ -130,6 +162,7 @@ export const AiChat = (props: AiChatProps) => {
           {...props}
           chat={chat}
           onClose={close}
+          onMaximize={toggleMaximized}
           renderTitle={(title, className) => (
             <DrawerTitle className={className}>{title}</DrawerTitle>
           )}

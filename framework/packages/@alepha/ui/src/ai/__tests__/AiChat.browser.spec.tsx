@@ -761,6 +761,59 @@ describe("AiChat", () => {
     expect(box.placeholder).toBe("Confirm or cancel the card to go on");
   });
 
+  it("goes full screen between minimize and close, keeps the conversation, and comes back by its button or Escape", async () => {
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          { type: "text", text: "Hello there." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {},
+      DockLayout,
+    );
+    await view.findByTestId("ai-chat-dock");
+    await say("hi");
+    await view.findByText("Hello there.");
+
+    const labels = () =>
+      [
+        ...view.getByTestId("ai-chat").querySelectorAll("button[aria-label]"),
+      ].map((button) => button.getAttribute("aria-label"));
+    const header = labels();
+    const at = header.indexOf("Minimize");
+    expect(header.slice(at, at + 3)).toEqual([
+      "Minimize",
+      "Full screen",
+      "Close",
+    ]);
+
+    fireEvent.click(view.getByRole("button", { name: "Full screen" }));
+    const dialog = await view.findByTestId("ai-chat-fullscreen");
+    expect(dialog.getAttribute("role")).toBe("dialog");
+    expect(view.queryByTestId("ai-chat-dock")).toBeNull();
+    expect(within(dialog).getByText("Hello there.")).toBeTruthy();
+    const back = within(dialog).getByRole("button", {
+      name: "Exit full screen",
+    });
+    expect(back.getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(back);
+    await view.findByTestId("ai-chat-dock");
+    await waitFor(() =>
+      expect(view.queryByTestId("ai-chat-fullscreen")).toBeNull(),
+    );
+    expect(view.getByText("Hello there.")).toBeTruthy();
+
+    fireEvent.click(view.getByRole("button", { name: "Full screen" }));
+    await view.findByTestId("ai-chat-fullscreen");
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await view.findByTestId("ai-chat-dock");
+  });
+
   it("docks beside the page without a backdrop, minimizes into a pill that shows a waiting action, and restores", async () => {
     const { view, say } = await mount(
       (l) => {

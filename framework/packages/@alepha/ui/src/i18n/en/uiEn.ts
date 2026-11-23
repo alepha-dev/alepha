@@ -51,6 +51,8 @@ export const uiEn: Record<string, DictionaryEntry> = {
   "ai.chat.history": "History",
   "ai.chat.message": "Message",
   "ai.chat.minimize": "Minimize",
+  "ai.chat.fullscreen": "Full screen",
+  "ai.chat.exitFullscreen": "Exit full screen",
   "ai.chat.new": "New conversation",
   "ai.chat.noHistory": "No conversation yet",
   "ai.chat.placeholder": "Ask the assistant",
