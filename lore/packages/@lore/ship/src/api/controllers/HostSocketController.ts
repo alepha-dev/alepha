@@ -5,6 +5,7 @@ import {
   HostJobService,
   HostInventoryService,
   HostService,
+  HostStatsService,
 } from "@lore/core/api";
 import {
   type Host,
@@ -17,8 +18,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $channel, $websocket } from "alepha/websocket";
-
-import { HostStatsService } from "../services/HostStatsService.ts";
 
 /**
  * The websocket a Bay machine dials into and holds open.

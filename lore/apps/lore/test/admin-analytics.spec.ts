@@ -14,7 +14,8 @@ describe("Lore admin analytics surface", () => {
   it("lists every sigil dataset with its declared dimensions", async () => {
     const alepha = Alepha.create();
     const analytics = alepha.inject(DeployAnalytics);
-    // Core's two datasets, since `LoreAnalytics` split per module (#E75).
+    // Core's datasets, since `LoreAnalytics` split per module (#E75), and
+    // `host_stats` with them since #E166.
     alepha.inject(ProjectAnalytics);
     const service = alepha.inject(AdminAnalyticsService);
     await alepha.start();

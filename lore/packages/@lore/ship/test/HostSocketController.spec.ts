@@ -3,6 +3,7 @@ import {
   HostEventService,
   HostCommandService,
   HostService,
+  HostStatsService,
 } from "@lore/core/api";
 import {
   hostCommands,
@@ -23,7 +24,6 @@ import WebSocket from "ws";
 
 import {
   LoreShipApi,
-  HostStatsService,
   WebSocketHostCommandTransport,
   HostController,
   HostSocketController,

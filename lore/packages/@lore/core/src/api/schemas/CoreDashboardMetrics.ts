@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 
 import { activityFeedFiltersSchema } from "./activityFeedFiltersSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { hostsCardFiltersSchema } from "./hostsCardFiltersSchema.ts";
 import { momentumFiltersSchema } from "./momentumFiltersSchema.ts";
 import { needsYouFiltersSchema } from "./needsYouFiltersSchema.ts";
 import { noteFiltersSchema } from "./noteFiltersSchema.ts";
@@ -90,6 +91,28 @@ export class CoreDashboardMetrics {
       filters: noteFiltersSchema,
       // A note goes nowhere: it is the destination.
       link: () => undefined,
+    });
+    // The machines (#Q3781), core's since #E166: a host is monitored with
+    // Ship off, so the card needs no capability.
+    this.catalog.register({
+      key: "hosts",
+      order: 84,
+      boards: ["project"],
+      group: "core",
+      labelKey: "dashboard.metric.hosts",
+      hintKey: "dashboard.metric.hosts.hint",
+      icon: "server",
+      presentation: "list",
+      scopeKinds: ["projects"],
+      filters: hostsCardFiltersSchema,
+      requires: "host:read",
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectSettingsHosts",
+              params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
     });
   }
 }

@@ -1,10 +1,10 @@
-import { type Host, hosts } from "@lore/core/schemas";
-import type { HostStatsFrame } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
-import { DeployAnalytics } from "../entities/deployAnalytics.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
+import type { HostStatsFrame } from "../schemas/hostStatsFrameSchema.ts";
 
 /**
  * One day of a host's series, averaged from what the dataset holds.
@@ -63,7 +63,7 @@ export interface HostStatsSeries {
  */
 export class HostStatsService {
   protected readonly hosts = $repository(hosts);
-  protected readonly analytics = $inject(DeployAnalytics);
+  protected readonly analytics = $inject(ProjectAnalytics);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -88,7 +88,7 @@ export class HostStatsService {
     // because `sum` is the only aggregate that survives a rollup and a
     // sampled backend: the mean of a day is `cpu / samples` on the way out,
     // never a stored average of averages.
-    await this.analytics.stats.record({
+    await this.analytics.hostStats.record({
       hostId: host.id,
       cpu: frame.cpuPercent,
       memory: frame.memoryPercent,
@@ -104,7 +104,7 @@ export class HostStatsService {
    * one place, not in every page that draws the line.
    */
   async series(hostId: string, since: string): Promise<HostStatsSeries> {
-    const result = await this.analytics.stats.query({
+    const result = await this.analytics.hostStats.query({
       since,
       where: { hostId: { inArray: [hostId] } },
       groupBy: ["day"],

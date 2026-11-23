@@ -1,11 +1,14 @@
 import { z } from "alepha";
 import { $analytics } from "alepha/api/analytics";
+import { db } from "alepha/orm";
+
+import { hosts } from "./hosts.ts";
 
 /**
  * Core's portable analytics datasets (#E75: `LoreAnalytics` split per module,
  * dataset names unchanged): the project activity rates, keyed by project,
  * and the MCP tool calls, keyed by tool. Deploy's datasets (views, vitals,
- * errors, host stats) are in `DeployAnalytics`.
+ * errors) are in `DeployAnalytics`. The host stats are core's since #E166.
  */
 export class ProjectAnalytics {
   /**
@@ -222,6 +225,56 @@ export class ProjectAnalytics {
     slots: {
       dimensions: ["tool", "outcome", "actor", "project"],
       measures: ["count"],
+    },
+    retention: { hot: "30d", rollup: "day", cold: "400d" },
+  });
+
+  /**
+   * A host's CPU and memory over time (#1627): the series behind the
+   * gauge on the `hosts` row.
+   *
+   * The two are different questions and live in different places on
+   * purpose. "CPU is 34% right now" is the gauge, upserted onto the host
+   * row by `HostStatsService` on every push, exact and never growing.
+   * "CPU over 30 days" is this dataset, written on the same push only while
+   * the host's `collectSeries` switch is on. Nothing appends a row per
+   * push to D1: on Workers this is a `writeDataPoint` into Analytics Engine.
+   *
+   * ⚠️ The gauge must never be read back from here. Every measure comes back
+   * as a sample-corrected SUM, and a point value is not a sum. That is also
+   * why the measures are sums and a sample count rather than percentages:
+   * `sum` is the one aggregate that survives a rollup and a sampled backend,
+   * so the mean of a day is `cpu / samples` on the way out
+   * (`HostStatsService.series`), never a stored average of averages.
+   *
+   * Core's since #E166 (it was `DeployAnalytics.stats`), same name, slots
+   * and retention: a monitored host reports with Ship off.
+   *
+   * `hostId` is the index dimension and a real `db.ref` into `hosts`
+   * with `onDelete: "cascade"`, the same shape `sigilId` has above and for
+   * the same reason: on the relational backend deleting a host erases
+   * its series instead of orphaning it. Memory and Analytics Engine ignore
+   * the reference, since both only read `Object.keys(dimensions.shape)`.
+   *
+   * Pinned from the first commit, like `errors`. A new dimension goes on the
+   * END of the list, whatever it is called, and moves nothing.
+   */
+  public readonly hostStats = $analytics({
+    name: "host_stats",
+    index: "hostId",
+    dimensions: z.object({
+      hostId: db.ref(z.uuid(), () => hosts.cols.id, {
+        onDelete: "cascade",
+      }),
+    }),
+    measures: z.object({
+      cpu: z.number(),
+      memory: z.number(),
+      samples: z.number(),
+    }),
+    slots: {
+      dimensions: ["hostId"],
+      measures: ["cpu", "memory", "samples"],
     },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });

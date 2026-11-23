@@ -1,4 +1,8 @@
+import { ProjectAnalytics, HostStatsService } from "@lore/core/api";
 import { type Host, hosts, type HostStatsFrame } from "@lore/core/schemas";
+import { HostController, LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
+import { createTestHost } from "@lore/ship/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -9,15 +13,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  HostController,
-  DeployAnalytics,
-  HostStatsService,
-  LoreShipApi,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
-
 class HostRepositories {
   hosts = $repository(hosts);
 }
@@ -25,7 +20,7 @@ class HostRepositories {
 interface TestContext {
   alepha: Alepha;
   service: HostStatsService;
-  analytics: DeployAnalytics;
+  analytics: ProjectAnalytics;
   hostApi: HostController;
   repos: HostRepositories;
   entities: DeployTestEntities;
@@ -51,7 +46,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     service: alepha.inject(HostStatsService),
-    analytics: alepha.inject(DeployAnalytics),
+    analytics: alepha.inject(ProjectAnalytics),
     hostApi: alepha.inject(HostController),
     repos,
     entities,
@@ -100,7 +95,7 @@ const frame = (cpuPercent: number, memoryPercent: number): HostStatsFrame => ({
  * The dataset's sums for one host, the raw material the mean is made of.
  */
 const readSums = async (ctx: TestContext, hostId: string) => {
-  const result = await ctx.analytics.stats.query({
+  const result = await ctx.analytics.hostStats.query({
     since: "2000-01-01",
     where: { hostId: { inArray: [hostId] } },
     select: { cpu: "sum", memory: "sum", samples: "sum" },
@@ -224,7 +219,7 @@ describe("HostStatsService", () => {
   it("declares the dataset on the host, pinned, with hot retention under the Analytics Engine ceiling", async ({
     expect,
   }) => {
-    const dataset = ctx.analytics.stats.dataset;
+    const dataset = ctx.analytics.hostStats.dataset;
     expect(dataset.name).toBe("host_stats");
     expect(dataset.index).toBe("hostId");
     expect(Object.keys(dataset.dimensions.shape)).toEqual(["hostId"]);

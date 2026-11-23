@@ -30,7 +30,6 @@ import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
-import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { UptimeJobs } from "./jobs/UptimeJobs.ts";
@@ -67,8 +66,6 @@ import { DeployService } from "./services/DeployService.ts";
 import { ErrorThreshold } from "./services/ErrorThreshold.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
-import { HostsMetric } from "./services/HostsMetric.ts";
-import { HostStatsService } from "./services/HostStatsService.ts";
 import { LiveQuestService } from "./services/LiveQuestService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
@@ -140,7 +137,6 @@ export const LoreShipApi = $module({
     DeployAppsDashboardMetrics,
     AppHealthMetric,
     ErrorTrendMetric,
-    HostsMetric,
     UptimeMetric,
     DeployProjectCounts,
     ProjectErrorJobs,
@@ -150,7 +146,6 @@ export const LoreShipApi = $module({
     UptimeSocketProber,
     SigilJobs,
     HostCredentialJobs,
-    HostOfflineJobs,
     ArtifactTarReader,
     ArtifactDetailService,
     ArtifactService,
@@ -232,7 +227,6 @@ export const LoreShipApi = $module({
     AgentHostService,
     AgentHostController,
     AgentHostJobs,
-    HostStatsService,
     // The real transport, substituted for `HostCommandTransport` in
     // `main.server.ts`. Listed so DI scanning sees the class.
     WebSocketHostCommandTransport,
@@ -299,7 +293,6 @@ export { QuestBitmap } from "./services/QuestBitmap.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 
-export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
 export { StackConsoleService } from "./services/StackConsoleService.ts";
@@ -323,8 +316,6 @@ export { DeployRegistry } from "./services/DeployRegistry.ts";
 export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
 export { DeployService } from "./services/DeployService.ts";
 export { HostCloudflareService } from "./services/HostCloudflareService.ts";
-
-export { HostStatsService } from "./services/HostStatsService.ts";
 
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";
 export { LoreAnalyticsStore } from "./services/LoreAnalyticsStore.ts";
