@@ -113,7 +113,7 @@ status.
 - **When**: the event, and its filter where it has one. An event the project
   cannot emit is listed as **Unavailable**, with the switch that turns it on.
 - **Notify**: **Me**, another member, or one of the project's channels.
-- For a member, **In the app** and **By email**, one or both.
+- For a member, **Inbox** and **By email**, one or both.
 
 From the command line or an agent, a member's subscription can also skip the
 events that member caused, such as a report they filed themselves:
@@ -150,13 +150,13 @@ The **Channels** tab, next to **Notifications**, lists where messages can go.
 
 | Kind    | Where it goes                                                   |
 | ------- | --------------------------------------------------------------- |
-| In-app  | The recipient's inbox. Built in.                                |
+| Inbox   | The recipient's inbox in Lore. Built in.                        |
 | Email   | The recipient's address. Built in.                              |
 | Discord | A Discord channel, through a Discord webhook URL.               |
 | Webhook | A URL of yours, which Lore calls with the event.                |
 | Room    | An open room of the project's chat, where Lore posts the event. |
 
-In-app and email belong to each member and need no setup. Discord and webhook
+Inbox and Email belong to each member and need no setup. Discord and webhook
 channels belong to the project: whoever may manage the project's channels adds
 them with **Add a channel**, which opens a dialog, and subscribing one sends
 every matching event there, whoever reads it. Lore checks a Discord URL with a
@@ -297,7 +297,7 @@ you in every project.
 - **Email** turns off everything that would be mailed to you, except the
   security mail your account depends on, such as sign-in codes and password
   resets.
-- **In-app** has no switch: the inbox is always on.
+- **Inbox** has no switch: the inbox is always on.
 - **Kinds of message** are switches that apply to both channels at once.
   Sign-in codes and password resets are not listed, and stay on whatever you
   mute here.

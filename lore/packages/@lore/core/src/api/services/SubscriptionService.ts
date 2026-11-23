@@ -104,7 +104,7 @@ export class SubscriptionService {
     }
     const channels = memberId ? [...new Set(body.channels ?? [])] : [];
     if (memberId && !channels.length)
-      throw new BadRequestError("channels: in-app, email, or both");
+      throw new BadRequestError("channels: inbox, email, or both");
     const key = this.key(
       body.event,
       body.filter,

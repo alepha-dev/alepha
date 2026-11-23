@@ -182,7 +182,7 @@ export class NotificationTools {
 
   channel_delete = $tool({
     description:
-      "Delete one of the project's Discord or webhook channels, and every subscription that sends to it. Needs subscription:manage. Cannot be undone; the built-in In-app and Email channels cannot be deleted.",
+      "Delete one of the project's Discord or webhook channels, and every subscription that sends to it. Needs subscription:manage. Cannot be undone; the built-in Inbox and Email channels cannot be deleted.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: channelUpdateParamsSchema.omit({ name: true }),

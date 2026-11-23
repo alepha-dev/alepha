@@ -40,7 +40,7 @@ export default {
   "notifications.form.filter.any": "Any",
   "notifications.form.save": "Save",
   "notifications.form.cancel": "Cancel",
-  "notifications.channel.inapp": "In the app",
+  "notifications.channel.inapp": "Inbox",
   "notifications.channel.email": "By email",
   "notifications.unavailable": "Unavailable",
   "notifications.unavailable.option": "Turn on $1 in $2 to get it.",
@@ -132,7 +132,7 @@ export default {
   "notifications.event.quest.reminder_due": "Quest reminder due",
   "notifications.channels.add": "Add a channel",
   "notifications.channels.kind": "Kind",
-  "notifications.channels.kind.inbox": "In-app",
+  "notifications.channels.kind.inbox": "Inbox",
   "notifications.channels.kind.email": "Email",
   "notifications.channels.kind.discord": "Discord",
   "notifications.channels.kind.webhook": "Webhook",
@@ -3220,7 +3220,7 @@ export default {
   "account.notifications.email": "Email",
   "account.notifications.email.description":
     "Turn this off and nothing is mailed to you. Sign-in codes and password resets are not affected.",
-  "account.notifications.inbox": "In-app",
+  "account.notifications.inbox": "Inbox",
   "account.notifications.inbox.description":
     "Always on. Messages wait for you in the bell, and a message you cannot see is one that was never sent.",
   "account.notifications.categories": "Kinds of message",

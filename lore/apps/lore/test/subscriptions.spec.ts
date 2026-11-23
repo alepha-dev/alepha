@@ -57,7 +57,7 @@ class HeldQueue extends JobQueueProvider {
 }
 
 /**
- * Subscriptions (#Q3890): a member is told in-app or by email when an event
+ * Subscriptions (#Q3890): a member is told in their inbox or by email when an event
  * happens, with the event's fixed message.
  */
 describe("Subscriptions", () => {
@@ -264,7 +264,7 @@ describe("Subscriptions", () => {
     expect(watched.statements).toHaveLength(2);
   });
 
-  it("writes the delivery job with the change, and tells the member in-app with the fixed message", async ({
+  it("writes the delivery job with the change, and tells the member in their inbox with the fixed message", async ({
     expect,
   }) => {
     await subscribe(member, { event: "feedback.created", channels: ["inapp"] });
