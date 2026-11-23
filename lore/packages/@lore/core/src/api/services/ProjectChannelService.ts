@@ -80,16 +80,16 @@ export class ProjectChannelService {
     user: UserAccountToken,
     input: {
       kind?: "discord" | "webhook" | "chat";
-      name: string;
+      name?: string;
       url?: string;
       roomId?: string;
     },
   ): Promise<ProjectChannelCreated> {
     await this.assert(projectId, user, "manage");
-    const name = this.name(input.name);
-    await this.unique(projectId, name);
     if (input.kind === "chat")
-      return this.addRoom(projectId, user, name, input.roomId);
+      return this.addRoom(projectId, user, input.roomId);
+    const name = this.name(input.name ?? "");
+    await this.unique(projectId, name);
     if (!input.url) throw new BadRequestError("url: required");
     if (input.kind === "webhook")
       return this.addWebhook(projectId, user, name, input.url);
@@ -125,7 +125,6 @@ export class ProjectChannelService {
   protected async addRoom(
     projectId: number,
     user: UserAccountToken,
-    name: string,
     roomId: string | undefined,
   ): Promise<ProjectChannelCreated> {
     if (!roomId) throw new BadRequestError("roomId: required for a chat room");
@@ -134,6 +133,7 @@ export class ProjectChannelService {
     );
     if (!room)
       throw new BadRequestError("roomId: not an open room of this project");
+    const name = await this.freeRoomName(projectId, room.name);
     const row = await this.rows.create({
       id: `chat-${this.crypto.randomUUID()}`,
       projectId,
@@ -396,6 +396,55 @@ export class ProjectChannelService {
     });
     if (!row) throw new NotFoundError("No such channel in this project");
     return row;
+  }
+
+  /**
+   * A room channel is named after its room (#Q4187): `Room #general`, or
+   * `Room #general-1a2b` when that name is taken.
+   */
+  public roomChannelName(roomName: string): string {
+    return `Room #${roomName}`.slice(0, 64);
+  }
+
+  protected async freeRoomName(projectId: number, roomName: string) {
+    const name = this.roomChannelName(roomName);
+    if (!(await this.rows.findOne({ where: { projectId, name } }))) return name;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const suffix = this.crypto.randomUUID().slice(0, 4);
+      const candidate = `${name.slice(0, 59)}-${suffix}`;
+      if (!(await this.rows.findOne({ where: { projectId, name: candidate } })))
+        return candidate;
+    }
+    throw new ConflictError(`A channel named "${name}" already exists`);
+  }
+
+  /**
+   * A room was renamed (#Q4187): its channels follow when they still carry
+   * the generated name of the old one (a suffixed one keeps its suffix). A
+   * channel renamed by hand keeps its name.
+   */
+  public async roomRenamed(
+    projectId: number,
+    roomId: string,
+    from: string,
+    to: string,
+  ): Promise<void> {
+    const old = this.roomChannelName(from);
+    const rows = await this.rows.findMany({
+      where: { projectId, kind: "chat", roomId },
+      limit: 100,
+    });
+    for (const row of rows) {
+      if (row.name !== old && !row.name.startsWith(`${old.slice(0, 59)}-`))
+        continue;
+      const suffix =
+        row.name === old ? "" : row.name.slice(row.name.lastIndexOf("-"));
+      let name = `${this.roomChannelName(to).slice(0, 64 - suffix.length)}${suffix}`;
+      const taken = await this.rows.findOne({ where: { projectId, name } });
+      if (taken && taken.id !== row.id)
+        name = await this.freeRoomName(projectId, to);
+      await this.rows.updateById(row.id, { name });
+    }
   }
 
   protected name(value: string): string {

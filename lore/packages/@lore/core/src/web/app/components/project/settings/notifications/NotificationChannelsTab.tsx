@@ -155,12 +155,18 @@ const NotificationChannelsTab = (props: NotificationChannelsTabProps) => {
                 },
               ]
             : []),
-          {
-            icon: Pencil,
-            label: tr("notifications.channels.edit"),
-            disabled: () => busy,
-            onClick: () => setEditing(channel),
-          },
+          // A room channel has nothing to edit: no URL, and its name
+          // follows its room (#Q4187).
+          ...(channel.kind === "chat"
+            ? []
+            : [
+                {
+                  icon: Pencil,
+                  label: tr("notifications.channels.edit"),
+                  disabled: () => busy,
+                  onClick: () => setEditing(channel),
+                },
+              ]),
           {
             icon: Trash2,
             label: tr("notifications.channels.delete"),

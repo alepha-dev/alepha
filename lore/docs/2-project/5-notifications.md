@@ -148,13 +148,13 @@ simply not sent.
 
 The **Channels** tab, next to **Notifications**, lists where messages can go.
 
-| Kind      | Where it goes                                                   |
-| --------- | --------------------------------------------------------------- |
-| In-app    | The recipient's inbox. Built in.                                |
-| Email     | The recipient's address. Built in.                              |
-| Discord   | A Discord channel, through a Discord webhook URL.               |
-| Webhook   | A URL of yours, which Lore calls with the event.                |
-| Chat room | An open room of the project's chat, where Lore posts the event. |
+| Kind    | Where it goes                                                   |
+| ------- | --------------------------------------------------------------- |
+| In-app  | The recipient's inbox. Built in.                                |
+| Email   | The recipient's address. Built in.                              |
+| Discord | A Discord channel, through a Discord webhook URL.               |
+| Webhook | A URL of yours, which Lore calls with the event.                |
+| Room    | An open room of the project's chat, where Lore posts the event. |
 
 In-app and email belong to each member and need no setup. Discord and webhook
 channels belong to the project: whoever may manage the project's channels adds
@@ -164,10 +164,11 @@ test message, then never shows it again; **Rename or replace URL**, in the
 row's menu, changes it. Deleting a channel deletes the subscriptions that use
 it.
 
-A **Chat room** channel takes a room instead of a URL: Lore posts each event
-there as a message of its own, for everyone in the room to read. Only open
-rooms are offered. Once its room is archived, the channel receives nothing and
-reads **Room archived**.
+A **Room** channel takes a room instead of a URL and a name: Lore posts each
+event there as a message of its own, for everyone in the room to read. The
+channel is named after its room, **Room #general**, and follows it when the
+room is renamed. Only open rooms are offered. Once its room is archived, the
+channel receives nothing and reads **Room archived**.
 
 ![The Channels tab, with a webhook channel](/screenshots/lore/notifications-channels-light.png)
 
@@ -338,7 +339,7 @@ the command line:
 
 ```bash
 echo "$WEBHOOK_URL" | lore channel add --kind webhook --name ci-alerts --url-stdin
-lore channel add --kind chat --name ops-room --room <room-id>
+lore channel add --kind chat --room <room-id>
 ```
 
 A webhook's signing secret is printed once, by `lore channel add` and `lore

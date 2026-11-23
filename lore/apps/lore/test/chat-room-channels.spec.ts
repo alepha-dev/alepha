@@ -1,4 +1,4 @@
-import { chatMessages, chatRooms } from "@lore/chat/api";
+import { ChatRoomController, chatMessages, chatRooms } from "@lore/chat/api";
 import {
   ProjectChannelController,
   ProjectEventDelivery,
@@ -54,11 +54,11 @@ describe("Chat room channels", () => {
       private: isPrivate,
       createdBy: owner.id,
     });
-  const addRoom = (roomId: string, name = "ops room") =>
+  const addRoom = (roomId: string) =>
     channels().createProjectChannel.fetch(
       {
         params: { projectId: project.id },
-        body: { kind: "chat", name, roomId },
+        body: { kind: "chat", roomId },
       },
       { user: owner },
     );
@@ -136,9 +136,7 @@ describe("Chat room channels", () => {
     expect(offered.data.items.map((it) => it.name)).toContain("ops");
     expect(offered.data.items.map((it) => it.name)).not.toContain("secret");
 
-    await expect(addRoom(secret.id, "secret channel")).rejects.toThrow(
-      "not an open room",
-    );
+    await expect(addRoom(secret.id)).rejects.toThrow("not an open room");
     const created = (await addRoom(ops.id)).data;
     expect(created).toMatchObject({
       kind: "chat",
@@ -189,5 +187,54 @@ describe("Chat room channels", () => {
       status: "disabled",
       disabledReason: "room_archived",
     });
+  });
+
+  it("names a room channel after its room, with a suffix when that name is taken (#Q4187)", async ({
+    expect,
+  }) => {
+    const ops = await room("general");
+
+    const first = (await addRoom(ops.id)).data;
+    const second = (await addRoom(ops.id)).data;
+
+    expect(first.name).toBe("Room #general");
+    expect(second.name).toMatch(/^Room #general-[0-9a-f]{4}$/);
+  });
+
+  it("renames a room's channels with the room, but not one renamed by hand (#Q4187)", async ({
+    expect,
+  }) => {
+    const ops = await room("general");
+    const generated = (await addRoom(ops.id)).data;
+    const suffixed = (await addRoom(ops.id)).data;
+    const custom = (await addRoom(ops.id)).data;
+    await channels().updateProjectChannel.fetch(
+      {
+        params: { projectId: project.id, id: custom.id },
+        body: { name: "Ops alerts" },
+      },
+      { user: owner },
+    );
+
+    await alepha.inject(ChatRoomController).renameChatRoom.fetch(
+      {
+        params: { projectId: project.id, roomId: ops.id },
+        body: { name: "ops" },
+      },
+      { user: owner },
+    );
+
+    const listed = (
+      await channels().listProjectChannels.fetch(
+        { params: { projectId: project.id } },
+        { user: owner },
+      )
+    ).data.items;
+    const nameOf = (id: string) => listed.find((it) => it.id === id)?.name;
+    expect(nameOf(generated.id)).toBe("Room #ops");
+    expect(nameOf(suffixed.id)).toBe(
+      `Room #ops${suffixed.name.slice("Room #general".length)}`,
+    );
+    expect(nameOf(custom.id)).toBe("Ops alerts");
   });
 });
