@@ -9,6 +9,7 @@ import { GitHttpController } from "./controllers/GitHttpController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { CodeBackupJobs } from "./jobs/CodeBackupJobs.ts";
+import { CodeIndexJobs } from "./jobs/CodeIndexJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { AgentJobService } from "./services/AgentJobService.ts";
 import { BuildDashboardMetrics } from "./services/BuildDashboardMetrics.ts";
@@ -16,11 +17,13 @@ import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
 import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
 import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
+import { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
 import { CodePushRecorder } from "./services/CodePushRecorder.ts";
 import { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 import { CoverageThreshold } from "./services/CoverageThreshold.ts";
 import { GitAccessService } from "./services/GitAccessService.ts";
 import { GitReceivePack } from "./services/GitReceivePack.ts";
+import { GitTreeDiff } from "./services/GitTreeDiff.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
@@ -72,6 +75,10 @@ export const LoreBuildApi = $module({
     // git smart HTTP on `.git` URLs (#Q3932).
     GitReceivePack,
     GitAccessService,
+    // The commit index (#Q4132): written at push, backfilled by a job.
+    GitTreeDiff,
+    CodeCommitIndex,
+    CodeIndexJobs,
     // A push's commits on the quests they name, and its activity row (#Q3945).
     CodePushRecorder,
     // Every repository as a bundle in the storage, nightly (#Q3946).
@@ -132,5 +139,15 @@ export { GitAccessService } from "./services/GitAccessService.ts";
 export { GitReceivePack } from "./services/GitReceivePack.ts";
 export { CodePushRecorder } from "./services/CodePushRecorder.ts";
 export { CodeBackupJobs } from "./jobs/CodeBackupJobs.ts";
+export { CodeIndexJobs } from "./jobs/CodeIndexJobs.ts";
+export { CodeCommitIndex } from "./services/CodeCommitIndex.ts";
+export {
+  GitTreeDiff,
+  type GitTreeChange,
+  type GitTreeDiffResult,
+} from "./services/GitTreeDiff.ts";
+export { codeCommits, type CodeCommitRow } from "./entities/codeCommits.ts";
+export { codeCommitPaths } from "./entities/codeCommitPaths.ts";
+export { codeCommitParents } from "./entities/codeCommitParents.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";
