@@ -175,7 +175,29 @@ describe("Project capabilities", () => {
         },
         { user },
       ),
-    ).rejects.toThrow();
+      // A 400 naming the key, not the ZodError's 500 (#Q4194).
+    ).rejects.toThrow('unknown option "trakc" for ship');
+  });
+
+  it("refuses an unknown option on a capability write, naming it (#Q4194)", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const created = await ctx.projectController.createProject.fetch(
+      { body: { title: "Typo Write", capabilities: [{ key: "plan" }] } },
+      { user },
+    );
+
+    const refused = ctx.capabilityController.setCapability.fetch(
+      {
+        params: { projectId: created.data.id, key: "plan" },
+        body: { enabled: true, options: { board: true } },
+      },
+      { user },
+    );
+
+    await expect(refused).rejects.toThrow('unknown option "board" for plan');
+    await expect(refused).rejects.toMatchObject({ status: 400 });
   });
 
   it("turns one on, and answers the whole project back", async ({ expect }) => {
