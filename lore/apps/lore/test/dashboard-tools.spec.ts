@@ -73,7 +73,7 @@ describe("Dashboard tools", () => {
       scopeKinds: ["apps", "projects"],
       needs: { capability: "ship", option: "track" },
       needsBeacon: true,
-      defaultFilters: { period: "yesterday" },
+      defaultFilters: { period: "window" },
     });
     expect(visitors.filters).toMatchObject({ type: "object" });
     expect(metrics.some((it: any) => it.key === "activeQuests")).toBe(true);

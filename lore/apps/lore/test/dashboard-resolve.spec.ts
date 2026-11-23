@@ -1172,7 +1172,9 @@ describe("dashboard resolve", () => {
   });
 
   describe("uniqueVisitors", () => {
-    it("reports yesterday against the day before", async ({ expect }) => {
+    it("averages the window's human visitors a day, against the window before", async ({
+      expect,
+    }) => {
       const { user, project } = await memberOf(ctx);
       const docs = await createSigil(ctx, project, "docs", ["beacon"]);
       await ctx.repos.instances.create({
@@ -1181,28 +1183,33 @@ describe("dashboard resolve", () => {
         env: "production",
         sigilId: docs.id,
       });
+      const visit = async (
+        daysAgo: number,
+        count: number,
+        traffic = "human",
+      ) => {
+        for (let index = 0; index < count; index++) {
+          await ctx.repos.uniques.create({
+            sigilId: docs.id,
+            day: dayUtc(ctx, daysAgo),
+            visitorHash: `${traffic}-${daysAgo}-${index}`,
+            traffic,
+          });
+        }
+      };
 
-      for (const visitorHash of ["a", "b", "c", "d", "e"]) {
-        await ctx.repos.uniques.create({
-          sigilId: docs.id,
-          day: dayUtc(ctx, 1),
-          visitorHash,
-        });
-      }
-      for (const visitorHash of ["p", "q", "r", "s"]) {
-        await ctx.repos.uniques.create({
-          sigilId: docs.id,
-          day: dayUtc(ctx, 2),
-          visitorHash,
-        });
-      }
+      // The board's default window is 14 complete days ending yesterday:
+      // 28 + 14 humans in it, 21 in the 14 days before it.
+      await visit(1, 28);
+      await visit(14, 14);
+      await visit(20, 21);
+      // A crawler is not an audience.
+      await visit(1, 50, "bot");
       // Today is deliberately busy: a tile that counted today-so-far would
       // read as a collapse every morning.
-      await ctx.repos.uniques.create({
-        sigilId: docs.id,
-        day: dayUtc(ctx, 0),
-        visitorHash: "today",
-      });
+      await visit(0, 30);
+      // Older than both windows: not counted.
+      await visit(29, 100);
 
       await only(ctx, user, [
         {
@@ -1217,9 +1224,20 @@ describe("dashboard resolve", () => {
 
       expect(values[0]).toMatchObject({
         ok: true,
-        value: 5,
-        delta: 25,
-        detail: { day: dayUtc(ctx, 1), previous: 4 },
+        // 42 / 14 against 21 / 14.
+        value: 3,
+        delta: 100,
+        detail: {
+          since: dayUtc(ctx, 14),
+          until: dayUtc(ctx, 1),
+          days: 14,
+          previous: 2,
+        },
+      });
+      expect(values[0]?.series).toHaveLength(14);
+      expect(values[0]?.series?.[13]).toEqual({
+        at: dayUtc(ctx, 1),
+        value: 28,
       });
       expect(values[0]?.link).toEqual({
         route: "appAnalytics",
@@ -1277,11 +1295,14 @@ describe("dashboard resolve", () => {
     }) => {
       const { user, project } = await memberOf(ctx);
       const docs = await createSigil(ctx, project, "legacy-docs", ["beacon"]);
-      await ctx.repos.uniques.create({
-        sigilId: docs.id,
-        day: dayUtc(ctx, 1),
-        visitorHash: "visitor",
-      });
+      // 14 visitors over the 14-day window: an average of one a day.
+      for (let index = 0; index < 14; index++) {
+        await ctx.repos.uniques.create({
+          sigilId: docs.id,
+          day: dayUtc(ctx, 1),
+          visitorHash: `visitor-${index}`,
+        });
+      }
 
       await only(ctx, user, [
         {
@@ -1465,7 +1486,7 @@ describe("dashboard resolve", () => {
             id: 1,
             metric: "testHomeOnly",
             scope: { kind: "apps", sigilIds: [sigil.id] },
-            filters: { period: "yesterday" },
+            filters: { period: "window" },
             size: 1,
             position: 0,
           },

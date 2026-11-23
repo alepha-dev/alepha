@@ -4465,14 +4465,15 @@ export default {
   "dashboard.metric.untriagedFeedback.hint": "project or all",
   "dashboard.metric.uniqueVisitors": "Unique visitors",
   "dashboard.metric.uniqueVisitors.hint":
-    "per app, yesterday vs the day before",
+    "human visitors a day, averaged over the board's period",
 
   "dashboard.filter.todoInProgress": "to do + in progress",
   "dashboard.filter.todo": "to do",
   "dashboard.filter.inProgress": "in progress",
   "dashboard.filter.untriaged": "untriaged",
   "dashboard.filter.allStatuses": "every status",
-  "dashboard.filter.yesterday": "yesterday",
+  "dashboard.filter.dailyAverage": "daily average",
+  "dashboard.filter.humans": "humans",
   "dashboard.filter.noTags": "This project has no quest tags yet.",
   "dashboard.filterField.statuses": "Status",
   "dashboard.filterField.status": "Status",
@@ -4486,7 +4487,7 @@ export default {
   "dashboard.filterValue.open": "Open",
   "dashboard.filterValue.all": "All",
   "dashboard.filterValue.pending": "Untriaged",
-  "dashboard.filterValue.yesterday": "Yesterday",
+  "dashboard.filterValue.window": "The board's period",
 
   "dashboard.footer.questSplit": "$1 in progress, $2 to do",
   "dashboard.footer.epic.done": "$1 of $2 done, shelved excluded",
@@ -4513,8 +4514,8 @@ export default {
   "dashboard.footer.feedback.today": "oldest arrived today",
   "dashboard.footer.feedback.oneDay": "oldest waiting 1 day",
   "dashboard.footer.feedback.days": "oldest waiting $1 days",
-  "dashboard.footer.visitors.delta": "$1% vs the day before",
-  "dashboard.footer.visitors.flat": "same as the day before",
+  "dashboard.footer.visitors.delta": "$1% vs the previous $2 days",
+  "dashboard.footer.visitors.flat": "same as the previous $1 days",
   "dashboard.footer.visitors.noCompare": "no comparison yet",
   "dashboard.footer.noBeacon": "no app here reports page views",
 

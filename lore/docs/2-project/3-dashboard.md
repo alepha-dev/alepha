@@ -203,7 +203,7 @@ The **Add card** panel lists them in these groups.
 | **App health**      | One pill per app instance: its last deploy, and whether it reports              |
 | **Errors**          | Occurrences per day, with a mark at each deployment                             |
 | **Coverage**        | Line coverage over the recorded runs                                            |
-| **Unique visitors** | Per app, yesterday against the day before                                       |
+| **Unique visitors** | Human visitors a day, averaged over the board's period, against the one before  |
 | **Hosts**           | The project's hosts, its own and lent ones: online or offline, and last heard   |
 | **Uptime**          | Each monitor, up or down, with its availability over the last 24 hours as a bar |
 
