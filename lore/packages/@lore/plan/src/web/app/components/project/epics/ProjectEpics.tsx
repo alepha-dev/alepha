@@ -1,4 +1,4 @@
-import { TimeAgo, Badge, useDialog, useUndoable } from "@alepha/ui";
+import { TimeAgo, Badge, useDialog } from "@alepha/ui";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -14,6 +14,7 @@ import {
   settleBulk,
   formatReference,
   useBulkReport,
+  useOptimisticWrite,
   useAgentPrompt,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
@@ -116,7 +117,7 @@ import { useConfirmEpicDelete } from "./useConfirmEpicDelete.ts";
 const ProjectEpics = () => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const undoable = useUndoable();
+  const optimistic = useOptimisticWrite();
   const confirmDelete = useConfirmEpicDelete();
   const queries = useQueryClient();
   const router = useRouter();
@@ -134,8 +135,7 @@ const ProjectEpics = () => {
   /**
    * The status filter the table last fetched with (#Q3673). A shelve takes
    * the row off the page at once when that filter leaves shelved epics out,
-   * rather than patching its chip and waiting for the refetch after the
-   * held commit, which kept it on screen the length of the Undo toast.
+   * rather than patching its chip and waiting for the refetch.
    */
   const statusFilter = useRef<EpicResource["status"][]>([]);
   const hidesShelved = () =>
@@ -183,33 +183,26 @@ const ProjectEpics = () => {
   const ref = (epic: EpicResource) => `#E${epic.number}`;
 
   /**
-   * Prototype: the lifecycle writes below are optimistic. The row changes in
-   * the click's own frame, a toast says so with Undo, and the request
-   * follows. They are plain functions, not `useAction`s, for the frame:
+   * The lifecycle writes below are optimistic. The row changes in the
+   * click's own frame and the request leaves at once; a refusal puts the row
+   * back. They are plain functions, not `useAction`s, for the frame:
    * `useAction` awaits its begin listeners before the handler runs.
    *
    * Only delete keeps a confirm (it takes the epic's quests with it, and is
-   * the one verb with no way back on the server). Ready, draft, shelve and
-   * unshelve trust Undo.
+   * the one verb with no way back on the server). There is no Undo.
    */
   const setStatus = (
     epic: EpicResource,
     status: "draft" | "ready",
     ctx: RowActionContext<EpicResource>,
   ) =>
-    void undoable.run({
-      message: tr(status === "ready" ? "epic.undo.ready" : "epic.undo.draft", {
+    void optimistic.run({
+      message: tr(status === "ready" ? "epic.done.ready" : "epic.done.draft", {
         args: [ref(epic)],
       }),
-      undoLabel: tr("board.undo.undo"),
       apply: () => ctx.optimistic.patch(epic, { ...epic, status }),
       commit: () =>
         epicApi.setEpicStatus({ params: { id: epic.id }, body: { status } }),
-      undo: () =>
-        epicApi.setEpicStatus({
-          params: { id: epic.id },
-          body: { status: status === "ready" ? "draft" : "ready" },
-        }),
     });
 
   // The quests moved too: the quest list, the board and the agent prompt
@@ -220,20 +213,17 @@ const ProjectEpics = () => {
   };
 
   /**
-   * Shelve is HELD until the toast closes, unlike the quest shelve. Its
-   * inverse is lossy: shelving hands every open quest back to `todo` with no
-   * assignee, and unshelving does not give them back. A held write never
-   * reaches the server when Undo is clicked, so nothing is lost.
+   * Shelving hands every open quest back to `todo` with no assignee, and
+   * unshelving does not give them back; the toast counts those quests.
    */
   const shelve = (epic: EpicResource, ctx: RowActionContext<EpicResource>) => {
     const open = openQuestsOf(epic);
-    void undoable.run({
-      message: tr("epic.undo.shelved", { args: [ref(epic)] }),
+    void optimistic.run({
+      message: tr("epic.done.shelved", { args: [ref(epic)] }),
       description:
         open > 0
-          ? tr("epic.undo.shelvedQuests", { args: [String(open)] })
+          ? tr("epic.done.shelvedQuests", { args: [String(open)] })
           : undefined,
-      undoLabel: tr("board.undo.undo"),
       apply: () =>
         hidesShelved()
           ? ctx.optimistic.remove(epic)
@@ -244,14 +234,12 @@ const ProjectEpics = () => {
   };
 
   /**
-   * Unshelve is sent at once, and Undo shelves again: the quests it brings
-   * back come back unassigned whichever way, so the round trip loses nothing
-   * the shelve had not already.
+   * Unshelve: the quests it brings back come back unassigned, as the shelve
+   * left them.
    */
   const unshelve = (epic: EpicResource, ctx: RowActionContext<EpicResource>) =>
-    void undoable.run({
-      message: tr("epic.undo.unshelved", { args: [ref(epic)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("epic.done.unshelved", { args: [ref(epic)] }),
       apply: () =>
         ctx.optimistic.patch(epic, {
           ...epic,
@@ -259,21 +247,17 @@ const ProjectEpics = () => {
           status: epic.startedAt ? "in_progress" : "draft",
         }),
       commit: () => epicApi.unshelveEpic({ params: { id: epic.id } }),
-      undo: () => epicApi.shelveEpic({ params: { id: epic.id } }),
       onCommitted: invalidateWork,
-      onUndone: invalidateWork,
     });
 
   const remove = async (
     epic: EpicResource,
     ctx: RowActionContext<EpicResource>,
   ) => {
-    // The confirm the epic page's menu asks too, then Undo on top: the
-    // delete is held until the toast closes.
+    // The confirm the epic page's menu asks too, then the delete is sent.
     if (!(await confirmDelete(epic))) return;
-    void undoable.run({
-      message: tr("epic.undo.deleted", { args: [ref(epic)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("epic.done.deleted", { args: [ref(epic)] }),
       intent: "primary",
       apply: () => ctx.optimistic.remove(epic),
       commit: () => epicApi.deleteEpic({ params: { id: epic.id } }),
@@ -320,16 +304,14 @@ const ProjectEpics = () => {
     ctx: BulkActionContext<EpicResource>,
   ) => {
     const ids = selected.map((epic) => epic.id);
-    let done: number[] = [];
     ctx.clearSelection();
     // One patch per row: each chip turns in place, rather than the rows
     // leaving a list that still shows them.
     const handles = selected.map((epic) =>
       ctx.optimistic.patch(epic, { ...epic, status: "ready" }),
     );
-    void undoable.run({
-      message: tr("epic.undo.bulkReady", { args: [String(ids.length)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("epic.done.bulkReady", { args: [String(ids.length)] }),
       apply: () => ({
         rollback: () => handles.forEach((h) => h.rollback()),
         settle: () => handles.forEach((h) => h.settle()),
@@ -338,14 +320,9 @@ const ProjectEpics = () => {
         const outcome = await settleBulk(ids, (id) =>
           epicApi.setEpicStatus({ params: { id }, body: { status: "ready" } }),
         );
-        done = outcome.done;
         // A refused row comes back on its own with the settle's reload.
         if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-      undo: () =>
-        settleBulk(done, (id) =>
-          epicApi.setEpicStatus({ params: { id }, body: { status: "draft" } }),
-        ),
     });
   };
 
@@ -388,9 +365,8 @@ const ProjectEpics = () => {
     });
     if (!confirmed) return;
     ctx.clearSelection();
-    void undoable.run({
-      message: tr("epic.undo.bulkDeleted", { args: [n] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("epic.done.bulkDeleted", { args: [n] }),
       intent: "primary",
       apply: () => ctx.optimistic.remove(deletable),
       commit: async () => {
@@ -411,8 +387,7 @@ const ProjectEpics = () => {
    * Confirmed first, because it reaches past the epics: their open quests
    * are unassigned and shelved with them. The confirm counts those quests
    * and names the epics left out (completed or shelved already), which are
-   * never sent. Then HELD until the toast closes, like the row's shelve:
-   * its inverse is lossy, so Undo must keep the write from ever landing.
+   * never sent.
    */
   const bulkShelve = async (
     selected: EpicResource[],
@@ -450,9 +425,8 @@ const ProjectEpics = () => {
       : shelvable.map((epic) =>
           ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
         );
-    void undoable.run({
-      message: tr("epic.undo.bulkShelved", { args: [n] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("epic.done.bulkShelved", { args: [n] }),
       apply: () => ({
         rollback: () => handles.forEach((h) => h.rollback()),
         settle: () => handles.forEach((h) => h.settle()),
@@ -469,9 +443,8 @@ const ProjectEpics = () => {
   };
 
   /**
-   * Unshelve every selected shelved epic, sent at once with Undo shelving
-   * them again, as the row's unshelve does: the quests come back unassigned
-   * whichever way, so the round trip loses nothing.
+   * Unshelve every selected shelved epic, as the row's unshelve does: the
+   * quests come back unassigned.
    */
   const bulkUnshelve = (
     selected: EpicResource[],
@@ -479,7 +452,6 @@ const ProjectEpics = () => {
   ) => {
     const shelved = selected.filter((epic) => epic.status === "shelved");
     const skipped = selected.length - shelved.length;
-    let done: number[] = [];
     ctx.clearSelection();
     const handles = shelved.map((epic) =>
       ctx.optimistic.patch(epic, {
@@ -488,15 +460,14 @@ const ProjectEpics = () => {
         status: epic.startedAt ? "in_progress" : "draft",
       }),
     );
-    void undoable.run({
-      message: tr("epic.undo.bulkUnshelved", {
+    void optimistic.run({
+      message: tr("epic.done.bulkUnshelved", {
         args: [String(shelved.length)],
       }),
       description:
         skipped > 0
           ? tr("epic.bulk.unshelve.skipped", { args: [String(skipped)] })
           : undefined,
-      undoLabel: tr("board.undo.undo"),
       apply: () => ({
         rollback: () => handles.forEach((h) => h.rollback()),
         settle: () => handles.forEach((h) => h.settle()),
@@ -506,13 +477,9 @@ const ProjectEpics = () => {
           shelved.map((epic) => epic.id),
           (id) => epicApi.unshelveEpic({ params: { id } }),
         );
-        done = outcome.done;
         if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-      undo: () =>
-        settleBulk(done, (id) => epicApi.shelveEpic({ params: { id } })),
       onCommitted: invalidateWork,
-      onUndone: invalidateWork,
     });
   };
 
@@ -1105,7 +1072,7 @@ const ProjectEpics = () => {
           //
           // On a draft one too, but only to a reader who may mark it ready,
           // and the click does both: it copies the prompt, then makes the
-          // same optimistic, undoable write as the row's Mark as ready
+          // same optimistic write as the row's Mark as ready
           // (feedback #P2226, #Q3228). A draft epic's quests refuse to be
           // accepted, so the prompt would be useless without it, and whether
           // the spec is done stays the owner's call: it is the owner's click.

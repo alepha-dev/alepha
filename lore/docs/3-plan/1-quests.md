@@ -163,7 +163,7 @@ the epic is ready or in progress. See [Epics](/lore/docs/plan-epics).
 
 **Delete quest** is in the row's menu on the Quests page.
 
-⚠️ You can undo a delete for a few seconds, then it is permanent. The quest's
+⚠️ A delete cannot be undone. The quest's
 creator can delete it, and so can anyone whose rank may delete quests, which a
 **Member** may by default (see [Members](/lore/docs/project-members)). A quest
 inside an epic that has started, completed or been shelved cannot be deleted:

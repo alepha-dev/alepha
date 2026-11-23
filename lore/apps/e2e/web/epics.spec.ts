@@ -976,27 +976,13 @@ test.describe("Epics — the lifecycle from the list", () => {
       await row.getByRole("button").last().click();
     };
 
-    // No confirm (#Q3118): the chip turns at once, and the toast's Undo
-    // sends it back to draft.
-    const readyToast = page.locator("[data-sonner-toast]", {
-      hasText: "is ready",
-    });
-
-    await test.step("Undo leaves the epic a draft", async () => {
-      await openMenu();
-      await page.getByRole("menuitem", { name: "Mark as ready" }).click();
-      await expect(page.getByRole("alertdialog")).toHaveCount(0);
-      await expect(row).toContainText("Ready");
-      await readyToast.getByRole("button", { name: "Undo" }).click();
-      await expect(row).toContainText("Draft", { timeout: 15_000 });
-      await page.reload();
-      await expect(row).toContainText("Draft", { timeout: 15_000 });
-    });
-
+    // No confirm (#Q3118): the chip turns at once, and the write is sent
+    // with the click.
     await test.step("marking it ready repaints the chip, and holds on reload", async () => {
       await openMenu();
       const sent = page.waitForResponse((r) => /setEpicStatus/.test(r.url()));
       await page.getByRole("menuitem", { name: "Mark as ready" }).click();
+      await expect(page.getByRole("alertdialog")).toHaveCount(0);
       await expect(row).toContainText("Ready");
       expect((await sent).ok()).toBe(true);
       await page.reload();

@@ -10,7 +10,6 @@ import {
   TooltipTrigger,
   useDialog,
   useToast,
-  useUndoable,
   UserAvatar,
 } from "@alepha/ui";
 import {
@@ -33,6 +32,7 @@ import {
   type I18n,
   formatReference,
   useBulkReport,
+  useOptimisticWrite,
   useProjectUsers,
   ProjectUserChip,
   AgentPromptsMenu,
@@ -129,7 +129,7 @@ const ProjectQuestsTable = () => {
   const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const undoable = useUndoable();
+  const optimistic = useOptimisticWrite();
   const dialog = useDialog();
   // Shared with every surface that names a member, under
   // `["project-users", projectId]` (#E59, #Q2331), rather than a second copy
@@ -219,20 +219,18 @@ const ProjectQuestsTable = () => {
   const ref = (quest: QuestResource) => formatReference("quest", quest.shortId);
 
   /**
-   * Prototype: every row transition below is optimistic. The row changes on
-   * screen in the same frame as the click, the toast says so and offers
-   * Undo, and the request follows. A reversible write (accept, shelve,
-   * unshelve) is sent at once and Undo sends its inverse; a delete has no
-   * inverse, so it is held until the toast closes and Undo never sends it.
+   * Every row transition below is optimistic. The row changes on screen in
+   * the same frame as the click and the request leaves at once; a refusal
+   * puts the row back. There is no Undo: a delete is guarded by its confirm,
+   * the rest by their inverse in the row menu.
    */
   // Not `useAction`s: an optimistic change must reach the screen in the
   // click's own frame, and `useAction` awaits its begin listeners before the
-  // handler runs (80 ms measured in dev). `undoable.run` reports its own
+  // handler runs (80 ms measured in dev). `optimistic.run` reports its own
   // failures through the same `react:action:error` channel.
   const accept = (quest: QuestResource, ctx: RowActionContext<QuestResource>) =>
-    void undoable.run({
-      message: tr("board.undo.accepted", { args: [ref(quest)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("board.done.accepted", { args: [ref(quest)] }),
       apply: () =>
         ctx.optimistic.patch(quest, {
           ...quest,
@@ -240,16 +238,15 @@ const ProjectQuestsTable = () => {
           metadata: { ...quest.metadata, status: "in_progress" },
         }),
       commit: () => questMutations.accept(quest.id),
-      undo: () => questMutations.unassign(quest.id),
     });
 
   const shelve = (
     quest: QuestResource,
     ctx: RowActionContext<QuestResource>,
   ) => {
-    // No confirm any more: Undo is the safety net. The one thing the confirm
-    // said that Undo cannot, "this leaves others blocked", is read beside the
-    // write and follows as a warning if it applies. A warning that could not
+    // No confirm: Unshelve is the way back. What a confirm would have said,
+    // "this leaves others blocked", is read beside the write and follows as
+    // a warning if it applies. A warning that could not
     // be read stays quiet.
     void questApi
       .getQuestLine({ params: { id: quest.id } })
@@ -261,17 +258,15 @@ const ProjectQuestsTable = () => {
       .then((blocked) => {
         if (blocked.length > 0) {
           toaster.warning(
-            tr("board.undo.blocks", { args: [blocked.join(", ")] }),
+            tr("board.done.blocks", { args: [blocked.join(", ")] }),
           );
         }
       })
       .catch(() => null);
-    void undoable.run({
-      message: tr("board.undo.shelved", { args: [ref(quest)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("board.done.shelved", { args: [ref(quest)] }),
       apply: () => ctx.optimistic.remove(quest),
       commit: () => questMutations.shelve(quest.id),
-      undo: () => questMutations.unshelve(quest.id),
     });
   };
 
@@ -279,17 +274,14 @@ const ProjectQuestsTable = () => {
     quest: QuestResource,
     ctx: RowActionContext<QuestResource>,
   ) =>
-    void undoable.run({
-      message: tr("board.undo.unshelved", { args: [ref(quest)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("board.done.unshelved", { args: [ref(quest)] }),
       apply: () => ctx.optimistic.remove(quest),
       commit: () => questMutations.unshelve(quest.id),
-      undo: () => questMutations.shelve(quest.id),
     });
 
-  // Confirm AND Undo, for the one irreversible verb: the confirm catches the
-  // misclick, the Undo catches "wrong row". Deferred: the delete goes out when
-  // the toast closes, so Undo is a real undo with no server-side trash.
+  // The one irreversible verb keeps a confirm; once confirmed, the delete is
+  // sent at once.
   const remove = async (
     quest: QuestResource,
     ctx: RowActionContext<QuestResource>,
@@ -300,9 +292,8 @@ const ProjectQuestsTable = () => {
       destructive: true,
     });
     if (!confirmed) return;
-    void undoable.run({
-      message: tr("board.undo.deleted", { args: [ref(quest)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("board.done.deleted", { args: [ref(quest)] }),
       intent: "primary",
       apply: () => ctx.optimistic.remove(quest),
       commit: () => questMutations.remove(quest.id),
@@ -331,24 +322,20 @@ const ProjectQuestsTable = () => {
       return;
     }
     const ids = eligible.map((quest) => quest.id);
-    let done: number[] = [];
     ctx.clearSelection();
-    void undoable.run({
-      message: tr("board.undo.bulkShelved", { args: [count(ids)] }),
+    void optimistic.run({
+      message: tr("board.done.bulkShelved", { args: [count(ids)] }),
       description:
         skipped > 0
           ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
           : undefined,
-      undoLabel: tr("board.undo.undo"),
       apply: () => ctx.optimistic.remove(eligible),
       commit: async () => {
         const outcome = await questMutations.shelveMany(ids);
-        done = outcome.done;
         // A refused row comes back on its own: the settle reloads the
         // page and the server still lists it.
         if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-      undo: () => questMutations.unshelveMany(done),
     });
   };
 
@@ -363,22 +350,18 @@ const ProjectQuestsTable = () => {
       return;
     }
     const ids = eligible.map((quest) => quest.id);
-    let done: number[] = [];
     ctx.clearSelection();
-    void undoable.run({
-      message: tr("board.undo.bulkUnshelved", { args: [count(ids)] }),
+    void optimistic.run({
+      message: tr("board.done.bulkUnshelved", { args: [count(ids)] }),
       description:
         skipped > 0
           ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
           : undefined,
-      undoLabel: tr("board.undo.undo"),
       apply: () => ctx.optimistic.remove(eligible),
       commit: async () => {
         const outcome = await questMutations.unshelveMany(ids);
-        done = outcome.done;
         if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-      undo: () => questMutations.shelveMany(done),
     });
   };
 
@@ -504,9 +487,8 @@ const ProjectQuestsTable = () => {
     if (!confirmed) return;
     const ids = selected.map((quest) => quest.id);
     ctx.clearSelection();
-    void undoable.run({
-      message: tr("board.undo.bulkDeleted", { args: [count(ids)] }),
-      undoLabel: tr("board.undo.undo"),
+    void optimistic.run({
+      message: tr("board.done.bulkDeleted", { args: [count(ids)] }),
       intent: "primary",
       apply: () => ctx.optimistic.remove(selected),
       commit: async () => {

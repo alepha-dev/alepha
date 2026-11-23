@@ -229,6 +229,11 @@ export {
 export { matchProjectNav } from "./app/components/shared/spotlight/matchProjectNav.ts";
 export { useBulkReport } from "./app/components/shared/useBulkReport.ts";
 export {
+  type OptimisticWrite,
+  type OptimisticWriteOptions,
+  useOptimisticWrite,
+} from "./app/components/shared/useOptimisticWrite.ts";
+export {
   ProjectUserChip,
   type ProjectUserChipProps,
 } from "./app/components/shared/ProjectUserChip.tsx";

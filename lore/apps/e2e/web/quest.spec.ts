@@ -1035,34 +1035,15 @@ test.describe("Quest", () => {
       await expect(page.getByText(questTitle).first()).toBeVisible();
     });
 
-    // Confirm AND Undo (#Q3118): the row leaves at once, and the delete is
-    // held behind the toast, so Undo sends nothing.
-    const deletedToast = page.locator("[data-sonner-toast]", {
-      hasText: "deleted",
-    });
-
-    await test.step("confirm removes the row at once, and Undo brings it back", async () => {
+    // The confirm is the one guard: once confirmed, the row leaves at once
+    // and the delete is sent with the click.
+    await test.step("confirm removes the row and sends the delete", async () => {
       await openRowActions();
-      await page.getByRole("button", { name: "Confirm" }).click();
-      await expect(page.getByText(questTitle).first()).toBeHidden({
-        timeout: 10_000,
-      });
-      await deletedToast.getByRole("button", { name: "Undo" }).click();
-      await expect(page.getByText(questTitle).first()).toBeVisible();
-      await page.reload();
-      await expect(page.getByText(questTitle).first()).toBeVisible({
-        timeout: 10_000,
-      });
-    });
-
-    await test.step("closing the toast sends the delete", async () => {
-      await openRowActions();
-      await page.getByRole("button", { name: "Confirm" }).click();
-      await expect(page.getByText(questTitle).first()).toBeHidden({
-        timeout: 10_000,
-      });
       const sent = page.waitForResponse((r) => /deleteQuest/.test(r.url()));
-      await deletedToast.getByRole("button", { name: /close/i }).click();
+      await page.getByRole("button", { name: "Confirm" }).click();
+      await expect(page.getByText(questTitle).first()).toBeHidden({
+        timeout: 10_000,
+      });
       expect((await sent).ok()).toBe(true);
       await page.reload();
       await expect(page.getByText(questTitle).first()).toBeHidden({
@@ -2142,25 +2123,14 @@ test.describe("Quest", () => {
     await test.step("shelve from the row menu", async () => {
       await page.getByRole("button", { name: "Open row actions" }).click();
       // No confirm from the row (#Q3118): the row leaves at once, and the
-      // toast's Undo sends the unshelve.
-      const shelvedToast = page.locator("[data-sonner-toast]", {
-        hasText: "shelved",
-      });
+      // shelve is sent with the click. The default filter hides shelved
+      // quests server-side, so after a reload the row stays gone.
+      const sent = page.waitForResponse((r) => /shelveQuest/.test(r.url()));
       await page.getByRole("menuitem", { name: /shelve quest/i }).click();
       await expect(page.getByRole("alertdialog")).toHaveCount(0);
       await expect(page.getByText(questTitle).first()).toBeHidden({
         timeout: 10_000,
       });
-      await shelvedToast.getByRole("button", { name: "Undo" }).click();
-      await expect(page.getByText(questTitle).first()).toBeVisible({
-        timeout: 10_000,
-      });
-
-      // And for real this time. The default filter hides shelved quests
-      // server-side, so after a reload the row stays gone.
-      await page.getByRole("button", { name: "Open row actions" }).click();
-      const sent = page.waitForResponse((r) => /shelveQuest/.test(r.url()));
-      await page.getByRole("menuitem", { name: /shelve quest/i }).click();
       expect((await sent).ok()).toBe(true);
       await page.reload();
       await expect(page.getByText(questTitle).first()).toBeHidden({

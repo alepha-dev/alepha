@@ -57,7 +57,7 @@ moves a ready epic to in progress, and the last one it closes is what completes
 it. A draft epic is the exception, because its quests refuse to be accepted:
 there the entry is offered only if you may mark the epic ready, and clicking it
 does both. It copies the prompt and marks the epic ready, so handing a finished
-spec over is one click, with the same **Undo** as **Mark as ready**. Whether
+spec over is one click. Whether
 the spec is done stays your call, never the agent's. Copying the prompt from a
 ready or started epic changes nothing about the epic.
 
