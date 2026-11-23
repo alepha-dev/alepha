@@ -1132,18 +1132,17 @@ test.describe("Epics — shelving a plan", () => {
       await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(
         0,
       );
-      // No confirm (#Q3118): the toast names what is set aside, and the
-      // shelve is HELD until it closes. Closing it sends it now.
+      // No confirm (#Q3118): the shelve is sent with the click, and the
+      // toast names what it set aside.
+      const sent = page.waitForResponse((r) => /shelveEpic/.test(r.url()));
       await page.getByRole("menuitem", { name: "Shelve" }).click();
       await expect(page.getByRole("alertdialog")).toHaveCount(0);
       await expect(row).toContainText("Shelved");
+      expect((await sent).ok()).toBe(true);
       const toast = page.locator("[data-sonner-toast]", {
         hasText: "shelved",
       });
       await expect(toast).toContainText("2 open quest(s) set aside with it.");
-      const sent = page.waitForResponse((r) => /shelveEpic/.test(r.url()));
-      await toast.getByRole("button", { name: /close/i }).click();
-      expect((await sent).ok()).toBe(true);
     });
 
     await test.step("the quests are shelved, and the started one unassigned", async () => {
