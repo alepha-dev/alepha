@@ -727,6 +727,26 @@ export class ArtifactsGitBackend extends GitBackend {
     });
   }
 
+  /**
+   * A command-only receive-pack (`updateRefs`), which Artifacts refuses as
+   * "stale ref" when the branch moved since `oldSha`.
+   */
+  public async deleteRef(
+    ref: string,
+    refName: string,
+    oldSha: string,
+  ): Promise<void> {
+    GitBackend.assertDeletable(refName, oldSha);
+    const lines = await this.updateRefs(ref, [
+      { oldId: oldSha, newId: GitReceivePack.ZERO, ref: refName },
+    ]);
+    if (!lines.includes(`ok ${refName}`)) {
+      throw new AlephaError(
+        `Could not delete ${refName}: ${lines.join("; ") || "no report"}`,
+      );
+    }
+  }
+
   public async readTree(
     ref: string,
     treeSha: string,

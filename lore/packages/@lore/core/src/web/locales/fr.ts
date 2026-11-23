@@ -5208,4 +5208,19 @@ export default {
   "code.commit.parents": "Parents",
   "code.commit.mergeDiff":
     "Une fusion : le diff est contre $1, son premier parent.",
+  "code.tab.branches": "Branches",
+  "code.tab.tags": "Tags",
+  "code.branches.default": "Par défaut",
+  "code.branches.counts": "$1 en avance, $2 en retard",
+  "code.branches.compare": "Comparer avec la branche par défaut",
+  "code.branches.delete.label": "Supprimer $1",
+  "code.branches.delete.title": "Supprimer la branche $1 ?",
+  "code.branches.delete.description":
+    "Ses commits ne restent accessibles que si une autre branche ou un tag les contient.",
+  "code.branches.delete.confirm": "Supprimer",
+  "code.tags.none": "Aucun tag pour l'instant.",
+  "code.compare.counts": "$1 commits en avance, $2 en retard",
+  "code.compare.capped":
+    "La base de fusion est trop ancienne pour être trouvée ici.",
+  "code.compare.unrelated": "Ces deux révisions n'ont aucun historique commun.",
 };

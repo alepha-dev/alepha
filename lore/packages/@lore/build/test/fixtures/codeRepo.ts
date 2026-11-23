@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { ProjectController } from "@lore/core/api";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -18,6 +19,7 @@ import {
   LocalGitBackend,
   LoreBuildApi,
 } from "../../src/api/index.ts";
+import { createTestMemberByProjectId } from "../../src/testing/index.ts";
 import { D1CeilingProvider } from "./D1CeilingProvider.ts";
 
 /**
@@ -37,6 +39,11 @@ export interface CodeRepoContext {
    * The working copy that pushes into `repository`.
    */
   history: GitHistory;
+  /**
+   * A new user seated in the project on a preset rank (`viewer`,
+   * `member`, `admin`).
+   */
+  addMember: (rank: string) => Promise<{ id: string; roles: string[] }>;
   stop: () => Promise<void>;
 }
 
@@ -116,6 +123,20 @@ export const bootCodeRepo = async (
     repository,
     backend,
     history,
+    addMember: async (rank) => {
+      await createPresetRanks(alepha, project.data.id).catch(() => undefined);
+      const other = alepha.inject(FakeProvider).generate(userDataSchema);
+      const made = await alepha
+        .inject(AdminUserController)
+        .createUser.fetch(
+          { body: { ...other, roles: ["user"] } },
+          { user: adminUser },
+        );
+      await createTestMemberByProjectId(alepha, project.data.id, made.data.id, {
+        rank,
+      });
+      return { id: made.data.id, roles: made.data.roles };
+    },
     stop: async () => {
       await alepha.stop();
       rmSync(dir, { recursive: true, force: true });

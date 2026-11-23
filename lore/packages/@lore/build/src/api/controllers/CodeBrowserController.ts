@@ -3,7 +3,9 @@ import { $inject, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
+import { codeBranchSchema } from "../schemas/codeBranchSchema.ts";
 import { codeCommitDetailSchema } from "../schemas/codeCommitDetailSchema.ts";
+import { codeCompareSchema } from "../schemas/codeCompareSchema.ts";
 import { codeDiffFileSchema } from "../schemas/codeDiffFileSchema.ts";
 import { codeDiffSchema } from "../schemas/codeDiffSchema.ts";
 import { codeFileSchema } from "../schemas/codeFileSchema.ts";
@@ -11,6 +13,7 @@ import { codeLocationQuerySchema } from "../schemas/codeLocationQuerySchema.ts";
 import { codeLogSchema } from "../schemas/codeLogSchema.ts";
 import { codeRepositoryDetailSchema } from "../schemas/codeRepositoryDetailSchema.ts";
 import { codeRepositorySlugSchema } from "../schemas/codeRepositorySlugSchema.ts";
+import { codeTagSchema } from "../schemas/codeTagSchema.ts";
 import { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
 import { codeTreeSchema } from "../schemas/codeTreeSchema.ts";
 import { CodeBrowserService } from "../services/CodeBrowserService.ts";
@@ -40,6 +43,12 @@ export class CodeBrowserController {
 
   protected readGate = () =>
     $ownsProject({ param: "projectId", requires: "code:read" });
+  protected writeGate = (action: string) =>
+    $ownsProject({
+      param: "projectId",
+      requires: "code:write",
+      capability: { key: "build", option: "repositories", action },
+    });
 
   getCodeRepository = $action({
     use: [this.readGate()],
@@ -328,6 +337,94 @@ export class CodeBrowserController {
         user,
       );
       return this.browser.commitOf(row, params.sha);
+    },
+  });
+
+  listCodeBranches = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/branches",
+    description:
+      "Every branch with its last commit and how far it is ahead of and behind the default branch (capped at 100).",
+    schema: {
+      params: this.repoParams,
+      response: z.object({ branches: z.array(codeBranchSchema) }),
+    },
+    handler: async ({ params, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      return { branches: await this.browser.branches(row) };
+    },
+  });
+
+  listCodeTags = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/tags",
+    description: "Every tag with the commit it points at.",
+    schema: {
+      params: this.repoParams,
+      response: z.object({ tags: z.array(codeTagSchema) }),
+    },
+    handler: async ({ params, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      return { tags: await this.browser.tags(row) };
+    },
+  });
+
+  getCodeCompare = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/compare",
+    description:
+      "Two revisions compared: their merge base, the commits head has since it, and how far each is ahead (capped at 100).",
+    schema: {
+      params: this.repoParams,
+      query: z.object({
+        base: z.text({ maxLength: 255 }),
+        head: z.text({ maxLength: 255 }),
+      }),
+      response: codeCompareSchema,
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      return this.browser.compare(row, query.base, query.head);
+    },
+  });
+
+  /**
+   * Needs `code:write`, a Member's, as a push does; never the default
+   * branch.
+   */
+  deleteCodeBranch = $action({
+    use: [this.writeGate("delete a branch")],
+    method: "DELETE",
+    path: "/projects/:projectId/code/repos/:slug/branches",
+    description: "Delete a branch that is not the default one.",
+    schema: {
+      params: this.repoParams,
+      query: z.object({ name: z.text({ maxLength: 255 }) }),
+      response: z.object({ ok: z.boolean() }),
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      await this.browser.deleteBranch(row, query.name, user);
+      return { ok: true };
     },
   });
 }

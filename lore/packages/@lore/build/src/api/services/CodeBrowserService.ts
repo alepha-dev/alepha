@@ -1,22 +1,29 @@
-import { CommitReferenceRegistry } from "@lore/core/api";
+import { CommitReferenceRegistry, LoreAudits } from "@lore/core/api";
 import { $inject, type Infer } from "alepha";
-import { NotFoundError } from "alepha/server";
+import type { UserAccountToken } from "alepha/security";
+import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { GitBackend, type GitRefTip } from "../backends/GitBackend.ts";
+import type { CodeCommitRow } from "../entities/codeCommits.ts";
 import type { CodeRepository } from "../entities/codeRepositories.ts";
 import { CodeIndexJobs } from "../jobs/CodeIndexJobs.ts";
+import type { codeBranchSchema } from "../schemas/codeBranchSchema.ts";
 import type { codeCommitDetailSchema } from "../schemas/codeCommitDetailSchema.ts";
 import type { codeCommitSummarySchema } from "../schemas/codeCommitSummarySchema.ts";
+import type { codeCompareSchema } from "../schemas/codeCompareSchema.ts";
 import type { codeFileSchema } from "../schemas/codeFileSchema.ts";
 import type { codeLocationQuerySchema } from "../schemas/codeLocationQuerySchema.ts";
+import type { codeLogEntrySchema } from "../schemas/codeLogEntrySchema.ts";
 import type { codeLogSchema } from "../schemas/codeLogSchema.ts";
 import type { codeRefSchema } from "../schemas/codeRefSchema.ts";
 import type { codeRepositoryDetailSchema } from "../schemas/codeRepositoryDetailSchema.ts";
 import type { codeRevisionSchema } from "../schemas/codeRevisionSchema.ts";
+import type { codeTagSchema } from "../schemas/codeTagSchema.ts";
 import type { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
 import type { codeTreeSchema } from "../schemas/codeTreeSchema.ts";
 import { CodeAuthors } from "./CodeAuthors.ts";
 import { CodeCommitIndex } from "./CodeCommitIndex.ts";
+import { CodeCompareService } from "./CodeCompareService.ts";
 import { CodeRepositoryService } from "./CodeRepositoryService.ts";
 
 type CommitSummary = Infer<typeof codeCommitSummarySchema>;
@@ -35,6 +42,8 @@ export class CodeBrowserService {
   protected readonly repositories = $inject(CodeRepositoryService);
   protected readonly authors = $inject(CodeAuthors);
   protected readonly references = $inject(CommitReferenceRegistry);
+  protected readonly comparer = $inject(CodeCompareService);
+  protected readonly audits = $inject(LoreAudits);
 
   /**
    * One commit's summary: the index's row, or the backend's commit while
@@ -467,6 +476,24 @@ export class CodeBrowserService {
         limit,
       },
     );
+    return {
+      revision,
+      path,
+      page,
+      more,
+      indexing: false,
+      commits: await this.decorate(repository, commits),
+    };
+  }
+
+  /**
+   * Index rows as history entries: their quests, one lookup for all of
+   * them, and their authors' members, one more.
+   */
+  protected async decorate(
+    repository: CodeRepository,
+    commits: CodeCommitRow[],
+  ): Promise<Infer<typeof codeLogEntrySchema>[]> {
     const [quests, members] = await Promise.all([
       this.references.questsForCommits(
         repository.projectId,
@@ -477,24 +504,17 @@ export class CodeBrowserService {
         commits.map((it) => it.authorEmail),
       ),
     ]);
-    return {
-      revision,
-      path,
-      page,
-      more,
-      indexing: false,
-      commits: commits.map((row) => ({
-        sha: row.sha,
-        subject: row.subject,
-        authorName: row.authorName,
-        authorEmail: row.authorEmail,
-        authoredAt: row.authoredAt,
-        committedAt: row.committedAt,
-        parents: row.parents,
-        quests: quests.get(row.sha) ?? [],
-        member: members.get(row.authorEmail.toLowerCase()),
-      })),
-    };
+    return commits.map((row) => ({
+      sha: row.sha,
+      subject: row.subject,
+      authorName: row.authorName,
+      authorEmail: row.authorEmail,
+      authoredAt: row.authoredAt,
+      committedAt: row.committedAt,
+      parents: row.parents,
+      quests: quests.get(row.sha) ?? [],
+      member: members.get(row.authorEmail.toLowerCase()),
+    }));
   }
 
   /**
@@ -525,5 +545,160 @@ export class CodeBrowserService {
       member: members.get(commit.author.email.toLowerCase()),
       quests: quests.get(commit.sha) ?? [],
     };
+  }
+
+  /**
+   * Every branch with its last commit and its distance to the default
+   * branch (#Q4137), the default one first.
+   */
+  public async branches(
+    repository: CodeRepository,
+  ): Promise<Infer<typeof codeBranchSchema>[]> {
+    const { branches } = this.refsOf(
+      await this.backend.refs(repository.backendRef),
+    );
+    const main = branches.find((it) => it.name === repository.defaultBranch);
+    const known = await this.index.known(
+      repository.id,
+      branches.map((it) => it.sha),
+    );
+    const rows = new Map(
+      (
+        await this.index.many(
+          repository.id,
+          branches.map((it) => it.sha),
+        )
+      ).map((row) => [row.sha, row]),
+    );
+    const out = await Promise.all(
+      branches.map(async (branch) => {
+        const isDefault = branch.name === repository.defaultBranch;
+        const indexed =
+          known.has(branch.sha) && Boolean(main && known.has(main.sha));
+        const counts =
+          !isDefault && indexed && main
+            ? await this.comparer.counts(repository, main.sha, branch.sha)
+            : { ahead: 0, behind: 0, aheadCapped: false, behindCapped: false };
+        const row = rows.get(branch.sha);
+        return {
+          name: branch.name,
+          sha: branch.sha,
+          isDefault,
+          commit: row
+            ? {
+                sha: row.sha,
+                subject: row.subject,
+                authorName: row.authorName,
+                authorEmail: row.authorEmail,
+                authoredAt: row.authoredAt,
+                committedAt: row.committedAt,
+                parents: row.parents,
+              }
+            : await this.summary(repository, branch.sha),
+          ...counts,
+          indexing: !isDefault && !indexed,
+        };
+      }),
+    );
+    return out.sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
+  }
+
+  /**
+   * Every tag, peeled, with the commit it points at (#Q4137).
+   */
+  public async tags(
+    repository: CodeRepository,
+  ): Promise<Infer<typeof codeTagSchema>[]> {
+    const { tags } = this.refsOf(
+      await this.backend.refs(repository.backendRef),
+    );
+    const rows = new Map(
+      (
+        await this.index.many(
+          repository.id,
+          tags.map((it) => it.sha),
+        )
+      ).map((row) => [row.sha, row]),
+    );
+    return Promise.all(
+      tags.map(async (tag) => {
+        const row = rows.get(tag.sha);
+        return {
+          name: tag.name,
+          sha: tag.sha,
+          commit: row
+            ? {
+                sha: row.sha,
+                subject: row.subject,
+                authorName: row.authorName,
+                authorEmail: row.authorEmail,
+                authoredAt: row.authoredAt,
+                committedAt: row.committedAt,
+                parents: row.parents,
+              }
+            : await this.summary(repository, tag.sha),
+        };
+      }),
+    );
+  }
+
+  /**
+   * `<base>...<head>` (#Q4137), each side a branch, a tag or a commit.
+   */
+  public async compare(
+    repository: CodeRepository,
+    base: string,
+    head: string,
+  ): Promise<Infer<typeof codeCompareSchema>> {
+    const [a, b] = await Promise.all([
+      this.revisionOf(repository, base),
+      this.revisionOf(repository, head),
+    ]);
+    if (!a || !b) {
+      throw new NotFoundError("No such revision in this repository.");
+    }
+    const result = await this.comparer.compare(repository, a.sha, b.sha);
+    return {
+      base: a,
+      head: b,
+      mergeBase: result.mergeBase,
+      mergeBaseCapped: result.mergeBaseCapped,
+      commits: await this.decorate(repository, result.commits),
+      ahead: result.ahead,
+      behind: result.behind,
+      aheadCapped: result.aheadCapped,
+      behindCapped: result.behindCapped,
+      indexing: result.indexing,
+    };
+  }
+
+  /**
+   * Delete a branch that is not the default one (#Q4137), where it points
+   * now, and say so in the project's activity.
+   */
+  public async deleteBranch(
+    repository: CodeRepository,
+    name: string,
+    user: UserAccountToken | undefined,
+  ): Promise<void> {
+    if (name === repository.defaultBranch) {
+      throw new BadRequestError(
+        `${name} is the default branch: it is never deleted.`,
+      );
+    }
+    const refName = `refs/heads/${name}`;
+    const tip = (await this.backend.refs(repository.backendRef)).find(
+      (it) => it.name === refName,
+    );
+    if (!tip) throw new NotFoundError(`No branch named ${name}.`);
+    await this.backend.deleteRef(repository.backendRef, refName, tip.sha);
+    await this.audits.code.logSuccess("delete-branch", {
+      ...(user ? this.audits.actor(user) : {}),
+      ...this.audits.scope(repository.projectId),
+      resourceType: "code",
+      resourceId: repository.slug,
+      description: name,
+      metadata: { branch: name, sha: tip.sha },
+    });
   }
 }

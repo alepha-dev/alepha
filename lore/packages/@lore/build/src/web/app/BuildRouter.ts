@@ -146,6 +146,9 @@ export class BuildRouter {
       this.codeRepoBlob,
       this.codeRepoCommits,
       this.codeRepoCommit,
+      this.codeRepoBranches,
+      this.codeRepoTags,
+      this.codeRepoCompare,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Code`,
@@ -298,6 +301,69 @@ export class BuildRouter {
         query: { from: commit.parents[0], to: commit.sha, page: query.page },
       });
       return { commit, diff };
+    },
+  });
+
+  /**
+   * Every branch, its distance to the default one (#Q4137).
+   */
+  codeRepoBranches = $page({
+    name: "codeRepoBranches",
+    path: "/branches",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Branches`,
+    }),
+    lazy: () => import("./components/project/code/CodeBranchesPage.tsx"),
+  });
+
+  /**
+   * Every tag (#Q4137).
+   */
+  codeRepoTags = $page({
+    name: "codeRepoTags",
+    path: "/tags",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Tags`,
+    }),
+    lazy: () => import("./components/project/code/CodeTagsPage.tsx"),
+  });
+
+  /**
+   * `/compare/<base>...<head>` (#Q4137): a trailing `*`, since a branch name
+   * holds slashes; the two sides split on `...`.
+   */
+  codeRepoCompare = $page({
+    name: "codeRepoCompare",
+    path: "/compare/*",
+    schema: {
+      params: z.object({ "*": z.text({ maxLength: 4096 }).optional() }),
+      query: z.object({ page: z.integer().min(0).optional() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Compare`,
+    }),
+    lazy: () => import("./components/project/code/CodeComparePage.tsx"),
+    loader: async ({ params, query }) => {
+      const repo = this.currentRepo();
+      const [base = "", head = ""] = decodeCodePath(params["*"]).split("...");
+      if (!base || !head)
+        throw new NotFoundError("Compare two revisions: <base>...<head>");
+      const ids = { projectId: repo.projectId, slug: repo.slug };
+      const compare = await this.codeApi.getCodeCompare({
+        params: ids,
+        query: { base, head },
+      });
+      const diff = compare.mergeBase
+        ? await this.codeApi.getCodeDiff({
+            params: ids,
+            query: {
+              from: compare.mergeBase,
+              to: compare.head.sha,
+              page: query.page,
+            },
+          })
+        : undefined;
+      return { compare, diff };
     },
   });
 

@@ -382,12 +382,15 @@ export class LoreAudits {
    * A push to one of the project's git repositories (#Q3945), by the
    * pusher, `resourceId` the repository's slug. `metadata` carries the refs,
    * the commit count and the quests the push recorded commits on. A
-   * `lore code import` writes one per slice, so pushes coalesce.
+   * `lore code import` writes one per slice, so pushes coalesce. A branch
+   * deleted from the code browser (#Q4137) is `delete-branch`, the branch
+   * and the sha it pointed at in `metadata`.
    */
   readonly code = $audit({
     type: "code",
-    description: "Pushes to the project's git repositories",
-    actions: ["push"],
+    description:
+      "Pushes to the project's git repositories, and branches deleted",
+    actions: ["push", "delete-branch"],
     coalesce: { actions: ["push"], window: "5m" },
   });
 
