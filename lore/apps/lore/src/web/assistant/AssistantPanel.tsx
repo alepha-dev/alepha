@@ -1,5 +1,6 @@
 import { Button } from "@alepha/ui";
 import { AiChat, type AiChatSuggestion } from "@alepha/ui/ai";
+import { useChatToolSummary } from "@lore/chat/web";
 import {
   AssistantSuggestionRegistry,
   currentProjectAtom,
@@ -33,6 +34,8 @@ const AssistantPanel = () => {
   const [open, setOpen] = useStore(assistantOpenAtom);
   const [project] = useStore(currentProjectAtom);
   const toolLabel = useAssistantToolLabel();
+  // The rooms' summary, so a run reads the same in the panel (#Q4212).
+  const toolSummary = useChatToolSummary();
   const refresh = useAssistantInvalidates();
   const registry = useInject(AssistantSuggestionRegistry);
   const routerState = useRouterState();
@@ -66,6 +69,7 @@ const AssistantPanel = () => {
       title={tr("assistant.title")}
       suggestions={suggestions}
       toolLabel={toolLabel}
+      toolSummary={toolSummary}
       confirmCards={assistantConfirmCards}
       invalidates={refresh.invalidates}
       onToolsRan={refresh.onToolsRan}

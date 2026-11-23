@@ -17,7 +17,12 @@ import {
 import { AiChatEmpty, type AiChatSuggestion } from "./AiChatEmpty.tsx";
 import { AiChatHistory } from "./AiChatHistory.tsx";
 import { AiChatMessage, type AiChatToolLabel } from "./AiChatMessage.tsx";
-import type { UseAiChat } from "./useAiChat.ts";
+import {
+  type AiChatToolStep,
+  type AiChatToolSummary,
+  AiChatToolTrace,
+} from "./AiChatToolTrace.tsx";
+import type { AiChatItem, UseAiChat } from "./useAiChat.ts";
 
 /**
  * What the conversation looks like, whatever holds it: the props `AiChat`
@@ -46,6 +51,11 @@ export interface AiChatViewProps {
    * and done. Without it a step shows the tool's own name.
    */
   toolLabel?: AiChatToolLabel;
+  /**
+   * The folded line over a run of tool calls ("Read 2 quests, 1 folio").
+   * Without it, the line says how many tools ran.
+   */
+  toolSummary?: AiChatToolSummary;
   /**
    * A confirmation card per tool name, in place of the generic field list:
    * an app shows a booking as a booking. It gets the pending call as the
@@ -99,13 +109,8 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
     }
   }, [chat.items.length, chat.streaming, chat.activity, chat.pending]);
 
-  const running = chat.activity
-    ? (props.toolLabel?.(chat.activity, "running") ??
-      tr("ai.chat.running", {
-        default: "Running $1",
-        args: [chat.activity],
-      }))
-    : undefined;
+  const rows = groupToolRuns(chat.items, chat.activity);
+  const running = Boolean(chat.activity);
 
   const Card = chat.pending
     ? (props.confirmCards?.[chat.pending.name] ?? AiChatConfirmCard)
@@ -176,29 +181,38 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
           />
         ) : (
           <>
-            {chat.items.map((item, index) => (
-              <AiChatMessage
-                key={item.id}
-                item={item}
-                renderLink={props.renderLink}
-                toolLabel={props.toolLabel}
-                // Only where continuing still means "this answer": the last
-                // line, with no turn running and no card waiting.
-                onContinue={
-                  item.cut &&
-                  index === chat.items.length - 1 &&
-                  !chat.loading &&
-                  !chat.pending
-                    ? () =>
-                        void chat.send(
-                          tr("ai.chat.continueMessage", {
-                            default: "Continue",
-                          }),
-                        )
-                    : undefined
-                }
-              />
-            ))}
+            {rows.map((row) =>
+              row.kind === "tools" ? (
+                <AiChatToolTrace
+                  key={row.key}
+                  tools={row.tools}
+                  label={props.toolLabel}
+                  summary={props.toolSummary}
+                />
+              ) : (
+                <AiChatMessage
+                  key={row.item.id}
+                  item={row.item}
+                  renderLink={props.renderLink}
+                  toolLabel={props.toolLabel}
+                  // Only where continuing still means "this answer": the
+                  // last line, with no turn running and no card waiting.
+                  onContinue={
+                    row.item.cut &&
+                    row.item === chat.items[chat.items.length - 1] &&
+                    !chat.loading &&
+                    !chat.pending
+                      ? () =>
+                          void chat.send(
+                            tr("ai.chat.continueMessage", {
+                              default: "Continue",
+                            }),
+                          )
+                      : undefined
+                  }
+                />
+              ),
+            )}
             {chat.streaming && (
               <div
                 data-testid="ai-chat-streaming"
@@ -208,12 +222,6 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
                   content={chat.streaming}
                   renderLink={props.renderLink}
                 />
-              </div>
-            )}
-            {running && (
-              <div className="text-muted-foreground flex items-center gap-1.5 px-0.5 text-xs">
-                <Spinner className="size-3.5" />
-                {running}
               </div>
             )}
             {busy && !running && !chat.streaming && (
@@ -251,4 +259,45 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
       </div>
     </div>
   );
+};
+
+/**
+ * One line of the thread: a message, or a run of consecutive tool calls
+ * folded into one trace.
+ */
+type AiChatRow =
+  | { kind: "message"; item: AiChatItem }
+  | { kind: "tools"; key: string; tools: AiChatToolStep[] };
+
+/**
+ * The thread's lines, with each run of consecutive tool calls as one row.
+ * The call in flight (`activity`) joins the run it continues, or starts one.
+ */
+const groupToolRuns = (
+  items: AiChatItem[],
+  activity: string | undefined,
+): AiChatRow[] => {
+  const rows: AiChatRow[] = [];
+  const add = (key: string, step: AiChatToolStep) => {
+    const last = rows[rows.length - 1];
+    if (last?.kind === "tools") {
+      last.tools.push(step);
+    } else {
+      rows.push({ kind: "tools", key, tools: [step] });
+    }
+  };
+  for (const item of items) {
+    if (item.role === "tool") {
+      add(item.id, {
+        name: item.name ?? "",
+        state: item.denied ? "denied" : item.isError ? "failed" : "done",
+      });
+    } else {
+      rows.push({ kind: "message", item });
+    }
+  }
+  if (activity) {
+    add("running", { name: activity, state: "running" });
+  }
+  return rows;
 };

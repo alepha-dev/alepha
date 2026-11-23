@@ -63,6 +63,7 @@ export const uiEn: Record<string, DictionaryEntry> = {
   "ai.chat.title": "Assistant",
   "ai.chat.toolDenied": "$1 cancelled",
   "ai.chat.toolDone": "Ran $1",
+  "ai.chat.toolsUsed": "Used $1 tools",
   "ai.chat.toolFailed": "$1 failed",
   "ai.chat.untitled": "Untitled conversation",
   "ai.chat.waiting": "Confirm or cancel the card to go on",

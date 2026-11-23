@@ -44,6 +44,7 @@ export const LoreChatWeb = $module({
 });
 
 export { ChatRouter } from "./app/ChatRouter.ts";
+export { useChatToolSummary } from "./app/hooks/useChatToolSummary.ts";
 export { ChatAgentUiRegistry } from "./app/services/ChatAgentUiRegistry.ts";
 export { ChatShell } from "./app/shell/ChatShell.ts";
 
