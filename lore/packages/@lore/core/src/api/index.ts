@@ -77,6 +77,7 @@ import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { HostJobs } from "./services/HostJobs.ts";
+import { HostProjectEvents } from "./services/HostProjectEvents.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
 import { JobKeyService } from "./services/JobKeyService.ts";
 import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
@@ -177,6 +178,8 @@ export const LoreCoreApi = $module({
     CoreBuckets,
     // The Bay release a host upgrade targets (#E152), core's since #E166.
     BayReleaseTarget,
+    // The host project events (#Q4115): Core, so they exist with Ship off.
+    HostProjectEvents,
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
@@ -642,3 +645,4 @@ export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
 export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
+export { HostProjectEvents } from "./services/HostProjectEvents.ts";

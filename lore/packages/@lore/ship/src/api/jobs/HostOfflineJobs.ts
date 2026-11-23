@@ -1,3 +1,4 @@
+import { HostProjectEvents } from "@lore/core/api";
 import { SourceRepository } from "@lore/core/api";
 import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -9,7 +10,6 @@ import { ConflictError } from "alepha/server";
 
 import { HostEventFields } from "../services/HostEventFields.ts";
 import { HostService } from "../services/HostService.ts";
-import { ShipProjectEvents } from "../services/ShipProjectEvents.ts";
 
 /**
  * Raises `host.offline` once per outage, when a Bay host has been gone for
@@ -41,7 +41,7 @@ export class HostOfflineJobs {
    * Injected so the events this class records are in the catalog
    * whatever booted it (#Q3889).
    */
-  protected readonly eventDefinitions = $inject(ShipProjectEvents);
+  protected readonly eventDefinitions = $inject(HostProjectEvents);
   /**
    * How long a host must stay gone before anyone is told. A Bay restart or
    * upgrade reconnects in seconds; five minutes is far past that and still

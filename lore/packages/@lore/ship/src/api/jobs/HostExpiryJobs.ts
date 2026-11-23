@@ -1,3 +1,4 @@
+import { HostProjectEvents } from "@lore/core/api";
 import { SourceRepository } from "@lore/core/api";
 import { projects, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -8,7 +9,6 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { HostEventFields } from "../services/HostEventFields.ts";
-import { ShipProjectEvents } from "../services/ShipProjectEvents.ts";
 
 /**
  * Raises `host.expired`, once, when a throwaway host is past the TTL it was
@@ -24,7 +24,7 @@ export class HostExpiryJobs {
    * Injected so the events this class records are in the catalog
    * whatever booted it (#Q3889).
    */
-  protected readonly eventDefinitions = $inject(ShipProjectEvents);
+  protected readonly eventDefinitions = $inject(HostProjectEvents);
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly hosts = $repository(hosts);

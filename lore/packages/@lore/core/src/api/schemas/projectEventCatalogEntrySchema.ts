@@ -12,10 +12,12 @@ export const projectEventCatalogEntrySchema = z.object({
   resource: z.string(),
   fields: z.record(z.string(), z.string()),
   permission: z.string(),
-  needs: z.object({
-    capability: z.string(),
-    option: z.string().optional(),
-  }),
+  needs: z
+    .object({
+      capability: z.string(),
+      option: z.string().optional(),
+    })
+    .optional(),
   filter: z
     .object({ field: z.string(), resource: z.enum(["host", "app", "monitor"]) })
     .optional(),

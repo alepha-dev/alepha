@@ -1,5 +1,4 @@
 import { ProjectEventCatalog, ProjectEventFilters } from "@lore/core/api";
-import { hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
@@ -7,41 +6,20 @@ import { appInstances } from "../entities/appInstances.ts";
 import { monitors } from "../entities/monitors.ts";
 
 /**
- * Ship's project events (#Q3889): deploys, monitors and hosts. A filter
- * narrows each to one app, monitor or host.
+ * Ship's project events (#Q3889): deploys and monitors. A filter narrows
+ * each to one app or monitor. The host events are core's since #E166
+ * (`HostProjectEvents`).
  */
 export class ShipProjectEvents {
-  protected static readonly HOST_TITLES: Record<string, string> = {
-    "host.credential_invalid": "has a Cloudflare token that stopped working",
-    "host.expired": "is past its time to live",
-    "host.offline": "is offline",
-    "host.online": "is back online",
-  };
-  protected static readonly HOST_TEXTS: Record<string, string> = {
-    "host.credential_invalid": "Replace the token in the host's settings.",
-    "host.expired": "Its time to live ran out.",
-    "host.offline": "It stopped reporting past its grace period.",
-    "host.online": "It is reporting again.",
-  };
   protected readonly catalog = $inject(ProjectEventCatalog);
   protected readonly filters = $inject(ProjectEventFilters);
-  protected readonly hosts = $repository(hosts);
   protected readonly instances = $repository(appInstances);
   protected readonly monitors = $repository(monitors);
 
   constructor() {
     // What a filter may name, picked on the Notifications page (#Q3892):
-    // the project's own hosts, apps and monitors, by the value each event
+    // the project's own apps and monitors, by the value each event
     // carries in its filter field.
-    this.filters.register("host", async (projectId) =>
-      (
-        await this.hosts.findMany({
-          where: { projectId },
-          orderBy: "slug",
-          limit: 500,
-        })
-      ).map((host) => ({ value: host.id, label: host.label ?? host.slug })),
-    );
     this.filters.register("app", async (projectId) =>
       [
         ...new Set(
@@ -147,32 +125,6 @@ export class ShipProjectEvents {
                 title: `${this.text(it.monitor)} recovered`,
                 text: `It was down for ${this.duration(it.duration_secs)}.`,
               },
-      });
-    for (const [name, label] of [
-      ["host.credential_invalid", "Host token stopped working"],
-      ["host.expired", "Host past its TTL"],
-      ["host.offline", "Host offline"],
-      ["host.online", "Host back online"],
-    ] as const)
-      this.catalog.register({
-        name,
-        label,
-        resource: "hosts",
-        subject: "host",
-        fields: {
-          host_id: "text",
-          host: "text",
-          kind: "text",
-          state: "text",
-          since: "text",
-        },
-        needs: { capability: "ship" },
-        permission: "host:read",
-        filter: { field: "host_id", resource: "host" },
-        message: (it) => ({
-          title: `${this.text(it.host)} ${ShipProjectEvents.HOST_TITLES[name]}`,
-          text: ShipProjectEvents.HOST_TEXTS[name],
-        }),
       });
   }
 

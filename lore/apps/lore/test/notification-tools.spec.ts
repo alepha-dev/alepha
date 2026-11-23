@@ -102,6 +102,13 @@ describe("Notification tools", () => {
     const epic = page.items.find((it: any) => it.name === "epic.completed");
     expect(epic).toMatchObject({ available: false });
     expect(epic.reason).toMatch(/epics/);
+    // Host events are Core since #E166: no capability, always available.
+    const offline = page.items.find((it: any) => it.name === "host.offline");
+    expect(offline).toMatchObject({
+      available: true,
+      filter: { field: "host_id" },
+    });
+    expect(offline.needs).toBeUndefined();
     expect(tools.event_catalog.options.description).toMatch(/webhook/);
   });
 

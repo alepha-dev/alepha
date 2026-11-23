@@ -174,6 +174,8 @@ describe("Lore's rank resource", () => {
       "member:read",
       "stats:read",
       "folio:read",
+      // Hosts are Core since #E166: a Viewer reads them with Ship off.
+      "host:read",
       "subscription:read",
     ]);
 
@@ -551,13 +553,15 @@ describe("Lore's rank resource", () => {
     const admin = items.find((it) => it.key === "admin")!;
     expect(admin.permissions).toContain("folio:write");
     expect(admin.permissions).toContain("quest:create");
-    // Viewer reads Core's own groups (members, stats, subscriptions) and the
+    // Viewer reads Core's own groups (members, stats, hosts, subscriptions) and the
     // one capability's folios, nothing of a capability that is off.
     expect(items.find((it) => it.key === "viewer")?.permissions).toEqual([
       "project:read",
       "member:read",
       "stats:read",
       "folio:read",
+      // Hosts are Core since #E166: a Viewer reads them with Ship off.
+      "host:read",
       "subscription:read",
     ]);
     // The floor survives every narrowing.
