@@ -163,7 +163,7 @@ describe("ProjectArtifacts", () => {
         <AlephaContext.Provider value={alepha}>
           {/* The delete confirm is `useDialog`, which requires one. */}
           <DialogProvider>
-            {/* The delete is held behind an Undo toast. */}
+            {/* The delete says it landed in a toast. */}
             <Toaster visibleToasts={20} />
             <ProjectArtifacts />
           </DialogProvider>
@@ -653,7 +653,7 @@ describe("ProjectArtifacts", () => {
       links.args.filter((call) => call.name === "deleteArtifact");
 
     /**
-     * The Undo toast saying `text`. Scoped to that toast because sonner's
+     * The toast saying `text`. Scoped to that toast because sonner's
      * store is module-level: an earlier test's toast can still be up.
      */
     const toastSaying = (text: string) =>
@@ -664,15 +664,6 @@ describe("ProjectArtifacts", () => {
         if (!found) throw new Error(`no toast saying "${text}"`);
         return found as HTMLElement;
       });
-
-    /**
-     * The delete is held until its Undo toast closes: closing it by hand is
-     * what sends it.
-     */
-    const closeToast = async (text: string) => {
-      const toast = await toastSaying(text);
-      fireEvent.click(within(toast).getByRole("button", { name: /close/i }));
-    };
 
     const rowGone = (tag: string) =>
       waitFor(() => expect(screen.queryByText(tag)).toBeNull());
@@ -762,12 +753,10 @@ describe("ProjectArtifacts", () => {
       const confirm = await askToDelete("1.0.0");
       fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
 
-      // The row leaves at once, and nothing is sent while Undo is offered.
+      // The row leaves at once, and the delete is sent with the confirm.
       await rowGone("1.0.0");
-      expect(deletes(links)).toEqual([]);
-      await closeToast("docs 1.0.0 (workerd, archive) deleted.");
-
       await waitFor(() => expect(deletes(links)).toHaveLength(1));
+      await toastSaying("docs 1.0.0 (workerd, archive) deleted.");
       expect(deletes(links)[0].args[0]).toEqual({
         params: {
           projectId: 1,
@@ -781,22 +770,6 @@ describe("ProjectArtifacts", () => {
           links.calls.filter((name) => name === "listArtifacts"),
         ).toHaveLength(2),
       );
-    });
-
-    it("puts the row back on Undo and never sends the delete", async () => {
-      const { links } = await show(listing([group()]));
-      await screen.findByText("1.0.0");
-
-      const confirm = await askToDelete("1.0.0");
-      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
-      await rowGone("1.0.0");
-
-      const toast = await toastSaying("docs 1.0.0 (workerd, archive) deleted.");
-      fireEvent.click(within(toast).getByRole("button", { name: "Undo" }));
-
-      await screen.findByText("1.0.0");
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(deletes(links)).toEqual([]);
     });
 
     it("names the copy running the tag, and says nothing when none does", async () => {
@@ -858,9 +831,8 @@ describe("ProjectArtifacts", () => {
       );
 
       await rowGone("1.0.0");
-      expect(deletes(links)).toEqual([]);
-      await closeToast("1 deleted.");
       await waitFor(() => expect(deletes(links)).toHaveLength(1));
+      await toastSaying("1 deleted.");
       expect(selectionHeld()).toBe(false);
     });
 
@@ -874,11 +846,9 @@ describe("ProjectArtifacts", () => {
       const confirm = await askToDelete("1.0.0");
       fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
 
-      // The selection clears with the click, before the held delete is sent.
+      // The selection clears with the click.
       await rowGone("1.0.0");
       expect(selectionHeld()).toBe(false);
-      expect(deletes(links)).toEqual([]);
-      await closeToast("docs 1.0.0 (workerd, archive) deleted.");
       await waitFor(() => expect(deletes(links)).toHaveLength(1));
     });
   });

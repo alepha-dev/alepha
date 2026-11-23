@@ -250,7 +250,7 @@ test.describe("agent prompts", () => {
       expect(copied).toContain("to completion, quest by quest");
       expect(copied).toContain(`#E${epic.number}`);
 
-      // The status write goes out with the confirm, behind an Undo toast.
+      // The status write goes out with the confirm.
       await expect
         .poll(
           () =>

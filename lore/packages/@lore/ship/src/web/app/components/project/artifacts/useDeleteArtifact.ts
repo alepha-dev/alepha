@@ -1,6 +1,11 @@
-import { useDialog, useUndoable } from "@alepha/ui";
+import { useDialog } from "@alepha/ui";
 import type { BulkActionContext } from "@alepha/ui/table";
-import { type I18n, settleBulk, useBulkReport } from "@lore/core/web";
+import {
+  type I18n,
+  settleBulk,
+  useBulkReport,
+  useOptimisticWrite,
+} from "@lore/core/web";
 import { useClient, useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
@@ -33,10 +38,10 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * ⚠️ **No guard is added anywhere.** Neither case is refused, by the quest's
  * decision: the dialog is where the loss is named, not where it is prevented.
  *
- * ## Undo, like a quest or an epic
+ * ## Optimistic, like a quest or an epic
  *
- * Once confirmed, the row plays its exit and an Undo toast goes up; the
- * delete is held until the toast closes, so Undo never sends it.
+ * Once confirmed, the row plays its exit and the delete is sent at once; a
+ * refusal puts the row back.
  *
  * ⚠️ **It invalidates the page's listing, once per run.** The table is in
  * static-data mode, so its own `ctx.refresh()` re-fetches nothing: the rows
@@ -46,7 +51,7 @@ export const useDeleteArtifact = (): DeleteArtifact => {
   const artifactApi = useClient<ArtifactController>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const undoable = useUndoable();
+  const optimistic = useOptimisticWrite();
   const reportBulk = useBulkReport();
   const queries = useQueryClient();
   const [instances] = useStore(currentInstancesAtom);
@@ -106,10 +111,8 @@ export const useDeleteArtifact = (): DeleteArtifact => {
     };
   };
 
-  // Not `useAction`: `useUndoable` must run from the click itself, so the
-  // row leaves in the click's frame. The delete is HELD until the toast
-  // closes, as an epic's is: a hard delete has no inverse, so Undo simply
-  // never sends it.
+  // Not `useAction`: `useOptimisticWrite` must run from the click itself, so
+  // the row leaves in the click's frame.
   const remove = async <T extends DeletableArtifact>(
     artifact: T,
     ctx: DeleteContext<T>,
@@ -131,9 +134,8 @@ export const useDeleteArtifact = (): DeleteArtifact => {
     });
     if (!ok) return false;
 
-    void undoable.run({
+    void optimistic.run({
       message: tr("artifacts.delete.done", { args: [label] }),
-      undoLabel: tr("board.undo.undo"),
       intent: "primary",
       apply: () => hide(ctx, [artifact]),
       commit: () =>
@@ -170,9 +172,8 @@ export const useDeleteArtifact = (): DeleteArtifact => {
     if (!ok) return false;
 
     const projectId = selected[0].projectId;
-    void undoable.run({
+    void optimistic.run({
       message: tr("board.bulk.deleted", { args: [n] }),
-      undoLabel: tr("board.undo.undo"),
       intent: "primary",
       apply: () => hide(ctx, selected),
       // Every call settles: one refusal must not hide the deletes that went
@@ -234,8 +235,7 @@ export interface DeleteArtifact {
    */
   can: boolean;
   /**
-   * Confirms, then takes the row off the table with an Undo toast; the
-   * delete is sent when the toast closes. Resolves `true` once confirmed,
+   * Confirms, then takes the row off the table and sends the delete. Resolves `true` once confirmed,
    * `false` when the reader backed out. A refusal rolls the row back and is
    * toasted by the root `ActionErrorToaster`.
    */

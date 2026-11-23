@@ -143,8 +143,8 @@ was done. Shelving the epic says it was set aside.
 
 ## Deleting an epic
 
-⚠️ **Deleting an epic deletes its quests with it.** You can undo it for a few
-seconds, then it is permanent. The confirmation names how many quests go.
+⚠️ **Deleting an epic deletes its quests with it.** This cannot be undone.
+The confirmation names how many quests go.
 
 Delete is for a plan created by mistake, abandoned before anyone started it, or
 set aside for good. It is offered while the epic is a draft, ready or shelved,
