@@ -1,4 +1,4 @@
-import { HostTokenService } from "@lore/core/api";
+import { CoreBuckets, HostTokenService, HostJobService } from "@lore/core/api";
 import {
   type HostCommand,
   hostCommands,
@@ -27,8 +27,6 @@ import { artifacts } from "../entities/artifacts.ts";
 import { stackDeployOutcomeSchema } from "../schemas/stackDeployOutcomeSchema.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
-import { DeployBuckets } from "../services/DeployBuckets.ts";
-import { HostJobService } from "../services/HostJobService.ts";
 import { StackDeployService } from "../services/StackDeployService.ts";
 
 /**
@@ -93,7 +91,7 @@ export class HostPullController {
    * Where a command's answer is stored. Its own bucket, because what is in it
    * is a machine's journal: bounded, short-lived and read by one owner.
    */
-  public static readonly RESULT_BUCKET = DeployBuckets.RESULT_BUCKET;
+  public static readonly RESULT_BUCKET = CoreBuckets.RESULT_BUCKET;
 
   /**
    * How much of an answer this route accepts. Bay cuts to fit and reports
@@ -135,11 +133,11 @@ export class HostPullController {
   protected readonly hostJobs = $inject(HostJobService);
 
   /**
-   * The bucket, declared on `DeployBuckets` so that this controller holds no boot
+   * The bucket, declared on core's `CoreBuckets` (#E166) so that this controller holds no boot
    * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
    * every upload, so it must exist at boot.
    */
-  protected readonly buckets = $inject(DeployBuckets);
+  protected readonly buckets = $inject(CoreBuckets);
 
   public get resultBucket() {
     return this.buckets.pullResults;

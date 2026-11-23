@@ -1,9 +1,8 @@
-import {
-  HOST_JOB_STATUSES,
-  projectParamsSchema,
-  hostJobResourceSchema,
-} from "@lore/core/schemas";
 import { z } from "alepha";
+
+import { hostJobResourceSchema } from "../../api/schemas/hostJobResourceSchema.ts";
+import { HOST_JOB_STATUSES } from "../../api/schemas/hostJobValues.ts";
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 // -----------------------------------------------------------------------------
 // job_list

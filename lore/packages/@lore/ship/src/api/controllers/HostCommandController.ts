@@ -2,6 +2,7 @@ import {
   $ownsProject,
   HostCommandHandlerRegistry,
   ProjectLimits,
+  HostCommandService,
 } from "@lore/core/api";
 import {
   hostCommands,
@@ -21,7 +22,6 @@ import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
-import { HostCommandService } from "../services/HostCommandService.ts";
 import { HostService } from "../services/HostService.ts";
 import { HostUpgradeService } from "../services/HostUpgradeService.ts";
 

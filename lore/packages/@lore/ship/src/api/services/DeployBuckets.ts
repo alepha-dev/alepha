@@ -13,21 +13,6 @@ import { ArtifactService } from "./ArtifactService.ts";
  */
 export class DeployBuckets {
   /**
-   * The bucket a host's command results land in.
-   *
-   * ⚠️ Named after the word Lore used before #E147, and staying so: the
-   * bucket name is where every stored result file lives, and a migration
-   * cannot move files. A new name would orphan every result already stored.
-   */
-  public static readonly RESULT_BUCKET = "estate-command-results";
-
-  /**
-   * Where a host job's whole log lands when it ends (#Q3984), as one JSON
-   * document of both streams. Bay caps a job's output at 8 MiB.
-   */
-  public static readonly JOB_LOG_BUCKET = "host-job-logs";
-
-  /**
    * Where the tarballs live.
    *
    * ## ⚠️ The ceiling, and what it is really bounding
@@ -63,20 +48,5 @@ export class DeployBuckets {
       "application/x-compressed-tar",
       "application/octet-stream",
     ],
-  });
-
-  public readonly pullResults = $storage({
-    name: DeployBuckets.RESULT_BUCKET,
-    description:
-      "What a machine answered a logs or backup command with (list, verify, probe, restore)",
-    maxSize: 1,
-    mimeTypes: ["application/json"],
-  });
-
-  public readonly jobLogs = $storage({
-    name: DeployBuckets.JOB_LOG_BUCKET,
-    description: "The whole log of each host job, written when it ends",
-    maxSize: 10,
-    mimeTypes: ["application/json"],
   });
 }

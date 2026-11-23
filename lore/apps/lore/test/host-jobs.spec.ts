@@ -1,4 +1,9 @@
-import { HostJobs, HostCommandTransport } from "@lore/core/api";
+import {
+  HostJobs,
+  HostCommandTransport,
+  HostCommandService,
+  HostJobService,
+} from "@lore/core/api";
 import {
   jobKeys,
   hostCommands,
@@ -7,6 +12,11 @@ import {
   type Host,
   hosts,
 } from "@lore/core/schemas";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
+// Its own subpath: `./testing` is loaded by browser specs, and this one
+// boots the host controllers (#E166).
+import { createTestHost } from "@lore/ship/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -15,14 +25,6 @@ import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
-
-import {
-  HostCommandService,
-  HostJobService,
-  LoreShipApi,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
  * Every push answers "connected", so a command goes straight to `sent`.

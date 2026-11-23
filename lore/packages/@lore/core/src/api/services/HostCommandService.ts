@@ -1,20 +1,16 @@
-import { HostCommandTransport } from "@lore/core/api";
-import {
-  type HostCommand,
-  hostCommands,
-  hostInventories,
-} from "@lore/core/schemas";
-import type {
-  Host,
-  HostCommandFrame,
-  HostCommandPayload,
-  HostCommandKind,
-} from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
+
+import { type HostCommand, hostCommands } from "../entities/hostCommands.ts";
+import { hostInventories } from "../entities/hostInventories.ts";
+import type { Host } from "../entities/hosts.ts";
+import type { HostCommandFrame } from "../schemas/hostCommandFrameSchema.ts";
+import type { HostCommandPayload } from "../schemas/hostCommandPayloadSchema.ts";
+import type { HostCommandKind } from "../schemas/hostCommandValues.ts";
+import { HostCommandTransport } from "./HostCommandTransport.ts";
 
 declare module "alepha" {
   interface Hooks {

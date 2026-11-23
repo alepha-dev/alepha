@@ -1,18 +1,3 @@
-import {
-  HostJobs,
-  type HostJobRequest,
-  type HostJobSummary,
-} from "@lore/core/api";
-import type { HostJobKind, HostLogFrame } from "@lore/core/schemas";
-import {
-  hostJobLogs,
-  type HostJob,
-  hostJobs,
-  hostProjects,
-  type Host,
-  hosts,
-  HOST_JOB_TERMINAL,
-} from "@lore/core/schemas";
 import { $env, $hook, $inject, Alepha, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
@@ -20,8 +5,20 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
-import { DeployBuckets } from "./DeployBuckets.ts";
+import { hostJobLogs } from "../entities/hostJobLogs.ts";
+import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import type { HostJobKind } from "../schemas/hostJobValues.ts";
+import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
+import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
+import { CoreBuckets } from "./CoreBuckets.ts";
 import { HostCommandService } from "./HostCommandService.ts";
+import {
+  HostJobs,
+  type HostJobRequest,
+  type HostJobSummary,
+} from "./HostJobs.ts";
 
 /**
  * The host job queue (#Q3984): one row per run in `host_jobs`, carried to
@@ -94,7 +91,6 @@ export class HostJobService {
   protected readonly loans = $repository(hostProjects);
   protected readonly commands = $inject(HostCommandService);
   protected readonly files = $inject(FileService);
-  protected readonly buckets = $inject(DeployBuckets);
   protected readonly port = $inject(HostJobs);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
@@ -619,7 +615,7 @@ export class HostJobService {
       const stored = await this.files.uploadFile(
         new File([bytes], `job-${jobId}.json`, { type: "application/json" }),
         {
-          bucket: DeployBuckets.JOB_LOG_BUCKET,
+          bucket: CoreBuckets.JOB_LOG_BUCKET,
           expirationDate: new Date(
             this.dateTime.nowMillis() +
               HostJobService.LOG_TTL_DAYS * 86_400_000,
@@ -645,7 +641,7 @@ export class HostJobService {
   ): Promise<{ stdout: string; stderr: string }> {
     try {
       const file = await this.files.streamFile(job.logFileId as string, {
-        bucket: DeployBuckets.JOB_LOG_BUCKET,
+        bucket: CoreBuckets.JOB_LOG_BUCKET,
       });
       const parsed = JSON.parse(await file.text()) as {
         stdout?: string;

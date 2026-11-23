@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { HostCommandService } from "@lore/core/api";
 import { hostCommands, type Host, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
@@ -16,7 +17,6 @@ import {
   AppSecretService,
   ArtifactService,
   DeployService,
-  HostCommandService,
   HostController,
 } from "../src/api/index.ts";
 import {

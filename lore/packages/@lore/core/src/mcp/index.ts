@@ -7,6 +7,7 @@ import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 import { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
+import { JobTools } from "./tools/JobTools.ts";
 import { NotificationTools } from "./tools/NotificationTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
 import { ThresholdTools } from "./tools/ThresholdTools.ts";
@@ -33,6 +34,8 @@ export const LoreCoreMcp = $module({
     // the same reason: nothing injects it.
     McpCallTimings,
     ProjectTools,
+    // A host's jobs for agents (#Q3984), core's since #E166.
+    JobTools,
     NotificationTools,
     // The alert thresholds (#Q3914), core's since #E162: coverage is Build's,
     // open errors Ship's.
@@ -59,3 +62,6 @@ export { ProjectTools } from "./tools/ProjectTools.ts";
 
 export { NotificationTools } from "./tools/NotificationTools.ts";
 export { ThresholdTools } from "./tools/ThresholdTools.ts";
+
+// ---- hosts (#E166) ----
+export { JobTools } from "./tools/JobTools.ts";

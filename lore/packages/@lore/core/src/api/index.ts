@@ -22,6 +22,7 @@ import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
+import { HostJobController } from "./controllers/HostJobController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
@@ -44,6 +45,8 @@ import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
+import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
+import { HostJobJobs } from "./jobs/HostJobJobs.ts";
 import { HourlyJobs } from "./jobs/HourlyJobs.ts";
 import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
@@ -79,8 +82,10 @@ import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { HostCommandHandlerRegistry } from "./services/HostCommandHandlerRegistry.ts";
+import { HostCommandService } from "./services/HostCommandService.ts";
 import { HostCommandTransport } from "./services/HostCommandTransport.ts";
 import { HostJobs } from "./services/HostJobs.ts";
+import { HostJobService } from "./services/HostJobService.ts";
 import { HostProjectEvents } from "./services/HostProjectEvents.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostTypeRegistry } from "./services/HostTypeRegistry.ts";
@@ -297,8 +302,16 @@ export const LoreCoreApi = $module({
     // Which deployed copy runs a quest's commits (#E154): Plan registers the
     // recorded commits, Ship the reads.
     LiveQuestRegistry,
-    // The port host jobs start through (#Q3984): Ship registers the queue.
+    // The port host jobs start through (#Q3984).
     HostJobs,
+    // The queues behind a host (#E166, core's since #Q4100): commands pushed
+    // over the connection, one-shot jobs registered on the port above (the
+    // agent jobs of #E163), their sweeps and the jobs pages' endpoints.
+    HostCommandService,
+    HostCommandJobs,
+    HostJobService,
+    HostJobJobs,
+    HostJobController,
     // Job keys (#Q3995): the credential a host job holds, its pins checked on
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
@@ -674,6 +687,11 @@ export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
+export { HostJobController } from "./controllers/HostJobController.ts";
+export { HostJobService } from "./services/HostJobService.ts";
+export { HostCommandService } from "./services/HostCommandService.ts";
+export { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
+export { HostJobJobs } from "./jobs/HostJobJobs.ts";
 export { HostCommandTransport } from "./services/HostCommandTransport.ts";
 export { HostEventService } from "./services/HostEventService.ts";
 export { HostTokenService } from "./services/HostTokenService.ts";
@@ -681,6 +699,7 @@ export { HostEventFields } from "./services/HostEventFields.ts";
 export { HostCredentialRefused } from "./errors/HostCredentialRefused.ts";
 export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 export { HostProjectEvents } from "./services/HostProjectEvents.ts";
+export { CoreBuckets } from "./services/CoreBuckets.ts";
 export {
   HostUsageRegistry,
   type HostReferenceReader,
