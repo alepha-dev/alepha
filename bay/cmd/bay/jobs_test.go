@@ -698,7 +698,7 @@ func TestJobsInventory(t *testing.T) {
 	w.stub(t, "git", "#!/bin/sh\necho 'git version 2.43.0'\n")
 	w.stub(t, "gh", "#!/bin/sh\nexit 1\n")
 	inv, _ := w.acts.Inventory(context.Background())
-	if inv.Jobs == nil || inv.Jobs.Runner != "process" {
+	if inv.Jobs == nil || inv.Jobs.User == "" {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
 	}
 	// Every adapter's CLI, then git, gh and lore, in that order (#Q4220).

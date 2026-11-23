@@ -214,13 +214,6 @@ export const hosts = $entity({
      */
     agentHost: db.default(z.boolean(), false),
     /**
-     * How the machine runs jobs, from its inventory (#Q3983): `process` (a
-     * Unix user on the host) or `container`. Absent when it reported no jobs
-     * user. Lore refuses untrusted input on anything but `container`
-     * (#Q3987).
-     */
-    jobsRunner: z.string().max(20).optional(),
-    /**
      * What the machine's jobs user has (#Q4220), from its inventory: each
      * agent CLI, git, gh and lore, found or not, with a version or an error.
      * The Agent role card lists it; an agent job naming an agent it does

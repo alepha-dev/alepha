@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -66,12 +67,22 @@ func cmdDoctor(args []string) error {
 func runDoctor(root string, probeKeys bool) []check {
 	var checks []check
 	docker, err := runner.NewDocker("")
-	checks = append(checks, dockerReachable(err))
-	if err == nil {
-		info, err := docker.Info()
-		checks = append(checks, dockerVersion(info, err), cgroupV2(info, err))
+	if err != nil && !runsApps(root) {
+		// Docker is what deploys need (#Q4221). A host that runs no app, one
+		// that only runs agent jobs or reports its gauge to Lore, does
+		// without it: said, not failed.
+		c := dockerReachable(err)
+		c.Warn = true
+		c.Detail += "; needed to deploy apps only, and this host runs none"
+		checks = append(checks, c)
+	} else {
+		checks = append(checks, dockerReachable(err))
+		if err == nil {
+			info, err := docker.Info()
+			checks = append(checks, dockerVersion(info, err), cgroupV2(info, err))
+		}
+		checks = append(checks, composePlugin())
 	}
-	checks = append(checks, composePlugin())
 	checks = append(checks, portFree(80), portFree(443))
 	checks = append(checks, diskFree(root))
 	if c, has := handoffCheck(showUnit("bay.service")); has {
@@ -132,6 +143,30 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 	checks = append(checks, check{Name: "sign-ins", OK: true,
 		Detail: "not checked: a job that needs gh, lore or an agent's login fails with the tool's own message"})
 	return checks
+}
+
+/*
+runsApps says whether this host runs an app or a stack, read straight from
+state.json as `storageChecks` reads it (opening the store may write it). A
+host with no state yet runs none. An unreadable state counts as running
+apps: the Docker checks then stay failures, the safe side.
+*/
+func runsApps(root string) bool {
+	raw, err := os.ReadFile(filepath.Join(root, "state.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	if err != nil {
+		return true
+	}
+	var st struct {
+		Apps   []json.RawMessage `json:"apps"`
+		Stacks []json.RawMessage `json:"stacks"`
+	}
+	if json.Unmarshal(raw, &st) != nil {
+		return true
+	}
+	return len(st.Apps)+len(st.Stacks) > 0
 }
 
 // printChecks writes one line per check and returns how many failed;

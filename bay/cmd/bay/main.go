@@ -191,11 +191,8 @@ func main() {
 		switch {
 		case len(os.Args) > 2 && os.Args[2] == "replace":
 			err = cmdSecretReplace(os.Args[3:])
-		case len(os.Args) > 2 && (os.Args[2] == "set" || os.Args[2] == "list" || os.Args[2] == "delete"):
-			// Host-local secrets, the Claude credential first (#Q3999).
-			err = cmdHostSecret(os.Args[2:], os.Stdin)
 		default:
-			err = errors.New(secretReplaceUsage + "\n" + hostSecretUsage)
+			err = errors.New(secretReplaceUsage)
 		}
 	case "env":
 		switch {
@@ -208,9 +205,6 @@ func main() {
 		}
 	case "connector":
 		err = cmdConnector(os.Args[2:])
-	case "egress-proxy":
-		// Run by Bay itself, in a job's egress sidecar (#Q3996).
-		err = cmdEgressProxy(os.Args[2:])
 	case "backup":
 		if len(os.Args) > 2 && (os.Args[2] == "list" || os.Args[2] == "restore") {
 			err = cmdStackBackup(os.Args[2], os.Args[3:])
@@ -369,29 +363,19 @@ func usageText() string {
   bay config registry-mirror (HOST|--clear)
                 # a pull-through mirror for Docker Hub images (rate limits,
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
-  bay config jobs (--user NAME|--clear) [--runner process|container]
-                [--credential NAME] [--gvisor|--no-gvisor] [--max-jobs N]
+  bay config jobs (--user NAME|--clear) [--max-jobs N]
                 # the Unix user one-shot jobs from Lore run as (agent jobs: an
                 # agent CLI run on a prompt in a workspace kept under
                 # ~NAME/bay-jobs), and how many run at once (1 by default).
                 # Never root, never bay's own user; an agent CLI (claude,
                 # gemini) must be on its PATH, signed in by hand as that user.
-                # Lore must also allow jobs on the host. ⚠ A host that runs
-                # jobs this way does NOTHING else: no production app, no other
-                # project's secrets, since the job has that user's shell here.
-                # --runner container runs each job in the agent image instead:
-                # no host mount, no socket, every capability dropped, a network
-                # whose only way out is Bay's egress proxy, and the Claude
-                # credential from "bay secret set NAME -" (--credential NAME).
-                # Lore lets untrusted input reach an agent on that runner only.
+                # Lore must also allow jobs on the host. ⚠ No sandbox: a job
+                # has that user's shell, network and sign-ins here.
   bay jobs workspaces            # the job workspaces under ~<jobs user>/bay-jobs
   bay jobs workspace rm <project>[/<name>]
                 # delete a workspace, or every one of a project; refused while
                 # a job runs in it. Lore asks for the same when a project is
                 # deleted or a quest's build is done with
-  bay secret (set NAME -|list|delete NAME)
-                # host-local secrets: values read from stdin and kept here, 0600;
-                # only their names reach Lore, in the inventory
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
   bay secret replace <name/env> APP_SECRET - [--yes]

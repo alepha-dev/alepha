@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, z } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -50,29 +50,6 @@ export class HostJobService {
    * How far the chain guard walks `startedByJobId`.
    */
   public static readonly MAX_CHAIN = 20;
-
-  /**
-   * The agent image every agent job runs in on a container runner (#Q3997),
-   * by digest: `ghcr.io/alepha-dev/lore-agent@sha256:...`, set by Deploy
-   * from the image it pushed with this very commit, so updating the agent is
-   * deploying Lore. A process runner ignores it. Unset, a container host
-   * refuses agent jobs ("the spec names none").
-   */
-  public static readonly DIGEST_REF =
-    /^[a-z0-9./_-]{1,200}@sha256:[0-9a-f]{64}$/;
-
-  protected readonly env = $env(
-    z.object({
-      AGENT_IMAGE: z
-        .text({
-          default: "",
-          secret: false,
-          description:
-            "The agent image Bay's container runner runs agent jobs in, by digest (ghcr.io/alepha-dev/lore-agent@sha256:...). Empty: container hosts refuse agent jobs.",
-        })
-        .optional(),
-    }),
-  );
 
   protected readonly log = $logger();
   protected readonly jobs = $repository(hostJobs);
@@ -327,15 +304,6 @@ export class HostJobService {
       }
     }
     return asked;
-  }
-
-  /**
-   * The image a job's spec names: its own when it has one, else the agent
-   * image this Lore was deployed with, and only ever by digest.
-   */
-  public image(own?: string): string | undefined {
-    const ref = own || this.env.AGENT_IMAGE || "";
-    return HostJobService.DIGEST_REF.test(ref) ? ref : undefined;
   }
 
   /**

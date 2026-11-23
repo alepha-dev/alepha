@@ -67,7 +67,6 @@ const setup = async () => {
   const agents = alepha.inject(AgentHostService);
   await repos.hosts.updateById(host.id, {
     jobsAllowed: true,
-    jobsRunner: "process",
   });
   await agents.setAgentHost(
     await repos.hosts.getOne({ where: { id: { eq: host.id } } }),

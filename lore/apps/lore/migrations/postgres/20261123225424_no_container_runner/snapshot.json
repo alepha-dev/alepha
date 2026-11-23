@@ -1,0 +1,39 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "845642a5-ecb8-41be-a625-223709effb5f",
+  "prevIds": ["67203158-758e-47a2-8ae2-50f58f2dfbcd"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_runner"],
+      "writes": [
+        "s|col|public.hosts.jobs_runner",
+        "n|col|public.hosts.jobs_runner",
+        "e|col|public.hosts.jobs_runner"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "projects", "agent_egress_hosts"],
+      "writes": [
+        "s|col|public.projects.agent_egress_hosts",
+        "n|col|public.projects.agent_egress_hosts",
+        "e|col|public.projects.agent_egress_hosts"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"hosts\",\"jobs_runner\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"projects\",\"agent_egress_hosts\"]"
+    }
+  ]
+}

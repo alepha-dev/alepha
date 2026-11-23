@@ -63,7 +63,6 @@ export class AgentHostService {
           id: host.id,
           slug: host.slug,
           ...(host.agentStatus ? { status: host.agentStatus } : {}),
-          ...(host.jobsRunner ? { runner: host.jobsRunner } : {}),
           ...(host.jobsTools
             ? { agents: AgentHostService.agentsOf(host.jobsTools) }
             : {}),

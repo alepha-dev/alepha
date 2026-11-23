@@ -35,12 +35,10 @@ the first run of a prompt clones what it needs and the next ones pull. Bay
 does no git. The agent CLI uses that user's own login, set up by hand by the
 host's operator.
 
-⚠️ **A host that runs process jobs does nothing else.** The job has that
-user's shell, network and Claude credential; the tool flags Lore sends are
-defence in depth, not a sandbox, and the egress list is carried without being
-enforced. So such a host serves no production app and holds no other
-project's secrets, and Lore refuses untrusted input on it (the inventory says
-`runner: process`). A container runner is what lifts that.
+⚠️ **There is no sandbox** (#E171). The job has that user's shell, network
+and sign-ins: what bounds it is what the host's owner gives that user, and
+Lore, which gives no agent text from outside the team before a member
+trusted it.
 
 What bounds it:
   - the host's switch, `jobsAllowed`, off by default, from the welcome frame;
@@ -60,14 +58,6 @@ const jobsConfigFile = "jobs.json"
 
 type jobsConfig struct {
 	User string `json:"user,omitempty"`
-	// Runner is `process` (the default) or `container` (#Q3999).
-	Runner string `json:"runner,omitempty"`
-	// Credential names the host-local secret a container job's claude step
-	// runs with, which is also the variable it is set as.
-	Credential string `json:"credential,omitempty"`
-	// GVisor runs container jobs under runsc, refused when the daemon has
-	// none.
-	GVisor bool `json:"gvisor,omitempty"`
 	// MaxJobs is how many jobs this machine runs at once (#Q4218); zero is
 	// one, today's behaviour.
 	MaxJobs int `json:"maxJobs,omitempty"`
@@ -83,14 +73,6 @@ func (c jobsConfig) jobsLimit() int {
 		return 1
 	}
 	return c.MaxJobs
-}
-
-// runnerKind is what the inventory reports and the executor dispatches on.
-func (c jobsConfig) runnerKind() string {
-	if c.Runner == "container" {
-		return "container"
-	}
-	return "process"
 }
 
 func loadJobsConfig(root string) (jobsConfig, error) {
@@ -120,7 +102,7 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--max-jobs N] [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--max-jobs N] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
@@ -148,28 +130,6 @@ func cmdConfigJobs(args []string) error {
 			}
 		case "--clear":
 			clear = true
-		case "--runner":
-			runner, err := value()
-			if err != nil {
-				return err
-			}
-			if runner != "process" && runner != "container" {
-				return errors.New("--runner is process or container")
-			}
-			cfg.Runner, changed = runner, true
-		case "--credential":
-			credential, err := value()
-			if err != nil {
-				return err
-			}
-			if credential != "" && !secretNamePattern.MatchString(credential) {
-				return fmt.Errorf("%q is not a secret name", credential)
-			}
-			cfg.Credential, changed = credential, true
-		case "--gvisor":
-			cfg.GVisor, changed = true, true
-		case "--no-gvisor":
-			cfg.GVisor, changed = false, true
 		case "--max-jobs":
 			raw, err := value()
 			if err != nil {
@@ -212,19 +172,11 @@ func cmdConfigJobs(args []string) error {
 		}
 		cfg.User = name
 	}
-	if cfg.User == "" && cfg.runnerKind() == "process" {
-		return errors.New("the process runner needs a jobs user: --user NAME")
+	if cfg.User == "" {
+		return errors.New("jobs need a jobs user: --user NAME")
 	}
 	if err := saveJobsConfig(root, cfg); err != nil {
 		return err
-	}
-	if cfg.runnerKind() == "container" {
-		fmt.Println("jobs run in the agent image, in containers with no host mount, no socket, every capability dropped,")
-		fmt.Println("  and a network whose only way out is Bay's egress proxy")
-		if cfg.Credential != "" {
-			fmt.Printf("  claude runs with the host-local secret %s (bay secret set %s -)\n", cfg.Credential, cfg.Credential)
-		}
-		return nil
 	}
 	fmt.Printf("jobs run as %s, %d at a time, in workspaces under ~%s/bay-jobs\n", cfg.User, cfg.jobsLimit(), cfg.User)
 	fmt.Printf("  an agent CLI (%s) must be on that user's PATH, signed in by hand as that user (sudo -iu %s)\n", strings.Join(adapterNames(), ", "), cfg.User)
@@ -620,8 +572,6 @@ func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.Inv
 // the tools the inventory reports.
 type jobs struct {
 	runner *processRunner
-	// container is the container runner (#Q3999), used when the config says.
-	container *jobContainerRunner
 
 	mu      sync.Mutex
 	running map[string]context.CancelCauseFunc
@@ -639,19 +589,12 @@ var jobSecond = time.Second
 var errJobCancelled = errors.New("cancelled by a job-cancel")
 
 func newJobs(root string) *jobs {
-	return &jobs{runner: newProcessRunner(root), container: newJobContainerRunner(root),
+	return &jobs{runner: newProcessRunner(root),
 		running: map[string]context.CancelCauseFunc{}}
 }
 
-// run executes a job on the runner the config names.
+// run executes a job as the jobs user.
 func (j *jobs) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*int, error) {
-	cfg, err := loadJobsConfig(j.runner.root)
-	if err != nil {
-		return nil, err
-	}
-	if cfg.runnerKind() == "container" {
-		return j.container.run(ctx, id, spec, log)
-	}
 	return j.runner.run(ctx, id, spec, log)
 }
 
@@ -710,16 +653,10 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 		return nil
 	}
 	cfg, err := loadJobsConfig(j.runner.root)
-	if err != nil || (cfg.User == "" && cfg.runnerKind() == "process") {
+	if err != nil || cfg.User == "" {
 		return nil
 	}
-	out := &connector.InventoryJobs{Runner: cfg.runnerKind(), User: cfg.User, Running: j.runningIDs(),
-		Secrets: hostSecretNames(j.runner.root)}
-	if cfg.runnerKind() == "container" {
-		// The CLI is the agent image's, pinned by digest per job: its version
-		// is what the check job reports, not a reading of this host.
-		return out
-	}
+	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs()}
 	// What the jobs user has, read again when older than ten minutes: a
 	// version command per tool is cheap, but not on every inventory.
 	j.toolsMu.Lock()

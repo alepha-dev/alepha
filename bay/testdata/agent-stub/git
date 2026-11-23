@@ -1,4 +1,0 @@
-#!/bin/sh
-# `git clone ... -- <url> <dir>`: makes the directory, as a clone would.
-for last; do :; done
-mkdir -p "$last" && echo "cloned" > "$last/README"

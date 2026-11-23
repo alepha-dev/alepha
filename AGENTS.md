@@ -13,7 +13,7 @@ All three products are planned in ONE Lore project, **Alepha** (`https://lore.al
 
 ## One install, three checks
 
-- **One Yarn project.** The root `package.json` lists `framework`, `lore` and `docs` as workspaces; each of them declares its own `workspaces`, which makes it a Yarn **worktree**. There is one `yarn.lock` and one `node_modules`, at the root. Never add a `yarn.lock` or a `.yarnrc.yml` under a product. The one npm lockfile, `lore/images/agent/package-lock.json`, is not a second one: it is the agent image's own install of Claude Code, which no workspace reaches, kept so Dependabot can bump the version (#Q4175).
+- **One Yarn project.** The root `package.json` lists `framework`, `lore` and `docs` as workspaces; each of them declares its own `workspaces`, which makes it a Yarn **worktree**. There is one `yarn.lock` and one `node_modules`, at the root. Never add a `yarn.lock` or a `.yarnrc.yml` under a product.
 - **`yarn v` is scoped by the folder you run it in.** Every fan-out uses `yarn workspaces foreach -W` (the current worktree), never `-A`, which would reach every product. `cd framework && yarn v` checks the framework only, `cd lore && yarn v` Lore only.
 - **Lore builds on the framework's source.** `alepha` and `@alepha/ui` resolve to `framework/packages/*` by `workspace:*`: there is no vendored copy and no sync. A framework change and the Lore change that needs it land in one commit.
 - `resolutions`, `packageManager` and `.yarnrc.yml` exist at the root only: Yarn ignores them anywhere else.
