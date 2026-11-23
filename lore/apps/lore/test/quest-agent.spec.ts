@@ -133,8 +133,14 @@ describe("a quest worked by an agent job", () => {
     // Its own workspace on the host, removed when the quest completes.
     expect(job.input.workspace).toBe(`q${quest.shortId}`);
     expect(job.input.key).toEqual({ questId: quest.shortId });
-    expect(job.input.prompt).toContain(`lore/q${quest.shortId}`);
-    expect(job.input.prompt).toContain("do not complete the quest");
+    // Build on a light host (#Q4224): branch, checks, a commit naming the
+    // quest, a pull request with gh recorded on the quest.
+    expect(job.input.prompt).toContain("## Where things are");
+    expect(job.input.prompt).toContain("branch from the default branch");
+    expect(job.input.prompt).toContain("open a pull request with `gh`");
+    expect(job.input.prompt).toContain("quest_pull_request_add");
+    expect(job.input.prompt).toContain("so do not complete it yourself");
+    expect(job.input.prompt).not.toContain("lore/q");
     expect(job.input.prompt).toContain("Work on quest #Q");
   });
 

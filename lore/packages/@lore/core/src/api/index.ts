@@ -81,7 +81,7 @@ import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentHostService } from "./services/AgentHostService.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentJobService } from "./services/AgentJobService.ts";
-import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
+import { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
@@ -382,7 +382,7 @@ export const LoreCoreApi = $module({
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
     // Untrusted input in an agent's prompt (#Q3987).
-    AgentPromptGuard,
+    AgentRunPreamble,
     // The port agent jobs start through (#Q3988): Build registers it.
     AgentJobs,
     AgentJobService,
@@ -614,7 +614,10 @@ export {
 export { AgentJobService } from "./services/AgentJobService.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
 export type { AgentJobRequest } from "./services/AgentJobs.ts";
-export { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
+export {
+  AgentRunPreamble,
+  type ProjectRepositoryLookup,
+} from "./services/AgentRunPreamble.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {
   type EpicMembership,

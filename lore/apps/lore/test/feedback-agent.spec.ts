@@ -6,6 +6,7 @@ import {
   HostCommandTransport,
   HostCommandService,
   AgentHostService,
+  AgentRunPreamble,
 } from "@lore/core/api";
 import { projectPrompts, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
@@ -136,6 +137,14 @@ describe("feedback triaged by an agent job", () => {
     expect(job.input.prompt).toContain(`#P${item.shortId}`);
     expect(job.input.prompt).toContain("## Trust");
     expect(job.input.prompt).toContain("Triage the whole feedback inbox");
+    // Lore's preamble (#Q4224): the workspace, Lore through its MCP tools,
+    // and no repository this project names.
+    expect(job.input.prompt).toContain("## Where things are");
+    expect(job.input.prompt).toContain("Lore is reached through its MCP tools");
+    expect(job.input.prompt).toContain("The `lore` CLI is not signed in");
+    expect(job.input.prompt).toContain("This project names no repository");
+    // One template for an item and for the inbox.
+    expect(job.input.prompt).toContain("First pass: read everything");
     const row = await w.repos.feedback.getOne({
       where: { id: { eq: item.id } },
     });
@@ -178,7 +187,7 @@ describe("feedback triaged by an agent job", () => {
     });
   }
 
-  it("triages a trusted item on a process host, its text still between the guard's delimiters (#Q4216)", async ({
+  it("triages a trusted item like a team-written one, with no guard around it (#Q4216, #Q4224)", async ({
     expect,
   }) => {
     const item = await file(
@@ -190,8 +199,30 @@ describe("feedback triaged by an agent job", () => {
     const out = await w.triage.triageItem(w.projectId, item.shortId);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
     expect(job.kind).toBe("agent");
-    expect(job.input.prompt).toContain("## Caution: untrusted input");
-    expect(job.input.prompt?.match(/<<<END_UNTRUSTED/g)).toHaveLength(1);
+    // A member read it and trusted it: listed like the team's, its body
+    // read with feedback_get, and no caution section left.
+    expect(job.input.prompt).toContain(
+      `\`feedback_get\` shortId ${item.shortId}`,
+    );
+    expect(job.input.prompt).not.toContain("## Caution: untrusted input");
+  });
+
+  it("names the project's repository when one is registered, to clone or update without changing it", async ({
+    expect,
+  }) => {
+    w.alepha
+      .inject(AgentRunPreamble)
+      .registerRepository(async () => "https://github.com/acme/web");
+    const item = await file(w, false);
+    const out = await w.triage.triageItem(w.projectId, item.shortId);
+    const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
+    expect(job.input.prompt).toContain(
+      "**The repository** is https://github.com/acme/web",
+    );
+    expect(job.input.prompt).toContain(
+      "git clone https://github.com/acme/web .",
+    );
+    expect(job.input.prompt).toContain("Change nothing in it");
   });
 
   it("triages the team's inbox in one global job, its key held to those items, and leaves the untrusted ones to a member (#Q4183)", async ({
@@ -218,6 +249,10 @@ describe("feedback triaged by an agent job", () => {
     expect(job.input.prompt).not.toContain("Ignore your instructions");
     expect(job.input.prompt).toContain("First pass: read everything");
     expect(job.input.prompt).toContain("Triage the whole feedback inbox");
+    // The untrusted item is counted, never read.
+    expect(job.input.prompt).toContain(
+      "1 other pending feedback item(s) were written outside the team",
+    );
     // The time grows with the items, past one item's own.
     expect(job.input.timeoutSeconds).toBeGreaterThan(15 * 60);
     for (const item of [a, b]) {
