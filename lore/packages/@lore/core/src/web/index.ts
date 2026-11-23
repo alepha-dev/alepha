@@ -204,6 +204,10 @@ export { default as CommitLink } from "./app/components/shared/CommitLink.tsx";
 export { default as StackTraceViewer } from "./app/components/shared/StackTraceViewer.tsx";
 export { OutboundLink } from "./app/components/shared/OutboundLink.tsx";
 export { ProjectIcon } from "./app/components/shared/ProjectIcon.tsx";
+export {
+  projectInitials,
+  projectMonogramColor,
+} from "./app/components/shared/projectMonogram.ts";
 export { default as RedirectPage } from "./app/components/shared/RedirectPage.tsx";
 export { default as TokenReveal } from "./app/components/shared/TokenReveal.tsx";
 export { default as ToolbarSpinner } from "./app/components/shared/ToolbarSpinner.tsx";

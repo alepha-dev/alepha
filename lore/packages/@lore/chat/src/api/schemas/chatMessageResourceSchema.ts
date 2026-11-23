@@ -14,6 +14,12 @@ export const chatMessageResourceSchema = z.object({
    * The project's agent that wrote it (#E170), none for `@lore`.
    */
   agentId: z.uuid().optional(),
+  /**
+   * That agent's current name and picture (#Q4198), read from its row by
+   * `agentId`: a renamed or deleted agent's past answers show them too.
+   */
+  agentName: z.text().optional(),
+  agentAvatarId: z.uuid().optional(),
   body: z.text({ size: "rich" }),
   editedAt: z.datetime().optional(),
   deletedAt: z.datetime().optional(),

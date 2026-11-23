@@ -269,6 +269,27 @@ describe("chat agents", () => {
       body: "On it.",
     });
 
+    // Renamed, then deleted: its past answer reads with its current name.
+    await agents.updateChatAgent.fetch(
+      {
+        params: { projectId: kit.projectId, agentId: jarvis.id },
+        body: { name: "J.A.R.V.I.S." },
+      },
+      { user: kit.owner },
+    );
+    await agents.deleteChatAgent.fetch(
+      { params: { projectId: kit.projectId, agentId: jarvis.id } },
+      { user: kit.owner },
+    );
+    const page = await messages.listChatMessages.fetch(
+      { params: { projectId: kit.projectId, roomId: general.id }, query: {} },
+      { user: kit.member },
+    );
+    expect(page.data.items.find((it) => it.agent)).toMatchObject({
+      agentId: jarvis.id,
+      agentName: "J.A.R.V.I.S.",
+    });
+
     // Another project's agent is plain text here.
     const elsewhere = await kit.projects.createProject.fetch(
       { body: { title: "Other", capabilities: [{ key: "chat" }] } },

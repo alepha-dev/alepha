@@ -195,7 +195,10 @@ const Conversation = (props: ConversationProps) => {
     return () => observer.disconnect();
   }, [props.hasMore, props.onLoadOlder]);
 
+  // A project agent is named by its row, read on the server, so a renamed
+  // or deleted agent's answers show its current name (#Q4198).
   const authorOf = (message: ChatMessageResource): string =>
+    message.agentName ||
     (message.agent && (props.agentLabels[message.agent] ?? message.agent)) ||
     (message.authorId
       ? displayName(
@@ -209,8 +212,8 @@ const Conversation = (props: ConversationProps) => {
     const continued =
       !!previous &&
       !previous.deletedAt &&
-      (previous.authorId ?? previous.agent) ===
-        (message.authorId ?? message.agent) &&
+      (previous.authorId ?? previous.agentId ?? previous.agent) ===
+        (message.authorId ?? message.agentId ?? message.agent) &&
       Date.parse(message.createdAt) - Date.parse(previous.createdAt) <
         GROUP_WITHIN_MS;
     const own = !!props.me && message.authorId === props.me;

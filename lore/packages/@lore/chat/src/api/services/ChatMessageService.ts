@@ -14,6 +14,7 @@ import {
   TooManyRequestsError,
 } from "alepha/server";
 
+import { chatAgents } from "../entities/chatAgents.ts";
 import { chatMentions } from "../entities/chatMentions.ts";
 import { type ChatMessage, chatMessages } from "../entities/chatMessages.ts";
 import { chatReactions } from "../entities/chatReactions.ts";
@@ -60,6 +61,7 @@ export class ChatMessageService {
   protected readonly messages = $repository(chatMessages);
   protected readonly mentions = $repository(chatMentions);
   protected readonly reactions = $repository(chatReactions);
+  protected readonly agents = $repository(chatAgents);
   protected readonly files = $inject(FileService);
   protected readonly alepha = $inject(Alepha);
   protected readonly roomMembers = $repository(chatRoomMembers);
@@ -483,7 +485,10 @@ export class ChatMessageService {
     }
     const ids = page.map((it) => it.id);
     const fileIds = page.flatMap((it) => it.attachments ?? []);
-    const [mentions, reactions, files] = await Promise.all([
+    const agentIds = [
+      ...new Set(page.flatMap((it) => (it.agentId ? [it.agentId] : []))),
+    ];
+    const [mentions, reactions, files, agents] = await Promise.all([
       this.mentions.findMany({ where: { messageId: { inArray: ids } } }),
       this.reactions.findMany({
         where: { messageId: { inArray: ids } },
@@ -494,8 +499,15 @@ export class ChatMessageService {
             where: { id: { inArray: fileIds } },
           })
         : Promise.resolve([]),
+      agentIds.length
+        ? this.agents.findMany({
+            where: { id: { inArray: agentIds } },
+            columns: ["id", "name", "avatar"],
+          })
+        : Promise.resolve([]),
     ]);
     const fileById = new Map(files.map((file) => [file.id, file]));
+    const agentById = new Map(agents.map((agent) => [agent.id, agent]));
     return page.map((message) => {
       const emoji = new Map<string, string[]>();
       for (const reaction of reactions) {
@@ -505,7 +517,12 @@ export class ChatMessageService {
           reaction.userId,
         ]);
       }
+      const agent = message.agentId
+        ? agentById.get(message.agentId)
+        : undefined;
       return this.toResource(message, {
+        ...(agent ? { agentName: agent.name } : {}),
+        ...(agent?.avatar ? { agentAvatarId: agent.avatar } : {}),
         mentions: mentions
           .filter((it) => it.messageId === message.id && it.userId)
           .map((it) => it.userId!),
@@ -533,7 +550,10 @@ export class ChatMessageService {
 
   public toResource(
     message: ChatMessage,
-    extras: Pick<ChatMessageResource, "mentions" | "reactions" | "attachments">,
+    extras: Pick<
+      ChatMessageResource,
+      "mentions" | "reactions" | "attachments" | "agentName" | "agentAvatarId"
+    >,
   ): ChatMessageResource {
     return {
       id: message.id,
@@ -542,6 +562,8 @@ export class ChatMessageService {
       ...(message.authorId ? { authorId: message.authorId } : {}),
       ...(message.agent ? { agent: message.agent } : {}),
       ...(message.agentId ? { agentId: message.agentId } : {}),
+      ...(extras.agentName ? { agentName: extras.agentName } : {}),
+      ...(extras.agentAvatarId ? { agentAvatarId: extras.agentAvatarId } : {}),
       body: message.body,
       references: message.references ?? [],
       ...(message.editedAt ? { editedAt: message.editedAt } : {}),
