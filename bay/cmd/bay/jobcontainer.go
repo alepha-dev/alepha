@@ -88,92 +88,14 @@ func cacheVolume(cloneURL string) string {
 	return "bay-job-cache-" + hex.EncodeToString(sum[:])[:16]
 }
 
-func (r *jobContainerRunner) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*int, error) {
-	cfg, err := loadJobsConfig(r.root)
-	if err != nil {
-		return nil, err
-	}
-	if spec.Image == "" {
-		return nil, errors.New("the container runner runs a job in the agent image, and the spec names none")
-	}
-	docker, err := r.docker()
-	if err != nil {
-		return nil, fmt.Errorf("the container runner needs Docker: %w", err)
-	}
-	runtime := ""
-	if cfg.GVisor {
-		ok, err := docker.HasRuntime("runsc")
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return nil, errors.New("this bay is configured for gVisor, and the Docker daemon has no runsc runtime")
-		}
-		runtime = "runsc"
-	}
-	env := []string{
-		"HOME=/tmp/home",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-		"DISABLE_AUTOUPDATER=1",
-		"CI=1",
-		"YARN_CACHE_FOLDER=" + runner.JobCachePath + "/yarn",
-		"npm_config_cache=" + runner.JobCachePath + "/npm",
-	}
-	network, workspace := jobNames(id)
-	if err := docker.EnsureJobNetwork(network); err != nil {
-		return nil, fmt.Errorf("could not create the job's network: %w", err)
-	}
-	defer docker.RemoveJobNetwork(network)
-	// The job's one way out (#Q3996): its egress proxy, on its list only.
-	binary, err := r.binary()
-	if err != nil {
-		return nil, fmt.Errorf("could not find Bay's binary for the egress proxy: %w", err)
-	}
-	stop, egressAddr, err := docker.StartEgress(ctx, runner.EgressSidecar{
-		Name: network + "-egress", Image: egressImage, Binary: binary,
-		Allow: spec.Egress, Network: network,
-	}, egressLog{log})
-	if err != nil {
-		return nil, fmt.Errorf("could not start the job's egress proxy: %w", err)
-	}
-	defer stop()
-	proxy := fmt.Sprintf("http://egress:%d", runner.EgressPort)
-	env = append(env, "HTTPS_PROXY="+proxy, "HTTP_PROXY="+proxy,
-		"https_proxy="+proxy, "http_proxy="+proxy, "NO_PROXY=", "no_proxy=")
-	if err := docker.CreateJobVolume(workspace); err != nil {
-		return nil, fmt.Errorf("could not create the job's workspace: %w", err)
-	}
-	defer docker.RemoveJobVolume(workspace)
-
-	step := func(name string, cmd []string, workDir string, extra []string, cache string) (*int, error) {
-		code, err := docker.RunJob(ctx, runner.JobContainer{
-			Name: workspace + "-" + name, Image: spec.Image, Cmd: cmd,
-			Env: append(append([]string{}, env...), extra...), WorkDir: workDir,
-			Workspace: workspace, Cache: cache, Network: network,
-			MemoryBytes: jobMemoryBytes, PidsLimit: jobPidsLimit, Runtime: runtime,
-			// `egress` by /etc/hosts, not Docker's DNS: see StartEgress.
-			Hosts: []string{"egress:" + egressAddr},
-		}, log.writer("stdout"), log.writer("stderr"))
-		if err != nil {
-			return nil, err
-		}
-		return &code, nil
-	}
-
-	credential, err := r.credentialEnv(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if spec.Kind == jobKindAgent {
-		// An agent job runs in a durable workspace on the host now (#Q4218),
-		// which a container cannot see; the container runner goes (#Q4221).
-		return nil, errors.New("the container runner runs no agent job any more: switch this bay to the process runner (bay config jobs --runner process)")
-	}
-	args, err := claudeArgs(spec, cfg.Model)
-	if err != nil {
-		return nil, err
-	}
-	return step("claude", append([]string{"claude"}, args...), runner.JobWorkspacePath, credential, "")
+/*
+run refuses every job (#Q4219): a job names an agent CLI the host's owner
+installed and runs in a workspace on the host, which no container image
+holds, and the spec no longer carries an image or an egress list. The
+container runner, its network, proxy and volumes go with #Q4221.
+*/
+func (r *jobContainerRunner) run(context.Context, string, jobSpec, *jobLog) (*int, error) {
+	return nil, errors.New("the container runner runs no job any more: switch this bay to the process runner (bay config jobs --runner process)")
 }
 
 // credentialEnv is the claude step's credential: the host-local secret the

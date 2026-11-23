@@ -151,9 +151,6 @@ describe("the agent job", () => {
     const spec = await w.hostRows.spec(row, "https://lore.test");
     expect(spec).toMatchObject({ workspace: "triage" });
     expect(spec).not.toHaveProperty("repository");
-    expect(spec.egress).toEqual(
-      expect.arrayContaining(["api.anthropic.com", "lore.test"]),
-    );
     expect(String(spec.key)).toMatch(/^ak_lorejob_/);
   });
 

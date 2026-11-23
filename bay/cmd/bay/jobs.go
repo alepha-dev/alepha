@@ -68,10 +68,6 @@ type jobsConfig struct {
 	// GVisor runs container jobs under runsc, refused when the daemon has
 	// none.
 	GVisor bool `json:"gvisor,omitempty"`
-	// Model is the Claude model every job and check runs with (#Q4204): an
-	// alias (`opus`) or a full id (`claude-opus-5-5`), passed as `--model`.
-	// Empty leaves Claude Code's own default.
-	Model string `json:"model,omitempty"`
 	// MaxJobs is how many jobs this machine runs at once (#Q4218); zero is
 	// one, today's behaviour.
 	MaxJobs int `json:"maxJobs,omitempty"`
@@ -124,7 +120,7 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--model NAME] [--max-jobs N] [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--max-jobs N] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
@@ -174,15 +170,6 @@ func cmdConfigJobs(args []string) error {
 			cfg.GVisor, changed = true, true
 		case "--no-gvisor":
 			cfg.GVisor, changed = false, true
-		case "--model":
-			model, err := value()
-			if err != nil {
-				return err
-			}
-			if model != "" && !modelPattern.MatchString(model) {
-				return fmt.Errorf("%q is not a Claude model name: an alias such as opus, or an id such as claude-opus-5-5", model)
-			}
-			cfg.Model, changed = model, true
 		case "--max-jobs":
 			raw, err := value()
 			if err != nil {
@@ -231,9 +218,6 @@ func cmdConfigJobs(args []string) error {
 	if err := saveJobsConfig(root, cfg); err != nil {
 		return err
 	}
-	if cfg.Model != "" {
-		fmt.Printf("claude runs every job and check with --model %s\n", cfg.Model)
-	}
 	if cfg.runnerKind() == "container" {
 		fmt.Println("jobs run in the agent image, in containers with no host mount, no socket, every capability dropped,")
 		fmt.Println("  and a network whose only way out is Bay's egress proxy")
@@ -243,7 +227,7 @@ func cmdConfigJobs(args []string) error {
 		return nil
 	}
 	fmt.Printf("jobs run as %s, %d at a time, in workspaces under ~%s/bay-jobs\n", cfg.User, cfg.jobsLimit(), cfg.User)
-	fmt.Println("  claude must be on that user's PATH, logged in by hand: sudo -iu " + cfg.User + " claude login")
+	fmt.Printf("  an agent CLI (%s) must be on that user's PATH, signed in by hand as that user (sudo -iu %s)\n", strings.Join(adapterNames(), ", "), cfg.User)
 	fmt.Println("  ⚠ a host that runs process jobs should do nothing else: no production app, no other project's secrets")
 	return nil
 }
@@ -285,7 +269,7 @@ type processRunner struct {
 	// jobsBase overrides where job directories go (a test's temp dir);
 	// empty is `<home>/bay-jobs`.
 	jobsBase string
-	// pathDirs is where claude and git are looked for, for a user's home.
+	// pathDirs is where an agent CLI is looked for, for a user's home.
 	pathDirs func(home string) []string
 	// killGrace is how long a killed job gets between SIGTERM and SIGKILL.
 	killGrace time.Duration
@@ -302,8 +286,8 @@ func newProcessRunner(root string) *processRunner {
 devSelf is the end-to-end suite's way in, and nothing else's: a Bay built
 from source (version "dev", never a release) with BAY_DEV_JOBS_AS_SELF=1
 runs jobs as the user it runs as, with BAY_DEV_JOBS_PATH searched first for
-claude and git, and job directories under its own root. Lore's e2e drives a
-real Bay with a stub claude this way. A released binary ignores both
+agent CLIs, and job directories under its own root. Lore's e2e drives a
+real Bay with a stub agent this way. A released binary ignores both
 variables, so no host can be talked into running jobs as Bay's own user.
 */
 func (r *processRunner) devSelf() {
@@ -319,17 +303,21 @@ func (r *processRunner) devSelf() {
 	}
 }
 
-// defaultJobPath is the PATH a job runs with: where an operator installs
-// claude for one user (the native installer, npm's user prefix), then the
-// system's.
+// defaultJobPath is the PATH a job runs with: where each adapter's
+// installers put its CLI for one user (adapters.go), then the system's.
 func defaultJobPath(home string) []string {
-	return []string{
-		filepath.Join(home, ".local", "bin"),
-		filepath.Join(home, ".claude", "local"),
-		filepath.Join(home, ".npm-global", "bin"),
-		filepath.Join(home, "bin"),
-		"/usr/local/bin", "/usr/bin", "/bin",
+	var dirs []string
+	seen := map[string]bool{}
+	for _, name := range adapterNames() {
+		for _, rel := range agentAdapters[name].HomeBin {
+			dir := filepath.Join(home, rel)
+			if !seen[dir] {
+				seen[dir] = true
+				dirs = append(dirs, dir)
+			}
+		}
 	}
+	return append(dirs, "/usr/local/bin", "/usr/bin", "/bin")
 }
 
 // jobsUser resolves the configured user and refuses one that may not run a
@@ -377,10 +365,8 @@ func (r *processRunner) jobEnv(u *user.User, extra ...string) []string {
 		"LOGNAME=" + u.Username,
 		"PATH=" + strings.Join(r.pathDirs(u.HomeDir), ":"),
 		"LANG=C.UTF-8",
-		// Claude Code's telemetry and update checks: nothing a job needs, and
-		// hosts a container runner's egress list then never has to name.
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-		"DISABLE_AUTOUPDATER=1",
+		// Nobody answers a prompt: git and the like fail rather than wait.
+		"GIT_TERMINAL_PROMPT=0",
 		"CI=1",
 	}
 	return append(env, extra...)
@@ -463,7 +449,11 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	if err != nil {
 		return nil, err
 	}
-	claude, err := r.lookPath(u.HomeDir, "claude")
+	adapter, err := adapterFor(spec.Agent)
+	if err != nil {
+		return nil, err
+	}
+	bin, err := r.lookPath(u.HomeDir, adapter.Binary)
 	if err != nil {
 		return nil, err
 	}
@@ -480,21 +470,36 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		log.Step("workspace " + spec.Project + "/" + spec.Workspace + " ready")
 	}
 
-	cfg, err := loadJobsConfig(r.root)
-	if err != nil {
-		return nil, fmt.Errorf("the jobs config is unreadable: %w", err)
+	run := agentRunOf(spec)
+	env := append(r.jobEnv(u), adapter.Env...)
+	if spec.Kind == jobKindAgent {
+		// The key in the environment only, where the adapter's MCP config
+		// expands it: never on a command line `ps` shows.
+		env = append(env, jobKeyEnv+"="+spec.Key)
 	}
-	args, err := claudeArgs(spec, cfg.Model)
-	if err != nil {
-		return nil, err
+	if adapter.Prepare != nil {
+		extra, cleanup, err := adapter.Prepare(run)
+		if err != nil {
+			return nil, fmt.Errorf("could not prepare the %s run: %w", adapter.Name, err)
+		}
+		defer cleanup()
+		env = append(env, extra...)
 	}
-	cmd, err := r.command(ctx, u, dir, claude, args, r.jobEnv(u))
+	cmd, err := r.command(ctx, u, dir, bin, adapter.Args(run), env)
 	if err != nil {
 		return nil, err
 	}
 	cmd.Stdout = log.writer("stdout")
 	cmd.Stderr = log.writer("stderr")
-	log.Step("agent started")
+	if spec.Kind == jobKindCheck {
+		// The check is the version first, then the one-line prompt.
+		version, err := r.agentVersion(ctx, u, adapter)
+		if err != nil {
+			return nil, err
+		}
+		log.Step(adapter.Name + " " + version)
+	}
+	log.Step("agent " + adapter.Name + " started")
 	code, err := r.wait(ctx, cmd)
 	if code != nil {
 		log.Step(fmt.Sprintf("agent exited with status %d", *code))
@@ -539,20 +544,17 @@ func exitCodeOf(cmd *exec.Cmd, err error) (*int, error) {
 	return nil, err
 }
 
-// claudeVersion asks the jobs user's claude for its version, for the
-// inventory. Cached by the caller.
-func (r *processRunner) claudeVersion(ctx context.Context) (string, error) {
-	u, err := r.jobsUser()
-	if err != nil {
-		return "", err
-	}
-	claude, err := r.lookPath(u.HomeDir, "claude")
+// agentVersion asks an agent CLI for its version, as the jobs user: the first
+// word of what its version command prints that holds a digit. Cached by the
+// inventory's caller.
+func (r *processRunner) agentVersion(ctx context.Context, u *user.User, adapter agentAdapter) (string, error) {
+	bin, err := r.lookPath(u.HomeDir, adapter.Binary)
 	if err != nil {
 		return "", err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	cmd, err := r.command(ctx, u, u.HomeDir, claude, []string{"--version"}, r.jobEnv(u))
+	cmd, err := r.command(ctx, u, u.HomeDir, bin, adapter.VersionArgs, append(r.jobEnv(u), adapter.Env...))
 	if err != nil {
 		return "", err
 	}
@@ -563,14 +565,14 @@ func (r *processRunner) claudeVersion(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if code != nil && *code != 0 {
-		return "", fmt.Errorf("claude --version exited with status %d", *code)
+		return "", fmt.Errorf("%s %s exited with status %d", adapter.Binary, strings.Join(adapter.VersionArgs, " "), *code)
 	}
-	// `2.0.14 (Claude Code)`: the first word is the version.
-	fields := strings.Fields(out.String())
-	if len(fields) == 0 {
-		return "", errors.New("claude --version printed nothing")
+	for _, field := range strings.Fields(out.String()) {
+		if strings.ContainsAny(field, "0123456789") {
+			return cut(field, 100), nil
+		}
 	}
-	return fields[0], nil
+	return "", fmt.Errorf("%s %s printed no version", adapter.Binary, strings.Join(adapter.VersionArgs, " "))
 }
 
 // ---------------------------------------------------------------------------
@@ -578,7 +580,7 @@ func (r *processRunner) claudeVersion(ctx context.Context) (string, error) {
 // ---------------------------------------------------------------------------
 
 // jobs is the executor's state for one-shot jobs: the ones running now, and
-// the claude version the inventory reports.
+// the agent version the inventory reports.
 type jobs struct {
 	runner *processRunner
 	// container is the container runner (#Q3999), used when the config says.
@@ -686,10 +688,17 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	defer j.versionMu.Unlock()
 	if time.Since(j.versionAt) > 10*time.Minute {
 		j.version, j.versionEr = "", ""
-		if v, err := j.runner.claudeVersion(ctx); err != nil {
+		// The inventory's one version field until it lists every tool
+		// (#Q4220).
+		u, err := j.runner.jobsUser()
+		var v string
+		if err == nil {
+			v, err = j.runner.agentVersion(ctx, u, agentAdapters["claude"])
+		}
+		if err != nil {
 			j.versionEr = cut(err.Error(), 500)
 		} else {
-			j.version = cut(v, 100)
+			j.version = v
 		}
 		j.versionAt = time.Now()
 	}
@@ -766,7 +775,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 		status = "done"
 	default:
 		status = "failed"
-		reason = fmt.Sprintf("claude exited with status %d", *exit)
+		reason = fmt.Sprintf("the agent exited with status %d", *exit)
 		if tail := strings.TrimSpace(log.stderrTail(400)); tail != "" {
 			reason += ": " + tail
 		}

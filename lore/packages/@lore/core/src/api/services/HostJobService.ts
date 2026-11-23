@@ -63,12 +63,6 @@ export class HostJobService {
    * deploying Lore. A process runner ignores it. Unset, a container host
    * refuses agent jobs ("the spec names none").
    */
-  /**
-   * The one host an Agent host check reaches on a container runner: the
-   * Anthropic API Claude Code asks. It needs no Lore, no clone and no MCP.
-   */
-  public static readonly CHECK_EGRESS = ["api.anthropic.com"];
-
   public static readonly DIGEST_REF =
     /^[a-z0-9./_-]{1,200}@sha256:[0-9a-f]{64}$/;
 
@@ -243,19 +237,17 @@ export class HostJobService {
     origin: string,
   ): Promise<Record<string, unknown>> {
     const input = job.input;
+    // The agent CLI and its model (#Q4219): Bay builds the command line from
+    // its adapter for that agent; no model leaves the CLI's own default.
+    const agent = {
+      agent: input.agent ?? HostJobService.DEFAULT_AGENT,
+      ...(input.model ? { model: input.model } : {}),
+    };
     if (job.kind === "check") {
-      const image = this.image(input.image);
-      // On a container host the check runs in the agent image too, so it
-      // checks the CLI the jobs use (#Q3997). Its egress proxy lets out
-      // only what the list names, so the check names the API it asks: with
-      // no list, a container check could never pass.
       return {
         kind: "check",
-        profile: "check",
-        maxTurns: 1,
+        ...agent,
         timeoutSeconds: input.timeoutSeconds,
-        egress: HostJobService.CHECK_EGRESS,
-        ...(image ? { image } : {}),
       };
     }
     const key = input.key
@@ -263,7 +255,7 @@ export class HostJobService {
       : undefined;
     return {
       kind: job.kind,
-      profile: input.profile,
+      ...agent,
       // The workspace directory (#Q4218): `<jobs base>/<project>/<workspace>`
       // on the host, kept between runs. Bay does no git.
       project: await this.projectDirName(job.projectId),
@@ -271,20 +263,14 @@ export class HostJobService {
       ...(key ? { key } : {}),
       mcpUrl: `${origin}/mcp`,
       prompt: input.prompt ?? "",
-      maxTurns: input.maxTurns,
       timeoutSeconds: input.timeoutSeconds,
-      ...(input.allowedTools?.length
-        ? { allowedTools: input.allowedTools }
-        : {}),
-      ...(input.disallowedTools?.length
-        ? { disallowedTools: input.disallowedTools }
-        : {}),
-      ...(input.permissionMode ? { permissionMode: input.permissionMode } : {}),
-      // Lore itself is on every agent job's list: the clone and the MCP.
-      egress: [...new Set([...(input.egress ?? []), new URL(origin).hostname])],
-      ...(this.image(input.image) ? { image: this.image(input.image) } : {}),
     };
   }
+
+  /**
+   * The agent CLI of a job that names none.
+   */
+  public static readonly DEFAULT_AGENT = "claude";
 
   /**
    * The workspace of an agent job that names none.
