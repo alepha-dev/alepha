@@ -5182,4 +5182,22 @@ export default {
   "code.file.binary": "Un fichier binaire : téléchargez-le pour l'ouvrir.",
   "code.file.tooLarge":
     "Trop volumineux pour être affiché ici : téléchargez-le, ou clonez le dépôt.",
+  "code.diff.files": "$1 fichiers modifiés",
+  "code.diff.partial":
+    "(seulement les premiers : le diff est trop grand pour être listé entier)",
+  "code.diff.added": "Ajouté",
+  "code.diff.modified": "Modifié",
+  "code.diff.deleted": "Supprimé",
+  "code.diff.renamed": "Renommé",
+  "code.diff.collapse": "Replier le fichier",
+  "code.diff.expand": "Déplier le fichier",
+  "code.diff.loading": "Chargement du diff…",
+  "code.diff.binary": "Un fichier binaire a changé.",
+  "code.diff.tooLarge": "Trop volumineux pour être affiché ici.",
+  "code.diff.submodule": "Sous-module $1",
+  "code.diff.noChange": "Le contenu n'a pas changé.",
+  "code.diff.more": "Afficher $1 lignes masquées",
+  "code.diff.previous": "Précédent",
+  "code.diff.next": "Suivant",
+  "code.diff.page": "Page $1 sur $2",
 };

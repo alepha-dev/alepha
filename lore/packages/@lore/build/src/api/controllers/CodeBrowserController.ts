@@ -1,8 +1,10 @@
 import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
-import { $action } from "alepha/server";
+import { $action, NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
+import { codeDiffFileSchema } from "../schemas/codeDiffFileSchema.ts";
+import { codeDiffSchema } from "../schemas/codeDiffSchema.ts";
 import { codeFileSchema } from "../schemas/codeFileSchema.ts";
 import { codeLocationQuerySchema } from "../schemas/codeLocationQuerySchema.ts";
 import { codeRepositoryDetailSchema } from "../schemas/codeRepositoryDetailSchema.ts";
@@ -10,6 +12,7 @@ import { codeRepositorySlugSchema } from "../schemas/codeRepositorySlugSchema.ts
 import { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
 import { codeTreeSchema } from "../schemas/codeTreeSchema.ts";
 import { CodeBrowserService } from "../services/CodeBrowserService.ts";
+import { CodeDiffService } from "../services/CodeDiffService.ts";
 import { CodeReadAccess } from "../services/CodeReadAccess.ts";
 import { CodeRepositoryService } from "../services/CodeRepositoryService.ts";
 
@@ -26,6 +29,7 @@ export class CodeBrowserController {
   protected readonly browser = $inject(CodeBrowserService);
   protected readonly repositories = $inject(CodeRepositoryService);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly diffs = $inject(CodeDiffService);
 
   protected readonly repoParams = z.object({
     projectId: z.integer(),
@@ -163,6 +167,119 @@ export class CodeBrowserController {
         buffer: bytes,
         name: path.slice(path.lastIndexOf("/") + 1),
       });
+    },
+  });
+
+  /**
+   * Two revisions' shas, or a 404: `from` omitted is the empty tree.
+   */
+  protected async pair(
+    row: Awaited<ReturnType<CodeReadAccess["repository"]>>,
+    from: string | undefined,
+    to: string,
+  ): Promise<{ from?: string; to: string }> {
+    const [a, b] = await Promise.all([
+      from ? this.browser.revisionOf(row, from) : undefined,
+      this.browser.revisionOf(row, to),
+    ]);
+    if ((from && !a) || !b) {
+      throw new NotFoundError("No such revision in this repository.");
+    }
+    return { from: a?.sha, to: b.sha };
+  }
+
+  getCodeDiff = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/diff",
+    description:
+      "The diff between two revisions, a page of files with the first files' hunks; `from` omitted diffs from the empty tree.",
+    schema: {
+      params: this.repoParams,
+      query: z.object({
+        from: z.text({ maxLength: 255 }).optional(),
+        to: z.text({ maxLength: 255 }),
+        page: z.integer().min(0).optional(),
+      }),
+      response: codeDiffSchema,
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      const pair = await this.pair(row, query.from, query.to);
+      return this.diffs.diff(row.backendRef, pair.from, pair.to, {
+        page: query.page,
+      });
+    },
+  });
+
+  getCodeDiffFile = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/diff/file",
+    description: "One file's hunks in the diff between two revisions.",
+    schema: {
+      params: this.repoParams,
+      query: z.object({
+        from: z.text({ maxLength: 255 }).optional(),
+        to: z.text({ maxLength: 255 }),
+        path: z.text({ maxLength: 4096 }),
+      }),
+      response: codeDiffFileSchema,
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      const pair = await this.pair(row, query.from, query.to);
+      const file = await this.diffs.file(
+        row.backendRef,
+        pair.from,
+        pair.to,
+        query.path,
+      );
+      if (!file) throw new NotFoundError(`${query.path} is not in this diff.`);
+      return file;
+    },
+  });
+
+  /**
+   * Lines of a blob, for the context a diff hides between two hunks.
+   */
+  getCodeBlobLines = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/blobs/:sha/lines",
+    description: "Lines start to end (1-based, inclusive) of a blob.",
+    schema: {
+      params: this.repoParams.extend({
+        sha: z.text({ minLength: 40, maxLength: 40 }),
+      }),
+      query: z.object({
+        start: z.integer().min(1),
+        end: z.integer().min(1),
+      }),
+      response: z.object({ lines: z.array(z.string()) }),
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      const lines = await this.diffs.lines(
+        row.backendRef,
+        params.sha,
+        query.start,
+        Math.min(query.end, query.start + 1000),
+      );
+      if (!lines) throw new NotFoundError("No such text blob.");
+      return { lines };
     },
   });
 }
