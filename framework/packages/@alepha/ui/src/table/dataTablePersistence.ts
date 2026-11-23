@@ -7,7 +7,8 @@ import type {
 } from "./dataTableTypes.ts";
 
 /**
- * Synchronous localStorage read. Returns undefined on miss or error.
+ * Synchronous localStorage read of `<key>.<suffix>`. Returns undefined on
+ * miss or error, and on the server.
  */
 export const readPersisted = <V>(
   key: string,
@@ -67,7 +68,8 @@ export const reconcilePersistedFilters = (
 };
 
 /**
- * Synchronous localStorage write. Empty objects/null delete the key.
+ * Synchronous localStorage write of `<key>.<suffix>`. Empty objects and null
+ * delete the key.
  */
 export const writePersisted = (
   key: string,
