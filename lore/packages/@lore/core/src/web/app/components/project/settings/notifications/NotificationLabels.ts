@@ -33,6 +33,8 @@ export class NotificationLabels {
     tr: I18nProvider<any, any>["tr"],
     entry: Pick<ProjectEventCatalogEntry, "needs">,
   ): string {
+    // A Core event needs nothing, so is never unavailable for a capability.
+    if (!entry.needs) return "";
     const capability = tr(
       `notifications.capability.${entry.needs.capability}`,
       { default: entry.needs.capability },

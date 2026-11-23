@@ -110,9 +110,10 @@ export interface ProjectEventDefinition {
   fields: Record<string, ProjectEventFieldKind>;
   /**
    * The capability (and option of it) a project needs for the event to
-   * exist there.
+   * exist there. Absent on a Core event, which every project has: the host
+   * events since #E166.
    */
-  needs: { capability: CapabilityKey; option?: string };
+  needs?: { capability: CapabilityKey; option?: string };
   /**
    * The permission a reader needs, at delivery and in `event_list`.
    */

@@ -17,25 +17,27 @@ export class ProjectEventCatalogService {
   ): Promise<ProjectEventCatalogEntry[]> {
     const capabilities = await this.security.capabilitiesOf(projectId);
     return this.catalog.all().map((event) => {
-      const options = capabilities[event.needs.capability];
+      const needs = event.needs;
+      // A Core event (no `needs`) exists in every project.
+      const options = needs ? capabilities[needs.capability] : undefined;
       const available =
-        !!options &&
-        (!event.needs.option || options[event.needs.option] === true);
+        !needs ||
+        (!!options && (!needs.option || options[needs.option] === true));
       return {
         name: event.name,
         label: event.label,
         resource: event.resource,
         fields: { ...event.fields },
         permission: event.permission,
-        needs: { ...event.needs },
+        ...(needs ? { needs: { ...needs } } : {}),
         ...(event.filter ? { filter: { ...event.filter } } : {}),
         available,
-        ...(available
+        ...(available || !needs
           ? {}
           : {
-              reason: event.needs.option
-                ? `Needs the ${event.needs.option} option of ${event.needs.capability}`
-                : `Needs ${event.needs.capability}`,
+              reason: needs.option
+                ? `Needs the ${needs.option} option of ${needs.capability}`
+                : `Needs ${needs.capability}`,
             }),
       };
     });

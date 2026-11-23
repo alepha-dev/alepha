@@ -34,6 +34,8 @@ const ALWAYS_SHOWN = [
   "stats",
   // Notifications are Core (#Q3890).
   "subscription",
+  // Hosts are Core since #E166 (#Q4115): they work with Ship off.
+  "host",
 ];
 
 interface Ctx {

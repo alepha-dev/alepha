@@ -113,3 +113,26 @@ describe("ProjectPermissions.of under a permission scope", () => {
     expect(scoped.permissions).toEqual(["quest:create"]);
   });
 });
+
+/**
+ * Hosts are Core since #E166 (#Q4115): a host runs agent jobs and reports its
+ * stats with Ship off, so the `host` group belongs to no capability and a
+ * project without Ship keeps every `host:*` permission, while Ship's own
+ * groups narrow away.
+ */
+describe("ProjectPermissions.of with Ship off", () => {
+  it("keeps every host permission and drops Ship's", async ({ expect }) => {
+    const { of } = await setup();
+
+    const { permissions } = await of({});
+    for (const permission of [
+      "host:read",
+      "host:create",
+      "host:update",
+      "host:delete",
+      "host:lend",
+    ])
+      expect(permissions).toContain(permission);
+    expect(permissions).not.toContain("deploy:manage");
+  });
+});

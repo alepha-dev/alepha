@@ -1,3 +1,4 @@
+import { HostProjectEvents } from "@lore/core/api";
 import { SourceRepository, CredentialSealService } from "@lore/core/api";
 import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -7,7 +8,6 @@ import { ConflictError } from "alepha/server";
 
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
 import { HostEventFields } from "./HostEventFields.ts";
-import { ShipProjectEvents } from "./ShipProjectEvents.ts";
 
 /**
  * Which field on the create form a failure belongs beside.
@@ -95,7 +95,7 @@ export class HostCloudflareService {
    * Injected so the events this class records are in the catalog
    * whatever booted it (#Q3889).
    */
-  protected readonly eventDefinitions = $inject(ShipProjectEvents);
+  protected readonly eventDefinitions = $inject(HostProjectEvents);
   /**
    * How much of a pasted token {@link mask} keeps.
    *

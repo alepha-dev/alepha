@@ -640,7 +640,9 @@ export class CapabilityRegistry {
       searchKinds: [],
       // `monitor` is an uptime transition (#Q3596), shown with the
       // `uptime` option like the Uptime page itself.
-      activityKinds: ["app", "sigil", "host", "monitor"],
+      // `host` is Core since #E166: a host runs agent jobs and reports its
+      // stats with Ship off.
+      activityKinds: ["app", "sigil", "monitor"],
       activityKindOptions: { monitor: "uptime" },
       dashboardCards: [
         "openErrors",
@@ -661,7 +663,7 @@ export class CapabilityRegistry {
         "artifact",
         "error",
         "sigil",
-        "host",
+        // `host` is Core since #E166 (#Q4115): hosts work with Ship off.
       ],
     },
     {
@@ -916,7 +918,8 @@ export class CapabilityRegistry {
    * render at all - which is a different question and the one that decides
    * whether a permission is offerable.
    *
-   * `project`, `member`, `rank`, `capability`, `invitation` and `stats` answer
+   * `project`, `member`, `rank`, `capability`, `invitation`, `stats` and
+   * `host` (since #E166) answer
    * `undefined` on purpose: they describe the container rather than a surface
    * inside it, and a project with no capabilities at all still has members,
    * still gets renamed and still has ranks to edit.

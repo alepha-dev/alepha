@@ -106,7 +106,8 @@ export class ProjectRankPresets {
    * whatever happens.
    *
    * A permission whose group no capability claims is Core and always kept:
-   * `project`, `member`, `rank`, `capability`, `invitation`, `stats` survive a
+   * `project`, `member`, `rank`, `capability`, `invitation`, `stats` and
+   * `host` survive a
    * project with every capability switched off, which is a legal state.
    */
   protected narrow(permissions: string[], enabled: CapabilityKey[]): string[] {
