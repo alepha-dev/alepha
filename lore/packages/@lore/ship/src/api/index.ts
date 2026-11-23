@@ -62,6 +62,7 @@ import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployedBuildService } from "./services/DeployedBuildService.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployHostHomeGuards } from "./services/DeployHostHomeGuards.ts";
+import { DeployHostUsage } from "./services/DeployHostUsage.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
 import { DeployProjectDeletion } from "./services/DeployProjectDeletion.ts";
@@ -92,6 +93,7 @@ import { ProjectReliabilityReportService } from "./services/ProjectReliabilityRe
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { RunErrorService } from "./services/RunErrorService.ts";
+import { ShipHostCommands } from "./services/ShipHostCommands.ts";
 import { ShipProjectEvents } from "./services/ShipProjectEvents.ts";
 import { SigilIngestRefusals } from "./services/SigilIngestRefusals.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
@@ -256,6 +258,10 @@ export const LoreShipApi = $module({
     // over `globalThis.fetch`, and the seam every spec substitutes.
     CloudflareProbeService,
     HostCloudflareService,
+    // What Ship deploys to a host and the commands it sends one, told to
+    // core's host registries (#E166); nothing injects either.
+    DeployHostUsage,
+    ShipHostCommands,
     HostService,
     // The queue behind the connection, and the seam the websocket endpoint
     // fills in. This default transport reaches nothing, which is the correct

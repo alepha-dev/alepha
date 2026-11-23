@@ -5,6 +5,7 @@ import { DeployAppsDashboardMetrics } from "../api/services/DeployAppsDashboardM
 import { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";
 import { DeployRouter } from "./app/DeployRouter.ts";
 import { DeployProjectLoader } from "./app/loaders/DeployProjectLoader.ts";
+import { DeployHostRoles } from "./app/shell/DeployHostRoles.ts";
 import { DeployShell } from "./app/shell/DeployShell.ts";
 
 /**
@@ -35,6 +36,7 @@ export const LoreShipWeb = $module({
     alepha.with(DeployRouter);
     alepha.inject(DeployProjectLoader);
     alepha.inject(DeployShell);
+    alepha.inject(DeployHostRoles);
     alepha.inject(DeployDashboardMetrics);
     alepha.inject(DeployAppsDashboardMetrics);
   },
@@ -47,6 +49,7 @@ export { currentErrorCountAtom } from "./app/atoms/currentErrorCountAtom.ts";
 export { currentHostAtom } from "./app/atoms/currentHostAtom.ts";
 export { currentInstancesAtom } from "./app/atoms/currentInstancesAtom.ts";
 export { DeployShell } from "./app/shell/DeployShell.ts";
+export { DeployHostRoles } from "./app/shell/DeployHostRoles.ts";
 export { default as HostCapabilityBadges } from "./app/components/hosts/HostCapabilityBadges.tsx";
 export { default as HostStateBadge } from "./app/components/hosts/HostStateBadge.tsx";
 export { default as HostTypeBadge } from "./app/components/hosts/HostTypeBadge.tsx";

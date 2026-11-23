@@ -18,6 +18,7 @@ import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
 import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
 import { CapabilityRowRegistry } from "./app/registries/CapabilityRowRegistry.ts";
+import { HostRoleRegistry } from "./app/registries/HostRoleRegistry.ts";
 import { ResourceRailRegistry } from "./app/registries/ResourceRailRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
@@ -72,6 +73,9 @@ export const LoreCoreWeb = $module({
     // Read by General > Capabilities (#Q4184), whether or not a module
     // registers a row on it.
     alepha.inject(CapabilityRowRegistry);
+    // Read by `HostCapabilityBadges` (#E166), whose page may render before
+    // any module registers a role on it.
+    alepha.inject(HostRoleRegistry);
     // Core's boot work (the 401 redirect, the global head, the reports tab
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
@@ -255,6 +259,11 @@ export {
   renderPromptTemplate,
 } from "../api/schemas/renderPromptTemplate.ts";
 export { AccountDeletionRegistry } from "./app/registries/AccountDeletionRegistry.ts";
+export {
+  HostRoleRegistry,
+  type HostRole,
+  type HostRoleSubject,
+} from "./app/registries/HostRoleRegistry.ts";
 export {
   type ProjectBlocker,
   type ProjectBlockedAct,

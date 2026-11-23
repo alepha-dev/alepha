@@ -23,7 +23,6 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
-  Bot,
   Flag,
   Globe,
   Link2,
@@ -414,31 +413,16 @@ const ProjectSettingsHostsPage = () => {
                         !(row.origin === "home" && !row.loan) &&
                         host.deployAllowed
                       }
-                    >
-                      {/* The Agent role (#Q4065), marked when it is the
-                          project's default Agent host. */}
-                      {row.loan?.agentHost && (
-                        <Badge
-                          variant="tint"
-                          tone={
-                            project.defaultAgentHostId === row.loan.id
-                              ? "violet"
-                              : "neutral"
-                          }
-                          data-testid="host-agent"
-                          data-default={
-                            project.defaultAgentHostId === row.loan.id
-                              ? "true"
-                              : undefined
-                          }
-                        >
-                          <Bot className="size-3" aria-hidden="true" />
-                          {project.defaultAgentHostId === row.loan.id
-                            ? tr("hosts.agent.pill.default")
-                            : tr("hosts.agent.pill")}
-                        </Badge>
-                      )}
-                    </HostCapabilityBadges>
+                      // The Agent role (#Q4065), marked when it is the
+                      // project's default Agent host.
+                      agent={
+                        row.loan?.agentHost
+                          ? project.defaultAgentHostId === row.loan.id
+                            ? "default"
+                            : "available"
+                          : undefined
+                      }
+                    />
                     {row.origin === "home" && !row.loan && (
                       <span className="text-muted-foreground text-xs">
                         {tr("hosts.home.notLentHere")}

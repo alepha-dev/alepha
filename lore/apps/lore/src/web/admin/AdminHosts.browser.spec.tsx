@@ -1,6 +1,7 @@
 import { DialogProvider } from "@alepha/ui";
 import type { AdminHostResource } from "@lore/core/schemas";
 import { I18n } from "@lore/core/web";
+import { DeployHostRoles } from "@lore/ship/web";
 import {
   cleanup,
   fireEvent,
@@ -118,7 +119,9 @@ describe("AdminHosts", () => {
       .with(AlephaReactRouter)
       // Lore's catalogue: the state pill is the project Hosts tab's, which
       // reads it (#Q4047).
-      .with(I18n);
+      .with(I18n)
+      // The pills: core's roles and Ship's deploy (#E166).
+      .with(DeployHostRoles);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     return alepha.inject(LinkProvider) as AdminLinks;
