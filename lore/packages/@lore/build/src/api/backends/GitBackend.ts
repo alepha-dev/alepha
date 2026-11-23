@@ -118,6 +118,16 @@ export abstract class GitBackend {
   ): Promise<GitTreeEntry[] | undefined>;
 
   /**
+   * One tree by its own sha, one level deep (#Q4132): what a tree diff
+   * walks, subtree by subtree, without resolving a path again. Undefined
+   * when no tree has that sha.
+   */
+  public abstract readTree(
+    ref: string,
+    treeSha: string,
+  ): Promise<GitTreeEntry[] | undefined>;
+
+  /**
    * One blob by its sha, its size checked before a byte is read:
    * over `maxBytes` (default {@link GitBackend.DEFAULT_MAX_BYTES}) it
    * answers `too_large` and the bytes never reach memory.

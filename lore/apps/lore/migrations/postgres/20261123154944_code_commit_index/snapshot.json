@@ -1,0 +1,975 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "48cff5a9-2365-4d8c-ba58-4ef3eeb25d1e",
+  "prevIds": ["6e2cfd79-fe66-4973-a013-06fe512ea203"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "code_commit_parents"],
+      "writes": [
+        "s|tbl|public.code_commit_parents",
+        "n|tbl|public.code_commit_parents",
+        "e|tbl|public.code_commit_parents",
+        "n|rel|public.code_commit_parents",
+        "n|type|public.code_commit_parents",
+        "n|rel|public.code_commit_parents_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "code_commit_paths"],
+      "writes": [
+        "s|tbl|public.code_commit_paths",
+        "n|tbl|public.code_commit_paths",
+        "e|tbl|public.code_commit_paths",
+        "n|rel|public.code_commit_paths",
+        "n|type|public.code_commit_paths",
+        "n|rel|public.code_commit_paths_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "code_commits"],
+      "writes": [
+        "s|tbl|public.code_commits",
+        "n|tbl|public.code_commits",
+        "e|tbl|public.code_commits",
+        "n|rel|public.code_commits",
+        "n|type|public.code_commits",
+        "n|rel|public.code_commits_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_commit_parents",
+        "code_commit_parents_repository_id_sha_parent_sha_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_commit_parents_repository_id_sha_parent_sha_idx",
+        "n|idx|public.code_commit_parents_repository_id_sha_parent_sha_idx",
+        "e|idx|public.code_commit_parents_repository_id_sha_parent_sha_idx",
+        "n|rel|public.code_commit_parents_repository_id_sha_parent_sha_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_parents",
+        "n|sch|public",
+        "n|col|public.code_commit_parents.repository_id",
+        "n|col|public.code_commit_parents.sha",
+        "n|col|public.code_commit_parents.parent_sha"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_commit_parents",
+        "code_commit_parents_repository_id_parent_sha_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_commit_parents_repository_id_parent_sha_idx",
+        "n|idx|public.code_commit_parents_repository_id_parent_sha_idx",
+        "e|idx|public.code_commit_parents_repository_id_parent_sha_idx",
+        "n|rel|public.code_commit_parents_repository_id_parent_sha_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_parents",
+        "n|sch|public",
+        "n|col|public.code_commit_parents.repository_id",
+        "n|col|public.code_commit_parents.parent_sha"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_commit_paths",
+        "code_commit_paths_repository_id_commit_sha_path_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_commit_paths_repository_id_commit_sha_path_idx",
+        "n|idx|public.code_commit_paths_repository_id_commit_sha_path_idx",
+        "e|idx|public.code_commit_paths_repository_id_commit_sha_path_idx",
+        "n|rel|public.code_commit_paths_repository_id_commit_sha_path_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_paths",
+        "n|sch|public",
+        "n|col|public.code_commit_paths.repository_id",
+        "n|col|public.code_commit_paths.commit_sha",
+        "n|col|public.code_commit_paths.path"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_commit_paths",
+        "code_commit_paths_repository_id_path_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_commit_paths_repository_id_path_idx",
+        "n|idx|public.code_commit_paths_repository_id_path_idx",
+        "e|idx|public.code_commit_paths_repository_id_path_idx",
+        "n|rel|public.code_commit_paths_repository_id_path_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_paths",
+        "n|sch|public",
+        "n|col|public.code_commit_paths.repository_id",
+        "n|col|public.code_commit_paths.path"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_commits",
+        "code_commits_repository_id_sha_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_commits_repository_id_sha_idx",
+        "n|idx|public.code_commits_repository_id_sha_idx",
+        "e|idx|public.code_commits_repository_id_sha_idx",
+        "n|rel|public.code_commits_repository_id_sha_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_commits",
+        "n|sch|public",
+        "n|col|public.code_commits.repository_id",
+        "n|col|public.code_commits.sha"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_commits",
+        "code_commits_repository_id_committed_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_commits_repository_id_committed_at_idx",
+        "n|idx|public.code_commits_repository_id_committed_at_idx",
+        "e|idx|public.code_commits_repository_id_committed_at_idx",
+        "n|rel|public.code_commits_repository_id_committed_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_commits",
+        "n|sch|public",
+        "n|col|public.code_commits.repository_id",
+        "n|col|public.code_commits.committed_at"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "code_commit_parents"],
+      "writes": [
+        "s|fk|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_parents",
+        "n|sch|public",
+        "n|tbl|public.code_repositories",
+        "n|sch|public",
+        "n|col|public.code_commit_parents.repository_id",
+        "n|col|public.code_repositories.id",
+        "e|uniqueness|public.code_repositories.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "code_commit_paths"],
+      "writes": [
+        "s|fk|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_paths",
+        "n|sch|public",
+        "n|tbl|public.code_repositories",
+        "n|sch|public",
+        "n|col|public.code_commit_paths.repository_id",
+        "n|col|public.code_repositories.id",
+        "e|uniqueness|public.code_repositories.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "code_commits"],
+      "writes": [
+        "s|fk|public.code_commits.code_commits_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_commits.code_commits_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_commits.code_commits_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_commits.code_commits_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_commits",
+        "n|sch|public",
+        "n|tbl|public.code_repositories",
+        "n|sch|public",
+        "n|col|public.code_commits.repository_id",
+        "n|col|public.code_repositories.id",
+        "e|uniqueness|public.code_repositories.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "code_commit_parents",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "code_commit_paths",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "code_commits",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "repository_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "parent_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "position",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "repository_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "commit_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "old_path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "old_blob_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "new_blob_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "repository_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "first_parent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "parents",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "tree_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "author_name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "author_email",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "authored_at",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "committer_name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "committer_email",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "committed_at",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "subject",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "body",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "code_commit_parents_repository_id_sha_parent_sha_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "parent_sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "code_commit_parents_repository_id_parent_sha_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "parent_sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "code_commit_paths_repository_id_commit_sha_path_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "commit_sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "path",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "code_commit_paths_repository_id_path_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "path",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "code_commits_repository_id_sha_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "code_commits_repository_id_committed_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "committed_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "code_commit_parents_repository_id_code_repositories_id_fkey",
+        "nameExplicit": false,
+        "columns": ["repository_id"],
+        "schemaTo": "public",
+        "tableTo": "code_repositories",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "RESTRICT",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "code_commit_paths_repository_id_code_repositories_id_fkey",
+        "nameExplicit": false,
+        "columns": ["repository_id"],
+        "schemaTo": "public",
+        "tableTo": "code_repositories",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "RESTRICT",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "code_commits_repository_id_code_repositories_id_fkey",
+        "nameExplicit": false,
+        "columns": ["repository_id"],
+        "schemaTo": "public",
+        "tableTo": "code_repositories",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "RESTRICT",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_parents",
+        "name": "code_commit_parents_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commit_paths",
+        "name": "code_commit_paths_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_commits",
+        "name": "code_commits_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

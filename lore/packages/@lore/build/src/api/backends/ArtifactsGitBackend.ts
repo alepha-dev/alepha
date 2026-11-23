@@ -727,6 +727,14 @@ export class ArtifactsGitBackend extends GitBackend {
     });
   }
 
+  public async readTree(
+    ref: string,
+    treeSha: string,
+  ): Promise<GitTreeEntry[] | undefined> {
+    if (!GitBackend.isSha(treeSha)) return undefined;
+    return this.withRepo(ref, (repo) => this.readTreeOf(repo, treeSha));
+  }
+
   public async blob(
     ref: string,
     sha: string,

@@ -347,6 +347,11 @@ export const assertGitBackendContract = async (
   );
   equal(second?.treeSha.length, 40, "commit tree sha");
   equal(
+    await backend.readTree(ref, second?.treeSha ?? ""),
+    root,
+    "readTree of the commit's tree is its root",
+  );
+  equal(
     (await backend.commit(ref, f.root))?.parents,
     [],
     "commit root has no parent",

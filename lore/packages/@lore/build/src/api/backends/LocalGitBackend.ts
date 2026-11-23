@@ -262,13 +262,42 @@ exit 1
     if (!GitBackend.isSha(commit)) return undefined;
     const clean = GitBackend.cleanPath(path);
     if (clean === undefined) return undefined;
+    return this.lsTree(ref, clean ? `${commit}:${clean}` : `${commit}^{tree}`);
+  }
+
+  public async readTree(
+    ref: string,
+    treeSha: string,
+  ): Promise<GitTreeEntry[] | undefined> {
+    if (!GitBackend.isSha(treeSha)) return undefined;
+    const { out } = await this.run(
+      [
+        "--git-dir",
+        this.pathOf(ref),
+        "cat-file",
+        "--batch-check=%(objecttype)",
+      ],
+      `${treeSha}\n`,
+    );
+    // `ls-tree` takes a commit too, and peels it: a tree diff never wants that.
+    if (out.trim() !== "tree") return undefined;
+    return this.lsTree(ref, treeSha);
+  }
+
+  /**
+   * `git ls-tree -z` of a tree-ish, parsed; undefined when git refuses it.
+   */
+  protected async lsTree(
+    ref: string,
+    treeish: string,
+  ): Promise<GitTreeEntry[] | undefined> {
     const { code, out } = await this.run([
       "--git-dir",
       this.pathOf(ref),
       "ls-tree",
       "-z",
       "--end-of-options",
-      clean ? `${commit}:${clean}` : `${commit}^{tree}`,
+      treeish,
     ]);
     if (code !== 0) return undefined;
     return out

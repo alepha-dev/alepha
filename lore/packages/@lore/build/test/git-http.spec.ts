@@ -23,6 +23,7 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
+  CodeCommitIndex,
   CodeRepositoryController,
   GitReceivePack,
   LoreBuildApi,
@@ -402,6 +403,36 @@ describe("git smart HTTP", () => {
       await git(["push", "--quiet", remote, "main:feature"], source);
 
       expect(recorded.flatMap((it) => it.commits)).toEqual([]);
+    });
+
+    it("indexes a push's branches, a creation's included, through every parent (#Q4132)", async ({
+      expect,
+    }) => {
+      const { owner, cloneUrl, repositoryId } = await aProject();
+      const source = await aCheckout();
+      const remote = withKey(cloneUrl, owner.key);
+      await git(["push", "--quiet", remote, "main"], source);
+      await git(["checkout", "--quiet", "-b", "feat/x"], source);
+      await commit(source, "side");
+      await git(["checkout", "--quiet", "main"], source);
+      await commit(source, "main");
+      await git(
+        ["merge", "--quiet", "--no-ff", "-m", "merge", "feat/x"],
+        source,
+      );
+      await git(["push", "--quiet", remote, "main", "feat/x"], source);
+      const { stdout: tip } = await git(["rev-parse", "HEAD"], source);
+
+      const index = ctx.alepha.inject(CodeCommitIndex);
+      const log = await index.log(repositoryId, tip.trim());
+      // Committed within one second: the set, not the order.
+      expect(log.commits.map((it) => it.subject).sort()).toEqual([
+        "first",
+        "main",
+        "merge",
+        "side",
+      ]);
+      expect(await index.frontier(repositoryId)).toEqual([]);
     });
 
     it("reads only the refs the report says ok, inside side-band or not", ({

@@ -5,6 +5,8 @@ import type { UserAccountToken } from "alepha/security";
 
 import { GitBackend, type GitCommit } from "../backends/GitBackend.ts";
 import type { CodeRepository } from "../entities/codeRepositories.ts";
+import { CodeIndexJobs } from "../jobs/CodeIndexJobs.ts";
+import { CodeCommitIndex } from "./CodeCommitIndex.ts";
 import { type GitRefCommand, GitReceivePack } from "./GitReceivePack.ts";
 
 /**
@@ -25,6 +27,8 @@ import { type GitRefCommand, GitReceivePack } from "./GitReceivePack.ts";
  *   `lore-import` writes its activity row and links no commit.
  * - Best effort: a failure is logged and never turns the push red, which
  *   has landed already.
+ * - **The commit index** (#Q4132) learns every branch a push created or
+ *   moved, an import's included, inline up to a cap and by job beyond.
  */
 export class CodePushRecorder {
   /**
@@ -44,6 +48,8 @@ export class CodePushRecorder {
   protected readonly receivePack = $inject(GitReceivePack);
   protected readonly references = $inject(CommitReferenceRegistry);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly index = $inject(CodeCommitIndex);
+  protected readonly indexJobs = $inject(CodeIndexJobs);
 
   /**
    * The response body, passed through unchanged, with the recording run at
@@ -116,6 +122,13 @@ export class CodePushRecorder {
       commits: [...commits.values()],
     });
 
+    await this.indexPush(push, updated, imported).catch((error) =>
+      this.log.warn("Could not index a push", {
+        repository: push.repository.id,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+
     await this.audits.code.logSuccess("push", {
       ...this.audits.actor(push.user),
       ...this.audits.scope(push.repository.projectId),
@@ -129,6 +142,37 @@ export class CodePushRecorder {
         ...(imported ? { import: true } : {}),
       },
     });
+  }
+
+  /**
+   * The commit index of a push (#Q4132): every branch it created or
+   * moved, all parents walked, at most {@link CodeCommitIndex.PUSH_INLINE}
+   * commits before the push answers. The rest, and an import, go to the
+   * backfill job, which resumes from the frontier the walk left.
+   */
+  protected async indexPush(
+    push: CodePush,
+    updated: GitRefCommand[],
+    imported: boolean,
+  ): Promise<void> {
+    const tips = updated
+      .filter(
+        (command) =>
+          command.ref.startsWith("refs/heads/") &&
+          command.newId !== GitReceivePack.ZERO,
+      )
+      .map((command) => command.newId);
+    if (tips.length === 0) return;
+    if (imported) {
+      await this.indexJobs.start(push.repository.id);
+      return;
+    }
+    const result = await this.index.walk(
+      push.repository,
+      tips,
+      CodeCommitIndex.PUSH_INLINE,
+    );
+    if (result.remaining) await this.indexJobs.start(push.repository.id);
   }
 }
 
