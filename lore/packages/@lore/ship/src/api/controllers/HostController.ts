@@ -1,8 +1,10 @@
-import { HostTypeRegistry } from "@lore/core/api";
 import {
+  HostTypeRegistry,
   $ownsProject,
   LoreAudits,
   ProjectSecurityService,
+  HostCommandTransport,
+  HostTokenService,
 } from "@lore/core/api";
 import {
   projects,
@@ -34,11 +36,9 @@ import {
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { AgentHostService } from "../services/AgentHostService.ts";
-import { HostCommandTransport } from "../services/HostCommandTransport.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
 import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
-import { HostTokenService } from "../services/HostTokenService.ts";
 
 export type {
   HostInventoryResource,

@@ -1,4 +1,4 @@
-import { HostJobs } from "@lore/core/api";
+import { HostJobs, HostCommandTransport } from "@lore/core/api";
 import {
   jobKeys,
   hostCommands,
@@ -18,7 +18,6 @@ import { beforeEach, describe, it } from "vitest";
 
 import {
   HostCommandService,
-  HostCommandTransport,
   HostJobService,
   LoreShipApi,
 } from "../src/api/index.ts";

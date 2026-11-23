@@ -1,4 +1,4 @@
-import { BayReleaseTarget } from "@lore/core/api";
+import { BayReleaseTarget, HostCommandTransport } from "@lore/core/api";
 import {
   BayUpgrade,
   type Host,
@@ -21,7 +21,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   HostCommandController,
   HostCommandService,
-  HostCommandTransport,
   HostController,
   HostInventoryService,
   LoreShipApi,

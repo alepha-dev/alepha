@@ -7,16 +7,16 @@ import { LoreBuildWeb } from "@lore/build/web";
 import { LoreChatApi } from "@lore/chat/api";
 import { LoreChatMcp } from "@lore/chat/mcp";
 import { LoreChatWeb } from "@lore/chat/web";
-import { LoreCoreApi } from "@lore/core/api";
 import {
+  LoreCoreApi,
   LoreFileAccessProvider,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
   LoreOAuthScopes,
+  HostCommandTransport,
 } from "@lore/core/api";
 import { LoreCoreMcp } from "@lore/core/mcp";
-import { LoreCoreWeb } from "@lore/core/web";
-import { ProjectScopeGrants } from "@lore/core/web";
+import { LoreCoreWeb, ProjectScopeGrants } from "@lore/core/web";
 import { LorePlanRequirementsApi } from "@lore/plan-requirements/api";
 import { LorePlanRequirementsMcp } from "@lore/plan-requirements/mcp";
 import { LorePlanRequirementsWeb } from "@lore/plan-requirements/web";
@@ -26,10 +26,9 @@ import { LorePlanWeb } from "@lore/plan/web";
 import { LoreRememberApi } from "@lore/remember/api";
 import { LoreRememberMcp } from "@lore/remember/mcp";
 import { LoreRememberWeb } from "@lore/remember/web";
-import { LoreShipApi } from "@lore/ship/api";
 import {
+  LoreShipApi,
   DeployJobs,
-  HostCommandTransport,
   WebSocketHostCommandTransport,
 } from "@lore/ship/api";
 import { LoreShipMcp } from "@lore/ship/mcp";
@@ -151,8 +150,9 @@ alepha.set(oauthOptions, {
 alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 
 // The host command queue pushes over the hosts websocket (epic #20).
-// Declared BEFORE `LoreShipApi`, which registers the default transport that
-// reaches nothing: a substitution after the service is in use is refused.
+// Declared BEFORE `LoreCoreApi`, which registers the default transport that
+// reaches nothing (core's since #E166): a substitution after the service is
+// in use is refused. The real one is still Ship's until #Q4117.
 alepha.with({
   provide: HostCommandTransport,
   use: WebSocketHostCommandTransport,

@@ -1,3 +1,4 @@
+import { HostCommandTransport, HostTokenService } from "@lore/core/api";
 import {
   hostInventories,
   hostProjects,
@@ -26,9 +27,7 @@ import {
   CloudflareProbeService,
   CredentialSealService,
   HostCommandService,
-  HostCommandTransport,
   HostService,
-  HostTokenService,
   HostController,
 } from "../src/api/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";

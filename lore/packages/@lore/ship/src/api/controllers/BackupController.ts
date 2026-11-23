@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, HostEventService } from "@lore/core/api";
 import {
   appNameSchema,
   hostCommands,
@@ -21,7 +21,6 @@ import { appBackupViewSchema } from "../schemas/appBackupViewSchema.ts";
 import { AppService } from "../services/AppService.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";
 import { HostCommandService } from "../services/HostCommandService.ts";
-import { HostEventService } from "../services/HostEventService.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
 import { HostService } from "../services/HostService.ts";
 

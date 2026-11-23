@@ -1,8 +1,8 @@
+import { HostCommandTransport } from "@lore/core/api";
 import type { Host, HostServerFrame } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 
 import { HostSocketController } from "../controllers/HostSocketController.ts";
-import { HostCommandTransport } from "./HostCommandTransport.ts";
 import { HostService } from "./HostService.ts";
 
 /**

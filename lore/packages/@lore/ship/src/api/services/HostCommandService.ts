@@ -1,3 +1,4 @@
+import { HostCommandTransport } from "@lore/core/api";
 import {
   type HostCommand,
   hostCommands,
@@ -14,8 +15,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
-
-import { HostCommandTransport } from "./HostCommandTransport.ts";
 
 declare module "alepha" {
   interface Hooks {
