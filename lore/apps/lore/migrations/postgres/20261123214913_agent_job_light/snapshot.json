@@ -1,0 +1,137 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "fc63906c-602c-44d2-84eb-a72171136746",
+  "prevIds": ["6a98af58-4deb-46d5-be8a-4b75035b84a4"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "host_jobs", "result"],
+      "writes": [
+        "s|col|public.host_jobs.result",
+        "n|col|public.host_jobs.result",
+        "e|col|public.host_jobs.result"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "host_jobs", "retries"],
+      "writes": [
+        "s|col|public.host_jobs.retries",
+        "n|col|public.host_jobs.retries",
+        "e|col|public.host_jobs.retries"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "host_jobs", "retry_at"],
+      "writes": [
+        "s|col|public.host_jobs.retry_at",
+        "n|col|public.host_jobs.retry_at",
+        "e|col|public.host_jobs.retry_at"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "job_keys", "tools"],
+      "writes": [
+        "s|col|public.job_keys.tools",
+        "n|col|public.job_keys.tools",
+        "e|col|public.job_keys.tools"
+      ],
+      "reads": ["n|tbl|public.job_keys", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "job_keys", "repository_id"],
+      "writes": [
+        "s|col|public.job_keys.repository_id",
+        "n|col|public.job_keys.repository_id",
+        "e|col|public.job_keys.repository_id"
+      ],
+      "reads": ["n|tbl|public.job_keys", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "job_keys", "write_ref_prefix"],
+      "writes": [
+        "s|col|public.job_keys.write_ref_prefix",
+        "n|col|public.job_keys.write_ref_prefix",
+        "e|col|public.job_keys.write_ref_prefix"
+      ],
+      "reads": ["n|tbl|public.job_keys", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "hosts", "agent_cli_version"],
+      "writes": [
+        "s|col|public.hosts.agent_cli_version",
+        "n|col|public.hosts.agent_cli_version",
+        "e|col|public.hosts.agent_cli_version"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "hosts", "agent_model"],
+      "writes": [
+        "s|col|public.hosts.agent_model",
+        "n|col|public.hosts.agent_model",
+        "e|col|public.hosts.agent_model"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "hosts", "agent_credential"],
+      "writes": [
+        "s|col|public.hosts.agent_credential",
+        "n|col|public.hosts.agent_credential",
+        "e|col|public.hosts.agent_credential"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"host_jobs\",\"result\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"host_jobs\",\"retries\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"host_jobs\",\"retry_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"job_keys\",\"tools\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"job_keys\",\"repository_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"job_keys\",\"write_ref_prefix\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"hosts\",\"agent_cli_version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"hosts\",\"agent_model\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"hosts\",\"agent_credential\"]"
+    }
+  ]
+}

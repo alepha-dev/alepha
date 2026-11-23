@@ -69,15 +69,6 @@ export const hostJobs = $entity({
     logBytes: z.integer().min(0).optional(),
     /** Set once a stream reached Bay's per-job cap. */
     logTruncated: z.boolean().optional(),
-    /**
-     * What the kind's reader made of the output: the final result, the
-     * cost and usage Claude Code reports.
-     */
-    result: z.record(z.string(), z.any()).optional(),
-    /** How many times a `paused` job was queued again. */
-    retries: z.integer().min(0).optional(),
-    /** When a `paused` job may be queued again. */
-    retryAt: z.string().optional(),
   }),
   indexes: [
     // The dispatcher: the oldest queued job of a host, and its running one.

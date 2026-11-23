@@ -34,12 +34,10 @@ import { type Quest, quests } from "../entities/quests.ts";
  * completion, and the run ends with a summary comment naming the branch.
  */
 export class QuestAgentService {
-  public static readonly TOOLS = [
-    "quest_get",
-    "quest_objective_set",
-    "quest_comment_add",
-    "quest_commit_add",
-  ];
+  /**
+   * A quest's work time.
+   */
+  public static readonly WORK_SECONDS = 60 * 60;
 
   protected readonly alepha = $inject(Alepha);
   protected readonly rows = $repository(quests);
@@ -56,7 +54,6 @@ export class QuestAgentService {
     projectId: number,
     shortId: number,
     startedBy: string,
-    repository?: string,
   ): Promise<{ jobId: string }> {
     const quest = await this.find(projectId, shortId);
     if (!quest.acceptedAt || quest.completedAt || quest.shelvedAt) {
@@ -79,11 +76,9 @@ export class QuestAgentService {
     });
     const job = await this.agents.start({
       projectId,
-      profile: "push",
       prompt: await this.prompt(project, quest),
-      tools: QuestAgentService.TOOLS,
+      timeoutSeconds: QuestAgentService.WORK_SECONDS,
       questNumber: quest.shortId,
-      ...(repository ? { repository } : {}),
       startedBy,
       subjectType: "quest",
       subjectId: String(quest.shortId),

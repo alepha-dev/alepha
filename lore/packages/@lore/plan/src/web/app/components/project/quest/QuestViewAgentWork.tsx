@@ -32,7 +32,6 @@ const QuestViewAgentWork = ({ quest, onChanged }: QuestViewAgentWorkProps) => {
         if (!project) return;
         await api.workQuestWithAgent({
           params: { projectId: project.id, shortId: quest.shortId },
-          body: {},
         });
         toaster.show(tr("quest.agent.started"), "success");
       },

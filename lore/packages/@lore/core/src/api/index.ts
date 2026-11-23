@@ -80,6 +80,7 @@ import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentHostService } from "./services/AgentHostService.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
+import { AgentJobService } from "./services/AgentJobService.ts";
 import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
@@ -384,6 +385,7 @@ export const LoreCoreApi = $module({
     AgentPromptGuard,
     // The port agent jobs start through (#Q3988): Build registers it.
     AgentJobs,
+    AgentJobService,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,
@@ -609,11 +611,9 @@ export {
   type CommitReferenceResult,
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
+export { AgentJobService } from "./services/AgentJobService.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
-export type {
-  AgentJobLauncher,
-  AgentJobRequest,
-} from "./services/AgentJobs.ts";
+export type { AgentJobRequest } from "./services/AgentJobs.ts";
 export { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {

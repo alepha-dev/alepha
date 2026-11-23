@@ -33,7 +33,13 @@
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir, userInfo } from "node:os";
@@ -612,8 +618,9 @@ describe("Bay connector against a real Lore", () => {
         "#!/bin/sh",
         // The check asks the version first (#Q4219), then one prompt.
         `if [ "$1" = "--version" ]; then echo "9.9.9 (Claude Code)"; exit 0; fi`,
-        `echo '{"type":"system","subtype":"init","model":"claude-stub-1","apiKeySource":"none","claude_code_version":"9.9.9"}'`,
-        `echo '{"type":"result","subtype":"success","is_error":false,"result":"OK","modelUsage":{"claude-stub-1":{}}}'`,
+        // An agent job runs in its workspace with the key in its env only.
+        `if [ -n "$LORE_JOB_KEY" ]; then echo "agent ran in $(basename "$PWD") with a key"; touch agent-ran; fi`,
+        `echo '{"type":"result","subtype":"success","is_error":false,"result":"OK"}'`,
         "",
       ].join("\n"),
     );
@@ -746,9 +753,6 @@ describe("Bay connector against a real Lore", () => {
       async () => {
         const row = (await readHost()) as HostRow & {
           agentStatus?: string;
-          agentCliVersion?: string;
-          agentModel?: string;
-          agentCredential?: string;
           agentError?: string;
         };
         return row.agentStatus === "available" ||
@@ -762,9 +766,6 @@ describe("Bay connector against a real Lore", () => {
       checked.agentStatus,
       `${checked.agentError}\n${bay.log.slice(-2000)}`,
     ).toBe("available");
-    expect(checked.agentCliVersion).toBe("9.9.9");
-    expect(checked.agentModel).toBe("claude-stub-1");
-    expect(checked.agentCredential).toBe("oauth");
 
     const listed = await ok<{
       items: Array<{ id: string; kind: string; status: string }>;
@@ -775,6 +776,65 @@ describe("Bay connector against a real Lore", () => {
       call(lore, owner, "getJobLog", { params: { jobId: check?.id ?? "" } }),
     );
     expect(log.stdout).toContain('"result":"OK"');
+  });
+
+  it("runs an agent job in a durable workspace: no repository, the key in the agent's env, the end by its exit code (#Q4218, #Q4222)", async () => {
+    await ok(
+      call(lore, owner, "setProjectAgentHost", {
+        params: { projectId: homeId },
+        body: { hostId: host.id },
+      }),
+    );
+    await ok(
+      call(lore, owner, "setCapability", {
+        params: { projectId: homeId, key: "plan" },
+        body: { enabled: true, options: { feedback: true } },
+      }),
+    );
+    const item = await ok<{ id: number }>(
+      call(lore, owner, "submitFeedback", {
+        params: { projectId: homeId },
+        body: { title: "Save fails", description: "The button does nothing." },
+      }),
+    );
+    const started = await ok<{ jobId?: string }>(
+      call(lore, owner, "triageFeedbackWithAgent", {
+        params: { projectId: homeId, feedbackId: item.id },
+      }),
+    );
+    expect(started.jobId).toBeDefined();
+    const ended = await until(
+      "the agent job to end",
+      async () => {
+        const listed = await ok<{
+          items: Array<{ id: string; status: string; reason?: string }>;
+        }>(
+          call(lore, owner, "listProjectJobs", {
+            params: { projectId: homeId },
+          }),
+        );
+        const job = listed.items.find((it) => it.id === started.jobId);
+        return job && !["queued", "running"].includes(job.status)
+          ? job
+          : undefined;
+      },
+      90_000,
+    );
+    expect(ended.status, `${ended.reason}\n${bay.log.slice(-2000)}`).toBe(
+      "succeeded",
+    );
+    const log = await ok<{ stdout: string; stderr: string }>(
+      call(lore, owner, "getJobLog", { params: { jobId: ended.id } }),
+    );
+    expect(log.stdout).toContain("agent ran in triage with a key");
+    expect(log.stderr).toMatch(/bay: \S+ workspace \S+\/triage ready/);
+    expect(log.stderr).toContain("agent exited with status 0");
+    // The workspace stays on the host for the next run.
+    const jobsBase = join(bay.root, "dev-jobs");
+    const [projectDir] = readdirSync(jobsBase);
+    expect(
+      existsSync(join(jobsBase, projectDir ?? "", "triage", "agent-ran")),
+    ).toBe(true);
   });
 
   it("reports an inventory after the welcome, and answers a query with a fresher one", async () => {

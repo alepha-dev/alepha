@@ -155,9 +155,6 @@ export class HostJobController {
       exitCode: row.exitCode ?? undefined,
       logBytes: row.logBytes ?? undefined,
       logTruncated: row.logTruncated ?? undefined,
-      result: row.result ?? undefined,
-      retries: row.retries ?? undefined,
-      retryAt: row.retryAt ?? undefined,
     }));
   }
 }

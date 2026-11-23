@@ -569,99 +569,33 @@ describe("git smart HTTP", () => {
   });
 
   describe("with a job key (#Q3995)", () => {
-    const mint = async (
-      project: Awaited<ReturnType<typeof aProject>>,
-      scope: { repositoryId?: string; writeRefPrefix?: string },
-    ) => {
-      const jobId = crypto.randomUUID();
+    it("is refused on git and on /api: a job key reaches Lore's MCP only (#Q4222)", async ({
+      expect,
+    }) => {
+      const project = await aProject();
       const token = await ctx.alepha.inject(JobKeyService).mint(
         {
-          id: jobId,
+          id: crypto.randomUUID(),
           projectId: project.projectId,
           kind: "agent",
           status: "running",
           startedBy: project.owner.id,
           queuedAt: new Date().toISOString(),
-          input: { profile: "push", maxTurns: 10, timeoutSeconds: 600 },
+          input: { timeoutSeconds: 600 },
         },
-        { tools: [], ...scope },
+        {},
       );
-      return { jobId, token };
-    };
-
-    it("pushes below its prefix only, and never to the default branch", async ({
-      expect,
-    }) => {
-      const project = await aProject();
-      const source = await aCheckout();
-      await git(
-        [
-          "push",
-          "--quiet",
-          withKey(project.cloneUrl, project.owner.key),
-          "main",
-        ],
-        source,
-      );
-      const { token } = await mint(project, {
-        repositoryId: String(project.repositoryId),
-        writeRefPrefix: "lore/q12",
-      });
-      const remote = withKey(project.cloneUrl, token);
-
-      await git(["clone", "--quiet", remote, "job-clone"]);
-      await git(["push", "--quiet", remote, "main:lore/q12"], source);
-      // A new commit, so a push of main is a real update and not up to date.
-      await writeFile(join(source, "README.md"), "second\n");
-      await git(["commit", "--quiet", "-am", "second"], source);
-      for (const ref of ["main", "main:lore/q13", "main:other"]) {
-        const refused = await git(["push", remote, ref], source).catch(
-          (error) => error as { stderr: string },
+      for (const service of ["git-upload-pack", "git-receive-pack"]) {
+        const git = await fetch(
+          `${project.cloneUrl}/info/refs?service=${service}`,
+          { headers: { authorization: `Basic ${btoa(`x:${token}`)}` } },
         );
-        expect(String((refused as { stderr?: string }).stderr)).toMatch(
-          /job key pushes to refs\/heads\/lore\/q12 only/,
-        );
+        expect(git.status).toBe(403);
       }
-    });
-
-    it("reads one repository of one project, and pushes nothing without a prefix", async ({
-      expect,
-    }) => {
-      const project = await aProject();
-      const other = await aProject({ repo: "web" });
-      const { token } = await mint(project, {
-        repositoryId: String(project.repositoryId),
-      });
-      const auth = `Basic ${btoa(`x:${token}`)}`;
-      const elsewhere = await fetch(
-        `${new URL(other.cloneUrl).origin}${new URL(other.cloneUrl).pathname}/info/refs?service=git-upload-pack`,
-        { headers: { authorization: auth } },
-      );
-      expect(elsewhere.status).toBe(404);
-      const push = await fetch(
-        `${project.cloneUrl}/info/refs?service=git-receive-pack`,
-        { headers: { authorization: auth } },
-      );
-      expect(push.status).toBe(403);
-    });
-
-    it("is refused on any route but MCP and git, and dead once revoked", async ({
-      expect,
-    }) => {
-      const project = await aProject();
-      const { jobId, token } = await mint(project, {
-        repositoryId: String(project.repositoryId),
-      });
       const api = await fetch(`${ctx.baseUrl}/api/getMyProjects`, {
         headers: { authorization: `Bearer ${token}` },
       });
       expect(api.status).toBe(403);
-      await ctx.alepha.inject(JobKeyService).revoke(jobId);
-      const clone = await fetch(
-        `${project.cloneUrl}/info/refs?service=git-upload-pack`,
-        { headers: { authorization: `Basic ${btoa(`x:${token}`)}` } },
-      );
-      expect(clone.status).toBe(401);
     });
   });
 

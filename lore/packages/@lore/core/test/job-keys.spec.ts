@@ -14,10 +14,9 @@ import {
 import type { JobKey } from "../src/schemas/index.ts";
 
 /**
- * The pins of a job key (#Q3995), checked server side: a tool off the
- * allowlist, another quest or feedback item, another project, a ref outside
- * the prefix. The git half runs against a real `git` in Build's
- * `git-http.spec.ts`.
+ * The pins of a job key (#Q3995), checked server side: another quest,
+ * feedback item or epic, another project. No tool allowlist since #Q4222:
+ * the owner's rank bounds the rest, and the key reaches Lore's MCP only.
  */
 const key = (overrides: Partial<JobKey> = {}): JobKey => ({
   id: crypto.randomUUID(),
@@ -26,7 +25,6 @@ const key = (overrides: Partial<JobKey> = {}): JobKey => ({
   jobId: crypto.randomUUID(),
   projectId: 7,
   userId: crypto.randomUUID(),
-  tools: ["quest_get", "quest_comment_add", "quest_list", "feedback_get"],
   questNumber: 12,
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
   ...overrides,
@@ -50,13 +48,15 @@ describe("JobKeyService", () => {
     keys = alepha.inject(JobKeyService);
   });
 
-  it("refuses a tool off the allowlist, whatever the call asks", ({
+  it("opens any tool within its pins: there is no allowlist (#Q4222)", ({
     expect,
   }) => {
-    expect(() => keys.check(key(), "quest_complete", { shortId: 12 })).toThrow(
-      "does not reach the tool quest_complete",
+    expect(() =>
+      keys.check(key(), "quest_complete", { shortId: 12 }),
+    ).not.toThrow();
+    expect(() => keys.check(key(), "quest_complete", { shortId: 13 })).toThrow(
+      "reaches quest 12 only",
     );
-    expect(() => keys.check(key(), "quest_get", { shortId: 12 })).not.toThrow();
   });
 
   it("holds a pinned quest and feedback item to their numbers", ({
@@ -83,7 +83,6 @@ describe("JobKeyService", () => {
   }) => {
     const triage = key({
       questNumber: undefined,
-      tools: ["feedback_get", "feedback_accept", "quest_create"],
       feedbackNumbers: [4, 9],
     });
     expect(() =>
@@ -102,7 +101,6 @@ describe("JobKeyService", () => {
     // A one-item key links only its own item too.
     const one = key({
       questNumber: undefined,
-      tools: ["quest_create"],
       feedbackNumber: 4,
     });
     expect(() =>
@@ -116,16 +114,6 @@ describe("JobKeyService", () => {
         shortId: 12,
       }),
     ).toThrow("revoked");
-  });
-
-  it("writes only below its ref prefix", ({ expect }) => {
-    const writer = key({ writeRefPrefix: "lore/q12" });
-    expect(keys.mayWriteRef(writer, "refs/heads/lore/q12")).toBe(true);
-    expect(keys.mayWriteRef(writer, "refs/heads/lore/q12/retry")).toBe(true);
-    expect(keys.mayWriteRef(writer, "refs/heads/lore/q123")).toBe(false);
-    expect(keys.mayWriteRef(writer, "refs/heads/main")).toBe(false);
-    expect(keys.mayWriteRef(writer, "refs/tags/lore/q12")).toBe(false);
-    expect(keys.mayWriteRef(key(), "refs/heads/lore/q12")).toBe(false);
   });
 
   it("pins the MCP run to the key's project, so another project is refused", ({
@@ -149,14 +137,6 @@ describe("JobKeyService", () => {
     const epic = key({
       questNumber: undefined,
       epicNumber: 3,
-      tools: [
-        "epic_get",
-        "epic_update",
-        "epic_review_create",
-        "quest_create",
-        "quest_update",
-        "folio_create",
-      ],
     });
     expect(() => keys.check(epic, "epic_get", { number: 3 })).not.toThrow();
     expect(() => keys.check(epic, "epic_update", { number: 4 })).toThrow(

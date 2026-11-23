@@ -24,18 +24,18 @@ import { McpProjectScope } from "./McpProjectScope.ts";
  * started the job, so their rank bounds it, plus a `job_keys` row of pins
  * checked here, server side, whatever the prompt asked for:
  *
- * - **where it may be used**: Lore's MCP and git's smart HTTP, nothing
- *   else. An `ak_lorejob_` credential on any other route is refused before it is
- *   resolved;
+ * - **where it may be used**: Lore's MCP, nothing else (#Q4222). An
+ *   `ak_lorejob_` credential on any other route, `/api` and git included, is
+ *   refused before it is resolved. Bay hands it to the agent in its MCP
+ *   configuration only;
  * - **one project**: the MCP run is pinned to it (`McpProjectScope`), so a
  *   tool resolving any other project throws;
- * - **an allowlist of tools**, and optionally **one quest** and **one
- *   feedback item** for the tools that name one;
- * - **git**: one repository, and write only below one ref prefix, both
- *   enforced by Build's git access from {@link scopeOf}.
+ * - optionally **one quest**, **a set of feedback items** or **one epic**,
+ *   for the tools that name one. Any other tool the owner's rank allows is
+ *   open, within the project: there is no tool allowlist since #Q4222.
  *
  * Expires after the job's timeout plus {@link MARGIN_SECONDS}, and is
- * revoked on every terminal status, `paused` included.
+ * revoked on every terminal status.
  */
 export class JobKeyService {
   /**
@@ -47,8 +47,8 @@ export class JobKeyService {
   public static readonly PREFIX = "ak_lorejob";
 
   /**
-   * What a key outlives its job's timeout by: the clone, the spec pull and
-   * a final MCP call after the deadline.
+   * What a key outlives its job's timeout by: the spec pull and a final MCP
+   * call after the deadline.
    */
   public static readonly MARGIN_SECONDS = 900;
 
@@ -134,7 +134,7 @@ export class JobKeyService {
     const { apiKey, token } = await this.apiKeys.create({
       userId,
       name: `job ${job.id}`,
-      description: `Host job ${job.id} (${job.kind}, ${job.input.profile})`,
+      description: `Host job ${job.id} (${job.kind}${job.input.agent ? `, ${job.input.agent}` : ""})`,
       roles,
       expiresAt,
       prefix: JobKeyService.PREFIX,
@@ -144,13 +144,10 @@ export class JobKeyService {
       jobId: job.id,
       projectId: job.projectId,
       userId,
-      tools: scope.tools,
       questNumber: scope.questId,
       feedbackNumber: scope.feedbackId,
       feedbackNumbers: scope.feedbackIds,
       epicNumber: scope.epicId,
-      repositoryId: scope.repositoryId,
-      writeRefPrefix: scope.writeRefPrefix,
       expiresAt: expiresAt.toISOString(),
     });
     return token;
@@ -194,8 +191,8 @@ export class JobKeyService {
   }
 
   /**
-   * A job key is for MCP and git, nothing else: refused on any other route
-   * before it is even resolved, by its token's prefix.
+   * A job key is for MCP, nothing else: refused on any other route, `/api`
+   * and git included, before it is even resolved, by its token's prefix.
    */
   protected readonly onRequest = $hook({
     on: "server:request:before",
@@ -208,17 +205,16 @@ export class JobKeyService {
         return;
       }
       const path = request.url.pathname;
-      if (path === "/mcp" || path.startsWith("/mcp/") || this.isGit(path)) {
+      if (path === "/mcp" || path.startsWith("/mcp/")) {
         return;
       }
-      throw new ForbiddenError("A job key reaches Lore's MCP and git only");
+      throw new ForbiddenError("A job key reaches Lore's MCP only");
     },
   });
 
   /**
-   * Every MCP call made with a job key: its tool on the allowlist, the run
-   * pinned to the key's project, a pinned quest or feedback item the only one
-   * named.
+   * Every MCP call made with a job key: the run pinned to the key's project,
+   * a pinned quest, feedback item or epic the only one named.
    */
   protected readonly onToolCall = $hook({
     on: "mcp:tool:call:begin",
@@ -240,9 +236,6 @@ export class JobKeyService {
   public check(key: JobKey, name: string, args: Record<string, unknown>) {
     if (key.revokedAt) {
       throw new ForbiddenError("This job key is revoked");
-    }
-    if (!key.tools.includes(name)) {
-      throw new ForbiddenError(`This job key does not reach the tool ${name}`);
     }
     const named = this.numberOf(args);
     if (
@@ -352,24 +345,11 @@ export class JobKeyService {
   }
 
   /**
-   * Whether a ref a push updates is one a job key may write.
-   */
-  public mayWriteRef(key: JobKey, ref: string): boolean {
-    if (!key.writeRefPrefix) return false;
-    const base = `refs/heads/${key.writeRefPrefix}`;
-    return ref === base || ref.startsWith(`${base}/`);
-  }
-
-  /**
    * The per-project number a call names, by the parameter MCP tools use.
    */
   protected numberOf(args: Record<string, unknown>): number | undefined {
     const value = args.shortId ?? args.number;
     return typeof value === "number" ? value : undefined;
-  }
-
-  protected isGit(path: string): boolean {
-    return /\.git(\/|$)/.test(path);
   }
 
   protected tokenOf(authorization?: string): string | undefined {

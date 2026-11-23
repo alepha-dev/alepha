@@ -42,7 +42,6 @@ export class JobCommand {
     "failed",
     "cancelled",
     "timed_out",
-    "paused",
   ] as const;
 
   public readonly list = $command({
@@ -134,7 +133,9 @@ export class JobCommand {
             ["Kind", job.kind],
             ["Status", job.status],
             ["Host", job.hostSlug],
-            ["Profile", job.input.profile],
+            ["Agent", job.input.agent],
+            ["Model", job.input.model],
+            ["Workspace", job.input.workspace],
             [
               "Subject",
               job.subjectType

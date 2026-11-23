@@ -231,12 +231,6 @@ export const hosts = $entity({
       .optional(),
     agentCheckedAt: z.string().optional(),
     agentError: z.string().max(2000).optional(),
-    /** The Claude Code version the check ran, as the CLI reports it. */
-    agentCliVersion: z.string().max(100).optional(),
-    /** The model the check answered with, from `modelUsage` or the init line. */
-    agentModel: z.string().max(100).optional(),
-    /** `oauth` (a login or a setup-token) or `api_key`. */
-    agentCredential: z.string().max(20).optional(),
     /**
      * How often the connector pushes its gauge, in seconds. Reaches the
      * machine in the `welcome` frame (#1782). A UX choice, not a cost one.

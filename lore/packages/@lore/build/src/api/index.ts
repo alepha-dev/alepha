@@ -13,7 +13,6 @@ import { CodeBackupJobs } from "./jobs/CodeBackupJobs.ts";
 import { CodeBlameJobs } from "./jobs/CodeBlameJobs.ts";
 import { CodeIndexJobs } from "./jobs/CodeIndexJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
-import { AgentJobService } from "./services/AgentJobService.ts";
 import { BuildDashboardMetrics } from "./services/BuildDashboardMetrics.ts";
 import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
 import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
@@ -106,9 +105,6 @@ export const LoreBuildApi = $module({
     // Every repository as a bundle in the storage, nightly (#Q3946).
     CodeBackupJobs,
     GitHttpController,
-    // The agent job (#Q3986): Claude Code on the project's Agent host, its
-    // profiles, its chain guard and the reader of its result.
-    AgentJobService,
   ],
   register: (alepha) => {
     // Artifacts on the Worker, bare repositories on disk everywhere else
@@ -130,11 +126,6 @@ export type {
   ArtifactsTreeEntry,
 } from "./backends/ArtifactsGitBackend.ts";
 export { GitBackend } from "./backends/GitBackend.ts";
-export { AgentJobService } from "./services/AgentJobService.ts";
-export {
-  AGENT_JOB_PROFILES,
-  type AgentJobProfile,
-} from "./schemas/agentJobProfiles.ts";
 export type {
   GitBackendToken,
   GitBlobResult,

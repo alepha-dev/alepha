@@ -79,7 +79,7 @@ const ProjectJobs = () => {
                 <span className="text-muted-foreground truncate text-xs">
                   {job.subjectType
                     ? `${job.subjectType} ${job.subjectId ?? ""}`
-                    : job.input.profile}
+                    : (job.input.agent ?? "")}
                 </span>
               </span>
             ),

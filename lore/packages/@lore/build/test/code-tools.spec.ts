@@ -12,7 +12,7 @@ import {
 
 /**
  * Agents read code (#Q4139): the six tools over `/mcp`, sized for a
- * context window, and a job key reading the one repository it is pinned to.
+ * context window, and a job key reading its own project's repositories.
  */
 describe("code read tools", () => {
   let ctx: CodeRepoContext;
@@ -142,7 +142,7 @@ describe("code read tools", () => {
     ]);
   });
 
-  it("lets a job key read the repository it is pinned to, and 404s another", async ({
+  it("lets a job key read any repository of its project: no repository pin since #Q4222", async ({
     expect,
   }) => {
     ctx = await bootCodeRepo({ mcp: true });
@@ -166,18 +166,17 @@ describe("code read tools", () => {
         status: "running",
         startedBy: ctx.owner.id,
         queuedAt: new Date().toISOString(),
-        input: { profile: "read", maxTurns: 10, timeoutSeconds: 600 },
+        input: { timeoutSeconds: 600 },
       } as never,
-      { tools: ["code_tree", "code_file"], repositoryId: ctx.repository.id },
+      {},
     );
 
     const pinned = await call(token, "code_tree", { repo: "api" });
     expect(pinned.error).toBeUndefined();
     expect(pinned.value.entries.length).toBeGreaterThan(0);
-    const elsewhere = await call(token, "code_tree", { repo: "web" });
-    expect(elsewhere.error).toMatch(/not found|no repository/i);
-    // Not allowlisted for the key: refused whatever the repository.
-    const unlisted = await call(token, "code_log", { repo: "api" });
-    expect(unlisted.error).toBeDefined();
+    const sibling = await call(token, "code_tree", { repo: "web" });
+    expect(sibling.error).toBeUndefined();
+    const log = await call(token, "code_log", { repo: "api" });
+    expect(log.error).toBeUndefined();
   });
 });

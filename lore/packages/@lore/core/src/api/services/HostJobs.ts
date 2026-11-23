@@ -6,9 +6,8 @@ declare module "alepha" {
   interface Hooks {
     /**
      * A host job reached a terminal status (#Q3984): succeeded, failed,
-     * cancelled, timed out or paused. Emitted by Ship, which owns the queue;
-     * the module that started the job (an agent job in Build) listens for its
-     * own kind, revokes what it minted and reads the result.
+     * cancelled or timed out. Emitted by the queue; core revokes the job's
+     * key, and a check's end sets its Agent host's state.
      */
     "host:job:ended": { job: HostJobSummary };
   }
@@ -17,9 +16,8 @@ declare module "alepha" {
 /**
  * What a module asks a host to run.
  *
- * `input` is the job's structured spec without its credential: the profile,
- * the repository and ref, the rendered prompt, the turn budget, the timeout,
- * the tool lists and the egress list. The credential a job holds is minted
+ * `input` is the job's structured spec without its credential: the agent and
+ * its model, the workspace, the rendered prompt and the timeout. The credential a job holds is minted
  * when the machine pulls the spec, through {@link HostJobKeyIssuer}, so no
  * row ever stores it.
  */
@@ -38,11 +36,12 @@ export interface HostJobRequest {
 }
 
 /**
- * The spec a job carries, Lore's half of Bay's `jobSpec`. Bay validates every
- * field again and builds the command line itself.
+ * The spec a job carries, Lore's half of Bay's `jobSpec` (#Q4222): the
+ * agent and its model, the workspace, the prompt and the timeout. Bay
+ * validates every field again and builds the command line from its adapter
+ * for the agent.
  */
 export interface HostJobInput {
-  profile: "check" | "read" | "push";
   /**
    * The agent CLI the job runs, by the name of Bay's adapter (`claude`,
    * `gemini`, #Q4219), and the model passed to it; no model leaves the
@@ -57,29 +56,20 @@ export interface HostJobInput {
    */
   workspace?: string;
   prompt?: string;
-  maxTurns: number;
   timeoutSeconds: number;
-  allowedTools?: string[];
-  disallowedTools?: string[];
-  permissionMode?: string;
-  egress?: string[];
-  image?: string;
   /**
-   * What the job's key may do, minted at pull time by the issuer the kind
-   * registered. Absent for a job that holds no key (a check).
+   * What the job's key is pinned to, minted at pull time. Absent for a job
+   * that holds no key (a check).
    */
   key?: HostJobKeyScope;
 }
 
 /**
- * The scope of a job key (#Q3995): pinned to one project, optionally one
- * quest or feedback item, an allowlist of MCP tools, git read on one
- * repository and write on `lore/q<n>` refs only.
+ * The pins of a job key (#Q3995): one project always, and optionally one
+ * quest, a set of feedback items or one epic. The key reaches Lore's MCP
+ * only, and any tool its owner's rank allows within those pins (#Q4222).
  */
 export interface HostJobKeyScope {
-  tools: string[];
-  repositoryId?: string;
-  writeRefPrefix?: string;
   questId?: number;
   feedbackId?: number;
   /**
@@ -110,8 +100,6 @@ export interface HostJobSummary {
   startedAt?: string;
   endedAt?: string;
   input: HostJobInput;
-  /** What the kind's result reader kept: the final result, cost, usage. */
-  result?: Record<string, unknown>;
 }
 
 /**
@@ -139,15 +127,6 @@ export interface HostJobQueue {
   cancel(jobId: string, by?: string): Promise<HostJobSummary>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
-  /** The full log of a job, both streams, for a kind's result reader. */
-  stdout(jobId: string): Promise<string>;
-  /** Stores what a kind's reader made of the job's output. */
-  setResult(jobId: string, result: Record<string, unknown>): Promise<void>;
-  /**
-   * Marks an ended job paused by a provider's usage limit, queued again at
-   * `retryAt` (a bounded number of times).
-   */
-  pause(jobId: string, retryAt: string, reason: string): Promise<void>;
   /**
    * Asks the hosts that ran the project's agent jobs to delete a workspace,
    * or all of them (#Q4218). Answers how many hosts were asked.
@@ -156,8 +135,7 @@ export interface HostJobQueue {
 }
 
 /**
- * A project's Agent host as an agent kind sees it: `runner` is how it runs
- * jobs (`process` or `container`), which the untrusted-input gate reads.
+ * A project's Agent host as an agent kind sees it.
  */
 export interface AgentHostRef {
   id: string;
@@ -167,19 +145,18 @@ export interface AgentHostRef {
 }
 
 /**
- * What Ship registers about Agent hosts (#Q3985): the one a project's agent
- * jobs run on, and the recheck an agent job's auth or limit failure asks for.
+ * What core's Agent host service registers (#Q3985): the host a project's
+ * agent jobs run on.
  */
 export interface AgentHostDirectory {
   defaultFor(projectId: number): Promise<AgentHostRef | undefined>;
-  recheck(hostId: string): Promise<void>;
 }
 
 /**
  * The port other modules start a host job through (#Q3984): jobs live in
  * Ship, beside `hosts` and `host_commands`, and no feature module imports
- * another, so Ship registers the queue here and Build (the agent kind)
- * reaches it through this class. With Ship absent, starting a job throws:
+ * another, so the queue registers here and the agent kind (core's
+ * `AgentJobService`) reaches it through this class. With Ship absent, starting a job throws:
  * there is no host to run it on.
  *
  * The key issuer is core's own (#Q3995), registered beside it.
@@ -204,18 +181,6 @@ export class HostJobs {
     projectId: number,
   ): Promise<AgentHostRef | undefined> {
     return this.agents?.defaultFor(projectId);
-  }
-
-  public async recheckHost(hostId: string): Promise<void> {
-    await this.agents?.recheck(hostId);
-  }
-
-  public async pause(
-    jobId: string,
-    retryAt: string,
-    reason: string,
-  ): Promise<void> {
-    await this.queue?.pause(jobId, retryAt, reason);
   }
 
   /**
@@ -269,17 +234,6 @@ export class HostJobs {
 
   public async chainHolds(jobId: string, kind: HostJobKind): Promise<boolean> {
     return (await this.queue?.chainHolds(jobId, kind)) ?? false;
-  }
-
-  public async stdout(jobId: string): Promise<string> {
-    return (await this.queue?.stdout(jobId)) ?? "";
-  }
-
-  public async setResult(
-    jobId: string,
-    result: Record<string, unknown>,
-  ): Promise<void> {
-    await this.queue?.setResult(jobId, result);
   }
 
   /**

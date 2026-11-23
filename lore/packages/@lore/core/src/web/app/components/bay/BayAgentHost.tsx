@@ -124,23 +124,6 @@ const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
                 {host.agentError}
               </span>
             )}
-            {(host.agentCliVersion || host.agentModel) && (
-              <span className="text-muted-foreground text-xs">
-                {[
-                  host.agentCliVersion
-                    ? `Claude Code ${host.agentCliVersion}`
-                    : undefined,
-                  host.agentModel,
-                  host.agentCredential === "oauth"
-                    ? tr("hosts.agent.credential.oauth")
-                    : host.agentCredential === "api_key"
-                      ? tr("hosts.agent.credential.api_key")
-                      : undefined,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            )}
           </div>
         )}
       </CardContent>
