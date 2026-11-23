@@ -17,6 +17,11 @@ import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class DevCommand {
+  /**
+   * The first app's port in a workspace, without `--port`.
+   */
+  public static readonly BASE_PORT = 5173;
+
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly pm = $inject(PackageManagerUtils);
@@ -42,6 +47,14 @@ export class DevCommand {
           "Run only specific apps (comma-separated: --only api,companion)",
         )
         .optional(),
+      port: z
+        .integer()
+        .min(0)
+        .max(65535)
+        .describe(
+          "Port to serve on, ahead of SERVER_PORT and dev.port (0 picks a free one). In a workspace, the first app's port: the others follow in order",
+        )
+        .optional(),
       retry: z
         .boolean()
         .describe(
@@ -55,12 +68,24 @@ export class DevCommand {
       if (apps.length > 0) {
         await this.runMultiple(root, apps, flags, mode);
       } else {
+        this.applyPort(flags.port);
         await this.runSingle(root, {
           exitOnStartupError: !flags.retry && !process.stdout.isTTY,
         });
       }
     },
   });
+
+  /**
+   * `--port` beats `SERVER_PORT`, which beats `dev.port`: written over the
+   * variable, the one the dev server and the app both read, so `--port 0`
+   * picks a free port exactly as `SERVER_PORT=0` does.
+   */
+  protected applyPort(port: number | undefined): void {
+    if (port !== undefined) {
+      process.env.SERVER_PORT = String(port);
+    }
+  }
 
   /**
    * Discover apps in the workspace root.
@@ -168,7 +193,8 @@ export class DevCommand {
   };
 
   /**
-   * Assign each app its port and apply the `--only` filter.
+   * Assign each app its port and apply the `--only` filter. `basePort` is
+   * `--port` when given: the first app's port, the others following.
    *
    * Ports come from the app's position in the FULL list, before filtering:
    * an app has to keep the same port whether or not its siblings are running,
@@ -178,9 +204,13 @@ export class DevCommand {
   protected selectApps(
     apps: Array<{ name: string; path: string }>,
     only?: string,
+    basePort = DevCommand.BASE_PORT,
   ): Array<{ name: string; path: string; port: number }> {
-    const basePort = 5173;
-    const withPorts = apps.map((app, i) => ({ ...app, port: basePort + i }));
+    // `--port 0`: every app picks a free port of its own.
+    const withPorts = apps.map((app, i) => ({
+      ...app,
+      port: basePort === 0 ? 0 : basePort + i,
+    }));
 
     if (!only) {
       return withPorts;
@@ -199,7 +229,11 @@ export class DevCommand {
     flags: Record<string, unknown>,
     mode?: string,
   ): Promise<void> {
-    const selected = this.selectApps(apps, flags.only as string | undefined);
+    const selected = this.selectApps(
+      apps,
+      flags.only as string | undefined,
+      (flags.port as number | undefined) ?? DevCommand.BASE_PORT,
+    );
 
     if (selected.length === 0) {
       this.log.warn("No apps found to run");
