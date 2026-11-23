@@ -8,9 +8,11 @@ import {
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import type { AdminProjectController } from "@lore/core/api";
+import type {
+  AdminProjectController,
+  AdminHostController,
+} from "@lore/core/api";
 import type { AdminHostResource } from "@lore/core/schemas";
-import type { AdminHostController } from "@lore/ship/api";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useState } from "react";

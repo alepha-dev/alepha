@@ -1,32 +1,3 @@
-import {
-  HostTypeRegistry,
-  $ownsProject,
-  LoreAudits,
-  ProjectSecurityService,
-  HostCommandTransport,
-  HostTokenService,
-  HostInventoryService,
-  HostService,
-  HostStatsService,
-  AgentHostService,
-} from "@lore/core/api";
-import {
-  projects,
-  type Host,
-  hosts,
-  cloudflareTokenSchema,
-  hostEnrolmentSchema,
-  type HostInventoryResource,
-  hostInventoryResourceSchema,
-  hostMoveResultSchema,
-  hostProvisionBodySchema,
-  type HostResource,
-  hostResourceSchema,
-  type MintedHost,
-  mintedHostSchema,
-  type OwnedHostResource,
-  ownedHostResourceSchema,
-} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { organizationMembers, RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -38,6 +9,37 @@ import {
   type UserAccountToken,
 } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
+
+import { type Host, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
+import { hostEnrolmentSchema } from "../schemas/hostEnrolmentSchema.ts";
+import {
+  type HostInventoryResource,
+  hostInventoryResourceSchema,
+} from "../schemas/hostInventoryResourceSchema.ts";
+import { hostMoveResultSchema } from "../schemas/hostMoveResultSchema.ts";
+import { hostProvisionBodySchema } from "../schemas/hostProvisionBodySchema.ts";
+import {
+  type HostResource,
+  hostResourceSchema,
+  type MintedHost,
+  mintedHostSchema,
+} from "../schemas/hostResourceSchema.ts";
+import {
+  type OwnedHostResource,
+  ownedHostResourceSchema,
+} from "../schemas/ownedHostResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
+import { AgentHostService } from "../services/AgentHostService.ts";
+import { HostCommandTransport } from "../services/HostCommandTransport.ts";
+import { HostInventoryService } from "../services/HostInventoryService.ts";
+import { HostService } from "../services/HostService.ts";
+import { HostStatsService } from "../services/HostStatsService.ts";
+import { HostTokenService } from "../services/HostTokenService.ts";
+import { HostTypeRegistry } from "../services/HostTypeRegistry.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type {
   HostInventoryResource,
@@ -55,9 +57,9 @@ export type {
  * Every action on `/hosts/:hostId` goes through `$ownsProject` on the
  * host row, which walks it to its home project by `projectId`, reads the
  * membership and checks the rank: `host:read` to look, `host:update` to
- * change or command it, `host:delete` to delete it. Every write also
- * passes `capability: "ship"`; reads pass none, by Lore's rule that turning a
- * capability off hides and never refuses a read. A non-member gets 403, not
+ * change or command it, `host:delete` to delete it. No capability gates a
+ * host since #E166: a host is core's and works with Ship off. A non-member
+ * gets 403, not
  * the 404 the old owner filter answered: a host id is a UUID, so nothing
  * can be enumerated, and one gate matters more than the hidden 404. A host
  * with no home has a null `projectId`, and the gate refuses it to everybody.
@@ -93,14 +95,11 @@ export class HostController {
    * Declared above the actions: a field initializer reading a field declared
    * below it sees `undefined`.
    */
-  protected ownsHost = (requires: string, write = false) =>
+  protected ownsHost = (requires: string) =>
     $ownsProject({
       repository: () => this.hosts,
       param: "hostId",
       requires,
-      ...(write
-        ? { capability: { key: "ship" as const, action: "manage a host" } }
-        : {}),
     });
 
   /**
@@ -349,7 +348,7 @@ export class HostController {
    */
   refreshHost = $action({
     use: [
-      this.ownsHost("host:update", true),
+      this.ownsHost("host:update"),
       this.refreshLimit.middleware({
         key: (input: { params: { hostId: string } }) =>
           `host-refresh:${input.params.hostId}`,
@@ -384,7 +383,7 @@ export class HostController {
    * because the label is what a rename is.
    */
   updateHost = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "PATCH",
     path: "/hosts/:hostId",
     schema: {
@@ -497,7 +496,7 @@ export class HostController {
    * refused on its next dial (#1782) and nothing is handed over.
    */
   rotateHost = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "POST",
     path: "/hosts/:hostId/rotate",
     schema: {
@@ -546,7 +545,7 @@ export class HostController {
    * until a machine exchanges it.
    */
   createHostEnrolment = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "POST",
     path: "/hosts/:hostId/enrolment",
     schema: {
@@ -579,7 +578,7 @@ export class HostController {
    * record and nothing more: the CLI creates and terminates the server.
    */
   recordHostProvision = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "POST",
     path: "/hosts/:hostId/provision",
     schema: {
@@ -623,7 +622,7 @@ export class HostController {
    * says "Replace token"; the Activity filter does not grow a verb.
    */
   replaceHostCredential = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "POST",
     path: "/hosts/:hostId/credential",
     schema: {
@@ -651,7 +650,7 @@ export class HostController {
    * untouched and says so, exactly as the sweep does.
    */
   checkHostCredential = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "POST",
     path: "/hosts/:hostId/credential/check",
     schema: {
@@ -686,7 +685,7 @@ export class HostController {
    * deploys there.
    */
   moveHost = $action({
-    use: [this.ownsHost("host:delete", true)],
+    use: [this.ownsHost("host:delete")],
     method: "POST",
     path: "/hosts/:hostId/move",
     schema: {
@@ -771,7 +770,7 @@ export class HostController {
    * revokes; the lending join cascades with it.
    */
   deleteHost = $action({
-    use: [this.ownsHost("host:delete", true)],
+    use: [this.ownsHost("host:delete")],
     method: "DELETE",
     path: "/hosts/:hostId",
     schema: {

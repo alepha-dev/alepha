@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
-import { HostCommandService } from "@lore/core/api";
+import { HostCommandService, HostController } from "@lore/core/api";
 import { hostCommands, type Host, hosts } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -17,7 +18,6 @@ import {
   AppSecretService,
   ArtifactService,
   DeployService,
-  HostController,
 } from "../src/api/index.ts";
 import {
   appInstances,
@@ -25,7 +25,6 @@ import {
   artifacts,
   deployments,
 } from "../src/schemas/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import {
   packedArtifact,
   createTestProject,

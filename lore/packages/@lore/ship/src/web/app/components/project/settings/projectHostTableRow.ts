@@ -1,6 +1,5 @@
+import type { LentHostResource } from "@lore/core/api";
 import type { OwnedHostResource } from "@lore/core/schemas";
-
-import type { LentHostResource } from "../../../../../api/controllers/ProjectHostController.ts";
 
 /**
  * One row of the project's hosts table (#Q3409): a host the project is

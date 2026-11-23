@@ -1,3 +1,4 @@
+import type { HostCommandController } from "@lore/core/api";
 import type { HostInventoryBackup } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
@@ -5,7 +6,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
 
 import type { BackupController } from "../../../../api/controllers/BackupController.ts";
-import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import BackupPanel, { type BackupSource } from "../backup/BackupPanel.tsx";
 

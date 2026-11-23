@@ -3,6 +3,9 @@ import {
   HostCommandTransport,
   HostCommandService,
   HostInventoryService,
+  HostCommandController,
+  HostController,
+  ProjectHostController,
 } from "@lore/core/api";
 import {
   BayUpgrade,
@@ -13,6 +16,7 @@ import {
   hostProjects,
   hosts,
 } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -23,13 +27,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, BadRequestError, ForbiddenError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  HostCommandController,
-  HostController,
-  LoreShipApi,
-  ProjectHostController,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
+import { LoreShipApi } from "../src/api/index.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 /**

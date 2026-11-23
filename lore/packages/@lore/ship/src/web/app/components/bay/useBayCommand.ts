@@ -1,8 +1,7 @@
+import type { HostCommandController } from "@lore/core/api";
 import type { HostCommandResource } from "@lore/core/schemas";
 import { useAction, useClient } from "alepha/react";
 import { useState } from "react";
-
-import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
 
 /**
  * What this console may ask for: one instance, named by its pair, or the

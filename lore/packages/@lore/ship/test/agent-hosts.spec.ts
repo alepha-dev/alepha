@@ -11,6 +11,7 @@ import {
   type Host,
   hosts,
 } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -21,7 +22,6 @@ import { AlephaServer } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
 
 import { LoreShipApi } from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 class ConnectedTransport extends HostCommandTransport {

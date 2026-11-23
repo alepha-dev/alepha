@@ -1,6 +1,6 @@
+import type { HostController } from "@lore/core/api";
 import { useClient, useQuery, useStore } from "alepha/react";
 
-import type { HostController } from "../../../../api/controllers/HostController.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 /**

@@ -10,6 +10,7 @@ import {
   Label,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { ProjectHostController } from "@lore/core/api";
 import { APP_NAME_MAX_LENGTH } from "@lore/core/schemas";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
@@ -20,7 +21,6 @@ import { useState } from "react";
 
 import type { AppController } from "../../../../../api/controllers/AppController.ts";
 import type { DeployController } from "../../../../../api/controllers/DeployController.ts";
-import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import type { ArtifactDetail } from "../../../../../api/schemas/artifactDetailSchema.ts";
 import type { ArtifactResource } from "../../../../../api/schemas/artifactResourceSchema.ts";

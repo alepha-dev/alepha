@@ -1,23 +1,19 @@
-import {
-  HostEventService,
-  HostTokenService,
-  HostCommandService,
-  HostJobService,
-  HostInventoryService,
-  HostService,
-  HostStatsService,
-} from "@lore/core/api";
-import {
-  type Host,
-  hosts,
-  hostClientFrameSchema,
-  hostServerFrameSchema,
-} from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $channel, $websocket } from "alepha/websocket";
+
+import { type Host, hosts } from "../entities/hosts.ts";
+import { hostClientFrameSchema } from "../schemas/hostClientFrameSchema.ts";
+import { hostServerFrameSchema } from "../schemas/hostServerFrameSchema.ts";
+import { HostCommandService } from "../services/HostCommandService.ts";
+import { HostEventService } from "../services/HostEventService.ts";
+import { HostInventoryService } from "../services/HostInventoryService.ts";
+import { HostJobService } from "../services/HostJobService.ts";
+import { HostService } from "../services/HostService.ts";
+import { HostStatsService } from "../services/HostStatsService.ts";
+import { HostTokenService } from "../services/HostTokenService.ts";
 
 /**
  * The websocket a Bay machine dials into and holds open.

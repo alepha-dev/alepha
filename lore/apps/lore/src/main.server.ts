@@ -14,6 +14,7 @@ import {
   LoreNotificationPreferences,
   LoreOAuthScopes,
   HostCommandTransport,
+  WebSocketHostCommandTransport,
 } from "@lore/core/api";
 import { LoreCoreMcp } from "@lore/core/mcp";
 import { LoreCoreWeb, ProjectScopeGrants } from "@lore/core/web";
@@ -26,11 +27,7 @@ import { LorePlanWeb } from "@lore/plan/web";
 import { LoreRememberApi } from "@lore/remember/api";
 import { LoreRememberMcp } from "@lore/remember/mcp";
 import { LoreRememberWeb } from "@lore/remember/web";
-import {
-  LoreShipApi,
-  DeployJobs,
-  WebSocketHostCommandTransport,
-} from "@lore/ship/api";
+import { LoreShipApi, DeployJobs } from "@lore/ship/api";
 import { LoreShipMcp } from "@lore/ship/mcp";
 import { LoreShipWeb } from "@lore/ship/web";
 import { Alepha, run } from "alepha";
@@ -152,7 +149,7 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 // The host command queue pushes over the hosts websocket (epic #20).
 // Declared BEFORE `LoreCoreApi`, which registers the default transport that
 // reaches nothing (core's since #E166): a substitution after the service is
-// in use is refused. The real one is still Ship's until #Q4117.
+// in use is refused. Both are core's since #E166.
 alepha.with({
   provide: HostCommandTransport,
   use: WebSocketHostCommandTransport,

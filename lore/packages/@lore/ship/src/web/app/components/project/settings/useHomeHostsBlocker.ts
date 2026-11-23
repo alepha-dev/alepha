@@ -1,8 +1,7 @@
+import type { ProjectHostController } from "@lore/core/api";
 import type { ProjectBlockedAct, I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-
-import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 
 /**
  * Deploy's line on core's `ProjectBlockerRegistry` (#Q3281): the hosts a

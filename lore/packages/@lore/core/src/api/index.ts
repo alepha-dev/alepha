@@ -18,12 +18,18 @@ import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
 import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
+import { AdminHostController } from "./controllers/AdminHostController.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AgentHostController } from "./controllers/AgentHostController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
+import { HostCommandController } from "./controllers/HostCommandController.ts";
+import { HostCommandPullController } from "./controllers/HostCommandPullController.ts";
+import { HostController } from "./controllers/HostController.ts";
+import { HostEnrolController } from "./controllers/HostEnrolController.ts";
 import { HostJobController } from "./controllers/HostJobController.ts";
+import { HostSocketController } from "./controllers/HostSocketController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
@@ -32,6 +38,7 @@ import { ProjectChannelController } from "./controllers/ProjectChannelController
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectEventController } from "./controllers/ProjectEventController.ts";
+import { ProjectHostController } from "./controllers/ProjectHostController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
@@ -80,6 +87,7 @@ import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
+import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
@@ -136,6 +144,7 @@ import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 import { SubscriptionService } from "./services/SubscriptionService.ts";
 import { UserDockService } from "./services/UserDockService.ts";
+import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 
 /**
  * The server half of `@lore/core`, the glue: projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, the dashboard, reports, agent prompts and the web shell.
@@ -219,6 +228,12 @@ export const LoreCoreApi = $module({
     // `SigilTokenService` with a different table, see its doc: the two
     // credentials are one grep apart and mean different things.
     HostTokenService,
+    // A cloudflare token is pasted rather than minted, so it is sealed and
+    // replayed rather than hashed and forgotten (#1631). Registered before
+    // it has a writer: the sealer exists first, so no plaintext credential
+    // is ever written even once. Listed by core since #E166, as its users
+    // (HostService) are.
+    CredentialSealService,
     // The seam the hosts websocket fills in. This default transport reaches
     // nothing, the correct behaviour of a Lore with no socket wired: commands
     // wait as `pending` for the machine's next connect. `main.server.ts`
@@ -344,6 +359,19 @@ export const LoreCoreApi = $module({
     AgentHostService,
     AgentHostController,
     AgentHostJobs,
+    // The host's HTTP, socket and pull surface (#E166, #Q4117): managing,
+    // lending, enrolling and commanding a host, the machine's websocket and
+    // the transport that pushes over it (substituted for
+    // `HostCommandTransport` in `main.server.ts`), and the result and job
+    // pulls. Ship keeps the deploy pulls (`HostPullController`).
+    HostController,
+    ProjectHostController,
+    AdminHostController,
+    HostEnrolController,
+    HostSocketController,
+    HostCommandController,
+    HostCommandPullController,
+    WebSocketHostCommandTransport,
     HostProjectMerge,
     HostProjectDeletion,
     HostJobService,
@@ -724,6 +752,15 @@ export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
+export { AdminHostController } from "./controllers/AdminHostController.ts";
+export { HostCommandController } from "./controllers/HostCommandController.ts";
+export { HostController } from "./controllers/HostController.ts";
+export type { HostResource } from "./controllers/HostController.ts";
+export { HostEnrolController } from "./controllers/HostEnrolController.ts";
+export { HostSocketController } from "./controllers/HostSocketController.ts";
+export { ProjectHostController } from "./controllers/ProjectHostController.ts";
+export type { LentHostResource } from "./controllers/ProjectHostController.ts";
+export { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 export { AgentHostService } from "./services/AgentHostService.ts";
 export { AgentHostController } from "./controllers/AgentHostController.ts";
 export { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
@@ -768,3 +805,4 @@ export {
 } from "./services/HostCommandHandlerRegistry.ts";
 export { HostProjectMerge } from "./services/HostProjectMerge.ts";
 export { HostProjectDeletion } from "./services/HostProjectDeletion.ts";
+export { HostCommandPullController } from "./controllers/HostCommandPullController.ts";

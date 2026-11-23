@@ -5,8 +5,8 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
+import type { AdminHostController } from "@lore/core/api";
 import type { AdminHostResource } from "@lore/core/schemas";
-import type { AdminHostController } from "@lore/ship/api";
 import {
   HostCapabilityBadges,
   HostStateBadge,

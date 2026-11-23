@@ -1,12 +1,9 @@
+import { HostController } from "@lore/core/api";
 import type { Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  HostController,
-  StackController,
-  StackService,
-} from "../src/api/index.ts";
+import { StackController, StackService } from "../src/api/index.ts";
 import {
   bootStackSpec,
   createEnvironment,

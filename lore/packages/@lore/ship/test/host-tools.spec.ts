@@ -1,5 +1,11 @@
-import { HostStatsService } from "@lore/core/api";
+import {
+  HostStatsService,
+  HostController,
+  ProjectHostController,
+} from "@lore/core/api";
+import { HostTools } from "@lore/core/mcp";
 import { hosts } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -9,13 +15,8 @@ import { currentUserAtom, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  HostController,
-  LoreShipApi,
-  ProjectHostController,
-} from "../src/api/index.ts";
-import { HostTools, LoreShipMcp } from "../src/mcp/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
+import { LoreShipApi } from "../src/api/index.ts";
+import { LoreShipMcp } from "../src/mcp/index.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 class HostRepositories {

@@ -1,10 +1,10 @@
 import { Button, useDialog } from "@alepha/ui";
+import type { HostCommandController } from "@lore/core/api";
 import type { I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowUpCircle } from "lucide-react";
 
-import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
 import BayCommandLine from "./BayCommandLine.tsx";
 import { bayVersionState } from "./bayVersionState.ts";
 import { useBayCommand } from "./useBayCommand.ts";

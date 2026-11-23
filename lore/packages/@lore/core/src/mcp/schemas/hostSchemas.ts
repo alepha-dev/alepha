@@ -1,5 +1,6 @@
-import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
+
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 // -----------------------------------------------------------------------------
 // host_stats

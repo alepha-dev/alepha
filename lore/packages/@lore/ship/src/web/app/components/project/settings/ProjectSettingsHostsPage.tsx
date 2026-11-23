@@ -4,7 +4,11 @@ import {
   type DataTableFilterFields,
   type RowActionEntry,
 } from "@alepha/ui/table";
-import type { AgentHostController } from "@lore/core/api";
+import type {
+  AgentHostController,
+  LentHostResource,
+  ProjectHostController,
+} from "@lore/core/api";
 import type { OwnedHostResource } from "@lore/core/schemas";
 import {
   SubscriptionBell,
@@ -35,10 +39,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import type {
-  LentHostResource,
-  ProjectHostController,
-} from "../../../../../api/controllers/ProjectHostController.ts";
 import HostCapabilityBadges from "../../hosts/HostCapabilityBadges.tsx";
 import HostDrawer from "../../hosts/HostDrawer.tsx";
 import HostTypeBadge from "../../hosts/HostTypeBadge.tsx";

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { HostCommandService } from "@lore/core/api";
+import { createTestHost } from "@lore/core/testing/hosts";
 import type { Alepha } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -15,7 +16,6 @@ import {
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 import {
   bootStackSpec,

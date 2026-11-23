@@ -4,6 +4,9 @@ import {
   HostCommandService,
   HostService,
   HostStatsService,
+  WebSocketHostCommandTransport,
+  HostController,
+  HostSocketController,
 } from "@lore/core/api";
 import {
   hostCommands,
@@ -11,6 +14,7 @@ import {
   hosts,
   type HostStatsFrame,
 } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -22,13 +26,7 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import WebSocket from "ws";
 
-import {
-  LoreShipApi,
-  WebSocketHostCommandTransport,
-  HostController,
-  HostSocketController,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
+import { LoreShipApi } from "../src/api/index.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**

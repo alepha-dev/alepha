@@ -7,6 +7,7 @@ import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 import { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
+import { HostTools } from "./tools/HostTools.ts";
 import { JobTools } from "./tools/JobTools.ts";
 import { NotificationTools } from "./tools/NotificationTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
@@ -36,6 +37,9 @@ export const LoreCoreMcp = $module({
     ProjectTools,
     // A host's jobs for agents (#Q3984), core's since #E166.
     JobTools,
+    // A host's stats, read-only, for the members of its home project
+    // (#Q3047), core's since #E166.
+    HostTools,
     NotificationTools,
     // The alert thresholds (#Q3914), core's since #E162: coverage is Build's,
     // open errors Ship's.
@@ -64,4 +68,5 @@ export { NotificationTools } from "./tools/NotificationTools.ts";
 export { ThresholdTools } from "./tools/ThresholdTools.ts";
 
 // ---- hosts (#E166) ----
+export { HostTools } from "./tools/HostTools.ts";
 export { JobTools } from "./tools/JobTools.ts";

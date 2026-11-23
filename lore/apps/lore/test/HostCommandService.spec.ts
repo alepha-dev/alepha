@@ -2,6 +2,7 @@ import {
   HostCommandHandlerRegistry,
   HostCommandTransport,
   HostCommandService,
+  HostController,
 } from "@lore/core/api";
 import {
   hostCommands,
@@ -10,11 +11,11 @@ import {
   type HostCommandFrame,
   type HostServerFrame,
 } from "@lore/core/schemas";
-import { HostController, LoreShipApi } from "@lore/ship/api";
-import { DeployTestEntities } from "@lore/ship/testing";
 // Its own subpath: `./testing` is loaded by browser specs, and this one
 // boots the host controllers (#E166).
-import { createTestHost } from "@lore/ship/testing/hosts";
+import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

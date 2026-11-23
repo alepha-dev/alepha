@@ -1,3 +1,4 @@
+import { createTestHost } from "@lore/core/testing/hosts";
 import type { Alepha } from "alepha";
 import { AlephaMcp } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
@@ -5,7 +6,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { StackController, StackVariableController } from "../src/api/index.ts";
 import { LoreShipMcp, StackTools } from "../src/mcp/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
 import {
   bootStackSpec,
   createEnvironment,

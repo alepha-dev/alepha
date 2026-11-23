@@ -1,28 +1,26 @@
-import {
-  $ownsProject,
-  HostCommandHandlerRegistry,
-  ProjectLimits,
-  HostCommandService,
-  HostService,
-  HostUpgradeService,
-} from "@lore/core/api";
-import {
-  hostCommands,
-  type Host,
-  hosts,
-  BayUpgrade,
-  hostBackupCommandTargetedSchema,
-  type HostCommandListItem,
-  type HostCommandResource,
-  hostCommandListItemSchema,
-  hostCommandResourceSchema,
-} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
+
+import { hostCommands } from "../entities/hostCommands.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import { BayUpgrade } from "../schemas/BayUpgrade.ts";
+import { hostBackupCommandTargetedSchema } from "../schemas/hostBackupCommandSchema.ts";
+import {
+  type HostCommandListItem,
+  type HostCommandResource,
+  hostCommandListItemSchema,
+  hostCommandResourceSchema,
+} from "../schemas/hostCommandResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
+import { HostCommandHandlerRegistry } from "../services/HostCommandHandlerRegistry.ts";
+import { HostCommandService } from "../services/HostCommandService.ts";
+import { HostService } from "../services/HostService.ts";
+import { HostUpgradeService } from "../services/HostUpgradeService.ts";
+import { ProjectLimits } from "../services/ProjectLimits.ts";
 
 export type { HostCommandListItem, HostCommandResource };
 
@@ -63,21 +61,14 @@ export class HostCommandController {
    * The gate on the host in the path, by its home project's rank (#Q3279).
    * Listing the commands is `host:read`; queueing one and reading a log
    * tail's stored result are `host:update`, since a machine runs the copies
-   * of every project that borrows it. Writes name the Ship capability.
+   * of every project that borrows it. No capability (#E166): Ship's own
+   * command kinds check theirs in Ship's handler.
    */
-  protected ownsHost = (requires: string, write = false) =>
+  protected ownsHost = (requires: string) =>
     $ownsProject({
       repository: () => this.hostRows,
       param: "hostId",
       requires,
-      ...(write
-        ? {
-            capability: {
-              key: "ship" as const,
-              action: "send a host a command",
-            },
-          }
-        : {}),
     });
 
   /**
@@ -151,7 +142,7 @@ export class HostCommandController {
    * otherwise.
    */
   enqueueHostCommand = $action({
-    use: [this.ownsHost("host:update", true)],
+    use: [this.ownsHost("host:update")],
     method: "POST",
     path: "/hosts/:hostId/commands",
     schema: {

@@ -14,6 +14,7 @@ import {
   ProjectSecurityService,
 } from "@lore/core/api";
 import { projects, hostJobs, hosts } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -23,7 +24,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { createTestHost } from "../../../packages/@lore/ship/src/testing/hosts.ts";
 import { bootLore } from "./fixtures/bootLore.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 

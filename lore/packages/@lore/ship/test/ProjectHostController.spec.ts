@@ -2,8 +2,11 @@ import {
   ProjectDeletionService,
   ProjectSecurityService,
   HostService,
+  HostController,
+  ProjectHostController,
 } from "@lore/core/api";
 import { projects, hostProjects, hosts } from "@lore/core/schemas";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -19,13 +22,7 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  LoreShipApi,
-  AppController,
-  HostController,
-  ProjectHostController,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
+import { LoreShipApi, AppController } from "../src/api/index.ts";
 import {
   createTestMemberByProjectId,
   createTestProject,

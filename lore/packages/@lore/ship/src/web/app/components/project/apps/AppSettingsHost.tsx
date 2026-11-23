@@ -1,6 +1,7 @@
 import { useToast, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
+import type { ProjectHostController } from "@lore/core/api";
 import {
   capabilityOption,
   currentProjectAtom,
@@ -15,7 +16,6 @@ import { Link } from "alepha/react/router";
 import { useState } from "react";
 
 import type { AppController } from "../../../../../api/controllers/AppController.ts";
-import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 
