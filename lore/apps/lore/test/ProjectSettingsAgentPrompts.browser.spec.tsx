@@ -113,6 +113,9 @@ describe("ProjectSettingsAgentPrompts", () => {
 
   const editor = (kind: string) =>
     screen.queryByTestId(`prompt-input-${kind}`) as HTMLTextAreaElement | null;
+  // Every prompt starts closed (#Q4181): its buttons are hidden until then.
+  const open = (kind: string) =>
+    fireEvent.click(screen.getByTestId(`prompt-toggle-${kind}`));
 
   /**
    * ⚠️ `projectFixture()` turns every declared option ON, so every presence
@@ -176,6 +179,7 @@ describe("ProjectSettingsAgentPrompts", () => {
   it("keeps Save disabled until the text changes", async () => {
     await mount();
     await waitFor(() => expect(editor("epicReview")).not.toBeNull());
+    open("epicReview");
 
     const saves = screen.getAllByRole("button", { name: "Save" });
     expect(saves[0].hasAttribute("disabled")).toBe(true);
@@ -199,6 +203,7 @@ describe("ProjectSettingsAgentPrompts", () => {
   it("keeps Save disabled on an empty template", async () => {
     await mount();
     await waitFor(() => expect(editor("epicReview")).not.toBeNull());
+    open("epicReview");
 
     fireEvent.change(editor("epicReview")!, { target: { value: "   " } });
     await waitFor(() =>
@@ -213,6 +218,7 @@ describe("ProjectSettingsAgentPrompts", () => {
   it("saves the edited template and writes it to the atom", async () => {
     const { links } = await mount();
     await waitFor(() => expect(editor("epicReview")).not.toBeNull());
+    open("epicReview");
 
     fireEvent.change(editor("epicReview")!, { target: { value: "mine" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
@@ -227,6 +233,43 @@ describe("ProjectSettingsAgentPrompts", () => {
         epicReview: "mine",
       }),
     );
+  });
+
+  /**
+   * Eight full-height editors made a long page (#Q4181): each prompt sits
+   * in a collapse, closed by default, kept mounted so a draft survives.
+   */
+  it("closes every prompt by default and opens it from its header", async () => {
+    await mount();
+
+    const toggle = await waitFor(() => {
+      const it = screen.queryByTestId("prompt-toggle-epicReview");
+      expect(it).not.toBeNull();
+      return it as HTMLButtonElement;
+    });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(editor("epicReview")?.closest("[hidden]")).not.toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(editor("epicReview")?.closest("[hidden]")).toBeNull();
+  });
+
+  it("marks a customised prompt in its closed header, and only that one (#Q4181)", async () => {
+    await mount({ rows: [{ kind: "questWork", template: "mine" }] });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("prompt-customised-questWork"),
+      ).not.toBeNull(),
+    );
+    expect(screen.queryByTestId("prompt-customised-epicReview")).toBe(null);
+    expect(
+      screen
+        .getByTestId("prompt-toggle-questWork")
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
   });
 
   /**

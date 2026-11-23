@@ -148,7 +148,11 @@ test.describe("agent prompts", () => {
         new RegExp(`/${projectSlug}/settings/work/prompts$`),
       );
 
-      // The editors appear, seeded from the built-in defaults.
+      // The editors appear, seeded from the built-in defaults, each closed
+      // until its header is clicked (#Q4181).
+      await page.getByTestId("prompt-toggle-epicReview").click({
+        timeout: 15_000,
+      });
       await expect(page.getByTestId("prompt-input-epicReview")).toBeVisible({
         timeout: 15_000,
       });
@@ -197,6 +201,9 @@ test.describe("agent prompts", () => {
 
     await test.step("editing and saving a template takes effect too", async () => {
       await page.goto(`/${projectSlug}/settings/work/prompts`);
+      await page.getByTestId("prompt-toggle-epicReview").click({
+        timeout: 15_000,
+      });
       const editor = page.getByTestId("prompt-input-epicReview");
       await expect(editor).toBeVisible({ timeout: 15_000 });
       await editor.fill("Edited review of {{reference}}.");
@@ -267,6 +274,11 @@ test.describe("agent prompts", () => {
 
     await test.step("Reset restores the built-in default", async () => {
       await page.goto(`/${projectSlug}/settings/work/prompts`);
+      // A customised prompt says so on its closed header (#Q4181).
+      await expect(
+        page.getByTestId("prompt-customised-epicReview"),
+      ).toBeVisible({ timeout: 15_000 });
+      await page.getByTestId("prompt-toggle-epicReview").click();
       await expect(page.getByTestId("prompt-reset-epicReview")).toBeVisible({
         timeout: 15_000,
       });

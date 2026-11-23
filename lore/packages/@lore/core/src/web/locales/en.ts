@@ -3896,6 +3896,7 @@ export default {
   "agentPrompts.settings.placeholder.url": "A link to it.",
   "agentPrompts.settings.save": "Save",
   "agentPrompts.settings.saved": "Prompt saved.",
+  "agentPrompts.settings.customised": "Customised",
   "agentPrompts.settings.reset": "Reset to default",
   "agentPrompts.settings.reset.title": "Reset this prompt?",
   "agentPrompts.settings.reset.description":
