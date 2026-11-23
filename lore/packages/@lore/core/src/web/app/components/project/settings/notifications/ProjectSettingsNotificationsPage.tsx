@@ -661,9 +661,11 @@ const ProjectSettingsNotificationsPage = () => {
                     {tr("notifications.status.paused")}
                   </Badge>
                 ) : (
-                  <span className="text-muted-foreground text-sm">
+                  // A tag like Paused, not plain text (#Q4188).
+                  <Badge variant="outline">
+                    <BellRing className="size-3" />
                     {tr("notifications.status.active")}
-                  </span>
+                  </Badge>
                 ),
             },
           }}

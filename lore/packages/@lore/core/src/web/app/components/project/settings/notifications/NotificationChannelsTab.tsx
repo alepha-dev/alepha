@@ -9,6 +9,8 @@ import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   Bell,
+  BellOff,
+  BellRing,
   Hash,
   KeyRound,
   Mail,
@@ -264,14 +266,17 @@ const NotificationChannelsTab = (props: NotificationChannelsTabProps) => {
                   </span>
                 ) : channel.status === "disabled" ? (
                   <Badge variant="destructive">
+                    <BellOff className="size-3" />
                     {channel.disabledReason === "room_archived"
                       ? tr("notifications.channels.roomArchived")
                       : tr("notifications.channels.switchedOff")}
                   </Badge>
                 ) : (
-                  <span className="text-muted-foreground text-sm">
+                  // A tag, as on the subscriptions table (#Q4188).
+                  <Badge variant="outline">
+                    <BellRing className="size-3" />
                     {tr("notifications.status.active")}
-                  </span>
+                  </Badge>
                 ),
             },
             url: {
