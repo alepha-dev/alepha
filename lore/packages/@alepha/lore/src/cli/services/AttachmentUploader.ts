@@ -109,6 +109,24 @@ export class AttachmentUploader {
   }
 
   /**
+   * Upload an image as a chat agent's avatar (#E170, #Q4200), to the
+   * `chat-agent-avatars` bucket (image only, 2 MB), and answer its file id
+   * for the agent's `avatar`.
+   */
+  public async pushChatAgentAvatar(input: {
+    projectId: number;
+    filePath: string;
+    type?: string;
+  }): Promise<{ fileId: string }> {
+    return this.uploadBytes(
+      `/api/projects/${input.projectId}/chat/agents/avatar`,
+      input.filePath,
+      this.basename(input.filePath),
+      input.type,
+    );
+  }
+
+  /**
    * Put a file of evidence on a use case run (#E153): uploaded to the
    * `use-case-evidence` bucket (50 MB a file), then placed on the run, on a
    * criterion or a step when given.

@@ -1,5 +1,5 @@
 import { $ownsProject } from "@lore/core/api";
-import { $inject, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
 import {
@@ -7,6 +7,7 @@ import {
   chatAgentResourceSchema,
 } from "../schemas/chatAgentResourceSchema.ts";
 import { ChatAgentService } from "../services/ChatAgentService.ts";
+import { ChatBuckets } from "../services/ChatBuckets.ts";
 
 /**
  * A project's chat agents (#E170, #Q4196). Reading them is `chat:read`, a
@@ -15,6 +16,7 @@ import { ChatAgentService } from "../services/ChatAgentService.ts";
  */
 export class ChatAgentController {
   protected readonly service = $inject(ChatAgentService);
+  protected readonly alepha = $inject(Alepha);
 
   protected ownsProject = (requires: string) =>
     $ownsProject({ requires, param: "projectId", capability: "chat" });
@@ -87,6 +89,26 @@ export class ChatAgentController {
     },
     handler: async ({ params, body, user }) =>
       this.service.update(params.projectId, params.agentId, user!, body),
+  });
+
+  uploadChatAgentAvatar = $action({
+    method: "POST",
+    path: "/projects/:projectId/chat/agents/avatar",
+    use: [this.ownsProject("chat:agent")],
+    description:
+      "Upload an image (JPEG, PNG, GIF or WebP, 2 MB at most) to use as an agent's avatar. Pass the `fileId` as `avatar` to create or update the agent.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({ file: z.file({ maxBytes: 2 * 1024 * 1024 }) }),
+      response: z.object({ fileId: z.uuid(), url: z.text() }),
+    },
+    handler: async ({ body, user }) => {
+      // Resolved here, not held as a field: a controller stays pure.
+      const file = await this.alepha
+        .inject(ChatBuckets)
+        .agentAvatars.upload(body.file, { user });
+      return { fileId: file.id, url: `/api/files/${file.id}` };
+    },
   });
 
   deleteChatAgent = $action({
