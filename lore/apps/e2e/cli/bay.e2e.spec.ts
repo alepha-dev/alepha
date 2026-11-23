@@ -800,12 +800,7 @@ describe("Bay connector against a real Lore", () => {
   });
 
   it("runs an agent job in a durable workspace: no repository, the key in the agent's env, the end by its exit code (#Q4218, #Q4222)", async () => {
-    await ok(
-      call(lore, owner, "setProjectAgentHost", {
-        params: { projectId: homeId },
-        body: { hostId: host.id },
-      }),
-    );
+    // No default Agent host (#Q4223): the project's only one is implied.
     await ok(
       call(lore, owner, "setCapability", {
         params: { projectId: homeId, key: "plan" },

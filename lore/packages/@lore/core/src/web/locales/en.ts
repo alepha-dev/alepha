@@ -3155,13 +3155,13 @@ export default {
     "$1 untrusted pending item(s) wait for a member to trust them: no agent reads them before that.",
   "feedback.agent.started":
     "Claude is triaging this feedback on the Agent host",
-  "feedback.agent.triage": "Triage with Claude",
-  "feedback.agent.triageInbox": "Triage all feedback and errors with Claude",
+  "feedback.agent.triage": "Triage with an agent",
+  "feedback.agent.triageInbox": "Triage all feedback and errors with an agent",
   "feedback.agent.startedMany": "Started $1 triage jobs; $2 left for a member",
   "feedback.agent.startedGlobal":
     "Claude is triaging the feedback and errors in one run; $1 left for a member",
   "feedback.agent.job": "Agent job",
-  "quest.agent.work": "Work it with Claude",
+  "quest.agent.work": "Work it with an agent",
   "quest.agent.started":
     "Claude is working on this quest on the Agent host: it pushes its own branch",
   "quest.untrusted": "Untrusted",
@@ -3170,13 +3170,8 @@ export default {
     "This quest was born of feedback written outside the team. Read its text, then confirm it: an agent works it only after a member did.",
   "hosts.agent.pill": "agent",
   "hosts.agent.pill.default": "agent, default",
-  "hosts.agent.makeDefault": "Make default Agent host",
-  "hosts.agent.clearDefault": "Clear default Agent host",
   "hosts.agent.egress.action": "Hosts a push job may reach",
   "hosts.agent.egress.save": "Save",
-  "hosts.agent.toast.default": "Default Agent host set",
-  "hosts.agent.toast.cleared":
-    "No default Agent host: the agent buttons are hidden",
   "hosts.agent.egress.label": "Hosts a push job may reach",
   "hosts.agent.egress.description":
     "Beyond Anthropic and Lore, enforced on a container Agent host. Empty: the npm and Yarn registries and GitHub. A leading dot covers every subdomain.",
@@ -4055,7 +4050,7 @@ export default {
   "epic.tab.review": "Review",
   "epic.list.openQuestions": "$1 review questions open",
   "epic.list.openBlockers": "$1 review blockers open",
-  "epic.agent.review": "Review with Claude",
+  "epic.agent.review": "Review with an agent",
   "epic.agent.started": "Review started on the Agent host",
   "epic.agent.job": "Review job",
   "epic.review.empty":

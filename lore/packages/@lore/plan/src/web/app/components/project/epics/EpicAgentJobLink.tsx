@@ -9,7 +9,7 @@ export interface EpicAgentJobLinkProps {
 }
 
 /**
- * The epic's last Review with Claude job (#Q4214), linked to its page, which
+ * The epic's last Review with an agent job (#Q4214), linked to its page, which
  * streams the job's log while it runs and keeps it after.
  */
 const EpicAgentJobLink = (props: EpicAgentJobLinkProps) => {

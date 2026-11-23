@@ -6,7 +6,13 @@ import {
   ProjectController,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { type Project, projects, type User } from "@lore/core/schemas";
+import {
+  agentRunChoiceSchema,
+  agentRunSchema,
+  type Project,
+  projects,
+  type User,
+} from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { FileService, files } from "alepha/api/files";
@@ -799,7 +805,7 @@ export class FeedbackController {
   });
 
   /**
-   * Triage one pending item with Claude (#Q3988): an agent job on the
+   * Triage one pending item with an agent (#Q3988): an agent job on the
    * project's Agent host runs the project's Triage prompt on it, with the
    * read profile and a key pinned to this item. Answers the job, or why
    * none started.
@@ -813,24 +819,26 @@ export class FeedbackController {
         projectId: z.integer(),
         feedbackId: z.integer(),
       }),
+      body: agentRunSchema.nullish(),
       response: z.object({
         jobId: z.uuid().optional(),
         skipped: z.string().optional(),
       }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, body, user }) => {
       await this.assertFeedbackOpen(params.projectId);
       const item = await this.loadFeedback(params.projectId, params.feedbackId);
       return this.agentTriage.triageItem(
         params.projectId,
         item.shortId,
         user.id,
+        body ?? {},
       );
     },
   });
 
   /**
-   * Triage the inbox with Claude (#Q3988, #Q4183): ONE global job over the
+   * Triage the inbox with an agent (#Q3988, #Q4183): ONE global job over the
    * pending team-written items and the open errors, which merges duplicates
    * and links reports to their errors; each untrusted item its own job.
    * Untrusted items on a host that runs jobs as a process are skipped, each
@@ -843,22 +851,27 @@ export class FeedbackController {
     path: "/projects/:projectId/feedback/agent-triage",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      body: agentRunSchema.nullish(),
       response: z.object({
         started: z.array(z.uuid()),
         skipped: z.array(z.integer()),
         global: z.uuid().optional(),
       }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, body, user }) => {
       await this.assertFeedbackOpen(params.projectId);
-      return this.agentTriage.triageInbox(params.projectId, user.id);
+      return this.agentTriage.triageInbox(
+        params.projectId,
+        user.id,
+        body ?? {},
+      );
     },
   });
 
   /**
-   * Whether Triage with Claude can run now (#Q4126): the project names an
-   * Agent host and its last agent check passed. The robot menu offers the
-   * triage entries only then.
+   * Whether Triage with an agent can run now (#Q4126), and on which hosts
+   * and agents (#Q4223): an Agent host whose last agent check passed. The
+   * robot menu offers the triage entries only then, one per choice.
    */
   getFeedbackAgentTriage = $action({
     use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
@@ -866,11 +879,15 @@ export class FeedbackController {
     path: "/projects/:projectId/feedback/agent-triage",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      response: z.object({ ready: z.boolean() }),
+      response: z.object({
+        ready: z.boolean(),
+        choices: z.array(agentRunChoiceSchema),
+      }),
     },
-    handler: async ({ params }) => ({
-      ready: await this.agentTriage.agentHostReady(params.projectId),
-    }),
+    handler: async ({ params }) => {
+      const choices = await this.agentTriage.agentChoices(params.projectId);
+      return { ready: choices.length > 0, choices };
+    },
   });
 
   /**

@@ -4,7 +4,11 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import type { AgentJobRequest } from "./AgentJobs.ts";
-import { HostJobs, type HostJobSummary } from "./HostJobs.ts";
+import {
+  type AgentHostRef,
+  HostJobs,
+  type HostJobSummary,
+} from "./HostJobs.ts";
 import { JobKeyService } from "./JobKeyService.ts";
 
 /**
@@ -52,19 +56,7 @@ export class AgentJobService {
    * Starts an agent job on the project's Agent host.
    */
   public async start(request: AgentJobRequest): Promise<HostJobSummary> {
-    const host = await this.port.agentHostFor(request.projectId);
-    if (!host) {
-      throw new ForbiddenError(
-        "This project names no Agent host: pick one on its hosts settings page",
-      );
-    }
-    // An agent the host does not report is refused before anything is
-    // queued (#Q4220): Bay would fail the job at once, after a pull.
-    if (request.agent && host.agents && !host.agents.includes(request.agent)) {
-      throw new BadRequestError(
-        `Host "${host.slug}" reports no ${request.agent} agent: it has ${host.agents.length ? host.agents.join(", ") : "none"}`,
-      );
-    }
+    const { host, agent } = await this.resolve(request.projectId, request);
     if (request.untrusted) {
       // Text from outside the team reaches no agent before a member trusted
       // it (#Q4216, #Q4233); the callers leave such items out, and this is
@@ -88,7 +80,7 @@ export class AgentJobService {
       subjectType: request.subjectType,
       subjectId: request.subjectId,
       input: {
-        ...(request.agent ? { agent: request.agent } : {}),
+        ...(agent ? { agent } : {}),
         ...(request.model ? { model: request.model } : {}),
         workspace:
           request.workspace ??
@@ -113,6 +105,76 @@ export class AgentJobService {
         },
       },
     });
+  }
+
+  /**
+   * The host and agent a run uses (#Q4223, no default host): the one it
+   * names, or the project's only Agent host; the agent it names, or the
+   * host's only agent CLI. Several and none named is refused with the list
+   * to pick from; an agent the host does not report is refused before
+   * anything is queued (#Q4220). A host that reported no tools yet takes
+   * the named agent, or Bay's default.
+   */
+  public async resolve(
+    projectId: number,
+    run: { host?: string; agent?: string },
+  ): Promise<{ host: AgentHostRef; agent?: string }> {
+    const hosts = await this.port.agentHosts(projectId);
+    if (!hosts.length) {
+      throw new ForbiddenError(
+        "This project has no Agent host: make one of its hosts an Agent host first",
+      );
+    }
+    let host: AgentHostRef | undefined;
+    if (run.host) {
+      host = hosts.find((it) => it.slug === run.host || it.id === run.host);
+      if (!host) {
+        throw new BadRequestError(
+          `No Agent host "${run.host}" in this project: it has ${hosts.map((it) => it.slug).join(", ")}`,
+        );
+      }
+    } else if (hosts.length === 1) {
+      host = hosts[0];
+    } else {
+      throw new BadRequestError(
+        `This project has ${hosts.length} Agent hosts: name one of ${hosts.map((it) => it.slug).join(", ")}`,
+      );
+    }
+    if (!host) throw new BadRequestError("No Agent host");
+    const agents = host.agents;
+    if (run.agent) {
+      if (agents && !agents.includes(run.agent)) {
+        throw new BadRequestError(
+          `Host "${host.slug}" reports no ${run.agent} agent: it has ${agents.length ? agents.join(", ") : "none"}`,
+        );
+      }
+      return { host, agent: run.agent };
+    }
+    if (agents && agents.length > 1) {
+      throw new BadRequestError(
+        `Host "${host.slug}" reports ${agents.length} agents: name one of ${agents.join(", ")}`,
+      );
+    }
+    return { host, agent: agents?.[0] };
+  }
+
+  /**
+   * What a run may pick from (#Q4223): each available Agent host of the
+   * project with each agent it reports, or the host alone when it reported
+   * none yet. The agent entries offer one click when there is one choice,
+   * a small picker otherwise.
+   */
+  public async choices(
+    projectId: number,
+  ): Promise<Array<{ host: string; agent?: string }>> {
+    const hosts = await this.port.agentHosts(projectId);
+    return hosts
+      .filter((host) => host.status === "available")
+      .flatMap((host) =>
+        host.agents?.length
+          ? host.agents.map((agent) => ({ host: host.slug, agent }))
+          : [{ host: host.slug }],
+      );
   }
 
   /**

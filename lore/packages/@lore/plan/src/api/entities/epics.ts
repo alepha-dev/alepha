@@ -178,7 +178,7 @@ export const epics = $entity({
      */
     pullRequests: z.array(pullRequestSchema).optional(),
     /**
-     * The last Review with Claude job (#Q4214): the Review tab links it while
+     * The last Review with an agent job (#Q4214): the Review tab links it while
      * it runs and after. Optional with no default, for the additive migration
      * `pullRequests` explains.
      */

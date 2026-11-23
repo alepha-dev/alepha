@@ -672,16 +672,34 @@ export class EpicCommand {
 
   /**
    * `lore epic review`, declared after its children. With an epic, it is
-   * Review with Claude from a shell (#Q4214): the epic page's robot menu
+   * Review with an agent from a shell (#Q4214): the epic page's robot menu
    * entry, a job on the project's Agent host that files the review.
    */
   public readonly review = $command({
     name: "review",
     description:
-      "An epic's reviews: file one, answer an item, or with an epic, review it with Claude on the project's Agent host",
+      "An epic's reviews: file one, answer an item, or with an epic, review it with an agent on one of the project's Agent hosts",
     args: EpicCommand.REF_ARG.optional(),
     flags: z.object({
       ...EpicCommand.PROJECT_FLAG,
+      host: z
+        .text({
+          description:
+            "The Agent host to run on, by slug; needed when the project has several",
+        })
+        .optional(),
+      agent: z
+        .text({
+          description:
+            "The agent CLI to run (claude, gemini); needed when the host has several",
+        })
+        .optional(),
+      model: z
+        .text({
+          description:
+            "The model passed to the agent; absent, the agent's own default",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     children: [this.reviewCreate, this.reviewAnswer],
@@ -696,6 +714,11 @@ export class EpicCommand {
         const { projectId } = await this.projects.named(flags.project, context);
         const result = await this.agentApi.reviewEpicWithAgent({
           params: { projectId, number },
+          body: {
+            ...(flags.host ? { host: flags.host } : {}),
+            ...(flags.agent ? { agent: flags.agent } : {}),
+            ...(flags.model ? { model: flags.model } : {}),
+          },
         });
         this.render.written(
           print,

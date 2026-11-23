@@ -45,29 +45,6 @@ export class AgentHostController {
   });
 
   /**
-   * Names the project's default Agent host, or clears it with `null`.
-   */
-  setProjectAgentHost = $action({
-    use: [
-      $ownsProject({
-        param: "projectId",
-        requires: "host:update",
-      }),
-    ],
-    method: "PUT",
-    path: "/projects/:projectId/agent-host",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      body: z.object({ hostId: z.uuid().nullable() }),
-      response: z.object({ hostId: z.uuid().optional() }),
-    },
-    handler: async ({ params, body }) => {
-      await this.agents.setDefault(params.projectId, body.hostId);
-      return body.hostId ? { hostId: body.hostId } : {};
-    },
-  });
-
-  /**
    * The hosts a `push` agent job of the project reaches beyond Anthropic and
    * Lore (#Q3996), or `null` for the default list. Bare host names, a
    * leading dot for every subdomain (`.githubusercontent.com`).

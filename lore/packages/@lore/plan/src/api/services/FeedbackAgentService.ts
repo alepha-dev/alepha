@@ -5,6 +5,7 @@ import {
   ProjectSecurityService,
 } from "@lore/core/api";
 import {
+  type AgentRun,
   projectPrompts,
   projects,
   renderPromptTemplate,
@@ -24,7 +25,7 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
  * Feedback to quest (#Q3988): the project's Triage prompt run as an agent
  * job on its Agent host, instead of being pasted into a session by hand.
  *
- * **One item, or the whole inbox.** Triage with Claude on an item starts one
+ * **One item, or the whole inbox.** Triage with an agent on an item starts one
  * job, its key pinned to that item. On the inbox it starts ONE global job
  * (#Q4183) that reads every pending team-written item together, and the
  * project's open errors when it tracks them, so duplicates become one quest
@@ -118,6 +119,7 @@ export class FeedbackAgentService {
     projectId: number,
     shortId: number,
     startedBy?: string,
+    run: AgentRun = {},
   ): Promise<{ jobId?: string; skipped?: string }> {
     const item = await this.rows.findOne({
       where: { projectId: { eq: projectId }, shortId: { eq: shortId } },
@@ -133,12 +135,8 @@ export class FeedbackAgentService {
     const project = await this.projects.getOne({
       where: { id: { eq: projectId } },
     });
-    const host = await this.hostJobs.agentHostFor(projectId);
-    if (!host) {
-      throw new BadRequestError(
-        "This project names no Agent host: pick one on its hosts settings page",
-      );
-    }
+    // The host and agent, before anything is noted (#Q4223).
+    await this.agents.resolve(projectId, run);
     if (FeedbackAgentService.awaitsTrust(item)) {
       const skipped = FeedbackAgentService.AWAITS_TRUST;
       await this.note(item, skipped, startedBy);
@@ -146,6 +144,7 @@ export class FeedbackAgentService {
     }
     const job = await this.agents.start({
       projectId,
+      ...run,
       prompt: await this.prompt(project, item),
       timeoutSeconds: FeedbackAgentService.ITEM_SECONDS,
       feedbackNumber: item.shortId,
@@ -175,16 +174,12 @@ export class FeedbackAgentService {
   public async triageInbox(
     projectId: number,
     startedBy?: string,
+    run: AgentRun = {},
   ): Promise<{ started: string[]; skipped: number[]; global?: string }> {
     const project = await this.projects.getOne({
       where: { id: { eq: projectId } },
     });
-    const host = await this.hostJobs.agentHostFor(projectId);
-    if (!host) {
-      throw new BadRequestError(
-        "This project names no Agent host: pick one on its hosts settings page",
-      );
-    }
+    await this.agents.resolve(projectId, run);
     const pending = await this.rows.findMany({
       where: { projectId: { eq: projectId }, status: { eq: "pending" } },
       orderBy: [{ column: "createdAt", direction: "asc" }],
@@ -225,6 +220,7 @@ export class FeedbackAgentService {
     const t = FeedbackAgentService.GLOBAL_TIME;
     const job = await this.agents.start({
       projectId,
+      ...run,
       prompt: await this.globalPrompt(project, trusted, errors),
       // An empty set pins nothing, so the key would reach every item: with
       // no feedback the job's feedback tools are refused by the pin below.
@@ -305,13 +301,13 @@ export class FeedbackAgentService {
   }
 
   /**
-   * Whether triage can run now: the project names an Agent host and that
-   * host's last agent check passed. The robot menu offers the triage entries
-   * only then.
+   * What a run may pick now (#Q4223): each available Agent host with each
+   * agent it reports. Empty, the robot menu offers no agent entry.
    */
-  public async agentHostReady(projectId: number): Promise<boolean> {
-    const host = await this.hostJobs.agentHostFor(projectId);
-    return host?.status === "available";
+  public async agentChoices(
+    projectId: number,
+  ): Promise<Array<{ host: string; agent?: string }>> {
+    return this.agents.choices(projectId);
   }
 
   /**

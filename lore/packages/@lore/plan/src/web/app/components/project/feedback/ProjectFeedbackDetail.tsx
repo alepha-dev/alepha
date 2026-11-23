@@ -124,7 +124,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         },
       ]
     : [];
-  // Triage with Claude, run on the Agent host (#Q4126): entries of the same
+  // Triage with an agent, run on the Agent host (#Q4126): entries of the same
   // robot menu, offered only while that host's agent check passes.
   const agentActions = useFeedbackAgentTriage(feedback, props.onChanged);
   const feedbackApi = useClient<FeedbackController>();

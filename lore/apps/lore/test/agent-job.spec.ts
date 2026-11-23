@@ -90,7 +90,6 @@ const makeAgentHost = async (w: World) => {
   if (check?.commandId) {
     await w.commands.ack(w.host.id, { id: check.commandId, status: "done" });
   }
-  await w.agents.setDefault(w.host.projectId, w.host.id);
 };
 
 const triage = (w: World, extra: Record<string, unknown> = {}) =>
@@ -114,8 +113,8 @@ describe("the agent job", () => {
     await rm(w.dataDir, { recursive: true, force: true });
   });
 
-  it("refuses to start without a default Agent host", async ({ expect }) => {
-    await expect(triage(w)).rejects.toThrow("names no Agent host");
+  it("refuses to start without an Agent host", async ({ expect }) => {
+    await expect(triage(w)).rejects.toThrow("has no Agent host");
   });
 
   it("asks for a prompt, a workspace and a timeout, and a key pinned to the feedback item, with no repository (#Q4222)", async ({
@@ -220,6 +219,63 @@ describe("the agent job", () => {
     ).toHaveLength(0);
     const job = await triage(w, { agent: "claude" });
     expect(job.input.agent).toBe("claude");
+  });
+
+  it("implies the only host and agent, and asks to name one among several (#Q4223)", async ({
+    expect,
+  }) => {
+    await makeAgentHost(w);
+    const second = await createTestHost(
+      w.alepha,
+      w.owner,
+      { slug: "agent-2" },
+      { projectId: w.host.projectId },
+    );
+    await w.repos.hosts.updateById(second.id, {
+      jobsAllowed: true,
+      agentHost: true,
+      jobsTools: [
+        { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+        { name: "gemini", kind: "agent", found: true, version: "0.70.0" },
+      ],
+    });
+    await expect(triage(w)).rejects.toThrow(
+      "This project has 2 Agent hosts: name one of agent-1, agent-2",
+    );
+    await expect(triage(w, { host: "nope" })).rejects.toThrow(
+      'No Agent host "nope" in this project: it has agent-1, agent-2',
+    );
+    // A host that reported no tools yet takes Bay's default agent.
+    const first = await triage(w, { host: "agent-1" });
+    expect(first.hostId).toBe(w.host.id);
+    expect(first.input.agent).toBeUndefined();
+    await expect(triage(w, { host: "agent-2" })).rejects.toThrow(
+      'Host "agent-2" reports 2 agents: name one of claude, gemini',
+    );
+    const named = await triage(w, {
+      host: "agent-2",
+      agent: "gemini",
+      model: "gemini-2.5-pro",
+    });
+    expect(named.hostId).toBe(second.id);
+    expect(named.input).toMatchObject({
+      agent: "gemini",
+      model: "gemini-2.5-pro",
+    });
+    // Only an available host is offered: agent-1 passed its check, with no
+    // tools reported yet; agent-2 has not.
+    expect(
+      await w.alepha.inject(AgentJobService).choices(w.host.projectId),
+    ).toEqual([{ host: "agent-1" }]);
+    await w.repos.hosts.updateById(second.id, { agentStatus: "available" });
+    expect(
+      await w.alepha.inject(AgentJobService).choices(w.host.projectId),
+    ).toEqual(
+      expect.arrayContaining([
+        { host: "agent-2", agent: "claude" },
+        { host: "agent-2", agent: "gemini" },
+      ]),
+    );
   });
 
   it("succeeds or fails by its exit code, and reads nothing of what the agent printed", async ({

@@ -5,34 +5,17 @@ import {
   type RowActionEntry,
 } from "@alepha/ui/table";
 import { z } from "alepha";
-import {
-  useAction,
-  useAlepha,
-  useClient,
-  useQuery,
-  useStore,
-} from "alepha/react";
+import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Flag,
-  Globe,
-  Link2,
-  Plus,
-  Server,
-  Star,
-  StarOff,
-  Unlink,
-} from "lucide-react";
+import { Flag, Globe, Link2, Plus, Server, Unlink } from "lucide-react";
 import { useState } from "react";
 
-import type { AgentHostController } from "../../../../../api/controllers/AgentHostController.ts";
 import type {
   LentHostResource,
   ProjectHostController,
 } from "../../../../../api/controllers/ProjectHostController.ts";
 import type { OwnedHostResource } from "../../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { setCurrentProject } from "../../../services/currentProjectWrite.ts";
 import { type I18n } from "../../../services/I18n.ts";
 import HostCapabilityBadges from "../../hosts/HostCapabilityBadges.tsx";
 import HostDrawer from "../../hosts/HostDrawer.tsx";
@@ -80,8 +63,6 @@ const ProjectSettingsHostsPage = () => {
   const toaster = useToast();
   const dialog = useDialog();
   const api = useClient<ProjectHostController>();
-  const agentApi = useClient<AgentHostController>();
-  const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
   const canLend = can("host:lend");
   const [egressOpen, setEgressOpen] = useState(false);
@@ -187,33 +168,9 @@ const ProjectSettingsHostsPage = () => {
     [api, project, dialog, toaster, tr],
   );
 
-  // The default Agent host (#Q4065), set or cleared from its row.
-  const agentAction = useAction<[hostId: string | null], void>(
-    {
-      handler: async (_ctx, hostId) => {
-        if (!project) return;
-        await agentApi.setProjectAgentHost({
-          params: { projectId: project.id },
-          body: { hostId },
-        });
-        setCurrentProject(alepha, {
-          ...project,
-          defaultAgentHostId: hostId ?? undefined,
-        });
-        toaster.success(
-          tr(
-            hostId ? "hosts.agent.toast.default" : "hosts.agent.toast.cleared",
-          ),
-        );
-      },
-    },
-    [agentApi, alepha, project, toaster, tr],
-  );
-
   if (!project) return null;
 
-  const busy =
-    lendAction.loading || detachAction.loading || agentAction.loading;
+  const busy = lendAction.loading || detachAction.loading;
   const canAgent = can("host:update");
 
   const rowActions = (
@@ -229,31 +186,16 @@ const ProjectSettingsHostsPage = () => {
         onClick: () => void lendAction.run(owned),
       });
     }
-    // An Agent host this project may use (#Q4065): make it the default, or
-    // clear it; the default's row also opens the push egress list.
+    // An Agent host this project may use (#Q4065): there is no default
+    // since #Q4223, a run names its host; its row opens the push egress
+    // list.
     if (row.loan?.agentHost && canAgent) {
-      const hostId = row.loan.id;
-      if (project.defaultAgentHostId === hostId) {
-        actions.push({
-          icon: StarOff,
-          label: tr("hosts.agent.clearDefault"),
-          disabled: () => busy,
-          onClick: () => void agentAction.run(null),
-        });
-        actions.push({
-          icon: Globe,
-          label: tr("hosts.agent.egress.action"),
-          disabled: () => busy,
-          onClick: () => setEgressOpen(true),
-        });
-      } else {
-        actions.push({
-          icon: Star,
-          label: tr("hosts.agent.makeDefault"),
-          disabled: () => busy,
-          onClick: () => void agentAction.run(hostId),
-        });
-      }
+      actions.push({
+        icon: Globe,
+        label: tr("hosts.agent.egress.action"),
+        disabled: () => busy,
+        onClick: () => setEgressOpen(true),
+      });
     }
     // Either side of the loan may end it: `host:lend` here, or in the
     // host's home project, which the server sends in `can`.
@@ -411,15 +353,8 @@ const ProjectSettingsHostsPage = () => {
                         !(row.origin === "home" && !row.loan) &&
                         host.deployAllowed
                       }
-                      // The Agent role (#Q4065), marked when it is the
-                      // project's default Agent host.
-                      agent={
-                        row.loan?.agentHost
-                          ? project.defaultAgentHostId === row.loan.id
-                            ? "default"
-                            : "available"
-                          : undefined
-                      }
+                      // The Agent role (#Q4065).
+                      agent={row.loan?.agentHost ? "available" : undefined}
                     />
                     {row.origin === "home" && !row.loan && (
                       <span className="text-muted-foreground text-xs">

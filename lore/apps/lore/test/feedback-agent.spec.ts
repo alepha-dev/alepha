@@ -78,7 +78,6 @@ const setup = async () => {
       .inject(HostCommandService)
       .ack(host.id, { id: check.commandId, status: "done" });
   }
-  await agents.setDefault(host.projectId, host.id);
   return {
     alepha,
     dataDir,
@@ -258,14 +257,23 @@ describe("feedback triaged by an agent job", () => {
     ]);
   });
 
-  it("reads the Agent host as ready only while its agent check passes", async ({
+  it("offers the Agent host only while its agent check passes, with the agents it reports (#Q4223)", async ({
     expect,
   }) => {
-    await w.repos.hosts.updateById(w.hostId, { agentStatus: "available" });
-    expect(await w.triage.agentHostReady(w.projectId)).toBe(true);
+    await w.repos.hosts.updateById(w.hostId, {
+      agentStatus: "available",
+      jobsTools: [
+        { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+        { name: "gemini", kind: "agent", found: true, version: "0.70.0" },
+      ],
+    });
+    expect(await w.triage.agentChoices(w.projectId)).toEqual([
+      { host: "agent-1", agent: "claude" },
+      { host: "agent-1", agent: "gemini" },
+    ]);
     await w.repos.hosts.updateById(w.hostId, { agentStatus: "unavailable" });
-    expect(await w.triage.agentHostReady(w.projectId)).toBe(false);
+    expect(await w.triage.agentChoices(w.projectId)).toEqual([]);
     await w.repos.hosts.updateById(w.hostId, { agentStatus: "checking" });
-    expect(await w.triage.agentHostReady(w.projectId)).toBe(false);
+    expect(await w.triage.agentChoices(w.projectId)).toEqual([]);
   });
 });
