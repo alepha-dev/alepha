@@ -42,7 +42,12 @@ const PersonaUseCases = (props: PersonaUseCasesProps) => {
       className="flex min-h-0 flex-1 flex-col"
       data-testid="persona-use-cases"
     >
+      {/* Bounded, as the use case list's table is (#Q4209): without
+          `min-h-0 flex-1` the table grows to every row and the pane clips
+          it, so a persona acting in many use cases could not scroll to
+          the last. Its own scroller then keeps the header in view. */}
       <DataTable<UseCaseResource>
+        className="min-h-0 flex-1"
         data={props.useCases}
         defaultSize={50}
         hideToolbar

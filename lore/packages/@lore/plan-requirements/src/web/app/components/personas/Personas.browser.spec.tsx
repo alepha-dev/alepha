@@ -103,25 +103,32 @@ const SHOWCASE = [
   },
 ];
 
+const ONE_USE_CASE = [
+  {
+    id: 7,
+    number: 7,
+    title: "Check out",
+    status: "ready",
+    priority: "high",
+    state: "never_run",
+    stale: false,
+    actors: [{ personaId: 1, role: "primary", number: 1, name: "Léa" }],
+    coveredBy: [],
+    criteria: [],
+  },
+];
+
+/**
+ * What `getUseCases` answers: one use case, or a case's own list.
+ */
+let useCases: unknown[] = ONE_USE_CASE;
+
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
       getPersonas: async () => PEOPLE,
-      getUseCases: async () => [
-        {
-          id: 7,
-          number: 7,
-          title: "Check out",
-          status: "ready",
-          priority: "high",
-          state: "never_run",
-          stale: false,
-          actors: [{ personaId: 1, role: "primary", number: 1, name: "Léa" }],
-          coveredBy: [],
-          criteria: [],
-        },
-      ],
+      getUseCases: async () => useCases,
       getPersonaChanges: async () => CHANGES,
       getPersonaAppCopy: async () => ({
         state: copyState,
@@ -174,6 +181,7 @@ describe("Personas screens", () => {
     await alepha?.stop();
     alepha = undefined;
     copyState = "ready";
+    useCases = ONE_USE_CASE;
   });
 
   const boot = async (permissions: string[]) => {
@@ -321,6 +329,36 @@ describe("Personas screens", () => {
     expect(rows[0].textContent).toBe("#U7 Check out");
     expect(rows[0].getAttribute("href")).toBe("/acme/requirements/use-cases/7");
     expect(tab.textContent).toContain("Primary");
+  });
+
+  it("bounds the Use cases table so a persona in about 90 use cases scrolls to the last row (#Q4209)", async ({
+    expect,
+  }) => {
+    useCases = Array.from({ length: 90 }, (_, index) => ({
+      ...(ONE_USE_CASE[0] as object),
+      id: 100 + index,
+      number: 100 + index,
+      title: `Use case ${index + 1}`,
+    }));
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaPage persona={PEOPLE[0]} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    fireEvent.click(await screen.findByTestId("persona-coverage-link"));
+    const tab = await screen.findByTestId("persona-use-cases");
+    await screen.findAllByTestId("persona-use-case-row");
+    // jsdom lays nothing out, so the guard is the height chain itself: the
+    // table's root takes the tab's height instead of every row's, as the
+    // use case list's does, and its scroller sits inside it.
+    const root = tab.firstElementChild as HTMLElement;
+    expect(root.className).toContain("min-h-0");
+    expect(root.className).toContain("flex-1");
+    expect(root.querySelector(".overflow-auto")).not.toBeNull();
+    expect(tab.className).toContain("min-h-0");
   });
 
   it("draws the last run with its age, one passing share (red on a failure), a red failed segment and a legend (#Q3976)", async ({
