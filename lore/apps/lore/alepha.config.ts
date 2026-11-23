@@ -297,7 +297,6 @@ export default defineConfig({
         "reports.flow.band.",
         "reports.flow.size.",
         "reports.backlog.age.",
-        "reports.summary.section.",
         "reports.team.channel.",
         "reports.team.day.",
         "reports.team.column.",
