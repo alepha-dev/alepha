@@ -43,7 +43,12 @@ export interface HostJobRequest {
  */
 export interface HostJobInput {
   profile: "check" | "read" | "push";
-  repository?: { cloneUrl: string; ref: string };
+  /**
+   * The workspace an agent job runs in on the host (#Q4218), a short key
+   * such as `triage` or `q12`: Bay runs it in
+   * `<jobs base>/<project slug>/<workspace>`, kept between runs.
+   */
+  workspace?: string;
   prompt?: string;
   maxTurns: number;
   timeoutSeconds: number;
@@ -136,6 +141,11 @@ export interface HostJobQueue {
    * `retryAt` (a bounded number of times).
    */
   pause(jobId: string, retryAt: string, reason: string): Promise<void>;
+  /**
+   * Asks the hosts that ran the project's agent jobs to delete a workspace,
+   * or all of them (#Q4218). Answers how many hosts were asked.
+   */
+  removeWorkspaces(projectId: number, workspace?: string): Promise<number>;
 }
 
 /**
@@ -199,6 +209,17 @@ export class HostJobs {
     reason: string,
   ): Promise<void> {
     await this.queue?.pause(jobId, retryAt, reason);
+  }
+
+  /**
+   * Asks the hosts that ran a workspace's jobs to delete it (#Q4218): a
+   * quest's build directory once the quest is done. Nothing without Ship.
+   */
+  public async removeWorkspaces(
+    projectId: number,
+    workspace?: string,
+  ): Promise<number> {
+    return (await this.queue?.removeWorkspaces(projectId, workspace)) ?? 0;
   }
 
   public registerQueue(queue: HostJobQueue): void {

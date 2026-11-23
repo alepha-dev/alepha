@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -165,41 +164,16 @@ func (r *jobContainerRunner) run(ctx context.Context, id string, spec jobSpec, l
 	if err != nil {
 		return nil, err
 	}
-	dir := runner.JobWorkspacePath
-	cache := ""
-	mcp := ""
-	var keyEnv []string
 	if spec.Kind == jobKindAgent {
-		auth := base64.StdEncoding.EncodeToString([]byte("x-job-key:" + spec.Key))
-		keyEnv = []string{
-			"GIT_TERMINAL_PROMPT=0",
-			"GIT_CONFIG_COUNT=1",
-			"GIT_CONFIG_KEY_0=http.extraHeader",
-			"GIT_CONFIG_VALUE_0=Authorization: Basic " + auth,
-		}
-		cache = cacheVolume(spec.Repository.CloneURL)
-		if err := docker.CreateJobVolume(cache); err != nil {
-			return nil, fmt.Errorf("could not create the dependency cache: %w", err)
-		}
-		repo := runner.JobWorkspacePath + "/repo"
-		code, err := step("clone", []string{"git", "clone", "--quiet", "--branch", spec.Repository.Ref, "--", spec.Repository.CloneURL, repo},
-			runner.JobWorkspacePath, keyEnv, "")
-		if err != nil {
-			return nil, err
-		}
-		if *code != 0 {
-			return nil, fmt.Errorf("git clone of %s at %s exited with status %d", spec.Repository.CloneURL, spec.Repository.Ref, *code)
-		}
-		raw, err := mcpConfigJSON(spec)
-		if err != nil {
-			return nil, err
-		}
-		// A JSON string rather than a file: claude takes either, and the
-		// workspace then holds nothing the agent could commit.
-		mcp = string(raw)
-		dir = repo
+		// An agent job runs in a durable workspace on the host now (#Q4218),
+		// which a container cannot see; the container runner goes (#Q4221).
+		return nil, errors.New("the container runner runs no agent job any more: switch this bay to the process runner (bay config jobs --runner process)")
 	}
-	return step("claude", append([]string{"claude"}, claudeArgs(spec, mcp, cfg.Model)...), dir, append(keyEnv, credential...), cache)
+	args, err := claudeArgs(spec, cfg.Model)
+	if err != nil {
+		return nil, err
+	}
+	return step("claude", append([]string{"claude"}, args...), runner.JobWorkspacePath, credential, "")
 }
 
 // credentialEnv is the claude step's credential: the host-local secret the

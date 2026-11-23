@@ -14,7 +14,11 @@ export interface AgentJobRequest {
   /** Lore's MCP tools the job's key reaches, by their MCP names. */
   tools: string[];
   repository?: string;
-  ref?: string;
+  /**
+   * The workspace the job runs in on the host (#Q4218): `q<n>` for a
+   * quest's work, `triage` otherwise, unless the caller names one.
+   */
+  workspace?: string;
   questNumber?: number;
   feedbackNumber?: number;
   /** The global triage's items (#Q4183), instead of `feedbackNumber`. */

@@ -185,6 +185,8 @@ func main() {
 		} else {
 			err = errors.New("usage: bay storage migrate <name/env>")
 		}
+	case "jobs":
+		err = cmdJobs(os.Args[2:])
 	case "secret":
 		switch {
 		case len(os.Args) > 2 && os.Args[2] == "replace":
@@ -368,9 +370,10 @@ func usageText() string {
                 # a pull-through mirror for Docker Hub images (rate limits,
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
   bay config jobs (--user NAME|--clear) [--runner process|container]
-                [--credential NAME] [--gvisor|--no-gvisor]
+                [--credential NAME] [--gvisor|--no-gvisor] [--max-jobs N]
                 # the Unix user one-shot jobs from Lore run as (agent jobs:
-                # claude -p in a fresh clone). Never root, never bay's own user;
+                # claude -p in a workspace kept under ~NAME/bay-jobs), and how
+                # many run at once (1 by default). Never root, never bay's own user;
                 # claude must be on its PATH, logged in by hand as that user.
                 # Lore must also allow jobs on the host. ⚠ A host that runs
                 # jobs this way does NOTHING else: no production app, no other
@@ -380,6 +383,11 @@ func usageText() string {
                 # whose only way out is Bay's egress proxy, and the Claude
                 # credential from "bay secret set NAME -" (--credential NAME).
                 # Lore lets untrusted input reach an agent on that runner only.
+  bay jobs workspaces            # the job workspaces under ~<jobs user>/bay-jobs
+  bay jobs workspace rm <project>[/<name>]
+                # delete a workspace, or every one of a project; refused while
+                # a job runs in it. Lore asks for the same when a project is
+                # deleted or a quest's build is done with
   bay secret (set NAME -|list|delete NAME)
                 # host-local secrets: values read from stdin and kept here, 0600;
                 # only their names reach Lore, in the inventory

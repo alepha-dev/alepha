@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -58,8 +57,8 @@ func (r *frameRecorder) text(stream string) string {
 }
 
 // jobWorld is a machine set up to run jobs: a fake sink serving one spec, a
-// stub claude and git on the jobs user's PATH, and the test's own user as
-// the jobs user (a test cannot switch users).
+// stub claude on the jobs user's PATH, and the test's own user as the jobs
+// user (a test cannot switch users).
 type jobWorld struct {
 	f      *deployFixture
 	acts   *actions
@@ -107,13 +106,6 @@ func newJobWorld(t *testing.T) *jobWorld {
 	r.killGrace = time.Second
 	jobSecond = 50 * time.Millisecond
 	t.Cleanup(func() { jobSecond = time.Second })
-	w.stub(t, "git", `#!/bin/sh
-# Records how it was called, then makes the clone directory it was asked for.
-printf '%s\n' "$@" > "`+w.bin+`/git.args"
-printf '%s' "$GIT_CONFIG_VALUE_0" > "`+w.bin+`/git.header"
-for last; do :; done
-mkdir -p "$last"
-`)
 	return w
 }
 
@@ -127,12 +119,10 @@ func (w *jobWorld) stub(t *testing.T, name, script string) {
 
 func (w *jobWorld) agentSpec(overrides map[string]any) []byte {
 	spec := map[string]any{
-		"kind":    "agent",
-		"profile": "read",
-		"repository": map[string]any{
-			"cloneUrl": w.sink.URL + "/acme/acme.git",
-			"ref":      "main",
-		},
+		"kind":            "agent",
+		"profile":         "read",
+		"project":         "acme",
+		"workspace":       "triage",
 		"key":             "lore_job_0123456789abcdef",
 		"mcpUrl":          w.sink.URL + "/mcp",
 		"prompt":          "Triage the inbox.",
@@ -153,6 +143,15 @@ func (w *jobWorld) agentSpec(overrides map[string]any) []byte {
 	return raw
 }
 
+func (w *jobWorld) checkSpec(overrides map[string]any) []byte {
+	spec := map[string]any{"kind": "check", "profile": "check", "maxTurns": 1, "timeoutSeconds": 60}
+	for k, v := range overrides {
+		spec[k] = v
+	}
+	raw, _ := json.Marshal(spec)
+	return raw
+}
+
 func (w *jobWorld) run(id string, spec []byte) *ackRecorder {
 	w.specs.Store(id, spec)
 	rec := &ackRecorder{}
@@ -161,16 +160,16 @@ func (w *jobWorld) run(id string, spec []byte) *ackRecorder {
 }
 
 func TestJobRun(t *testing.T) {
-	t.Run("runs claude in a fresh clone, streams its output and acks done", func(t *testing.T) {
+	t.Run("runs claude in its workspace, streams its output, acks done and keeps the workspace", func(t *testing.T) {
 		w := newJobWorld(t)
 		// The cwd and args are recorded through files the stub can reach.
 		w.stub(t, "claude", `#!/bin/sh
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 pwd > "`+w.bin+`/claude.cwd"
-cat "$(dirname "$(pwd)")/mcp.json" > "`+w.bin+`/claude.mcp"
 echo '{"type":"system","subtype":"init"}'
 echo '{"type":"result","total_cost_usd":0.01}'
 echo 'a warning' >&2
+touch cloned-here
 `)
 		rec := w.run("job-1", w.agentSpec(nil))
 
@@ -181,12 +180,20 @@ echo 'a warning' >&2
 		if got := w.frames.text("stdout"); got != "{\"type\":\"system\",\"subtype\":\"init\"}\n{\"type\":\"result\",\"total_cost_usd\":0.01}\n" {
 			t.Fatalf("stdout reached Lore as %q", got)
 		}
-		if got := w.frames.text("stderr"); !strings.Contains(got, "a warning") {
-			t.Fatalf("stderr reached Lore as %q", got)
+		stderr := w.frames.text("stderr")
+		if !strings.Contains(stderr, "a warning") {
+			t.Fatalf("stderr reached Lore as %q", stderr)
+		}
+		// Each step of the run is a timestamped line of the log.
+		for _, step := range []string{"workspace acme/triage ready", "agent started", "agent exited with status 0"} {
+			if !strings.Contains(stderr, step) {
+				t.Fatalf("the log lacks the step %q: %q", step, stderr)
+			}
 		}
 		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
+		mcp := `{"mcpServers":{"lore":{"headers":{"Authorization":"Bearer lore_job_0123456789abcdef"},"type":"http","url":"` + w.sink.URL + `/mcp"}}}`
 		want := []string{"-p", "Triage the inbox.", "--output-format", "stream-json", "--verbose",
-			"--max-turns", "30", "--mcp-config", filepath.Join(w.work, "job-1", "mcp.json"), "--strict-mcp-config",
+			"--max-turns", "30", "--mcp-config", mcp, "--strict-mcp-config",
 			"--allowedTools", "Read,Grep,Glob,Bash(git log:*),mcp__lore__feedback_get",
 			"--disallowedTools", "Write,Edit,WebFetch,WebSearch"}
 		if got := strings.Split(strings.TrimSuffix(string(args), "\n"), "\n"); !equalStrings(got, want) {
@@ -194,32 +201,22 @@ echo 'a warning' >&2
 		}
 		cwd, _ := os.ReadFile(filepath.Join(w.bin, "claude.cwd"))
 		work, _ := filepath.EvalSymlinks(w.work)
-		if got := strings.TrimSpace(string(cwd)); got != filepath.Join(work, "job-1", "repo") {
-			t.Fatalf("claude ran in %q, want the clone", got)
+		if got := strings.TrimSpace(string(cwd)); got != filepath.Join(work, "acme", "triage") {
+			t.Fatalf("claude ran in %q, want the workspace", got)
 		}
-		var mcp map[string]map[string]map[string]any
-		raw, _ := os.ReadFile(filepath.Join(w.bin, "claude.mcp"))
-		if err := json.Unmarshal(raw, &mcp); err != nil {
-			t.Fatalf(".mcp.json is not JSON: %s", raw)
-		}
-		lore := mcp["mcpServers"]["lore"]
-		if lore["url"] != w.sink.URL+"/mcp" || lore["headers"].(map[string]any)["Authorization"] != "Bearer lore_job_0123456789abcdef" {
-			t.Fatalf(".mcp.json = %s", raw)
-		}
-		header, _ := os.ReadFile(filepath.Join(w.bin, "git.header"))
-		want64 := base64.StdEncoding.EncodeToString([]byte("x-job-key:lore_job_0123456789abcdef"))
-		if string(header) != "Authorization: Basic "+want64 {
-			t.Fatalf("git authenticated with %q", header)
-		}
-		gitArgs, _ := os.ReadFile(filepath.Join(w.bin, "git.args"))
-		if !strings.Contains(string(gitArgs), "--branch\nmain\n--\n"+w.sink.URL+"/acme/acme.git") {
-			t.Fatalf("git ran as %q", gitArgs)
-		}
-		if _, err := os.Stat(filepath.Join(w.work, "job-1")); !os.IsNotExist(err) {
-			t.Fatal("the job directory outlived the job")
+		// Bay does no git, and writes nothing beside the workspace.
+		entries, _ := os.ReadDir(filepath.Join(w.work, "acme", "triage"))
+		if len(entries) != 1 || entries[0].Name() != "cloned-here" {
+			t.Fatalf("the workspace holds %v, want only what the agent left", entries)
 		}
 		if _, err := os.Stat(jobLogDir(w.f.root, "job-1")); !os.IsNotExist(err) {
 			t.Fatal("a spool that reached Lore whole was kept")
+		}
+
+		// The next run of the workspace finds it as the last one left it.
+		w.stub(t, "claude", "#!/bin/sh\ntest -f cloned-here\n")
+		if last := w.run("job-2", w.agentSpec(nil)).last(); last.Status != "done" {
+			t.Fatalf("the second run did not find the workspace: %+v", last)
 		}
 	})
 
@@ -229,7 +226,7 @@ echo 'a warning' >&2
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 echo '{"type":"result","result":"OK","modelUsage":{"claude-sonnet-4-5":{}}}'
 `)
-		rec := w.run("check-1", []byte(`{"kind":"check","profile":"check","maxTurns":1,"timeoutSeconds":60}`))
+		rec := w.run("check-1", w.checkSpec(nil))
 		if rec.last().Status != "done" {
 			t.Fatalf("ack = %+v", rec.last())
 		}
@@ -237,8 +234,8 @@ echo '{"type":"result","result":"OK","modelUsage":{"claude-sonnet-4-5":{}}}'
 		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--max-turns", "1", "--output-format", "stream-json", "--verbose"}) {
 			t.Fatalf("a check ran claude as %q", got)
 		}
-		if _, err := os.Stat(filepath.Join(w.bin, "git.args")); !os.IsNotExist(err) {
-			t.Fatal("a check cloned something")
+		if entries, _ := os.ReadDir(w.work); len(entries) != 0 {
+			t.Fatalf("a check made a workspace: %v", entries)
 		}
 	})
 
@@ -303,7 +300,7 @@ echo '{"type":"result","result":"OK"}'
 		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
 		done := make(chan *ackRecorder)
 		go func() { done <- w.run("job-long", w.agentSpec(map[string]any{"timeoutSeconds": 3600})) }()
-		waitFor(t, func() bool { return w.acts.jobs.running() == "job-long" })
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-long" })
 		time.Sleep(200 * time.Millisecond)
 
 		cancel := &ackRecorder{}
@@ -355,17 +352,39 @@ func TestJobRunRefusals(t *testing.T) {
 		}
 	})
 
-	t.Run("a second job while one runs", func(t *testing.T) {
+	t.Run("a second job while one runs, at the default limit of one", func(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
-		waitFor(t, func() bool { return w.acts.jobs.running() == "job-a" })
-		last := w.run("job-b", w.agentSpec(nil)).last()
-		if last.Status != "failed" || !strings.Contains(last.Reason, "already running") {
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
+		last := w.run("job-b", w.agentSpec(map[string]any{"workspace": "other"})).last()
+		if last.Status != "failed" || !strings.Contains(last.Reason, "its limit") {
 			t.Fatalf("ack = %+v", last)
 		}
 		w.acts.jobs.stop("job-a")
-		waitFor(t, func() bool { return w.acts.jobs.running() == "" })
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "" })
+	})
+
+	t.Run("a raised limit runs two jobs, never two in one workspace", func(t *testing.T) {
+		w := newJobWorld(t)
+		cfg, _ := loadJobsConfig(w.f.root)
+		cfg.MaxJobs = 2
+		if err := saveJobsConfig(w.f.root, cfg); err != nil {
+			t.Fatal(err)
+		}
+		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
+		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
+		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent started") })
+		last := w.run("job-same", w.agentSpec(nil)).last()
+		if last.Status != "failed" || !strings.Contains(last.Reason, "already runs in the workspace acme/triage") {
+			t.Fatalf("ack = %+v", last)
+		}
+		go w.run("job-b", w.agentSpec(map[string]any{"workspace": "q12", "timeoutSeconds": 3600}))
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a,job-b" })
+		w.acts.jobs.stop("job-a")
+		w.acts.jobs.stop("job-b")
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "" })
 	})
 
 	t.Run("a job never waits for the machine mutex", func(t *testing.T) {
@@ -438,7 +457,8 @@ func TestJobSpecValidation(t *testing.T) {
 	base := func() map[string]any {
 		return map[string]any{
 			"kind": "agent", "profile": "push",
-			"repository":     map[string]any{"cloneUrl": sink + "/acme.git", "ref": "lore/q12"},
+			"project":        "acme",
+			"workspace":      "q12",
 			"key":            "lore_job_0123456789abcdef",
 			"mcpUrl":         sink + "/mcp",
 			"prompt":         "Work on it.",
@@ -456,15 +476,16 @@ func TestJobSpecValidation(t *testing.T) {
 		t.Fatalf("a valid push spec was refused: %v", err)
 	}
 	refused := map[string]func(m map[string]any){
-		"an unknown field": func(m map[string]any) { m["shell"] = "rm -rf /" },
-		"a clone off the sink": func(m map[string]any) {
-			m["repository"] = map[string]any{"cloneUrl": "https://evil.example/x.git", "ref": "main"}
-		},
-		"an MCP URL off the sink": func(m map[string]any) { m["mcpUrl"] = "https://evil.example/mcp" },
-		"a ref that is an option": func(m map[string]any) {
-			m["repository"] = map[string]any{"cloneUrl": sink + "/a.git", "ref": "--upload-pack=sh"}
-		},
-		"a ref climbing out":          func(m map[string]any) { m["repository"] = map[string]any{"cloneUrl": sink + "/a.git", "ref": "a/../b"} },
+		"an unknown field":            func(m map[string]any) { m["shell"] = "rm -rf /" },
+		"a repository to clone":       func(m map[string]any) { m["repository"] = map[string]any{"cloneUrl": sink + "/a.git", "ref": "main"} },
+		"no workspace":                func(m map[string]any) { delete(m, "workspace") },
+		"no project":                  func(m map[string]any) { delete(m, "project") },
+		"a workspace climbing":        func(m map[string]any) { m["workspace"] = "../etc" },
+		"a dotted workspace":          func(m map[string]any) { m["workspace"] = ".ssh" },
+		"a nested workspace":          func(m map[string]any) { m["workspace"] = "a/b" },
+		"a workspace option":          func(m map[string]any) { m["workspace"] = "-rf" },
+		"an uppercase project":        func(m map[string]any) { m["project"] = "Acme" },
+		"an MCP URL off the sink":     func(m map[string]any) { m["mcpUrl"] = "https://evil.example/mcp" },
 		"a tool that is a flag":       func(m map[string]any) { m["allowedTools"] = []string{"Read --dangerously-skip-permissions"} },
 		"a Bash rule with a comma":    func(m map[string]any) { m["allowedTools"] = []string{"Bash(rm:*),Write"} },
 		"bypassPermissions":           func(m map[string]any) { m["permissionMode"] = "bypassPermissions" },
@@ -491,6 +512,11 @@ func TestJobSpecValidation(t *testing.T) {
 	check["prompt"] = "rm -rf ~"
 	if err := parse(check); err == nil {
 		t.Fatal("a check took a prompt of Lore's")
+	}
+	delete(check, "prompt")
+	check["workspace"] = "triage"
+	if err := parse(check); err == nil {
+		t.Fatal("a check took a workspace")
 	}
 }
 

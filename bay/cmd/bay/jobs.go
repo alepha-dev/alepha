@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,15 +23,17 @@ import (
 One-shot jobs (#Q3983): `job-run` and `job-cancel`.
 
 A job is not an app. It runs once, to an exit, under a deadline, and its
-output streams back as it happens. The first kind is an agent job: Claude Code
-run with `claude -p` against a fresh clone of a Lore repository. The same
-verbs serve CI later.
+output streams back as it happens. The first kind is an agent job: an agent
+CLI run on a prompt in a workspace directory.
 
-The PoC runner is a host process (folio #F1531, the owner's choice of
+The runner is a host process (folio #F1531, the owner's choice of
 2026-11-20): the job runs as a DEDICATED Unix user named in Bay's config
 (`bay config jobs --user bay-agent`), never root and never the user Bay runs
-as, in a fresh directory under that user's home, removed at the end. Claude
-Code uses that user's own login, set up by hand by the host's operator.
+as, in a durable workspace under that user's home,
+`~/bay-jobs/<project>/<workspace>` (#Q4218): created on first use and kept, so
+the first run of a prompt clones what it needs and the next ones pull. Bay
+does no git. The agent CLI uses that user's own login, set up by hand by the
+host's operator.
 
 ⚠️ **A host that runs process jobs does nothing else.** The job has that
 user's shell, network and Claude credential; the tool flags Lore sends are
@@ -42,7 +44,9 @@ project's secrets, and Lore refuses untrusted input on it (the inventory says
 
 What bounds it:
   - the host's switch, `jobsAllowed`, off by default, from the welcome frame;
-  - one job at a time on this machine; a second `job-run` is refused;
+  - a host-wide limit on running jobs (`bay config jobs --max-jobs`, 1 by
+    default), and one job at a time per workspace, held by a lock file under
+    Bay's root that a dead Bay releases;
   - a job never takes the machine mutex deploys serialise on, so a long
     agent run never holds a deploy back;
   - the spec is validated before anything runs (jobspec.go), and the command
@@ -68,6 +72,21 @@ type jobsConfig struct {
 	// alias (`opus`) or a full id (`claude-opus-5-5`), passed as `--model`.
 	// Empty leaves Claude Code's own default.
 	Model string `json:"model,omitempty"`
+	// MaxJobs is how many jobs this machine runs at once (#Q4218); zero is
+	// one, today's behaviour.
+	MaxJobs int `json:"maxJobs,omitempty"`
+}
+
+// maxJobsCeiling bounds `--max-jobs`: each job is an agent CLI with its own
+// memory, and a host is one machine.
+const maxJobsCeiling = 16
+
+// jobsLimit is the number of jobs this machine may run at once.
+func (c jobsConfig) jobsLimit() int {
+	if c.MaxJobs < 1 {
+		return 1
+	}
+	return c.MaxJobs
 }
 
 // runnerKind is what the inventory reports and the executor dispatches on.
@@ -105,7 +124,7 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--model NAME] [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--model NAME] [--max-jobs N] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
@@ -164,6 +183,16 @@ func cmdConfigJobs(args []string) error {
 				return fmt.Errorf("%q is not a Claude model name: an alias such as opus, or an id such as claude-opus-5-5", model)
 			}
 			cfg.Model, changed = model, true
+		case "--max-jobs":
+			raw, err := value()
+			if err != nil {
+				return err
+			}
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 1 || n > maxJobsCeiling {
+				return fmt.Errorf("--max-jobs is a number from 1 to %d", maxJobsCeiling)
+			}
+			cfg.MaxJobs, changed = n, true
 		case "--root", "--control-socket":
 			// Read by resolveRoot, or not needed: the file is read per job.
 			i++
@@ -213,7 +242,7 @@ func cmdConfigJobs(args []string) error {
 		}
 		return nil
 	}
-	fmt.Printf("jobs run as %s\n", cfg.User)
+	fmt.Printf("jobs run as %s, %d at a time, in workspaces under ~%s/bay-jobs\n", cfg.User, cfg.jobsLimit(), cfg.User)
 	fmt.Println("  claude must be on that user's PATH, logged in by hand: sudo -iu " + cfg.User + " claude login")
 	fmt.Println("  ⚠ a host that runs process jobs should do nothing else: no production app, no other project's secrets")
 	return nil
@@ -371,10 +400,63 @@ func (r *processRunner) command(ctx context.Context, u *user.User, dir, bin stri
 	return cmd, nil
 }
 
+// base is where this runner's workspaces live: `<home>/bay-jobs`, or the
+// override a test or a dev build sets.
+func (r *processRunner) base(u *user.User) string {
+	if r.jobsBase != "" {
+		return r.jobsBase
+	}
+	return filepath.Join(u.HomeDir, "bay-jobs")
+}
+
+/*
+workspaceDir makes sure a job's workspace exists, and answers its path.
+
+The directories are made BY THE JOBS USER (`mkdir -p` run as it), never by
+Bay as root: everything under the base is that user's to change, so a
+directory Bay created there and then chowned could be a symlink the user
+planted, and root would give it whatever the link names.
+*/
+func (r *processRunner) workspaceDir(ctx context.Context, u *user.User, project, workspace string) (string, error) {
+	dir := filepath.Join(r.base(u), project, workspace)
+	if err := r.asJobsUser(ctx, u, "mkdir", "-p", "-m", "700", "--", dir); err != nil {
+		return "", fmt.Errorf("could not create the workspace %s/%s: %w", project, workspace, err)
+	}
+	return dir, nil
+}
+
+// asJobsUser runs one short system command as the jobs user, for the
+// filesystem work Bay does in that user's tree.
+func (r *processRunner) asJobsUser(ctx context.Context, u *user.User, name string, args ...string) error {
+	bin, err := exec.LookPath(name)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	cmd, err := r.command(ctx, u, u.HomeDir, bin, args, r.jobEnv(u))
+	if err != nil {
+		return err
+	}
+	var out strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &out
+	code, err := r.wait(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	if code != nil && *code != 0 {
+		return fmt.Errorf("%s exited with status %d: %s", name, *code, cut(strings.TrimSpace(out.String()), 300))
+	}
+	return nil
+}
+
 /*
 run executes one job to its end. It returns the exit code when the process
 ran to an exit, and the error that stopped it otherwise; the caller tells a
 timeout and a cancel apart by the context.
+
+An agent job runs in its workspace, held for the run by the workspace lock,
+and leaves it as the agent left it. A check runs in the jobs user's home.
 */
 func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (exitCode *int, err error) {
 	u, err := r.jobsUser()
@@ -385,85 +467,39 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	if err != nil {
 		return nil, err
 	}
-	base := r.jobsBase
-	if base == "" {
-		base = filepath.Join(u.HomeDir, "bay-jobs")
-	}
-	work := filepath.Join(base, id)
-	// Fresh, always: a directory left by a job that died with Bay is removed
-	// first rather than reused.
-	_ = os.RemoveAll(work)
-	if err := os.MkdirAll(work, 0o700); err != nil {
-		return nil, fmt.Errorf("could not create the job directory: %w", err)
-	}
-	defer os.RemoveAll(work)
-	if err := chownToUser(base, u, r.switchUser && !r.testRunAsSelf); err != nil {
-		return nil, err
-	}
-	if err := chownToUser(work, u, r.switchUser && !r.testRunAsSelf); err != nil {
-		return nil, err
-	}
-
-	dir := work
-	var env []string
-	mcpPath := ""
+	dir := u.HomeDir
 	if spec.Kind == jobKindAgent {
-		// The key reaches git as a header through the environment, never on
-		// a command line `ps` shows. The same environment carries it to the
-		// agent's own git commands, which is what lets a push profile push.
-		auth := base64.StdEncoding.EncodeToString([]byte("x-job-key:" + spec.Key))
-		env = r.jobEnv(u,
-			"GIT_TERMINAL_PROMPT=0",
-			"GIT_CONFIG_COUNT=1",
-			"GIT_CONFIG_KEY_0=http.extraHeader",
-			"GIT_CONFIG_VALUE_0=Authorization: Basic "+auth,
-		)
-		git, err := r.lookPath(u.HomeDir, "git")
+		unlock, err := lockWorkspace(r.root, spec.Project, spec.Workspace)
 		if err != nil {
 			return nil, err
 		}
-		repo := filepath.Join(work, "repo")
-		clone, err := r.command(ctx, u, work, git,
-			[]string{"clone", "--quiet", "--branch", spec.Repository.Ref, "--", spec.Repository.CloneURL, repo}, env)
-		if err != nil {
+		defer unlock()
+		if dir, err = r.workspaceDir(ctx, u, spec.Project, spec.Workspace); err != nil {
 			return nil, err
 		}
-		clone.Stdout = log.writer("stderr")
-		clone.Stderr = log.writer("stderr")
-		if code, err := r.wait(ctx, clone); err != nil || (code != nil && *code != 0) {
-			if err != nil {
-				return nil, err
-			}
-			return nil, fmt.Errorf("git clone of %s at %s exited with status %d", spec.Repository.CloneURL, spec.Repository.Ref, *code)
-		}
-		// Outside the clone, so the agent cannot commit it.
-		mcpPath = filepath.Join(work, "mcp.json")
-		raw, err := mcpConfigJSON(spec)
-		if err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(mcpPath, raw, 0o600); err != nil {
-			return nil, err
-		}
-		if err := chownToUser(mcpPath, u, r.switchUser && !r.testRunAsSelf); err != nil {
-			return nil, err
-		}
-		dir = repo
-	} else {
-		env = r.jobEnv(u)
+		log.Step("workspace " + spec.Project + "/" + spec.Workspace + " ready")
 	}
 
 	cfg, err := loadJobsConfig(r.root)
 	if err != nil {
 		return nil, fmt.Errorf("the jobs config is unreadable: %w", err)
 	}
-	cmd, err := r.command(ctx, u, dir, claude, claudeArgs(spec, mcpPath, cfg.Model), env)
+	args, err := claudeArgs(spec, cfg.Model)
+	if err != nil {
+		return nil, err
+	}
+	cmd, err := r.command(ctx, u, dir, claude, args, r.jobEnv(u))
 	if err != nil {
 		return nil, err
 	}
 	cmd.Stdout = log.writer("stdout")
 	cmd.Stderr = log.writer("stderr")
-	return r.wait(ctx, cmd)
+	log.Step("agent started")
+	code, err := r.wait(ctx, cmd)
+	if code != nil {
+		log.Step(fmt.Sprintf("agent exited with status %d", *code))
+	}
+	return code, err
 }
 
 // wait starts cmd and waits for its exit, killing its process group when
@@ -541,7 +577,7 @@ func (r *processRunner) claudeVersion(ctx context.Context) (string, error) {
 // The executor's side.
 // ---------------------------------------------------------------------------
 
-// jobs is the executor's state for one-shot jobs: the one running now, and
+// jobs is the executor's state for one-shot jobs: the ones running now, and
 // the claude version the inventory reports.
 type jobs struct {
 	runner *processRunner
@@ -549,8 +585,7 @@ type jobs struct {
 	container *jobContainerRunner
 
 	mu      sync.Mutex
-	current string
-	cancel  context.CancelCauseFunc
+	running map[string]context.CancelCauseFunc
 
 	versionMu sync.Mutex
 	version   string
@@ -566,7 +601,8 @@ var jobSecond = time.Second
 var errJobCancelled = errors.New("cancelled by a job-cancel")
 
 func newJobs(root string) *jobs {
-	return &jobs{runner: newProcessRunner(root), container: newJobContainerRunner(root)}
+	return &jobs{runner: newProcessRunner(root), container: newJobContainerRunner(root),
+		running: map[string]context.CancelCauseFunc{}}
 }
 
 // run executes a job on the runner the config names.
@@ -581,32 +617,37 @@ func (j *jobs) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*
 	return j.runner.run(ctx, id, spec, log)
 }
 
-// claim takes the machine's one job slot.
-func (j *jobs) claim(id string, cancel context.CancelCauseFunc) bool {
+// claim takes one of the machine's job slots, of which there are `limit`.
+func (j *jobs) claim(id string, cancel context.CancelCauseFunc, limit int) bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if j.current != "" {
+	if len(j.running) >= limit {
 		return false
 	}
-	j.current, j.cancel = id, cancel
+	j.running[id] = cancel
 	return true
 }
 
 func (j *jobs) release(id string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if j.current == id {
-		j.current, j.cancel = "", nil
-	}
+	delete(j.running, id)
 }
 
-func (j *jobs) running() string {
+// runningIDs is the jobs running now, sorted, joined by commas: what the
+// inventory's `running` says.
+func (j *jobs) runningIDs() string {
 	if j == nil {
 		return ""
 	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	return j.current
+	ids := make([]string, 0, len(j.running))
+	for id := range j.running {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, ",")
 }
 
 func (j *jobs) stop(id string) bool {
@@ -615,10 +656,11 @@ func (j *jobs) stop(id string) bool {
 	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if j.current != id || j.cancel == nil {
+	cancel, ok := j.running[id]
+	if !ok {
 		return false
 	}
-	j.cancel(errJobCancelled)
+	cancel(errJobCancelled)
 	return true
 }
 
@@ -633,7 +675,7 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	if err != nil || (cfg.User == "" && cfg.runnerKind() == "process") {
 		return nil
 	}
-	out := &connector.InventoryJobs{Runner: cfg.runnerKind(), User: cfg.User, Running: j.running(),
+	out := &connector.InventoryJobs{Runner: cfg.runnerKind(), User: cfg.User, Running: j.runningIDs(),
 		Secrets: hostSecretNames(j.runner.root)}
 	if cfg.runnerKind() == "container" {
 		// The CLI is the agent image's, pinned by digest per job: its version
@@ -671,10 +713,14 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	if err != nil || !ok {
 		return "failed", "", "no connector is configured on this bay, so there is nothing to pull from", nil
 	}
+	jobsCfg, err := loadJobsConfig(a.s.root)
+	if err != nil {
+		return "failed", "", "the jobs config is unreadable: " + err.Error(), nil
+	}
 	jobCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	defer cancel(nil)
-	if !a.jobs.claim(cmd.ID, cancel) {
-		return "failed", "", "a job is already running on this bay (" + a.jobs.running() + "): one at a time", nil
+	if limit := jobsCfg.jobsLimit(); !a.jobs.claim(cmd.ID, cancel, limit) {
+		return "failed", "", fmt.Sprintf("this bay already runs %d job(s) (%s), its limit: bay config jobs --max-jobs raises it", limit, a.jobs.runningIDs()), nil
 	}
 	defer a.jobs.release(cmd.ID)
 	if a.kick != nil {

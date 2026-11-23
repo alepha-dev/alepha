@@ -136,6 +136,8 @@ describe("a quest worked by an agent job", () => {
     );
     const job = await w.repos.jobs.getOne({ where: { id: { eq: jobId } } });
     expect(job.input.profile).toBe("push");
+    // Its own workspace on the host, removed when the quest completes.
+    expect(job.input.workspace).toBe(`q${quest.shortId}`);
     expect(job.input.key).toMatchObject({
       writeRefPrefix: `lore/q${quest.shortId}`,
       questId: quest.shortId,

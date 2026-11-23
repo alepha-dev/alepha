@@ -9,6 +9,7 @@ import { hostJobLogs } from "../entities/hostJobLogs.ts";
 import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
@@ -89,6 +90,7 @@ export class HostJobService {
   protected readonly logs = $repository(hostJobLogs);
   protected readonly hosts = $repository(hosts);
   protected readonly loans = $repository(hostProjects);
+  protected readonly projects = $repository(projects);
   protected readonly commands = $inject(HostCommandService);
   protected readonly files = $inject(FileService);
   protected readonly port = $inject(HostJobs);
@@ -120,6 +122,8 @@ export class HostJobService {
         await this.jobs.updateById(id, { result });
       },
       pause: (id, retryAt, reason) => this.pause(id, retryAt, reason),
+      removeWorkspaces: (projectId, workspace) =>
+        this.removeWorkspaces(projectId, workspace),
     });
   }
 
@@ -260,18 +264,10 @@ export class HostJobService {
     return {
       kind: job.kind,
       profile: input.profile,
-      // A clone URL may be stored as a path: it is then on the origin the
-      // machine asked on, the one Bay accepts it from.
-      ...(input.repository
-        ? {
-            repository: {
-              ...input.repository,
-              cloneUrl: input.repository.cloneUrl.startsWith("/")
-                ? `${origin}${input.repository.cloneUrl}`
-                : input.repository.cloneUrl,
-            },
-          }
-        : {}),
+      // The workspace directory (#Q4218): `<jobs base>/<project>/<workspace>`
+      // on the host, kept between runs. Bay does no git.
+      project: await this.projectDirName(job.projectId),
+      workspace: input.workspace ?? HostJobService.DEFAULT_WORKSPACE,
       ...(key ? { key } : {}),
       mcpUrl: `${origin}/mcp`,
       prompt: input.prompt ?? "",
@@ -288,6 +284,73 @@ export class HostJobService {
       egress: [...new Set([...(input.egress ?? []), new URL(origin).hostname])],
       ...(this.image(input.image) ? { image: this.image(input.image) } : {}),
     };
+  }
+
+  /**
+   * The workspace of an agent job that names none.
+   */
+  public static readonly DEFAULT_WORKSPACE = "default";
+
+  /**
+   * The directory a project's workspaces live under on a host: its slug,
+   * or its id when it has none (Bay takes `[a-z0-9][a-z0-9_-]*`).
+   */
+  public async projectDirName(projectId: number): Promise<string> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    const slug = project?.slug ?? "";
+    return /^[a-z0-9][a-z0-9_-]{0,62}$/.test(slug) ? slug : String(projectId);
+  }
+
+  /**
+   * Asks every host that ran a job for this project to delete its job
+   * workspaces, or one of them (#Q4218): a deleted project's clones, a done
+   * quest's build directory. A host that is gone or refuses is skipped: the
+   * workspace is disk, never data, and `bay jobs workspace rm` removes it by
+   * hand.
+   */
+  public async removeWorkspaces(
+    projectId: number,
+    workspace?: string,
+  ): Promise<number> {
+    const ran = await this.jobs.findMany({
+      where: { projectId: { eq: projectId }, kind: { eq: "agent" } },
+    });
+    const hostIds = [
+      ...new Set(
+        ran
+          .filter((job) => !workspace || job.input.workspace === workspace)
+          .map((job) => job.hostId)
+          .filter(Boolean),
+      ),
+    ] as string[];
+    if (!hostIds.length) return 0;
+    const project = await this.projectDirName(projectId);
+    let asked = 0;
+    for (const host of await this.hosts.findMany({
+      where: { id: { inArray: hostIds } },
+    })) {
+      if (host.type !== "bay") continue;
+      try {
+        await this.commands.enqueue(host, {
+          kind: "job-workspace-remove",
+          payload: {
+            app: "",
+            environment: "",
+            project,
+            ...(workspace ? { workspace } : {}),
+          },
+        });
+        asked++;
+      } catch (error) {
+        this.log.warn("could not ask a host to remove job workspaces", {
+          host: host.slug,
+          error,
+        });
+      }
+    }
+    return asked;
   }
 
   /**

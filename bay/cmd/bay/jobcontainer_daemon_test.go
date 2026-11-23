@@ -11,9 +11,8 @@ import (
 )
 
 /*
-A job really run by the container runner against a Docker daemon (#Q3999),
-in the stub agent image: it clones into its workspace, runs claude with its
-credential, and finds no route out, a read-only root filesystem and a non-root
+A check really run by the container runner against a Docker daemon (#Q3999),
+in the stub agent image: it runs claude with its credential, and finds no route out, a read-only root filesystem and a non-root
 user. Skips without a daemon unless BAY_REQUIRE_DOCKER=1.
 */
 func TestContainerJobDaemon(t *testing.T) {
@@ -42,7 +41,7 @@ func TestContainerJobDaemon(t *testing.T) {
 	w.acts.jobs.container.docker = func() (jobDocker, error) { return d, nil }
 	w.acts.jobs.container.binary = func() (string, error) { return binary, nil }
 
-	last := w.run("job-daemon-1", w.agentSpec(map[string]any{
+	last := w.run("job-daemon-1", w.checkSpec(map[string]any{
 		"image": image, "egress": []string{"example.com"},
 	})).last()
 	if last.Status != "done" {
@@ -57,7 +56,7 @@ func TestContainerJobDaemon(t *testing.T) {
 		"credential: present",
 		"rootfs: read-only",
 		"user: 1000",
-		"cwd: " + runner.JobWorkspacePath + "/repo",
+		"cwd: " + runner.JobWorkspacePath,
 	} {
 		if !strings.Contains(log, want) {
 			t.Errorf("the job's log lacks %q:\n%s", want, log)

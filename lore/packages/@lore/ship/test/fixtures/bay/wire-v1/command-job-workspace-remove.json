@@ -1,0 +1,9 @@
+{
+  "type": "command",
+  "id": "7d2e4f6a-8b1c-4e3d-9a5f-0c1b2d3e4f5a",
+  "kind": "job-workspace-remove",
+  "app": "",
+  "environment": "",
+  "project": "acme",
+  "workspace": "q12"
+}

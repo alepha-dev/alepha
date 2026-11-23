@@ -38,6 +38,7 @@ const SERVER_FRAMES = [
   "command-upgrade.json",
   "command-job-run.json",
   "command-job-cancel.json",
+  "command-job-workspace-remove.json",
   "query.json",
 ];
 
