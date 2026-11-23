@@ -1,5 +1,9 @@
-import { ProjectController, SearchController } from "@lore/core/api";
-import { ProjectTools } from "@lore/core/mcp";
+import {
+  ProjectController,
+  ProjectDashboardController,
+  SearchController,
+} from "@lore/core/api";
+import { DashboardTools, ProjectTools } from "@lore/core/mcp";
 import {
   EpicController,
   FeedbackController,
@@ -38,7 +42,8 @@ import { LoreAiDocsController } from "./LoreAiDocsController.ts";
  * runs the tool as the turn's user, and the action's gate decides.
  *
  * Declaration order is what the vendor sees, and it stays stable so the
- * vendor caches it. Twelve read tools, under the ~25 a small model handles.
+ * vendor caches it. Seventeen read tools and eight writes, at the ~25 a small
+ * model handles.
  */
 export class LoreAiToolset {
   protected readonly alepha = $inject(Alepha);
@@ -91,6 +96,8 @@ export class LoreAiToolset {
 
   protected build(): NonNullable<LoreAiToolset["built"]> {
     const projectTools = this.alepha.inject(ProjectTools);
+    const dashboardTools = this.alepha.inject(DashboardTools);
+    const dashboardController = this.alepha.inject(ProjectDashboardController);
     const questTools = this.alepha.inject(QuestTools);
     const epicTools = this.alepha.inject(EpicTools);
     const folioTools = this.alepha.inject(FolioTools);
@@ -184,6 +191,23 @@ export class LoreAiToolset {
         permissions: ["project:read"],
         gate: docsController.searchDocs,
       },
+      {
+        // The project's dashboards and their cards (#Q4213): what the board
+        // shows is read with the tools of the module that owns the numbers.
+        tool: dashboardTools.dashboard_list,
+        permissions: ["project:read"],
+        gate: dashboardController.listProjectDashboards,
+      },
+      {
+        tool: dashboardTools.dashboard_metric_catalog,
+        permissions: ["project:read"],
+        gate: dashboardController.listProjectDashboardMetrics,
+      },
+      {
+        tool: dashboardTools.dashboard_card_list,
+        permissions: ["project:read"],
+        gate: dashboardController.listProjectDashboardCards,
+      },
     ];
 
     const writes: LoreAiTool[] = [
@@ -211,6 +235,19 @@ export class LoreAiToolset {
         tool: folioTools.folio_create,
         permissions: ["folio:write"],
         gate: folioController.create,
+      },
+      {
+        // A card added or changed on a dashboard (#Q4213), shared by every
+        // member: the card shows the call. Removing and reordering stay on
+        // the board, like every delete.
+        tool: dashboardTools.dashboard_card_add,
+        permissions: ["project:update"],
+        gate: dashboardController.addProjectDashboardCard,
+      },
+      {
+        tool: dashboardTools.dashboard_card_update,
+        permissions: ["project:update"],
+        gate: dashboardController.updateProjectDashboardCard,
       },
       {
         // The one write that may leave the run's project (#Q3971): a

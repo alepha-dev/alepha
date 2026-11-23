@@ -39,6 +39,19 @@ import { AiToolSchema } from "../services/AiToolSchema.ts";
  */
 export const AI_CALL_DENIED = "Denied by the user.";
 
+/**
+ * Appended to the last tool result before a turn's final model call, when
+ * the turn's token bound is near.
+ */
+export const AI_TURN_WRAP_UP =
+  "[This turn is out of tokens: answer the user now from what you already read. A further tool call will not run.]";
+
+/**
+ * The answer to a call the model asked for on a turn's final model call.
+ */
+export const AI_TURN_SPENT =
+  "Not run: this turn is out of tokens. Answer from what you already read.";
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -184,6 +197,39 @@ export interface AiPrimitiveOptions {
   maxSteps?: number;
 
   /**
+   * Tokens (input plus output, summed over the model calls) one turn may
+   * spend. Every model call resends the system prompt, the tool definitions
+   * and the whole conversation, so a turn of eight tool calls costs about
+   * eight times its context. When the next call would cross this bound, the
+   * last tool results tell the model to answer, and that call is the turn's
+   * last: a call it still asks for is answered with an error, never run,
+   * and the turn ends with `end: length`. A turn's own `tokenBudget` lowers
+   * it.
+   *
+   * Unset: no bound but `maxSteps`.
+   */
+  turnTokens?: number;
+
+  /**
+   * Calls of one tool a turn may make. A call past it is answered with an
+   * error telling the model to work with what it has, and not run. An
+   * identical call (same tool, same input) is never run twice in a turn,
+   * whatever this is: the second is answered with a pointer to the first.
+   *
+   * Unset: no cap.
+   */
+  maxCallsPerTool?: number;
+
+  /**
+   * Characters of one tool result the model reads; the rest is cut with
+   * `...[truncated]`. A result is resent on every later call of the turn,
+   * so this bounds the cost of a large read.
+   *
+   * @default 32768
+   */
+  maxResultLength?: number;
+
+  /**
    * Wall-clock bound on one `stream()`, aborting the model call in flight.
    */
   timeout?: DurationLike;
@@ -242,6 +288,13 @@ export interface AiTurnInput {
   tools?: string[];
 
   /**
+   * Tokens this turn may still spend, such as what is left of the user's
+   * budget: the turn wraps up before crossing it, as with the `turnTokens`
+   * option, and the lower of the two wins.
+   */
+  tokenBudget?: number;
+
+  /**
    * Cancels the turn. Combined with the ambient signal and `timeout`.
    */
   signal?: AbortSignal;
@@ -294,6 +347,15 @@ export type AiTurnEvent =
   | ({ type: "confirm" } & Omit<AiPendingCall, "kind">)
   | ({ type: "client_tool" } & Omit<AiPendingCall, "kind">)
   | { type: "end"; reason: AiEndReason | "paused" };
+
+/**
+ * What one `stream()` has called so far: the first call id of each tool and
+ * input, and the calls of each tool.
+ */
+export interface AiCallLedger {
+  results: Map<string, string>;
+  counts: Map<string, number>;
+}
 
 /**
  * What `run()` collects.
@@ -386,13 +448,14 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     const signal = this.signalOf(input);
     const messages = [...input.messages];
     const offered = await this.offeredTo(input);
+    const ledger: AiCallLedger = { results: new Map(), counts: new Map() };
     const system =
       typeof this.options.system === "function"
         ? this.options.system({ user: input.user })
         : this.options.system;
 
     if (input.resume) {
-      const outcome = yield* this.resumeCalls(messages, input, offered);
+      const outcome = yield* this.resumeCalls(messages, input, offered, ledger);
       if (outcome === "paused") {
         yield { type: "end", reason: "paused" };
         return;
@@ -410,6 +473,9 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     }
 
     const maxSteps = this.options.maxSteps ?? 10;
+    const limit = this.turnLimit(input);
+    let spent = 0;
+    let final = false;
     for (let step = 0; step < maxSteps; step++) {
       signal.throwIfAborted();
       const assistant: AiAssistantMessage = { role: "assistant", content: "" };
@@ -464,12 +530,34 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         return;
       }
 
+      if (final) {
+        // The model was told to answer and called a tool anyway: every call
+        // gets an answer (an open call would read as a pause), none runs.
+        for (const call of calls) {
+          const refused = this.toolError(call, AI_TURN_SPENT);
+          messages.push(refused);
+          yield { type: "message", message: refused };
+        }
+        yield { type: "end", reason: "length" };
+        return;
+      }
+
+      // The next call resends at least what this one read: when that would
+      // cross the bound, it is the last one, and the results say so.
+      // A last call that crosses the bound overshoots it by one call at
+      // most, which buys the answer.
+      const cost = (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0);
+      spent += cost;
+      final = limit !== undefined && spent + cost * 2 > limit;
+
       const outcome = yield* this.runCalls(
         messages,
         calls,
         input.user,
         offered,
         signal,
+        ledger,
+        final ? AI_TURN_WRAP_UP : undefined,
       );
       if (outcome === "paused") {
         yield { type: "end", reason: "paused" };
@@ -541,6 +629,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     messages: AiMessage[],
     input: AiTurnInput,
     offered: AiToolDefinition[],
+    ledger?: AiCallLedger,
   ): AsyncGenerator<AiTurnEvent, "paused" | "done"> {
     const resume = input.resume!;
     const signal = this.signalOf(input);
@@ -598,6 +687,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
       input.user,
       offered,
       signal,
+      ledger,
     );
   }
 
@@ -610,8 +700,10 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     user: UserAccountToken | undefined,
     offered: AiToolDefinition[] = this.definitions,
     signal: AbortSignal = this.alepha.context.signal,
+    ledger: AiCallLedger = { results: new Map(), counts: new Map() },
+    note?: string,
   ): AsyncGenerator<AiTurnEvent, "paused" | "done"> {
-    for (const call of calls) {
+    for (const [index, call] of calls.entries()) {
       if (this.tools.has(call.name) && !this.isOffered(call.name, offered)) {
         const refused = this.unavailable(call);
         messages.push(refused);
@@ -644,13 +736,77 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         name: call.name,
         input: call.input,
       };
-      const result = tool
-        ? await this.runAction(tool, call, user, signal)
-        : this.toolError(call, `Unknown tool '${call.name}'.`);
+      const result =
+        this.repeated(call, ledger) ??
+        (tool
+          ? await this.runAction(tool, call, user, signal)
+          : this.toolError(call, `Unknown tool '${call.name}'.`));
+      if (note && index === calls.length - 1) {
+        result.content = `${result.content}\n\n${note}`;
+      }
       messages.push(result);
       yield { type: "message", message: result };
     }
     return "done";
+  }
+
+  /**
+   * The answer to a call the turn already made with the same input, or past
+   * `maxCallsPerTool`: never run again. `undefined` for a call to run, which
+   * is then counted.
+   */
+  protected repeated(
+    call: AiToolCall,
+    ledger: AiCallLedger,
+  ): AiToolMessage | undefined {
+    const key = `${call.name}:${this.stableJson(call.input)}`;
+    const earlier = ledger.results.get(key);
+    if (earlier) {
+      return {
+        role: "tool",
+        callId: call.id,
+        name: call.name,
+        content: `Same call, same input as call '${earlier}' earlier in this turn: not run again. Read its result above.`,
+      };
+    }
+    const count = ledger.counts.get(call.name) ?? 0;
+    const cap = this.options.maxCallsPerTool;
+    if (cap !== undefined && count >= cap) {
+      return this.toolError(
+        call,
+        `Not run: '${call.name}' was already called ${count} times this turn. Answer from what those calls returned.`,
+      );
+    }
+    ledger.results.set(key, call.id);
+    ledger.counts.set(call.name, count + 1);
+    return undefined;
+  }
+
+  /**
+   * JSON with object keys sorted, so two inputs differing only in key order
+   * are one call.
+   */
+  protected stableJson(value: unknown): string {
+    return JSON.stringify(value ?? null, (_key, it) =>
+      it && typeof it === "object" && !Array.isArray(it)
+        ? Object.fromEntries(
+            Object.keys(it)
+              .sort()
+              .map((key) => [key, it[key]]),
+          )
+        : it,
+    );
+  }
+
+  /**
+   * The tokens a turn may spend: the lower of the `turnTokens` option and
+   * the turn's `tokenBudget`, or `undefined` for neither.
+   */
+  protected turnLimit(input: AiTurnInput): number | undefined {
+    const bounds = [this.options.turnTokens, input.tokenBudget].filter(
+      (it): it is number => typeof it === "number",
+    );
+    return bounds.length ? Math.min(...bounds) : undefined;
   }
 
   /**
@@ -804,13 +960,13 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   }
 
   /**
-   * A tool result as text for the model, capped so one large list cannot
-   * fill the context window.
+   * A tool result as text for the model, capped at `maxResultLength` so one
+   * large list cannot fill the context window.
    */
   protected serializeResult(result: unknown): string {
     const text =
       typeof result === "string" ? result : JSON.stringify(result ?? null);
-    const cap = 32 * 1024;
+    const cap = this.options.maxResultLength ?? 32 * 1024;
     return text.length > cap ? `${text.slice(0, cap)}...[truncated]` : text;
   }
 

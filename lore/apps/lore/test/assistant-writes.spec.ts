@@ -81,6 +81,8 @@ describe("the assistant's write tools", () => {
       "quest_update",
       "quest_complete",
       "folio_create",
+      "dashboard_card_add",
+      "dashboard_card_update",
       "feedback_submit",
     ]);
     for (const entry of toolset.writes) {

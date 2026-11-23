@@ -15,6 +15,7 @@ import { AiCallMismatchError } from "../errors/AiCallMismatchError.ts";
 import type { AiChatBody } from "../schemas/aiChatBodySchema.ts";
 import type { AiResumeBody } from "../schemas/aiResumeBodySchema.ts";
 import type { AiStreamEvent } from "../schemas/aiStreamEventSchema.ts";
+import { AiBudgetService } from "./AiBudgetService.ts";
 import { AiConversationService } from "./AiConversationService.ts";
 
 /**
@@ -28,6 +29,7 @@ import { AiConversationService } from "./AiConversationService.ts";
 export class AiChatService {
   protected readonly alepha = $inject(Alepha);
   protected readonly conversations = $inject(AiConversationService);
+  protected readonly budget = $inject(AiBudgetService);
 
   /**
    * The `$ai` a request talks to.
@@ -129,6 +131,7 @@ export class AiChatService {
         messages: [...history, message],
         context: body.context,
         user,
+        tokenBudget: await this.budget.remaining(user.id),
       }),
     );
   }
@@ -186,7 +189,13 @@ export class AiChatService {
     yield* this.drive(
       conversation,
       seq,
-      assistant.stream({ messages: history, user, resume, context }),
+      assistant.stream({
+        messages: history,
+        user,
+        resume,
+        context,
+        tokenBudget: await this.budget.remaining(user.id),
+      }),
     );
   }
 

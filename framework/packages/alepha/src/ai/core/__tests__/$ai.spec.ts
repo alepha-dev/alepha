@@ -503,6 +503,114 @@ describe("$ai", () => {
     expect(ai.requests).toHaveLength(2);
   });
 
+  it("never runs the same call twice in a turn", async ({ expect }) => {
+    const { support, ai } = await setup();
+    ai.script([
+      { type: "tool_call", id: "c1", name: "list", input: { query: {} } },
+    ]);
+    ai.script([
+      { type: "tool_call", id: "c2", name: "list", input: { query: {} } },
+    ]);
+    ai.script([{ type: "text", text: "Two invoices." }]);
+    const result = await support.run({ messages: ask("list"), user: member });
+    const tools = result.messages.filter((m) => m.role === "tool");
+    expect(tools[0].content).toContain('"status":"open"');
+    expect(tools[1].content).toContain("call 'c1' earlier in this turn");
+    expect(result.text).toBe("Two invoices.");
+  });
+
+  it("answers a call past maxCallsPerTool without running it", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ maxCallsPerTool: 1 });
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c1",
+        name: "list",
+        input: { query: { status: "open" } },
+      },
+      {
+        type: "tool_call",
+        id: "c2",
+        name: "list",
+        input: { query: { status: "paid" } },
+      },
+    ]);
+    ai.script([{ type: "text", text: "One open." }]);
+    const result = await support.run({ messages: ask("list"), user: member });
+    const tools = result.messages.filter((m) => m.role === "tool");
+    expect(tools[1]).toMatchObject({ callId: "c2", isError: true });
+    expect(tools[1].content).toContain("already called 1 times");
+  });
+
+  it("cuts a tool result at maxResultLength", async ({ expect }) => {
+    const { support, ai } = await setup({ maxResultLength: 10 });
+    ai.script([{ type: "tool_call", id: "c1", name: "list", input: {} }]);
+    ai.script([{ type: "text", text: "ok" }]);
+    const result = await support.run({ messages: ask("list"), user: member });
+    const tool = result.messages.find((m) => m.role === "tool");
+    expect(tool?.content).toMatch(/^.{10}\.\.\.\[truncated\]$/);
+  });
+
+  it("wraps up before turnTokens: the last results ask for the answer, and a call after it is not run", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ turnTokens: 1000 });
+    // 400 spent, and the next call costs about as much: the one after it
+    // would cross 1000, so the next call is the last.
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c1",
+        name: "list",
+        input: { query: { status: "open" } },
+      },
+      { type: "usage", inputTokens: 390, outputTokens: 10 },
+    ]);
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c2",
+        name: "list",
+        input: { query: { status: "paid" } },
+      },
+      { type: "usage", inputTokens: 420, outputTokens: 10 },
+    ]);
+    const result = await support.run({ messages: ask("list"), user: member });
+    expect(result.reason).toBe("length");
+    expect(ai.requests).toHaveLength(2);
+    const sent = ai.requests[1].messages.at(-1);
+    expect(sent?.content).toContain("This turn is out of tokens");
+    const last = result.messages.at(-1);
+    expect(last).toMatchObject({ role: "tool", callId: "c2", isError: true });
+    expect(last?.content).toContain("Not run");
+  });
+
+  it("ends with the answer of the last call under a turn's tokenBudget", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ turnTokens: 1_000_000 });
+    ai.script([
+      { type: "tool_call", id: "c1", name: "list", input: {} },
+      { type: "usage", inputTokens: 300, outputTokens: 10 },
+    ]);
+    ai.script([
+      { type: "text", text: "Two invoices." },
+      { type: "usage", inputTokens: 320, outputTokens: 10 },
+    ]);
+    const result = await support.run({
+      messages: ask("list"),
+      user: member,
+      tokenBudget: 500,
+    });
+    expect(result.reason).toBe("stop");
+    expect(result.text).toBe("Two invoices.");
+    expect(ai.requests[1].messages.at(-1)?.content).toContain(
+      "This turn is out of tokens",
+    );
+  });
+
   it("ends on the caller's abort signal", async ({ expect }) => {
     const { support } = await setup({}, true);
     const controller = new AbortController();
