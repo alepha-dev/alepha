@@ -3149,7 +3149,16 @@ export default {
   "hosts.agent.credential.api_key": "Clé d'API",
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":
-    "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne la traite tant que l'hôte d'agent exécute les tâches comme un processus de l'hôte ; sur un hôte à conteneurs, un agent ne fait que la lire.",
+    "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne le lit tant qu'un membre ne l'a pas lu et ne lui a pas fait confiance.",
+  "feedback.trust": "Faire confiance",
+  "feedback.trust.description":
+    "Vous avez lu ce retour et confirmez qu'un agent peut le lire aussi : il est alors trié comme un retour de l'équipe. Enregistré à votre nom.",
+  "feedback.trust.done":
+    "Confiance accordée : un agent peut maintenant trier ce retour",
+  "feedback.trusted": "Confiance accordée par $1",
+  "feedback.trusted.someone": "un membre",
+  "feedback.awaitingTrust":
+    "$1 retour(s) non fiable(s) en attente qu'un membre leur fasse confiance : aucun agent ne les lit avant.",
   "feedback.agent.triage": "Trier avec Claude",
   "feedback.agent.triageInbox":
     "Trier tous les retours et les erreurs avec Claude",

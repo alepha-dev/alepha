@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Paperclip,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { Fragment, useState } from "react";
 
@@ -192,8 +193,27 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
     ],
   );
 
+  // Trust an untrusted item (#Q4216): a member read it, so an agent may
+  // too. The server takes a signed-in session only.
+  const trustAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        await feedbackApi.trustFeedback({
+          params: { projectId: project.id, feedbackId: feedback.id },
+        });
+        toaster.show(tr("feedback.trust.done"), "success");
+        props.onChanged();
+      },
+    },
+    [feedbackApi, project?.id, feedback.id, props.onChanged, toaster, tr],
+  );
+
   const busy =
-    promoteAction.loading || rejectAction.loading || deleteAction.loading;
+    promoteAction.loading ||
+    rejectAction.loading ||
+    deleteAction.loading ||
+    trustAction.loading;
   const handlePromote = () => void promoteAction.run();
   const handleReject = () => void rejectAction.run();
   const handleDelete = () => void deleteAction.run();
@@ -265,19 +285,46 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           })()}
           {tr(`feedback.filter.${feedback.status}`)}
         </Badge>
-        {/* Written outside the team (#Q3987): no agent works on it while
-            the Agent host runs jobs as a process. */}
+        {/* Written outside the team (#Q3987): no agent reads it until a
+            member trusted it (#Q4216). The marker stays once trusted, with
+            who trusted it in its tooltip. */}
         {feedback.untrusted && (
           <Badge
             variant="tint"
-            tone="warning"
+            tone={feedback.trustedAt ? "neutral" : "warning"}
             className="shrink-0 uppercase"
-            title={tr("feedback.untrusted.description")}
+            title={
+              feedback.trustedAt
+                ? tr("feedback.trusted", {
+                    args: [
+                      feedback.truster?.name ?? tr("feedback.trusted.someone"),
+                    ],
+                  })
+                : tr("feedback.untrusted.description")
+            }
             data-testid="feedback-untrusted"
           >
+            {feedback.trustedAt && <ShieldCheck className="size-3" />}
             {tr("feedback.untrusted")}
           </Badge>
         )}
+        {feedback.untrusted &&
+          !feedback.trustedAt &&
+          feedback.status === "pending" &&
+          can("feedback:triage") && (
+            <Button
+              variant="outlined"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void trustAction.run()}
+              disabled={busy}
+              title={tr("feedback.trust.description")}
+              data-testid="feedback-trust"
+            >
+              <ShieldCheck className="size-4" />
+              {tr("feedback.trust")}
+            </Button>
+          )}
         <FeedbackAgentJobLink feedback={feedback} />
       </div>
 

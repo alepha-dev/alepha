@@ -1,0 +1,98 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6a98af58-4deb-46d5-be8a-4b75035b84a4",
+  "prevIds": ["146e5cfe-34d7-485f-acd2-fe6b0ebe7847"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "feedback", "trusted_at"],
+      "writes": [
+        "s|col|public.feedback.trusted_at",
+        "n|col|public.feedback.trusted_at",
+        "e|col|public.feedback.trusted_at"
+      ],
+      "reads": ["n|tbl|public.feedback", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "feedback", "trusted_by"],
+      "writes": [
+        "s|col|public.feedback.trusted_by",
+        "n|col|public.feedback.trusted_by",
+        "e|col|public.feedback.trusted_by"
+      ],
+      "reads": ["n|tbl|public.feedback", "n|sch|public"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "feedback"],
+      "writes": [
+        "s|fk|public.feedback.feedback_trusted_by_users_id_fkey",
+        "n|fk|public.feedback.feedback_trusted_by_users_id_fkey",
+        "e|fk|public.feedback.feedback_trusted_by_users_id_fkey",
+        "n|con|public.feedback.feedback_trusted_by_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.feedback",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.feedback.trusted_by",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "feedback",
+        "name": "trusted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "feedback",
+        "name": "trusted_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "feedback",
+        "name": "feedback_trusted_by_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["trusted_by"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    }
+  ]
+}

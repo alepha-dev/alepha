@@ -23,6 +23,7 @@ import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
  */
 class FakeLinkProvider extends LinkProvider {
   accepted: number[] = [];
+  trusted: number[] = [];
 
   /**
    * A Proxy rather than a literal: opening the create-a-quest sheet mounts
@@ -38,6 +39,10 @@ class FakeLinkProvider extends LinkProvider {
         acceptFeedback: async (config: { params: { feedbackId: number } }) => {
           this.accepted.push(config.params.feedbackId);
           return { ok: true };
+        },
+        trustFeedback: async (config: { params: { feedbackId: number } }) => {
+          this.trusted.push(config.params.feedbackId);
+          return { trustedAt: "2026-11-23T20:00:00.000Z" };
         },
       } as Record<string, unknown>,
       {
@@ -602,5 +607,81 @@ describe("ProjectFeedbackDetail - linked quest status", () => {
     expect(chip.className).toContain("bg-success/15");
     expect(chip.className).not.toMatch(/-300\b/);
     expect(chip.querySelector("svg")).not.toBeNull();
+  });
+});
+
+/**
+ * Trust (#Q4216): an untrusted, pending item offers it to a member who can
+ * triage; once trusted, the marker stays and says who trusted it.
+ */
+describe("ProjectFeedbackDetail - Trust", () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
+  const show = async (feedback: FeedbackResource, onChanged = () => {}) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    alepha.inject(I18n);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectFeedbackDetail feedback={feedback} onChanged={onChanged} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    return { alepha, view };
+  };
+
+  it("offers Trust on an untrusted pending item, and tells the list once trusted", async ({
+    expect,
+  }) => {
+    const changes: number[] = [];
+    const { alepha, view } = await show(
+      { ...pendingFeedback, untrusted: true },
+      () => changes.push(1),
+    );
+    fireEvent.click(await view.findByTestId("feedback-trust"));
+    await waitFor(() =>
+      expect(alepha.inject(FakeLinkProvider).trusted).toEqual([42]),
+    );
+    await waitFor(() => expect(changes).toEqual([1]));
+  });
+
+  it("offers no Trust on a team-written item", async ({ expect }) => {
+    const { view } = await show(pendingFeedback);
+    await view.findByTestId("feedback-detail-title");
+    expect(view.queryByTestId("feedback-trust")).toBeNull();
+    expect(view.queryByTestId("feedback-untrusted")).toBeNull();
+  });
+
+  it("keeps the marker on a trusted item, says who trusted it, and offers no Trust", async ({
+    expect,
+  }) => {
+    const { view } = await show({
+      ...pendingFeedback,
+      untrusted: true,
+      trustedAt: "2026-11-23T20:00:00.000Z",
+      truster: {
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "Ada Lovelace",
+      },
+    } as FeedbackResource);
+    const marker = await view.findByTestId("feedback-untrusted");
+    expect(marker.getAttribute("title")).toBe("Trusted by Ada Lovelace");
+    expect(view.queryByTestId("feedback-trust")).toBeNull();
   });
 });

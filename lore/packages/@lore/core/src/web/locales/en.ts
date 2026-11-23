@@ -3141,7 +3141,15 @@ export default {
   "hosts.agent.credential.api_key": "API key",
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
-    "Written by someone outside the project's team. No agent works on it while the Agent host runs jobs as a host process; on a container host an agent only reads it.",
+    "Written by someone outside the project's team. No agent reads it until a member has read it and trusted it.",
+  "feedback.trust": "Trust",
+  "feedback.trust.description":
+    "You read this item and confirm an agent may read it too: it is then triaged like one written by the team. Recorded with your name.",
+  "feedback.trust.done": "Trusted: an agent may now triage this item",
+  "feedback.trusted": "Trusted by $1",
+  "feedback.trusted.someone": "a member",
+  "feedback.awaitingTrust":
+    "$1 untrusted pending item(s) wait for a member to trust them: no agent reads them before that.",
   "feedback.agent.started":
     "Claude is triaging this feedback on the Agent host",
   "feedback.agent.triage": "Triage with Claude",

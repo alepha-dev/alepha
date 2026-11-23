@@ -221,6 +221,12 @@ export class QuestService {
       input.area,
     );
 
+    const fromFeedback = input.feedbackId
+      ? await this.feedbackRows.findOne({
+          where: { id: { eq: input.feedbackId } },
+        })
+      : undefined;
+
     const data = {
       projectId: input.projectId,
       shortId,
@@ -241,14 +247,16 @@ export class QuestService {
       tags: normalizeQuestTags(input.tags ?? []),
       dependsOn: input.dependsOn ?? undefined,
       feedbackId: input.feedbackId,
-      // Born of untrusted feedback, it carries the marker (#Q3987).
-      untrusted: input.feedbackId
-        ? ((
-            await this.feedbackRows.findOne({
-              where: { id: { eq: input.feedbackId } },
-            })
-          )?.untrusted ?? false)
-        : false,
+      // Born of untrusted feedback, it carries the marker (#Q3987); born of
+      // one a member trusted (#Q4216), it is confirmed by that same member
+      // and asks for no second confirmation.
+      untrusted: fromFeedback?.untrusted ?? false,
+      ...(fromFeedback?.untrusted && fromFeedback.trustedAt
+        ? {
+            untrustedConfirmedAt: fromFeedback.trustedAt,
+            untrustedConfirmedBy: fromFeedback.trustedBy ?? undefined,
+          }
+        : {}),
       releaseId: input.releaseId,
       source: input.source,
       createdBy: input.createdBy,

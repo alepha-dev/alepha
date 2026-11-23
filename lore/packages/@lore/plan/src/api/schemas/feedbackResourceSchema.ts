@@ -65,6 +65,16 @@ export const feedbackResourceSchema = feedback.schema.extend({
     )
     .optional(),
   linkedQuests: z.array(feedbackLinkedQuestSchema).optional(),
+  /**
+   * The member who trusted this untrusted item (#Q4216), resolved from
+   * `trustedBy`, for the marker's "trusted by" line.
+   */
+  truster: z
+    .object({
+      id: z.uuid(),
+      name: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type FeedbackResource = Infer<typeof feedbackResourceSchema>;

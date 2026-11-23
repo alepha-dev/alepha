@@ -240,7 +240,14 @@ export class LoreAudits {
     description: "Feedback lifecycle and triage",
     // `submit-elsewhere` is a feedback filed from this project's room into
     // another project (#Q3971), on the room project's record.
-    actions: ["create", "accept", "reject", "comment", "submit-elsewhere"],
+    actions: [
+      "create",
+      "accept",
+      "reject",
+      "trust",
+      "comment",
+      "submit-elsewhere",
+    ],
   });
 
   /**
