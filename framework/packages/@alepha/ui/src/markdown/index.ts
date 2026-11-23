@@ -2,7 +2,9 @@
  * Markdown rendered as prose, with diagrams.
  *
  * `MarkdownView` renders GitHub-flavoured markdown with highlighted code, and
- * draws `flowchart` and `sequenceDiagram` fences as SVG. `diagramKind`,
+ * draws `flowchart` and `sequenceDiagram` fences as SVG. `highlightLines`
+ * highlights a whole file line by line with the same grammars, for a code
+ * view that numbers its lines. `diagramKind`,
  * `parseFlowchart` and `parseSequence` expose the parsers, so an editor can
  * validate a diagram before it is saved.
  *
@@ -15,4 +17,14 @@
 export { diagramKind } from "./diagram/diagramKind.ts";
 export { parseFlowchart } from "./diagram/flowchartParser.ts";
 export { parseSequence } from "./diagram/sequenceParser.ts";
-export { MarkdownView, type MarkdownViewProps } from "./MarkdownView.tsx";
+export {
+  type HighlightToken,
+  highlightLanguageOf,
+  highlightLines,
+} from "./highlightLines.ts";
+export {
+  type MarkdownImageRenderer,
+  type MarkdownLinkRenderer,
+  MarkdownView,
+  type MarkdownViewProps,
+} from "./MarkdownView.tsx";

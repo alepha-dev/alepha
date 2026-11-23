@@ -17,6 +17,6 @@ export const CODE_REPO_TABS: CodeRepoTab[] = [
     key: "files",
     labelKey: "code.tab.files",
     route: "codeRepoHome",
-    routes: ["codeRepoHome"],
+    routes: ["codeRepoHome", "codeRepoTree", "codeRepoBlob"],
   },
 ];

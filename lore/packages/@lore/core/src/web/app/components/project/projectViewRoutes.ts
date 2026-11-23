@@ -66,7 +66,13 @@ export const ROUTES_HOST = [
  * The code browser's pages (#E167): every one reads "Code" in the crumb,
  * and a repository's climbs back to the list.
  */
-export const ROUTES_CODE = ["projectCode", "projectCodeRepo", "codeRepoHome"];
+export const ROUTES_CODE = [
+  "projectCode",
+  "projectCodeRepo",
+  "codeRepoHome",
+  "codeRepoTree",
+  "codeRepoBlob",
+];
 
 const ROUTES_SETTINGS = [
   "projectSettings",

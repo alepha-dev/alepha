@@ -5129,4 +5129,15 @@ export default {
   "code.repo.defaultBranch": "Default branch $1",
   "code.repo.indexing": "Indexing history…",
   "code.tab.files": "Files",
+  "code.revision.pick": "Switch branch or tag",
+  "code.revision.branches": "Branches",
+  "code.revision.tags": "Tags",
+  "code.file.rendered": "Preview",
+  "code.file.source": "Source",
+  "code.file.permalink": "Permalink",
+  "code.file.raw": "Raw",
+  "code.file.size": "$1 bytes",
+  "code.file.binary": "A binary file: download it to open it.",
+  "code.file.tooLarge":
+    "Too large to show here: download it, or clone the repository.",
 };
