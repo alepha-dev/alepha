@@ -1,19 +1,24 @@
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
-import { useAction, useClient, useQuery } from "alepha/react";
+import { Button, cn } from "@alepha/ui";
+import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 
 import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { type I18n } from "../../../services/I18n.ts";
+import JobHistoryRail from "./JobHistoryRail.tsx";
+import JobLogViewer from "./JobLogViewer.tsx";
 import JobStatusBadge from "./JobStatusBadge.tsx";
+import { jobInFlight } from "./jobStatusIcon.ts";
 
 export interface ProjectJobProps {
   jobId: string;
 }
 
 /**
- * One host job (#Q3984): what it ran, its status and its log, followed live
- * while it runs, with Cancel.
+ * One host job (#Q3984), laid out as Chat is since #Q4207: the project's job
+ * history on the left, the open job's header, its details and its log on
+ * the right, the log in a viewer that follows the output while it runs.
  *
  * The log is read by byte offsets: each poll asks for what lies past what
  * the page already holds, every two seconds while the job is in flight,
@@ -22,10 +27,13 @@ export interface ProjectJobProps {
 const ProjectJob = ({ jobId }: ProjectJobProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const api = useClient<HostJobController>();
+  const [project] = useStore(currentProjectAtom);
   // Keyed by the job it holds, so moving to another job starts it empty.
   const [held, setLog] = useState({ jobId, stdout: "", stderr: "" });
   const log = held.jobId === jobId ? held : { stdout: "", stderr: "" };
-  const [live, setLive] = useState(true);
+  // Keyed by its job too: a job just opened is live until its log says not.
+  const [liveOf, setLiveOf] = useState({ jobId, live: true });
+  const live = liveOf.jobId === jobId ? liveOf.live : true;
 
   const job = useQuery(
     {
@@ -58,7 +66,7 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
               : { jobId, stdout: part.stdout, stderr: part.stderr },
           );
         }
-        setLive(part.live);
+        setLiveOf({ jobId, live: part.live });
         if (!part.live) return;
         await new Promise((resolve) => globalThis.setTimeout(resolve, 2000));
       }
@@ -79,95 +87,101 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
     [jobId],
   );
 
-  const row = job.data;
-  if (!row) return null;
-  const inFlight = row.status === "queued" || row.status === "running";
+  const row = job.data?.id === jobId ? job.data : undefined;
+  const inFlight = row ? jobInFlight(row.status) : false;
+  const slug = project?.slug ?? String(project?.id ?? "");
+
+  const details: Array<[string, string | number]> = row
+    ? [
+        [tr("jobs.field.host"), row.hostSlug ?? ""],
+        [tr("jobs.field.profile"), row.input.profile],
+        ...(row.subjectType
+          ? ([
+              [
+                tr("jobs.field.subject"),
+                `${row.subjectType} ${row.subjectId ?? ""}`,
+              ],
+            ] as Array<[string, string]>)
+          : []),
+        [tr("jobs.field.queued"), l(row.queuedAt, { date: "lll" })],
+        ...(row.endedAt
+          ? ([
+              [tr("jobs.field.ended"), l(row.endedAt, { date: "lll" })],
+            ] as Array<[string, string]>)
+          : []),
+        ...(row.exitCode !== undefined
+          ? ([[tr("jobs.field.exit"), row.exitCode]] as Array<[string, number]>)
+          : []),
+      ]
+    : [];
 
   return (
-    <div className="flex flex-col gap-4 p-4" data-testid="project-job">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <span>{row.kind}</span>
-            <JobStatusBadge status={row.status} />
-          </CardTitle>
-          {inFlight && (
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={cancel.loading}
-              onClick={() => void cancel.run()}
-              data-testid="job-cancel"
-            >
-              {tr("jobs.cancel")}
-            </Button>
+    <div
+      className="grid h-full min-h-0 md:grid-cols-[18rem_1fr]"
+      data-testid="project-job"
+    >
+      {project && (
+        <JobHistoryRail
+          projectId={project.id}
+          projectSlug={slug}
+          selectedId={jobId}
+          className="hidden md:flex"
+        />
+      )}
+      <div className="bg-card flex min-h-0 min-w-0 flex-col">
+        {/* The rail header's twin: 46px and a bottom rule. */}
+        <div className="flex h-[46px] shrink-0 items-center gap-2 border-b px-4">
+          {row && (
+            <>
+              <h1 className="truncate text-sm font-semibold">{row.kind}</h1>
+              <JobStatusBadge status={row.status} />
+              {inFlight && (
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  className="ms-auto"
+                  disabled={cancel.loading}
+                  onClick={() => void cancel.run()}
+                  data-testid="job-cancel"
+                >
+                  {tr("jobs.cancel")}
+                </Button>
+              )}
+            </>
           )}
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">{tr("jobs.field.host")}</dt>
-            <dd>{row.hostSlug ?? ""}</dd>
-            <dt className="text-muted-foreground">
-              {tr("jobs.field.profile")}
-            </dt>
-            <dd>{row.input.profile}</dd>
-            {row.subjectType && (
-              <>
-                <dt className="text-muted-foreground">
-                  {tr("jobs.field.subject")}
-                </dt>
-                <dd>{`${row.subjectType} ${row.subjectId ?? ""}`}</dd>
-              </>
-            )}
-            <dt className="text-muted-foreground">{tr("jobs.field.queued")}</dt>
-            <dd>{l(row.queuedAt, { date: "lll" })}</dd>
-            {row.endedAt && (
-              <>
-                <dt className="text-muted-foreground">
-                  {tr("jobs.field.ended")}
-                </dt>
-                <dd>{l(row.endedAt, { date: "lll" })}</dd>
-              </>
-            )}
-            {row.exitCode !== undefined && (
-              <>
-                <dt className="text-muted-foreground">
-                  {tr("jobs.field.exit")}
-                </dt>
-                <dd>{row.exitCode}</dd>
-              </>
-            )}
+        </div>
+        {row && (
+          <dl className="grid shrink-0 grid-cols-[max-content_1fr] gap-x-4 gap-y-1 border-b px-4 py-3 text-sm sm:grid-cols-[max-content_1fr_max-content_1fr]">
+            {details.map(([label, value]) => (
+              <div key={label} className="contents">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="min-w-0 truncate">{value}</dd>
+              </div>
+            ))}
             {row.reason && (
-              <>
+              <div className="contents">
                 <dt className="text-muted-foreground">
                   {tr("jobs.field.reason")}
                 </dt>
-                <dd className="font-mono text-xs">{row.reason}</dd>
-              </>
+                <dd
+                  className={cn(
+                    "font-mono text-xs sm:col-span-3",
+                    "break-words",
+                  )}
+                >
+                  {row.reason}
+                </dd>
+              </div>
             )}
           </dl>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{tr("jobs.log")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <pre
-            className="bg-muted max-h-[60vh] overflow-auto rounded p-3 font-mono text-xs whitespace-pre-wrap"
-            data-testid="job-log"
-          >
-            {log.stdout || log.stderr
-              ? `${log.stdout}${log.stderr ? `\n${log.stderr}` : ""}`
-              : tr("jobs.log.empty")}
-          </pre>
-          {row.logTruncated && (
-            <p className="text-muted-foreground mt-2 text-xs">
-              {tr("jobs.log.truncated")}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        )}
+        <JobLogViewer
+          stdout={log.stdout}
+          stderr={log.stderr}
+          live={live && (row ? inFlight : true)}
+          truncated={row?.logTruncated}
+        />
+      </div>
     </div>
   );
 };
