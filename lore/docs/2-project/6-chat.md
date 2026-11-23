@@ -77,6 +77,9 @@ answer:
 - A **write** (filing a quest, a comment, a folio) waits for a card. Everyone
   sees the card; only you, who asked, can approve or decline it.
 
+A project can also define its own agents, each with a name, an avatar, a
+playbook and a model: see [Chat agents](/lore/docs/project-chat-agents).
+
 To ask Lore something on your own, about the page you are on, open the
 [Assistant](/lore/docs/agents-assistant) from the sparkle button in the header
 instead.
