@@ -91,13 +91,27 @@ export const feedback = $entity({
      * never cleared, by an edit or anything else. `source` is the widget's
      * claim and the reporter's to forge; this is Lore's own fact.
      *
-     * What it drives: no agent job on it while the Agent host runs jobs as a
-     * host process; the `read` profile whatever the agent decides on a
-     * container host; the caution section in the agent's prompt; and the
-     * marker on any quest created from it, which an agent then works only
-     * once a member confirms its text.
+     * What it drives: no agent reads it until a member trusted it by hand
+     * (`trustedAt`, #Q4216), on any runner; the caution section in the
+     * agent's prompt; and the marker on any quest created from it, which an
+     * agent then works only once a member confirms its text (a quest created
+     * from a trusted item is born confirmed).
      */
     untrusted: db.default(z.boolean(), false),
+    /**
+     * When, and by whom, a member confirmed an untrusted item by hand
+     * (#Q4216): from then on an agent may triage it, and it joins the inbox's
+     * global triage. `untrusted && !trustedAt` reads as "no agent". Set only
+     * by `trustFeedback`, which takes a signed-in session and nothing else.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`, and `.optional()` INSIDE `db.ref`, or
+     * no foreign key is generated.
+     */
+    trustedAt: z.datetime().optional(),
+    trustedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
+    }),
     /**
      * The last agent job that triaged this item (#Q3988), a host job id,
      * and when it was started.

@@ -108,8 +108,9 @@ Then it groups what belongs together:
   not actionable is rejected.
 
 Its key reaches only the items it was given, and its turns and time grow with
-their number. Feedback written outside the team never joins this run: each
-such item gets a run of its own (see [Untrusted input](#untrusted-input)).
+their number. Feedback written outside the team joins this run only once a
+member has trusted it; until then no agent reads it (see
+[Untrusted input](#untrusted-input)).
 
 Both entries show only while the project's Agent host passes its agent check.
 Once an item is triaged, its **Agent job** link opens the job and its log.
@@ -205,13 +206,19 @@ form or widget, a user who is not a member) is marked **Untrusted** when it is s
 stays so. Its text may be written to steer an agent, so Lore holds it to
 stricter rules:
 
-- A host that runs jobs **as a process** never gets it: Lore refuses to start
-  the job, and a member triages the item by hand.
-- A **container** host triages it with the `read` profile, whatever was asked:
-  no edit, no shell, no push.
+- **No agent reads it until a member trusts it**, whatever the host's runner.
+  Triage leaves it out, starts no job for it, and leaves a comment saying a
+  member must read it; the inbox says how many items wait. A member who can
+  triage reads it and clicks **Trust** on the item, which Lore records with
+  their name. The **Untrusted** marker stays, so the item still says where it
+  came from, and from then on it is triaged like an item the team wrote.
+- **Trust** takes a person signed in to Lore. An API key, a job key and the
+  MCP are refused: an agent that could trust an item would undo the rule, so
+  no MCP tool and no CLI command does it.
 - A quest filed from it is marked **Untrusted** too. **Work it with Claude**
   waits until a member has read its text and clicked **Confirm its text**,
-  which Lore records with their name.
+  which Lore records with their name. A quest filed from an item a member
+  already trusted carries that confirmation and asks for no second one.
 - **Review with Claude** on an epic holding such a quest, not yet confirmed,
   is refused on a process host, naming the quests to confirm first. A
   container host reviews it with the same `read` profile.

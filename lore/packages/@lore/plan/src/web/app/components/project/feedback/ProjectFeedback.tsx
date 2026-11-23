@@ -19,6 +19,7 @@ import {
   CircleX,
   Inbox,
   type LucideIcon,
+  ShieldAlert,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -53,6 +54,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const feedbackApi = useClient<FeedbackController>();
 
   const [status, setStatus] = useState<StatusFilter>("pending");
+  const [awaitingTrust, setAwaitingTrust] = useState(0);
   const queries = useQueryClient();
   /**
    * The card the reader opened. `undefined` follows the list: the first row,
@@ -108,6 +110,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
         }),
       onSuccess: (r) => {
         setFeedbackCount({ count: r.count });
+        setAwaitingTrust(r.awaitingTrust);
       },
       onError: () => {},
     },
@@ -356,6 +359,20 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               testId="feedback-subscription-bell"
             />
           </div>
+
+          {/* Untrusted items no member trusted yet (#Q4216): no agent
+              reads them, so the inbox says they wait for a person. */}
+          {status === "pending" && awaitingTrust > 0 && (
+            <p
+              className="border-border text-muted-foreground flex items-center gap-2 border-b px-3 py-2 text-xs"
+              data-testid="feedback-awaiting-trust"
+            >
+              <ShieldAlert className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              {tr("feedback.awaitingTrust", {
+                args: [String(awaitingTrust)],
+              })}
+            </p>
+          )}
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {items.length === 0 ? (

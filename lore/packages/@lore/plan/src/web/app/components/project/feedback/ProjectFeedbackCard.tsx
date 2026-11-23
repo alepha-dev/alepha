@@ -70,9 +70,23 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
           {feedback.untrusted && (
             <>
               <span className="shrink-0 opacity-50">·</span>
+              {/* Amber until a member trusted it (#Q4216), then muted. */}
               <span
-                className="shrink-0 text-amber-600 dark:text-amber-400"
-                title={tr("feedback.untrusted.description")}
+                className={
+                  feedback.trustedAt
+                    ? "shrink-0"
+                    : "shrink-0 text-amber-600 dark:text-amber-400"
+                }
+                title={
+                  feedback.trustedAt
+                    ? tr("feedback.trusted", {
+                        args: [
+                          feedback.truster?.name ??
+                            tr("feedback.trusted.someone"),
+                        ],
+                      })
+                    : tr("feedback.untrusted.description")
+                }
                 data-testid="feedback-card-untrusted"
               >
                 {tr("feedback.untrusted")}

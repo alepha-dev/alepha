@@ -96,6 +96,13 @@ export const workRelations = $relations(schema, (r) => ({
       to: r.users.id,
     }),
     /**
+     * The member who trusted an untrusted item (#Q4216).
+     */
+    truster: r.one.users({
+      from: r.feedback.trustedBy,
+      to: r.users.id,
+    }),
+    /**
      * Quests raised from this feedback item, oldest first at the call site.
      */
     linkedQuests: r.many.quests({

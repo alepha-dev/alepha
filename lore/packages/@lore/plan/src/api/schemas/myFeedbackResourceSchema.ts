@@ -10,8 +10,9 @@ import { feedbackResourceSchema } from "./feedbackResourceSchema.ts";
  * item belongs to without a per-row lookup.
  */
 export const myFeedbackResourceSchema = feedbackResourceSchema
-  // A reporter need not be a member: who triaged is the project's business.
-  .omit({ triagedBy: true })
+  // A reporter need not be a member: who triaged, and who trusted the item
+  // (#Q4216), is the project's business.
+  .omit({ triagedBy: true, trustedBy: true, truster: true })
   .extend({
     project: z.object({
       id: z.integer(),

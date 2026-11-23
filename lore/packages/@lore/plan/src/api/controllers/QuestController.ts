@@ -3301,6 +3301,11 @@ export class QuestController {
           // good (#Q3987): an agent works it only once a member confirms.
           if (feedback.untrusted) {
             patch.untrusted = true;
+            // Trusted by a member (#Q4216): that confirmation carries over.
+            if (feedback.trustedAt && !quest.untrustedConfirmedAt) {
+              patch.untrustedConfirmedAt = feedback.trustedAt;
+              patch.untrustedConfirmedBy = feedback.trustedBy ?? undefined;
+            }
           }
         }
       }

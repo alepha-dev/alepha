@@ -29,8 +29,14 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
  * (#Q4183) that reads every pending team-written item together, and the
  * project's open errors when it tracks them, so duplicates become one quest
  * and a report is linked to the error behind it. Its key reaches exactly the
- * items it was given. An untrusted item never joins it: each keeps a job of
- * its own, so text from outside the team never sits beside another report.
+ * items it was given. An untrusted item a member trusted (#Q4216) joins it
+ * like a team-written one.
+ *
+ * **No agent reads an untrusted item before a member trusted it** (#Q4216),
+ * whatever the host's runner: triage leaves it out and starts no job for it,
+ * and the item keeps a comment saying a member must look at it. The
+ * protection is a human, not the runner, since an Agent host is a CLI run in
+ * a directory with no sandbox.
  *
  * The prompt is the project's own `feedbackLoop` template, else the default,
  * rendered here on the server, scoped to the one item, with the trust
@@ -38,9 +44,6 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
  * delimiters under its caution section (#Q3987). The job holds the `read`
  * profile and a key with the triage tools only: it accepts and files a todo
  * quest, asks a human in the discussion, or rejects. It pushes nothing.
- *
- * Untrusted feedback on a host that runs jobs as a process is not triaged:
- * the item stays pending with a comment saying a member must triage it.
  */
 export class FeedbackAgentService {
   /**
@@ -85,6 +88,12 @@ export class FeedbackAgentService {
   public static readonly INBOX_CAP = 25;
 
   /**
+   * The comment left on an untrusted item triage skipped (#Q4216).
+   */
+  public static readonly AWAITS_TRUST =
+    "Not triaged by an agent: this feedback was written outside the team, and no member has trusted it yet. A member must read it, then trust it or triage it by hand.";
+
+  /**
    * The global triage's budget: the read profile's, plus this much per
    * feedback item and once for the errors (#Q4183). Agent jobs clamp it.
    */
@@ -118,8 +127,19 @@ export class FeedbackAgentService {
   protected readonly security = $inject(ProjectSecurityService);
 
   /**
+   * Whether no agent may read this item yet: written outside the team, and
+   * no member trusted it (#Q4216).
+   */
+  public static awaitsTrust(item: {
+    untrusted?: boolean | null;
+    trustedAt?: string | null;
+  }): boolean {
+    return Boolean(item.untrusted) && !item.trustedAt;
+  }
+
+  /**
    * Starts a triage job on one pending item. Answers the job, or why none
-   * started (an untrusted item on a process host), the item then left
+   * started (an untrusted item no member trusted yet), the item then left
    * pending with a comment saying so.
    */
   public async triageItem(
@@ -147,8 +167,8 @@ export class FeedbackAgentService {
         "This project names no Agent host: pick one on its hosts settings page",
       );
     }
-    if (item.untrusted && host.runner !== "container") {
-      const skipped = `Not triaged by an agent: this feedback was written outside the team, and the Agent host ${host.slug} runs jobs as a host process. A member must triage it.`;
+    if (FeedbackAgentService.awaitsTrust(item)) {
+      const skipped = FeedbackAgentService.AWAITS_TRUST;
       await this.note(item, skipped, startedBy);
       return { skipped };
     }
@@ -161,7 +181,9 @@ export class FeedbackAgentService {
       startedBy,
       subjectType: "feedback",
       subjectId: String(item.shortId),
-      untrusted: item.untrusted,
+      // A trusted item runs like a team-written one (#Q4216); an untrusted
+      // one never gets here, and the launcher would refuse it if it did.
+      untrusted: FeedbackAgentService.awaitsTrust(item),
     });
     await this.rows.updateById(item.id, {
       agentJobId: job.id,
@@ -171,12 +193,13 @@ export class FeedbackAgentService {
   }
 
   /**
-   * The inbox's triage (#Q4183): one global job over every pending
-   * team-written item, oldest first up to {@link INBOX_CAP}, and the open
-   * errors when the project tracks them; each untrusted item its own job.
+   * The inbox's triage (#Q4183): one global job over every pending item an
+   * agent may read (team-written, or trusted by a member), oldest first up
+   * to {@link INBOX_CAP}, and the open errors when the project tracks them.
    * An item whose agent job is still queued or running is left out, so a
    * second click does not triage it twice. `skipped` holds the items no job
-   * took: untrusted ones on a process host.
+   * took: untrusted ones no member trusted yet (#Q4216), which start no job
+   * and keep a comment saying a member must look at them.
    */
   public async triageInbox(
     projectId: number,
@@ -202,12 +225,13 @@ export class FeedbackAgentService {
     }
     const started: string[] = [];
     const skipped: number[] = [];
-    for (const item of open.filter((it) => it.untrusted)) {
-      const out = await this.triageItem(projectId, item.shortId, startedBy);
-      if (out.jobId) started.push(out.jobId);
-      else skipped.push(item.shortId);
+    for (const item of open.filter((it) =>
+      FeedbackAgentService.awaitsTrust(it),
+    )) {
+      await this.noteOnce(item, FeedbackAgentService.AWAITS_TRUST, startedBy);
+      skipped.push(item.shortId);
     }
-    const trusted = open.filter((it) => !it.untrusted);
+    const trusted = open.filter((it) => !FeedbackAgentService.awaitsTrust(it));
     // One global run at a time: it reads the errors too, so a second one
     // while the first is queued or running would triage them twice.
     if (
@@ -357,6 +381,23 @@ export class FeedbackAgentService {
       );
     }
     return parts.join("\n");
+  }
+
+  /**
+   * {@link note}, unless the item's discussion already carries that line, so
+   * clicking the inbox's triage twice does not stack the same comment.
+   */
+  protected async noteOnce(
+    item: Feedback,
+    body: string,
+    userId?: string,
+  ): Promise<void> {
+    const [existing] = await this.comments.findMany({
+      where: { feedbackId: { eq: item.id }, body: { eq: body } },
+      columns: ["id"],
+      limit: 1,
+    });
+    if (!existing) await this.note(item, body, userId);
   }
 
   /**

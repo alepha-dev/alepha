@@ -54,6 +54,7 @@ import { WorkEventSources } from "../services/WorkEventSources.ts";
  */
 type FeedbackWithRelations = Feedback & {
   reporter?: User;
+  truster?: User;
   linkedQuests: Array<Quest>;
 };
 
@@ -88,6 +89,7 @@ export class FeedbackController {
    */
   protected static readonly withRelations = {
     reporter: true,
+    truster: true,
     linkedQuests: { orderBy: { column: "createdAt", direction: "asc" } },
   } as const;
 
@@ -522,7 +524,14 @@ export class FeedbackController {
           .meta({ mode: "text" })
           .optional(),
       }),
-      response: z.object({ count: z.integer() }),
+      response: z.object({
+        count: z.integer(),
+        /**
+         * Pending items written outside the team that no member trusted yet
+         * (#Q4216): no agent reads them, so the inbox says they wait.
+         */
+        awaitingTrust: z.integer(),
+      }),
     },
     handler: async ({ params, query, user }) => {
       const status = query.status ?? "pending";
@@ -534,9 +543,17 @@ export class FeedbackController {
 
       // `columns: ["id"]` so the count never drags a row's body, its
       // attachments or its relations back with it.
-      const rows = await this.feedback.findMany({ where, columns: ["id"] });
+      const rows = await this.feedback.findMany({
+        where,
+        columns: ["id", "status", "untrusted", "trustedAt"],
+      });
 
-      return { count: rows.length };
+      return {
+        count: rows.length,
+        awaitingTrust: rows.filter(
+          (it) => it.status === "pending" && it.untrusted && !it.trustedAt,
+        ).length,
+      };
     },
   });
 
@@ -707,6 +724,77 @@ export class FeedbackController {
         size: file.size,
         data,
       };
+    },
+  });
+
+  /**
+   * Trust an untrusted, pending item (#Q4216): a member read it and confirms
+   * an agent may now read it too. Recorded once, with who and when; the
+   * `untrusted` marker itself stays, so the item still says where it came
+   * from. From then on it is triaged like a team-written item.
+   *
+   * ⚠️ **A signed-in session only** (`sessionOnly`): an API key, a job key
+   * and the MCP are refused with a 403. This is a deliberate exception to
+   * "the MCP and the CLI cover everything": the rule is that a human reads an
+   * outside report before any agent does, and an agent that could trust an
+   * item would undo it. No MCP tool and no CLI command calls this.
+   */
+  trustFeedback = $action({
+    use: [
+      $ownsProject({
+        param: "projectId",
+        requires: "feedback:triage",
+        secure: { sessionOnly: true },
+      }),
+    ],
+    method: "POST",
+    path: "/projects/:projectId/feedback/:feedbackId/trust",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        feedbackId: z.integer(),
+      }),
+      response: z.object({
+        trustedAt: z.datetime(),
+        trustedBy: z.uuid().optional(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertCapability(params.projectId, "plan", {
+        option: "feedback",
+        action: "trust feedback",
+      });
+      const item = await this.loadFeedback(params.projectId, params.feedbackId);
+      if (!item.untrusted) {
+        throw new BadRequestError(
+          `Feedback ${item.shortId} was written by the team: it needs no trust`,
+        );
+      }
+      if (item.status !== "pending") {
+        throw new BadRequestError(
+          `Feedback ${item.shortId} is ${item.status}: only a pending item is trusted`,
+        );
+      }
+      if (item.trustedAt) {
+        return {
+          trustedAt: item.trustedAt,
+          trustedBy: item.trustedBy ?? undefined,
+        };
+      }
+      const trustedAt = this.dateTime.nowISOString();
+      await this.feedback.updateById(item.id, {
+        trustedAt,
+        trustedBy: user.id,
+      });
+      await this.audits.feedback.logSuccess("trust", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
+        resourceType: "feedback",
+        resourceId: String(item.shortId),
+        description: item.title,
+        metadata: { id: item.id },
+      });
+      return { trustedAt, trustedBy: user.id };
     },
   });
 
@@ -1271,6 +1359,21 @@ export class FeedbackController {
           : undefined,
         attachmentUrls,
         linkedQuests: linked,
+        truster: p.truster
+          ? {
+              id: p.truster.id,
+              name:
+                displayName(
+                  {
+                    firstName: p.truster.firstName,
+                    lastName: p.truster.lastName,
+                  },
+                  "",
+                ) ||
+                p.truster.username ||
+                undefined,
+            }
+          : undefined,
       };
     });
   }
