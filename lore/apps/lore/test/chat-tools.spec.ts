@@ -107,6 +107,10 @@ describe("chat tools", () => {
       run: <R>(fn: () => R) => ctx.call(userId, fn),
     });
     const owner = as(ctx.owner.id);
+    // A real playbook runs past z.text()'s 255 characters (#Q4232).
+    const playbook = "Check the feedback, then the monitors. "
+      .repeat(20)
+      .trim();
 
     await expect(
       as(ctx.member.id).run(() =>
@@ -122,7 +126,7 @@ describe("chat tools", () => {
         project: ctx.project.id,
         handle: "jarvis",
         name: "Jarvis",
-        pre_prompt: "Check the feedback.",
+        pre_prompt: playbook,
         model: "claude-haiku-5-5",
       }),
     );
@@ -139,7 +143,7 @@ describe("chat tools", () => {
         handle: "@jarvis",
       }),
     );
-    expect(read.pre_prompt).toBe("Check the feedback.");
+    expect(read.pre_prompt).toBe(playbook);
 
     const updated = await owner.run(() =>
       ctx.tools.chat_agent_update.execute({
