@@ -1199,7 +1199,7 @@ export default {
   "project.settings.tab.features": "Fonctionnalités",
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
-  "project.settings.tab.tagColors": "Couleurs des étiquettes",
+  "project.settings.tab.tagColors": "Étiquettes",
   "project.settings.tab.roadmap": "Feuille de route",
   "project.settings.tab.quality": "Qualité",
   "project.settings.tab.prompts": "Invites",
@@ -1808,7 +1808,7 @@ export default {
   "reports.filter.priority": "Priorité",
   "reports.filter.member": "Membre",
   "reports.overview.kpi.cycleTimeHint": "p85 $1",
-  "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
+  "project.settings.kanban.tagColors.title": "Étiquettes",
   "project.settings.kanban.tagColors.description":
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
   "project.settings.kanban.tagColors.empty":
