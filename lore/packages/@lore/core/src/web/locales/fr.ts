@@ -3915,6 +3915,7 @@ export default {
   "agentPrompts.settings.placeholder.url": "Un lien vers celui-ci.",
   "agentPrompts.settings.save": "Enregistrer",
   "agentPrompts.settings.saved": "Invite enregistrée.",
+  "agentPrompts.settings.customised": "Personnalisé",
   "agentPrompts.settings.reset": "Rétablir par défaut",
   "agentPrompts.settings.reset.title": "Rétablir cette invite ?",
   "agentPrompts.settings.reset.description":

@@ -1,11 +1,13 @@
-import { Button, Textarea, useDialog, useToast } from "@alepha/ui";
+import { Badge, Button, Textarea, useDialog, useToast } from "@alepha/ui";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { ScrollText } from "lucide-react";
 import { useRef, useState } from "react";
 
 import type { AgentPromptKind } from "../../../../../api/schemas/agentPromptKindSchema.ts";
 import { AgentPromptRegistry } from "../../../registries/AgentPromptRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 
 /**
  * Past this, the editor shows how much of the cap is left. Below it the
@@ -95,62 +97,78 @@ export const ProjectSettingsAgentPromptEditor = (
     }
   };
 
+  // Closed by default (#Q4181): eight full-height editors made a long page.
+  // The header says which prompts the project changed, without opening
+  // them; kept mounted so a draft survives closing it.
   return (
-    <div className="flex flex-col gap-2" data-testid={`prompt-${props.kind}`}>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium">
-          {tr(`agentPrompts.settings.${props.kind}.title`)}
-        </span>
+    <div data-testid={`prompt-${props.kind}`}>
+      <CollapsibleBlock
+        icon={<ScrollText />}
+        label={tr(`agentPrompts.settings.${props.kind}.title`)}
+        testId={`prompt-toggle-${props.kind}`}
+        keepMounted
+        aside={
+          props.stored !== undefined && (
+            <Badge
+              variant="outline"
+              className="shrink-0"
+              data-testid={`prompt-customised-${props.kind}`}
+            >
+              {tr("agentPrompts.settings.customised")}
+            </Badge>
+          )
+        }
+      >
         <span className="text-muted-foreground text-xs">
           {tr(`agentPrompts.settings.${props.kind}.description`)}
         </span>
-      </div>
 
-      {/* ⚠️ Deliberately not a `LoreEditor` (#Q2069). This holds a TEMPLATE,
+        {/* ⚠️ Deliberately not a `LoreEditor` (#Q2069). This holds a TEMPLATE,
           not prose: `{{placeholder}}` tokens, monospaced, spellcheck off,
           against a character cap. A markdown editor would style it as
           markdown, offer a format toolbar for a document that is never
           rendered as one, and put a `[[` picker over text whose braces are
           the only syntax that matters. */}
-      <Textarea
-        value={text}
-        rows={10}
-        disabled={pending}
-        spellCheck={false}
-        className="font-mono text-xs"
-        aria-label={tr(`agentPrompts.settings.${props.kind}.title`)}
-        data-testid={`prompt-input-${props.kind}`}
-        onChange={(e) => setText(e.currentTarget.value)}
-      />
+        <Textarea
+          value={text}
+          rows={10}
+          disabled={pending}
+          spellCheck={false}
+          className="font-mono text-xs"
+          aria-label={tr(`agentPrompts.settings.${props.kind}.title`)}
+          data-testid={`prompt-input-${props.kind}`}
+          onChange={(e) => setText(e.currentTarget.value)}
+        />
 
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          // ⚠️ Empty is refused here rather than sent to be refused: the
-          // column is `.min(1)`, and a Save that always 400s is a button
-          // that lies about what it does.
-          disabled={pending || !dirty || trimmedEmpty}
-          onClick={save}
-        >
-          {tr("agentPrompts.settings.save")}
-        </Button>
-        {props.stored !== undefined && (
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant="outlined"
-            disabled={pending}
-            onClick={reset}
-            data-testid={`prompt-reset-${props.kind}`}
+            // ⚠️ Empty is refused here rather than sent to be refused: the
+            // column is `.min(1)`, and a Save that always 400s is a button
+            // that lies about what it does.
+            disabled={pending || !dirty || trimmedEmpty}
+            onClick={save}
           >
-            {tr("agentPrompts.settings.reset")}
+            {tr("agentPrompts.settings.save")}
           </Button>
-        )}
-        {text.length > COUNTER_THRESHOLD && (
-          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-            {text.length} / {TEMPLATE_MAX}
-          </span>
-        )}
-      </div>
+          {props.stored !== undefined && (
+            <Button
+              size="sm"
+              variant="outlined"
+              disabled={pending}
+              onClick={reset}
+              data-testid={`prompt-reset-${props.kind}`}
+            >
+              {tr("agentPrompts.settings.reset")}
+            </Button>
+          )}
+          {text.length > COUNTER_THRESHOLD && (
+            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+              {text.length} / {TEMPLATE_MAX}
+            </span>
+          )}
+        </div>
+      </CollapsibleBlock>
     </div>
   );
 };

@@ -23,6 +23,16 @@ export interface CollapsibleBlockProps {
    * the toggle button, so keep it non-interactive.
    */
   aside?: ReactNode;
+  /**
+   * Keep the children mounted while collapsed, only hidden: for content that
+   * holds state the reader would lose, such as an editor's unsaved draft.
+   */
+  keepMounted?: boolean;
+  /**
+   * The toggle's test id, when the label is not a stable one (translated, or
+   * repeated on the page). Defaults to `collapsible-<label>`.
+   */
+  testId?: string;
   children: ReactNode;
 }
 
@@ -46,7 +56,7 @@ const CollapsibleBlock = (props: CollapsibleBlockProps) => {
         onClick={() => setOpen((v) => !v)}
         className="group hover:bg-hover focus-visible:ring-ring/50 -mx-1 flex items-center gap-2 rounded px-1 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
         aria-expanded={open}
-        data-testid={`collapsible-${props.label.toLowerCase()}`}
+        data-testid={props.testId ?? `collapsible-${props.label.toLowerCase()}`}
       >
         <span className="text-muted-foreground group-hover:text-foreground shrink-0 transition-colors [&>svg]:size-4">
           {props.icon}
@@ -65,7 +75,11 @@ const CollapsibleBlock = (props: CollapsibleBlockProps) => {
           )}
         />
       </button>
-      {open && <div className="flex flex-col gap-2">{props.children}</div>}
+      {(open || props.keepMounted) && (
+        <div className="flex flex-col gap-2" hidden={!open}>
+          {props.children}
+        </div>
+      )}
     </div>
   );
 };
