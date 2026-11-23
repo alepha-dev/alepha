@@ -1,5 +1,12 @@
 import { HostAnchorHooks } from "@lore/core/api";
 import { projects, hostProjects, hosts } from "@lore/core/schemas";
+import {
+  createTestMemberByProjectId,
+  createTestProject,
+} from "@lore/core/testing";
+import { LoreShipApi } from "@lore/ship/api";
+import { appInstances } from "@lore/ship/schemas";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { MemberService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -8,14 +15,6 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, describe, type ExpectStatic, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { appInstances } from "../src/schemas/index.ts";
-import {
-  createTestMemberByProjectId,
-  createTestProject,
-  DeployTestEntities,
-} from "../src/testing/index.ts";
 
 class Repositories {
   hosts = $repository(hosts);

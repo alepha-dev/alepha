@@ -12,7 +12,7 @@ itself.
 ## Claude Code on your host, by hand
 
 An agent job runs on a host enrolled with Bay (see
-[Hosts](/lore/docs/ship-hosts)). Pick one that serves no production app and
+[Hosts](/lore/docs/project-hosts)). Pick one that serves no production app and
 holds no other project's secrets: a job runs a repository's code there.
 
 **1. Mint a credential.** On any machine where you are signed in to Claude

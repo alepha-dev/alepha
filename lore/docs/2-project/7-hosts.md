@@ -1,15 +1,35 @@
 # Hosts
 
-A host is a place a project deploys to: a server of yours running
+A host is a machine or an account Lore works with: a server of yours running
 [Bay](/bay/docs/guides-introduction), or a Cloudflare account. It belongs to
 one project, its **home**, whose members manage it, and the home can lend it to
-other projects so that they deploy there too.
+other projects.
 
-Hosts live in projects with the **Apps** capability on (see
+Every project has hosts, whatever its capabilities (see
 [Capabilities](/lore/docs/project-capabilities)). A project's hosts are in
-**Settings ▸ Ship ▸ Hosts**: the ones it is the home of, and the ones other
+**Settings ▸ General ▸ Hosts**: the ones it is the home of, and the ones other
 projects lend it. Your account has no hosts page, since a host is never
 yours alone.
+
+## What a host does
+
+A host does one or more things, shown as pills in the hosts list:
+
+| Role       | What it is                                                                                  | Needs                                            |
+| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **stats**  | The server reports its CPU, memory and disk, and Lore tells you when it goes offline.       | A Bay host. Nothing else.                        |
+| **agent**  | The server runs [agent jobs](/lore/docs/agents-jobs) for the project.                       | A Bay host with jobs allowed.                    |
+| **deploy** | Projects deploy their apps and stacks onto it (see [Deploying](/lore/docs/ship-deploying)). | The Ship capability in the project that deploys. |
+
+A Bay host enrolled only to watch a server's memory is a host like any other,
+in a project with no Ship at all.
+
+### A project that only stores hosts
+
+A project may exist only to hold hosts and lend them. Its members manage the
+servers, read their stats and get their alerts; the projects that deploy
+borrow them, with Ship on in their own settings. The store project needs no
+Ship, and turning Ship off in a project never touches its hosts.
 
 ## The two kinds
 
@@ -20,7 +40,7 @@ yours alone.
 
 ## Adding a host
 
-1. Open **Settings ▸ Ship ▸ Hosts** and click **Add a host**.
+1. Open **Settings ▸ General ▸ Hosts** and click **Add a host**.
 2. Choose **Create a new one**. (**Use one of mine** lends a host that
    already exists, see [Lending](#lending-a-host-to-another-project).)
 3. Pick the kind, **Bay** or **Cloudflare**, and give the host a **Name**:
@@ -110,8 +130,8 @@ In about three minutes, with no SSH and no page:
    default) and prints its address, its price, and what to run next.
 
 `--project` is required. The project is created with Ship on when it does not
-exist; an existing project with Ship off is refused before any server is
-bought. The host is named with three random words unless you pass `--name`,
+exist; an existing project with Ship off takes the host too, and the command
+says that deploys there wait for Ship. The host is named with three random words unless you pass `--name`,
 and it accepts deploys (`--no-allow-deploys` for a server that only reports its
 stats). Run the command without `--provider` to list the providers and what
 each needs.
@@ -180,7 +200,7 @@ keep managing it.
 A host is lent to its home when it is created. For another project to
 deploy onto it:
 
-1. Open **Settings ▸ Ship ▸ Hosts** in the project that borrows, and click
+1. Open **Settings ▸ General ▸ Hosts** in the project that borrows, and click
    **Add a host**.
 2. Under **Use one of mine**, pick the host. The list offers the hosts you
    may lend.
@@ -205,7 +225,7 @@ deploys onto the host. Point it at another host or delete it first.
 
 A host changes home from its console: **Settings ▸ Move to another
 project**. It takes `host:delete` in the home it leaves and `host:create`
-in the one it joins, which must have Ship on.
+in the one it joins, with or without Ship.
 
 Its name, its server, its secret, its commands and its loans stay. The
 previous home keeps deploying there through its loan, and the dialog lists the
@@ -239,15 +259,15 @@ Deleting is refused while an app instance, a stack or a stack environment, in
 any project, still deploys onto the host. The refusal names them: point them
 at another host or remove them first.
 
-A project that is the home of a host cannot be deleted, and cannot turn
-Ship off: other projects may deploy onto its hosts, and nobody could manage
-them any more. Its danger zone and its Ship switch name the hosts in the
-way. Move or delete them first.
+A project that is the home of a host cannot be deleted: other projects may
+deploy onto its hosts. Its danger zone names the hosts in the way. Move or
+delete them first. Turning Ship off is allowed: the hosts stay.
 
 ## The console of a Bay host
 
 Clicking a Bay host in the list opens its console, at
-`/<project>/hosts/<host>`, with four tabs:
+`/<project>/hosts/<host>`, with these tabs (Processes only while the project
+has Ship on):
 
 | Tab       | What it shows                                                                                  |
 | --------- | ---------------------------------------------------------------------------------------------- |

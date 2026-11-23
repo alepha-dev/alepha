@@ -165,7 +165,7 @@ A row's menu holds what you can do with it:
   again arrives as a new open error.
 
 To stop seeing a failure you will never fix, **ignore** it by rule: open
-**Settings ▸ Ship** and choose **Manage rules** under **Ignore rules**. A rule
+**Settings ▸ Plan ▸ Errors** and choose **Manage rules** under **Ignore rules**. A rule
 is a piece of the error's message, matched whatever the case. Matching reports
 are dropped as they arrive. What the inbox already holds stays, for you to
 delete.

@@ -15,6 +15,8 @@ import {
   type HostStatsFrame,
 } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -25,9 +27,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import WebSocket from "ws";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
  * Records what the endpoint hands over, so the split between "the

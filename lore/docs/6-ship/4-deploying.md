@@ -29,7 +29,7 @@ be deployed to without a rebuild: a preview per branch, or a copy per customer.
 | **Deployment**   | One run of "put this build on that copy", with its log.                                                   |
 
 See [Apps and instances](/lore/docs/ship-instances),
-[Hosts](/lore/docs/ship-hosts) and [Artifacts](/lore/docs/ship-artifacts).
+[Hosts](/lore/docs/project-hosts) and [Artifacts](/lore/docs/ship-artifacts).
 
 A new app can start on this path. `npm create alepha my-app -- --infra lore`
 (or `alepha init --infra lore`) sets the project in `alepha.config.ts`, adds
@@ -39,8 +39,8 @@ you are signed in. After that, adding a host and running `alepha deploy`
 
 ## 1. Turn deploys on
 
-Turn on **Ship** in **Settings ▸ General ▸ Capabilities**,
-then open **Settings ▸ Ship** and turn on **Deploy apps**. See
+Turn on **Ship** in **Settings ▸ General ▸ Capabilities**, then
+**Deploy apps** under it. See
 [Capabilities](/lore/docs/project-capabilities).
 
 Creating a copy needs the `app:manage` permission. Deploying, rolling back and
@@ -49,15 +49,20 @@ a [rank](/lore/docs/project-members) can be given them.
 
 ## 2. Add or borrow a host
 
-Open **Settings ▸ Ship ▸ Hosts** and choose **Add a host**. The host
+Open **Settings ▸ General ▸ Hosts** and choose **Add a host**. The host
 belongs to this project and is lent to it. A host another project lends to
 yours appears on the same page.
+
+Deploying is one role of a host, the one Ship adds: a host exists without
+Ship, reports its stats and runs agent jobs, and the project that is its home
+may have Ship off and only lend it to the projects that deploy. A host takes
+deploys once its **Allow deploys** switch is on.
 
 A Cloudflare host needs an account id and an API token, and Lore checks the
 token against that account before the host exists. See
 [The Cloudflare token](/lore/docs/ship-cloudflare-token) for the permissions it
 needs. Everything else about hosts, lending included, is in
-[Hosts](/lore/docs/ship-hosts).
+[Hosts](/lore/docs/project-hosts).
 
 ## 3. Create the copy
 
@@ -469,7 +474,7 @@ ephemeral. See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Hosts](/lore/docs/ship-hosts)
+- [Hosts](/lore/docs/project-hosts)
 - [Artifacts](/lore/docs/ship-artifacts)
 - [Telemetry](/lore/docs/ship-telemetry)
 - [Stacks](/lore/docs/ship-stacks)

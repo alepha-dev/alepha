@@ -128,4 +128,4 @@ the token once. See [The lore CLI](/lore/docs/reference-cli).
   outside.
 - [Deploying an app](/lore/docs/ship-deploying): ship a build to a machine you
   own.
-- [Hosts](/lore/docs/ship-hosts): the machines themselves.
+- [Hosts](/lore/docs/project-hosts): the machines themselves.

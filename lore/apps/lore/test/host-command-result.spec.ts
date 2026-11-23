@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * The `logs` answer, pinned from the Lore side.
  *
  * Bay's `cmd/bay/testdata/logs-result.json` (github.com/alepha-dev/bay),
- * copied in `fixtures/bay/`, is what Bay's `logsResult` marshals to; its own test asserts that. This one asserts the same bytes are
+ * copied in Ship's `test/fixtures/bay/`, is what Bay's `logsResult` marshals to; its own test asserts that. This one asserts the same bytes are
  * what Lore accepts, so neither half can move a field alone.
  *
  * The pair already drifted once, in the epic that introduced it: Lore's first
@@ -18,7 +18,10 @@ import { describe, expect, it } from "vitest";
  * used a fake sink that accepts anything, and the wire fixtures cover frames
  * rather than this payload. Hence this file.
  */
-const FIXTURE = join(import.meta.dirname, "fixtures/bay/logs-result.json");
+const FIXTURE = join(
+  import.meta.dirname,
+  "../../../packages/@lore/ship/test/fixtures/bay/logs-result.json",
+);
 
 describe("The result a logs command uploads, shared with Bay", () => {
   const load = (): unknown => JSON.parse(readFileSync(FIXTURE, "utf8"));
