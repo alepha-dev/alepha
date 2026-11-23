@@ -75,6 +75,11 @@ export interface HostJobKeyScope {
    * reaches the pending items it was given, and no other.
    */
   feedbackIds?: number[];
+  /**
+   * An epic review's epic (#Q4214), by number: `epic_*` tools reach it only,
+   * creates file under it, quest writes touch its quests only.
+   */
+  epicId?: number;
 }
 
 export interface HostJobSummary {

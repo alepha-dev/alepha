@@ -17,6 +17,7 @@ import { Link, useRouter } from "alepha/react/router";
 import type { EpicReviewAnswer } from "../../../../../api/schemas/epicReviewAnswerSchema.ts";
 import type { EpicReviewItemResource } from "../../../../../api/schemas/epicReviewItemResourceSchema.ts";
 import type { EpicReviewsResult } from "../../../../../api/schemas/epicReviewsResultSchema.ts";
+import EpicAgentJobLink from "./EpicAgentJobLink.tsx";
 import EpicReviewQuestion from "./EpicReviewQuestion.tsx";
 
 export interface ProjectEpicReviewProps {
@@ -117,7 +118,8 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
 
   if (props.reviews.reviews.length === 0) {
     return (
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="min-h-0 flex-1 space-y-2 overflow-auto p-4">
+        <EpicAgentJobLink jobId={props.reviews.agentJobId} />
         <p className="text-muted-foreground text-sm italic">
           {tr("epic.review.empty")}
         </p>
@@ -127,6 +129,7 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
 
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
+      <EpicAgentJobLink jobId={props.reviews.agentJobId} />
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">
           {openBlockers > 0

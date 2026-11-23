@@ -1,4 +1,8 @@
-import type { EpicController, EpicReviewController } from "@lore/plan/api";
+import type {
+  EpicAgentController,
+  EpicController,
+  EpicReviewController,
+} from "@lore/plan/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -55,6 +59,9 @@ export class EpicCommand {
    */
   protected readonly epicApi = $client<EpicController>(this.client.scope());
   protected readonly reviewApi = $client<EpicReviewController>(
+    this.client.scope(),
+  );
+  protected readonly agentApi = $client<EpicAgentController>(
     this.client.scope(),
   );
 
@@ -664,14 +671,39 @@ export class EpicCommand {
   });
 
   /**
-   * `lore epic review`, declared after its children.
+   * `lore epic review`, declared after its children. With an epic, it is
+   * Review with Claude from a shell (#Q4214): the epic page's robot menu
+   * entry, a job on the project's Agent host that files the review.
    */
   public readonly review = $command({
     name: "review",
-    description: "An epic's reviews: file one, answer an item",
+    description:
+      "An epic's reviews: file one, answer an item, or with an epic, review it with Claude on the project's Agent host",
+    args: EpicCommand.REF_ARG.optional(),
+    flags: z.object({
+      ...EpicCommand.PROJECT_FLAG,
+      ...LoreOutput.FLAGS,
+    }),
     children: [this.reviewCreate, this.reviewAnswer],
-    handler: async ({ help }) => {
-      help();
+    handler: async ({ args, flags, print, help }) => {
+      if (!args) {
+        help();
+        return;
+      }
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const number = this.refs.epic(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+        const result = await this.agentApi.reviewEpicWithAgent({
+          params: { projectId, number },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          result,
+          `Reviewing E${number}: job ${result.jobId}. Follow it with lore job logs ${result.jobId} --follow`,
+        );
+      });
     },
   });
 

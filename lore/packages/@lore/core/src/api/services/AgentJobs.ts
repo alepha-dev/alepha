@@ -19,6 +19,8 @@ export interface AgentJobRequest {
   feedbackNumber?: number;
   /** The global triage's items (#Q4183), instead of `feedbackNumber`. */
   feedbackNumbers?: number[];
+  /** An epic review's epic (#Q4214), by number: the key is pinned to it. */
+  epicNumber?: number;
   /**
    * More turns and time than the profile's, for a job that works through
    * many items (#Q4183). Set by Lore code, never from a prompt; clamped to

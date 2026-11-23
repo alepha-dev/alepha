@@ -11,6 +11,10 @@ export const epicReviewsResultSchema = z.object({
   reviews: z.array(epicReviewResourceSchema),
   openQuestions: z.integer(),
   openBlockers: z.integer(),
+  /**
+   * The epic's last Review with Claude job (#Q4214), for the tab's link.
+   */
+  agentJobId: z.uuid().optional(),
 });
 
 export type EpicReviewsResult = Infer<typeof epicReviewsResultSchema>;

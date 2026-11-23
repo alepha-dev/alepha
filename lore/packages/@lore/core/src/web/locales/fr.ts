@@ -4031,6 +4031,9 @@ export default {
   "epic.tab.review": "Revue",
   "epic.list.openQuestions": "$1 questions de revue ouvertes",
   "epic.list.openBlockers": "$1 blocages de revue ouverts",
+  "epic.agent.review": "Revoir avec Claude",
+  "epic.agent.started": "Revue lancée sur l'hôte Agent",
+  "epic.agent.job": "Tâche de revue",
   "epic.review.empty":
     "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis les prompts d’agent pour en déposer une.",
   "epic.review.open": "Questions ouvertes ($1)",

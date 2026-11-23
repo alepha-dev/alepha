@@ -214,6 +214,7 @@ See [Quests](/lore/docs/plan-quests) for the statuses and rules behind these.
 | `lore epic delete <ref>`           | Delete a draft, ready or shelved epic **and every quest in it**, for good.                            | `--yes` (required)                                                                      |
 | `lore epic review create <ref>`    | File a review of a draft or ready epic: its blockers, questions, decisions and changes.               | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
 | `lore epic review answer <ref>`    | Record the owner's answer to one review item.                                                         | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
+| `lore epic review <ref>`           | Review with Claude: the project's Review prompt as a job on its Agent host, on a draft or ready epic. | `--project`                                                                             |
 | `lore epic pull-request add <ref>` | Record a pull request on an epic, in any status. Its quests with none of their own show it.           | `--url` (required), `--pr-number`, `--repo`, `--title`                                  |
 
 See [Epics](/lore/docs/plan-epics), and

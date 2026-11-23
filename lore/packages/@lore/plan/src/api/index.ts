@@ -2,6 +2,7 @@ import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
 
 import { AreaController } from "./controllers/AreaController.ts";
+import { EpicAgentController } from "./controllers/EpicAgentController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
 import { EpicReviewController } from "./controllers/EpicReviewController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
@@ -32,6 +33,7 @@ import { CycleTimeMetric } from "./services/CycleTimeMetric.ts";
 import { DashboardFlowSeries } from "./services/DashboardFlowSeries.ts";
 import { DraftEpicsMetric } from "./services/DraftEpicsMetric.ts";
 import { DueSoonMetric } from "./services/DueSoonMetric.ts";
+import { EpicAgentService } from "./services/EpicAgentService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicProgressMetric } from "./services/EpicProgressMetric.ts";
 import { EpicProgressService } from "./services/EpicProgressService.ts";
@@ -112,6 +114,10 @@ export const LorePlanApi = $module({
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
     QuestAgentService,
     QuestAgentController,
+    // Epics reviewed by an agent job, its key pinned to the epic (#Q4214):
+    // listed so the key's quest-in-epic lookup is registered at boot.
+    EpicAgentService,
+    EpicAgentController,
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     WorkBuckets,
@@ -292,5 +298,7 @@ export {
 export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
+export { EpicAgentController } from "./controllers/EpicAgentController.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";
+export { EpicAgentService } from "./services/EpicAgentService.ts";
 export { QuestAgentService } from "./services/QuestAgentService.ts";

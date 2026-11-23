@@ -172,6 +172,9 @@ export class AgentJobService {
           ...(request.feedbackNumbers?.length
             ? { feedbackIds: request.feedbackNumbers }
             : {}),
+          ...(request.epicNumber === undefined
+            ? {}
+            : { epicId: request.epicNumber }),
         },
       },
     });

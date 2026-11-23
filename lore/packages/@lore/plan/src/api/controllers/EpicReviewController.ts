@@ -61,7 +61,11 @@ export class EpicReviewController {
       response: epicReviewsResultSchema,
     },
     handler: async () => {
-      return await this.reviews.resultOf(this.owned.get<Epic>().id);
+      const epic = this.owned.get<Epic>();
+      const result = await this.reviews.resultOf(epic.id);
+      return epic.agentReviewJobId
+        ? { ...result, agentJobId: epic.agentReviewJobId }
+        : result;
     },
   });
 
