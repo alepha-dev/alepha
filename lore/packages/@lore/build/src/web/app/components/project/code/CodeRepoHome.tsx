@@ -1,16 +1,22 @@
-import { TimeAgo } from "@alepha/ui";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
+import type { Infer } from "alepha";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
+import type { codeTreeSchema } from "../../../../../api/schemas/codeTreeSchema.ts";
 import { currentCodeRepoAtom } from "../../../atoms/currentCodeRepoAtom.ts";
 import CodeCloneBox from "./CodeCloneBox.tsx";
+import CodeTreePage from "./CodeTreePage.tsx";
+
+export interface CodeRepoHomeProps {
+  tree?: Infer<typeof codeTreeSchema>;
+}
 
 /**
- * A repository's first tab (#Q4133): its last commit and how to clone it,
- * or, before the first push, how to make one.
+ * A repository's first tab (#Q4133): the default branch's root with its
+ * README (#Q4134), or, before the first push, how to make one.
  */
-const CodeRepoHome = () => {
+const CodeRepoHome = (props: CodeRepoHomeProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const [detail] = useStore(currentCodeRepoAtom);
@@ -47,19 +53,9 @@ const CodeRepoHome = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4" data-testid="code-repo-home">
-      <div className="flex flex-wrap items-center gap-x-2 text-sm">
-        <span className="font-medium">{head.authorName}</span>
-        <span className="truncate">{head.subject}</span>
-        <code className="text-muted-foreground font-mono text-xs">
-          {head.sha.slice(0, 7)}
-        </code>
-        <TimeAgo
-          value={head.committedAt * 1000}
-          className="text-muted-foreground text-xs"
-        />
-      </div>
-      <div className="max-w-3xl">{clone}</div>
+    <div className="flex flex-col" data-testid="code-repo-home">
+      {props.tree && <CodeTreePage tree={props.tree} />}
+      <div className="max-w-3xl px-4 pb-4">{clone}</div>
     </div>
   );
 };

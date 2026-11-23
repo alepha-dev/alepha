@@ -20,6 +20,10 @@ import type { CodeBrowserController } from "../../api/controllers/CodeBrowserCon
 import type { CodeRepositoryController } from "../../api/controllers/CodeRepositoryController.ts";
 import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { currentCodeRepoAtom } from "./atoms/currentCodeRepoAtom.ts";
+import {
+  codeHref,
+  decodeCodePath,
+} from "./components/project/code/codeHref.ts";
 
 /**
  * Build's pages: Reports' Quality tab, moved from Ship with the same route
@@ -135,7 +139,7 @@ export class BuildRouter {
     name: "projectCodeRepo",
     path: "/code/:repoSlug",
     schema: { params: z.object({ repoSlug: z.text() }) },
-    children: () => [this.codeRepoHome],
+    children: () => [this.codeRepoHome, this.codeRepoTree, this.codeRepoBlob],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Code`,
     }),
@@ -159,11 +163,102 @@ export class BuildRouter {
   });
 
   /**
-   * The repository's first tab: its last commit and how to clone it.
+   * The repository's first tab: the default branch's root, with its README,
+   * or how to push the first commit to an empty repository.
    */
   codeRepoHome = $page({
     name: "codeRepoHome",
     path: "/",
     lazy: () => import("./components/project/code/CodeRepoHome.tsx"),
+    loader: async () => {
+      const repo = this.currentRepo();
+      if (!repo.detail.head) return { tree: undefined };
+      return { tree: await this.treeAt(repo, "") };
+    },
   });
+
+  /**
+   * A directory at a revision, `/tree/<revision>/<path>` (#Q4134). A
+   * trailing `*` because a branch name holds slashes: the server finds the
+   * longest branch or tag that prefixes the tail.
+   */
+  codeRepoTree = $page({
+    name: "codeRepoTree",
+    path: "/tree/*",
+    schema: {
+      params: z.object({ "*": z.text({ maxLength: 4096 }).optional() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Files`,
+    }),
+    lazy: () => import("./components/project/code/CodeTreePage.tsx"),
+    loader: async ({ params }) => ({
+      tree: await this.treeAt(this.currentRepo(), decodeCodePath(params["*"])),
+    }),
+  });
+
+  /**
+   * A file at a revision, `/blob/<revision>/<path>` (#Q4134). A folder
+   * reached by a `blob` URL (a README's relative link to one) goes to its
+   * tree instead.
+   */
+  codeRepoBlob = $page({
+    name: "codeRepoBlob",
+    path: "/blob/*",
+    schema: {
+      params: z.object({ "*": z.text({ maxLength: 4096 }).optional() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Files`,
+    }),
+    lazy: () => import("./components/project/code/CodeBlobPage.tsx"),
+    loader: async ({ params }) => {
+      const repo = this.currentRepo();
+      const at = decodeCodePath(params["*"]);
+      try {
+        return {
+          file: await this.codeApi.getCodeFile({
+            params: { projectId: repo.projectId, slug: repo.slug },
+            query: { at },
+          }),
+        };
+      } catch (error) {
+        if (!isHttpError(error, 404)) throw error;
+        const tree = await this.treeAt(repo, at).catch(() => undefined);
+        if (!tree) throw error;
+        throw new Redirection({
+          redirect: codeHref(
+            "tree",
+            repo.projectSlug,
+            repo.slug,
+            tree.revision.name,
+            tree.path,
+          ),
+        });
+      }
+    },
+  });
+
+  /**
+   * The repository the `projectCodeRepo` loader read, for its children,
+   * whose loaders run after it.
+   */
+  protected currentRepo() {
+    const project = this.requireCode();
+    const detail = this.alepha.store.get(currentCodeRepoAtom);
+    if (!detail) throw new NotFoundError("No such repository");
+    return {
+      detail,
+      projectId: project.id,
+      projectSlug: project.slug,
+      slug: detail.repository.slug,
+    };
+  }
+
+  protected treeAt(repo: { projectId: number; slug: string }, at: string) {
+    return this.codeApi.getCodeTree({
+      params: { projectId: repo.projectId, slug: repo.slug },
+      query: { at },
+    });
+  }
 }

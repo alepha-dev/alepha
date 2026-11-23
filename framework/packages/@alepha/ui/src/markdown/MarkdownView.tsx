@@ -54,7 +54,22 @@ export interface MarkdownViewProps {
    * exist). Return `children` alone to drop the link.
    */
   renderLink?: MarkdownLinkRenderer;
+  /**
+   * Renders every image instead of the default `<img src>`: a repository's
+   * README points at `logo.png` beside it, which only the app can turn into
+   * a URL it serves. Return `null` to drop the image.
+   */
+  renderImage?: MarkdownImageRenderer;
 }
+
+/**
+ * See {@link MarkdownViewProps.renderImage}.
+ */
+export type MarkdownImageRenderer = (image: {
+  src?: string;
+  alt?: string;
+  title?: string;
+}) => ReactNode;
 
 /**
  * See {@link MarkdownViewProps.renderLink}.
@@ -240,6 +255,16 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             </blockquote>
           ),
           hr: () => <hr className="border-border my-6" />,
+          img: ({ src, alt, title }) =>
+            props.renderImage ? (
+              props.renderImage({
+                src: typeof src === "string" ? src : undefined,
+                alt,
+                title,
+              })
+            ) : (
+              <img src={src} alt={alt} title={title} className="max-w-full" />
+            ),
           table: ({ children }) => (
             <table className="my-4 border-collapse text-xs">{children}</table>
           ),

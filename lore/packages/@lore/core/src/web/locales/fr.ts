@@ -5171,4 +5171,15 @@ export default {
   "code.repo.defaultBranch": "Branche par défaut $1",
   "code.repo.indexing": "Indexation de l'historique…",
   "code.tab.files": "Fichiers",
+  "code.revision.pick": "Changer de branche ou de tag",
+  "code.revision.branches": "Branches",
+  "code.revision.tags": "Tags",
+  "code.file.rendered": "Aperçu",
+  "code.file.source": "Source",
+  "code.file.permalink": "Permalien",
+  "code.file.raw": "Brut",
+  "code.file.size": "$1 octets",
+  "code.file.binary": "Un fichier binaire : téléchargez-le pour l'ouvrir.",
+  "code.file.tooLarge":
+    "Trop volumineux pour être affiché ici : téléchargez-le, ou clonez le dépôt.",
 };

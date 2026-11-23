@@ -348,6 +348,80 @@ export class CodeCommitIndex {
   }
 
   /**
+   * The shas reachable from `tip`, newest first, at most `limit`: what a
+   * walk over history in date order reads (a tree's last commits, blame).
+   */
+  public async reachable(
+    repositoryId: string,
+    tip: string,
+    limit: number,
+  ): Promise<string[]> {
+    const p = this.parents.table;
+    const c = this.commits.table;
+    const col = (name: string) => sql.identifier(name);
+    const rows = await this.parents.query(
+      sql`WITH RECURSIVE reach(sha) AS (
+          SELECT ${tip}
+          UNION
+          SELECT e.${col(p.parentSha.name)} FROM ${p} AS e
+          JOIN reach ON e.${col(p.sha.name)} = reach.sha
+          WHERE e.${col(p.repositoryId.name)} = ${repositoryId}
+        )
+        SELECT c.${col(c.sha.name)} AS sha FROM ${c} AS c
+        JOIN reach ON c.${col(c.sha.name)} = reach.sha
+        WHERE c.${col(c.repositoryId.name)} = ${repositoryId}
+        ORDER BY c.${col(c.committedAt.name)} DESC, c.${col(c.sha.name)}
+        LIMIT ${limit}`,
+      CodeCommitIndex.FrontierRow,
+    );
+    return rows.map((row) => row.sha);
+  }
+
+  /**
+   * The path rows of `shas` (50 at a time), under `prefix` when given (a
+   * folder, by the indexed range).
+   */
+  public async pathsOf(repositoryId: string, shas: string[], prefix?: string) {
+    const rows = [];
+    for (let i = 0; i < shas.length; i += 50) {
+      rows.push(
+        ...(await this.paths.findMany({
+          where: {
+            repositoryId: { eq: repositoryId },
+            commitSha: { inArray: shas.slice(i, i + 50) },
+            ...(prefix
+              ? { path: { gte: `${prefix}/`, lt: `${prefix}0` } }
+              : {}),
+          },
+        })),
+      );
+    }
+    return rows;
+  }
+
+  /**
+   * The rows of `shas`, 50 at a time.
+   */
+  public async many(
+    repositoryId: string,
+    shas: string[],
+  ): Promise<CodeCommitRow[]> {
+    const rows: CodeCommitRow[] = [];
+    const unique = [...new Set(shas)];
+    for (let i = 0; i < unique.length; i += 50) {
+      rows.push(
+        ...(await this.commits.findMany({
+          where: {
+            repositoryId: { eq: repositoryId },
+            sha: { inArray: unique.slice(i, i + 50) },
+          },
+        })),
+      );
+    }
+    return rows;
+  }
+
+  /**
    * Every index row of a repository, gone: before its `code_repositories`
    * row, whose foreign keys restrict.
    */

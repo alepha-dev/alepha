@@ -1,16 +1,24 @@
 import { $inject, type Infer } from "alepha";
+import { NotFoundError } from "alepha/server";
 
 import { GitBackend, type GitRefTip } from "../backends/GitBackend.ts";
 import type { CodeRepository } from "../entities/codeRepositories.ts";
 import { CodeIndexJobs } from "../jobs/CodeIndexJobs.ts";
 import type { codeCommitSummarySchema } from "../schemas/codeCommitSummarySchema.ts";
+import type { codeFileSchema } from "../schemas/codeFileSchema.ts";
+import type { codeLocationQuerySchema } from "../schemas/codeLocationQuerySchema.ts";
 import type { codeRefSchema } from "../schemas/codeRefSchema.ts";
 import type { codeRepositoryDetailSchema } from "../schemas/codeRepositoryDetailSchema.ts";
+import type { codeRevisionSchema } from "../schemas/codeRevisionSchema.ts";
+import type { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
+import type { codeTreeSchema } from "../schemas/codeTreeSchema.ts";
 import { CodeCommitIndex } from "./CodeCommitIndex.ts";
 import { CodeRepositoryService } from "./CodeRepositoryService.ts";
 
 type CommitSummary = Infer<typeof codeCommitSummarySchema>;
 type Ref = Infer<typeof codeRefSchema>;
+type Revision = Infer<typeof codeRevisionSchema>;
+type Location = Infer<typeof codeLocationQuerySchema>;
 
 /**
  * What the code browser reads of a repository (#E167), over the backend and
@@ -105,6 +113,320 @@ export class CodeBrowserService {
       tags,
       head: tip ? await this.summary(repository, tip.sha) : undefined,
       indexing: !indexed,
+    };
+  }
+
+  /**
+   * The most bytes a file page shows as text; a bigger file is named and
+   * downloaded raw.
+   */
+  public static readonly FILE_MAX_BYTES = 1024 * 1024;
+
+  /**
+   * The most bytes of a README a directory renders.
+   */
+  public static readonly README_MAX_BYTES = 256 * 1024;
+
+  /**
+   * How far back a tree's last-commit column looks, in commits: an entry
+   * untouched since stays blank.
+   */
+  public static readonly TREE_COMMITS_DEPTH = 1000;
+
+  /**
+   * A location (`at`, or `ref` and `path`) as a revision and a path, or a
+   * 404. See `codeLocationQuerySchema`.
+   */
+  public async locate(
+    repository: CodeRepository,
+    location: Location,
+  ): Promise<{ revision: Revision; path: string }> {
+    const found =
+      location.at !== undefined
+        ? await this.split(repository, location.at)
+        : await this.revisionOf(repository, location.ref).then((revision) =>
+            revision ? { revision, path: location.path ?? "" } : undefined,
+          );
+    const path = found ? GitBackend.cleanPath(found.path) : undefined;
+    if (!found || path === undefined) {
+      throw new NotFoundError("No such revision in this repository.");
+    }
+    return { revision: found.revision, path };
+  }
+
+  /**
+   * `<revision>/<path>` split at the longest branch or tag name that
+   * prefixes it, else at a commit sha (full, or a unique prefix the index
+   * knows), the default branch when empty.
+   */
+  protected async split(
+    repository: CodeRepository,
+    at: string,
+  ): Promise<{ revision: Revision; path: string } | undefined> {
+    const tail = at.replace(/^\/+/, "");
+    if (!tail) {
+      const revision = await this.revisionOf(repository, undefined);
+      return revision ? { revision, path: "" } : undefined;
+    }
+    const tips = await this.backend.refs(repository.backendRef);
+    const { branches, tags } = this.refsOf(tips);
+    let best: { revision: Revision; length: number } | undefined;
+    for (const [kind, list] of [
+      ["branch", branches],
+      ["tag", tags],
+    ] as const) {
+      for (const ref of list) {
+        if (tail !== ref.name && !tail.startsWith(`${ref.name}/`)) continue;
+        // A branch wins over a tag of the same length, as `resolve` does.
+        if (!best || ref.name.length > best.length) {
+          best = {
+            revision: { name: ref.name, kind, sha: ref.sha },
+            length: ref.name.length,
+          };
+        }
+      }
+    }
+    if (best) {
+      return { revision: best.revision, path: tail.slice(best.length + 1) };
+    }
+    const [first = "", ...rest] = tail.split("/");
+    const sha = await this.commitSha(repository, first);
+    return sha
+      ? { revision: { name: first, kind: "commit", sha }, path: rest.join("/") }
+      : undefined;
+  }
+
+  /**
+   * A revision named alone: a branch, a tag, a commit sha (full or a unique
+   * prefix), the default branch when undefined.
+   */
+  public async revisionOf(
+    repository: CodeRepository,
+    ref: string | undefined,
+  ): Promise<Revision | undefined> {
+    const name = ref ?? repository.defaultBranch;
+    const tips = await this.backend.refs(repository.backendRef);
+    const { branches, tags } = this.refsOf(tips);
+    const short = name.replace(/^refs\/(heads|tags)\//, "");
+    const branch = branches.find((it) => it.name === short);
+    if (branch && !name.startsWith("refs/tags/")) {
+      return { name: short, kind: "branch", sha: branch.sha };
+    }
+    const tag = tags.find((it) => it.name === short);
+    if (tag) return { name: short, kind: "tag", sha: tag.sha };
+    const sha = await this.commitSha(repository, name);
+    return sha ? { name, kind: "commit", sha } : undefined;
+  }
+
+  /**
+   * A commit by its full sha (the backend's word) or a unique prefix of 7
+   * or more (the index's).
+   */
+  protected async commitSha(
+    repository: CodeRepository,
+    value: string,
+  ): Promise<string | undefined> {
+    if (GitBackend.isSha(value)) {
+      return this.backend.resolve(repository.backendRef, value);
+    }
+    const found = await this.index.byPrefix(repository.id, value);
+    return found.length === 1 ? found[0] : undefined;
+  }
+
+  /**
+   * One directory: folders first, then files, alphabetical, and its README
+   * (`README.md` first, then any `README*`) as text.
+   */
+  public async tree(
+    repository: CodeRepository,
+    location: Location,
+  ): Promise<Infer<typeof codeTreeSchema>> {
+    const { revision, path } = await this.locate(repository, location);
+    const entries = await this.backend.tree(
+      repository.backendRef,
+      revision.sha,
+      path,
+    );
+    if (!entries) {
+      throw new NotFoundError(
+        `No directory ${path || "/"} at ${revision.name}.`,
+      );
+    }
+    const sorted = [...entries].sort((a, b) => {
+      const folder = (it: typeof a) => (it.type === "tree" ? 0 : 1);
+      return (
+        folder(a) - folder(b) ||
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      );
+    });
+    const readme =
+      sorted.find(
+        (it) => it.type === "blob" && /^readme\.md$/i.test(it.name),
+      ) ??
+      sorted.find((it) => it.type === "blob" && /^readme(\.|$)/i.test(it.name));
+    let readmeText: { path: string; text: string } | undefined;
+    if (readme) {
+      const read = await this.backend.blob(repository.backendRef, readme.sha, {
+        maxBytes: CodeBrowserService.README_MAX_BYTES,
+      });
+      if (read.kind === "ok" && !read.binary) {
+        readmeText = {
+          path: path ? `${path}/${readme.name}` : readme.name,
+          text: new TextDecoder().decode(read.bytes),
+        };
+      }
+    }
+    return {
+      revision,
+      path,
+      entries: sorted.map((entry) => ({
+        name: entry.name,
+        path: path ? `${path}/${entry.name}` : entry.name,
+        type: entry.type,
+        mode: entry.mode,
+        sha: entry.sha,
+      })),
+      readme: readmeText,
+    };
+  }
+
+  /**
+   * One file as text, or why not: binary, or over
+   * {@link CodeBrowserService.FILE_MAX_BYTES}.
+   */
+  public async file(
+    repository: CodeRepository,
+    location: Location,
+  ): Promise<Infer<typeof codeFileSchema>> {
+    const { revision, path } = await this.locate(repository, location);
+    const at = path.lastIndexOf("/");
+    const entry = (
+      await this.backend.tree(
+        repository.backendRef,
+        revision.sha,
+        at === -1 ? "" : path.slice(0, at),
+      )
+    )?.find((it) => it.name === path.slice(at + 1) && it.type === "blob");
+    if (!path || !entry) {
+      throw new NotFoundError(`No file ${path} at ${revision.name}.`);
+    }
+    const read = await this.backend.blob(repository.backendRef, entry.sha, {
+      maxBytes: CodeBrowserService.FILE_MAX_BYTES,
+    });
+    if (read.kind === "not_found") {
+      throw new NotFoundError(`No file ${path} at ${revision.name}.`);
+    }
+    const base = {
+      revision,
+      path,
+      sha: entry.sha,
+    };
+    if (read.kind === "too_large") {
+      return { ...base, size: read.size, status: "too_large" };
+    }
+    if (read.binary) return { ...base, size: read.size, status: "binary" };
+    return {
+      ...base,
+      size: read.size,
+      status: "ok",
+      text: new TextDecoder().decode(read.bytes),
+    };
+  }
+
+  /**
+   * The bytes of a file, for the raw download: capped at Artifacts' own
+   * read limit, 32 MiB.
+   */
+  public async raw(
+    repository: CodeRepository,
+    location: Location,
+  ): Promise<{ path: string; bytes: Uint8Array }> {
+    const { revision, path } = await this.locate(repository, location);
+    const read = await this.backend.file(
+      repository.backendRef,
+      revision.sha,
+      path,
+      {
+        maxBytes: 32 * 1024 * 1024,
+      },
+    );
+    if (read.kind !== "ok") {
+      throw new NotFoundError(
+        read.kind === "too_large"
+          ? `${path} is too large to download from the browser: clone the repository.`
+          : `No file ${path} at ${revision.name}.`,
+      );
+    }
+    return { path, bytes: read.bytes };
+  }
+
+  /**
+   * Each entry's last commit (#Q4134): the commits reachable from the
+   * revision walked newest first, 50 at a time, from the index, until every
+   * name has one or {@link CodeBrowserService.TREE_COMMITS_DEPTH} commits
+   * are read. One reachability query and a few path reads, never one query
+   * per entry.
+   */
+  public async lastCommits(
+    repository: CodeRepository,
+    location: Location,
+    names: string[],
+  ): Promise<Infer<typeof codeTreeCommitsSchema>> {
+    const { revision, path } = await this.locate(repository, location);
+    if (!(await this.index.find(repository.id, revision.sha))) {
+      return { entries: [], indexing: true };
+    }
+    const wanted = new Set(names);
+    const found = new Map<string, string>();
+    const shas = await this.index.reachable(
+      repository.id,
+      revision.sha,
+      CodeBrowserService.TREE_COMMITS_DEPTH,
+    );
+    const prefix = path ? `${path}/` : "";
+    for (let i = 0; i < shas.length && found.size < wanted.size; i += 50) {
+      const chunk = shas.slice(i, i + 50);
+      const order = new Map(chunk.map((sha, index) => [sha, index]));
+      const rows = (
+        await this.index.pathsOf(repository.id, chunk, path || undefined)
+      ).sort((a, b) => order.get(a.commitSha)! - order.get(b.commitSha)!);
+      for (const row of rows) {
+        for (const candidate of [row.path, row.oldPath]) {
+          if (!candidate?.startsWith(prefix)) continue;
+          const name = candidate.slice(prefix.length).split("/")[0]!;
+          if (wanted.has(name) && !found.has(name)) {
+            found.set(name, row.commitSha);
+          }
+        }
+      }
+    }
+    const rows = new Map(
+      (await this.index.many(repository.id, [...found.values()])).map((row) => [
+        row.sha,
+        row,
+      ]),
+    );
+    return {
+      indexing: false,
+      entries: [...found].flatMap(([name, sha]) => {
+        const row = rows.get(sha);
+        return row
+          ? [
+              {
+                name,
+                commit: {
+                  sha: row.sha,
+                  subject: row.subject,
+                  authorName: row.authorName,
+                  authorEmail: row.authorEmail,
+                  authoredAt: row.authoredAt,
+                  committedAt: row.committedAt,
+                  parents: row.parents,
+                },
+              },
+            ]
+          : [];
+      }),
     };
   }
 }
