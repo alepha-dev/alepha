@@ -24,7 +24,7 @@ export const CODE_REPO_TABS: CodeRepoTab[] = [
     key: "files",
     labelKey: "code.tab.files",
     href: (projectSlug, repoSlug) => `/${projectSlug}/code/${repoSlug}`,
-    routes: ["codeRepoHome", "codeRepoTree", "codeRepoBlob"],
+    routes: ["codeRepoHome", "codeRepoTree", "codeRepoBlob", "codeRepoBlame"],
   },
   {
     key: "commits",

@@ -5223,4 +5223,12 @@ export default {
   "code.compare.capped":
     "La base de fusion est trop ancienne pour être trouvée ici.",
   "code.compare.unrelated": "Ces deux révisions n'ont aucun historique commun.",
+  "code.file.blame": "Blame",
+  "code.blame.pending": "Recherche des lignes plus anciennes…",
+  "code.blame.tooLarge":
+    "Trop volumineux pour un blame ici : plus de 256 Kio ou 5 000 lignes.",
+  "code.blame.partial":
+    "Le parcours s'est arrêté à $1 : les lignes restantes sont plus anciennes.",
+  "code.blame.older": "Plus ancien que $1",
+  "code.blame.before": "Blame avant ce commit",
 };

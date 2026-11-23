@@ -11,6 +11,7 @@ import {
   codeRepositories,
 } from "../entities/codeRepositories.ts";
 import type { codeRepositorySchema } from "../schemas/codeRepositorySchema.ts";
+import { CodeBlameService } from "./CodeBlameService.ts";
 import { CodeCommitIndex } from "./CodeCommitIndex.ts";
 
 /**
@@ -24,6 +25,7 @@ export class CodeRepositoryService {
   protected readonly backend = $inject(GitBackend);
   protected readonly limits = $inject(ProjectLimits);
   protected readonly index = $inject(CodeCommitIndex);
+  protected readonly blames = $inject(CodeBlameService);
   protected readonly repositories = $repository(codeRepositories);
   protected readonly projects = $repository(projects);
 
@@ -107,6 +109,7 @@ export class CodeRepositoryService {
       throw new NotFoundError(`No repository named "${slug}".`);
     }
     await this.backend.delete(row.backendRef);
+    await this.blames.deleteFor(row.id);
     await this.index.deleteFor(row.id);
     await this.repositories.deleteById(row.id);
   }
@@ -118,6 +121,7 @@ export class CodeRepositoryService {
     const rows = await this.list(projectId);
     for (const row of rows) {
       await this.backend.delete(row.backendRef);
+      await this.blames.deleteFor(row.id);
       await this.index.deleteFor(row.id);
       await this.repositories.deleteById(row.id);
     }

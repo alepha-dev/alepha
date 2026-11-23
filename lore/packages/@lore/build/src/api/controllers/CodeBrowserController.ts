@@ -3,6 +3,7 @@ import { $inject, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
+import { codeBlameSchema } from "../schemas/codeBlameSchema.ts";
 import { codeBranchSchema } from "../schemas/codeBranchSchema.ts";
 import { codeCommitDetailSchema } from "../schemas/codeCommitDetailSchema.ts";
 import { codeCompareSchema } from "../schemas/codeCompareSchema.ts";
@@ -425,6 +426,27 @@ export class CodeBrowserController {
       );
       await this.browser.deleteBranch(row, query.name, user);
       return { ok: true };
+    },
+  });
+
+  getCodeBlame = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/code/repos/:slug/blame",
+    description:
+      "A file's blame at a revision: each run of lines with its commit and the quests behind it; pending while a long walk finishes.",
+    schema: {
+      params: this.repoParams,
+      query: codeLocationQuerySchema,
+      response: codeBlameSchema,
+    },
+    handler: async ({ params, query, user }) => {
+      const row = await this.access.repository(
+        params.projectId,
+        params.slug,
+        user,
+      );
+      return this.browser.blame(row, query);
     },
   });
 }

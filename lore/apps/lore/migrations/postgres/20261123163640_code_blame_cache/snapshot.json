@@ -1,0 +1,299 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "69c8847e-3872-4b8e-92dd-58fd742318de",
+  "prevIds": ["d277becd-4582-48a2-afa1-eb4be6c99bf0"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "code_blame_cache"],
+      "writes": [
+        "s|tbl|public.code_blame_cache",
+        "n|tbl|public.code_blame_cache",
+        "e|tbl|public.code_blame_cache",
+        "n|rel|public.code_blame_cache",
+        "n|type|public.code_blame_cache",
+        "n|rel|public.code_blame_cache_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "code_blame_cache",
+        "code_blame_cache_repository_id_commit_sha_path_idx"
+      ],
+      "writes": [
+        "s|idx|public.code_blame_cache_repository_id_commit_sha_path_idx",
+        "n|idx|public.code_blame_cache_repository_id_commit_sha_path_idx",
+        "e|idx|public.code_blame_cache_repository_id_commit_sha_path_idx",
+        "n|rel|public.code_blame_cache_repository_id_commit_sha_path_idx"
+      ],
+      "reads": [
+        "n|tbl|public.code_blame_cache",
+        "n|sch|public",
+        "n|col|public.code_blame_cache.repository_id",
+        "n|col|public.code_blame_cache.commit_sha",
+        "n|col|public.code_blame_cache.path"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "code_blame_cache"],
+      "writes": [
+        "s|fk|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_blame_cache",
+        "n|sch|public",
+        "n|tbl|public.code_repositories",
+        "n|sch|public",
+        "n|col|public.code_blame_cache.repository_id",
+        "n|col|public.code_repositories.id",
+        "e|uniqueness|public.code_repositories.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "code_blame_cache",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "repository_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "commit_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "ranges",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "stopped_at_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "steps",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "state",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "code_blame_cache_repository_id_commit_sha_path_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repository_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "commit_sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "path",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "code_blame_cache_repository_id_code_repositories_id_fkey",
+        "nameExplicit": false,
+        "columns": ["repository_id"],
+        "schemaTo": "public",
+        "tableTo": "code_repositories",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "RESTRICT",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "code_blame_cache",
+        "name": "code_blame_cache_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}
