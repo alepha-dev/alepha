@@ -6,13 +6,15 @@ import {
   ProjectShellRegistry,
   ProjectTrail,
   SECTION_HREF_ROUTES,
+  currentHostAtom,
+  HostShell,
 } from "@lore/core/web";
 import {
   currentPersonaAtom,
   RequirementsShell,
 } from "@lore/plan-requirements/web";
 import { currentAreaAtom, WorkShell } from "@lore/plan/web";
-import { currentHostAtom, DeployShell } from "@lore/ship/web";
+import { DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
@@ -76,6 +78,7 @@ describe("the leaf crumb of a detail page", () => {
     alepha.inject(WorkShell);
     alepha.inject(RequirementsShell);
     alepha.inject(DeployShell);
+    alepha.inject(HostShell);
     alepha.inject(ProjectTrail);
     await alepha.start();
     containers.push(alepha);

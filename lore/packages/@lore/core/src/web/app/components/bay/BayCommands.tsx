@@ -1,0 +1,218 @@
+import { Badge, useToast, cn, textLinkUnderlineClassName } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import { z } from "alepha";
+import { useClient, useQuery, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+
+import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
+import type { HostCommandListItem } from "../../../../api/schemas/hostCommandResourceSchema.ts";
+import {
+  HOST_COMMAND_KINDS,
+  HOST_COMMAND_STATUSES,
+} from "../../../../api/schemas/hostCommandValues.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
+
+export interface BayCommandsProps {
+  /**
+   * Which host's queue. Passed by the drawer, which still renders this
+   * while it exists; the page reads the open host from the atom instead.
+   */
+  hostId?: string;
+}
+
+/**
+ * What has been asked of this machine, and what became of it.
+ *
+ * States are the row's own (`pending`, `sent`, `running`, `done`, `failed`),
+ * as `HostCommandService` records them; nothing here asks a socket.
+ *
+ * ⚠️ **A stuck command has to stay visible, and the three ways it sticks are
+ * three different sentences.** The interesting failure is not a rejected
+ * command, it is a machine that took work and never came back. The sweep
+ * writes the distinction into `reason` - never acknowledged, timed out, never
+ * came to fetch it - and this page shows those words rather than a generic
+ * "failed".
+ *
+ * ⚠️ **`deploy` rows are listed and never started here.** Epic #E1 owns
+ * deploying; a Deploy button on this page would be that epic leaking into this
+ * one.
+ *
+ * ⚠️ **Never sort by the status enum in SQL.** It sorts the label. The filters
+ * below are client-side over the retained history, which is a couple of
+ * hundred rows at most.
+ */
+const BayCommands = (props: BayCommandsProps) => {
+  const { tr, l } = useI18n<I18n, "en">();
+  const toaster = useToast();
+  const api = useClient<HostCommandController>();
+  const [openHost] = useStore(currentHostAtom);
+  const hostId = props.hostId ?? openHost?.id;
+
+  const { data } = useQuery(
+    {
+      enabled: Boolean(hostId),
+      key: ["bay-commands", hostId],
+      keepPreviousData: true,
+      handler: async () => {
+        if (!hostId) {
+          return undefined;
+        }
+        try {
+          // The whole retained history in one read, bounded server-side by
+          // the same cap the sweep enforces, so the filters can be in memory.
+          return await api.listHostCommands({
+            params: { hostId },
+            query: {},
+          });
+        } catch (error) {
+          toaster.error(error instanceof Error ? error.message : String(error));
+          return undefined;
+        }
+      },
+    },
+    [hostId],
+  );
+
+  if (!hostId) {
+    return null;
+  }
+  const items = data?.items ?? [];
+
+  /**
+   * Both optional, and no search box. The empty trigger reads the filter's
+   * name, and a set one names it before the value, so no label sits above
+   * either.
+   */
+  const filterFields = {
+    kind: {
+      schema: z.enum(HOST_COMMAND_KINDS),
+      label: tr("bay.commands.filter.kind"),
+      placeholder: tr("bay.commands.filter.kind"),
+    },
+    status: {
+      schema: z.enum(HOST_COMMAND_STATUSES),
+      label: tr("bay.commands.filter.status"),
+      placeholder: tr("bay.commands.filter.status"),
+    },
+  } satisfies DataTableFilterFields;
+
+  return (
+    <AccountPage variant="table">
+      <DataTable<HostCommandListItem, typeof filterFields>
+        className="min-h-0 flex-1"
+        data={items}
+        emptyState={{
+          title: tr("bay.commands.empty"),
+          description: tr("bay.commands.empty.description"),
+        }}
+        noMatchState={{
+          title: tr("bay.commands.noMatch"),
+          description: tr("bay.commands.noMatch.description"),
+        }}
+        filters={{ fields: filterFields }}
+        filter={(command, values) => {
+          return (
+            (!values.kind || command.kind === values.kind) &&
+            (!values.status || command.status === values.status)
+          );
+        }}
+        columns={{
+          createdAt: {
+            label: tr("bay.commands.col.when"),
+            sortable: true,
+            cell: (command) => (
+              <span className="text-muted-foreground text-xs whitespace-nowrap">
+                {l(command.createdAt, { date: "lll" })}
+              </span>
+            ),
+          },
+          kind: {
+            label: tr("bay.commands.col.kind"),
+            sortable: true,
+            cell: (command) => (
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-sm font-medium">{command.kind}</span>
+                <span className="text-muted-foreground truncate text-xs">
+                  {`${command.payload.app}/${command.payload.environment}`}
+                </span>
+              </span>
+            ),
+          },
+          status: {
+            label: tr("bay.commands.col.status"),
+            // ⚠️ A text enum: sorting it sorts the label.
+            sortable: false,
+            cell: (command) => (
+              <span className="flex items-center gap-1.5">
+                <Badge
+                  variant={
+                    command.status === "failed"
+                      ? "destructive"
+                      : command.status === "done"
+                        ? "secondary"
+                        : "outline"
+                  }
+                >
+                  {command.status}
+                </Badge>
+                {/* The step a running deploy reports: downloading, verifying,
+                    deploying. Absent for everything else. */}
+                {command.step && (
+                  <span className="text-muted-foreground text-xs">
+                    {command.step}
+                  </span>
+                )}
+              </span>
+            ),
+          },
+          requestedByName: {
+            label: tr("bay.commands.col.by"),
+            sortable: true,
+            cell: (command) => (
+              <span className="text-muted-foreground truncate text-xs">
+                {command.requestedByName ?? tr("bay.commands.byNobody")}
+              </span>
+            ),
+          },
+          reason: {
+            label: tr("bay.commands.col.reason"),
+            sortable: false,
+            cell: (command) => (
+              <span className="flex min-w-0 flex-col gap-1">
+                {/* In full, not truncated: the sweep's three sentences and
+                    the machine's own refusal are the whole value of the
+                    column. */}
+                {command.reason && (
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {command.reason}
+                  </span>
+                )}
+                {/* A stored tail needs `host:update` to read (#Q3279): a
+                    machine runs other projects' copies too. */}
+                {command.kind === "logs" &&
+                  command.resultFileId &&
+                  openHost?.can.includes("host:update") && (
+                    <a
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground text-xs",
+                      )}
+                      href={`/api/hosts/${hostId}/commands/${command.id}/result`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {tr("bay.commands.result")}
+                    </a>
+                  )}
+              </span>
+            ),
+          },
+        }}
+      />
+    </AccountPage>
+  );
+};
+
+export default BayCommands;

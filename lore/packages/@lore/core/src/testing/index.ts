@@ -36,3 +36,9 @@ export {
 export { createPresetRanks, LEGACY_CONTRIBUTOR } from "./presetRanks.ts";
 export { ReadCounter } from "./ReadCounter.ts";
 export { TripCounter } from "./TripCounter.ts";
+
+// The host pages a scenario spec renders with Ship's registrations (#E166):
+// not on the web barrel, which names no page a route loads lazily.
+export { default as HostDrawer } from "../web/app/components/hosts/HostDrawer.tsx";
+export { default as ProjectSettingsHostsAddDialog } from "../web/app/components/project/settings/ProjectSettingsHostsAddDialog.tsx";
+export { default as ProjectSettingsHostsPage } from "../web/app/components/project/settings/ProjectSettingsHostsPage.tsx";

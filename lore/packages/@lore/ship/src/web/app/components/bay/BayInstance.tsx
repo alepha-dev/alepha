@@ -8,17 +8,16 @@ import {
 } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import type { I18n } from "@lore/core/web";
+import { currentHostAtom, useBayInventory } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 
-import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import BayActions from "./BayActions.tsx";
 import BayBackups from "./BayBackups.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
 import BayLogTail from "./BayLogTail.tsx";
 import BayStateBadge from "./BayStateBadge.tsx";
-import { useBayInventory } from "./useBayInventory.ts";
 
 /**
  * One instance on the machine, in full.

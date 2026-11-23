@@ -2,6 +2,7 @@ import { Badge, formatBytes, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
 import type { I18n } from "@lore/core/web";
+import { useBayInventory } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
@@ -13,7 +14,6 @@ import {
   bayProcessState,
 } from "./bayInstanceRow.ts";
 import BayStateBadge from "./BayStateBadge.tsx";
-import { useBayInventory } from "./useBayInventory.ts";
 
 /**
  * Everything on the machine, and everything Lore expected to find there.

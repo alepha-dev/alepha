@@ -15,15 +15,19 @@ import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.
 import { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
+import { HostRouter } from "./app/HostRouter.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
 import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
 import { CapabilityRowRegistry } from "./app/registries/CapabilityRowRegistry.ts";
+import { HostConsoleRegistry } from "./app/registries/HostConsoleRegistry.ts";
 import { HostRoleRegistry } from "./app/registries/HostRoleRegistry.ts";
+import { HostTypeUiRegistry } from "./app/registries/HostTypeUiRegistry.ts";
 import { ResourceRailRegistry } from "./app/registries/ResourceRailRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
 import { StackTraceParser } from "./app/services/StackTraceParser.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
+import { HostShell } from "./app/shell/HostShell.ts";
 
 /**
  * The browser-safe half of `@lore/core`, the glue: projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, the dashboard, reports, agent prompts and the web shell: its pages, atoms and
@@ -76,6 +80,9 @@ export const LoreCoreWeb = $module({
     // Read by `HostCapabilityBadges` (#E166), whose page may render before
     // any module registers a role on it.
     alepha.inject(HostRoleRegistry);
+    // Read by the host console (#E166), whatever registers on it.
+    alepha.inject(HostConsoleRegistry);
+    alepha.inject(HostTypeUiRegistry);
     // Core's boot work (the 401 redirect, the global head, the reports tab
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
@@ -84,6 +91,9 @@ export const LoreCoreWeb = $module({
     // registration today, and it returns nothing the caller reads, so a
     // build list can declare a pure router without creating it (#Q3417).
     alepha.with(CoreRouter);
+    // The host console, jobs and Settings > Hosts (#E166).
+    alepha.with(HostRouter);
+    alepha.inject(HostShell);
     // The account dialog and Lore's sections of it (#E140): no route, the
     // dialog is drawn by the layout's `DialogProvider`.
     alepha.with(AccountDialog);
@@ -111,6 +121,8 @@ export const LoreCoreWeb = $module({
 
 export { $pageProject, $pageProjectSettings } from "./app/$pageProject.ts";
 export { CoreRouter } from "./app/CoreRouter.ts";
+export { HostRouter } from "./app/HostRouter.ts";
+export { HostShell } from "./app/shell/HostShell.ts";
 export { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 export { spotlightOpenAtom } from "./app/atoms/spotlightOpenAtom.ts";
 export { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
@@ -259,6 +271,19 @@ export {
   renderPromptTemplate,
 } from "../api/schemas/renderPromptTemplate.ts";
 export { AccountDeletionRegistry } from "./app/registries/AccountDeletionRegistry.ts";
+export { hostErrorMessage } from "./app/components/shared/hostCreateDraft.ts";
+export {
+  HostTypeUiRegistry,
+  type HostTypeCreateFieldsProps,
+  type HostTypeDrawerSectionProps,
+  type HostTypeUi,
+} from "./app/registries/HostTypeUiRegistry.ts";
+export {
+  HostConsoleRegistry,
+  type HostConsoleProject,
+  type HostConsoleTab,
+  type HostOverviewSection,
+} from "./app/registries/HostConsoleRegistry.ts";
 export {
   HostRoleRegistry,
   type HostRole,
@@ -371,5 +396,15 @@ declare module "alepha/react/router" {
   interface Routers {
     loreCore: CoreRouter;
     loreCoreProject: ProjectRouter;
+    loreCoreHosts: HostRouter;
   }
 }
+
+// ---- hosts (#E166) ----
+export { currentHostAtom } from "./app/atoms/currentHostAtom.ts";
+export { default as HostCapabilityBadges } from "./app/components/hosts/HostCapabilityBadges.tsx";
+export { default as HostStateBadge } from "./app/components/hosts/HostStateBadge.tsx";
+export { default as HostTypeBadge } from "./app/components/hosts/HostTypeBadge.tsx";
+export { useBayCommand } from "./app/components/bay/useBayCommand.ts";
+export { useBayInventory } from "./app/components/bay/useBayInventory.ts";
+export { useHomeHostsBlocker } from "./app/components/project/settings/useHomeHostsBlocker.ts";

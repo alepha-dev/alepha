@@ -7,6 +7,7 @@ import {
   ProjectPageSkeleton,
   RedirectPage,
   CoreRouter,
+  HostRouter,
   ReportsTabRegistry,
   ReportsUrlQuery,
   hasCapability,
@@ -21,7 +22,6 @@ import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { MonitorController } from "../../api/controllers/MonitorController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
-import { currentHostAtom } from "./atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { ANALYTICS_DIMENSIONS } from "./components/project/apps/analyticsDimensions.ts";
@@ -36,6 +36,7 @@ export { ANALYTICS_DIMENSIONS };
  */
 export class DeployRouter {
   core = $inject(CoreRouter);
+  hosts = $inject(HostRouter);
   alepha = $inject(Alepha);
   deliveryApi = $client<DeliveryReportsController>();
   reportsUrl = $inject(ReportsUrlQuery);
@@ -45,84 +46,13 @@ export class DeployRouter {
   lendingApi = $client<ProjectHostController>();
   router = $inject(ReactRouter);
   /**
-   * The console for one `bay` host: what is running on the machine, what it
-   * costs, and the buttons that act on it.
-   *
-   * ⚠️ **Under its home project, at `/:projectSlug/hosts/:hostSlug`.**
-   * A host belongs to a project since #E126, so its console is a project
-   * page, the way an app copy's is, and there is no account page for hosts
-   * any more. It was `/account/hosts/:hostId`, removed with no redirect
-   * (pre-v1). Every route here carries `nav: { hidden: true }`: the entry
-   * point is the project's Settings ▸ Apps ▸ Hosts list.
-   *
-   * The param is the slug: a slug is unique per home project, so the pair
-   * names one host. A project a host is only lent to never shows it
-   * under its own slug: its rows link to the console under the home, which
-   * answers 403 to anyone who is not a member there.
-   *
-   * ⚠️ `:hostSlug`, never `:slug` or `:id`: one param name per tree
-   * position, the trap `projectApp` documents.
-   */
-  bay = $pageProject({
-    loading: ProjectPageSkeleton,
-    name: "bay",
-    path: "/hosts/:hostSlug",
-    children: () => [
-      this.bayOverview,
-      this.bayApps,
-      this.bayApp,
-      this.bayCommands,
-      this.baySettings,
-    ],
-    schema: { params: z.object({ hostSlug: z.string() }) },
-    head: (props, previous) => {
-      const host = (props as { host?: { slug?: string } } | undefined)?.host;
-      return {
-        title: `${previous?.title ?? ""} › ${host?.slug ?? "Host"}`,
-      };
-    },
-    lazy: () => import("./components/bay/BayLayout.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      // The refusal comes from the server: `getHomeHost` goes through this
-      // project's gate, which answers 403 to a non-member and 404 to a slug
-      // this project is not the home of, so a stranger gets a real refusal
-      // for the whole subtree rather than an empty console.
-      const host = await this.lendingApi.getHomeHost({
-        params: { projectId: project.id, hostSlug: params.hostSlug },
-      });
-      this.alepha.store.set(currentHostAtom, host);
-      return { host };
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentHostAtom, undefined);
-    },
-    errorHandler: (error) => {
-      if (isHttpError(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
-    },
-  });
-
-  bayOverview = $page({
-    name: "bayOverview",
-    nav: { hidden: true, label: "Overview" },
-    path: "/",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Overview`,
-    }),
-    lazy: () => import("./components/bay/BayOverview.tsx"),
-  });
-
-  /**
    * What runs on the machine. Labelled "Processes" (#Q3748), since "Apps"
    * read as the project's own apps; the name and the `/apps` path stay, so
    * existing links keep working.
    */
   bayApps = $page({
+    // A tab of core's host console (#E166), shown while Ship is on.
+    parent: this.hosts.bay,
     name: "bayApps",
     nav: { hidden: true, label: "Processes" },
     path: "/apps",
@@ -144,6 +74,7 @@ export class DeployRouter {
    * arriving missing.
    */
   bayApp = $page({
+    parent: this.hosts.bay,
     name: "bayApp",
     nav: { hidden: true, label: "Instance" },
     path: "/apps/:app/:env",
@@ -152,26 +83,6 @@ export class DeployRouter {
       title: `${previous?.title ?? ""} › Instance`,
     }),
     lazy: () => import("./components/bay/BayInstance.tsx"),
-  });
-
-  bayCommands = $page({
-    name: "bayCommands",
-    nav: { hidden: true, label: "Commands" },
-    path: "/commands",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Commands`,
-    }),
-    lazy: () => import("./components/bay/BayCommands.tsx"),
-  });
-
-  baySettings = $page({
-    name: "baySettings",
-    nav: { hidden: true, label: "Settings" },
-    path: "/settings",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Settings`,
-    }),
-    lazy: () => import("./components/bay/BaySettings.tsx"),
   });
 
   /**
@@ -356,44 +267,6 @@ export class DeployRouter {
         throw new NotFoundError("Apps are not enabled for this project");
       }
       return { stackName: params.stack, envName: params.env };
-    },
-  });
-
-  /**
-   * The project's host jobs (#Q3984): agent jobs and Agent host checks, and
-   * one job with its live log. Under the Ship capability; the reads are
-   * gated server-side on `host:read`.
-   */
-  projectJobs = $pageProject({
-    name: "projectJobs",
-    path: "/jobs",
-    nav: { hidden: true, label: "Jobs" },
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Jobs`,
-    }),
-    lazy: () => import("./components/project/host-jobs/ProjectJobs.tsx"),
-    loader: async () => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
-        throw new NotFoundError("Apps are not enabled for this project");
-      }
-    },
-  });
-
-  projectJob = $pageProject({
-    loading: ProjectPageSkeleton,
-    name: "projectJob",
-    path: "/jobs/:jobId",
-    nav: { hidden: true, label: "Job" },
-    schema: { params: z.object({ jobId: z.string() }) },
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Job`,
-    }),
-    lazy: () => import("./components/project/host-jobs/ProjectJob.tsx"),
-    loader: async ({ params }) => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
-        throw new NotFoundError("Apps are not enabled for this project");
-      }
-      return { jobId: params.jobId };
     },
   });
 
@@ -598,16 +471,6 @@ export class DeployRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsErrorsPage.tsx"),
-  });
-
-  projectSettingsHosts = $pageProjectSettings({
-    name: "projectSettingsHosts",
-    path: "/hosts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Hosts`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsHostsPage.tsx"),
   });
 
   app = $page({

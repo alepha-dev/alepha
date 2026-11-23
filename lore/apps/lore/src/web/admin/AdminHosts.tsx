@@ -11,7 +11,7 @@ import {
   HostCapabilityBadges,
   HostStateBadge,
   HostTypeBadge,
-} from "@lore/ship/web";
+} from "@lore/core/web";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
