@@ -51,7 +51,7 @@ const AppDeployLogDialog = (props: AppDeployLogDialogProps) => {
             {tr("app.deploy.log.empty")}
           </p>
         ) : (
-          <pre className="bg-muted/50 max-h-[60vh] overflow-auto rounded-md p-3 font-mono text-xs">
+          <pre className="chrome max-h-[60vh] overflow-auto rounded-md border p-3 font-mono text-xs">
             {log.map((line) => line.text).join("\n")}
           </pre>
         )}

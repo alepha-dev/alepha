@@ -45,7 +45,7 @@ const ArtifactManifestSections = (props: ArtifactManifestSectionsProps) => {
   };
 
   const raw = (value: unknown) => (
-    <pre className="bg-muted/40 overflow-x-auto rounded-md border p-3 font-mono text-xs">
+    <pre className="chrome overflow-x-auto rounded-md border p-3 font-mono text-xs">
       {JSON.stringify(value, null, 2)}
     </pre>
   );

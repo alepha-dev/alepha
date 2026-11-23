@@ -139,7 +139,7 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
         </div>
       </main>
       <footer className="h-4 shrink-0 border-t" />
-      <div className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
+      <div className="chrome fixed inset-x-0 bottom-0 z-40 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         <HomeWelcomeCta {...props.cta} block />
       </div>
     </div>

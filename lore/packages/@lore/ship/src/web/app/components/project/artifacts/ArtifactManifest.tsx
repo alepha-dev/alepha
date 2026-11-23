@@ -59,7 +59,7 @@ const ArtifactManifest = (props: ArtifactManifestProps) => {
       ) : (
         <pre
           data-testid="artifact-manifest-raw"
-          className="bg-muted/40 overflow-x-auto rounded-md border p-4 font-mono text-xs"
+          className="chrome overflow-x-auto rounded-md border p-4 font-mono text-xs"
         >
           {JSON.stringify(manifest, null, 2)}
         </pre>
