@@ -41,8 +41,9 @@ import type { DictionaryEntry } from "alepha/react/i18n";
  * sample and not a catalogue. Keys interpolate with `$1`, `$2` … positionally,
  * matching the `args` each call site passes.
  *
- * A second language means a sibling file; there is deliberately no `uiEn`, since
- * the components already default to English.
+ * A second language means a sibling file. `uiEn` (`@alepha/ui/i18n/en`) is
+ * one: the components default to English, but an application whose
+ * `fallbackLang` is `fr` reads a key missing from its `en` catalogue here.
  */
 export const uiFr: Record<string, DictionaryEntry> = {
   // The assistant (`@alepha/ui/ai`), in a drawer or a dock.

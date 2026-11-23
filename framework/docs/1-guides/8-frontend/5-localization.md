@@ -93,7 +93,19 @@ It is a plain object rather than a `$dictionary` because `@alepha/ui` is a compo
 
 `uiFr` covers **every** key the package asks for - `tr()` calls and the `labelKey` / `groupKey` declarations below - across dialogs, tables, generated forms and controls, the auth screens, the account kit, and the whole `@alepha/ui/admin` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
 
-There is no `uiEn`, since the components already default to English. For any other language, copy `uiFr` as a starting point.
+If your `fallbackLang` is not English, also spread `uiEn` into your English catalogue. A lookup tries the active language, then the fallback language, and only then the component's default: with `fallbackLang: "fr"`, an English visitor whose `en` catalogue lacks a key reads it in French, never reaching the English default.
+
+```typescript
+import { uiEn } from "@alepha/ui/i18n/en";
+
+class AppI18n {
+  en = $dictionary({
+    lazy: async () => ({ default: { ...uiEn, "nav.home": "Home" } }),
+  });
+}
+```
+
+`uiEn` holds the same keys as `uiFr`, each with its component's English default, so it changes nothing an English visitor saw before. An application whose `fallbackLang` is `en`, the default, does not need it. For any other language, copy `uiFr` as a starting point.
 
 ### Nav labels: name a key, don't call `tr()`
 
