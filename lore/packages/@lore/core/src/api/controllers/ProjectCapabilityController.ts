@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $action } from "alepha/server";
+import { $action, BadRequestError } from "alepha/server";
 
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
@@ -185,6 +185,16 @@ export class ProjectCapabilityController {
       } else {
         // Strict: an unknown option key is refused rather than dropped. The
         // read path stays lax on purpose - see `CapabilityRegistry`.
+        const unknown = this.registry.unknownOptionsOf(
+          params.key,
+          body.options,
+        );
+        if (unknown.length > 0) {
+          // A refusal naming the key, never the ZodError's 500 (#Q4194).
+          throw new BadRequestError(
+            `options: unknown option ${unknown.map((it) => `"${it}"`).join(", ")} for ${params.key}`,
+          );
+        }
         const options = this.registry.strictOptionsOf(params.key, body.options);
 
         if (existing) {

@@ -362,6 +362,18 @@ export class ProjectController {
       // Every option checked before the first write: an unknown one used to
       // throw inside the insert loop, after the organization, the project
       // and the owner existed, and on D1 nothing rolled them back.
+      for (const capability of capabilities) {
+        const unknown = this.capabilityRegistry.unknownOptionsOf(
+          capability.key,
+          capability.options,
+        );
+        if (unknown.length > 0) {
+          // A refusal naming the key, never the ZodError's 500 (#Q4194).
+          throw new BadRequestError(
+            `capabilities: unknown option ${unknown.map((it) => `"${it}"`).join(", ")} for ${capability.key}`,
+          );
+        }
+      }
       const capabilityRows = capabilities.map((capability) => ({
         key: capability.key,
         options: this.capabilityRegistry.strictOptionsOf(

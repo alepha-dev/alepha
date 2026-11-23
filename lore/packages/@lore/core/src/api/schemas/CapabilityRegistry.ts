@@ -971,6 +971,17 @@ export class CapabilityRegistry {
    * doing the same on the way out would turn a forward-compatible row into an
    * unreadable one.
    */
+  /**
+   * The keys of `raw` this capability does not declare as options, for a
+   * writer to refuse with their names before it calls
+   * {@link strictOptionsOf}, which throws a bare `ZodError` on them (#Q4194).
+   */
+  unknownOptionsOf(key: CapabilityKey, raw?: unknown): string[] {
+    if (!raw || typeof raw !== "object") return [];
+    const known = new Set(this.get(key).options.map((option) => option.key));
+    return Object.keys(raw).filter((option) => !known.has(option));
+  }
+
   strictOptionsOf(key: CapabilityKey, raw?: unknown): Record<string, boolean> {
     return this.strictOptionSchemas[key].parse(raw ?? {}) as Record<
       string,
