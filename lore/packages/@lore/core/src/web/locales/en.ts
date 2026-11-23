@@ -1425,9 +1425,6 @@ export default {
   "reports.summary.empty": "No capability to report on.",
   "reports.summary.definition":
     "Each figure over the period, against the period of the same length before it.",
-  "reports.summary.section.plan": "Plan",
-  "reports.summary.section.remember": "Remember",
-  "reports.summary.section.ship": "Ship",
   "reports.summary.line.throughput": "Quests completed",
   "reports.summary.line.throughput.definition":
     "Quests completed in the period.",

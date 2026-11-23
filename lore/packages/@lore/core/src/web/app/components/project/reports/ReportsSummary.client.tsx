@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Copy } from "lucide-react";
 
+import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import type {
   ReportsSummaryLine,
   reportsSummarySchema,
@@ -54,6 +55,19 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
     return String(Math.round(value));
   };
   const label = (key: string) => tr(`reports.summary.line.${key}`);
+  // A section is titled by its capability's own label. Written out rather
+  // than built from the key (#Q4202): the record makes a new capability a
+  // type error here, and the i18n check sees every key, where a template
+  // under a dynamic prefix let the Build section ship as its raw key.
+  const sectionTitles: Record<CapabilityKey, string> = {
+    plan: tr("project.capability.plan.label"),
+    remember: tr("project.capability.remember.label"),
+    build: tr("project.capability.build.label"),
+    ship: tr("project.capability.ship.label"),
+    chat: tr("project.capability.chat.label"),
+    activity: tr("project.capability.activity.label"),
+    reports: tr("project.capability.reports.label"),
+  };
 
   const copy = async () => {
     await navigator.clipboard.writeText(
@@ -94,7 +108,7 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
       {sections.map((capability) => (
         <ReportsSection
           key={capability}
-          title={tr(`reports.summary.section.${capability}`)}
+          title={sectionTitles[capability]}
           definition={tr("reports.summary.definition")}
         >
           <ReportsKpiRow

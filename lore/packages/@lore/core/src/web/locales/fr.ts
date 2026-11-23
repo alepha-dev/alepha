@@ -1415,9 +1415,6 @@ export default {
   "reports.summary.empty": "Aucune capacité à présenter.",
   "reports.summary.definition":
     "Chaque chiffre sur la période, face à la période de même durée qui la précède.",
-  "reports.summary.section.plan": "Planifier",
-  "reports.summary.section.remember": "Se souvenir",
-  "reports.summary.section.ship": "Livrer",
   "reports.summary.line.throughput": "Quêtes terminées",
   "reports.summary.line.throughput.definition":
     "Quêtes terminées sur la période.",
