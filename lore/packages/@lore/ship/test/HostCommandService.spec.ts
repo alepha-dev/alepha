@@ -1,3 +1,4 @@
+import { HostCommandTransport } from "@lore/core/api";
 import {
   hostCommands,
   type Host,
@@ -18,7 +19,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   HostController,
   HostCommandService,
-  HostCommandTransport,
   LoreShipApi,
 } from "../src/api/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";

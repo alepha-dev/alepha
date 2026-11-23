@@ -1,3 +1,4 @@
+import { HostCommandTransport, HostEventService } from "@lore/core/api";
 import {
   hostCommands,
   type Host,
@@ -18,12 +19,10 @@ import WebSocket from "ws";
 import {
   LoreShipApi,
   HostCommandService,
-  HostCommandTransport,
   HostService,
   HostStatsService,
   WebSocketHostCommandTransport,
   HostController,
-  HostEventService,
   HostSocketController,
 } from "../src/api/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";

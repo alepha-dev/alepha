@@ -1,7 +1,5 @@
 import { LoreCoreApi, CredentialSealService } from "@lore/core/api";
 import { $module } from "alepha";
-import { AlephaRateLimit } from "alepha/rate-limit";
-import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminHostController } from "./controllers/AdminHostController.ts";
 import { AgentHostController } from "./controllers/AgentHostController.ts";
@@ -76,12 +74,10 @@ import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
 import { HostCommandService } from "./services/HostCommandService.ts";
-import { HostCommandTransport } from "./services/HostCommandTransport.ts";
 import { HostJobService } from "./services/HostJobService.ts";
 import { HostService } from "./services/HostService.ts";
 import { HostsMetric } from "./services/HostsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
-import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostUpgradeService } from "./services/HostUpgradeService.ts";
 import { LiveQuestService } from "./services/LiveQuestService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
@@ -124,18 +120,7 @@ import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTr
 export const LoreShipApi = $module({
   name: "lore.ship.api",
   // Core first: booting this module alone boots what it depends on.
-  imports: [
-    LoreCoreApi,
-    // The hosts websocket (epic #20). The first websocket in Lore: on
-    // Cloudflare the build derives the Durable Object binding and its
-    // migration from the `$websocket` below, and the `workerd` export
-    // condition picks the Durable Object provider over the Node one.
-    AlephaWebSocket,
-    // `$rateLimit` on `HostController.refreshHost`. Its counters are actors,
-    // a Durable Object on workerd, which the Cloudflare build derives from the
-    // registered graph, so the module is imported explicitly.
-    AlephaRateLimit,
-  ],
+  imports: [LoreCoreApi],
   services: [
     // Ship's project events, in the core catalog (#Q3889); listed because
     // nothing injects them.
@@ -242,11 +227,7 @@ export const LoreShipApi = $module({
     // `$repository` names it.
     SigilTokenService,
     SigilIngestService,
-    // The deploy-destination half: a machine's secret and what a host is.
-    // `HostTokenService` is deliberately not `SigilTokenService` with a
-    // different table, see its doc: the two credentials are one grep apart
-    // and mean different things.
-    HostTokenService,
+    // A host's machine secret (`HostTokenService`) is core's since #E166.
     // A cloudflare token is pasted rather than minted, so it is sealed and
     // replayed rather than hashed and forgotten (#1631). Registered before
     // it has a writer: the sealer exists first, so no plaintext credential
@@ -263,11 +244,8 @@ export const LoreShipApi = $module({
     DeployHostUsage,
     ShipHostCommands,
     HostService,
-    // The queue behind the connection, and the seam the websocket endpoint
-    // fills in. This default transport reaches nothing, which is the correct
-    // behaviour of a Lore with no socket wired: commands wait as `pending`
-    // for the machine's next connect.
-    HostCommandTransport,
+    // The queue behind the connection. Its transport's default is core's
+    // since #E166 (`HostCommandTransport`).
     HostCommandService,
     // One-shot jobs on a host (#Q3984): the `host_jobs` queue, registered on
     // core's `HostJobs` port, and its pages and tools.
@@ -375,12 +353,11 @@ export { HostCloudflareService } from "./services/HostCloudflareService.ts";
 
 export { HostCommandService } from "./services/HostCommandService.ts";
 export { HostUpgradeService } from "./services/HostUpgradeService.ts";
-export { HostCommandTransport } from "./services/HostCommandTransport.ts";
-export { HostEventService } from "./services/HostEventService.ts";
+
 export { HostInventoryService } from "./services/HostInventoryService.ts";
 export { HostService } from "./services/HostService.ts";
 export { HostStatsService } from "./services/HostStatsService.ts";
-export { HostTokenService } from "./services/HostTokenService.ts";
+
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";
 export { LoreAnalyticsStore } from "./services/LoreAnalyticsStore.ts";
 export { OpenErrorCounter } from "./services/OpenErrorCounter.ts";

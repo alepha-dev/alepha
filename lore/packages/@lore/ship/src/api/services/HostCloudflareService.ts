@@ -1,9 +1,10 @@
-import { HostProjectEvents } from "@lore/core/api";
 import {
+  HostProjectEvents,
   SourceRepository,
   CredentialSealService,
   HostTypeRegistry,
   type HostCredentialCheck,
+  HostEventFields,
 } from "@lore/core/api";
 import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -12,7 +13,6 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
-import { HostEventFields } from "./HostEventFields.ts";
 
 /**
  * One permission group, and the cheap `GET` that proves a token carries it.

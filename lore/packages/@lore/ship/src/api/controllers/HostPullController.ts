@@ -1,3 +1,4 @@
+import { HostTokenService } from "@lore/core/api";
 import {
   type HostCommand,
   hostCommands,
@@ -28,7 +29,6 @@ import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { DeployBuckets } from "../services/DeployBuckets.ts";
 import { HostJobService } from "../services/HostJobService.ts";
-import { HostTokenService } from "../services/HostTokenService.ts";
 import { StackDeployService } from "../services/StackDeployService.ts";
 
 /**

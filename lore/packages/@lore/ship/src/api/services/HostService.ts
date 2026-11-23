@@ -5,6 +5,8 @@ import {
   CredentialSealService,
   HostTypeRegistry,
   HostUsageRegistry,
+  HostCredentialRefused,
+  HostTokenService,
 } from "@lore/core/api";
 import {
   projects,
@@ -31,9 +33,7 @@ import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 
-import { HostCredentialRefused } from "../errors/HostCredentialRefused.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
-import { HostTokenService } from "./HostTokenService.ts";
 
 /**
  * What a host IS, stated once: which runtimes its type runs, when it

@@ -1,3 +1,4 @@
+import { HostTokenService } from "@lore/core/api";
 import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { audits } from "alepha/api/audits";
@@ -16,7 +17,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
   LoreShipApi,
-  HostTokenService,
   AdminHostController,
   HostController,
 } from "../src/api/index.ts";

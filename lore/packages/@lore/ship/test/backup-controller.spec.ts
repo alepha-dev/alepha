@@ -1,3 +1,4 @@
+import { HostEventService } from "@lore/core/api";
 import type { Alepha } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -5,7 +6,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   AppService,
   BackupController,
-  HostEventService,
   HostInventoryService,
 } from "../src/api/index.ts";
 import { ResourceNameService } from "../src/api/services/ResourceNameService.ts";

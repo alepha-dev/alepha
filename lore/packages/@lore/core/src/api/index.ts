@@ -14,6 +14,8 @@ import {
 } from "alepha/api/organizations";
 import { AlephaApiWebhooks } from "alepha/api/webhooks";
 import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
+import { AlephaRateLimit } from "alepha/rate-limit";
+import { AlephaWebSocket } from "alepha/websocket";
 
 import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
@@ -77,8 +79,10 @@ import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { HostCommandHandlerRegistry } from "./services/HostCommandHandlerRegistry.ts";
+import { HostCommandTransport } from "./services/HostCommandTransport.ts";
 import { HostJobs } from "./services/HostJobs.ts";
 import { HostProjectEvents } from "./services/HostProjectEvents.ts";
+import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostTypeRegistry } from "./services/HostTypeRegistry.ts";
 import { HostUsageRegistry } from "./services/HostUsageRegistry.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
@@ -141,6 +145,15 @@ export const LoreCoreApi = $module({
   // `AlephaApiOrganizations` owns the membership, rank, and invitation
   // lifecycle. Lore supplies the project-specific policy and notifications.
   imports: [
+    // The hosts websocket (epic #20), core's since #E166: on Cloudflare the
+    // build derives the Durable Object binding and its migration from the
+    // `$websocket`, and the `workerd` export condition picks the Durable
+    // Object provider over the Node one.
+    AlephaWebSocket,
+    // `$rateLimit` on `HostController.refreshHost`. Its counters are actors,
+    // a Durable Object on workerd, which the Cloudflare build derives from the
+    // registered graph, so the module is imported explicitly.
+    AlephaRateLimit,
     AlephaApiAnalyticsRollup,
     AlephaApiAnalyticsAdmin,
     // ⚠️ **Without this every `$job` runs inside `executionCtx.waitUntil`,
@@ -183,6 +196,15 @@ export const LoreCoreApi = $module({
     BayReleaseTarget,
     // The host project events (#Q4115): Core, so they exist with Ship off.
     HostProjectEvents,
+    // A host's machine secret, minted and verified (#E166). Deliberately not
+    // `SigilTokenService` with a different table, see its doc: the two
+    // credentials are one grep apart and mean different things.
+    HostTokenService,
+    // The seam the hosts websocket fills in. This default transport reaches
+    // nothing, the correct behaviour of a Lore with no socket wired: commands
+    // wait as `pending` for the machine's next connect. `main.server.ts`
+    // substitutes the real one before this module registers.
+    HostCommandTransport,
     // The host registries a module fills (#E166, #Q4098): what points at a
     // host, what its type does, and the command kinds core does not handle.
     HostUsageRegistry,
@@ -652,6 +674,11 @@ export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
+export { HostCommandTransport } from "./services/HostCommandTransport.ts";
+export { HostEventService } from "./services/HostEventService.ts";
+export { HostTokenService } from "./services/HostTokenService.ts";
+export { HostEventFields } from "./services/HostEventFields.ts";
+export { HostCredentialRefused } from "./errors/HostCredentialRefused.ts";
 export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 export { HostProjectEvents } from "./services/HostProjectEvents.ts";
 export {

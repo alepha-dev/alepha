@@ -1,5 +1,8 @@
-import { HostProjectEvents } from "@lore/core/api";
-import { SourceRepository } from "@lore/core/api";
+import {
+  HostProjectEvents,
+  SourceRepository,
+  HostEventFields,
+} from "@lore/core/api";
 import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
@@ -8,7 +11,6 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
-import { HostEventFields } from "../services/HostEventFields.ts";
 import { HostService } from "../services/HostService.ts";
 
 /**
