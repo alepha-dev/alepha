@@ -1843,7 +1843,7 @@ export default {
   "project.settings.roadmap.delay":
     "Changes can take up to a minute to reach visitors.",
   "project.settings.roadmap.switch.description":
-    "A read-only page of your open releases and the epics inside them. Who can see it is set on the Roadmap tab.",
+    "A read-only page of your open releases and the epics inside them. Who can see it is set in Plan settings, on the Roadmap tab.",
   "project.settings.roadmap.level.members": "Members only",
   "project.settings.roadmap.level.public": "Public",
   "project.settings.roadmap.url.label": "Link",

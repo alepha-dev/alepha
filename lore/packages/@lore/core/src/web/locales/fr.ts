@@ -1835,7 +1835,7 @@ export default {
   "project.settings.roadmap.delay":
     "Un changement peut mettre jusqu’à une minute à atteindre les visiteurs.",
   "project.settings.roadmap.switch.description":
-    "Une page en lecture seule de vos versions ouvertes et des épopées qu’elles contiennent. Qui peut la voir se règle dans l’onglet Feuille de route.",
+    "Une page en lecture seule de vos versions ouvertes et des épopées qu’elles contiennent. Qui peut la voir se règle dans les réglages de Plan, onglet Feuille de route.",
   "project.settings.roadmap.level.members": "Membres seulement",
   "project.settings.roadmap.level.public": "Publique",
   "project.settings.roadmap.url.label": "Lien",

@@ -1,23 +1,18 @@
 import {
-  currentProjectAtom,
   ProjectShellRegistry,
-  hasCapability,
   ProjectSettingsCapabilitySection,
 } from "@lore/core/web";
-import { useInject, useStore } from "alepha/react";
-
-import ProjectSettingsRoadmapSwitch from "./ProjectSettingsRoadmapSwitch.tsx";
+import { useInject } from "alepha/react";
 
 /**
- * Quests > Features: how quests behave, and whether the roadmap is on.
+ * Quests > Features: how quests behave. Whether the roadmap is on is a
+ * switch on General > Capabilities, under Plan (#Q4184).
  *
  * The master switch and the options that add a sidebar entry (board, epics,
  * releases) are in General > Capabilities since #Q2565. The board's columns,
  * the tag colours (#Q4061) and the prompts have tabs of their own.
  */
 const ProjectSettingsWorkPage = () => {
-  const [project] = useStore(currentProjectAtom);
-  const workEnabled = hasCapability(project, "plan");
   const shell = useInject(ProjectShellRegistry);
 
   return (
@@ -27,10 +22,6 @@ const ProjectSettingsWorkPage = () => {
         master={false}
         options={shell.settingsOptions("plan")}
       />
-
-      {/* The roadmap on or off (#Q4060); who may read it is its own tab,
-          listed while it is on. */}
-      {workEnabled && <ProjectSettingsRoadmapSwitch />}
     </div>
   );
 };

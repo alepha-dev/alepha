@@ -11,6 +11,7 @@ import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySche
 import { projectFixture } from "../../../../../testing/projectFixture.ts";
 import { virtualClientFake } from "../../../../../testing/virtualClientFake.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { CapabilityRowRegistry } from "../../../registries/CapabilityRowRegistry.ts";
 import { ProjectBlockerRegistry } from "../../../registries/ProjectBlockerRegistry.ts";
 import { ProjectShellRegistry } from "../../../registries/ProjectShellRegistry.ts";
 import { I18n } from "../../../services/I18n.ts";
@@ -57,7 +58,8 @@ describe("the Capabilities settings page", () => {
       .with(I18n)
       // What the page and its sections inject, empty: no module registers.
       .with(ProjectShellRegistry)
-      .with(ProjectBlockerRegistry);
+      .with(ProjectBlockerRegistry)
+      .with(CapabilityRowRegistry);
     await alepha.start();
     alepha.store.set(
       currentProjectAtom,
