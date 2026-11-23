@@ -242,6 +242,36 @@ echo '{"type":"result","result":"OK","modelUsage":{"claude-sonnet-4-5":{}}}'
 		}
 	})
 
+	t.Run("the host's model reaches claude on a check and on an agent job", func(t *testing.T) {
+		w := newJobWorld(t)
+		cfg, err := loadJobsConfig(w.f.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.Model = "claude-opus-5-5"
+		if err := saveJobsConfig(w.f.root, cfg); err != nil {
+			t.Fatal(err)
+		}
+		w.stub(t, "claude", `#!/bin/sh
+printf '%s\n' "$@" > "`+w.bin+`/claude.args"
+echo '{"type":"result","result":"OK"}'
+`)
+		if rec := w.run("check-model", []byte(`{"kind":"check","profile":"check","maxTurns":1,"timeoutSeconds":60}`)); rec.last().Status != "done" {
+			t.Fatalf("ack = %+v", rec.last())
+		}
+		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
+		if got := strings.Fields(string(args)); !equalStrings(got, []string{"-p", "reply", "OK", "--max-turns", "1", "--output-format", "stream-json", "--verbose", "--model", "claude-opus-5-5"}) {
+			t.Fatalf("a check ran claude as %q", got)
+		}
+		if rec := w.run("job-model", w.agentSpec(nil)); rec.last().Status != "done" {
+			t.Fatalf("ack = %+v", rec.last())
+		}
+		args, _ = os.ReadFile(filepath.Join(w.bin, "claude.args"))
+		if !strings.Contains(string(args), "--strict-mcp-config\n--model\nclaude-opus-5-5\n") {
+			t.Fatalf("an agent job ran claude as %q", args)
+		}
+	})
+
 	t.Run("a non-zero exit is a failed ack with its code and stderr's tail", func(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", "#!/bin/sh\necho 'Invalid API key' >&2\nexit 3\n")
@@ -386,6 +416,19 @@ func TestJobsUser(t *testing.T) {
 		err := checkJobsUser(&user.User{Uid: c.uid, Username: "u" + c.uid}, self)
 		if (err == nil) != c.ok {
 			t.Fatalf("uid %s as bay %s: err = %v", c.uid, c.self, err)
+		}
+	}
+}
+
+func TestModelPattern(t *testing.T) {
+	for _, ok := range []string{"opus", "sonnet", "claude-opus-5-5", "claude-sonnet-5-5", "sonnet[1m]", "claude-haiku-4.5"} {
+		if !modelPattern.MatchString(ok) {
+			t.Errorf("%q refused", ok)
+		}
+	}
+	for _, bad := range []string{"", "-p", "--dangerously-skip-permissions", "Opus", "opus 5", "opus;rm", "opus\n"} {
+		if modelPattern.MatchString(bad) {
+			t.Errorf("%q accepted", bad)
 		}
 	}
 }

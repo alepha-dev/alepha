@@ -63,7 +63,7 @@ See [Deploying](/bay/docs/guides-deploying) and [Operating](/bay/docs/guides-ope
 | `bay runtimes set <name/env> <image>`     | this app's own image, from its next start                           |
 | `bay runtimes clear <name/env>`           | back to the image Bay picks                                         |
 | `bay config registry-mirror (HOST\|--clear)` | pull Docker Hub images through a mirror                          |
-| `bay config jobs (--user NAME\|--clear) [--runner process\|container] [--credential NAME] [--gvisor]` | how Lore's one-shot jobs run: as a dedicated Unix user, or in hardened containers with a host-local credential. See [Jobs](/bay/docs/guides-lore-connector#jobs) |
+| `bay config jobs (--user NAME\|--clear) [--runner process\|container] [--credential NAME] [--gvisor] [--model NAME]` | how Lore's one-shot jobs run: as a dedicated Unix user, or in hardened containers with a host-local credential, and with which Claude model. See [Jobs](/bay/docs/guides-lore-connector#jobs) |
 | `bay secret (set NAME -\|list\|delete NAME)` | host-local secrets, values from stdin, names only reported to Lore |
 
 ## Backups and storage

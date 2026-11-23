@@ -64,6 +64,10 @@ type jobsConfig struct {
 	// GVisor runs container jobs under runsc, refused when the daemon has
 	// none.
 	GVisor bool `json:"gvisor,omitempty"`
+	// Model is the Claude model every job and check runs with (#Q4204): an
+	// alias (`opus`) or a full id (`claude-opus-5-5`), passed as `--model`.
+	// Empty leaves Claude Code's own default.
+	Model string `json:"model,omitempty"`
 }
 
 // runnerKind is what the inventory reports and the executor dispatches on.
@@ -101,7 +105,7 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--runner process|container] [--credential NAME] [--gvisor|--no-gvisor] [--model NAME] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
@@ -151,6 +155,15 @@ func cmdConfigJobs(args []string) error {
 			cfg.GVisor, changed = true, true
 		case "--no-gvisor":
 			cfg.GVisor, changed = false, true
+		case "--model":
+			model, err := value()
+			if err != nil {
+				return err
+			}
+			if model != "" && !modelPattern.MatchString(model) {
+				return fmt.Errorf("%q is not a Claude model name: an alias such as opus, or an id such as claude-opus-5-5", model)
+			}
+			cfg.Model, changed = model, true
 		case "--root", "--control-socket":
 			// Read by resolveRoot, or not needed: the file is read per job.
 			i++
@@ -188,6 +201,9 @@ func cmdConfigJobs(args []string) error {
 	}
 	if err := saveJobsConfig(root, cfg); err != nil {
 		return err
+	}
+	if cfg.Model != "" {
+		fmt.Printf("claude runs every job and check with --model %s\n", cfg.Model)
 	}
 	if cfg.runnerKind() == "container" {
 		fmt.Println("jobs run in the agent image, in containers with no host mount, no socket, every capability dropped,")
@@ -437,7 +453,11 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		env = r.jobEnv(u)
 	}
 
-	cmd, err := r.command(ctx, u, dir, claude, claudeArgs(spec, mcpPath), env)
+	cfg, err := loadJobsConfig(r.root)
+	if err != nil {
+		return nil, fmt.Errorf("the jobs config is unreadable: %w", err)
+	}
+	cmd, err := r.command(ctx, u, dir, claude, claudeArgs(spec, mcpPath, cfg.Model), env)
 	if err != nil {
 		return nil, err
 	}

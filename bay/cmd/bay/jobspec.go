@@ -96,6 +96,10 @@ var (
 	// an MCP tool (`mcp__lore__quest_get`), or a Bash rule with a bounded
 	// pattern and no parentheses or line break inside (`Bash(git log:*)`).
 	toolPattern = regexp.MustCompile(`^(?:[A-Z][A-Za-z0-9]{0,63}|mcp__[a-z0-9_-]{1,64}__[a-z0-9_]{1,64}|Bash\([^()\r\n,]{1,200}\))$`)
+	// modelPattern is a Claude model name `bay config jobs --model` takes:
+	// an alias (`opus`, `sonnet[1m]`) or an id (`claude-opus-5-5`), never
+	// a leading dash or anything a shell or flag parser would read.
+	modelPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9.\-]{0,79}(?:\[1m\])?$`)
 	// refPattern is a git ref name a clone may take: no `..`, no leading
 	// dash (an option), nothing but the characters a branch uses.
 	refPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$`)
@@ -240,17 +244,24 @@ keeps any other the jobs user has configured out of the run. Tool lists are
 joined with commas into one argument each: a Bash rule may hold a space, and
 toolPattern refuses a comma inside one.
 */
-func claudeArgs(spec jobSpec, mcpConfig string) []string {
+func claudeArgs(spec jobSpec, mcpConfig, model string) []string {
+	// The host's model (#Q4204), on the check too: the Agent host card then
+	// reports the model the jobs really run with.
+	var modelArgs []string
+	if model != "" {
+		modelArgs = []string{"--model", model}
+	}
 	if spec.Kind == jobKindCheck {
 		// stream-json rather than json: its init line is what says the CLI's
 		// version, the model and where the credential came from (#Q3985).
-		return []string{"-p", checkPrompt, "--max-turns", "1", "--output-format", "stream-json", "--verbose"}
+		return append([]string{"-p", checkPrompt, "--max-turns", "1", "--output-format", "stream-json", "--verbose"}, modelArgs...)
 	}
 	args := []string{"-p", spec.Prompt,
 		"--output-format", "stream-json", "--verbose",
 		"--max-turns", fmt.Sprint(spec.MaxTurns),
 		"--mcp-config", mcpConfig, "--strict-mcp-config",
 	}
+	args = append(args, modelArgs...)
 	if len(spec.AllowedTools) > 0 {
 		args = append(args, "--allowedTools", strings.Join(spec.AllowedTools, ","))
 	}
