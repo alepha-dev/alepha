@@ -465,10 +465,20 @@ so nobody copies a token by hand. See [Repositories](/lore/docs/build-repositori
 | `lore code repo delete <name>`        | Delete a repository and everything in it.                                                                                                                                       |
 | `lore code remote`                    | Print a repository's clone URL; `--add` adds it as a remote (`--name`, `lore` by default) of this checkout.                                                                     |
 | `lore code import [<repo>]`           | Push this checkout into a new or empty repository: the default branch, then the other branches and the tags. `--branch` picks the local branch, the checked-out one by default. |
+| `lore code tree [path]`               | A folder at a revision. `--ref` a branch, tag or sha (the default branch by default), `--repo`.                                                                                 |
+| `lore code cat <path>`                | A file, numbered: 200 lines unless `--start-line` and `--end-line` say otherwise.                                                                                               |
+| `lore code log [path]`                | The history, newest first, 30 a page (`--page`), of one file or folder when given, each commit with its quests.                                                                 |
+| `lore code show <sha>`                | One commit (a full sha or a unique prefix): its message, parents, quests and changed files.                                                                                     |
+| `lore code diff <from>..<to> [path]`  | The files changed between two revisions, or one file's diff as `git diff` prints it.                                                                                            |
+| `lore code blame <path>`              | Each line's commit, author and quests. A long history fills in while the command waits a little.                                                                                |
 | `lore git-credential`                 | The credential helper git calls. Not for typing.                                                                                                                                |
 
 A clone URL is `https://<instance>/<project>/<repo>.git`, or
 `https://<instance>/<project>.git` for the repository named like its project.
+
+The read commands (`tree`, `cat`, `log`, `show`, `diff`, `blame`) take the
+project and the repository from the checkout's `lore` remote, or an `origin` on
+this Lore's host, when neither `--project` nor `--repo` is given.
 
 `lore code import` is how an existing repository moves to Lore, from any
 checkout: no access to the old host is needed. On Lore's cloud a large
