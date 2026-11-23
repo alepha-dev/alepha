@@ -169,7 +169,7 @@ export class ChatTools {
     builtin: z.boolean(),
     model: z.text().optional(),
     avatar: z.boolean(),
-    pre_prompt: z.text().optional(),
+    pre_prompt: z.text({ size: "rich" }).optional(),
   });
 
   chat_agent_list = $tool({
