@@ -4,8 +4,13 @@ import { $logger } from "alepha/logger";
 import {
   GitBackend,
   type GitBackendToken,
+  type GitBlobResult,
   type GitCommit,
+  type GitCommitDetail,
+  type GitPerson,
+  type GitReadOptions,
   type GitRefTip,
+  type GitTreeEntry,
   type GitRepositoryInfo,
   type GitRpcRequest,
   type GitRpcResponse,
@@ -203,16 +208,16 @@ exit 1
       "--git-dir",
       path,
       "for-each-ref",
-      "--format=%(objectname) %(refname)",
+      "--format=%(objectname) %(refname) %(*objectname)",
       "refs/heads",
       "refs/tags",
     ]);
     const tips = out
       .split("\n")
       .filter(Boolean)
-      .map((line) => {
-        const [sha = "", name = ""] = line.split(" ");
-        return { sha, name };
+      .map((line): GitRefTip => {
+        const [sha = "", name = "", peeled = ""] = line.split(" ");
+        return peeled ? { sha, name, targetSha: peeled } : { sha, name };
       });
     if (tips.length === 0) return [];
     const head = await this.git([
@@ -224,6 +229,211 @@ exit 1
       "HEAD",
     ]).catch(() => "");
     return head.trim() ? [{ sha: head.trim(), name: "HEAD" }, ...tips] : tips;
+  }
+
+  public async resolve(
+    ref: string,
+    revision: string,
+  ): Promise<string | undefined> {
+    const dir = this.pathOf(ref);
+    const candidates = GitBackend.isSha(revision)
+      ? [revision]
+      : GitBackend.refCandidates(revision);
+    for (const candidate of candidates) {
+      const { code, out } = await this.run([
+        "--git-dir",
+        dir,
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "--end-of-options",
+        `${candidate}^{commit}`,
+      ]);
+      if (code === 0 && GitBackend.isSha(out.trim())) return out.trim();
+    }
+    return undefined;
+  }
+
+  public async tree(
+    ref: string,
+    commit: string,
+    path: string,
+  ): Promise<GitTreeEntry[] | undefined> {
+    if (!GitBackend.isSha(commit)) return undefined;
+    const clean = GitBackend.cleanPath(path);
+    if (clean === undefined) return undefined;
+    const { code, out } = await this.run([
+      "--git-dir",
+      this.pathOf(ref),
+      "ls-tree",
+      "-z",
+      "--end-of-options",
+      clean ? `${commit}:${clean}` : `${commit}^{tree}`,
+    ]);
+    if (code !== 0) return undefined;
+    return out
+      .split("\0")
+      .filter(Boolean)
+      .map((record) => {
+        const tab = record.indexOf("\t");
+        const [mode = "", type = "", sha = ""] = record
+          .slice(0, tab)
+          .split(" ");
+        return {
+          name: record.slice(tab + 1),
+          // `ls-tree` pads a tree's mode (`040000`); the object, and
+          // Artifacts, write `40000`.
+          mode: mode.replace(/^0(?=\d{5}$)/, ""),
+          type: type as GitTreeEntry["type"],
+          sha,
+        };
+      });
+  }
+
+  public async blob(
+    ref: string,
+    sha: string,
+    options: GitReadOptions = {},
+  ): Promise<GitBlobResult> {
+    if (!GitBackend.isSha(sha)) return { kind: "not_found" };
+    const dir = this.pathOf(ref);
+    const { code, out } = await this.run(
+      [
+        "--git-dir",
+        dir,
+        "cat-file",
+        "--batch-check=%(objecttype) %(objectsize)",
+      ],
+      `${sha}\n`,
+    );
+    const [type, size] = out.trim().split(" ");
+    if (code !== 0 || type !== "blob") return { kind: "not_found" };
+    return GitBackend.sized(Number(size), options.maxBytes, () =>
+      this.gitBytes(["--git-dir", dir, "cat-file", "blob", sha]),
+    );
+  }
+
+  public async file(
+    ref: string,
+    commit: string,
+    path: string,
+    options: GitReadOptions = {},
+  ): Promise<GitBlobResult> {
+    const clean = GitBackend.cleanPath(path);
+    if (!GitBackend.isSha(commit) || !clean) return { kind: "not_found" };
+    const { code, out } = await this.run([
+      "--git-dir",
+      this.pathOf(ref),
+      "ls-tree",
+      "-z",
+      "--end-of-options",
+      commit,
+      "--",
+      clean,
+    ]);
+    const record = out.split("\0")[0] ?? "";
+    const tab = record.indexOf("\t");
+    const [, type, sha = ""] = record.slice(0, tab).split(" ");
+    if (code !== 0 || type !== "blob" || record.slice(tab + 1) !== clean) {
+      return { kind: "not_found" };
+    }
+    return this.blob(ref, sha, options);
+  }
+
+  /**
+   * The raw commit object (`git cat-file commit`), parsed: exact where a
+   * `--format` would re-encode or wrap.
+   */
+  public async commit(
+    ref: string,
+    sha: string,
+  ): Promise<GitCommitDetail | undefined> {
+    if (!GitBackend.isSha(sha)) return undefined;
+    const { code, out } = await this.run([
+      "--git-dir",
+      this.pathOf(ref),
+      "cat-file",
+      "commit",
+      sha,
+    ]);
+    if (code !== 0) return undefined;
+    return LocalGitBackend.parseCommit(sha, out);
+  }
+
+  /**
+   * A commit object's text: its headers up to the first blank line, the
+   * message after it.
+   */
+  public static parseCommit(sha: string, raw: string): GitCommitDetail {
+    const at = raw.indexOf("\n\n");
+    const headers = (at === -1 ? raw : raw.slice(0, at)).split("\n");
+    const parents: string[] = [];
+    let treeSha = "";
+    const people: Record<string, GitPerson> = {};
+    for (const line of headers) {
+      if (line.startsWith(" ")) continue;
+      const space = line.indexOf(" ");
+      const key = line.slice(0, space);
+      const value = line.slice(space + 1);
+      if (key === "tree") treeSha = value;
+      else if (key === "parent") parents.push(value);
+      else if (key === "author" || key === "committer") {
+        const match = /^(.*?) <([^>]*)> (\d+) [+-]\d{4}$/.exec(value);
+        people[key] = {
+          name: match?.[1] ?? value,
+          email: match?.[2] ?? "",
+          at: Number(match?.[3] ?? 0),
+        };
+      }
+    }
+    const nobody: GitPerson = { name: "", email: "", at: 0 };
+    return {
+      sha,
+      parents,
+      treeSha,
+      author: people.author ?? nobody,
+      committer: people.committer ?? people.author ?? nobody,
+      ...GitBackend.splitMessage(at === -1 ? "" : raw.slice(at + 2)),
+    };
+  }
+
+  public async mergeBase(
+    ref: string,
+    a: string,
+    b: string,
+    _options?: { maxReads?: number },
+  ): Promise<{ kind: "ok"; sha: string | undefined } | { kind: "cap" }> {
+    if (!GitBackend.isSha(a) || !GitBackend.isSha(b)) {
+      return { kind: "ok", sha: undefined };
+    }
+    const { code, out } = await this.run([
+      "--git-dir",
+      this.pathOf(ref),
+      "merge-base",
+      a,
+      b,
+    ]);
+    return { kind: "ok", sha: code === 0 ? out.trim() : undefined };
+  }
+
+  public async isAncestor(
+    ref: string,
+    ancestor: string,
+    tip: string,
+    _options?: { maxReads?: number },
+  ): Promise<{ kind: "ok"; value: boolean } | { kind: "cap" }> {
+    if (!GitBackend.isSha(ancestor) || !GitBackend.isSha(tip)) {
+      return { kind: "ok", value: false };
+    }
+    const { code } = await this.run([
+      "--git-dir",
+      this.pathOf(ref),
+      "merge-base",
+      "--is-ancestor",
+      ancestor,
+      tip,
+    ]);
+    return { kind: "ok", value: code === 0 };
   }
 
   /**
@@ -382,6 +592,65 @@ exit 1
       }
     }
     return total;
+  }
+
+  /**
+   * Run `git` to completion and answer its exit code beside its output,
+   * for the commands whose non-zero exit is an answer (`merge-base`,
+   * `rev-parse --verify`). `input` is written to its stdin.
+   */
+  public async run(
+    args: string[],
+    input?: string,
+  ): Promise<{ code: number; out: string; err: string }> {
+    const { spawn } = await import("node:child_process");
+    return new Promise((resolve, reject) => {
+      const child = spawn("git", args, {
+        stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+      });
+      let out = "";
+      let err = "";
+      child.stdout!.on("data", (chunk) => (out += chunk));
+      child.stderr!.on("data", (chunk) => (err += chunk));
+      child.on("error", (error) =>
+        reject(
+          new AlephaError(
+            `Cannot run git (${error.message}). Lore on Node needs the git binary on its PATH.`,
+          ),
+        ),
+      );
+      child.on("close", (code) => resolve({ code: code ?? 1, out, err }));
+      if (input !== undefined) child.stdin?.end(input);
+    });
+  }
+
+  /**
+   * Run `git` and answer its stdout as bytes, for a blob.
+   */
+  protected async gitBytes(args: string[]): Promise<Uint8Array> {
+    const { spawn } = await import("node:child_process");
+    return new Promise((resolve, reject) => {
+      const child = spawn("git", args, { stdio: ["ignore", "pipe", "pipe"] });
+      const chunks: Uint8Array[] = [];
+      let err = "";
+      child.stdout.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+      child.stderr.on("data", (chunk) => (err += chunk));
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code !== 0) {
+          reject(new AlephaError(`git ${args.at(-2)} failed: ${err.trim()}`));
+          return;
+        }
+        const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const bytes = new Uint8Array(total);
+        let offset = 0;
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset);
+          offset += chunk.length;
+        }
+        resolve(bytes);
+      });
+    });
   }
 
   /**

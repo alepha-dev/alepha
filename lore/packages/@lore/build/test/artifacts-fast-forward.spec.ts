@@ -127,12 +127,12 @@ const backendOver = (
   hooks: { beforeMove?: () => Promise<void> },
 ) => {
   class GitUpstreamBackend extends ArtifactsGitBackend {
-    protected override async isAncestor(
+    protected override async ancestry(
       ref: string,
       ancestor: string,
       tip: string,
     ) {
-      const answer = await super.isAncestor(ref, ancestor, tip);
+      const answer = await super.ancestry(ref, ancestor, tip);
       await hooks.beforeMove?.();
       return answer;
     }
