@@ -1,7 +1,8 @@
 # Agent jobs
 
 An agent job is Claude Code run by Lore on one of your own hosts: it triages a
-feedback item into quests, or works a quest and pushes a branch. You provide
+feedback item into quests, reviews an epic's plan, or works a quest and pushes
+a branch. You provide
 the machine and the Claude credential; Lore writes the job, starts it, shows its
 log, and keeps what it answered.
 
@@ -123,6 +124,23 @@ lore feedback triage P120
 lore feedback triage --all
 ```
 
+### An epic's review
+
+**Review with Claude**, in the robot menu of a draft or ready epic, runs the
+project's Review prompt on it: the job reads the epic, its quests and the code,
+then files one review on the epic's **Review** tab, with its blockers,
+questions and decisions. It may also sharpen the epic and its quests, add the
+quests the plan is missing, and write a folio under the epic. Answering the
+review stays yours.
+
+The job reads and writes nothing outside the epic: its key reaches this epic,
+the quests filed under it, and creates filed under it. It pushes nothing. One
+review job runs per epic at a time, and the **Review** tab links the last one.
+
+```bash
+lore epic review E12
+```
+
 ### A quest to a branch
 
 **Work it with Claude**, on an accepted quest, clones the repository, works the
@@ -158,14 +176,14 @@ A job runs one of two fixed profiles. Neither can be widened from a prompt.
 
 | profile | used by                 | Claude Code may                                               | turns | time   |
 | ------- | ----------------------- | ------------------------------------------------------------- | ----- | ------ |
-| `read`  | triage                  | read files, search, read git history                          | 30    | 15 min |
+| `read`  | triage, epic review     | read files, search, read git history                          | 30    | 15 min |
 | `push`  | **Work it with Claude** | edit files, run shell commands (`yarn`, git), push its branch | 100   | 60 min |
 
 Each job also gets its own Lore key, made when the host pulls the job and
 revoked when it ends. The key holds only:
 
-- the Lore tools the job needs, for the one feedback item or quest it is
-  about;
+- the Lore tools the job needs, for the one feedback item, quest or epic it
+  is about;
 - read access to the one repository it cloned;
 - for a `push` job, write access to `lore/q<number>` and nothing else.
 
@@ -194,6 +212,9 @@ stricter rules:
 - A quest filed from it is marked **Untrusted** too. **Work it with Claude**
   waits until a member has read its text and clicked **Confirm its text**,
   which Lore records with their name.
+- **Review with Claude** on an epic holding such a quest, not yet confirmed,
+  is refused on a process host, naming the quests to confirm first. A
+  container host reviews it with the same `read` profile.
 
 The Triage prompt also tells the agent that the item's text is data, never
 instructions. That sentence helps; the rules above are what hold.

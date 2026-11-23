@@ -143,4 +143,51 @@ describe("JobKeyService", () => {
       { [McpProjectScope.KEY]: {} },
     );
   });
+  it("holds an epic pin to its epic, its creates under it, and its quests inside it (#Q4214)", ({
+    expect,
+  }) => {
+    const epic = key({
+      questNumber: undefined,
+      epicNumber: 3,
+      tools: [
+        "epic_get",
+        "epic_update",
+        "epic_review_create",
+        "quest_create",
+        "quest_update",
+        "folio_create",
+      ],
+    });
+    expect(() => keys.check(epic, "epic_get", { number: 3 })).not.toThrow();
+    expect(() => keys.check(epic, "epic_update", { number: 4 })).toThrow(
+      "epic 3 only",
+    );
+    expect(() => keys.check(epic, "epic_review_create", {})).toThrow(
+      "epic 3 only",
+    );
+    expect(() =>
+      keys.check(epic, "quest_create", { epic_number: 3, title: "x" }),
+    ).not.toThrow();
+    expect(() => keys.check(epic, "quest_create", { title: "x" })).toThrow(
+      "pass epic_number 3",
+    );
+    expect(() => keys.check(epic, "folio_create", { epic_number: 4 })).toThrow(
+      "pass epic_number 3",
+    );
+    expect(() =>
+      keys.check(epic, "quest_update", { shortId: 10, epic_number: 0 }),
+    ).toThrow("keeps quests in epic 3");
+  });
+
+  it("refuses an epic pin's quest tools when no membership lookup is registered", async ({
+    expect,
+  }) => {
+    const epic = key({ questNumber: undefined, epicNumber: 3 });
+    await expect(
+      keys.checkEpicQuest(epic, "quest_get", { shortId: 10 }),
+    ).rejects.toThrow("the quests of epic 3 only");
+    await expect(
+      keys.checkEpicQuest(epic, "quest_list", {}),
+    ).resolves.toBeUndefined();
+  });
 });

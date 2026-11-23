@@ -4009,6 +4009,9 @@ export default {
   "epic.tab.review": "Review",
   "epic.list.openQuestions": "$1 review questions open",
   "epic.list.openBlockers": "$1 review blockers open",
+  "epic.agent.review": "Review with Claude",
+  "epic.agent.started": "Review started on the Agent host",
+  "epic.agent.job": "Review job",
   "epic.review.empty":
     "No review has been filed for this epic yet. Run Review Epic from the agent prompts to file one.",
   "epic.review.open": "Open questions ($1)",

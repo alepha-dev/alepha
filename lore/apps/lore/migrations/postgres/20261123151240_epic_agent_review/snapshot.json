@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6e2cfd79-fe66-4973-a013-06fe512ea203",
+  "prevIds": ["f3920cfa-24a5-48d9-b65e-1a9bca264ca5"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "epics", "agent_review_job_id"],
+      "writes": [
+        "s|col|public.epics.agent_review_job_id",
+        "n|col|public.epics.agent_review_job_id",
+        "e|col|public.epics.agent_review_job_id"
+      ],
+      "reads": ["n|tbl|public.epics", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "job_keys", "epic_number"],
+      "writes": [
+        "s|col|public.job_keys.epic_number",
+        "n|col|public.job_keys.epic_number",
+        "e|col|public.job_keys.epic_number"
+      ],
+      "reads": ["n|tbl|public.job_keys", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "epics",
+        "name": "agent_review_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "job_keys",
+        "name": "epic_number",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

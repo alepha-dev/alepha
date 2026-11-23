@@ -56,6 +56,25 @@ export class JobKeyService {
    * The tools a pinned quest constrains, and those it leaves to the project
    * pin: a list or a create names no quest.
    */
+  /**
+   * The quest tools an epic pin holds to the epic's own quests (#Q4214).
+   * `quest_list` stays project wide: the review reads the epic's quests
+   * with it, and a list writes nothing.
+   */
+  public static readonly EPIC_QUEST_TOOLS = new Set([
+    "quest_get",
+    "quest_update",
+    "quest_objective_set",
+  ]);
+
+  /**
+   * The creates an epic pin files under the epic, by `epic_number`.
+   */
+  public static readonly EPIC_CREATE_TOOLS = new Set([
+    "quest_create",
+    "folio_create",
+  ]);
+
   public static readonly UNPINNED_TOOLS = new Set([
     "quest_list",
     "quest_create",
@@ -73,11 +92,25 @@ export class JobKeyService {
   protected readonly mcp = $inject(McpProjectScope);
   protected readonly dateTime = $inject(DateTimeProvider);
 
+  /**
+   * Whether a quest belongs to an epic: Plan's, registered here, since the
+   * quests are its entity. Absent, an epic pin refuses every quest tool it
+   * constrains.
+   */
+  protected epicMembership?: EpicMembership;
+
   constructor() {
     this.port.registerKeyIssuer({
       mint: (job, scope) => this.mint(job, scope),
       revoke: (jobId) => this.revoke(jobId),
     });
+  }
+
+  /**
+   * Registers Plan's quest-in-epic lookup (#Q4214).
+   */
+  public registerEpicMembership(lookup: EpicMembership): void {
+    this.epicMembership = lookup;
   }
 
   /**
@@ -115,6 +148,7 @@ export class JobKeyService {
       questNumber: scope.questId,
       feedbackNumber: scope.feedbackId,
       feedbackNumbers: scope.feedbackIds,
+      epicNumber: scope.epicId,
       repositoryId: scope.repositoryId,
       writeRefPrefix: scope.writeRefPrefix,
       expiresAt: expiresAt.toISOString(),
@@ -195,6 +229,7 @@ export class JobKeyService {
       const key = await this.scopeOf(request?.user);
       if (!key) return;
       this.check(key, name, args);
+      await this.checkEpicQuest(key, name, args);
       this.mcp.pin(key.projectId);
     },
   });
@@ -230,6 +265,31 @@ export class JobKeyService {
     ) {
       throw new ForbiddenError(this.feedbackRefusal(pinned));
     }
+    const epic = key.epicNumber ?? undefined;
+    if (epic !== undefined) {
+      if (name.startsWith("epic_") && named !== epic) {
+        throw new ForbiddenError(`This job key reaches epic ${epic} only`);
+      }
+      if (
+        JobKeyService.EPIC_CREATE_TOOLS.has(name) &&
+        args.epic_number !== epic
+      ) {
+        throw new ForbiddenError(
+          `This job key files under epic ${epic} only: pass epic_number ${epic}`,
+        );
+      }
+      // A quest of the epic stays in it: moving it out would take it past
+      // the pin.
+      if (
+        name === "quest_update" &&
+        args.epic_number !== undefined &&
+        args.epic_number !== epic
+      ) {
+        throw new ForbiddenError(
+          `This job key keeps quests in epic ${epic}: no epic_number but ${epic}`,
+        );
+      }
+    }
     // A quest links a feedback item by `feedback_shortId`: a pinned key
     // links only its own, or a triage could accept and file against an
     // item it was never given.
@@ -241,6 +301,36 @@ export class JobKeyService {
       !pinned.includes(linked)
     ) {
       throw new ForbiddenError(this.feedbackRefusal(pinned));
+    }
+  }
+
+  /**
+   * An epic pin's quest writes and reads reach the epic's own quests only
+   * (#Q4214): a lookup, since a call names the quest and not its epic. A
+   * quest the review filed under the epic a moment ago passes, since it is
+   * read at the call. Public for the specs.
+   */
+  public async checkEpicQuest(
+    key: JobKey,
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<void> {
+    const epic = key.epicNumber ?? undefined;
+    if (epic === undefined || !JobKeyService.EPIC_QUEST_TOOLS.has(name)) {
+      return;
+    }
+    const quest = {
+      shortId: typeof args.shortId === "number" ? args.shortId : undefined,
+      id: typeof args.id === "number" ? args.id : undefined,
+    };
+    const inEpic =
+      (quest.shortId !== undefined || quest.id !== undefined) &&
+      this.epicMembership !== undefined &&
+      (await this.epicMembership(key.projectId, epic, quest));
+    if (!inEpic) {
+      throw new ForbiddenError(
+        `This job key reaches the quests of epic ${epic} only`,
+      );
     }
   }
 
@@ -303,3 +393,13 @@ export class JobKeyService {
     return project.createdBy;
   }
 }
+
+/**
+ * Whether a quest, by its per-project number or its global id, is filed
+ * under an epic of a project, by the epic's number.
+ */
+export type EpicMembership = (
+  projectId: number,
+  epicNumber: number,
+  quest: { shortId?: number; id?: number },
+) => Promise<boolean>;

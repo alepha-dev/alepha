@@ -13,8 +13,8 @@ import { projects } from "./projects.ts";
  * may reach:
  *
  * - **one project**, `projectId`: an MCP call resolving any other is refused;
- * - optionally **one quest** and **one feedback item**, by per-project
- *   number: an MCP call naming another is refused;
+ * - optionally **one quest**, **one feedback item** or **one epic**, by
+ *   per-project number: an MCP call naming another is refused;
  * - **an allowlist of MCP tools**, `tools`: any other tool is refused;
  * - **git read on one repository**, `repositoryId`, and **write only to
  *   `refs/heads/<writeRefPrefix>` and below** when a prefix is set.
@@ -40,6 +40,9 @@ export const jobKeys = $entity({
     // The global triage's set of items (#Q4183); a key holds this or
     // `feedbackNumber`, never both.
     feedbackNumbers: z.array(z.integer()).max(50).optional(),
+    // An epic review's epic (#Q4214): its `epic_*` tools reach this number
+    // only, its creates file under it, its quest writes touch its quests.
+    epicNumber: z.integer().optional(),
     repositoryId: z.string().max(64).optional(),
     writeRefPrefix: z.string().max(200).optional(),
     expiresAt: z.string(),

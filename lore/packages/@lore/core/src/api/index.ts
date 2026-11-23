@@ -614,7 +614,10 @@ export type {
 } from "./services/AgentJobs.ts";
 export { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 export { HostJobs } from "./services/HostJobs.ts";
-export { JobKeyService } from "./services/JobKeyService.ts";
+export {
+  type EpicMembership,
+  JobKeyService,
+} from "./services/JobKeyService.ts";
 export type {
   AgentHostDirectory,
   AgentHostRef,

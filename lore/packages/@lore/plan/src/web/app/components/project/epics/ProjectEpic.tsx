@@ -48,6 +48,7 @@ import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 import ProjectEpicReview from "./ProjectEpicReview.tsx";
+import { useEpicAgentReview } from "./useEpicAgentReview.ts";
 import { useEpicAiContext } from "./useEpicAiContext.ts";
 
 export interface ProjectEpicProps {
@@ -357,6 +358,12 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const reviews =
     reviewsQuery.data?.epicId === epic.id ? reviewsQuery.data.result : null;
 
+  // Review with Claude (#Q4214): the robot menu's run entry while the plan
+  // is open; the Review tab's job link follows once it starts.
+  const agentActions = useEpicAgentReview(epic, () =>
+    queries.invalidate(reviewsKey),
+  );
+
   /**
    * Answer, pick, waive or overturn one review item. The epic is read back
    * after, so its `openQuestions`, which the ready confirm reads, follows.
@@ -468,6 +475,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               for a reader who may mark it ready, which the click then does
               (#P2226): a draft epic's quests refuse to be accepted. */}
           <AgentPromptsMenu
+            actions={agentActions}
             items={[
               ...(epic.status === "draft" || epic.status === "ready"
                 ? [

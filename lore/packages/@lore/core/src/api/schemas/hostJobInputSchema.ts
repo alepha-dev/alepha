@@ -33,6 +33,7 @@ export const hostJobInputSchema = z.object({
       questId: z.integer().optional(),
       feedbackId: z.integer().optional(),
       feedbackIds: z.array(z.integer()).max(50).optional(),
+      epicId: z.integer().optional(),
     })
     .optional(),
 });
