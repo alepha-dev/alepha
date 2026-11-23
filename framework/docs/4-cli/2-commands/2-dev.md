@@ -12,10 +12,11 @@ That's it. Your app is running. Make changes and watch them appear instantly.
 
 ## Options
 
-| Flag           | Description                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| `--only`       | Run only specific apps in a monorepo (comma-separated: `--only api,web`)                        |
-| `--mode`, `-m` | Also load `.env.<mode>` and `.env.<mode>.local`. In workspace mode it is forwarded to every app |
+| Flag           | Description                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `--only`       | Run only specific apps in a monorepo (comma-separated: `--only api,web`)                                                  |
+| `--port`       | The port to serve on, ahead of `SERVER_PORT` and `dev.port`. `0` takes any free port. In a monorepo, the first app's port |
+| `--mode`, `-m` | Also load `.env.<mode>` and `.env.<mode>.local`. In workspace mode it is forwarded to every app                           |
 
 ## What It Does
 
@@ -28,7 +29,7 @@ alepha dev
 
 ### Port
 
-The port is resolved in this order: the `SERVER_PORT` environment variable, then `dev.port` in `alepha.config.ts`, then Vite's `server.port`, then `5173`. The chosen port is bound strictly - a second dev server on the same port fails loudly instead of drifting to `5174`:
+The port is resolved in this order: the `--port` flag, then the `SERVER_PORT` environment variable, then `dev.port` in `alepha.config.ts`, then Vite's `server.port`, then `5173`. The chosen port is bound strictly - a second dev server on the same port fails loudly instead of drifting to `5174`:
 
 ```typescript
 export default defineConfig({
@@ -45,12 +46,12 @@ When a missing module is one of the app's own `workspace:` dependencies that is 
 Once the server listens, it prints one plain line to wait for, instead of polling the port:
 
 ```bash
-SERVER_PORT=0 alepha dev > dev.log 2>&1 &
+alepha dev --port 0 > dev.log 2>&1 &
 grep -m1 "alepha dev: " <(tail -f dev.log)
 # alepha dev: ready url=http://localhost:54012/ pid=4242
 ```
 
-`SERVER_PORT=0` takes any free port, so two servers started at once never collide, and the app reads the real port rather than `0`. The same facts are in `node_modules/.alepha/dev.json` (`status`, `url`, `port`, `pid`, and `reason` after a failure), which is deleted when the server stops. Colours are left out whenever the output is not a terminal; `FORCE_COLOR=1` brings them back.
+`--port 0` (or `SERVER_PORT=0`) takes any free port, so two servers started at once never collide, and the app reads the real port rather than `0`. The same facts are in `node_modules/.alepha/dev.json` (`status`, `url`, `port`, `pid`, and `reason` after a failure), which is deleted when the server stops. Colours are left out whenever the output is not a terminal; `FORCE_COLOR=1` brings them back.
 
 The page's `console.error` and `console.warn` calls and its uncaught errors are printed in the dev server's output too, with source-mapped stacks, so a broken page shows up in the same log as the server. Vite does this by itself when it recognises a coding agent; without a terminal, `dev` turns it on for any caller.
 
@@ -79,7 +80,7 @@ alepha dev
 # → web   http://localhost:5174
 ```
 
-- Each app gets a port from its position in the `apps/` listing, starting at 5173. Ports are stable: `--only web` keeps `web` on the same port it has when all apps run, so OAuth redirect URIs and client configs stay valid.
+- Each app gets a port from its position in the `apps/` listing, starting at 5173, or at `--port` when given (`--port 0` gives every app a free port of its own). Ports are stable: `--only web` keeps `web` on the same port it has when all apps run, so OAuth redirect URIs and client configs stay valid.
 - Each app runs with `SERVER_PORT` set to that port and `APP_NAME` set to its name in upper case, which prefixes its log lines.
 - `--only api,web` filters which apps start, and `--mode` is forwarded to every app.
 - Scoped directories (`apps/@myorg/api`) are supported.

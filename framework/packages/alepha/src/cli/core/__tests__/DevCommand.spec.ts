@@ -7,6 +7,7 @@ import { DevCommand } from "../commands/dev.ts";
 class TestDevCommand extends DevCommand {
   public testSelectApps = this.selectApps.bind(this);
   public testSpawnArgs = this.spawnArgs.bind(this);
+  public testApplyPort = this.applyPort.bind(this);
 }
 
 describe("DevCommand", () => {
@@ -105,6 +106,52 @@ describe("DevCommand", () => {
       const dev = create();
 
       expect(dev.testSelectApps(apps, "nope")).toEqual([]);
+    });
+  });
+
+  describe("--port", () => {
+    it("should put a single app's --port ahead of SERVER_PORT", () => {
+      const dev = create();
+      const before = process.env.SERVER_PORT;
+      process.env.SERVER_PORT = "9999";
+      try {
+        dev.testApplyPort(3303);
+        expect(process.env.SERVER_PORT).toBe("3303");
+        // No flag: SERVER_PORT, then dev.port, are left to decide.
+        dev.testApplyPort(undefined);
+        expect(process.env.SERVER_PORT).toBe("3303");
+      } finally {
+        if (before === undefined) delete process.env.SERVER_PORT;
+        else process.env.SERVER_PORT = before;
+      }
+    });
+
+    it("should number a workspace's ports from --port", () => {
+      const dev = create();
+
+      expect(
+        dev.testSelectApps(apps, undefined, 4000).map((a) => [a.name, a.port]),
+      ).toEqual([
+        ["web", 4000],
+        ["api", 4001],
+        ["admin", 4002],
+      ]);
+    });
+
+    it("should keep an app's port from --port when siblings are filtered out", () => {
+      const dev = create();
+
+      expect(
+        dev.testSelectApps(apps, "admin", 4000).map((a) => [a.name, a.port]),
+      ).toEqual([["admin", 4002]]);
+    });
+
+    it("should give every app a free port with --port 0", () => {
+      const dev = create();
+
+      expect(dev.testSelectApps(apps, undefined, 0).map((a) => a.port)).toEqual(
+        [0, 0, 0],
+      );
     });
   });
 });
