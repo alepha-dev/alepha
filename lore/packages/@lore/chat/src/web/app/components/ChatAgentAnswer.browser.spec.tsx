@@ -89,11 +89,11 @@ describe("ChatAgentAnswer", () => {
 
     const trace = screen.getByTestId("chat-agent-trace");
     expect(trace.textContent).toContain("quest_create");
-    expect(screen.queryByTestId("chat-agent-trace-steps")).toBeNull();
+    expect(screen.queryByTestId("ai-chat-tool-trace-steps")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { expanded: false }));
 
-    const steps = screen.getByTestId("chat-agent-trace-steps").textContent;
+    const steps = screen.getByTestId("ai-chat-tool-trace-steps").textContent;
     expect(steps).toContain("Listed quests");
     expect(steps).toContain("quest_create");
   });

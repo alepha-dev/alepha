@@ -339,6 +339,9 @@ const InvoicePage = (props: InvoicePageProps) => {
   drawer below. A dock renders into an `<AiChatDockSlot />` placed in your layout, which narrows
   the page to make room (`AppShell` takes one as `aside={<AiChatDockSlot />}`); without a slot it
   floats over the page's right edge.
+- A run of consecutive tool calls reads as one line ("Used 3 tools", or the words of the
+  `toolSummary` prop) that opens on every step, and names only the call in flight while one runs.
+  `<AiChatToolTrace />` is that line, for a thread an app draws itself.
 - A reply the model did not finish (`end: length`, the turn reached `maxTokens`) is shown with a
   notice that it was cut short and a Continue button. `useAiChat()` marks that line `cut`.
 - `<AiChatPanel />` is the conversation without a container, for a layout that holds it itself.

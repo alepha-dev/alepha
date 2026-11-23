@@ -38,6 +38,11 @@ class Links extends LinkProvider {
               const events = this.streams.shift() ?? [];
               return (async function* () {
                 for (const event of events) {
+                  // A `wait` holds the stream, so a spec sees a call running.
+                  if (event.wait instanceof Promise) {
+                    await event.wait;
+                    continue;
+                  }
                   yield event;
                 }
               })();
@@ -446,7 +451,7 @@ describe("AiChat", () => {
       },
     ]);
     // A denial reads as cancelled, not as a failure.
-    expect(view.getByTestId("ai-chat-tool").textContent).toBe(
+    expect(view.getByTestId("ai-chat-tool-trace-line").textContent).toBe(
       "deleteAll cancelled",
     );
   });
@@ -638,7 +643,9 @@ describe("AiChat", () => {
     fireEvent.click(await view.findByRole("button", { name: "My notes" }));
     await view.findByText("Two notes.");
     expect(links.bodies("chat")[0].message).toBe("list my notes");
-    expect(view.getByTestId("ai-chat-tool").textContent).toBe("Searched notes");
+    expect(view.getByTestId("ai-chat-tool-trace-line").textContent).toBe(
+      "Searched notes",
+    );
     expect(view.queryByTestId("ai-chat-empty")).toBeNull();
 
     const box = document.querySelector(
@@ -652,6 +659,84 @@ describe("AiChat", () => {
     await view.findByText("Done.");
     expect(links.bodies("chat")[1].message).toBe("thanks");
     expect(box.value).toBe("");
+  });
+
+  it("folds a run of tool calls into one line that opens on every step, and names only the call in flight", async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          ...["s1", "s2", "s3", "s4"].flatMap((callId) => [
+            { type: "tool_call", callId, name: "search", input: {} },
+            { type: "tool_result", callId, name: "search" },
+          ]),
+          { type: "tool_call", callId: "q1", name: "quest_get", input: {} },
+          { wait: held },
+          { type: "tool_result", callId: "q1", name: "quest_get" },
+          { type: "text", text: "Found it." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {
+        toolLabel: (name, state) =>
+          name === "search"
+            ? "Searched the project"
+            : state === "running"
+              ? "Reading a quest"
+              : "Read a quest",
+        toolSummary: (tools) =>
+          `Searched ${tools.filter((t) => t.name === "search").length} times, read a quest`,
+      },
+    );
+    await say("find it");
+
+    // In flight: one line, naming the running call only.
+    await waitFor(() =>
+      expect(view.getByTestId("ai-chat-tool-trace-line").textContent).toBe(
+        "Reading a quest",
+      ),
+    );
+    expect(view.getAllByTestId("ai-chat-tool-trace")).toHaveLength(1);
+    expect(view.queryAllByTestId("ai-chat-tool")).toHaveLength(0);
+
+    release();
+    await view.findByText("Found it.");
+    expect(view.getAllByTestId("ai-chat-tool-trace")).toHaveLength(1);
+    const line = view.getByTestId("ai-chat-tool-trace-line");
+    expect(line.textContent).toBe("Searched 4 times, read a quest");
+
+    fireEvent.click(line);
+    const steps = view.getAllByTestId("ai-chat-tool");
+    expect(steps.map((step) => step.textContent)).toEqual([
+      "Searched the projectsearch",
+      "Searched the projectsearch",
+      "Searched the projectsearch",
+      "Searched the projectsearch",
+      "Read a questquest_get",
+    ]);
+  });
+
+  it("says how many tools ran when the app gives no summary", async () => {
+    const { view, say } = await mount((l) => {
+      l.streams.push([
+        { type: "conversation", conversationId },
+        { type: "tool_call", callId: "a", name: "findNotes", input: {} },
+        { type: "tool_result", callId: "a", name: "findNotes" },
+        { type: "tool_call", callId: "b", name: "readNote", input: {} },
+        { type: "tool_result", callId: "b", name: "readNote", isError: true },
+        { type: "text", text: "Partly." },
+        { type: "end", reason: "stop" },
+      ]);
+    });
+    await say("notes");
+    await view.findByText("Partly.");
+    expect(view.getByTestId("ai-chat-tool-trace-line").textContent).toBe(
+      "Used 2 tools",
+    );
   });
 
   it("locks the composer while a confirmation waits", async () => {

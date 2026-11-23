@@ -74,6 +74,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "ai.chat.title": "Assistant",
   "ai.chat.toolDenied": "$1 annulé",
   "ai.chat.toolDone": "$1 exécuté",
+  "ai.chat.toolsUsed": "$1 outils utilisés",
   "ai.chat.toolFailed": "Échec de $1",
   "ai.chat.untitled": "Conversation sans titre",
   "ai.chat.waiting": "Confirmez ou annulez la carte pour continuer",

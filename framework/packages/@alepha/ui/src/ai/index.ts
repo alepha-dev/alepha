@@ -18,6 +18,7 @@ export * from "./AiChatHistory.tsx";
 export * from "./AiChatLauncher.tsx";
 export * from "./AiChatMessage.tsx";
 export * from "./AiChatPanel.tsx";
+export * from "./AiChatToolTrace.tsx";
 export * from "./aiChatMessageFormSchema.ts";
 export * from "./aiContextAtom.ts";
 export * from "./AiFormRegistry.ts";
