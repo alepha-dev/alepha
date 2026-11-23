@@ -9,9 +9,11 @@ import {
   HostCommandTransport,
   HostCommandService,
   HostJobService,
+  AgentHostService,
+  ProjectCapabilityController,
+  ProjectSecurityService,
 } from "@lore/core/api";
 import { projects, hostJobs, hosts } from "@lore/core/schemas";
-import { AgentHostService } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -156,6 +158,31 @@ describe("the agent job", () => {
       expect.arrayContaining(["api.anthropic.com", "lore.test"]),
     );
     expect(String(spec.key)).toMatch(/^ak_lorejob_/);
+  });
+
+  it("runs on a project with Plan and Build and Ship off (#E166)", async ({
+    expect,
+  }) => {
+    // The agent role is core's: no part of naming, checking or using an
+    // Agent host needs Ship.
+    await w.alepha.inject(ProjectCapabilityController).setCapability(
+      {
+        params: { projectId: w.host.projectId, key: "ship" },
+        body: { enabled: false },
+      },
+      { user: w.owner },
+    );
+    const capabilities = await w.alepha
+      .inject(ProjectSecurityService)
+      .capabilitiesOf(w.host.projectId);
+    expect(Object.keys(capabilities)).toEqual(
+      expect.arrayContaining(["plan", "build"]),
+    );
+    expect(capabilities).not.toHaveProperty("ship");
+
+    await makeAgentHost(w);
+    const job = await triage(w);
+    expect(job).toMatchObject({ kind: "agent", hostId: w.host.id });
   });
 
   it("gives a push job lore/q<n> to write and the registries to reach", async ({

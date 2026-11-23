@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { AgentHostController } from "@lore/core/api";
 import {
   currentProjectAtom,
   type I18n,
@@ -17,7 +18,6 @@ import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
-import type { AgentHostController } from "../../../../../api/controllers/AgentHostController.ts";
 import { agentEgressFormSchema } from "../../shared/agentEgressFormSchema.ts";
 
 export interface ProjectAgentEgressDialogProps {

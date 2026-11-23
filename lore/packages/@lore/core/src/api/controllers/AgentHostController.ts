@@ -1,10 +1,11 @@
-import { $ownsProject } from "@lore/core/api";
-import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
+import { type Host, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AgentHostService } from "../services/AgentHostService.ts";
 
 /**
@@ -28,7 +29,6 @@ export class AgentHostController {
         repository: () => this.hostRows,
         param: "hostId",
         requires: "host:update",
-        capability: { key: "ship" as const, action: "check an Agent host" },
       }),
     ],
     method: "POST",
@@ -52,7 +52,6 @@ export class AgentHostController {
       $ownsProject({
         param: "projectId",
         requires: "host:update",
-        capability: { key: "ship" as const, action: "name an Agent host" },
       }),
     ],
     method: "PUT",
@@ -78,7 +77,6 @@ export class AgentHostController {
       $ownsProject({
         param: "projectId",
         requires: "host:update",
-        capability: { key: "ship" as const, action: "set the agent egress" },
       }),
     ],
     method: "PUT",
