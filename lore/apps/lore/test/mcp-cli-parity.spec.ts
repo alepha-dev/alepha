@@ -94,6 +94,8 @@ const POSITIONAL = new Set([
  * The params that have no flag, each for a reason.
  */
 const NOT_A_FLAG: Record<string, string[]> = {
+  // `lore agent run <prompt>`: the command's argument (#Q4225).
+  agent_run: ["prompt"],
   // The tool drops the caller's own events by the session's user; nothing
   // tells a CLI process who it is, so the command keeps them (#F1437).
   project_activity: ["includeOwn"],
@@ -153,10 +155,16 @@ const commandOf = (tool: string, all: any[]): any => {
     ALIASES[tool] ?? tool.replaceAll("_", " ")
   ).split(" ");
   const name = SUBJECTS[subject] ?? subject;
-  let found = all.find(
+  // Two subjects may share a word (`lore agent` and `lore chat agent`,
+  // #Q4225): the one that has the tool's first verb is the tool's.
+  const candidates = all.filter(
     (command) =>
       command.name === name && (verbs.length === 0 || command.hasChildren),
   );
+  let found =
+    candidates.find((command) =>
+      command.children?.some((child: any) => child.name === verbs[0]),
+    ) ?? candidates[0];
   for (const verb of verbs) {
     found = found?.children.find((child: any) => child.name === verb);
   }

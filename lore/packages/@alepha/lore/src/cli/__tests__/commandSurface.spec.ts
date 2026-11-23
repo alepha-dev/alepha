@@ -62,6 +62,7 @@ describe("the Lore CLI command surface", () => {
       .sort();
 
     expect(names).toEqual([
+      "agent",
       "apps",
       "area",
       "artifacts",
@@ -216,6 +217,7 @@ describe("the Lore CLI command surface", () => {
       ],
       insights: ["read"],
       job: ["list", "get", "cancel", "logs"],
+      agent: ["run", "hosts"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
       requirement: [
         "list",

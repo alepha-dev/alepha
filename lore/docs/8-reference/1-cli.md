@@ -697,6 +697,27 @@ two share the slug.
 
 See [Hosts](/lore/docs/project-hosts).
 
+## Agent jobs
+
+An agent job is an agent CLI run on a prompt, on one of the project's Agent
+hosts.
+
+| Command                   | What it does                                                                                                   | Flags                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `lore agent run <prompt>` | Start an agent job: `triage` (the inbox and the open errors), `build` (one quest), or `text` (your own words). | `--quest` (build), `--text` (text), `--host`, `--agent`, `--model`, `--workspace` and `--timeout` (text), `--wait` |
+| `lore agent hosts`        | The project's Agent hosts: each one's last check, its agent CLIs and the tools its jobs user has.              |                                                                                                                    |
+| `lore job list`           | The project's jobs, newest first.                                                                              | `--status`, `--limit`                                                                                              |
+| `lore job get <id>`       | One job: what it ran (agent, model, workspace), its status, exit code and reason.                              | `--log`                                                                                                            |
+| `lore job logs <id>`      | A job's output.                                                                                                | `--follow`                                                                                                         |
+| `lore job cancel <id>`    | Stop a job.                                                                                                    |                                                                                                                    |
+
+`--host` is needed when the project has several Agent hosts, `--agent` when
+the host reports several agent CLIs. Without `--model`, the agent's own default
+applies. `--wait` follows the job's log and exits with `1` when it does not
+succeed.
+
+See [Agent jobs](/lore/docs/agents-jobs).
+
 ## Container registries
 
 A project stores one credential per registry host. Private images are pulled
