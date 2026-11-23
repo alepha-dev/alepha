@@ -32,19 +32,15 @@ type Inventory struct {
 /*
 InventoryJobs is the job runner as the machine reports it.
 
-`runner` is how it runs jobs (`process`, a Unix user on this host). `running`
-is the job-run command ids in progress, comma-joined. `tools` is what the
+It runs jobs as a Unix user on this host, `user`. `running` is the job-run
+command ids in progress, comma-joined. `tools` is what the
 jobs user has on its PATH (#Q4220): each supported agent CLI, then git, gh
 and lore, found or not, with a version or the error of its version command.
 Bay only reports them: the host's owner installs what the jobs need.
 */
 type InventoryJobs struct {
-	Runner  string `json:"runner"`
-	User    string `json:"user,omitempty"`
-	Running string `json:"running,omitempty"`
-	// Secrets are the NAMES of the host-local secrets (`bay secret set`),
-	// never a value: what Lore shows as set (#Q3999).
-	Secrets []string        `json:"secrets,omitempty"`
+	User    string          `json:"user,omitempty"`
+	Running string          `json:"running,omitempty"`
 	Tools   []InventoryTool `json:"tools,omitempty"`
 }
 

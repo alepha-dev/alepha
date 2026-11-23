@@ -1,8 +1,0 @@
-{
-  "name": "lore-agent-image",
-  "private": true,
-  "description": "The agent image's own npm install, outside the Yarn project: Claude Code at an exact version, which Dependabot bumps.",
-  "dependencies": {
-    "@anthropic-ai/claude-code": "2.1.330"
-  }
-}

@@ -333,7 +333,7 @@ func sampleInventoryFrame() Inventory {
 				},
 			},
 		},
-		Jobs: &InventoryJobs{Runner: "process", User: "bay-agent",
+		Jobs: &InventoryJobs{User: "bay-agent",
 			Running: "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
 			Tools: []InventoryTool{
 				{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},

@@ -146,7 +146,6 @@ export interface AgentHostRef {
    * adapter name. Undefined when it reported none yet.
    */
   agents?: string[];
-  runner?: string;
 }
 
 /**

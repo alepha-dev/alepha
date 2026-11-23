@@ -731,17 +731,6 @@ jobs:
       - name: Check the image size budget
         run: node scripts/docker-size.ts --image 127.0.0.1:5000/alepha-dev/lore:ci
 
-      # The agent image (#Q3997), built for both platforms as Release builds
-      # it, and its CLI asked for its version: an agent image that does not
-      # build, or whose claude does not run, stops here rather than at a
-      # release.
-      - name: Build the agent image
-        working-directory: lore/images/agent
-        run: docker buildx build --platform linux/amd64,linux/arm64 --push -t 127.0.0.1:5000/alepha-dev/lore-agent:ci .
-
-      - name: Run the agent image's claude
-        run: docker run --rm --read-only --tmpfs /tmp 127.0.0.1:5000/alepha-dev/lore-agent:ci claude --version
-
       # The same smoke on the arm64 variant, under QEMU: an index that lists
       # arm64 is no proof that the arm64 image boots. Last, because the pull
       # moves the local tag to the arm64 image the size check must not read.
@@ -971,12 +960,10 @@ jobs:
       && needs.gate-lore.result == 'success'
       && needs.gate-bay.result == 'success'
       && needs.gate-docs.result == 'success'
-    # A called workflow gets no more than this: Deploy's agent-image job
-    # pushes to ghcr.io (#Q3997).
+    # A called workflow gets no more than this.
     permissions:
       actions: read
       contents: read
-      packages: write
     uses: ./.github/workflows/deploy.yml
     with:
       target: ${{ inputs.deploy }}

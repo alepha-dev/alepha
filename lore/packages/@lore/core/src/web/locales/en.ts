@@ -3177,11 +3177,6 @@ export default {
     "This quest was born of feedback written outside the team. Read its text, then confirm it: an agent works it only after a member did.",
   "hosts.agent.pill": "agent",
   "hosts.agent.pill.default": "agent, default",
-  "hosts.agent.egress.action": "Hosts a push job may reach",
-  "hosts.agent.egress.save": "Save",
-  "hosts.agent.egress.label": "Hosts a push job may reach",
-  "hosts.agent.egress.description":
-    "Beyond Anthropic and Lore, enforced on a container Agent host. Empty: the npm and Yarn registries and GitHub. A leading dot covers every subdomain.",
   "account.hosts.switch.jobs": "Allow jobs",
   "account.hosts.switch.jobs.description":
     "One-shot jobs Lore starts on this machine, such as agent jobs. A job runs a repository's code here, under the jobs user Bay is configured with.",

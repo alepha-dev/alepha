@@ -23,8 +23,7 @@ run-name: Release${{ inputs.dry_run && ' (dry run)' || '' }}
 permissions:
   contents: write
   id-token: write
-  # The Lore image, pushed to ghcr.io/alepha-dev/lore, and the agent image,
-  # ghcr.io/alepha-dev/lore-agent (#Q3997).
+  # The Lore image, pushed to ghcr.io/alepha-dev/lore.
   packages: write
 
 # One release at a time, and never cancel one.
@@ -355,14 +354,6 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: node scripts/docker-attestations.ts --image "127.0.0.1:5000/alepha-dev/lore:${VERSION}"
 
-      # The agent image (#Q3997), Lore's version: what Bay's container runner
-      # runs agent jobs in. Built here with the rest, published after the tag.
-      - name: Build the agent image
-        working-directory: lore/images/agent
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: docker buildx build --platform linux/amd64,linux/arm64 --push -t "127.0.0.1:5000/alepha-dev/lore-agent:${VERSION}" .
-
       # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
       # nothing else. From here on it is public, and a dry run skips every
@@ -438,17 +429,6 @@ jobs:
             --tag "ghcr.io/alepha-dev/lore:latest" \
             "127.0.0.1:5000/alepha-dev/lore:${VERSION}"
           docker buildx imagetools inspect "ghcr.io/alepha-dev/lore:${VERSION}"
-
-      # `<version>` only: `latest` is Deploy's, the image the running Lore
-      # pins by digest (#Q3997).
-      - name: Push the agent image
-        if: inputs.dry_run != true
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          docker buildx imagetools create \
-            --tag "ghcr.io/alepha-dev/lore-agent:${VERSION}" \
-            "127.0.0.1:5000/alepha-dev/lore-agent:${VERSION}"
 
       # Bay's binaries ride on the one release: `bay/install.sh` takes the
       # newest release that carries one.

@@ -147,13 +147,6 @@ export const projects = $entity({
      * cascade-wipes children on D1.
      */
     archivedAt: z.datetime().optional(),
-    /**
-     * The hosts a `push` agent job may reach beyond Anthropic and Lore
-     * (#Q3996), enforced by a container runner's egress proxy. Absent is the
-     * default list (the npm and Yarn registries and GitHub); an empty list
-     * reaches neither.
-     */
-    agentEgressHosts: z.array(z.string().max(253)).max(50).optional(),
   }),
   indexes: [
     {

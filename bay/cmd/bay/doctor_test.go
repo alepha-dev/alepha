@@ -206,3 +206,22 @@ func TestDoctorToolChecks(t *testing.T) {
 		}
 	})
 }
+
+func TestDoctorRunsApps(t *testing.T) {
+	root := t.TempDir()
+	if runsApps(root) {
+		t.Fatal("a host with no state runs apps")
+	}
+	if err := os.WriteFile(filepath.Join(root, "state.json"), []byte(`{"version":1,"apps":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if runsApps(root) {
+		t.Fatal("a host with no app runs apps")
+	}
+	if err := os.WriteFile(filepath.Join(root, "state.json"), []byte(`{"version":1,"apps":[{"name":"web"}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !runsApps(root) {
+		t.Fatal("a host with an app runs none")
+	}
+}

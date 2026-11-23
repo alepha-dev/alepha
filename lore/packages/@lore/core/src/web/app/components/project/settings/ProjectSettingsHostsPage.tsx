@@ -7,7 +7,7 @@ import {
 import { z } from "alepha";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Flag, Globe, Link2, Plus, Server, Unlink } from "lucide-react";
+import { Flag, Link2, Plus, Server, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import type {
@@ -23,7 +23,6 @@ import HostTypeBadge from "../../hosts/HostTypeBadge.tsx";
 import { SubscriptionBell } from "../../shared/SubscriptionBell.tsx";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import { useRank } from "../../shared/useRank.ts";
-import ProjectAgentEgressDialog from "./ProjectAgentEgressDialog.tsx";
 import type { ProjectHostTableRow } from "./projectHostTableRow.ts";
 import ProjectSettingsHostNameCell from "./ProjectSettingsHostNameCell.tsx";
 import ProjectSettingsHostsAddDialog from "./ProjectSettingsHostsAddDialog.tsx";
@@ -47,10 +46,8 @@ import ProjectSettingsHostStatusCell from "./ProjectSettingsHostStatusCell.tsx";
  * server-side; the button is disabled here for a rank without it, with a
  * tooltip, a UX hint rather than a second authorization boundary.
  *
- * The default Agent host (#Q3985) is picked here too, since #Q4065 removed
- * its card: an Agent host carries an `agent` pill in Capabilities, marked
- * when it is the default, and a row action makes it the default or clears
- * it. The push egress list the card held opens from the default's row.
+ * An Agent host (#Q3985) carries an `agent` pill in Capabilities. There is
+ * no default one since #Q4223: a run names its host.
  *
  * Detaching is offered to a rank with `host:lend` and to the host's own
  * owner, because both are legitimate: one gives up a capability, the other
@@ -65,7 +62,6 @@ const ProjectSettingsHostsPage = () => {
   const api = useClient<ProjectHostController>();
   const [project] = useStore(currentProjectAtom);
   const canLend = can("host:lend");
-  const [egressOpen, setEgressOpen] = useState(false);
 
   const [items, setItems] = useState<LentHostResource[] | undefined>();
   const [adding, setAdding] = useState(false);
@@ -171,7 +167,6 @@ const ProjectSettingsHostsPage = () => {
   if (!project) return null;
 
   const busy = lendAction.loading || detachAction.loading;
-  const canAgent = can("host:update");
 
   const rowActions = (
     row: ProjectHostTableRow,
@@ -184,17 +179,6 @@ const ProjectSettingsHostsPage = () => {
         label: tr("hosts.home.lend"),
         disabled: () => busy,
         onClick: () => void lendAction.run(owned),
-      });
-    }
-    // An Agent host this project may use (#Q4065): there is no default
-    // since #Q4223, a run names its host; its row opens the push egress
-    // list.
-    if (row.loan?.agentHost && canAgent) {
-      actions.push({
-        icon: Globe,
-        label: tr("hosts.agent.egress.action"),
-        disabled: () => busy,
-        onClick: () => setEgressOpen(true),
       });
     }
     // Either side of the loan may end it: `host:lend` here, or in the
@@ -419,12 +403,6 @@ const ProjectSettingsHostsPage = () => {
           void home.refetch();
         }}
         onSecret={setFreshSecret}
-      />
-
-      <ProjectAgentEgressDialog
-        key={egressOpen ? "egress-open" : "egress-closed"}
-        open={egressOpen}
-        onOpenChange={setEgressOpen}
       />
 
       <ProjectSettingsHostsAddDialog

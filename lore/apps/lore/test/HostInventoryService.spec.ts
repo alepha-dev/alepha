@@ -187,7 +187,7 @@ describe("HostInventoryService", () => {
     ];
     await ctx.service.record(host, {
       ...frame([]),
-      jobs: { runner: "process", user: "bay-agent", tools },
+      jobs: { user: "bay-agent", tools },
     });
     const row = await ctx.repos.hosts.getOne({
       where: { id: { eq: host.id } },
