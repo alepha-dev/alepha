@@ -495,14 +495,14 @@ export class WorkRouter {
   });
 
   /**
-   * Plan > Tag colours (#Q4061): a palette colour per quest tag, out of the
+   * Plan > Tags (#Q4061, "Tag colours" until #Q4182): a palette colour per quest tag, out of the
    * Features tab.
    */
   projectSettingsTagColors = $pageProjectSettings({
     name: "projectSettingsTagColors",
     path: "/work/tags",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Tag colours`,
+      title: `${previous?.title ?? ""} › Tags`,
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsTagColorsPage.tsx"),

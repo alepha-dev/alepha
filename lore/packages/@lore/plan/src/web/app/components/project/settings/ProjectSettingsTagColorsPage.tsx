@@ -4,7 +4,7 @@ import { settingsCardEdge } from "@alepha/ui/settings";
 import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 
 /**
- * Plan > Tag colours (#Q4061): a tab of its own, out of Features. The colours
+ * Plan > Tags (#Q4061, "Tag colours" until #Q4182): a tab of its own, out of Features. The colours
  * belong to quests, not to the board: they render on the list too, so the
  * tab is listed with the capability, not with `board`.
  */

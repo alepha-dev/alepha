@@ -1209,7 +1209,7 @@ export default {
   "project.settings.tab.features": "Features",
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
-  "project.settings.tab.tagColors": "Tag colours",
+  "project.settings.tab.tagColors": "Tags",
   "project.settings.tab.roadmap": "Roadmap",
   "project.settings.tab.quality": "Quality",
   "project.settings.tab.prompts": "Prompts",
@@ -1816,7 +1816,7 @@ export default {
   "reports.filter.priority": "Priority",
   "reports.filter.member": "Member",
   "reports.overview.kpi.cycleTimeHint": "p85 $1",
-  "project.settings.kanban.tagColors.title": "Tag colours",
+  "project.settings.kanban.tagColors.title": "Tags",
   "project.settings.kanban.tagColors.description":
     "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
   "project.settings.kanban.tagColors.empty":
