@@ -1,4 +1,9 @@
 import {
+  Circle,
+  CircleCheck,
+  CircleDotDashed,
+  CirclePause,
+  CircleSlash,
   ChevronDown,
   ChevronsUp,
   ChevronUp,
@@ -37,6 +42,23 @@ export const QUEST_STATUS_TONE: Record<
   on_hold: "danger",
   completed: "success",
   shelved: "neutral",
+};
+
+/**
+ * One glyph per status, so a status chip survives monochrome and readers who
+ * do not separate amber from emerald (#Q4195). The circle family the epic
+ * statuses use: whole while to do, broken into motion while in progress,
+ * paused on hold, ticked when completed, struck through when shelved.
+ */
+export const QUEST_STATUS_ICON: Record<
+  QuestResource["metadata"]["status"],
+  LucideIcon
+> = {
+  todo: Circle,
+  in_progress: CircleDotDashed,
+  on_hold: CirclePause,
+  completed: CircleCheck,
+  shelved: CircleSlash,
 };
 
 export type QuestStatusLabelKey =
