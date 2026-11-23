@@ -1,12 +1,15 @@
-import { APP_NAME_PATTERN, projects } from "@lore/core/schemas";
+import {
+  APP_NAME_PATTERN,
+  projects,
+  hostProjects,
+  hosts,
+} from "@lore/core/schemas";
 import { $inject, type FileLike } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { hostProjects } from "../entities/hostProjects.ts";
-import { hosts } from "../entities/hosts.ts";
 import {
   type StackEnvironmentRoute,
   stackEnvironmentRoutes,

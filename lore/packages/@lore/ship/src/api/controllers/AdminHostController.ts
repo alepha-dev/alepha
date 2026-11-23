@@ -1,5 +1,12 @@
 import { LoreAudits } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import {
+  projects,
+  hostProjects,
+  HOST_TYPES,
+  hosts,
+  adminHostResourceSchema,
+  hostSlugSchema,
+} from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
@@ -7,10 +14,6 @@ import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
-import { hostProjects } from "../entities/hostProjects.ts";
-import { HOST_TYPES, hosts } from "../entities/hosts.ts";
-import { adminHostResourceSchema } from "../schemas/adminHostResourceSchema.ts";
-import { hostSlugSchema } from "../schemas/hostSlugSchema.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostService } from "../services/HostService.ts";
 

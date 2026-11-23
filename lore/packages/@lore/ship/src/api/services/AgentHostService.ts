@@ -1,14 +1,17 @@
 import { HostJobs } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import {
+  projects,
+  hostJobs,
+  hostProjects,
+  type Host,
+  hosts,
+} from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
-import { hostJobs } from "../entities/hostJobs.ts";
-import { hostProjects } from "../entities/hostProjects.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
 import { HostJobService } from "./HostJobService.ts";
 
 /**

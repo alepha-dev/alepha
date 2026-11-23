@@ -1,4 +1,10 @@
-import { projects } from "@lore/core/schemas";
+import {
+  projects,
+  hostCommands,
+  hostJobs,
+  type Host,
+  hosts,
+} from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,8 +14,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
 
-import { hostCommands } from "../src/api/entities/hostCommands.ts";
-import { hostJobs } from "../src/api/entities/hostJobs.ts";
 import {
   AgentHostService,
   HostCommandService,
@@ -17,7 +21,6 @@ import {
   HostJobService,
   LoreShipApi,
 } from "../src/api/index.ts";
-import { type Host, hosts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 

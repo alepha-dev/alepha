@@ -1,11 +1,10 @@
 import { SourceRepository, CredentialSealService } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
-import { type Host, hosts } from "../entities/hosts.ts";
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
 import { HostEventFields } from "./HostEventFields.ts";
 import { ShipProjectEvents } from "./ShipProjectEvents.ts";

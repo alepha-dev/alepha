@@ -1,5 +1,6 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import type { OwnedHostResource } from "@lore/core/schemas";
 import { I18n } from "@lore/core/web";
 import {
   fireEvent,
@@ -18,7 +19,6 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import HostDrawer from "./HostDrawer.tsx";
 
 /**

@@ -1,8 +1,7 @@
+import { type Host, hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
-
-import { type Host, hosts } from "../entities/hosts.ts";
 
 /**
  * Issues and checks the secret a `bay` host dials in with.

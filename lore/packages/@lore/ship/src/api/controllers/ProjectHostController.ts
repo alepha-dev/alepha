@@ -3,7 +3,18 @@ import {
   LoreAudits,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import {
+  projects,
+  hostProjects,
+  type Host,
+  hosts,
+  createHostBodySchema,
+  type LentHostResource,
+  lentHostResourceSchema,
+  type MintedLentHost,
+  mintedLentHostSchema,
+  ownedHostResourceSchema,
+} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
@@ -16,16 +27,6 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { hostProjects } from "../entities/hostProjects.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
-import { createHostBodySchema } from "../schemas/createHostBodySchema.ts";
-import {
-  type LentHostResource,
-  lentHostResourceSchema,
-  type MintedLentHost,
-  mintedLentHostSchema,
-} from "../schemas/lentHostResourceSchema.ts";
-import { ownedHostResourceSchema } from "../schemas/ownedHostResourceSchema.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
 import { HostService } from "../services/HostService.ts";

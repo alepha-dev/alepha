@@ -1,4 +1,5 @@
 import { projectEvents } from "@lore/core/api";
+import { hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -14,7 +15,6 @@ import {
   HostExpiryJobs,
   LoreShipApi,
 } from "../src/api/index.ts";
-import { hosts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 

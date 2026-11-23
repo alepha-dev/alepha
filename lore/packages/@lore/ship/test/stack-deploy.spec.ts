@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { hostCommandFrameSchema } from "@lore/core/schemas";
 import type { Alepha } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -12,7 +13,6 @@ import {
   StackDeployController,
   StackVariableController,
 } from "../src/api/index.ts";
-import { hostCommandFrameSchema } from "../src/api/schemas/hostCommandFrameSchema.ts";
 import { stackDeployOutcomeSchema } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import {

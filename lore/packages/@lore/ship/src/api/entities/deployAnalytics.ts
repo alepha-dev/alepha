@@ -1,8 +1,8 @@
+import { hosts } from "@lore/core/schemas";
 import { z } from "alepha";
 import { $analytics } from "alepha/api/analytics";
 import { db } from "alepha/orm";
 
-import { hosts } from "./hosts.ts";
 import { monitors } from "./monitors.ts";
 import { sigils } from "./sigils.ts";
 

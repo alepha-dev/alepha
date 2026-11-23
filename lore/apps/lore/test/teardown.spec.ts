@@ -3,12 +3,13 @@ import {
   ProjectController,
   LoreAudits,
 } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import {
   AppController,
   CredentialSealService,
   TeardownService,
 } from "@lore/ship/api";
-import { appInstances, hostProjects, hosts } from "@lore/ship/schemas";
+import { appInstances } from "@lore/ship/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

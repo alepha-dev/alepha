@@ -3,14 +3,18 @@ import {
   LoreAudits,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { appNameSchema } from "@lore/core/schemas";
+import {
+  appNameSchema,
+  type Host,
+  hosts,
+  hostCommandResourceSchema,
+} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stacks } from "../entities/stacks.ts";
@@ -18,7 +22,6 @@ import {
   type AppInstanceResource,
   appInstanceResourceSchema,
 } from "../schemas/appInstanceResourceSchema.ts";
-import { hostCommandResourceSchema } from "../schemas/hostCommandResourceSchema.ts";
 import { AppService } from "../services/AppService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";

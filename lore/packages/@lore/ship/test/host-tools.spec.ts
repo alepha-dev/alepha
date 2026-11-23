@@ -1,10 +1,10 @@
+import { hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
 import { $repository, AlephaOrm } from "alepha/orm";
-import { currentUserAtom } from "alepha/security";
-import { AlephaSecurity } from "alepha/security";
+import { currentUserAtom, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -15,7 +15,6 @@ import {
   ProjectHostController,
 } from "../src/api/index.ts";
 import { HostTools, LoreShipMcp } from "../src/mcp/index.ts";
-import { hosts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 

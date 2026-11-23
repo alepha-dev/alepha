@@ -1,9 +1,9 @@
 import { ProjectEventCatalog, ProjectEventFilters } from "@lore/core/api";
+import { hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
-import { hosts } from "../entities/hosts.ts";
 import { monitors } from "../entities/monitors.ts";
 
 /**

@@ -1,6 +1,7 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
+import type { HostJobResource } from "@lore/core/schemas";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -8,7 +9,6 @@ import { Link } from "alepha/react/router";
 import { useState } from "react";
 
 import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
-import type { HostJobResource } from "../../../../../api/schemas/hostJobResourceSchema.ts";
 import JobStatusBadge from "./JobStatusBadge.tsx";
 
 /**

@@ -1,3 +1,13 @@
+import { BayReleaseTarget } from "@lore/core/api";
+import {
+  BayUpgrade,
+  type Host,
+  type HostCommandFrame,
+  type HostServerFrame,
+  hostCommands,
+  hostProjects,
+  hosts,
+} from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -9,7 +19,6 @@ import { AlephaServer, BadRequestError, ForbiddenError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  BayReleaseTarget,
   HostCommandController,
   HostCommandService,
   HostCommandTransport,
@@ -18,15 +27,6 @@ import {
   LoreShipApi,
   ProjectHostController,
 } from "../src/api/index.ts";
-import { BayUpgrade } from "../src/api/schemas/BayUpgrade.ts";
-import {
-  type Host,
-  type HostCommandFrame,
-  type HostServerFrame,
-  hostCommands,
-  hostProjects,
-  hosts,
-} from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 

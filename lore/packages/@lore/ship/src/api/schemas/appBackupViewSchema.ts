@@ -1,7 +1,5 @@
+import { hostEvents, hostInventoryAppSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
-
-import { hostEvents } from "../entities/hostEvents.ts";
-import { hostInventoryAppSchema } from "./hostInventoryAppSchema.ts";
 
 /**
  * Why a copy has no backup to show, or `reported` when it has one.

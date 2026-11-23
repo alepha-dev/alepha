@@ -1,7 +1,7 @@
+import { hosts } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { hosts } from "./hosts.ts";
 import { stacks } from "./stacks.ts";
 
 /**

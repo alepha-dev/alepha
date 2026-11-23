@@ -1,4 +1,5 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha, AlephaError, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -18,15 +19,9 @@ import {
   DeployLimits,
   type DeployRequest,
   DeployRunner,
+  LoreShipApi,
 } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
-import {
-  appInstances,
-  artifacts,
-  deployments,
-  hostProjects,
-  hosts,
-} from "../src/schemas/index.ts";
+import { appInstances, artifacts, deployments } from "../src/schemas/index.ts";
 
 /**
  * What happens to a deploy that lands while the isolate is already running

@@ -1,15 +1,14 @@
 import { Badge, useToast, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import type { HostCommandListItem } from "@lore/core/schemas";
+import { HOST_COMMAND_KINDS, HOST_COMMAND_STATUSES } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
-import type { HostCommandListItem } from "../../../../api/schemas/hostCommandResourceSchema.ts";
-import { HOST_COMMAND_KINDS } from "../../../../api/schemas/hostCommandValues.ts";
-import { HOST_COMMAND_STATUSES } from "../../../../api/schemas/hostCommandValues.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 export interface BayCommandsProps {

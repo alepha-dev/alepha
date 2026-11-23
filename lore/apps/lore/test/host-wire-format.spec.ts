@@ -1,24 +1,27 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
-
 import {
   hostClientFrameSchema,
   hostServerFrameSchema,
-} from "../src/schemas/index.ts";
+} from "@lore/core/schemas";
+import { describe, expect, it } from "vitest";
 
 /**
  * Wire format v1, pinned from the Lore side.
  *
- * Bay's `internal/connector/testdata/wire-v1` (github.com/alepha-dev/bay)
- * holds one frame of each kind, copied in `fixtures/bay/wire-v1`. The Go suite proves its structs read and write exactly those bytes;
- * this spec proves the same files validate against the `$channel` schemas
- * that are the format's source of truth. Both suites read the same frames,
- * copied in step since Bay left the monorepo (#E72), so neither side can move
- * the vocabulary without the copy, and then the other suite, going red. Folio #1198 is the readable copy.
+ * Bay's `bay/internal/connector/testdata/wire-v1` holds one frame of each
+ * kind, copied in Ship's `test/fixtures/bay/wire-v1`. The Go suite proves its
+ * structs read and write exactly those bytes; this spec proves the same files
+ * validate against core's `$channel` schemas, the format's source of truth
+ * (#E166 moved them from Ship). Both suites read the same frames, so neither
+ * side can move the vocabulary without the copy, and then the other suite,
+ * going red. Folio #1198 is the readable copy.
  */
-const FIXTURES = join(import.meta.dirname, "fixtures/bay/wire-v1");
+const FIXTURES = join(
+  import.meta.dirname,
+  "../../../packages/@lore/ship/test/fixtures/bay/wire-v1",
+);
 
 const SERVER_FRAMES = [
   "welcome.json",

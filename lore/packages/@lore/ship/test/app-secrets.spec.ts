@@ -1,4 +1,5 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -15,16 +16,14 @@ import {
   AppService,
   CredentialSealService,
   DeployService,
+  LoreShipApi,
 } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
 import { setAppSecretBodySchema } from "../src/api/schemas/setAppSecretBodySchema.ts";
 import {
   appInstances,
   appSecrets,
   artifacts,
   deployments,
-  hostProjects,
-  hosts,
   stackEnvironments,
   stacks,
 } from "../src/schemas/index.ts";

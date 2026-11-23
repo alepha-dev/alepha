@@ -1,9 +1,9 @@
 import { ProjectDeletionService } from "@lore/core/api";
+import { hostProjects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
-import { hostProjects } from "../entities/hostProjects.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stacks } from "../entities/stacks.ts";
 

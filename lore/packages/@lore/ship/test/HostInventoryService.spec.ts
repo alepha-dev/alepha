@@ -1,3 +1,9 @@
+import {
+  hostInventories,
+  type Host,
+  hosts,
+  type HostInventoryFrame,
+} from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,15 +14,12 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { HostController, HostInventoryService } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
 import {
-  appInstances,
-  hostInventories,
-  type Host,
-  hosts,
-  type HostInventoryFrame,
-} from "../src/schemas/index.ts";
+  HostController,
+  HostInventoryService,
+  LoreShipApi,
+} from "../src/api/index.ts";
+import { appInstances } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 

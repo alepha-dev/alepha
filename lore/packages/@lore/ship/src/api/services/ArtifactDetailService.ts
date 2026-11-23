@@ -1,10 +1,10 @@
 import { ProjectRoster } from "@lore/core/api";
+import { hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
-import { hosts } from "../entities/hosts.ts";
 import type { ArtifactDetail } from "../schemas/artifactDetailSchema.ts";
 import { DeployedBuildService } from "./DeployedBuildService.ts";
 

@@ -1,5 +1,4 @@
-import type { Host } from "../entities/hosts.ts";
-import type { HostServerFrame } from "../schemas/hostServerFrameSchema.ts";
+import type { Host, HostServerFrame } from "@lore/core/schemas";
 
 /**
  * The seam between the queue and the wire.

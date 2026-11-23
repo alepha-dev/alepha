@@ -1,11 +1,10 @@
 import { $ownsProject } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, type Host, hosts } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
-import { type Host, hosts } from "../entities/hosts.ts";
 import { AgentHostService } from "../services/AgentHostService.ts";
 
 /**

@@ -1,7 +1,7 @@
-import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
 import { hostJobInputSchema } from "./hostJobInputSchema.ts";
+import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "./hostJobValues.ts";
 
 /**
  * A host job as its page and its list show it (#Q3984). The input is shown

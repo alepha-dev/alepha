@@ -1,4 +1,4 @@
-import { BayUpgrade } from "../../../../api/schemas/BayUpgrade.ts";
+import { BayUpgrade } from "@lore/core/schemas";
 
 /**
  * What the host page says about the Bay a machine runs (#E152), worked out

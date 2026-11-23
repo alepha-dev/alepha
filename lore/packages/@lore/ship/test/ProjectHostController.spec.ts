@@ -1,5 +1,5 @@
 import { ProjectDeletionService, ProjectSecurityService } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -15,14 +15,13 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreShipApi } from "../src/api/index.ts";
 import {
+  LoreShipApi,
   HostService,
   AppController,
   HostController,
   ProjectHostController,
 } from "../src/api/index.ts";
-import { hostProjects, hosts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import {
   createTestMemberByProjectId,

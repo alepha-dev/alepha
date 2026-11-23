@@ -1,4 +1,4 @@
-import type { Host } from "../entities/hosts.ts";
+import type { Host } from "@lore/core/schemas";
 
 /**
  * A hostname for a stack environment on a throwaway host, with no DNS to

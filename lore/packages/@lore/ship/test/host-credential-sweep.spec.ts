@@ -1,4 +1,5 @@
 import { projectEvents } from "@lore/core/api";
+import { type Host, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,15 +9,17 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreShipApi } from "../src/api/index.ts";
 import {
+  LoreShipApi,
   CloudflareProbeService,
   CredentialSealService,
   HostCloudflareService,
 } from "../src/api/index.ts";
-import { type Host, hosts } from "../src/schemas/index.ts";
-import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
-import { MemoryCloudflareProbeService } from "../src/testing/index.ts";
+import {
+  createTestProject,
+  DeployTestEntities,
+  MemoryCloudflareProbeService,
+} from "../src/testing/index.ts";
 
 class HostRepositories {
   hosts = $repository(hosts);

@@ -1,8 +1,6 @@
-import { projects, users } from "@lore/core/schemas";
+import { projects, users, hosts } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-
-import { hosts } from "./hosts.ts";
 
 /**
  * A group of apps and services deployed together from one `compose.yml`, the

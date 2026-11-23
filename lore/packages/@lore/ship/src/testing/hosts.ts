@@ -1,11 +1,10 @@
+import type { CreateHostBody, OwnedHostResource } from "@lore/core/schemas";
 import { createTestProject } from "@lore/core/testing";
 import type { Alepha } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 
 import { HostController } from "../api/controllers/HostController.ts";
 import { ProjectHostController } from "../api/controllers/ProjectHostController.ts";
-import type { CreateHostBody } from "../api/schemas/createHostBodySchema.ts";
-import type { OwnedHostResource } from "../api/schemas/ownedHostResourceSchema.ts";
 
 /**
  * A host created the one way a host comes to exist (#E126): inside a

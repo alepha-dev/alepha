@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
-
-import { HostPullController } from "../src/api/controllers/HostPullController.ts";
 import {
   hostBackupsListResultSchema,
   hostBackupVerifyResultSchema,
   hostRestoreResultSchema,
   hostTargetProbeResultSchema,
-} from "../src/schemas/index.ts";
+} from "@lore/core/schemas";
+import { describe, expect, it } from "vitest";
+
+import { HostPullController } from "../src/api/controllers/HostPullController.ts";
 
 /**
  * The backup answers, pinned from the Lore side, as `logs-result.json` is.

@@ -1,5 +1,5 @@
 import { LoreCoreApi } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { UserService } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -7,7 +7,6 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { appInstances } from "../src/api/entities/appInstances.ts";
-import { hosts } from "../src/api/entities/hosts.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { monitors } from "../src/api/entities/monitors.ts";

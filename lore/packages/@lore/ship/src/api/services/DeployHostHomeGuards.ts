@@ -2,11 +2,10 @@ import {
   ProjectCapabilityGuards,
   ProjectDeletionService,
 } from "@lore/core/api";
+import { hosts } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
-
-import { hosts } from "../entities/hosts.ts";
 
 /**
  * A project that is the home of a host is not deleted and does not lose

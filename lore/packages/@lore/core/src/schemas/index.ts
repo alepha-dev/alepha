@@ -157,3 +157,118 @@ export {
 } from "../api/schemas/renderPromptTemplate.ts";
 export { projectPrompts } from "../api/entities/projectPrompts.ts";
 export { jobKeys, type JobKey } from "../api/entities/jobKeys.ts";
+
+// ---- hosts (#E166) ----
+export { hostCommands } from "../api/entities/hostCommands.ts";
+export type { HostCommand } from "../api/entities/hostCommands.ts";
+export { hostJobs } from "../api/entities/hostJobs.ts";
+export type { HostJob } from "../api/entities/hostJobs.ts";
+export { hostEvents } from "../api/entities/hostEvents.ts";
+export type { HostEvent } from "../api/entities/hostEvents.ts";
+export { hostInventories } from "../api/entities/hostInventories.ts";
+export { hostProjects } from "../api/entities/hostProjects.ts";
+export { hosts, HOST_TYPES } from "../api/entities/hosts.ts";
+export type { Host, HostType } from "../api/entities/hosts.ts";
+export type { HostInventoryStack } from "../api/schemas/hostInventoryStackSchema.ts";
+export { adminHostResourceSchema } from "../api/schemas/adminHostResourceSchema.ts";
+export type { AdminHostResource } from "../api/schemas/adminHostResourceSchema.ts";
+export { createHostBodySchema } from "../api/schemas/createHostBodySchema.ts";
+export type { CreateHostBody } from "../api/schemas/createHostBodySchema.ts";
+export {
+  hostBackupsListResultSchema,
+  hostBackupVerifyResultSchema,
+  hostRestoreResultSchema,
+  hostTargetProbeResultSchema,
+} from "../api/schemas/hostBackupResultSchemas.ts";
+export type { HostBackupsListResult } from "../api/schemas/hostBackupResultSchemas.ts";
+export { hostClientFrameSchema } from "../api/schemas/hostClientFrameSchema.ts";
+export { hostCommandFrameSchema } from "../api/schemas/hostCommandFrameSchema.ts";
+export type { HostCommandFrame } from "../api/schemas/hostCommandFrameSchema.ts";
+export { hostCommandResultSchema } from "../api/schemas/hostCommandResultSchema.ts";
+export type { HostCommandResult } from "../api/schemas/hostCommandResultSchema.ts";
+export { hostInventoryFrameSchema } from "../api/schemas/hostInventoryFrameSchema.ts";
+export type { HostInventoryFrame } from "../api/schemas/hostInventoryFrameSchema.ts";
+export { hostServerFrameSchema } from "../api/schemas/hostServerFrameSchema.ts";
+export type { HostServerFrame } from "../api/schemas/hostServerFrameSchema.ts";
+export type { HostStatsFrame } from "../api/schemas/hostStatsFrameSchema.ts";
+export {
+  hostSlugSchema,
+  HOST_SLUG_MAX_LENGTH,
+  HOST_SLUG_PATTERN,
+} from "../api/schemas/hostSlugSchema.ts";
+export {
+  hostCommandResourceSchema,
+  hostCommandListItemSchema,
+} from "../api/schemas/hostCommandResourceSchema.ts";
+export type {
+  HostCommandListItem,
+  HostCommandResource,
+} from "../api/schemas/hostCommandResourceSchema.ts";
+export {
+  BACKUP_KINDS_REFUSED_OFFLINE,
+  backupCommandInput,
+  HOST_BACKUP_COMMAND_KINDS,
+  hostBackupCommandBodySchema,
+  hostBackupCommandTargetedSchema,
+} from "../api/schemas/hostBackupCommandSchema.ts";
+export type { HostBackupCommandBody } from "../api/schemas/hostBackupCommandSchema.ts";
+export { BayUpgrade } from "../api/schemas/BayUpgrade.ts";
+export {
+  cloudflareTokenSchema,
+  CLOUDFLARE_ACCOUNT_ID_PATTERN,
+} from "../api/schemas/cloudflareCredentialSchema.ts";
+export { hostEnrolmentSchema } from "../api/schemas/hostEnrolmentSchema.ts";
+export { hostInventoryResourceSchema } from "../api/schemas/hostInventoryResourceSchema.ts";
+export type {
+  HostInventoryResource,
+  HostInventoryExpectedApp,
+  HostInventoryProject,
+  HostInventoryReportedApp,
+} from "../api/schemas/hostInventoryResourceSchema.ts";
+export { hostMoveResultSchema } from "../api/schemas/hostMoveResultSchema.ts";
+export { hostProvisionBodySchema } from "../api/schemas/hostProvisionBodySchema.ts";
+export {
+  hostResourceSchema,
+  mintedHostSchema,
+} from "../api/schemas/hostResourceSchema.ts";
+export type {
+  HostResource,
+  MintedHost,
+} from "../api/schemas/hostResourceSchema.ts";
+export { ownedHostResourceSchema } from "../api/schemas/ownedHostResourceSchema.ts";
+export type {
+  OwnedHostResource,
+  HostInventorySummary,
+  HostLoan,
+} from "../api/schemas/ownedHostResourceSchema.ts";
+export { hostEnrolExchangeSchema } from "../api/schemas/hostEnrolExchangeSchema.ts";
+export { hostJobLogSchema } from "../api/schemas/hostJobLogSchema.ts";
+export type { HostJobLogResource } from "../api/schemas/hostJobLogSchema.ts";
+export { hostJobResourceSchema } from "../api/schemas/hostJobResourceSchema.ts";
+export type { HostJobResource } from "../api/schemas/hostJobResourceSchema.ts";
+export {
+  HOST_COMMAND_KINDS,
+  HOST_COMMAND_STATUSES,
+} from "../api/schemas/hostCommandValues.ts";
+export type { HostCommandKind } from "../api/schemas/hostCommandValues.ts";
+export {
+  lentHostResourceSchema,
+  mintedLentHostSchema,
+} from "../api/schemas/lentHostResourceSchema.ts";
+export type {
+  LentHostResource,
+  MintedLentHost,
+} from "../api/schemas/lentHostResourceSchema.ts";
+export { hostInventoryAppSchema } from "../api/schemas/hostInventoryAppSchema.ts";
+export type { HostCommandPayload } from "../api/schemas/hostCommandPayloadSchema.ts";
+export type { HostEventFrame } from "../api/schemas/hostEventFrameSchema.ts";
+export { hostJobLogs } from "../api/entities/hostJobLogs.ts";
+export type { HostLogFrame } from "../api/schemas/hostLogFrameSchema.ts";
+export { acceptedRuntimes } from "../api/schemas/acceptedRuntimes.ts";
+export {
+  HOST_FEATURES,
+  HOST_PROTOCOL_VERSION,
+} from "../api/schemas/hostWelcomeFrameSchema.ts";
+export type { HostWelcomeFrame } from "../api/schemas/hostWelcomeFrameSchema.ts";
+export type { HostInventoryBackup } from "../api/schemas/hostInventoryBackupSchema.ts";
+export { HostCost } from "../api/schemas/HostCost.ts";

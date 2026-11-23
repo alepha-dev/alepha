@@ -6,12 +6,13 @@ import {
 import {
   type DashboardCardValue,
   DashboardMetricCatalog,
+  hostProjects,
+  type Host,
+  hosts,
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { hostProjects } from "../entities/hostProjects.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
 import { HostService } from "./HostService.ts";
 
 /**

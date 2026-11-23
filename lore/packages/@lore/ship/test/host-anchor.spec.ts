@@ -1,4 +1,4 @@
-import { projects } from "@lore/core/schemas";
+import { projects, hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { MemberService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -10,7 +10,7 @@ import { afterEach, describe, type ExpectStatic, it } from "vitest";
 
 import { LoreShipApi } from "../src/api/index.ts";
 import { HostAnchorHooks } from "../src/api/services/HostAnchorHooks.ts";
-import { appInstances, hostProjects, hosts } from "../src/schemas/index.ts";
+import { appInstances } from "../src/schemas/index.ts";
 import {
   createTestMemberByProjectId,
   createTestProject,

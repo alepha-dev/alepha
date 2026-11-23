@@ -12,6 +12,7 @@ import {
 } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
+import type { HostLoan } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -21,7 +22,6 @@ import { useState } from "react";
 
 import type { HostController } from "../../../../api/controllers/HostController.ts";
 import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
-import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
 import BayAgentHost from "./BayAgentHost.tsx";

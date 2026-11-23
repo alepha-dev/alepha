@@ -1,6 +1,5 @@
+import { ownedHostResourceSchema } from "@lore/core/schemas";
 import { $atom } from "alepha";
-
-import { ownedHostResourceSchema } from "../../../api/schemas/ownedHostResourceSchema.ts";
 
 /**
  * The host whose console is open, set by the `/:projectSlug/hosts/:hostSlug` loader and

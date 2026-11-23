@@ -1,4 +1,5 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import { hostProjects, hosts } from "@lore/core/schemas";
 import { Alepha, AlephaError, type Infer, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -19,13 +20,7 @@ import {
   DeployRunner,
   LoreShipApi,
 } from "../src/api/index.ts";
-import {
-  appInstances,
-  artifacts,
-  deployments,
-  hostProjects,
-  hosts,
-} from "../src/schemas/index.ts";
+import { appInstances, artifacts, deployments } from "../src/schemas/index.ts";
 
 /**
  * A deploy whose first read times out on D1 (#Q3551).

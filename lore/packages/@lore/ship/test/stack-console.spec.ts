@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { hostInventoryFrameSchema } from "@lore/core/schemas";
 import type { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -9,7 +10,6 @@ import {
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";
-import { hostInventoryFrameSchema } from "../src/api/schemas/hostInventoryFrameSchema.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import {
   bootStackSpec,

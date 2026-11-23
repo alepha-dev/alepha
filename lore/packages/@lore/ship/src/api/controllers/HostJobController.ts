@@ -1,21 +1,20 @@
 import { $ownsProject } from "@lore/core/api";
-import { HOST_JOB_TERMINAL } from "@lore/core/schemas";
+import {
+  HOST_JOB_TERMINAL,
+  type HostJob,
+  hostJobs,
+  hosts,
+  type HostJobLogResource,
+  hostJobLogSchema,
+  type HostJobResource,
+  hostJobResourceSchema,
+} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
-import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
-import { hosts } from "../entities/hosts.ts";
-import {
-  type HostJobLogResource,
-  hostJobLogSchema,
-} from "../schemas/hostJobLogSchema.ts";
-import {
-  type HostJobResource,
-  hostJobResourceSchema,
-} from "../schemas/hostJobResourceSchema.ts";
 import { HostJobService } from "../services/HostJobService.ts";
 
 export type { HostJobLogResource, HostJobResource };
