@@ -81,7 +81,6 @@ const setup = async () => {
       .inject(HostCommandService)
       .ack(host.id, { id: check.commandId, status: "done" });
   }
-  await agents.setDefault(host.projectId, host.id);
   return {
     alepha,
     dataDir,

@@ -3162,15 +3162,15 @@ export default {
   "feedback.trusted.someone": "un membre",
   "feedback.awaitingTrust":
     "$1 retour(s) non fiable(s) en attente qu'un membre leur fasse confiance : aucun agent ne les lit avant.",
-  "feedback.agent.triage": "Trier avec Claude",
+  "feedback.agent.triage": "Trier avec un agent",
   "feedback.agent.triageInbox":
-    "Trier tous les retours et les erreurs avec Claude",
+    "Trier tous les retours et les erreurs avec un agent",
   "feedback.agent.startedMany":
     "$1 tâches de tri lancées ; $2 laissées à un membre",
   "feedback.agent.startedGlobal":
     "Claude trie les retours et les erreurs en une seule passe ; $1 laissés à un membre",
   "feedback.agent.job": "Tâche d'agent",
-  "quest.agent.work": "Travailler avec Claude",
+  "quest.agent.work": "Travailler avec un agent",
   "quest.agent.started":
     "Claude travaille sur cette quête sur l'hôte d'agent : il pousse sa propre branche",
   "quest.untrusted": "Non fiable",
@@ -3179,13 +3179,8 @@ export default {
     "Cette quête est née d'un retour écrit hors de l'équipe. Lisez son texte, puis confirmez-le : un agent ne la traite qu'après la confirmation d'un membre.",
   "hosts.agent.pill": "agent",
   "hosts.agent.pill.default": "agent, par défaut",
-  "hosts.agent.makeDefault": "Définir comme hôte Agent par défaut",
-  "hosts.agent.clearDefault": "Retirer l’hôte Agent par défaut",
   "hosts.agent.egress.action": "Hôtes qu’un job de push peut joindre",
   "hosts.agent.egress.save": "Enregistrer",
-  "hosts.agent.toast.default": "Hôte Agent par défaut défini",
-  "hosts.agent.toast.cleared":
-    "Aucun hôte Agent par défaut : les boutons d’agent sont masqués",
   "hosts.agent.egress.label": "Hôtes qu'une tâche de push peut joindre",
   "hosts.agent.egress.description":
     "En plus d'Anthropic et de Lore, imposé sur un hôte d'agent à conteneurs. Vide : les registres npm et Yarn et GitHub. Un point initial couvre tous les sous-domaines.",
@@ -4078,7 +4073,7 @@ export default {
   "epic.tab.review": "Revue",
   "epic.list.openQuestions": "$1 questions de revue ouvertes",
   "epic.list.openBlockers": "$1 blocages de revue ouverts",
-  "epic.agent.review": "Revoir avec Claude",
+  "epic.agent.review": "Revoir avec un agent",
   "epic.agent.started": "Revue lancée sur l'hôte Agent",
   "epic.agent.job": "Tâche de revue",
   "epic.review.empty":

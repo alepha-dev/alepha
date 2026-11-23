@@ -148,17 +148,6 @@ export const projects = $entity({
      */
     archivedAt: z.datetime().optional(),
     /**
-     * The project's default Agent host (#Q3985): the host its agent jobs run
-     * on, its own or one lent to it, that runs Claude Code jobs. A logical
-     * reference with no foreign key, on purpose: `hosts` is core's since
-     * #E166, but a key added now would rebuild `projects`, which
-     * cascade-wipes its children on D1. `AgentHostService` clears it when
-     * the host stops being an Agent host or the loan ends, and reads it
-     * through its own checks every time, so a stale id only hides the agent
-     * buttons. Absent hides them.
-     */
-    defaultAgentHostId: z.uuid().optional(),
-    /**
      * The hosts a `push` agent job may reach beyond Anthropic and Lore
      * (#Q3996), enforced by a container runner's egress proxy. Absent is the
      * default list (the npm and Yarn registries and GitHub); an empty list

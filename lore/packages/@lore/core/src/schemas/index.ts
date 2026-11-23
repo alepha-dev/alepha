@@ -11,6 +11,12 @@
 
 export { CapabilityRegistry } from "../api/schemas/CapabilityRegistry.ts";
 export {
+  type AgentRun,
+  type AgentRunChoice,
+  agentRunChoiceSchema,
+  agentRunSchema,
+} from "../api/schemas/agentRunSchema.ts";
+export {
   HOST_JOB_KINDS,
   HOST_JOB_STATUSES,
   HOST_JOB_TERMINAL,

@@ -387,14 +387,14 @@ export class FeedbackCommand {
   });
 
   /**
-   * Triage with Claude from a shell: the robot menu's two entries. One item,
+   * Triage with an agent from a shell: the robot menu's two entries. One item,
    * or every pending one with `--all`, each a job on the project's Agent
    * host that files quests, asks a question or rejects.
    */
   public readonly triage = $command({
     name: "triage",
     description:
-      "Triage with Claude on the project's Agent host: one pending item, or with --all the whole inbox and the open errors in one run",
+      "Triage with an agent on one of the project's Agent hosts: one pending item, or with --all the whole inbox and the open errors in one run",
     args: FeedbackCommand.REF_ARG.optional(),
     flags: z.object({
       ...FeedbackCommand.PROJECT_FLAG,
@@ -403,6 +403,24 @@ export class FeedbackCommand {
         .describe(
           "The whole pending inbox and the open errors, in one run that merges duplicates; untrusted items get a run each",
         )
+        .optional(),
+      host: z
+        .text({
+          description:
+            "The Agent host to run on, by slug; needed when the project has several",
+        })
+        .optional(),
+      agent: z
+        .text({
+          description:
+            "The agent CLI to run (claude, gemini); needed when the host has several",
+        })
+        .optional(),
+      model: z
+        .text({
+          description:
+            "The model passed to the agent; absent, the agent's own default",
+        })
         .optional(),
       ...LoreOutput.FLAGS,
     }),
@@ -419,6 +437,11 @@ export class FeedbackCommand {
           );
           const result = await this.feedbackApi.triageInboxWithAgent({
             params: { projectId },
+            body: {
+              ...(flags.host ? { host: flags.host } : {}),
+              ...(flags.agent ? { agent: flags.agent } : {}),
+              ...(flags.model ? { model: flags.model } : {}),
+            },
           });
           const skipped = result.skipped.length
             ? `; skipped ${result.skipped.map((id) => `P${id}`).join(", ")}, for a member to triage`
@@ -440,6 +463,11 @@ export class FeedbackCommand {
         );
         const result = await this.feedbackApi.triageFeedbackWithAgent({
           params: { projectId, feedbackId },
+          body: {
+            ...(flags.host ? { host: flags.host } : {}),
+            ...(flags.agent ? { agent: flags.agent } : {}),
+            ...(flags.model ? { model: flags.model } : {}),
+          },
         });
         this.render.written(
           print,

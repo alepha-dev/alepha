@@ -1,8 +1,12 @@
 import { cn, textLinkUnderlineClassName, useToast } from "@alepha/ui";
 import {
+  type AgentChoice,
+  agentChoiceText,
   type AgentPromptsMenuAction,
   currentProjectAtom,
   type I18n,
+  orderAgentChoices,
+  rememberAgentChoice,
   useRank,
 } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
@@ -14,13 +18,14 @@ import type { FeedbackController } from "../../../../../api/controllers/Feedback
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
 
 /**
- * **Triage with Claude** (#Q3988), as entries of the robot menu (#Q4126):
- * an agent job on the project's Agent host runs the project's Triage prompt,
- * on this item while it is pending, or on each pending one.
+ * **Triage with an agent** (#Q3988), as entries of the robot menu (#Q4126):
+ * an agent job on one of the project's Agent hosts runs the project's
+ * Triage prompt, on this item while it is pending, or on the whole inbox.
  *
- * Offered only when the job can run: `feedback:triage`, a default Agent
- * host, and that host's last agent check `available`. The readiness is read
- * from the server, since the client only knows the host's id.
+ * Offered only when the job can run: `feedback:triage` and an available
+ * Agent host, read from the server with the hosts and agents to pick from
+ * (#Q4223): one entry when there is one choice, one per host and agent
+ * otherwise, the member's last pick first.
  */
 export const useFeedbackAgentTriage = (
   feedback: FeedbackResource,
@@ -31,8 +36,7 @@ export const useFeedbackAgentTriage = (
   const toaster = useToast();
   const api = useClient<FeedbackController>();
   const [project] = useStore(currentProjectAtom);
-  const allowed =
-    Boolean(project?.defaultAgentHostId) && can("feedback:triage");
+  const allowed = can("feedback:triage");
 
   const readiness = useQuery(
     {
@@ -43,22 +47,25 @@ export const useFeedbackAgentTriage = (
         }),
       onError: () => {},
     },
-    [api, project?.id, project?.defaultAgentHostId, allowed],
+    [api, project?.id, allowed],
   );
 
-  const triage = useAction<[one: boolean], void>(
+  const triage = useAction<[one: boolean, choice: AgentChoice], void>(
     {
-      handler: async (_ctx, one) => {
+      handler: async (_ctx, one, choice) => {
         if (!project) return;
+        rememberAgentChoice(project.id, choice);
         if (one) {
           const out = await api.triageFeedbackWithAgent({
             params: { projectId: project.id, feedbackId: feedback.id },
+            body: choice,
           });
           if (out.skipped) toaster.show(out.skipped, "warning");
           else toaster.show(tr("feedback.agent.started"), "success");
         } else {
           const out = await api.triageInboxWithAgent({
             params: { projectId: project.id },
+            body: choice,
           });
           toaster.show(
             out.global
@@ -80,26 +87,30 @@ export const useFeedbackAgentTriage = (
     [api, project?.id, feedback.id, toaster, tr, onStarted],
   );
 
-  if (!allowed || !readiness.data?.ready) return [];
+  if (!allowed || !readiness.data?.ready || !project) return [];
+  const choices = orderAgentChoices(project.id, readiness.data.choices);
+  const many = choices.length > 1;
+  const label = (key: string, choice: AgentChoice) =>
+    many ? `${tr(key)} (${agentChoiceText(choice)})` : tr(key);
+  const suffix = (choice: AgentChoice) =>
+    many ? `-${choice.host}-${choice.agent ?? ""}` : "";
   return [
     ...(feedback.status === "pending"
-      ? [
-          {
-            key: "feedback-triage",
-            icon: Bot,
-            label: tr("feedback.agent.triage"),
-            onSelect: () => void triage.run(true),
-            disabled: triage.loading,
-          },
-        ]
+      ? choices.map((choice) => ({
+          key: `feedback-triage${suffix(choice)}`,
+          icon: Bot,
+          label: label("feedback.agent.triage", choice),
+          onSelect: () => void triage.run(true, choice),
+          disabled: triage.loading,
+        }))
       : []),
-    {
-      key: "feedback-triage-inbox",
+    ...choices.map((choice) => ({
+      key: `feedback-triage-inbox${suffix(choice)}`,
       icon: ListChecks,
-      label: tr("feedback.agent.triageInbox"),
-      onSelect: () => void triage.run(false),
+      label: label("feedback.agent.triageInbox", choice),
+      onSelect: () => void triage.run(false, choice),
       disabled: triage.loading,
-    },
+    })),
   ];
 };
 

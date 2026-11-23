@@ -358,7 +358,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const reviews =
     reviewsQuery.data?.epicId === epic.id ? reviewsQuery.data.result : null;
 
-  // Review with Claude (#Q4214): the robot menu's run entry while the plan
+  // Review with an agent (#Q4214): the robot menu's run entry while the plan
   // is open; the Review tab's job link follows once it starts.
   const agentActions = useEpicAgentReview(epic, () =>
     queries.invalidate(reviewsKey),

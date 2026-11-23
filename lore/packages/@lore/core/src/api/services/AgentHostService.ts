@@ -2,12 +2,11 @@ import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { BadRequestError, ForbiddenError } from "alepha/server";
+import { BadRequestError } from "alepha/server";
 
 import { hostJobs } from "../entities/hostJobs.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
-import { projects } from "../entities/projects.ts";
 import type { HostJobTool } from "../schemas/hostInventoryJobsSchema.ts";
 import { HostJobs } from "./HostJobs.ts";
 import { HostJobService } from "./HostJobService.ts";
@@ -28,9 +27,9 @@ import { HostJobService } from "./HostJobService.ts";
  * demand. A failing check marks the host `unavailable` with the message;
  * the next passing one clears it.
  *
- * Each project names one default Agent host (`projects.defaultAgentHostId`),
- * its own or a lent one, for its agent jobs; without one the agent buttons
- * are hidden.
+ * A project runs its agent jobs on any of its Agent hosts, its own or lent
+ * ones (#Q4223): a run names its host when there are several, its agent
+ * when the host reports several.
  */
 export class AgentHostService {
   /**
@@ -51,7 +50,6 @@ export class AgentHostService {
   protected readonly log = $logger();
   protected readonly hosts = $repository(hosts);
   protected readonly loans = $repository(hostProjects);
-  protected readonly projects = $repository(projects);
   protected readonly jobRows = $repository(hostJobs);
   protected readonly jobs = $inject(HostJobService);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -60,27 +58,22 @@ export class AgentHostService {
   constructor() {
     // The agent kind finds its host through the port.
     this.port.registerAgentHosts({
-      defaultFor: async (projectId) => {
-        const host = await this.defaultFor(projectId);
-        return host
-          ? {
-              id: host.id,
-              slug: host.slug,
-              ...(host.agentStatus ? { status: host.agentStatus } : {}),
-              ...(host.jobsRunner ? { runner: host.jobsRunner } : {}),
-              ...(host.jobsTools
-                ? { agents: AgentHostService.agentsOf(host.jobsTools) }
-                : {}),
-            }
-          : undefined;
-      },
+      list: async (projectId) =>
+        (await this.list(projectId)).map((host) => ({
+          id: host.id,
+          slug: host.slug,
+          ...(host.agentStatus ? { status: host.agentStatus } : {}),
+          ...(host.jobsRunner ? { runner: host.jobsRunner } : {}),
+          ...(host.jobsTools
+            ? { agents: AgentHostService.agentsOf(host.jobsTools) }
+            : {}),
+        })),
     });
   }
 
   /**
    * Makes a host an Agent host or not. On, it needs `jobsAllowed` and a
-   * check starts at once; off, every project that named it as its default
-   * forgets it.
+   * check starts at once.
    */
   public async setAgentHost(
     host: Host,
@@ -98,12 +91,7 @@ export class AgentHostService {
     });
     if (on) {
       await this.check(host.id, userId);
-      return;
     }
-    await this.projects.updateMany(
-      { defaultAgentHostId: { eq: host.id } },
-      { defaultAgentHostId: null },
-    );
   }
 
   /**
@@ -164,47 +152,20 @@ export class AgentHostService {
   }
 
   /**
-   * Names the project's default Agent host, or clears it. The host must be
-   * an Agent host, and the project's own or lent to it.
+   * The Agent hosts a project may use: its own and those lent to it, with
+   * jobs allowed (#Q4223, no default host).
    */
-  public async setDefault(
-    projectId: number,
-    hostId: string | null,
-  ): Promise<void> {
-    if (hostId) {
-      const host = await this.usable(projectId, hostId);
-      if (!host) {
-        throw new ForbiddenError(
-          "That host is not an Agent host this project can use",
-        );
-      }
-    }
-    await this.projects.updateById(projectId, { defaultAgentHostId: hostId });
-  }
-
-  /**
-   * The project's default Agent host when it is still one it may use, or
-   * undefined: what every agent job reads before it starts.
-   */
-  public async defaultFor(projectId: number): Promise<Host | undefined> {
-    const project = await this.projects.findOne({
-      where: { id: { eq: projectId } },
+  public async list(projectId: number): Promise<Host[]> {
+    const loans = await this.loans.findMany({
+      where: { projectId: { eq: projectId } },
     });
-    if (!project?.defaultAgentHostId) return undefined;
-    return this.usable(projectId, project.defaultAgentHostId);
-  }
-
-  protected async usable(
-    projectId: number,
-    hostId: string,
-  ): Promise<Host | undefined> {
-    const host = await this.hosts.findOne({ where: { id: { eq: hostId } } });
-    if (!host?.agentHost || !host.jobsAllowed) return undefined;
-    if (host.projectId === projectId) return host;
-    const loan = await this.loans.findOne({
-      where: { hostId: { eq: hostId }, projectId: { eq: projectId } },
+    const candidates = await this.hosts.findMany({
+      where: { agentHost: { eq: true }, jobsAllowed: { eq: true } },
     });
-    return loan ? host : undefined;
+    const lent = new Set(loans.map((loan) => loan.hostId));
+    return candidates
+      .filter((host) => host.projectId === projectId || lent.has(host.id))
+      .sort((a, b) => a.slug.localeCompare(b.slug));
   }
 
   /**

@@ -155,22 +155,16 @@ describe("Agent hosts", () => {
     expect(await w.agents.check(w.hostId)).toBeUndefined();
   });
 
-  it("names the project's default Agent host, and forgets it when the host stops being one", async ({
+  it("lists the project's Agent hosts, and none once the host stops being one (#Q4223)", async ({
     expect,
   }) => {
-    await expect(w.agents.setDefault(w.projectId, w.hostId)).rejects.toThrow(
-      "not an Agent host",
-    );
+    expect(await w.agents.list(w.projectId)).toEqual([]);
     await w.repos.hosts.updateById(w.hostId, { jobsAllowed: true });
     await w.agents.setAgentHost(await host(w), true);
-    await w.agents.setDefault(w.projectId, w.hostId);
-    expect((await w.agents.defaultFor(w.projectId))?.id).toBe(w.hostId);
-
+    expect((await w.agents.list(w.projectId)).map((it) => it.id)).toEqual([
+      w.hostId,
+    ]);
     await w.agents.setAgentHost(await host(w), false);
-    expect(await w.agents.defaultFor(w.projectId)).toBeUndefined();
-    const project = await w.repos.projects.getOne({
-      where: { id: { eq: w.projectId } },
-    });
-    expect(project.defaultAgentHostId).toBeFalsy();
+    expect(await w.agents.list(w.projectId)).toEqual([]);
   });
 });

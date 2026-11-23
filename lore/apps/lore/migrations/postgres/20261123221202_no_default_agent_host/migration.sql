@@ -1,0 +1,1 @@
+ALTER TABLE "projects" DROP COLUMN "default_agent_host_id";

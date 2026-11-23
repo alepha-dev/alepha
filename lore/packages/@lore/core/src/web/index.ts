@@ -164,6 +164,12 @@ export {
   SECTION_LABEL_KEYS,
 } from "./app/components/project/projectViewRoutes.ts";
 export {
+  type AgentChoice,
+  agentChoiceText,
+  orderAgentChoices,
+  rememberAgentChoice,
+} from "./app/services/agentChoice.ts";
+export {
   AgentPromptsMenu,
   type AgentPromptsMenuAction,
 } from "./app/components/project/prompts/AgentPromptsMenu.tsx";

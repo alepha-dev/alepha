@@ -1208,92 +1208,6 @@ export class HostCommand {
     },
   });
 
-  /**
-   * `lore host agent [<slug>] [--clear]`: the project's default Agent host
-   * (#Q3985), its own or a lent one.
-   */
-  public readonly agent = $command({
-    name: "agent",
-    description:
-      "Name the project's default Agent host, the one its agent jobs run on; --clear names none",
-    args: z
-      .text({
-        title: "host",
-        description:
-          "The Agent host's slug, among the project's own hosts and the ones lent to it",
-      })
-      .optional(),
-    flags: z.object({
-      project: this.projectFlag,
-      clear: z
-        .boolean()
-        .describe("Name no default Agent host, which hides the agent buttons")
-        .optional(),
-      egress: z
-        .text({
-          description:
-            "The hosts a push job reaches beyond Anthropic and Lore, comma separated; 'default' for the npm and Yarn registries and GitHub",
-        })
-        .optional(),
-      ...LoreOutput.FLAGS,
-    }),
-    handler: async ({ args, flags, print }) => {
-      const context: LoreRefusalContext = {};
-      await this.refusals.guard(context, async () => {
-        if (!args && !flags.clear && flags.egress === undefined) {
-          throw new UsageError(
-            "Name an Agent host, pass --clear, or set --egress.",
-          );
-        }
-        const { projectId } = await this.projects.named(flags.project, context);
-        if (flags.egress !== undefined) {
-          const hosts =
-            flags.egress === "default"
-              ? null
-              : flags.egress
-                  .split(",")
-                  .map((host) => host.trim().toLowerCase())
-                  .filter(Boolean);
-          await this.agents.setProjectAgentEgress({
-            params: { projectId },
-            body: { hosts },
-          });
-          if (!args && !flags.clear) {
-            print(
-              hosts
-                ? `Push jobs reach: ${hosts.join(", ")}`
-                : "Push jobs reach the default hosts",
-            );
-            return;
-          }
-        }
-        let hostId: string | null = null;
-        if (args) {
-          const { items } = await this.lending.listProjectHosts({
-            params: { projectId },
-          });
-          const host = items.find((item) => item.slug === args);
-          if (!host) {
-            throw new UsageError(
-              `No host named ${args} among the project's own and lent hosts.`,
-            );
-          }
-          hostId = host.id;
-        }
-        const set = await this.agents.setProjectAgentHost({
-          params: { projectId },
-          body: { hostId },
-        });
-        this.render.written(
-          print,
-          flags.output,
-          set,
-          hostId ? `Agent jobs run on ${args}` : "No default Agent host",
-        );
-      });
-    },
-  });
-
   public readonly host = $command({
     name: "host",
     description:
@@ -1309,7 +1223,6 @@ export class HostCommand {
       this.unlend,
       this.update,
       this.check,
-      this.agent,
       this.upgrade,
       this.rotate,
       this.move,

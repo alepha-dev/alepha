@@ -225,7 +225,7 @@ describe("ProjectSettingsHostsPage", () => {
     expect(lastSeen("spare")).toBe("never connected");
   });
 
-  it("marks Agent hosts and the default one in Capabilities, with no card above the table (#Q4065)", async ({
+  it("marks Agent hosts in Capabilities, none of them a default, with no card above the table (#Q4065, #Q4223)", async ({
     expect,
   }) => {
     cleanup();
@@ -246,7 +246,6 @@ describe("ProjectSettingsHostsPage", () => {
     (alepha.inject(LinkProvider) as HostLinks).agents = [HOME_ID, BORROWED_ID];
     alepha.store.set(currentProjectAtom, {
       ...projectFixture({ id: 7, title: "Acme", slug: "acme" }),
-      defaultAgentHostId: BORROWED_ID,
     });
     render(
       <AlephaContext.Provider value={alepha}>
@@ -263,8 +262,8 @@ describe("ProjectSettingsHostsPage", () => {
       [...document.querySelectorAll("tbody tr")]
         .find((row) => row.textContent?.includes(slug))
         ?.querySelector('[data-testid="host-agent"]');
-    expect(pill("ovh-infra")?.textContent).toBe("agent, default");
-    expect(pill("ovh-infra")?.getAttribute("data-default")).toBe("true");
+    expect(pill("ovh-infra")?.textContent).toBe("agent");
+    expect(pill("ovh-infra")?.getAttribute("data-default")).not.toBe("true");
     expect(pill("ovh-home")?.textContent).toBe("agent");
     expect(pill("spare")).toBeFalsy();
     expect(screen.queryByTestId("project-agent-host")).toBeNull();

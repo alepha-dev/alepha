@@ -25,7 +25,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 /**
- * Review with Claude (#Q4214): an epic's Review prompt run as an agent job,
+ * Review with an agent (#Q4214): an epic's Review prompt run as an agent job,
  * its key pinned to the epic, refused for a started epic, a second run, or
  * an unconfirmed untrusted quest on a process host.
  */
@@ -77,7 +77,6 @@ const setup = async () => {
       .inject(HostCommandService)
       .ack(host.id, { id: check.commandId, status: "done" });
   }
-  await agents.setDefault(host.projectId, host.id);
   const epic = await repos.epics.create({
     projectId: host.projectId,
     number: 3,

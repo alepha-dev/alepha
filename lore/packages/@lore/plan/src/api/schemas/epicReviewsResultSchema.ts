@@ -12,7 +12,7 @@ export const epicReviewsResultSchema = z.object({
   openQuestions: z.integer(),
   openBlockers: z.integer(),
   /**
-   * The epic's last Review with Claude job (#Q4214), for the tab's link.
+   * The epic's last Review with an agent job (#Q4214), for the tab's link.
    */
   agentJobId: z.uuid().optional(),
 });

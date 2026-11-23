@@ -262,14 +262,14 @@ describe("AgentPromptsMenu", () => {
   });
 
   it("lists run actions above the prompts, and runs the clicked one", async () => {
-    // Triage with Claude (#Q4126): an entry that starts a job, beside the
+    // Triage with an agent (#Q4126): an entry that starts a job, beside the
     // ones that copy a prompt.
     const ran: string[] = [];
     await mount([{ kind: "epicReview" }], projectFixture(), [
       {
         key: "run",
         icon: Bot,
-        label: "Triage with Claude",
+        label: "Triage with an agent",
         onSelect: () => ran.push("run"),
       },
     ]);
@@ -281,7 +281,7 @@ describe("AgentPromptsMenu", () => {
       return found;
     });
     expect(items.map((it) => it.textContent)).toEqual([
-      "Triage with Claude",
+      "Triage with an agent",
       "Review Epic",
     ]);
     fireEvent.click(items[0]!);
@@ -296,7 +296,7 @@ describe("AgentPromptsMenu", () => {
         {
           key: "run",
           icon: Bot,
-          label: "Triage with Claude",
+          label: "Triage with an agent",
           onSelect: () => {},
         },
       ],
@@ -308,6 +308,6 @@ describe("AgentPromptsMenu", () => {
       if (found.length === 0) throw new Error("not open yet");
       return found;
     });
-    expect(items.map((it) => it.textContent)).toEqual(["Triage with Claude"]);
+    expect(items.map((it) => it.textContent)).toEqual(["Triage with an agent"]);
   });
 });

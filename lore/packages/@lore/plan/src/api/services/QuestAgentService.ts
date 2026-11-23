@@ -1,5 +1,6 @@
 import { AgentJobs, HostJobs } from "@lore/core/api";
 import {
+  type AgentRun,
   projectPrompts,
   projects,
   renderPromptTemplate,
@@ -54,6 +55,7 @@ export class QuestAgentService {
     projectId: number,
     shortId: number,
     startedBy: string,
+    run: AgentRun = {},
   ): Promise<{ jobId: string }> {
     const quest = await this.find(projectId, shortId);
     if (!quest.acceptedAt || quest.completedAt || quest.shelvedAt) {
@@ -66,16 +68,13 @@ export class QuestAgentService {
         `Quest ${shortId} was born of feedback written outside the team: a member confirms its text before an agent works it`,
       );
     }
-    if (!(await this.hostJobs.agentHostFor(projectId))) {
-      throw new BadRequestError(
-        "This project names no Agent host: pick one on its hosts settings page",
-      );
-    }
+    await this.agents.resolve(projectId, run);
     const project = await this.projects.getOne({
       where: { id: { eq: projectId } },
     });
     const job = await this.agents.start({
       projectId,
+      ...run,
       prompt: await this.prompt(project, quest),
       timeoutSeconds: QuestAgentService.WORK_SECONDS,
       questNumber: quest.shortId,
@@ -84,6 +83,16 @@ export class QuestAgentService {
       subjectId: String(quest.shortId),
     });
     return { jobId: job.id };
+  }
+
+  /**
+   * What a run may pick now (#Q4223): each available Agent host with each
+   * agent it reports. Empty, the quest offers no agent button.
+   */
+  public async agentChoices(
+    projectId: number,
+  ): Promise<Array<{ host: string; agent?: string }>> {
+    return this.agents.choices(projectId);
   }
 
   /**

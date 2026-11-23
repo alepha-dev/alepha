@@ -1,8 +1,12 @@
 import { useToast } from "@alepha/ui";
 import {
+  type AgentChoice,
+  agentChoiceText,
   type AgentPromptsMenuAction,
   currentProjectAtom,
   type I18n,
+  orderAgentChoices,
+  rememberAgentChoice,
   useRank,
 } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
@@ -12,13 +16,12 @@ import { Bot } from "lucide-react";
 import type { EpicAgentController } from "../../../../../api/controllers/EpicAgentController.ts";
 
 /**
- * **Review with Claude** (#Q4214), as an entry of the epic's robot menu: an
- * agent job on the project's Agent host runs the project's Review prompt on
- * this epic while its plan is open (`draft` or `ready`).
+ * **Review with an agent** (#Q4214), as an entry of the epic's robot menu:
+ * an agent job on one of the project's Agent hosts runs the project's Review
+ * prompt on this epic while its plan is open (`draft` or `ready`).
  *
- * Offered only when the job can run: `epic:write`, a default Agent host, and
- * that host's last agent check `available`, read from the server as for
- * Triage with Claude.
+ * Offered only when the job can run: `epic:write` and an available Agent
+ * host, read from the server with the choices as for triage (#Q4223).
  */
 export const useEpicAgentReview = (
   epic: { number: number; status: string },
@@ -30,8 +33,7 @@ export const useEpicAgentReview = (
   const api = useClient<EpicAgentController>();
   const [project] = useStore(currentProjectAtom);
   const open = epic.status === "draft" || epic.status === "ready";
-  const allowed =
-    open && Boolean(project?.defaultAgentHostId) && can("epic:write");
+  const allowed = open && can("epic:write");
 
   const readiness = useQuery(
     {
@@ -42,15 +44,17 @@ export const useEpicAgentReview = (
         }),
       onError: () => {},
     },
-    [api, project?.id, project?.defaultAgentHostId, allowed],
+    [api, project?.id, allowed],
   );
 
-  const review = useAction(
+  const review = useAction<[choice: AgentChoice], void>(
     {
-      handler: async () => {
+      handler: async (_ctx, choice) => {
         if (!project) return;
+        rememberAgentChoice(project.id, choice);
         await api.reviewEpicWithAgent({
           params: { projectId: project.id, number: epic.number },
+          body: choice,
         });
         toaster.show(tr("epic.agent.started"), "success");
         onStarted?.();
@@ -59,14 +63,18 @@ export const useEpicAgentReview = (
     [api, project?.id, epic.number, toaster, tr, onStarted],
   );
 
-  if (!allowed || !readiness.data?.ready) return [];
-  return [
-    {
-      key: "epic-review",
-      icon: Bot,
-      label: tr("epic.agent.review"),
-      onSelect: () => void review.run(),
-      disabled: review.loading,
-    },
-  ];
+  if (!allowed || !readiness.data?.ready || !project) return [];
+  const choices = orderAgentChoices(project.id, readiness.data.choices);
+  const many = choices.length > 1;
+  return choices.map((choice) => ({
+    key: many
+      ? `epic-review-${choice.host}-${choice.agent ?? ""}`
+      : "epic-review",
+    icon: Bot,
+    label: many
+      ? `${tr("epic.agent.review")} (${agentChoiceText(choice)})`
+      : tr("epic.agent.review"),
+    onSelect: () => void review.run(choice),
+    disabled: review.loading,
+  }));
 };

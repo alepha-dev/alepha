@@ -143,7 +143,7 @@ test.describe("Hosts with Ship off", () => {
     await expect(tabs.getByText("Commands")).toBeVisible();
     await expect(tabs.getByText("Processes")).toHaveCount(0);
 
-    // An Agent host, the project's default: its check is a job.
+    // An Agent host (no default since #Q4223): its check is a job.
     await apiCall(
       page,
       "updateHost",
@@ -152,13 +152,6 @@ test.describe("Hosts with Ship off", () => {
       { jobsAllowed: true },
     );
     await apiCall(page, "updateHost", "PATCH", { hostId }, { agentHost: true });
-    await apiCall(
-      page,
-      "setProjectAgentHost",
-      "PUT",
-      { projectId: project.id },
-      { hostId },
-    );
     const jobs = await apiCall<{ items: Array<{ id: string }> }>(
       page,
       "listProjectJobs",

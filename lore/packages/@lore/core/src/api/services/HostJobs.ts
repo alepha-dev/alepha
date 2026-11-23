@@ -150,11 +150,12 @@ export interface AgentHostRef {
 }
 
 /**
- * What core's Agent host service registers (#Q3985): the host a project's
- * agent jobs run on.
+ * What core's Agent host service registers (#Q3985): the Agent hosts a
+ * project may run its agent jobs on, its own and those lent to it. There is
+ * no default one since #Q4223: a run names its host when there are several.
  */
 export interface AgentHostDirectory {
-  defaultFor(projectId: number): Promise<AgentHostRef | undefined>;
+  list(projectId: number): Promise<AgentHostRef[]>;
 }
 
 /**
@@ -179,13 +180,12 @@ export class HostJobs {
   }
 
   /**
-   * The project's default Agent host when it may still run its agent jobs,
-   * or undefined: the agent buttons hide, and an agent job refuses to start.
+   * The Agent hosts a project may run its agent jobs on, each with the
+   * agent CLIs it reports (#Q4223). Empty without one: the agent entries
+   * hide, and an agent job refuses to start.
    */
-  public async agentHostFor(
-    projectId: number,
-  ): Promise<AgentHostRef | undefined> {
-    return this.agents?.defaultFor(projectId);
+  public async agentHosts(projectId: number): Promise<AgentHostRef[]> {
+    return (await this.agents?.list(projectId)) ?? [];
   }
 
   /**

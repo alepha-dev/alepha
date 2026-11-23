@@ -1,5 +1,6 @@
 import { AgentJobs, HostJobs, JobKeyService } from "@lore/core/api";
 import {
+  type AgentRun,
   projectPrompts,
   projects,
   renderPromptTemplate,
@@ -14,7 +15,7 @@ import { type Epic, epics } from "../entities/epics.ts";
 import { quests } from "../entities/quests.ts";
 
 /**
- * Review with Claude (#Q4214): an epic's Review prompt run as an agent job
+ * Review with an agent (#Q4214): an epic's Review prompt run as an agent job
  * on the project's Agent host, instead of being pasted into a session.
  *
  * Its key is pinned to the epic (`job_keys.epic_number`, checked by
@@ -71,6 +72,7 @@ export class EpicAgentService {
     projectId: number,
     number: number,
     startedBy: string,
+    run: AgentRun = {},
   ): Promise<{ jobId: string }> {
     const epic = await this.find(projectId, number);
     if (epic.status !== "draft" && epic.status !== "ready") {
@@ -78,12 +80,7 @@ export class EpicAgentService {
         `Epic ${number} is ${epic.status}: only a draft or ready epic is reviewed`,
       );
     }
-    const host = await this.hostJobs.agentHostFor(projectId);
-    if (!host) {
-      throw new BadRequestError(
-        "This project names no Agent host: pick one on its hosts settings page",
-      );
-    }
+    await this.agents.resolve(projectId, run);
     const active = await this.hostJobs.active(
       projectId,
       EpicAgentService.SUBJECT,
@@ -113,6 +110,7 @@ export class EpicAgentService {
     const t = EpicAgentService.TIME;
     const job = await this.agents.start({
       projectId,
+      ...run,
       prompt: await this.prompt(project, epic),
       timeoutSeconds: t.baseSeconds + t.secondsPerQuest * members.length,
       epicNumber: epic.number,
@@ -125,12 +123,13 @@ export class EpicAgentService {
   }
 
   /**
-   * Whether the project's Agent host may run the job now: the menu entry
-   * shows only then.
+   * What a run may pick now (#Q4223): each available Agent host with each
+   * agent it reports. Empty, the robot menu offers no agent entry.
    */
-  public async agentHostReady(projectId: number): Promise<boolean> {
-    const host = await this.hostJobs.agentHostFor(projectId);
-    return host?.status === "available";
+  public async agentChoices(
+    projectId: number,
+  ): Promise<Array<{ host: string; agent?: string }>> {
+    return this.agents.choices(projectId);
   }
 
   /**

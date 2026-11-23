@@ -202,20 +202,20 @@ See [Quests](/lore/docs/plan-quests) for the statuses and rules behind these.
 
 ## Epics
 
-| Command                            | What it does                                                                                          | Flags                                                                                   |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `lore epic list`                   | Every epic, whatever its status.                                                                      |                                                                                         |
-| `lore epic get <ref>`              | One epic: status, progress, plan, pull requests, folios, open review blockers and questions, and log. |                                                                                         |
-| `lore epic create`                 | Create an epic, as a draft: its quests stay out of the backlog until it is ready.                     | `--title` (required), `--description`, `--depends-on`                                   |
-| `lore epic update <ref>`           | Change an epic's title, plan or predecessor.                                                          | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
-| `lore epic set status <ref>`       | Set an epic to draft or ready. The other statuses follow from its quests.                             | `--status draft` or `--status ready` (required)                                         |
-| `lore epic shelve <ref>`           | Set an epic and its open quests aside.                                                                |                                                                                         |
-| `lore epic unshelve <ref>`         | Bring a shelved epic back with the quests its shelving took: in progress if started, else a draft.    |                                                                                         |
-| `lore epic delete <ref>`           | Delete a draft, ready or shelved epic **and every quest in it**, for good.                            | `--yes` (required)                                                                      |
-| `lore epic review create <ref>`    | File a review of a draft or ready epic: its blockers, questions, decisions and changes.               | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
-| `lore epic review answer <ref>`    | Record the owner's answer to one review item.                                                         | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
-| `lore epic review <ref>`           | Review with Claude: the project's Review prompt as a job on its Agent host, on a draft or ready epic. | `--project`                                                                             |
-| `lore epic pull-request add <ref>` | Record a pull request on an epic, in any status. Its quests with none of their own show it.           | `--url` (required), `--pr-number`, `--repo`, `--title`                                  |
+| Command                            | What it does                                                                                                    | Flags                                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `lore epic list`                   | Every epic, whatever its status.                                                                                |                                                                                         |
+| `lore epic get <ref>`              | One epic: status, progress, plan, pull requests, folios, open review blockers and questions, and log.           |                                                                                         |
+| `lore epic create`                 | Create an epic, as a draft: its quests stay out of the backlog until it is ready.                               | `--title` (required), `--description`, `--depends-on`                                   |
+| `lore epic update <ref>`           | Change an epic's title, plan or predecessor.                                                                    | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
+| `lore epic set status <ref>`       | Set an epic to draft or ready. The other statuses follow from its quests.                                       | `--status draft` or `--status ready` (required)                                         |
+| `lore epic shelve <ref>`           | Set an epic and its open quests aside.                                                                          |                                                                                         |
+| `lore epic unshelve <ref>`         | Bring a shelved epic back with the quests its shelving took: in progress if started, else a draft.              |                                                                                         |
+| `lore epic delete <ref>`           | Delete a draft, ready or shelved epic **and every quest in it**, for good.                                      | `--yes` (required)                                                                      |
+| `lore epic review create <ref>`    | File a review of a draft or ready epic: its blockers, questions, decisions and changes.                         | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
+| `lore epic review answer <ref>`    | Record the owner's answer to one review item.                                                                   | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
+| `lore epic review <ref>`           | Review with an agent: the project's Review prompt as a job on one of its Agent hosts, on a draft or ready epic. | `--project`, `--host`, `--agent`, `--model`                                             |
+| `lore epic pull-request add <ref>` | Record a pull request on an epic, in any status. Its quests with none of their own show it.                     | `--url` (required), `--pr-number`, `--repo`, `--title`                                  |
 
 See [Epics](/lore/docs/plan-epics), and
 [Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic) for what a review
@@ -328,17 +328,17 @@ name it stored. To read a file back, use `lore quest attachment get` or
 
 ## Feedback
 
-| Command                              | What it does                                                                         | Flags                                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `lore feedback list`                 | Feedback, newest first: the pending inbox unless `--status` says otherwise.          | `--status`, `--limit` (1 to 50, default 50), `--offset`                           |
-| `lore feedback get <ref>`            | One item: its report, where it was made from, its files, quests and discussion.      |                                                                                   |
-| `lore feedback attachment get <ref>` | Read a file of an item or of one of its comments. Text is printed.                   | `--attachment <id>` (required, as `lore feedback get` lists it), `--out`          |
-| `lore feedback comment add <ref>`    | Comment on an item. The reporter is told, and can answer.                            | `--body` (required), `--as <name>` (marks it as written by an agent)              |
-| `lore feedback accept <ref>`         | Accept a pending item: the request is valid.                                         |                                                                                   |
-| `lore feedback reject <ref>`         | Reject a pending item. The item stays, for the record.                               |                                                                                   |
-| `lore feedback triage <ref>`         | Triage with Claude: a job on the project's Agent host files quests, asks or rejects. | `--all` (the whole inbox and the open errors, in one run)                         |
-| `lore feedback targets`              | The projects you belong to that accept feedback: where `submit` can file.            |                                                                                   |
-| `lore feedback submit`               | File a feedback item, pending in the project's inbox.                                | `--title`, `--description` (both required), `--type`, `--tags a,b`, `--as <name>` |
+| Command                              | What it does                                                                                   | Flags                                                                                     |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `lore feedback list`                 | Feedback, newest first: the pending inbox unless `--status` says otherwise.                    | `--status`, `--limit` (1 to 50, default 50), `--offset`                                   |
+| `lore feedback get <ref>`            | One item: its report, where it was made from, its files, quests and discussion.                |                                                                                           |
+| `lore feedback attachment get <ref>` | Read a file of an item or of one of its comments. Text is printed.                             | `--attachment <id>` (required, as `lore feedback get` lists it), `--out`                  |
+| `lore feedback comment add <ref>`    | Comment on an item. The reporter is told, and can answer.                                      | `--body` (required), `--as <name>` (marks it as written by an agent)                      |
+| `lore feedback accept <ref>`         | Accept a pending item: the request is valid.                                                   |                                                                                           |
+| `lore feedback reject <ref>`         | Reject a pending item. The item stays, for the record.                                         |                                                                                           |
+| `lore feedback triage <ref>`         | Triage with an agent: a job on one of the project's Agent hosts files quests, asks or rejects. | `--all` (the whole inbox and the open errors, in one run), `--host`, `--agent`, `--model` |
+| `lore feedback targets`              | The projects you belong to that accept feedback: where `submit` can file.                      |                                                                                           |
+| `lore feedback submit`               | File a feedback item, pending in the project's inbox.                                          | `--title`, `--description` (both required), `--type`, `--tags a,b`, `--as <name>`         |
 
 `--status` is `pending`, `accepted`, `rejected` or `all`. Accepting creates no
 quest: file one with `lore quest create --feedback <ref>`.

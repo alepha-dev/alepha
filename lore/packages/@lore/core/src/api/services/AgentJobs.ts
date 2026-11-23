@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 
 import { AgentJobService } from "./AgentJobService.ts";
-import type { HostJobSummary } from "./HostJobs.ts";
+import type { AgentHostRef, HostJobSummary } from "./HostJobs.ts";
 
 /**
  * What a feature module asks of an agent job (#Q3988, #Q3989, light since
@@ -11,6 +11,10 @@ import type { HostJobSummary } from "./HostJobs.ts";
 export interface AgentJobRequest {
   projectId: number;
   prompt: string;
+  /**
+   * The Agent host, by slug or id (#Q4223): absent, the project's only one.
+   */
+  host?: string;
   /**
    * The agent CLI, by Bay's adapter name (`claude`, `gemini`), and its
    * model. Absent, the host's only agent and the CLI's own default model.
@@ -56,5 +60,25 @@ export class AgentJobs {
 
   public async start(request: AgentJobRequest): Promise<HostJobSummary> {
     return this.service.start(request);
+  }
+
+  /**
+   * The host and agent a run would use, or the refusal that says which to
+   * name (#Q4223).
+   */
+  public async resolve(
+    projectId: number,
+    run: { host?: string; agent?: string },
+  ): Promise<{ host: AgentHostRef; agent?: string }> {
+    return this.service.resolve(projectId, run);
+  }
+
+  /**
+   * The hosts and agents a run of this project may pick from (#Q4223).
+   */
+  public async choices(
+    projectId: number,
+  ): Promise<Array<{ host: string; agent?: string }>> {
+    return this.service.choices(projectId);
   }
 }
