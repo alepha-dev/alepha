@@ -216,6 +216,50 @@ describe("$ai", () => {
     expect(build(api.dotted)).toThrow("Invalid AI tool name");
   });
 
+  it("appends a turn's instructions after the system prompt and runs it on the turn's model", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ model: "base-model" });
+    ai.script([{ type: "text", text: "a" }]);
+    ai.script([{ type: "text", text: "b" }]);
+
+    const persona = await support.run({
+      messages: ask("hi"),
+      user: member,
+      model: "persona-model",
+      instructions: "You are Jarvis.",
+    });
+    expect(ai.requests[0]!.system).toBe(
+      "You help with invoices.\n\nYou are Jarvis.",
+    );
+    expect(ai.requests[0]!.model).toBe("persona-model");
+    expect(persona.messages[0]).toBeDefined();
+
+    // Without them, the option's model and the bare prompt.
+    await support.run({ messages: ask("hi"), user: member });
+    expect(ai.requests[1]!.system).toBe("You help with invoices.");
+    expect(ai.requests[1]!.model).toBe("base-model");
+  });
+
+  it("reports the turn's model on each assistant message", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ model: "base-model" });
+    ai.script([{ type: "text", text: "a" }]);
+
+    const events = await collect(
+      support.stream({
+        messages: ask("hi"),
+        user: member,
+        model: "persona-model",
+      }),
+    );
+    const message = events.find(
+      (it) => it.type === "message" && it.message.role === "assistant",
+    );
+    expect(message).toMatchObject({ model: "persona-model" });
+  });
+
   it("runs a read as the user, feeds the result back, and answers", async ({
     expect,
   }) => {

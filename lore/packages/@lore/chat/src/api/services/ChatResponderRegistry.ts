@@ -171,9 +171,30 @@ export interface ChatAgentRequest {
    */
   history: Array<{ author: string; agent: boolean; text: string }>;
   /**
-   * The run log this member and room continue, if one exists.
+   * The run log this member, room and agent continue, if one exists.
    */
   conversationId?: string;
+  /**
+   * The project's agent mentioned (#E170), none for a built-in.
+   */
+  agent?: ChatAgentPersona;
+}
+
+/**
+ * What a project's agent changes in a run: who answers, what it is told, on
+ * which model. Never what it may do.
+ */
+export interface ChatAgentPersona {
+  id: string;
+  name: string;
+  /**
+   * Its pre-prompt: the persona and its playbook.
+   */
+  instructions: string;
+  /**
+   * Its model id, none for the instance default.
+   */
+  model?: string;
 }
 
 export interface ChatAgentDecision {
@@ -182,6 +203,10 @@ export interface ChatAgentDecision {
   conversationId: string;
   callId: string;
   decision: "approve" | "deny";
+  /**
+   * The agent the paused run is: its resume keeps its playbook and model.
+   */
+  agent?: ChatAgentPersona;
 }
 
 export type ChatAgentEvent =

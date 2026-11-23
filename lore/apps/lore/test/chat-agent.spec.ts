@@ -168,8 +168,8 @@ describe("@lore in a chat room", () => {
     const membership = await ctx.membershipOf(ctx.owner.id);
     const conversation = await ctx.alepha
       .inject(AiConversationService)
-      .owned(ctx.owner.id, membership!.aiConversationId!);
-    expect(conversation.id).toBe(membership!.aiConversationId);
+      .owned(ctx.owner.id, membership!.aiConversations!.lore!);
+    expect(conversation.id).toBe(membership!.aiConversations!.lore);
     // An agent's message, even one naming the agent, starts nothing.
     expect(ctx.ai.requests).toHaveLength(1);
     expect(JSON.stringify(ctx.ai.requests[0])).not.toContain("launch date");
@@ -289,6 +289,6 @@ describe("@lore in a chat room", () => {
 
     const [answer] = await ctx.answers();
     expect(answer?.agentRun?.status).toBe("failed");
-    expect(answer?.body).toContain("Lore could not finish");
+    expect(answer?.body).toContain("Broken could not finish");
   });
 });

@@ -38,6 +38,7 @@ One order for the whole project (`chat_rooms.position`): a rank with `chat:manag
 - **`ChatAgentRunner`** runs in the background of the request that sent the mention (`BackgroundTaskProvider`), with its own 5-minute signal, inside `McpProjectScope.pinned(room.projectId)`. It writes the answer into an agent message (`agentRun`: status, mentioner, tool trace, the paused write), stored as it grows so a reload mid-answer shows the text so far. On Workers it has the `waitUntil` window (about 30 s); a run cut short is stored as failed.
 - **`ChatAgentUiRegistry`** (web): the tool labeller and the write cards an answer is drawn with; the app lends the assistant's own.
 - **One run per room and member**, failures stored as an answer, an agent's message never starts a run (it never goes through `send`).
+- **A project's own agents** (#E170): `chat_agents` rows (handle, name, avatar, pre-prompt, model), written with `chat:agent`. The registry answers them with its **engine**, the responder registered with `engine: true` (the app's `lore`), so with AI off none answers. A run passes the agent as `ChatAgentRequest.agent`; the app sends its pre-prompt as `$ai` instructions after Lore's own prompt, never instead of it, and its model as the turn's model, both server-side only and kept on a resume. A member's run log is kept per room and agent (`chat_room_members.aiConversations`, keyed `lore` or the agent's id). Deleting an agent is a soft delete that frees the handle; messages and mentions point at it by `agentId`.
 
 ## Notifications and lifecycle
 

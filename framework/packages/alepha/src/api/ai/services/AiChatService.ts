@@ -6,6 +6,7 @@ import {
   type AiPrimitive,
   type AiResume,
   type AiTurnEvent,
+  type AiTurnInput,
 } from "alepha/ai";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
@@ -106,11 +107,16 @@ export class AiChatService {
 
   /**
    * One new turn in `conversation`.
+   *
+   * `overrides` is the server's, never the request's: a persona's model and
+   * instructions (`AiTurnInput.model`, `instructions`). `AiChatBody` has no
+   * such field on purpose, since its values come from the browser.
    */
   public async *chat(
     conversation: AiConversationEntity,
     user: UserAccountToken,
     body: AiChatBody,
+    overrides: AiTurnOverrides = {},
   ): AsyncIterable<AiStreamEvent> {
     yield { type: "conversation", conversationId: conversation.id };
     const assistant = this.assistant(body.assistant);
@@ -132,6 +138,7 @@ export class AiChatService {
         context: body.context,
         user,
         tokenBudget: await this.budget.remaining(user.id),
+        ...this.overridden(overrides),
       }),
     );
   }
@@ -159,7 +166,8 @@ export class AiChatService {
    * Continue a claimed conversation from its stored messages. `context` is
    * the page the user answered from: it is appended to nothing, only handed
    * to the assistant's `allow`, so the resume offers what the paused turn
-   * offered.
+   * offered. `overrides` must be the paused turn's: without them a resumed
+   * persona finishes on the default model, without its instructions.
    */
   public async *resume(
     conversation: AiConversationEntity,
@@ -167,6 +175,7 @@ export class AiChatService {
     resume: AiResume,
     assistantName?: string,
     context?: AiPageContext,
+    overrides: AiTurnOverrides = {},
   ): AsyncIterable<AiStreamEvent> {
     yield { type: "conversation", conversationId: conversation.id };
     const assistant = this.assistant(assistantName);
@@ -195,8 +204,18 @@ export class AiChatService {
         resume,
         context,
         tokenBudget: await this.budget.remaining(user.id),
+        ...this.overridden(overrides),
       }),
     );
+  }
+
+  protected overridden(overrides: AiTurnOverrides): AiTurnOverrides {
+    return {
+      ...(overrides.model ? { model: overrides.model } : {}),
+      ...(overrides.instructions
+        ? { instructions: overrides.instructions }
+        : {}),
+    };
   }
 
   /**
@@ -262,3 +281,9 @@ export class AiChatService {
     }
   }
 }
+
+/**
+ * What the server sets on a turn beyond the request: a persona's model and
+ * instructions, appended after the assistant's system prompt.
+ */
+export type AiTurnOverrides = Pick<AiTurnInput, "model" | "instructions">;

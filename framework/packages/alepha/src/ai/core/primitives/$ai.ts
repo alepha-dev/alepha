@@ -295,6 +295,28 @@ export interface AiTurnInput {
   tokenBudget?: number;
 
   /**
+   * The model for this turn, instead of the `model` option: a persona that
+   * runs on a cheaper or a stronger model than the app's default. The model
+   * each assistant message was answered by is reported on its `message`
+   * event.
+   *
+   * ⚠️ Server-side only: never fill it from a request body, or any user
+   * picks the model their budget pays for.
+   */
+  model?: string;
+
+  /**
+   * Text appended after the system prompt for this turn: a persona and its
+   * playbook. The system prompt is never replaced, so its rules still hold;
+   * it stays one cacheable prefix per set of instructions.
+   *
+   * ⚠️ Server-side only: never fill it from a request body, or any user
+   * writes their own system prompt. A resume needs the instructions of the
+   * turn it continues.
+   */
+  instructions?: string;
+
+  /**
    * Cancels the turn. Combined with the ambient signal and `timeout`.
    */
   signal?: AbortSignal;
@@ -449,10 +471,14 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     const messages = [...input.messages];
     const offered = await this.offeredTo(input);
     const ledger: AiCallLedger = { results: new Map(), counts: new Map() };
-    const system =
+    const base =
       typeof this.options.system === "function"
         ? this.options.system({ user: input.user })
         : this.options.system;
+    const system = input.instructions?.trim()
+      ? `${base}\n\n${input.instructions.trim()}`
+      : base;
+    const model = input.model?.trim() || this.options.model;
 
     if (input.resume) {
       const outcome = yield* this.resumeCalls(messages, input, offered, ledger);
@@ -485,7 +511,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
       let reason: AiEndReason = "stop";
 
       for await (const event of this.provider.chat({
-        model: this.options.model,
+        model,
         system,
         // A copy: the loop appends to its own list, and a provider (or a
         // spec recording requests) must see the conversation as it was sent.
@@ -522,7 +548,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         type: "message",
         message: assistant,
         usage: usage ?? { inputTokens: 0, outputTokens: 0 },
-        model: this.modelName(),
+        model: this.modelName(model),
       };
 
       if (!calls.length) {
@@ -1018,9 +1044,9 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     return signals.length === 1 ? signals[0] : AbortSignal.any(signals);
   }
 
-  protected modelName(): string {
+  protected modelName(model = this.options.model): string {
     try {
-      return this.provider.resolveModel({ model: this.options.model });
+      return this.provider.resolveModel({ model });
     } catch {
       return this.provider.name;
     }

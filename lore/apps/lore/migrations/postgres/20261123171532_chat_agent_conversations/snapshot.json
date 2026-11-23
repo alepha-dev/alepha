@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "146e5cfe-34d7-485f-acd2-fe6b0ebe7847",
+  "prevIds": ["18e3695f-3926-48e8-b045-42b5ffd80190"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "chat_room_members",
+        "ai_conversations"
+      ],
+      "writes": [
+        "s|col|public.chat_room_members.ai_conversations",
+        "n|col|public.chat_room_members.ai_conversations",
+        "e|col|public.chat_room_members.ai_conversations"
+      ],
+      "reads": ["n|tbl|public.chat_room_members", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_room_members",
+        "name": "ai_conversations",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
