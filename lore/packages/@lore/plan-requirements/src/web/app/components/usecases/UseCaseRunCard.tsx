@@ -7,6 +7,7 @@ import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import type { UseCaseRunResource } from "../../../../api/schemas/useCaseRunResourceSchema.ts";
 import RunEvidenceLinks from "./RunEvidenceLinks.tsx";
+import RunResultNote from "./RunResultNote.tsx";
 import RunScoreRing from "./RunScoreRing.tsx";
 
 export interface UseCaseRunCardProps {
@@ -32,8 +33,8 @@ const RESULT_KEYS = {
 /**
  * One run of a use case (#Q3975): a header with its score, its verdict, the
  * scenario version it played and who ran it where, then one row per
- * criterion (its result, the criterion's title, the evidence as Markdown and
- * the files placed on it), then the run's note as an Observation.
+ * criterion (its result, the criterion's title, the evidence as labelled rows
+ * or Markdown, see `RunResultNote`, and the files placed on it), then the run's note as an Observation.
  *
  * Only what a run records is drawn: it keeps no duration and no persona, so
  * neither appears.
@@ -142,12 +143,10 @@ const UseCaseRunCard = (props: UseCaseRunCardProps) => {
                     ) : null}
                   </span>
                   {it.note ? (
-                    <div
-                      className="text-muted-foreground text-xs"
-                      data-testid="run-evidence"
-                    >
-                      <MarkdownView content={it.note} />
-                    </div>
+                    <RunResultNote
+                      note={it.note}
+                      failed={it.result === "failed"}
+                    />
                   ) : null}
                   <RunEvidenceLinks
                     files={run.evidence.filter(

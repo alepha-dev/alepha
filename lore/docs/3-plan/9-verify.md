@@ -47,6 +47,20 @@ is done, and only when the project has Ship's **Track** option on. While the
 quests are open, the failure is **In development** and opens nothing. A
 later pass resolves the error.
 
+A failed criterion's note reads best for a person when it uses these
+labels, one per line:
+
+```text
+Expected: choosing a region narrows every chart.
+Seen: only the orders chart narrows.
+Also: the region picker offers no store.
+Details: page /overview, region north. Repro: Overview, then Region.
+```
+
+The Runs tab shows **Expected**, **Seen** and **Also** as rows, and folds
+**Details** under them for whoever fixes it. A note without these labels
+shows as written. The prompt Lore gives an agent asks for this shape.
+
 ### Evidence
 
 Screenshots and recordings are attached to a run, on a criterion or a step,

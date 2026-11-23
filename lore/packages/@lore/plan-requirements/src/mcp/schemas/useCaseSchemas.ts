@@ -242,7 +242,9 @@ export const useCaseRunRecordParamsSchema = projectParamsSchema.extend({
           .string()
           .max(2000)
           .optional()
-          .describe("Why, for a failure: what was seen."),
+          .describe(
+            "Why, for a failure, read by a person first, one line per label: `Expected: ...`, `Seen: ...`, `Also: ...` (optional), then `Details: ...` (page, state, repro steps, ids) for the developer. Lore shows the labels as rows and folds the details.",
+          ),
       }),
     )
     .describe(
