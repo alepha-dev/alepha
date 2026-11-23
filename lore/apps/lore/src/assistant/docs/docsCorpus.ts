@@ -604,7 +604,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Deleting an epic",
     url: "https://alepha.dev/lore/docs/plan-epics#deleting-an-epic",
     capability: "plan",
-    text: "⚠️ **Deleting an epic deletes its quests with it.** You can undo it for a few\nseconds, then it is permanent. The confirmation names how many quests go.\n\nDelete is for a plan created by mistake, abandoned before anyone started it, or\nset aside for good. It is offered while the epic is a draft, ready or shelved,\nfrom its row's menu on the **Epics** page and from the epic's own menu. An\nepic in progress or completed holds work, and is shelved instead. A shelved\nepic that holds a completed quest is not deleted either: that quest is the\nrecord of shipped work, so the epic stays shelved. Deleting several epics at\nonce leaves out, and names, any it cannot delete.\n\nThe epic's folios are kept: they are unfiled from it, never deleted.",
+    text: "⚠️ **Deleting an epic deletes its quests with it.** This cannot be undone.\nThe confirmation names how many quests go.\n\nDelete is for a plan created by mistake, abandoned before anyone started it, or\nset aside for good. It is offered while the epic is a draft, ready or shelved,\nfrom its row's menu on the **Epics** page and from the epic's own menu. An\nepic in progress or completed holds work, and is shelved instead. A shelved\nepic that holds a completed quest is not deleted either: that quest is the\nrecord of shipped work, so the epic stays shelved. Deleting several epics at\nonce leaves out, and names, any it cannot delete.\n\nThe epic's folios are kept: they are unfiled from it, never deleted.",
   },
   {
     guide: "Epics",
