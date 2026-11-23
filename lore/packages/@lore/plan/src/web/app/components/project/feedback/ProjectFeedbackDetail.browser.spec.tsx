@@ -542,3 +542,65 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
     expect(written[0]).toContain("The button does nothing");
   });
 });
+
+/**
+ * The linked quest's status chip was a hand-built span in dark-theme shades
+ * (`text-emerald-300` on an emerald tint), unreadable on light and with no
+ * glyph (#Q4195). It is the shared tint Badge now, as the feedback status.
+ */
+class QuestRoutes {
+  quest = $page({
+    name: "projectQuest",
+    path: "/quests/:shortId",
+    component: () => null,
+  });
+}
+
+describe("ProjectFeedbackDetail - linked quest status", () => {
+  it("draws the linked quest's status as the tint Badge with its icon, in the theme's text colour", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    alepha.inject(QuestRoutes);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
+
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectFeedbackDetail
+            feedback={
+              {
+                ...pendingFeedback,
+                status: "accepted",
+                linkedQuests: [
+                  {
+                    id: 7,
+                    shortId: 12,
+                    title: "Fix the button",
+                    priority: "medium",
+                    status: "completed",
+                  },
+                ],
+              } as FeedbackResource
+            }
+            onChanged={() => {}}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const chip = await view.findByTestId("linked-quest-status-7");
+    expect(chip.className).toContain("text-foreground");
+    expect(chip.className).toContain("bg-success/15");
+    expect(chip.className).not.toMatch(/-300\b/);
+    expect(chip.querySelector("svg")).not.toBeNull();
+  });
+});

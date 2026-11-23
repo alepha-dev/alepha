@@ -38,7 +38,11 @@ import { Fragment, useState } from "react";
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
-import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
+import {
+  QUEST_STATUS_ICON,
+  QUEST_STATUS_LABEL_KEYS,
+  QUEST_STATUS_TONE,
+} from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
 import {
   FeedbackAgentJobLink,
@@ -225,13 +229,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   // before still carry it: left out here rather than rewritten in the rows.
   const tags = (feedback.tags ?? []).filter((tag) => tag !== "feedback");
 
-  const questStatusColor: Record<string, string> = {
-    todo: "bg-slate-500/20 text-slate-300",
-    in_progress: "bg-amber-500/20 text-amber-300",
-    completed: "bg-emerald-500/20 text-emerald-300",
-    shelved: "bg-muted text-muted-foreground",
-  };
-
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="border-border chrome flex h-14 shrink-0 items-center gap-3 border-b px-4">
@@ -353,13 +350,27 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                           {formatReference("quest", q.shortId)}
                         </span>
                         <span className="flex-1 truncate">{q.title}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase ${
-                            questStatusColor[q.status] ?? ""
-                          }`}
+                        {/* The shared tint chip, as the feedback status
+                          above wears it (#Q4195): its text follows the
+                          theme, where hand-picked `-300` shades washed out
+                          on light. */}
+                        <Badge
+                          variant="tint"
+                          tone={QUEST_STATUS_TONE[q.status]}
+                          className="shrink-0 gap-1 uppercase"
+                          data-testid={`linked-quest-status-${q.id}`}
                         >
+                          {(() => {
+                            const Icon = QUEST_STATUS_ICON[q.status];
+                            return (
+                              <Icon
+                                className="size-3 shrink-0"
+                                aria-hidden="true"
+                              />
+                            );
+                          })()}
                           {tr(QUEST_STATUS_LABEL_KEYS[q.status])}
-                        </span>
+                        </Badge>
                       </a>
                     </li>
                   ))}
