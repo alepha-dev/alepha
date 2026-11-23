@@ -46,6 +46,7 @@
     "./resizable": "./src/resizable/index.ts",
     "./sortable": "./src/sortable/index.ts",
     "./swagger": "./src/swagger/index.ts",
+    "./i18n/en": "./src/i18n/en/index.ts",
     "./i18n/fr": "./src/i18n/fr/index.ts",
     "./styles.css": "./src/styles.css",
     "./package.json": "./package.json"
@@ -127,6 +128,10 @@
       "./swagger": {
         "types": "./dist/swagger/index.d.ts",
         "default": "./dist/swagger/index.js"
+      },
+      "./i18n/en": {
+        "types": "./dist/i18n/en/index.d.ts",
+        "default": "./dist/i18n/en/index.js"
       },
       "./i18n/fr": {
         "types": "./dist/i18n/fr/index.d.ts",
