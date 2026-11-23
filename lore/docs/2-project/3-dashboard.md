@@ -88,6 +88,11 @@ With the permission:
 ⚠️ **Delete card** removes the card for everyone in the project. Lore asks
 before it does.
 
+An agent or a script edits a dashboard too, with the same permission: the
+`lore dashboard` commands of the [CLI](/lore/docs/reference-cli) and the
+`dashboard_*` [MCP tools](/lore/docs/reference-mcp-tools) add, change, move and
+remove cards.
+
 ## Several dashboards
 
 A project can hold several dashboards: one for the work, one for the apps, one

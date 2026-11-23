@@ -12,6 +12,8 @@ import {
 import { type Project, projects } from "../entities/projects.ts";
 import { dashboardCardResourceSchema } from "../schemas/dashboardCardResourceSchema.ts";
 import { dashboardCardValueSchema } from "../schemas/dashboardCardValueSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
+import { dashboardMetricEntrySchema } from "../schemas/dashboardMetricEntrySchema.ts";
 import { dashboardPresetKeySchema } from "../schemas/dashboardPresetKeySchema.ts";
 import {
   type DashboardScope,
@@ -94,6 +96,7 @@ export class ProjectDashboardController {
   protected readonly dashboards = $inject(ProjectDashboardService);
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly registry = $inject(DashboardMetricRegistry);
+  protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly slots = $inject(DashboardSlotRegistry);
   protected readonly recency = $inject(ProjectRecencyService);
 
@@ -207,6 +210,40 @@ export class ProjectDashboardController {
         params.projectId,
         query.dashboardId,
       ),
+    }),
+  });
+
+  /**
+   * The metrics a project board's card may show (#Q4206), for an agent or
+   * the CLI adding one: the scope kinds each accepts, the JSON schema of its
+   * filters, and what it needs. The page reads the catalogue itself.
+   */
+  listProjectDashboardMetrics = $action({
+    use: [this.ownsProject("project:read")],
+    method: "GET",
+    path: "/projects/:projectId/dashboard/metrics",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ metrics: z.array(dashboardMetricEntrySchema) }),
+    },
+    handler: async () => ({
+      metrics: this.catalog.on("project").map((metric) => ({
+        key: metric.key,
+        group: metric.group,
+        presentation: metric.presentation,
+        labelKey: metric.labelKey,
+        hintKey: metric.hintKey,
+        scopeKinds: metric.scopeKinds,
+        filters: z.toJSONSchema(metric.filters, { io: "input" }) as Record<
+          string,
+          unknown
+        >,
+        defaultFilters: this.catalog.defaultFilters(metric.key),
+        ...(metric.needs ? { needs: metric.needs } : {}),
+        ...(metric.needsBeacon ? { needsBeacon: true } : {}),
+        ...(metric.requires ? { requires: metric.requires } : {}),
+        ...(metric.defaultSize ? { defaultSize: metric.defaultSize } : {}),
+      })),
     }),
   });
 

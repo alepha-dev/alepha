@@ -12,6 +12,7 @@ import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
 import { ChatCommand } from "./commands/ChatCommand.ts";
 import { CodeCommand } from "./commands/CodeCommand.ts";
+import { DashboardCommand } from "./commands/DashboardCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
@@ -141,6 +142,8 @@ export const AlephaLoreCli = $module({
     ChannelCommand,
     ThresholdCommand,
     InboxCommand,
+    // A project's dashboards and their cards (#Q4206).
+    DashboardCommand,
     QualityCommand,
     // Git repositories, `lore clone` and the credential helper (#Q3934).
     LoreGitCredentials,

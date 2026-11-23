@@ -131,6 +131,26 @@ see [Capabilities](/lore/docs/project-capabilities).
 folios and deployed copies), whether `--confirm` matches or not. There is no
 `--yes`: the slug is typed twice. Nothing running on a host is stopped.
 
+## Dashboards
+
+A project's [dashboards](/lore/docs/project-dashboard) and their cards. Reading
+needs membership; changing a dashboard needs `project:update`, as on the page.
+Every command takes `--dashboard <id>`, as `lore dashboard list` prints it;
+none means the project's first.
+
+| Command                        | What it does                                                                                      | Flags                                                                                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lore dashboard list`          | The project's dashboards, in order.                                                               |                                                                                                                                                                          |
+| `lore dashboard metrics`       | The metrics a card can show, the scopes each accepts, its default filters and what it needs.      |                                                                                                                                                                          |
+| `lore dashboard cards`         | A dashboard's stored cards, in grid order. Empty while the first one shows the default dashboard. | `--dashboard`                                                                                                                                                            |
+| `lore dashboard add <metric>`  | Add a card at the end of a dashboard, on the project unless a scope flag narrows it.              | `--app` (names or sigil ids, comma-separated), `--epic`, `--release`, `--viewer`, `--filters` (JSON), `--size` (1 to 6), `--height` (1 or 2), `--section`, `--dashboard` |
+| `lore dashboard update <card>` | Change a card; what is not given is left alone.                                                   | `--metric`, and the flags of `add` but `--dashboard`                                                                                                                     |
+| `lore dashboard remove <card>` | Remove a card.                                                                                    |                                                                                                                                                                          |
+| `lore dashboard reorder <ids>` | Put a dashboard's cards in a new order: every card id, comma-separated.                           | `--dashboard`                                                                                                                                                            |
+
+For example, a unique-visitors card for one app:
+`lore dashboard add uniqueVisitors --app docs`.
+
 ## Quests
 
 | Command                             | What it does                                                                                        | Flags                                                                                                                                                                                                   |
