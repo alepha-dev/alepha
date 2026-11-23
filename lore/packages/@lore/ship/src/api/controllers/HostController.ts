@@ -8,6 +8,7 @@ import {
   HostInventoryService,
   HostService,
   HostStatsService,
+  AgentHostService,
 } from "@lore/core/api";
 import {
   projects,
@@ -37,8 +38,6 @@ import {
   type UserAccountToken,
 } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
-
-import { AgentHostService } from "../services/AgentHostService.ts";
 
 export type {
   HostInventoryResource,

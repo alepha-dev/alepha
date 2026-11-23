@@ -1,6 +1,6 @@
+import type { AgentHostController } from "@lore/core/api";
 import type {
   AdminHostController,
-  AgentHostController,
   HostCommandController,
   HostController,
   ProjectHostController,

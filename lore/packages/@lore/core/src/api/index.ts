@@ -20,6 +20,7 @@ import { AlephaWebSocket } from "alepha/websocket";
 import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AgentHostController } from "./controllers/AgentHostController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { HostJobController } from "./controllers/HostJobController.ts";
@@ -44,6 +45,7 @@ import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
+import { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
 import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
@@ -69,6 +71,7 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AgentHostService } from "./services/AgentHostService.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentPromptGuard } from "./services/AgentPromptGuard.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
@@ -336,6 +339,11 @@ export const LoreCoreApi = $module({
     HostStatsService,
     HostOfflineJobs,
     HostsMetric,
+    // The agent role (#Q3985, core's since #E166): hosts that run Claude Code
+    // jobs, their daily check, and the project's default one, Ship on or off.
+    AgentHostService,
+    AgentHostController,
+    AgentHostJobs,
     HostProjectMerge,
     HostProjectDeletion,
     HostJobService,
@@ -716,6 +724,9 @@ export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 // ---- hosts (#E166) ----
+export { AgentHostService } from "./services/AgentHostService.ts";
+export { AgentHostController } from "./controllers/AgentHostController.ts";
+export { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 export { HostStatsService } from "./services/HostStatsService.ts";
 export { HostsMetric } from "./services/HostsMetric.ts";

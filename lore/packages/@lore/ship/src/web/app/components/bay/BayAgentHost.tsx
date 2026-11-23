@@ -1,9 +1,9 @@
 import { Badge, Button, Card, CardContent, Switch, TimeAgo } from "@alepha/ui";
+import type { AgentHostController } from "@lore/core/api";
 import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { AgentHostController } from "../../../../api/controllers/AgentHostController.ts";
 import type { HostController } from "../../../../api/controllers/HostController.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
