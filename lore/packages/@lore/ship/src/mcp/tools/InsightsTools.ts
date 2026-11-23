@@ -1,8 +1,12 @@
+import { JobKeyService } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $tool } from "alepha/mcp";
+import { $repository } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
 
 import { InsightsController } from "../../api/controllers/InsightsController.ts";
+import { projectErrors } from "../../api/entities/projectErrors.ts";
 import {
   insightsReadParamsSchema,
   insightsReadResultSchema,
@@ -30,6 +34,9 @@ import {
 export class InsightsTools {
   protected readonly insights = $inject(InsightsController);
   protected readonly projects = $inject(ProjectTools);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly jobKeys = $inject(JobKeyService);
+  protected readonly projectErrors = $repository(projectErrors);
 
   insights_read = $tool({
     title: "Read a project's insights",
@@ -61,7 +68,14 @@ export class InsightsTools {
         range: res.range,
         traffic: res.traffic,
         since: res.since,
-        ...(wanted.has("errors") ? { errorGroups: res.errorGroups } : {}),
+        ...(wanted.has("errors")
+          ? {
+              errorGroups: await this.readableGroups(
+                projectId,
+                res.errorGroups,
+              ),
+            }
+          : {}),
         ...(wanted.has("vitals")
           ? {
               // Narrowed to the range and the confidence. The per-bucket
@@ -112,5 +126,26 @@ export class InsightsTools {
       p75Lower: metric.p75Lower,
       p75Upper: metric.p75Upper,
     };
+  }
+
+  /**
+   * The error groups the caller may read: all of them for a member, the
+   * trusted ones only for an agent's job key (#Q4233), since their text
+   * comes from an ingest open to anyone.
+   */
+  protected async readableGroups<T extends { fingerprint: string }>(
+    projectId: number,
+    groups: T[],
+  ): Promise<T[]> {
+    const request = this.alepha.store.get("alepha.http.request") as
+      | { user?: UserAccountToken }
+      | undefined;
+    if (!(await this.jobKeys.scopeOf(request?.user))) return groups;
+    const trusted = await this.projectErrors.findMany({
+      where: { projectId: { eq: projectId }, trustedAt: { isNotNull: true } },
+      columns: ["fingerprint"],
+    });
+    const allowed = new Set(trusted.map((row) => row.fingerprint));
+    return groups.filter((group) => allowed.has(group.fingerprint));
   }
 }

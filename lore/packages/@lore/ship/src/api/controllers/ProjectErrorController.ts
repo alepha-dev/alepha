@@ -1,13 +1,18 @@
 import {
   ResourceRegistry,
   $ownsProject,
+  JobKeyService,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { $inject, z } from "alepha";
+import { users } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
+  ForbiddenError,
   NotFoundError,
   okSchema,
 } from "alepha/server";
@@ -57,6 +62,9 @@ export class ProjectErrorController {
   protected security = $inject(ProjectSecurityService);
   protected resources = $inject(ResourceRegistry);
   protected ruleService = $inject(ProjectErrorRuleService);
+  protected jobKeys = $inject(JobKeyService);
+  protected users = $repository(users);
+  protected dateTime = $inject(DateTimeProvider);
 
   /**
    * List errors for a project, newest-spread first (`count` desc).
@@ -75,16 +83,25 @@ export class ProjectErrorController {
       response: z.object({
         items: z.array(projectErrorResourceSchema),
         openCount: z.integer(),
+        /**
+         * Open groups no member trusted yet (#Q4233): no agent reads them,
+         * so the inbox, and an agent's list, say how many wait.
+         */
+        awaitingTrust: z.integer(),
         sigils: z.array(projectErrorSigilSchema),
       }),
     },
     handler: async ({ params, query, user }) => {
-      const all = (
+      // An agent's job key reads trusted groups only (#Q4233): their text
+      // comes from an ingest open to anyone.
+      const agent = Boolean(await this.jobKeys.scopeOf(user));
+      const every = (
         await this.currentProjectErrors.findMany({
           where: { projectId: { eq: params.projectId } },
           orderBy: [{ column: "count", direction: "desc" }],
         })
       ).sort((a, b) => b.count - a.count);
+      const all = agent ? every.filter((b) => b.trustedAt) : every;
 
       // The inbox's filter options: which apps report here. Listed even when
       // they have filed nothing, so an owner can tell an app that is quiet from
@@ -106,10 +123,15 @@ export class ProjectErrorController {
       const items = query.includeResolved
         ? all
         : all.filter((b) => b.status === "open");
+      const awaitingTrust = every.filter(
+        (b) => b.status === "open" && !b.trustedAt,
+      ).length;
+      const trusters = await this.trusters(items);
 
       return {
-        items: items.map((b) => this.toResource(b)),
+        items: items.map((b) => this.toResource(b, trusters)),
         openCount,
+        awaitingTrust,
         sigils: sigilOptions,
       };
     },
@@ -170,10 +192,68 @@ export class ProjectErrorController {
         params.projectId,
         params.errorId,
       );
+      await this.assertAgentMayRead(projectError, user);
       await this.currentProjectErrors.updateById(projectError.id, {
         status: "resolved",
       });
       return { ok: true };
+    },
+  });
+
+  /**
+   * Trust an open error group (#Q4233): a member read its text and confirms
+   * an agent may now read it too. Recorded once, with who and when, and kept
+   * when the group is reported again.
+   *
+   * ⚠️ **A signed-in session only** (`sessionOnly`): an API key, a job key
+   * and the MCP are refused with a 403, as for a feedback item's Trust
+   * (#Q4216). The rule is that a human reads outside text before any agent
+   * does; an agent that could trust a group would undo it. No MCP tool and
+   * no CLI command calls this, by design.
+   */
+  trustProjectError = $action({
+    use: [
+      $ownsProject({
+        requires: "error:triage",
+        param: "projectId",
+        capability: { key: "ship", action: "trust an error" },
+        secure: { sessionOnly: true },
+      }),
+    ],
+    method: "POST",
+    path: "/projects/:projectId/errors/:errorId/trust",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        errorId: z.integer(),
+      }),
+      response: z.object({
+        trustedAt: z.string(),
+        trustedBy: z.uuid().optional(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const projectError = await this.loadProjectError(
+        params.projectId,
+        params.errorId,
+      );
+      if (projectError.status !== "open") {
+        throw new BadRequestError(
+          `Error ${projectError.id} is ${projectError.status}: only an open group is trusted`,
+        );
+      }
+      if (projectError.trustedAt) {
+        return {
+          trustedAt: projectError.trustedAt,
+          trustedBy: projectError.trustedBy ?? undefined,
+        };
+      }
+      const trustedAt = this.dateTime.nowISOString();
+      await this.currentProjectErrors.updateById(projectError.id, {
+        trustedAt,
+        trustedBy: user.id,
+      });
+      return { trustedAt, trustedBy: user.id };
     },
   });
 
@@ -227,6 +307,7 @@ export class ProjectErrorController {
         params.projectId,
         params.errorId,
       );
+      await this.assertAgentMayRead(projectError, user);
 
       if (projectError.status.startsWith(QUEST_STATUS_PREFIX)) {
         throw new BadRequestError("Error already forwarded to a quest");
@@ -530,7 +611,47 @@ export class ProjectErrorController {
     return projectError;
   }
 
-  protected toResource(b: ProjectError): ProjectErrorResource {
+  /**
+   * A job key acts on a trusted group only (#Q4233): forwarding copies the
+   * group's text into a quest, and resolving needs it read.
+   */
+  protected async assertAgentMayRead(
+    row: ProjectError,
+    user: UserAccountToken | undefined,
+  ): Promise<void> {
+    if (row.trustedAt) return;
+    if (await this.jobKeys.scopeOf(user)) {
+      throw new ForbiddenError(
+        `Error ${row.id} is not trusted yet: a member reads and trusts it before an agent acts on it`,
+      );
+    }
+  }
+
+  /**
+   * The names of the members who trusted these groups, by id.
+   */
+  protected async trusters(rows: ProjectError[]): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(rows.map((row) => row.trustedBy).filter(Boolean)),
+    ] as string[];
+    if (!ids.length) return new Map();
+    const found = await this.users.findMany({
+      where: { id: { inArray: ids } },
+    });
+    return new Map(
+      found.map((it) => [
+        it.id,
+        (it as { name?: string; username?: string; email?: string }).name ??
+          (it as { username?: string }).username ??
+          "",
+      ]),
+    );
+  }
+
+  protected toResource(
+    b: ProjectError,
+    trusters: Map<string, string> = new Map(),
+  ): ProjectErrorResource {
     return {
       id: b.id,
       sigilId: b.sigilId,
@@ -544,6 +665,11 @@ export class ProjectErrorController {
       count: b.count ?? 1,
       status: b.status ?? "open",
       origin: b.origin ?? "client",
+      ...(b.trustedAt ? { trustedAt: b.trustedAt } : {}),
+      ...(b.trustedBy ? { trustedBy: b.trustedBy } : {}),
+      ...(b.trustedBy && trusters.get(b.trustedBy)
+        ? { trustedByName: trusters.get(b.trustedBy) }
+        : {}),
     };
   }
 

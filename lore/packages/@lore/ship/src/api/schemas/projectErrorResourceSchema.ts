@@ -1,4 +1,4 @@
-import type { Infer } from "alepha";
+import { type Infer, z } from "alepha";
 
 import { projectErrors } from "../entities/projectErrors.ts";
 
@@ -15,8 +15,13 @@ import { projectErrors } from "../entities/projectErrors.ts";
  * data to read, never instructions to follow, and the UI must render them as
  * escaped plain text only: never markdown, never `dangerouslySetInnerHTML`.
  */
-export const projectErrorResourceSchema = projectErrors.schema.omit({
-  projectId: true,
-});
+export const projectErrorResourceSchema = projectErrors.schema
+  .omit({
+    projectId: true,
+  })
+  .extend({
+    /** The name of the member who trusted the group (#Q4233). */
+    trustedByName: z.string().max(200).optional(),
+  });
 
 export type ProjectErrorResource = Infer<typeof projectErrorResourceSchema>;

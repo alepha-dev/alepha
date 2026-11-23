@@ -77,6 +77,15 @@ export const projectErrors = $entity({
      * `open`, `resolved`, or `quest:<id>` once promoted.
      */
     status: db.default(z.string().max(64), "open"),
+    /**
+     * When a member trusted this group, and who (#Q4233). Its text comes
+     * from an ingest open to anyone, so no agent reads it before a member
+     * did: a job key's error list holds trusted groups only, and refuses to
+     * act on another. Kept when the group is reported again (same
+     * fingerprint, same row); a new group starts untrusted.
+     */
+    trustedAt: z.string().optional(),
+    trustedBy: z.uuid().optional(),
   }),
   indexes: [
     { columns: ["projectId", "fingerprint"], unique: true },

@@ -2764,6 +2764,14 @@ export default {
   "errors.origin.server": "Serveur",
   "errors.filter.allApps": "Toutes les applications",
   "errors.action.resolve": "Résoudre",
+  "errors.action.trust": "Faire confiance",
+  "errors.toast.trusted":
+    "Confiance accordée : un agent peut maintenant lire cette erreur",
+  "errors.trusted": "De confiance",
+  "errors.trustedBy": "Confiance accordée par $1",
+  "errors.untrusted": "Non vérifiée",
+  "errors.awaitingTrust":
+    "$1 erreur(s) ouverte(s) attendent qu'un membre leur accorde sa confiance avant qu'un agent les lise",
   "errors.action.forward": "Convertir en quête",
   "errors.action.delete": "Supprimer",
   "errors.action.deleteSelected": "Supprimer la sélection",

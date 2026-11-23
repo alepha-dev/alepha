@@ -20,6 +20,11 @@ export const projectErrorListResultSchema = z.object({
   errors: z.array(projectErrorResourceSchema),
   openCount: z.integer(),
   /**
+   * Open groups no member trusted yet (#Q4233). An agent's job key lists
+   * trusted groups only; these wait for a member to read them.
+   */
+  awaitingTrust: z.integer(),
+  /**
    * The apps that report here, for reading `sigilId` back to a name.
    */
   sigils: z.array(
