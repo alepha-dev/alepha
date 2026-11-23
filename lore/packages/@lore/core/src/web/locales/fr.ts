@@ -3094,7 +3094,10 @@ export default {
   "jobs.field.exit": "Code de sortie",
   "jobs.field.reason": "Raison",
   "jobs.log": "Journal",
-  "jobs.log.empty": "Rien d'affiché pour l'instant.",
+  "jobs.log.empty": "Rien n'a été affiché.",
+  "jobs.rail.label": "Historique des tâches",
+  "jobs.log.waiting": "En attente de la première ligne...",
+  "jobs.log.follow": "Suivre la sortie",
   "jobs.log.truncated":
     "L'hôte a cessé de garder la sortie de cette tâche à sa taille maximale.",
   "hosts.agent.switch": "Hôte d'agent",

@@ -3086,7 +3086,10 @@ export default {
   "jobs.field.exit": "Exit code",
   "jobs.field.reason": "Reason",
   "jobs.log": "Log",
-  "jobs.log.empty": "Nothing printed yet.",
+  "jobs.log.empty": "Nothing was printed.",
+  "jobs.rail.label": "Job history",
+  "jobs.log.waiting": "Waiting for the first line...",
+  "jobs.log.follow": "Follow output",
   "jobs.log.truncated":
     "The host stopped keeping this job's output at its size cap.",
   "hosts.agent.switch": "Agent host",
