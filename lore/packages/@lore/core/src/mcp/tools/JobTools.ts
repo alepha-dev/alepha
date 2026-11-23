@@ -1,8 +1,11 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
+import { AgentHostController } from "../../api/controllers/AgentHostController.ts";
 import { HostJobController } from "../../api/controllers/HostJobController.ts";
 import {
+  agentHostsParamsSchema,
+  agentHostsResultSchema,
   jobGetParamsSchema,
   jobGetResultSchema,
   jobIdParamsSchema,
@@ -19,11 +22,30 @@ import { ProjectTools } from "./ProjectTools.ts";
 export class JobTools {
   protected readonly jobs = $inject(HostJobController);
   protected readonly projects = $inject(ProjectTools);
+  protected readonly agentHosts = $inject(AgentHostController);
+
+  agent_hosts = $tool({
+    title: "List Agent hosts",
+    description:
+      "The project's Agent hosts, its own and those lent to it: each one's last check (available or not, and why), the agent CLIs it reports (what agent_run's `agent` names), and every tool its jobs user has (agent CLIs, git, gh, lore) with a version or the error of its version command. Whether a tool is signed in is not checked. Readable by members whose rank grants host:read.",
+    annotations: { readOnlyHint: true },
+    schema: { params: agentHostsParamsSchema, result: agentHostsResultSchema },
+    handler: async ({ params }) => {
+      const projectId = await this.projects.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const { items } = await this.agentHosts.listProjectAgentHosts({
+        params: { projectId },
+      });
+      return { hosts: items };
+    },
+  });
 
   job_list = $tool({
     title: "List host jobs",
     description:
-      "The project's host jobs, newest first: agent jobs (Claude Code on an Agent host) and capability checks, each with its status (queued, running, succeeded, failed, cancelled, timed_out, paused), its host, who started it and what it is about. Readable by members whose rank grants host:read.",
+      "The project's host jobs, newest first: agent jobs (an agent CLI on an Agent host) and capability checks, each with its status (queued, running, succeeded, failed, cancelled, timed_out), its host, who started it and what it is about. Readable by members whose rank grants host:read.",
     annotations: { readOnlyHint: true },
     schema: { params: jobListParamsSchema, result: jobListResultSchema },
     handler: async ({ params }) => {
@@ -49,7 +71,7 @@ export class JobTools {
   job_get = $tool({
     title: "Read a host job",
     description:
-      "One host job: what it ran (profile, repository, prompt, budget), its status, exit code and reason, and with `log` its output so far.",
+      "One host job: what it ran (agent, model, workspace, prompt, timeout), its status, exit code and reason, and with `log` its output so far.",
     annotations: { readOnlyHint: true },
     schema: { params: jobGetParamsSchema, result: jobGetResultSchema },
     handler: async ({ params }) => {

@@ -1,72 +1,72 @@
 # Agent jobs
 
-An agent job is Claude Code run by Lore on one of your own hosts: it triages a
-feedback item into quests, reviews an epic's plan, or works a quest and pushes
-a branch. You provide
-the machine and the Claude credential; Lore writes the job, starts it, shows its
-log, and keeps what it answered.
+An agent job is an agent CLI, Claude Code or Gemini CLI, run by Lore on one of
+your own hosts: it triages the feedback inbox and the open errors into
+quests, reviews an epic's plan, or works a quest into a pull request. You
+provide the machine and install the tools; Lore says what to run, starts it,
+and shows its log. The agent does the rest itself, with the tools it finds on
+the host, and writes what it did back to Lore.
 
-The credential never leaves your host. Lore asks the host to run a job, the
-host pulls what to run, and Claude Code reads its credential from the host
-itself.
+Your agent's sign-in never leaves your host. Lore asks the host to run a job,
+the host pulls what to run, and the agent CLI uses the sign-in of the host's
+jobs user.
 
-## Claude Code on your host, by hand
+## Set up an Agent host
 
 An agent job runs on a host enrolled with Bay (see
-[Hosts](/lore/docs/project-hosts)). Pick one that serves no production app and
-holds no other project's secrets: a job runs a repository's code there.
+[Hosts](/lore/docs/project-hosts)). There is no sandbox: a job runs as a Unix
+user of that host, with that user's tools and sign-ins. Pick a machine you
+would hand to a colleague for the same work, and give the jobs user only the
+access the jobs need.
 
-**1. Mint a credential.** On any machine where you are signed in to Claude
-Code, run `claude setup-token`, which prints a long-lived OAuth token for your
-Claude subscription. An Anthropic API key works too, billed per token. Lore
-never asks for either.
+**1. Install Bay.** Follow [Bay's install guide](/bay/docs/guides-installation).
+Docker is needed only if the host also deploys apps; a host that runs agent
+jobs alone does without it.
 
-**2. Tell Bay how to run jobs.** Bay has two ways, chosen on the host:
+**2. Create the jobs user, and tell Bay about it.**
 
-- **In a container** (recommended). Each job runs in Lore's agent image, as a
-  non-root user, with no host directory mounted and a network whose only way
-  out is Bay's egress proxy. The credential is a host secret, set from stdin so
-  it lands in no shell history:
+```bash
+sudo useradd --create-home bay-agent
+```
 
-  ```bash
-  sudo bay secret set CLAUDE_CODE_OAUTH_TOKEN - < token.txt
-  sudo bay config jobs --runner container --credential CLAUDE_CODE_OAUTH_TOKEN
-  ```
+```bash
+sudo bay config jobs --user bay-agent
+```
 
-  Add `--gvisor` when the host has the `runsc` runtime, for a kernel between
-  the job and the machine.
+Bay never runs a job as root or as its own user. `--max-jobs 2` lets the host
+run two jobs at once (one by default); two jobs never share a workspace.
 
-- **As a host process.** Each job runs under a dedicated Unix user, signed in
-  to Claude Code by hand (`sudo -u bay-agent claude setup-token`, or the key
-  in that user's environment):
+**3. Install an agent CLI, and sign it in as the jobs user.** Claude Code or
+Gemini CLI, or both. Sign in as that user, the way you do on your own machine:
 
-  ```bash
-  sudo bay config jobs --user bay-agent
-  ```
+```bash
+sudo -iu bay-agent claude
+```
 
-  That user's shell is the job's: it reaches whatever the user reaches, so
-  this host runs work from your team only (see
-  [Untrusted input](#untrusted-input)).
+```bash
+sudo -iu bay-agent gemini
+```
 
-Jobs run with Claude Code's default model. `sudo bay config jobs --model opus`
-picks another for every job on that host, the check included.
+**4. Install `git` and `gh`** for work on a repository, and sign `gh` in as
+the jobs user (`sudo -iu bay-agent gh auth login`): a Build job pushes a
+branch and opens a pull request with them. A triage that only reads the code
+needs `git` alone.
 
-`bay config jobs --clear` makes the host refuse every job again. See the
-[Lore connector guide](/bay/docs/guides-lore-connector) for every flag.
+**5. Check what the host has.** `bay doctor` lists the jobs user's tools: each
+agent CLI, `git`, `gh` and `lore`, with its version, and says plainly when no
+agent CLI answers. Whether a tool is signed in is not checked: a job that
+needs it fails with the tool's own message.
 
-**3. Allow jobs, and make it an Agent host.** On the host's page in Lore, turn
-on **Allow jobs**, then **Agent host**. Lore checks the host at once: it asks
-Claude Code to reply OK in one turn, and shows **Available** with the CLI's
-version, the model and the kind of credential, or **Unavailable** with the
-CLI's own message. The check runs again once a day, on **Check now**, and
-whenever a job fails on a sign-in or usage-limit message.
+```bash
+sudo bay doctor
+```
 
-**4. Name the project's Agent host.** In the project's **Settings ▸ Hosts**,
-an Agent host carries an **agent** pill under **Capabilities**. Open its row's
-menu and choose **Make default Agent host**: a host of the project, or one
-lent to it. The default's pill reads **agent, default**, and its menu holds
-**Hosts a push job may reach**. Until a
-project names one, its agent buttons are hidden.
+**6. Allow jobs, and make it an Agent host.** On the host's page in Lore,
+turn on **Allow jobs**, then **Agent host**. Lore checks the host at once: the
+agent prints its version, then answers a one-line prompt. The host shows
+**Available**, or **Unavailable** with the agent's own message. The check runs
+again once a day and on **Check now**. The **Agent host** card lists the tools
+the host reported.
 
 From the CLI:
 
@@ -79,23 +79,47 @@ lore host check agent-1
 ```
 
 ```bash
-lore host agent agent-1
+lore agent hosts
 ```
+
+A project uses its own Agent hosts and the ones lent to it. There is no
+default one: with a single host and a single agent CLI, one click runs the job
+there; with several, the menu offers one entry per host and agent, your last
+pick first.
+
+## Workspaces
+
+Each job runs in a **workspace**: a directory under the jobs user's home,
+`~/bay-jobs/<project>/<workspace>`, kept between runs. The first run of a
+triage clones the project's repository there; the next ones fetch it. A
+triage uses the project's `triage` workspace, and a quest's work its own,
+`q<number>`, which Bay removes when the quest is completed. Deleting a project
+removes its workspaces on every host that ran its jobs.
+
+On the host, `bay jobs workspaces` lists them, and
+`bay jobs workspace rm <project>/<name>` removes one.
+
+## How a job reaches Lore
+
+A job reaches Lore through **Lore's MCP server**, which Bay configures for
+each run with a key of its own: the host needs no `lore` login for jobs. The
+key is made when the host pulls the job and revoked when it ends. It belongs
+to the member who started the job, so it can do what their rank allows, held
+to the project, and to the feedback items, quest or epic the job is about. It
+reaches the MCP server only: Lore's API refuses it.
+
+A job never starts another agent job.
 
 ## What an agent does
 
-### Feedback to quests
+### Triage
 
-**Triage with Claude**, in the robot menu of a pending feedback item, runs the
-project's Triage prompt (see [Agent prompts](/lore/docs/agents-prompts)) on that
-one item. The agent reads the item and the code, then does one of three things:
-files a todo quest for sound feedback, leaves a question for a member when it is
-unsure, or rejects what is not actionable.
-
-**Triage all feedback and errors with Claude**, in the same menu, is one run
-over the whole inbox. The agent reads every pending item, and the project's
-open errors when it tracks them (Ship ▸ Track), before it changes anything.
-Then it groups what belongs together:
+**Triage with an agent**, in the robot menu of a pending feedback item, runs
+the project's Triage prompt (see [Agent prompts](/lore/docs/agents-prompts))
+on that one item. **Triage all feedback and errors with an agent**, in the
+same menu, runs it over the whole inbox, and over the project's open errors
+when it tracks them (Ship ▸ Track). Both run the same prompt: the agent reads
+everything first, then groups what belongs together:
 
 - one quest per real problem, however many reports describe it. The quest
   names every report and error in it, and each other report gets a comment
@@ -107,134 +131,98 @@ Then it groups what belongs together:
 - an item it is unsure about stays pending with a question, and one that is
   not actionable is rejected.
 
-Its key reaches only the items it was given, and its turns and time grow with
-their number. Feedback written outside the team joins this run only once a
-member has trusted it; until then no agent reads it (see
-[Untrusted input](#untrusted-input)).
-
-Both entries show only while the project's Agent host passes its agent check.
-Once an item is triaged, its **Agent job** link opens the job and its log.
-
-From the CLI, one item or the whole pending inbox:
-
-```bash
-lore feedback triage P120
-```
-
-```bash
-lore feedback triage --all
-```
+The entries show only while an Agent host passes its check. Once an item is
+triaged, its **Agent job** link opens the job and its log.
 
 ### An epic's review
 
-**Review with Claude**, in the robot menu of a draft or ready epic, runs the
-project's Review prompt on it: the job reads the epic, its quests and the code,
-then files one review on the epic's **Review** tab, with its blockers,
+**Review with an agent**, in the robot menu of a draft or ready epic, runs the
+project's Review prompt on it: the job reads the epic, its quests and the
+code, then files one review on the epic's **Review** tab, with its blockers,
 questions and decisions. It may also sharpen the epic and its quests, add the
-quests the plan is missing, and write a folio under the epic. Answering the
-review stays yours.
+quests the plan is missing, and write a folio under the epic. Its key reaches
+this epic and its quests only.
 
-The job reads and writes nothing outside the epic: its key reaches this epic,
-the quests filed under it, and creates filed under it. It pushes nothing. One
-review job runs per epic at a time, and the **Review** tab links the last one.
+### Build: a quest to a pull request
+
+**Work it with an agent**, on an accepted quest, updates the quest's
+workspace, branches from the default branch, does the work, runs the
+project's checks, commits naming the quest, pushes, and opens a pull request
+with `gh`, which it records on the quest. It turns auto-merge on only when the
+repository's own agent instructions ask for it, and follows their branch
+naming. The merged commit naming the quest is what completes it.
+
+## From the command line
+
+Start a job, and follow its log until it ends with `--wait`:
 
 ```bash
-lore epic review E12
+lore agent run triage --wait
 ```
 
-### A quest to a branch
+```bash
+lore agent run build --quest 42
+```
 
-**Work it with Claude**, on an accepted quest, clones the repository, works the
-quest, can run the project's checks, and pushes the branch `lore/q<number>` to the
-project's Lore repository. The branch is the job's whole output: it never
-writes to any other branch, and it never merges. You review it as you would a
-colleague's.
+```bash
+lore agent run text --text "List the open quests of area web" --workspace notes
+```
 
-### A branch to main
-
-Opening a pull request and merging it stay a person's acts for now.
-
-### Following a job
-
-Every job shows on the subject it works on, with its log as it runs, its
-status, how many turns it took and what it cost. From the CLI:
+`--host`, `--agent` and `--model` pick the host, the agent CLI and its model:
+`--host` when the project has several Agent hosts, `--agent` when the host has
+several agents. Without `--model`, the agent's own default applies.
 
 ```bash
 lore job list
 ```
 
 ```bash
-lore job logs <id>
+lore job logs <id> --follow
 ```
 
-`lore job cancel <id>` stops one. A job that hits the provider's usage limit
-is **paused** until the limit lifts, and the host shows **Unavailable** until
-its next check passes.
+`lore job get <id>` shows what a job ran (agent, model, workspace) and how it
+ended; `lore job cancel <id>` stops it. A job succeeds or fails by the agent's
+exit code: what it did is what it wrote to Lore.
 
-## Profiles and rights
+## From an agent
 
-A job runs one of two fixed profiles. Neither can be widened from a prompt.
+`agent_run` starts a job and `agent_hosts` lists the Agent hosts, the twins of
+`lore agent run` and `lore agent hosts`; `job_list`, `job_get` and
+`job_cancel` read and stop jobs. Called with an agent job's own key,
+`agent_run` is refused.
 
-| profile | used by                 | Claude Code may                                               | turns | time   |
-| ------- | ----------------------- | ------------------------------------------------------------- | ----- | ------ |
-| `read`  | triage, epic review     | read files, search, read git history                          | 30    | 15 min |
-| `push`  | **Work it with Claude** | edit files, run shell commands (`yarn`, git), push its branch | 100   | 60 min |
-
-Each job also gets its own Lore key, made when the host pulls the job and
-revoked when it ends. The key holds only:
-
-- the Lore tools the job needs, for the one feedback item, quest or epic it
-  is about;
-- read access to the one repository it cloned;
-- for a `push` job, write access to `lore/q<number>` and nothing else.
-
-A job never starts another agent job: whatever its output says, the next stage
-is started by a person or by the project's own settings.
-
-**Network.** On a container host, every job reaches the Anthropic API and your
-Lore, and nothing else. A `push` job also reaches the npm and Yarn registries
-and GitHub, so it can install dependencies. Replace that list in
-**Settings ▸ Hosts ▸ Hosts a push job may reach**, or with
-`lore host agent --egress registry.example.app,.example.app` (`default`
-restores it). A host refused by the proxy shows in the job's log as
-`egress refused`. A host-process runner enforces no network rule.
-
-## Untrusted input
+## Text from outside the team
 
 Feedback written by someone outside the project's team (a visitor of a public
-form or widget, a user who is not a member) is marked **Untrusted** when it is submitted, and
-stays so. Its text may be written to steer an agent, so Lore holds it to
-stricter rules:
+form or widget, a user who is not a member) is marked **Untrusted**, and the
+errors Lore receives from your apps come from an ingest anyone can reach.
+Either may be written to steer an agent, so one rule holds, in code: **no
+agent reads it until a member trusts it.**
 
-- **No agent reads it until a member trusts it**, whatever the host's runner.
-  Triage leaves it out, starts no job for it, and leaves a comment saying a
-  member must read it; the inbox says how many items wait. A member who can
-  triage reads it and clicks **Trust** on the item, which Lore records with
-  their name. The **Untrusted** marker stays, so the item still says where it
-  came from, and from then on it is triaged like an item the team wrote.
+- **Feedback.** Triage leaves an untrusted item out, starts no job for it,
+  and leaves a comment saying a member must read it; the inbox says how many
+  items wait. A member who can triage reads it and clicks **Trust**, which
+  Lore records with their name. The **Untrusted** marker stays, and from then
+  on the item is triaged like one the team wrote.
+- **Errors.** An agent's error list holds only the error groups a member
+  trusted; the **Errors** page marks each one, offers **Trust** on an open
+  group, and says how many wait. A group reported again keeps its trust; a
+  new group starts untrusted.
 - **Trust** takes a person signed in to Lore. An API key, a job key and the
-  MCP are refused: an agent that could trust an item would undo the rule, so
-  no MCP tool and no CLI command does it.
-- A quest filed from it is marked **Untrusted** too. **Work it with Claude**
-  waits until a member has read its text and clicked **Confirm its text**,
-  which Lore records with their name. A quest filed from an item a member
-  already trusted carries that confirmation and asks for no second one.
-- **Review with Claude** on an epic holding such a quest, not yet confirmed,
-  is refused on a process host, naming the quests to confirm first. A
-  container host reviews it with the same `read` profile.
-
-The Triage prompt also tells the agent that the item's text is data, never
-instructions. That sentence helps; the rules above are what hold.
+  MCP are refused: an agent that could trust text would undo the rule, so no
+  MCP tool and no CLI command does it.
+- A quest filed from untrusted feedback is marked **Untrusted** too: **Work it
+  with an agent** waits until a member has clicked **Confirm its text**, and a
+  review of an epic holding such a quest is refused until then. A quest filed
+  from an item a member already trusted carries that confirmation.
 
 ## What Lore never sees
 
-- **The Claude credential.** It stays on the host: in a host secret, or in the
-  jobs user's own Claude Code sign-in. Lore sees only the secret's name, and
-  whether the check found an OAuth token or an API key.
-- **Your host's other secrets.** A job pulls its spec and nothing else; a
-  container job sees no host directory and no environment but its own.
-- **Your Claude account.** Usage and billing stay between you and Anthropic.
-  Lore shows the cost Claude Code reports at the end of each job.
+- **Your agent's sign-in, and your `gh` sign-in.** They stay with the jobs
+  user on the host.
+- **Your host's other files and secrets.** A job pulls its spec and nothing
+  else; what the jobs user can reach on the host is yours to decide.
+- **Your agent account.** Usage and billing stay between you and the agent's
+  vendor.
 
-What Lore does keep: the prompt it sent, the job's log (up to a size cap), and
-Claude Code's final answer.
+What Lore does keep: the prompt it sent and the job's log, up to a size cap.

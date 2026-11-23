@@ -1,6 +1,7 @@
 import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
 
+import { AgentRunController } from "./controllers/AgentRunController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { EpicAgentController } from "./controllers/EpicAgentController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
@@ -118,6 +119,8 @@ export const LorePlanApi = $module({
     // listed so the key's quest-in-epic lookup is registered at boot.
     EpicAgentService,
     EpicAgentController,
+    // Run a prompt on an Agent host from the CLI or MCP (#Q4225).
+    AgentRunController,
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     WorkBuckets,
@@ -255,6 +258,7 @@ export const LorePlanApi = $module({
 // Everything else stays internal, reached by relative import.
 
 export { feedbackOptionsAtom } from "./atoms/feedbackOptionsAtom.ts";
+export { AgentRunController } from "./controllers/AgentRunController.ts";
 export { AreaController } from "./controllers/AreaController.ts";
 export {
   type MentionSubject,

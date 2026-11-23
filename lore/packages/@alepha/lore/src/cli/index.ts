@@ -4,6 +4,7 @@ import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { AlephaLoreDeploy } from "./AlephaLoreDeploy.ts";
+import { AgentCommand } from "./commands/AgentCommand.ts";
 import { AppInstanceCommand } from "./commands/AppInstanceCommand.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { AreaCommand } from "./commands/AreaCommand.ts";
@@ -161,6 +162,8 @@ export const AlephaLoreCli = $module({
     HostCommand,
     // A project's host jobs (#Q3984).
     JobCommand,
+    // A prompt run on an Agent host, and the hosts (#Q4225).
+    AgentCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,
