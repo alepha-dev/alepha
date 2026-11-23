@@ -47,6 +47,9 @@ never asks for either.
   this host runs work from your team only (see
   [Untrusted input](#untrusted-input)).
 
+Jobs run with Claude Code's default model. `sudo bay config jobs --model opus`
+picks another for every job on that host, the check included.
+
 `bay config jobs --clear` makes the host refuse every job again. See the
 [Lore connector guide](/bay/docs/guides-lore-connector) for every flag.
 

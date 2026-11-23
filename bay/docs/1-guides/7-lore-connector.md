@@ -218,6 +218,17 @@ Claude Code step's environment only. Lore sees the secret's name in the host's
 report, never its value. A host on the container runner is the one Lore lets
 read feedback written outside the project's team, with read rights only.
 
+### The model
+
+Claude Code runs every job, and Lore's daily check, with its own default
+model. `--model` picks another for the whole host, with either runner: an
+alias such as `opus` or `sonnet`, or a full model id. `--model ""` goes back to
+the default. The host's card in Lore shows the model its last check ran with.
+
+```bash
+sudo bay config jobs --model opus
+```
+
 ## The console
 
 Once the machine has said hello, `/<project>/hosts/<host>` in Lore shows,

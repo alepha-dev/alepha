@@ -199,7 +199,7 @@ func (r *jobContainerRunner) run(ctx context.Context, id string, spec jobSpec, l
 		mcp = string(raw)
 		dir = repo
 	}
-	return step("claude", append([]string{"claude"}, claudeArgs(spec, mcp)...), dir, append(keyEnv, credential...), cache)
+	return step("claude", append([]string{"claude"}, claudeArgs(spec, mcp, cfg.Model)...), dir, append(keyEnv, credential...), cache)
 }
 
 // credentialEnv is the claude step's credential: the host-local secret the
