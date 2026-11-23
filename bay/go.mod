@@ -6,7 +6,7 @@ require (
 	github.com/caddyserver/certmagic v0.25.6
 	github.com/cloudflare/tableflip v1.2.3
 	github.com/gorilla/websocket v1.5.3
-	github.com/klauspost/compress v1.20.4
+	github.com/klauspost/compress v1.20.5
 	golang.org/x/crypto v0.59.0
 	gopkg.in/yaml.v3 v3.0.1
 )
