@@ -17,8 +17,8 @@ export const PULL_REQUEST_URL_PATTERN = /^https?:\/\/\S+$/i;
  * forge, so there is no `open` or `merged` here and nothing to keep in step.
  *
  * `url` is the identity and the link target, both: the rail and the epic
- * page link the URL as recorded, unlike a sha, which links through the
- * project's `repositoryUrl`. `number`, `repo` and `title` are what a reader
+ * page link the URL as recorded, unlike a sha, which links to its page in
+ * the project's own Lore repository (#Q4136). `number`, `repo` and `title` are what a reader
  * sees in its place, all optional because a bare URL is already useful.
  */
 export const pullRequestSchema = z.object({

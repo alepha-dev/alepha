@@ -252,12 +252,6 @@ const ProjectView = () => {
               topbar actions, which left a wider gap after the "+" than
               between any other two icons.
 
-              The repository link rides the same slot, which is what puts it
-              "between search and lang" (feedback #2105) without any of the
-              three components needing to know about the other two: `before`
-              is one node, and the order inside it is the order on screen. It
-              renders nothing when the project has no `repositoryUrl`.
-
               ⚠️ The bell rides the same slot rather than joining
               `AppActions`, and that is a decision rather than convenience:
               that cluster is "the ambient controls EVERY signed-in surface

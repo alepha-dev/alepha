@@ -1,6 +1,6 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { CommitLinkRegistry, currentProjectAtom, I18n } from "@lore/core/web";
 import { currentReleasesAtom, WorkShell } from "@lore/plan/web";
 import type { AppInstanceResource } from "@lore/ship/schemas";
 import { ProjectArtifacts } from "@lore/ship/testing";
@@ -118,7 +118,7 @@ describe("ProjectArtifacts", () => {
   const show = async (
     responses: Record<string, unknown> = {},
     releases: unknown[] = [],
-    repositoryUrl?: string,
+    linked = false,
     options: { denied?: string[]; instances?: AppInstanceResource[] } = {},
   ) => {
     cleanup();
@@ -142,14 +142,20 @@ describe("ProjectArtifacts", () => {
     // Work registers the `release` kind the tag column links through
     // (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Build's part (#Q4136): where a commit links.
+    if (linked) {
+      alepha
+        .inject(CommitLinkRegistry)
+        .register((sha) => `/alepha/code/alepha/commit/${sha}`);
+    }
     await alepha.start();
 
     // Without the project the query stays disabled and every case below
     // would pass by not running the code it is about.
-    alepha.store.set(currentProjectAtom, {
-      ...projectFixture({ title: "Alepha", slug: "alepha" }),
-      repositoryUrl,
-    });
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ title: "Alepha", slug: "alepha" }),
+    );
     alepha.store.set(currentReleasesAtom, releases as never);
     alepha.store.set(currentInstancesAtom, options.instances ?? []);
 
@@ -177,23 +183,19 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
-   * The Commit cell links to the repository the way the quest rail does
-   * (feedback #P2201, #Q2336), and stays text without one.
+   * The Commit cell links to its page in the Lore repository the way the
+   * quest rail does (feedback #P2201, #Q2336, #Q4136), and stays text
+   * without one.
    */
-  it("links the commit to the project's repository when it has one", async ({
+  it("links the commit to its page in the project's repository", async ({
     expect,
   }) => {
-    const { findByText } = await show(
-      listing([group()]),
-      [],
-      "https://github.com/alepha-dev/alepha",
-    );
+    const { findByText } = await show(listing([group()]), [], true);
 
     const link = (await findByText("abcdef1")).closest("a");
     expect(link?.getAttribute("href")).toBe(
-      "https://github.com/alepha-dev/alepha/commit/abcdef1234567890",
+      "/alepha/code/alepha/commit/abcdef1234567890",
     );
-    expect(link?.getAttribute("target")).toBe("_blank");
   });
 
   it("leaves the commit unlinked when the project has no repository", async ({

@@ -12,9 +12,15 @@ import { AlephaError } from "alepha";
  * - **Build calls it** after a push the backend accepted.
  *
  * Without Plan it records nothing, and says so: zero.
+ *
+ * And the other way (#Q4136): Build's commit pages ask which quests a
+ * commit landed on, through {@link CommitReferenceRegistry.questsForCommits},
+ * which Plan answers from every quest's commit trail (a push's and a
+ * `quest_commit_add`'s alike), never by reading a message again.
  */
 export class CommitReferenceRegistry {
   protected recorder?: CommitReferenceRecorder;
+  protected reader?: CommitQuestReader;
 
   public register(recorder: CommitReferenceRecorder): void {
     if (this.recorder) {
@@ -23,6 +29,28 @@ export class CommitReferenceRegistry {
       );
     }
     this.recorder = recorder;
+  }
+
+  public registerReader(reader: CommitQuestReader): void {
+    if (this.reader) {
+      throw new AlephaError("A commit quest reader is already registered");
+    }
+    this.reader = reader;
+  }
+
+  /**
+   * The quests each full sha landed on, matched by prefix against the
+   * quests' trails (7 to 40 characters): an empty list for a sha on none,
+   * and for every sha without Plan.
+   */
+  public async questsForCommits(
+    projectId: number,
+    shas: string[],
+  ): Promise<Map<string, CommitQuest[]>> {
+    if (!this.reader || shas.length === 0) {
+      return new Map(shas.map((sha) => [sha, []]));
+    }
+    return this.reader(projectId, shas);
   }
 
   /**
@@ -36,6 +64,20 @@ export class CommitReferenceRegistry {
     }
     return this.recorder(input);
   }
+}
+
+export type CommitQuestReader = (
+  projectId: number,
+  shas: string[],
+) => Promise<Map<string, CommitQuest[]>>;
+
+/**
+ * A quest a commit landed on, as a commit page lists it.
+ */
+export interface CommitQuest {
+  number: number;
+  title: string;
+  status: string;
 }
 
 export type CommitReferenceRecorder = (

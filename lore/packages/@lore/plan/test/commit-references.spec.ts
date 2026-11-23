@@ -114,4 +114,41 @@ describe("PlanCommitReferences", () => {
 
     expect(result.commits).toBe(0);
   });
+
+  it("answers the quests each commit landed on, by prefix either way (#Q4136)", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(alepha);
+    const other = await createTestProject(alepha);
+    const at = new Date().toISOString();
+    const by = crypto.randomUUID();
+    await createTestQuest(alepha, project, {
+      shortId: 30,
+      title: "Short trail",
+      commits: [{ sha: sha("e").slice(0, 7), at, by }],
+    });
+    await createTestQuest(alepha, project, {
+      shortId: 31,
+      title: "Full trail",
+      commits: [
+        { sha: sha("e"), at, by },
+        { sha: sha("f"), at, by },
+      ],
+    });
+    await createTestQuest(alepha, other, {
+      shortId: 32,
+      commits: [{ sha: sha("e"), at, by }],
+    });
+
+    const found = await alepha
+      .inject(CommitReferenceRegistry)
+      .questsForCommits(project.id, [sha("e"), sha("f"), sha("0")]);
+
+    expect(found.get(sha("e"))?.map((it) => [it.number, it.title])).toEqual([
+      [30, "Short trail"],
+      [31, "Full trail"],
+    ]);
+    expect(found.get(sha("f"))?.map((it) => it.number)).toEqual([31]);
+    expect(found.get(sha("0"))).toEqual([]);
+  });
 });

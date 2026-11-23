@@ -1,5 +1,6 @@
 import {
   capabilityOption,
+  CommitLinkRegistry,
   currentProjectAtom,
   hasCapability,
   ProjectShellRegistry,
@@ -7,6 +8,8 @@ import {
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import { FlaskConical, FolderGit2 } from "lucide-react";
+
+import { useCodeCommitHref } from "../components/project/code/useCodeCommitHref.ts";
 
 /**
  * Build's part of the project shell (#E162): the Quality tab of Reports,
@@ -16,8 +19,13 @@ import { FlaskConical, FolderGit2 } from "lucide-react";
 export class BuildShell {
   protected readonly reports = $inject(ReportsTabRegistry);
   protected readonly shell = $inject(ProjectShellRegistry);
+  protected readonly commitLinks = $inject(CommitLinkRegistry);
 
   constructor() {
+    // A commit on a quest or an artifact links into its Lore repository
+    // (#Q4136): Build is the one that knows the repositories.
+    this.commitLinks.register(useCodeCommitHref);
+
     // Build's own band (review #130 item 2). CI and Pull requests join it
     // with their epics, through `extendNav` and their own `order`.
     this.shell.registerNav("build", [

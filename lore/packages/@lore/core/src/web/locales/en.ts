@@ -1081,9 +1081,6 @@ export default {
   "project.create.name.firstChar": "Start with a letter or a digit.",
   "project.create.name.badChar":
     "The character $1 is not allowed. Use letters, digits, spaces, - and _.",
-  "project.update.repositoryUrl.label": "Repository",
-  "project.update.repositoryUrl.helper":
-    "The repository this project's commits live in. Set it and a quest's commit references become links.",
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
     "Language AI agents should use for generated content (quests, folios).",
@@ -5158,4 +5155,14 @@ export default {
   "code.diff.previous": "Previous",
   "code.diff.next": "Next",
   "code.diff.page": "Page $1 of $2",
+  "code.tab.commits": "Commits",
+  "code.file.history": "History",
+  "code.commits.none": "No commit touched this path.",
+  "code.commit.authored": "$1 authored",
+  "code.commit.committed": "$1 committed",
+  "code.commit.browse": "Browse files",
+  "code.commit.root": "The first commit: diffed from nothing.",
+  "code.commit.parent": "Parent",
+  "code.commit.parents": "Parents",
+  "code.commit.mergeDiff": "A merge: the diff is against $1, its first parent.",
 };

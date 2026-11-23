@@ -1,17 +1,21 @@
+import { CommitReferenceRegistry } from "@lore/core/api";
 import { $inject, type Infer } from "alepha";
 import { NotFoundError } from "alepha/server";
 
 import { GitBackend, type GitRefTip } from "../backends/GitBackend.ts";
 import type { CodeRepository } from "../entities/codeRepositories.ts";
 import { CodeIndexJobs } from "../jobs/CodeIndexJobs.ts";
+import type { codeCommitDetailSchema } from "../schemas/codeCommitDetailSchema.ts";
 import type { codeCommitSummarySchema } from "../schemas/codeCommitSummarySchema.ts";
 import type { codeFileSchema } from "../schemas/codeFileSchema.ts";
 import type { codeLocationQuerySchema } from "../schemas/codeLocationQuerySchema.ts";
+import type { codeLogSchema } from "../schemas/codeLogSchema.ts";
 import type { codeRefSchema } from "../schemas/codeRefSchema.ts";
 import type { codeRepositoryDetailSchema } from "../schemas/codeRepositoryDetailSchema.ts";
 import type { codeRevisionSchema } from "../schemas/codeRevisionSchema.ts";
 import type { codeTreeCommitsSchema } from "../schemas/codeTreeCommitsSchema.ts";
 import type { codeTreeSchema } from "../schemas/codeTreeSchema.ts";
+import { CodeAuthors } from "./CodeAuthors.ts";
 import { CodeCommitIndex } from "./CodeCommitIndex.ts";
 import { CodeRepositoryService } from "./CodeRepositoryService.ts";
 
@@ -29,6 +33,8 @@ export class CodeBrowserService {
   protected readonly index = $inject(CodeCommitIndex);
   protected readonly indexJobs = $inject(CodeIndexJobs);
   protected readonly repositories = $inject(CodeRepositoryService);
+  protected readonly authors = $inject(CodeAuthors);
+  protected readonly references = $inject(CommitReferenceRegistry);
 
   /**
    * One commit's summary: the index's row, or the backend's commit while
@@ -427,6 +433,97 @@ export class CodeBrowserService {
             ]
           : [];
       }),
+    };
+  }
+
+  /**
+   * The most commits a history page lists.
+   */
+  public static readonly LOG_PAGE = 30;
+
+  /**
+   * A page of a revision's history (#Q4136), of a file or a folder when the
+   * location names a path, from the commit index, each commit with its
+   * quests and its author's member. While the index has not reached the
+   * tip, an empty page that says `indexing`, and the backfill started.
+   */
+  public async log(
+    repository: CodeRepository,
+    location: Location,
+    page = 0,
+  ): Promise<Infer<typeof codeLogSchema>> {
+    const { revision, path } = await this.locate(repository, location);
+    if (!(await this.index.find(repository.id, revision.sha))) {
+      await this.indexJobs.start(repository.id);
+      return { revision, path, commits: [], page, more: false, indexing: true };
+    }
+    const limit = CodeBrowserService.LOG_PAGE;
+    const { commits, more } = await this.index.log(
+      repository.id,
+      revision.sha,
+      {
+        path: path || undefined,
+        offset: page * limit,
+        limit,
+      },
+    );
+    const [quests, members] = await Promise.all([
+      this.references.questsForCommits(
+        repository.projectId,
+        commits.map((it) => it.sha),
+      ),
+      this.authors.of(
+        repository.projectId,
+        commits.map((it) => it.authorEmail),
+      ),
+    ]);
+    return {
+      revision,
+      path,
+      page,
+      more,
+      indexing: false,
+      commits: commits.map((row) => ({
+        sha: row.sha,
+        subject: row.subject,
+        authorName: row.authorName,
+        authorEmail: row.authorEmail,
+        authoredAt: row.authoredAt,
+        committedAt: row.committedAt,
+        parents: row.parents,
+        quests: quests.get(row.sha) ?? [],
+        member: members.get(row.authorEmail.toLowerCase()),
+      })),
+    };
+  }
+
+  /**
+   * One commit by a full sha or a unique prefix (#Q4136), read from the
+   * backend (whatever the index knows), with its quests and its author.
+   */
+  public async commitOf(
+    repository: CodeRepository,
+    value: string,
+  ): Promise<Infer<typeof codeCommitDetailSchema>> {
+    const sha = await this.commitSha(repository, value);
+    const commit = sha
+      ? await this.backend.commit(repository.backendRef, sha)
+      : undefined;
+    if (!commit)
+      throw new NotFoundError(`No commit ${value} in this repository.`);
+    const [quests, members] = await Promise.all([
+      this.references.questsForCommits(repository.projectId, [commit.sha]),
+      this.authors.of(repository.projectId, [commit.author.email]),
+    ]);
+    return {
+      sha: commit.sha,
+      parents: commit.parents,
+      subject: commit.subject,
+      body: commit.body,
+      author: commit.author,
+      committer: commit.committer,
+      member: members.get(commit.author.email.toLowerCase()),
+      quests: quests.get(commit.sha) ?? [],
     };
   }
 }

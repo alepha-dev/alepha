@@ -6,7 +6,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
-import { GitBranch, Languages, Tag } from "lucide-react";
+import { Languages, Tag } from "lucide-react";
 import { useMemo } from "react";
 
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
@@ -81,18 +81,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
       icon: props.project.icon,
       title: props.project.title,
       preferredLanguage: props.project.preferredLanguage ?? NO_LANG,
-      repositoryUrl: props.project.repositoryUrl ?? "",
     },
     schema: z.object({
       icon: z.uuid().nullable().optional(),
       // The shared rule, so the field rejects what the server would reject.
       title: projectTitleSchema.meta({ title: tr("project.create.name") }),
       preferredLanguage: z.string().optional(),
-      // Deliberately loose HERE and strict on the server. The shared schema
-      // throws an `AlephaError` with a sentence explaining what is wrong,
-      // which is the message worth showing; a client-side regex would refuse
-      // first with a generic one.
-      repositoryUrl: z.string().optional(),
     }),
     handler: async (values) => {
       const currentSlug = props.project.slug;
@@ -131,9 +125,6 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
             // Force null so the server can distinguish "cleared" from "absent".
             icon: values.icon ?? null,
             preferredLanguage: lang && lang !== NO_LANG ? lang : null,
-            // Same shape as the language: `null` clears, so a field emptied
-            // in the form actually unsets the value.
-            repositoryUrl: values.repositoryUrl?.trim() || null,
           },
         })
         .catch((error: unknown) => {
@@ -186,7 +177,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           // `AutoFormGroup` had no way to carry one — the exact drift
           // `SettingsHeading` exists to prevent, which the group now renders.
           title: tr("project.settings.general.title"),
-          fields: ["icon", "title", "preferredLanguage", "repositoryUrl"],
+          fields: ["icon", "title", "preferredLanguage"],
         },
       ]}
       fields={{
@@ -211,12 +202,6 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           select: true,
           items: LANGUAGE_OPTIONS,
           description: tr("project.update.preferredLanguage.helper"),
-        },
-        repositoryUrl: {
-          label: tr("project.update.repositoryUrl.label"),
-          icon: GitBranch,
-          placeholder: "https://github.com/you/your-repo",
-          description: tr("project.update.repositoryUrl.helper"),
         },
       }}
     />

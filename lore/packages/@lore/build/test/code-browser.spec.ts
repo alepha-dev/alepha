@@ -32,7 +32,7 @@ describe("code browser: repositories", () => {
     ctx.alepha
       .inject(CodeRepositoryController)
       .listCodeRepositories.fetch(
-        { params: { projectId: ctx.projectId } },
+        { params: { projectId: ctx.projectId }, query: { lastCommit: true } },
         { user: ctx.owner as never },
       );
 

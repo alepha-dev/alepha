@@ -1,49 +1,55 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
+import { useAlepha } from "alepha/react";
+import { Link } from "alepha/react/router";
+
+import { CommitLinkRegistry } from "../../registries/CommitLinkRegistry.ts";
 
 export interface CommitLinkProps {
   /**
    * The full sha. The short form is what shows; the full one is what the
-   * repository resolves.
+   * commit page resolves.
    */
   sha: string;
   /**
-   * The project's repository, when it has one. Absent, the sha is plain text.
+   * The repository a trail recorded beside the sha, free text: which Lore
+   * repository it names, when it names one.
    */
-  repositoryUrl?: string | null;
+  repo?: string;
   className?: string;
 }
 
 /**
- * A commit's short sha, linked to the project's repository when it has one
- * and plain text when it has not: a sha that looks clickable and is not is
- * worse than one that does not (quest #1571).
+ * A commit's short sha, linked to its page in the project's own Lore
+ * repository (#Q4136) and plain text when there is none: a sha that looks
+ * clickable and is not is worse than one that does not (quest #1571).
  *
- * One component for every place a commit shows (the quest rail, the Artifacts
- * table, an app's artifact rows), so the three cannot drift on the URL or on
- * what an unlinked sha looks like (feedback #P2201, #Q2336).
- *
- * `/commit/<sha>` is correct on GitHub and Gitea, and GitLab redirects it to
- * `/-/commit/`, which is why there is no provider setting beside the URL.
- *
- * Leaves Lore and still carries no `ExternalLink` icon, by decision (#Q2222):
- * a monospace sha already reads as "this commit, in the repository", and a
- * list of them with an icon each doubles the weight of what is only an
- * identifier.
+ * One component for every place a commit shows (the quest rail, the
+ * Artifacts table, an app's artifact rows), so they cannot drift on the URL
+ * or on what an unlinked sha looks like (feedback #P2201, #Q2336). Where it
+ * links is Build's to say, through `CommitLinkRegistry`: on with Build's
+ * repositories and `code:read`, off otherwise. A project hosted on another
+ * forge pushes a read-only copy to Lore to make its commits browsable.
  *
  * The click stops at the link, so a row it sits in does not also act on it.
  */
 const CommitLink = (props: CommitLinkProps) => {
+  const alepha = useAlepha();
+  // Constructed by `LoreCoreWeb` at boot; a spec that mounts a commit
+  // without it gets plain text. Fixed for the container's life, so the hook
+  // called below is the same on every render.
+  const useHref = alepha.has(CommitLinkRegistry)
+    ? alepha.inject(CommitLinkRegistry).useHref
+    : CommitLinkFallback.useHref;
+  const href = useHref(props.sha, props.repo);
   const short = props.sha.slice(0, 7);
 
-  if (!props.repositoryUrl) {
+  if (!href) {
     return <code className={cn("font-mono", props.className)}>{short}</code>;
   }
 
   return (
-    <a
-      href={`${props.repositoryUrl}/commit/${props.sha}`}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href={href}
       className={cn(
         textLinkUnderlineClassName,
         "hover:text-foreground font-mono",
@@ -52,8 +58,16 @@ const CommitLink = (props: CommitLinkProps) => {
       onClick={(event) => event.stopPropagation()}
     >
       {short}
-    </a>
+    </Link>
   );
 };
+
+/**
+ * What a container without the registry links: nothing.
+ */
+class CommitLinkFallback {
+  public static useHref = (_sha: string, _repo?: string): undefined =>
+    undefined;
+}
 
 export default CommitLink;

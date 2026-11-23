@@ -1,4 +1,5 @@
 import {
+  type CommitQuest,
   type CommitReferenceInput,
   CommitReferenceRegistry,
   type CommitReferenceResult,
@@ -9,6 +10,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Quest, quests } from "../entities/quests.ts";
+import { QuestResourceMapper } from "./QuestResourceMapper.ts";
 
 /**
  * Plan's half of commit references (#Q3945): a pushed commit whose message
@@ -34,9 +36,55 @@ export class PlanCommitReferences {
   protected readonly audits = $inject(LoreAudits);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly quests = $repository(quests);
+  protected readonly mapper = $inject(QuestResourceMapper);
 
   constructor() {
     this.registry.register((input) => this.record(input));
+    this.registry.registerReader((projectId, shas) =>
+      this.questsFor(projectId, shas),
+    );
+  }
+
+  /**
+   * The quests whose trail holds each sha (#Q4136), by prefix either way
+   * (a trail records 7 to 40 characters): every quest of the project with a
+   * trail is read once, so a page of fifty commits costs one query.
+   */
+  protected async questsFor(
+    projectId: number,
+    shas: string[],
+  ): Promise<Map<string, CommitQuest[]>> {
+    const found = new Map<string, CommitQuest[]>(shas.map((sha) => [sha, []]));
+    const rows = await this.quests.findMany({
+      where: { projectId: { eq: projectId }, commits: { isNotNull: true } },
+      columns: [
+        "shortId",
+        "title",
+        "commits",
+        "acceptedAt",
+        "completedAt",
+        "shelvedAt",
+        "heldAt",
+      ],
+    });
+    const wanted = shas.map((sha) => sha.toLowerCase());
+    for (const quest of rows) {
+      for (const commit of quest.commits ?? []) {
+        const recorded = commit.sha.toLowerCase();
+        wanted.forEach((sha, index) => {
+          if (!sha.startsWith(recorded) && !recorded.startsWith(sha)) return;
+          const list = found.get(shas[index]!)!;
+          if (list.some((it) => it.number === quest.shortId)) return;
+          list.push({
+            number: quest.shortId,
+            title: quest.title,
+            status: this.mapper.questStatus(quest),
+          });
+        });
+      }
+    }
+    for (const list of found.values()) list.sort((a, b) => a.number - b.number);
+    return found;
   }
 
   protected async record(

@@ -1,5 +1,5 @@
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { CommitLinkRegistry, currentProjectAtom, I18n } from "@lore/core/web";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -56,7 +56,7 @@ const instanceOf = (
  * and now render it directly.
  */
 describe("AppArtifactsList", () => {
-  const mount = async () => {
+  const mount = async (linked = false) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -70,6 +70,12 @@ describe("AppArtifactsList", () => {
     // The dictionaries are lazy chunks on a service, so nothing loads them
     // until something injects it.
     alepha.inject(I18n);
+    // Build's part (#Q4136): where a commit links.
+    if (linked) {
+      alepha
+        .inject(CommitLinkRegistry)
+        .register((sha) => `/alepha/code/alepha/commit/${sha}`);
+    }
     await alepha.start();
     return alepha;
   };
@@ -77,18 +83,18 @@ describe("AppArtifactsList", () => {
   const show = async (
     instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
-    repositoryUrl?: string,
+    linked = false,
   ) => {
     cleanup();
-    const alepha = await mount();
+    const alepha = await mount(linked);
     alepha.store.set(currentInstanceAtom, instance);
     // The list reads the project for its id and its slug, so without this it
     // would stay disabled and every case below would pass by not running the
     // code it is about.
-    alepha.store.set(currentProjectAtom, {
-      ...projectFixture({ title: "Alepha", slug: "alepha" }),
-      repositoryUrl,
-    });
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ title: "Alepha", slug: "alepha" }),
+    );
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
     return {
@@ -388,13 +394,14 @@ describe("AppArtifactsList", () => {
   });
 
   /**
-   * The row's commit links to the repository the way the quest rail does
-   * (feedback #P2201, #Q2336), and stays text without one.
+   * The row's commit links to its page in the Lore repository the way the
+   * quest rail does (feedback #P2201, #Q2336, #Q4136), and stays text
+   * without one.
    */
-  it("links the commit to the project's repository when it has one", async ({
+  it("links the commit to its page in the project's repository", async ({
     expect,
   }) => {
-    const row = (repositoryUrl?: string) =>
+    const row = (linked: boolean) =>
       show(
         instanceOf(),
         listing([
@@ -420,15 +427,15 @@ describe("AppArtifactsList", () => {
             ],
           },
         ]),
-        repositoryUrl,
+        linked,
       );
 
-    const linked = await row("https://github.com/alepha-dev/alepha");
+    const linked = await row(true);
     expect(
       (await linked.findByText("0b35cb3")).closest("a")?.getAttribute("href"),
-    ).toBe("https://github.com/alepha-dev/alepha/commit/0b35cb375ff");
+    ).toBe("/alepha/code/alepha/commit/0b35cb375ff");
 
-    const unlinked = await row();
+    const unlinked = await row(false);
     expect((await unlinked.findByText("0b35cb3")).closest("a")).toBeNull();
   });
 
