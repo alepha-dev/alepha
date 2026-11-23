@@ -24,7 +24,8 @@ const CANDIDATES: ChatMentionCandidate[] = [
   { handle: "ada", label: "Ada Lovelace" },
   { handle: "alan", label: "Alan Turing" },
   { handle: "grace", label: "Grace Hopper" },
-  { handle: "lore", label: "Lore", agent: true },
+  { handle: "lore", label: "Lore", agent: true, builtin: true },
+  { handle: "jarvis", label: "Jarvis", agent: true },
 ];
 
 /**
@@ -88,7 +89,7 @@ describe("ChatComposer", () => {
     type(input, "hi @");
     expect(input.getAttribute("aria-expanded")).toBe("true");
     expect(options()[0]).toBe("lore");
-    expect(options()).toHaveLength(4);
+    expect(options()).toHaveLength(5);
 
     type(input, "hi @a");
     expect(options()).toEqual(["ada", "alan"]);
@@ -96,6 +97,29 @@ describe("ChatComposer", () => {
     // A word of the name counts too.
     type(input, "hi @hop");
     expect(options()).toEqual(["grace"]);
+  });
+
+  it("lists a project's agent with its initials and its name, and inserts its handle", async ({
+    expect,
+  }) => {
+    const input = await mount();
+
+    type(input, "@ja");
+    expect(options()).toEqual(["jarvis"]);
+    const option = screen.getByRole("option");
+    expect(option.textContent).toContain("Jarvis");
+    expect(
+      option.querySelector("[data-testid='chat-agent-initials']")?.textContent,
+    ).toBe("JA");
+    // The built-in keeps its bot and its hint.
+    type(input, "@lor");
+    expect(screen.getByRole("option").textContent).toContain(
+      "Prompt the agent",
+    );
+
+    type(input, "@ja");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input.value).toBe("@jarvis ");
   });
 
   it("moves with the arrows, inserts with Enter, and sends nothing while choosing", async ({

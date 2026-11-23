@@ -17,7 +17,7 @@ import {
   type ProjectUser,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Bot, Pencil, SmilePlus, Trash2 } from "lucide-react";
+import { Pencil, SmilePlus, Trash2 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import type {
@@ -27,6 +27,7 @@ import type {
 import { useStreamReveal } from "../hooks/useStreamReveal.ts";
 import { chatMarkdown } from "../services/chatMarkdown.ts";
 import ChatAgentAnswer from "./ChatAgentAnswer.tsx";
+import ChatAgentAvatar from "./ChatAgentAvatar.tsx";
 
 export interface ChatMessageRowProps {
   message: ChatMessageResource;
@@ -165,9 +166,11 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
       <div className="w-[30px] shrink-0">
         {!props.continued &&
           (message.agent ? (
-            <span className="bg-primary/10 text-primary flex size-[30px] items-center justify-center rounded-[9px]">
-              <Bot className="size-4" aria-hidden="true" />
-            </span>
+            <ChatAgentAvatar
+              name={message.agentName ?? props.author}
+              avatarId={message.agentAvatarId}
+              builtin={!message.agentId}
+            />
           ) : (
             <UserAvatar
               public

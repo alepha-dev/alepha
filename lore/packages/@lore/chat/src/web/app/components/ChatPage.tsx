@@ -37,6 +37,7 @@ import { useRoomMessages } from "../hooks/useRoomMessages.ts";
 import { roomRenameFormSchema } from "../schemas/roomRenameFormSchema.ts";
 import { ChatFeedHub } from "../services/ChatFeedHub.ts";
 import { ChatUnread } from "../services/ChatUnread.ts";
+import { offeredAgents } from "../services/offeredAgents.ts";
 import type { ChatMentionCandidate, ChatPendingFile } from "./ChatComposer.tsx";
 import Conversation from "./Conversation.tsx";
 import NewRoomDialog from "./NewRoomDialog.tsx";
@@ -382,9 +383,9 @@ const ChatPage = () => {
     [agentsApi, projectId],
   );
   // With AI off no agent answers, so none is offered (#E170).
-  const agents = agentPage?.enabled ? agentPage.items : [];
+  const agents = offeredAgents(agentPage);
   const agentLabels = Object.fromEntries(
-    agents.map((agent) => [agent.handle, agent.name]),
+    agents.map((agent) => [agent.handle, agent.label]),
   );
 
   const decide = useAction<
@@ -418,14 +419,7 @@ const ChatPage = () => {
           handle: mentionHandle(user),
           label: displayName(user),
         }));
-  const candidates: ChatMentionCandidate[] = [
-    ...agents.map((agent) => ({
-      handle: agent.handle,
-      label: agent.name,
-      agent: true,
-    })),
-    ...people,
-  ];
+  const candidates: ChatMentionCandidate[] = [...agents, ...people];
 
   const [now] = useState(() => dateTime.nowMillis());
 

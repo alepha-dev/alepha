@@ -9,7 +9,7 @@ import {
 } from "@alepha/ui";
 import { DiscussionAttachments, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowUp, Bot, FileUp, Plus } from "lucide-react";
+import { ArrowUp, FileUp, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
   useId,
@@ -19,6 +19,7 @@ import {
 } from "react";
 
 import type { ChatRoomResource } from "../../../schemas/index.ts";
+import ChatAgentAvatar from "./ChatAgentAvatar.tsx";
 
 /**
  * Who the `@` popup offers: a member who can see the room, or an agent.
@@ -33,6 +34,11 @@ export interface ChatMentionCandidate {
    */
   label: string;
   agent?: boolean;
+  /**
+   * A project agent's picture (#Q4198); the built-in `@lore` has none.
+   */
+  avatarId?: string;
+  builtin?: boolean;
 }
 
 /**
@@ -244,10 +250,17 @@ const ChatComposer = (props: ChatComposerProps) => {
                 index === active && "bg-hover text-foreground",
               )}
             >
-              {candidate.agent && <Bot className="size-3.5 shrink-0" />}
+              {candidate.agent && (
+                <ChatAgentAvatar
+                  name={candidate.label}
+                  avatarId={candidate.avatarId}
+                  builtin={candidate.builtin}
+                  className="size-4 rounded-[4px]"
+                />
+              )}
               <span className="font-medium">@{candidate.handle}</span>
               <span className="text-muted-foreground truncate text-xs">
-                {candidate.agent
+                {candidate.agent && candidate.builtin
                   ? tr("chat.composer.agentHint")
                   : candidate.label}
               </span>
