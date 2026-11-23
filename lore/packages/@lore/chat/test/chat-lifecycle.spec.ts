@@ -3,6 +3,7 @@ import { UserService } from "alepha/api/users";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
+  ChatAgentController,
   ChatLifecycle,
   ChatMessageController,
   ChatRoomController,
@@ -81,7 +82,15 @@ describe("chat lifecycle", () => {
     expect,
   }) => {
     await seed();
+    await kit.alepha.inject(ChatAgentController).createChatAgent.fetch(
+      {
+        params: { projectId: kit.projectId },
+        body: { handle: "jarvis", name: "Jarvis" },
+      },
+      { user: kit.owner },
+    );
     expect(await rows.mentions.count()).toBe(1);
+    expect(await rows.agents.count()).toBe(1);
 
     await kit.alepha
       .inject(ProjectDeletionService)
@@ -91,6 +100,7 @@ describe("chat lifecycle", () => {
     expect(await rows.members.count()).toBe(0);
     expect(await rows.messages.count()).toBe(0);
     expect(await rows.mentions.count()).toBe(0);
+    expect(await rows.agents.count()).toBe(0);
     // A step that stopped half way is finished by running it again.
     await kit.alepha.inject(ChatLifecycle).deleteProject(kit.projectId);
     expect(await rows.rooms.count()).toBe(0);
@@ -115,7 +125,7 @@ describe("chat lifecycle", () => {
       .merge(beta, kit.projectId);
 
     const chat = plan.steps.find((step) => step.name === "chat")!;
-    expect(chat.moved).toEqual({ chat_rooms: 1 });
+    expect(chat.moved).toEqual({ chat_rooms: 1, chat_agents: 0 });
     const names = (await roomsOf(kit.projectId)).map((it) => it.name).sort();
     expect(names).toEqual(["general", "general (2)", "secret"]);
     // The messages hang off the room, so they came with it.
@@ -129,6 +139,49 @@ describe("chat lifecycle", () => {
     );
     expect(page.data.items.map((it) => it.body)).toEqual(["from beta"]);
     expect(general.id).not.toBe(moved.id);
+  });
+
+  it("moves a merged project's agents, and refuses two live agents with one handle", async ({
+    expect,
+  }) => {
+    const agents = kit.alepha.inject(ChatAgentController);
+    const other = await kit.projects.createProject.fetch(
+      { body: { title: "Beta", capabilities: [{ key: "chat" }] } },
+      { user: kit.owner },
+    );
+    const beta = other.data.id;
+    const create = (projectId: number, handle: string) =>
+      agents.createChatAgent.fetch(
+        { params: { projectId }, body: { handle, name: handle } },
+        { user: kit.owner },
+      );
+    await create(kit.projectId, "jarvis");
+    const { data: theirs } = await create(beta, "jarvis");
+    // A deleted agent of each side has no handle, and never collides.
+    const { data: gone } = await create(beta, "gone");
+    await agents.deleteChatAgent.fetch(
+      { params: { projectId: beta, agentId: gone.id } },
+      { user: kit.owner },
+    );
+    const { data: here } = await create(kit.projectId, "gone");
+    await agents.deleteChatAgent.fetch(
+      { params: { projectId: kit.projectId, agentId: here.id } },
+      { user: kit.owner },
+    );
+    const merge = kit.alepha.inject(ProjectMergeService);
+
+    await expect(merge.merge(beta, kit.projectId)).rejects.toThrow("jarvis");
+
+    await agents.deleteChatAgent.fetch(
+      { params: { projectId: beta, agentId: theirs.id } },
+      { user: kit.owner },
+    );
+    const plan = await merge.merge(beta, kit.projectId);
+    const chat = plan.steps.find((step) => step.name === "chat")!;
+    expect(chat.moved).toMatchObject({ chat_agents: 2 });
+    expect(await rows.agents.count({ projectId: { eq: kit.projectId } })).toBe(
+      4,
+    );
   });
 
   it("keeps a deleted account's messages without their author, and drops its memberships and mentions", async ({

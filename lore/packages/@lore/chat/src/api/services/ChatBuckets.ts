@@ -18,4 +18,18 @@ export class ChatBuckets {
     description: "Chat message attachments",
     maxSize: ChatBuckets.MAX_SIZE_MB,
   });
+
+  public static readonly AGENT_AVATAR_BUCKET = "chat-agent-avatars";
+
+  /**
+   * A chat agent's picture (#E170), as core's project icons: image only,
+   * 2 MB, uploaded from the browser by the agent form.
+   */
+  agentAvatars = $storage({
+    name: ChatBuckets.AGENT_AVATAR_BUCKET,
+    description: "Chat agent avatars",
+    clientUploads: true,
+    maxSize: 2,
+    mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  });
 }

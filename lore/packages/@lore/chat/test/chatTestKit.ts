@@ -14,6 +14,7 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 
 import {
   ChatLive,
+  chatAgents,
   chatMentions,
   chatMessages,
   chatRoomMembers,
@@ -95,6 +96,7 @@ export class ChatRows {
   public readonly members = $repository(chatRoomMembers);
   public readonly messages = $repository(chatMessages);
   public readonly mentions = $repository(chatMentions);
+  public readonly agents = $repository(chatAgents);
 }
 
 /**

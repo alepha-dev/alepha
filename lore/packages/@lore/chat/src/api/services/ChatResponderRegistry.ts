@@ -1,17 +1,30 @@
 import { AlephaError } from "alepha";
+import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 
+import { type ChatAgent, chatAgents } from "../entities/chatAgents.ts";
+
 /**
- * The agents a room can mention (#E161, #Q3930): a name that is not a
- * member, and what answers a message naming it.
+ * The agents a room can mention (#E161, #Q3930, #E170): a name that is not
+ * a member, and what answers a message naming it.
  *
- * `@lore/chat` imports core only and the agent's tools span every package,
- * so the agent is not here: the app's assistant module registers `lore` on
- * this registry, and only when AI is on. With nothing registered, `@lore` is
- * plain text and no run starts.
+ * Two kinds:
+ *
+ * - **Built-in**, registered in code. `@lore/chat` imports core only and the
+ *   agent's tools span every package, so `lore` is not here: the app's
+ *   assistant registers it, as the **engine**, and only when AI is on.
+ * - **A project's own** (#Q4196), a `chat_agents` row: a persona and a
+ *   playbook answered by the engine. With no engine (AI off) none of them
+ *   answers, exactly as `@lore` does not.
+ *
+ * A project's agent wins over a built-in of the same handle; the handle
+ * rules (`ChatAgentService`) keep `lore` for the built-in, so the order only
+ * decides for a responder a spec registers.
  */
 export class ChatResponderRegistry {
   protected readonly responders = new Map<string, ChatResponder>();
+  protected engineName?: string;
+  protected readonly agents = $repository(chatAgents);
 
   public register(responder: ChatResponder): void {
     if (this.responders.has(responder.name)) {
@@ -20,15 +33,120 @@ export class ChatResponderRegistry {
       );
     }
     this.responders.set(responder.name, responder);
+    if (responder.engine) {
+      if (this.engineName) {
+        throw new AlephaError(
+          `Chat responders '${this.engineName}' and '${responder.name}' are both the engine`,
+        );
+      }
+      this.engineName = responder.name;
+    }
   }
 
-  public get(name: string): ChatResponder | undefined {
-    return this.responders.get(name);
+  /**
+   * The responder that answers a project's own agents, none with AI off.
+   */
+  public engine(): ChatResponder | undefined {
+    return this.engineName ? this.responders.get(this.engineName) : undefined;
   }
 
-  public names(): string[] {
-    return [...this.responders.keys()];
+  /**
+   * The responders registered in code, in registration order.
+   */
+  public builtins(): ChatResponder[] {
+    return [...this.responders.values()];
   }
+
+  /**
+   * What `@handle` names in the project: a live agent of the project first,
+   * a built-in second, or nothing.
+   */
+  public async get(
+    projectId: number,
+    handle: string,
+  ): Promise<ChatAgentMatch | undefined> {
+    const engine = this.engine();
+    if (engine) {
+      const agent = await this.agents.findOne({
+        where: {
+          projectId: { eq: projectId },
+          handle: { eq: handle.toLowerCase() },
+          deletedAt: { isNull: true },
+        },
+      });
+      if (agent) return { handle: agent.handle!, responder: engine, agent };
+    }
+    const responder = this.responders.get(handle.toLowerCase());
+    return responder ? { handle: responder.name, responder } : undefined;
+  }
+
+  /**
+   * The agent an answer was written by, even a deleted one: what a paused
+   * write resumes with.
+   */
+  public async byMessage(
+    projectId: number,
+    message: { agent?: string; agentId?: string },
+  ): Promise<ChatAgentMatch | undefined> {
+    if (message.agentId) {
+      const engine = this.engine();
+      const agent = await this.agents.findOne({
+        where: { id: { eq: message.agentId }, projectId: { eq: projectId } },
+      });
+      return engine && agent
+        ? {
+            handle: agent.handle ?? message.agent ?? "",
+            responder: engine,
+            agent,
+          }
+        : undefined;
+    }
+    const responder = this.responders.get(message.agent ?? "");
+    return responder ? { handle: responder.name, responder } : undefined;
+  }
+
+  /**
+   * Every agent a message in the project can mention: the built-ins, then
+   * the project's live agents, oldest first. Empty with AI off.
+   */
+  public async list(projectId: number): Promise<ChatAgentMatch[]> {
+    const matches: ChatAgentMatch[] = this.builtins().map((responder) => ({
+      handle: responder.name,
+      responder,
+    }));
+    const engine = this.engine();
+    if (!engine) return matches;
+    const own = await this.agents.findMany({
+      where: { projectId: { eq: projectId }, deletedAt: { isNull: true } },
+      orderBy: [{ column: "createdAt", direction: "asc" }],
+    });
+    const taken = new Set(own.map((agent) => agent.handle!));
+    return [
+      ...matches.filter((it) => !taken.has(it.handle)),
+      ...own.map((agent) => ({
+        handle: agent.handle!,
+        responder: engine,
+        agent,
+      })),
+    ];
+  }
+
+  /**
+   * The handles a message in the project can mention.
+   */
+  public async names(projectId: number): Promise<string[]> {
+    return (await this.list(projectId)).map((it) => it.handle);
+  }
+}
+
+/**
+ * A handle resolved: what answers it, and the project's agent row when it
+ * is one.
+ */
+export interface ChatAgentMatch {
+  handle: string;
+  responder: ChatResponder;
+  agent?: ChatAgent;
 }
 
 /**
@@ -83,6 +201,11 @@ export interface ChatResponder {
    * Shown in the `@` popup.
    */
   label: string;
+  /**
+   * The responder that answers a project's own agents too (#E170): the app's
+   * `lore`. At most one.
+   */
+  engine?: boolean;
   respond: (request: ChatAgentRequest) => AsyncIterable<ChatAgentEvent>;
   /**
    * Continue a run paused on a write the mentioner must decide.

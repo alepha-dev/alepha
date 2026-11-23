@@ -77,10 +77,13 @@ export class ChatAgentRunner {
     room: ChatRoom,
     trigger: ChatMessage,
     user: UserAccountToken,
-    agent: string,
+    handle: string,
   ): Promise<void> {
-    const responder = this.registry.get(agent);
-    if (!responder) return;
+    const match = await this.registry.get(room.projectId, handle);
+    if (!match) return;
+    const { responder } = match;
+    const agent = match.handle;
+    const agentId = match.agent?.id;
 
     if (await this.running(room.id, agent, user.id)) {
       await this.note(
@@ -96,6 +99,7 @@ export class ChatAgentRunner {
     const answer = await this.messages.create({
       roomId: room.id,
       agent,
+      ...(agentId ? { agentId } : {}),
       body: "",
       references: [],
       agentRun: { status: "running", mentionerId: user.id },
@@ -146,7 +150,8 @@ export class ChatAgentRunner {
     if (run.status !== "paused" || !run.callId) {
       throw new ConflictError("This answer is not waiting for a decision");
     }
-    const responder = this.registry.get(answer.agent ?? "");
+    const responder = (await this.registry.byMessage(projectId, answer))
+      ?.responder;
     const membership = await this.rooms.membershipOf(room.id, user.id);
     if (!responder || !membership?.aiConversationId) {
       throw new ConflictError("This answer can no longer be resumed");

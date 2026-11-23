@@ -3,6 +3,7 @@ import { $hook, $inject } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $repository } from "alepha/orm";
 
+import { chatAgents } from "../entities/chatAgents.ts";
 import { chatMentions } from "../entities/chatMentions.ts";
 import { chatMessages } from "../entities/chatMessages.ts";
 import { chatReactions } from "../entities/chatReactions.ts";
@@ -17,7 +18,7 @@ import { ChatBuckets } from "./ChatBuckets.ts";
  * ## Project deletion
  *
  * One step, children first, each a delete by the room it hangs off:
- * mentions, members and messages, then the rooms. No CASCADE is relied on
+ * mentions, members and messages, then the rooms, then the agents. No CASCADE is relied on
  * and no transaction is needed: a step that stops half way leaves fewer
  * rows, and running it again removes the rest.
  *
@@ -42,6 +43,7 @@ export class ChatLifecycle {
   protected readonly mentions = $repository(chatMentions);
   protected readonly reactions = $repository(chatReactions);
   protected readonly files = $inject(FileService);
+  protected readonly agents = $repository(chatAgents);
 
   constructor() {
     this.deletion.registerStep({
@@ -84,6 +86,19 @@ export class ChatLifecycle {
       await this.messages.deleteMany({ roomId: { inArray: roomIds } });
     }
     await this.rooms.deleteMany({ projectId: { eq: projectId } });
+    // The project's agents (#E170), deleted ones included, and their
+    // pictures.
+    const agents = await this.agents.findMany({
+      where: { projectId: { eq: projectId } },
+      columns: ["avatar"],
+    });
+    const avatars = agents.flatMap((it) => (it.avatar ? [it.avatar] : []));
+    if (avatars.length > 0) {
+      await this.files.deleteFiles(avatars, {
+        bucket: ChatBuckets.AGENT_AVATAR_BUCKET,
+      });
+    }
+    await this.agents.deleteMany({ projectId: { eq: projectId } });
   }
 
   public async deleteAccount(userId: string): Promise<void> {
@@ -95,6 +110,10 @@ export class ChatLifecycle {
       { authorId: null },
     );
     await this.rooms.updateMany(
+      { createdBy: { eq: userId } },
+      { createdBy: null },
+    );
+    await this.agents.updateMany(
       { createdBy: { eq: userId } },
       { createdBy: null },
     );

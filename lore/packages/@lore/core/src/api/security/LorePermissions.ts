@@ -160,6 +160,8 @@ export class LorePermissions {
     "usecase:validate",
     // Any room, any message (#E161).
     "chat:manage",
+    // A project's chat agents (#E170): create, edit and delete them.
+    "chat:agent",
   ];
 
   /**
@@ -680,5 +682,14 @@ export class LorePermissions {
     group: "chat",
     name: "manage",
     label: "permission.chat.manage",
+  });
+  /**
+   * Create, edit and delete the project's chat agents (#E170). Mentioning
+   * one needs `chat:write` only.
+   */
+  chatAgent = $permission({
+    group: "chat",
+    name: "agent",
+    label: "permission.chat.agent",
   });
 }

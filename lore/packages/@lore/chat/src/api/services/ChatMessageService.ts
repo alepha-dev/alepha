@@ -26,7 +26,10 @@ import { ChatBuckets } from "./ChatBuckets.ts";
 import { ChatLive } from "./ChatLive.ts";
 import { ChatMentionNotifier } from "./ChatMentionNotifier.ts";
 import { ChatMentionParser } from "./ChatMentionParser.ts";
-import { ChatResponderRegistry } from "./ChatResponderRegistry.ts";
+import {
+  type ChatAgentMatch,
+  ChatResponderRegistry,
+} from "./ChatResponderRegistry.ts";
 import { ChatRoomService } from "./ChatRoomService.ts";
 
 /**
@@ -70,6 +73,7 @@ export class ChatMessageService {
   protected readonly database = $inject(DatabaseProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly background = $inject(BackgroundTaskProvider);
+  protected readonly registry = $inject(ChatResponderRegistry);
 
   /**
    * A person's sends, counted per member: 30 a minute. A conversation never
@@ -100,11 +104,12 @@ export class ChatMessageService {
 
     // Read at once (#Q4112): on Workers each await is a round trip to D1
     // or to a Durable Object, and the sender waits for every one of them.
-    const [limited, membership, audience, roster] = await Promise.all([
+    const [limited, membership, audience, roster, agents] = await Promise.all([
       this.sendLimit.consume(userId),
       this.rooms.membershipOf(room.id, userId),
       this.audience.of(room),
       this.roster.of(room.projectId),
+      this.registry.list(room.projectId),
     ]);
     if (!limited.allowed) {
       throw new TooManyRequestsError(
@@ -112,7 +117,10 @@ export class ChatMessageService {
       );
     }
 
-    const parsed = this.parseFor(body, audience, roster);
+    const parsed = this.parseFor(body, audience, roster, agents);
+    const agentIds = new Map(
+      agents.flatMap((it) => (it.agent ? [[it.handle, it.agent.id]] : [])),
+    );
     const message = await this.messages.create({
       roomId: room.id,
       authorId: userId,
@@ -131,6 +139,7 @@ export class ChatMessageService {
           messageId: message.id,
           roomId: message.roomId,
           agent,
+          ...(agentIds.has(agent) ? { agentId: agentIds.get(agent)! } : {}),
         })),
       ]),
       // Writing in an open room joins it, and the author has read what they
@@ -532,6 +541,7 @@ export class ChatMessageService {
       createdAt: message.createdAt,
       ...(message.authorId ? { authorId: message.authorId } : {}),
       ...(message.agent ? { agent: message.agent } : {}),
+      ...(message.agentId ? { agentId: message.agentId } : {}),
       body: message.body,
       references: message.references ?? [],
       ...(message.editedAt ? { editedAt: message.editedAt } : {}),
@@ -558,26 +568,29 @@ export class ChatMessageService {
   }
 
   protected async parse(room: ChatRoom, body: string) {
-    const [audience, roster] = await Promise.all([
+    const [audience, roster, agents] = await Promise.all([
       this.audience.of(room),
       this.roster.of(room.projectId),
+      this.registry.list(room.projectId),
     ]);
-    return this.parseFor(body, audience, roster);
+    return this.parseFor(body, audience, roster, agents);
   }
 
   /**
-   * Resolve a body's mentions against the members who can see the room.
+   * Resolve a body's mentions against the members who can see the room and
+   * the agents of its project (#Q4196).
    */
   protected parseFor(
     body: string,
     audience: string[],
     roster: Awaited<ReturnType<ProjectRoster["of"]>>,
+    agents: ChatAgentMatch[],
   ) {
     const allowed = new Set(audience);
     return this.parser.parse(
       body,
       roster.filter((it) => allowed.has(it.userId)),
-      this.alepha.inject(ChatResponderRegistry).names(),
+      agents.map((it) => it.handle),
     );
   }
 
