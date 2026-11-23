@@ -12,6 +12,7 @@ import {
   hasCapability,
   canInProject,
   AssistantSuggestionRegistry,
+  CapabilityRowRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import {
@@ -53,6 +54,7 @@ import {
   useReportReleaseOptions,
   useReportTagOptions,
 } from "../components/project/reports/useReportFilterOptions.ts";
+import ProjectSettingsRoadmapSwitch from "../components/project/settings/ProjectSettingsRoadmapSwitch.tsx";
 import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
@@ -79,8 +81,17 @@ export class WorkShell {
   protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
   protected readonly suggestions = $inject(AssistantSuggestionRegistry);
+  protected readonly capabilityRows = $inject(CapabilityRowRegistry);
 
   constructor() {
+    // The Roadmap switch on General > Capabilities, under Plan after
+    // Requirements (#Q4184): a project column, not a capability option.
+    this.capabilityRows.register({
+      key: "plan.roadmap",
+      capability: "plan",
+      after: "requirements",
+      component: ProjectSettingsRoadmapSwitch,
+    });
     // The assistant's prompts on Work's pages (#Q3585).
     this.suggestions.register({
       routes: (name) => name === "projectQuest",

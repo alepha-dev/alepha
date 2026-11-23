@@ -219,8 +219,8 @@ progress bar on a draft or ready epic reads as "not started" rather than
 "stalled". The roadmap draws the order only. Whether an epic is blocked right
 now is on the epic's own page.
 
-The roadmap is turned on with the **Roadmap** switch in **Settings ▸ Plan ▸
-Features**; off, its page answers nobody. Who can see it is then set on
+The roadmap is turned on with the **Roadmap** switch in **Settings ▸ General ▸
+Capabilities**, under Plan, after Requirements; off, its page answers nobody. Who can see it is then set on
 **Settings ▸ Plan ▸ Roadmap**: **Members only** or **Public**. The same tab
 gives the link to share. A change can take up to a minute to reach visitors.
 

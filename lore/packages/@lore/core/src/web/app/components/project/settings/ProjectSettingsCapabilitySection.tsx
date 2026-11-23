@@ -2,9 +2,11 @@ import { Switch } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Fragment } from "react";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { CapabilityRowRegistry } from "../../../registries/CapabilityRowRegistry.ts";
 import { ProjectBlockerRegistry } from "../../../registries/ProjectBlockerRegistry.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -56,6 +58,7 @@ const ProjectSettingsCapabilitySection = (
   const descriptor = capabilityRegistry.get(props.capability);
   const master = useCapabilityToggle(props.capability);
   const [project] = useStore(currentProjectAtom);
+  const extraRows = useInject(CapabilityRowRegistry);
   // What a module's server guard would refuse turning this off on, said
   // before the click (#Q3281). Called in a fixed order: the registry is
   // frozen at first read.
@@ -115,23 +118,47 @@ const ProjectSettingsCapabilitySection = (
         </SettingsRow>
       )}
       {options.map((option) => (
-        <CapabilityOptionRow
-          key={option.key}
-          // Nested under the master, so the rows read as its children.
-          className={showMaster ? "sm:pl-10" : undefined}
-          capability={props.capability}
-          option={option.key}
-          label={tr(option.labelKey)}
-          description={tr(option.descriptionKey)}
-          // ⚠️ Disabled while the master is off, not hidden. An option that
-          // vanished with its capability would make turning the capability on
-          // feel like the page had changed under you, and it is also the only
-          // way to see what turning it on would give you.
-          disabled={!master.enabled || option.soon === true}
-          soon={option.soon === true}
-          requires={option.requires}
-        />
+        <Fragment key={option.key}>
+          <CapabilityOptionRow
+            // Nested under the master, so the rows read as its children.
+            className={showMaster ? "sm:pl-10" : undefined}
+            capability={props.capability}
+            option={option.key}
+            label={tr(option.labelKey)}
+            description={tr(option.descriptionKey)}
+            // ⚠️ Disabled while the master is off, not hidden. An option that
+            // vanished with its capability would make turning the capability on
+            // feel like the page had changed under you, and it is also the only
+            // way to see what turning it on would give you.
+            disabled={!master.enabled || option.soon === true}
+            soon={option.soon === true}
+            requires={option.requires}
+          />
+          {/* A module's own rows after this option (#Q4184), nested the
+            same way and disabled with the master. */}
+          {showMaster &&
+            extraRows
+              .after(props.capability, option.key)
+              .map((row) => (
+                <row.component
+                  key={row.key}
+                  className={showMaster ? "sm:pl-10" : undefined}
+                  disabled={!master.enabled}
+                />
+              ))}
+        </Fragment>
       ))}
+      {showMaster &&
+        extraRows
+          .of(props.capability)
+          .filter((row) => !options.some((it) => it.key === row.after))
+          .map((row) => (
+            <row.component
+              key={row.key}
+              className="sm:pl-10"
+              disabled={!master.enabled}
+            />
+          ))}
     </>
   );
 

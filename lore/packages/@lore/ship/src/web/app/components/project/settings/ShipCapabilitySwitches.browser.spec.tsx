@@ -1,6 +1,10 @@
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
 import { ProjectSettingsCapabilitiesPage } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import {
+  CapabilityRowRegistry,
+  currentProjectAtom,
+  I18n,
+} from "@lore/core/web";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -81,6 +85,7 @@ describe("the Ship capability switches", () => {
       // The catalogue itself. Without it `tr()` echoes the key, so the copy
       // assertion below would pass against the key name and prove nothing.
       .with(I18n)
+      .with(CapabilityRowRegistry)
       .with(DeployShell);
     await alepha.start();
     alepha.store.set(currentProjectAtom, aProject);
