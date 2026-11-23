@@ -339,6 +339,9 @@ const InvoicePage = (props: InvoicePageProps) => {
   drawer below. A dock renders into an `<AiChatDockSlot />` placed in your layout, which narrows
   the page to make room (`AppShell` takes one as `aside={<AiChatDockSlot />}`); without a slot it
   floats over the page's right edge.
+- The header's full screen button, between minimize and close, opens the conversation in a dialog
+  that fills the screen but for a small margin; its button again, Escape or the backdrop brings it
+  back where it was.
 - A run of consecutive tool calls reads as one line ("Used 3 tools", or the words of the
   `toolSummary` prop) that opens on every step, and names only the call in flight while one runs.
   `<AiChatToolTrace />` is that line, for a thread an app draws itself.

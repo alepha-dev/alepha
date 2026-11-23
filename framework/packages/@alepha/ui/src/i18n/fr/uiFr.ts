@@ -62,6 +62,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "ai.chat.history": "Historique",
   "ai.chat.message": "Message",
   "ai.chat.minimize": "Réduire",
+  "ai.chat.fullscreen": "Plein écran",
+  "ai.chat.exitFullscreen": "Quitter le plein écran",
   "ai.chat.new": "Nouvelle conversation",
   "ai.chat.noHistory": "Aucune conversation pour l'instant",
   "ai.chat.placeholder": "Demandez à l'assistant",
