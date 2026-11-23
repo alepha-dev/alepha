@@ -269,6 +269,12 @@ clone with `lore clone`, which sets up the credentials.
 | `code_repo_list`   | The project's repositories, with their clone URLs.                                     |
 | `code_repo_create` | Create an empty repository. An agent's connection cannot: run `lore code repo create`. |
 | `code_repo_delete` | Delete a repository. An agent's connection cannot: run `lore code repo delete`.        |
+| `code_tree`        | A folder of a repository at a branch, tag or commit.                                   |
+| `code_file`        | A file, 200 numbered lines a call (`start_line`, `end_line`).                          |
+| `code_log`         | The history, 30 a page, of one file or folder when `path` is given.                    |
+| `code_commit`      | One commit: message, parents, quests and changed files.                                |
+| `code_diff`        | Two revisions: the changed files, or one `path`'s unified diff.                        |
+| `code_blame`       | Each line's commit and quests, 200 lines a call; `pending` asks again.                 |
 
 ## Apps and telemetry
 

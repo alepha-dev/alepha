@@ -1357,7 +1357,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Repositories",
     section: "Repositories",
     url: "https://alepha.dev/lore/docs/build-repositories",
-    text: "A project can hold its git repositories on Lore. You clone and push them with\nplain git over HTTPS, and the `lore` command answers git when it asks who you\nare, so nobody copies a token by hand. A new project can live on Lore with no\nother git host; an existing repository can move in, or be copied in from\nGitHub and kept up to date.\n\nRepositories need the **Build** capability with its **Repositories** option\non, both switched in **Settings ▸ General ▸ Capabilities**. See\n[Capabilities](/lore/docs/project-capabilities). There is no page for code in\nthe browser yet: a repository is reached with git and the `lore` command.",
+    text: "A project can hold its git repositories on Lore. You clone and push them with\nplain git over HTTPS, and the `lore` command answers git when it asks who you\nare, so nobody copies a token by hand. A new project can live on Lore with no\nother git host; an existing repository can move in, or be copied in from\nGitHub and kept up to date.\n\nRepositories need the **Build** capability with its **Repositories** option\non, both switched in **Settings ▸ General ▸ Capabilities**. See\n[Capabilities](/lore/docs/project-capabilities). With them on, **Code** joins\nthe sidebar, in Build's group beside **Quality**.",
   },
   {
     guide: "Repositories",
@@ -1370,6 +1370,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Cloning and pushing",
     url: "https://alepha.dev/lore/docs/build-repositories#cloning-and-pushing",
     text: "```bash\nlore clone acme/api\ncd api\ngit push\n```\n\n`lore clone <project>[/<repo>]` clones the repository and installs the `lore`\ncommand as git's credential helper for that instance. Without `/<repo>` it\ntakes the repository named like the project, or the project's only one. From\nthen on, `git fetch`, `git pull` and `git push` work as with any other host.\n\nIn an existing checkout, `lore code remote --add` adds the repository as a\nremote named `lore`.\n\nMembers push; Viewers clone and read. Deleting the default branch is refused,\nand so is a push to a repository over its size cap. A force-push that rewrites\nthe default branch's history is refused as well: pull, then push again. Other\nbranches still take one.\n\n### In CI\n\nSet `LORE_API_KEY` to an API key, and the credential helper answers git with\nit. A key narrowed to **Clone and fetch repositories** and **Push to\nrepositories** is all a pipeline needs.",
+  },
+  {
+    guide: "Repositories",
+    section: "Browsing code",
+    url: "https://alepha.dev/lore/docs/build-repositories#browsing-code",
+    text: "**Code** in the sidebar opens the project's repositories: each with its\ndefault branch's last commit and how to clone it. A project with one\nrepository opens it directly. A repository's page has four tabs.\n\n- **Files**: the default branch's folders and files, each with the last commit\n  that touched it, and the folder's `README` rendered under them. Its links\n  and images stay in the repository, at the same branch. Pick another branch\n  or tag from the menu above the list.\n- **A file** shows its lines highlighted and numbered. Click a line number to\n  select it, Shift-click another to select a range: the address carries it\n  (`#L10-L20`). **Permalink** swaps the branch for the commit it points at, so\n  the link keeps showing those lines after the branch moves. **Raw**\n  downloads the file. A Markdown file opens rendered, with **Source** beside\n  it.\n- **Commits**: the branch's history, newest first, or a file's or a folder's\n  from its **History** link. A commit's page shows its message, its parents,\n  the quests it landed on and its diff against its first parent.\n- **Branches**: each branch with how far it is ahead of and behind the default\n  branch, a link to compare them, and, f...",
   },
   {
     guide: "Repositories",
@@ -1393,7 +1399,13 @@ export const docsCorpus: DocsSection[] = [
     guide: "Repositories",
     section: "From the command line",
     url: "https://alepha.dev/lore/docs/build-repositories#from-the-command-line",
-    text: "| Command                               | What it does                                                    |\n| ------------------------------------- | --------------------------------------------------------------- |\n| `lore clone <project>[/<repo>] [dir]` | Clone a repository, with the credential helper installed        |\n| `lore code repo list`                 | The project's repositories and their clone URLs                 |\n| `lore code repo create <name>`        | Create an empty repository                                      |\n| `lore code repo delete <name>`        | Delete a repository and everything in it                        |\n| `lore code remote`                    | Print a clone URL; `--add` adds it as a remote of this checkout |\n| `lore code import [<repo>]`           | Push this checkout into a new or empty repository               |\n\nThe full list is in [The lore CLI](/lore/docs/reference-cli#code).",
+    text: "| Command                               | What it does                                                    |\n| ------------------------------------- | --------------------------------------------------------------- |\n| `lore clone <project>[/<repo>] [dir]` | Clone a repository, with the credential helper installed        |\n| `lore code repo list`                 | The project's repositories and their clone URLs                 |\n| `lore code repo create <name>`        | Create an empty repository                                      |\n| `lore code repo delete <name>`        | Delete a repository and everything in it                        |\n| `lore code remote`                    | Print a clone URL; `--add` adds it as a remote of this checkout |\n| `lore code import [<repo>]`           | Push this checkout into a new or empty repository               |\n| `lore code tree [path]`               | A folder at a branch, tag or commit                             |\n| `lore code cat <path>`                | A file, numbered, 200 lines at a time                           |\n| `lore code log [path]`                | The history, of one file or folder if given                     |\n| `lore code...",
+  },
+  {
+    guide: "Repositories",
+    section: "From an agent",
+    url: "https://alepha.dev/lore/docs/build-repositories#from-an-agent",
+    text: "An agent reads code without a checkout: `code_tree`, `code_file`, `code_log`,\n`code_commit`, `code_diff` and `code_blame`, the six commands above. A file and\na blame answer 200 lines at a time; a diff answers its files first and one\nfile's changes when asked. See [MCP tools](/lore/docs/reference-mcp-tools).",
   },
   {
     guide: "Quality",
@@ -2394,7 +2406,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "MCP tools",
     section: "Code",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#code",
-    text: "A project's git repositories, when Build is on. Code itself goes through git:\nclone with `lore clone`, which sets up the credentials.\n\n| Tool               | What it does                                                                           |\n| ------------------ | -------------------------------------------------------------------------------------- |\n| `code_repo_list`   | The project's repositories, with their clone URLs.                                     |\n| `code_repo_create` | Create an empty repository. An agent's connection cannot: run `lore code repo create`. |\n| `code_repo_delete` | Delete a repository. An agent's connection cannot: run `lore code repo delete`.        |",
+    text: "A project's git repositories, when Build is on. Code itself goes through git:\nclone with `lore clone`, which sets up the credentials.\n\n| Tool               | What it does                                                                           |\n| ------------------ | -------------------------------------------------------------------------------------- |\n| `code_repo_list`   | The project's repositories, with their clone URLs.                                     |\n| `code_repo_create` | Create an empty repository. An agent's connection cannot: run `lore code repo create`. |\n| `code_repo_delete` | Delete a repository. An agent's connection cannot: run `lore code repo delete`.        |\n| `code_tree`        | A folder of a repository at a branch, tag or commit.                                   |\n| `code_file`        | A file, 200 numbered lines a call (`start_line`, `end_line`).                          |\n| `code_log`         | The history, 30 a page, of one file or folder when `path` is given.                    |\n| `code_commit`      | One commit: message, parents, quests and changed files.                                |\n| `code_diff`        | Two revisions: the changed files, ...",
   },
   {
     guide: "MCP tools",
