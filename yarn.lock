@@ -3468,6 +3468,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/bun@npm:^1.4.5":
+  version: 1.4.5
+  resolution: "@types/bun@npm:1.4.5"
+  dependencies:
+    bun-types: "npm:1.4.5"
+  checksum: 10c0/6960d6a1da5e860940986de21a5da779e22601f2bc2575126c6cf7039ece6f4aa107bd3a078ae97c650cfeba62c070759648c6c855a0baabf838307803936255
+  languageName: node
+  linkType: hard
+
 "@types/chai@npm:^5.2.2":
   version: 5.2.3
   resolution: "@types/chai@npm:5.2.3"
@@ -4187,7 +4196,7 @@ __metadata:
   dependencies:
     "@alepha/lore": "workspace:*"
     "@playwright/test": "npm:^1.65.1"
-    "@types/bun": "npm:^1.4.4"
+    "@types/bun": "npm:^1.4.5"
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
     "@vitest/coverage-v8": "npm:^5.1.1"
@@ -4685,6 +4694,16 @@ __metadata:
     "@types/node": "npm:*"
     undici-types: "npm:*"
   checksum: 10c0/f8d201a731bf50138c05f73e5e9e19187801841a2fab310c7da8f02a17feb832ec37926f03fda345d16a3526cc3c7dfba01284102a3e62e00c5f995aa6b7d91b
+  languageName: node
+  linkType: hard
+
+"bun-types@npm:1.4.5":
+  version: 1.4.5
+  resolution: "bun-types@npm:1.4.5"
+  dependencies:
+    "@types/node": "npm:*"
+    undici-types: "npm:*"
+  checksum: 10c0/62684ad58b34e8d41c00d53bdf6989f14a11e8be25eea0d2793705b688994a9d02916648613d9d5d53b5a8841b73ee584db41f213112b9828763e788998303d8
   languageName: node
   linkType: hard
 
@@ -7391,7 +7410,7 @@ __metadata:
   dependencies:
     "@alepha/lore": "workspace:*"
     "@playwright/test": "npm:^1.65.1"
-    "@types/bun": "npm:^1.4.4"
+    "@types/bun": "npm:^1.4.5"
     "@types/node": "npm:^26.6.6"
     "@vitest/coverage-v8": "npm:^5.1.1"
     alepha: "workspace:*"
