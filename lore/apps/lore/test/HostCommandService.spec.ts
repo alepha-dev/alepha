@@ -1,4 +1,8 @@
-import { HostCommandTransport } from "@lore/core/api";
+import {
+  HostCommandHandlerRegistry,
+  HostCommandTransport,
+  HostCommandService,
+} from "@lore/core/api";
 import {
   hostCommands,
   type Host,
@@ -6,6 +10,11 @@ import {
   type HostCommandFrame,
   type HostServerFrame,
 } from "@lore/core/schemas";
+import { HostController, LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
+// Its own subpath: `./testing` is loaded by browser specs, and this one
+// boots the host controllers (#E166).
+import { createTestHost } from "@lore/ship/testing/hosts";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -15,14 +24,6 @@ import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, BadRequestError, ForbiddenError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import {
-  HostController,
-  HostCommandService,
-  LoreShipApi,
-} from "../src/api/index.ts";
-import { createTestHost } from "../src/testing/hosts.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
  * The wire, faked: records every push and answers "connected" only for the
@@ -741,5 +742,71 @@ describe("HostCommandService, backups", () => {
         ),
       ).rejects.toThrow(BadRequestError);
     }
+  });
+});
+
+/**
+ * One queue for every host command (#E166, #Q4100): core's `upgrade` is
+ * enqueued on core's `HostCommandService` directly, and Ship's `restart`
+ * reaches the same queue through core's `HostCommandHandlerRegistry`.
+ */
+describe("HostCommandService, core and Ship commands", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("queues a core command and a Ship command on the same host, in one queue", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const created = await createHost(ctx, owner, "both");
+    // An upgrade replaces what the machine runs, so it takes the deploy
+    // switch like a deploy does.
+    await ctx.hostApi.updateHost(
+      { params: { hostId: created.id }, body: { deployAllowed: true } },
+      { user: owner },
+    );
+    const host = await ctx.repos.hosts.getOne({
+      where: { id: { eq: created.id } },
+    });
+    ctx.transport.connected.add(host.id);
+
+    const upgrade = await ctx.service.enqueue(
+      host,
+      {
+        kind: "upgrade",
+        payload: {
+          app: "",
+          environment: "",
+          version: "1.2.3",
+          fromVersion: "1.2.2",
+        },
+      },
+      owner.id,
+    );
+    const shipped = await ctx.alepha
+      .inject(HostCommandHandlerRegistry)
+      .enqueue({
+        host,
+        body: { kind: "restart", app: "lore", environment: "production" },
+        user: owner,
+      });
+
+    const rows = await ctx.repos.commands.findMany({
+      where: { hostId: { eq: host.id } },
+    });
+    expect(rows.map((row) => row.kind).sort()).toEqual(["restart", "upgrade"]);
+    expect([upgrade.status, shipped.status]).toEqual(["sent", "sent"]);
+    expect(
+      ctx.transport.pushed
+        .filter((it) => it.frame.type === "command")
+        .map((it) => it.frame.kind),
+    ).toEqual(["upgrade", "restart"]);
   });
 });

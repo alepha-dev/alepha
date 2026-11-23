@@ -1,4 +1,4 @@
-import { HostJobs } from "@lore/core/api";
+import { HostJobs, HostJobService } from "@lore/core/api";
 import {
   projects,
   hostJobs,
@@ -11,8 +11,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
-
-import { HostJobService } from "./HostJobService.ts";
 
 /**
  * Agent hosts (#Q3985): hosts that run Claude Code jobs, and Lore's check

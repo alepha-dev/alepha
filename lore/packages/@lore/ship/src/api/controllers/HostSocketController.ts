@@ -1,4 +1,9 @@
-import { HostEventService, HostTokenService } from "@lore/core/api";
+import {
+  HostEventService,
+  HostTokenService,
+  HostCommandService,
+  HostJobService,
+} from "@lore/core/api";
 import {
   type Host,
   hosts,
@@ -11,9 +16,7 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $channel, $websocket } from "alepha/websocket";
 
-import { HostCommandService } from "../services/HostCommandService.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
-import { HostJobService } from "../services/HostJobService.ts";
 import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 

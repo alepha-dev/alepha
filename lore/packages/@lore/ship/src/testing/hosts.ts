@@ -1,3 +1,12 @@
+/**
+ * The host a spec needs, made through the controllers that make one in
+ * production.
+ *
+ * Its own subpath, `@lore/ship/testing/hosts`, beside `./testing`: it boots
+ * the host controllers, and browser specs load `./testing` (#E166).
+ *
+ * @module
+ */
 import type { CreateHostBody, OwnedHostResource } from "@lore/core/schemas";
 import { createTestProject } from "@lore/core/testing";
 import type { Alepha } from "alepha";

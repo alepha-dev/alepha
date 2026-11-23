@@ -1,3 +1,4 @@
+import { HostCommandService } from "@lore/core/api";
 import { projects, hostProjects, type Host, hosts } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -13,7 +14,6 @@ import {
   HostCommandController,
   HostController,
 } from "../src/api/index.ts";
-import { HostCommandService } from "../src/api/services/HostCommandService.ts";
 import { appInstances, artifacts } from "../src/schemas/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";

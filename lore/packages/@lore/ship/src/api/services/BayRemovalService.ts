@@ -1,3 +1,4 @@
+import { HostCommandService } from "@lore/core/api";
 import {
   type HostCommand,
   hostCommands,
@@ -12,7 +13,6 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import type { AppInstance } from "../entities/appInstances.ts";
 import type { StackEnvironment } from "../entities/stackEnvironments.ts";
 import type { Stack } from "../entities/stacks.ts";
-import { HostCommandService } from "./HostCommandService.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
 
 /**

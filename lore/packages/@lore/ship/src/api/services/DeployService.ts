@@ -1,4 +1,4 @@
-import { CredentialSealService } from "@lore/core/api";
+import { CredentialSealService, HostCommandService } from "@lore/core/api";
 import { type Host, hosts } from "@lore/core/schemas";
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -16,7 +16,6 @@ import { DeployGate } from "./DeployGate.ts";
 import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { type DeployRequest, DeployRunner } from "./DeployRunner.ts";
-import { HostCommandService } from "./HostCommandService.ts";
 import { HostService } from "./HostService.ts";
 import { ResourceNameService } from "./ResourceNameService.ts";
 import { StackDeployService } from "./StackDeployService.ts";

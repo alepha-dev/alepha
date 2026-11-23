@@ -1,10 +1,10 @@
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import type { HostJobController } from "@lore/core/api";
 import { type I18n } from "@lore/core/web";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 
-import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
 import JobStatusBadge from "./JobStatusBadge.tsx";
 
 export interface ProjectJobProps {

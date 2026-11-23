@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { HostCommandService } from "@lore/core/api";
 import type { Alepha } from "alepha";
 import { NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -11,7 +12,6 @@ import {
   ArtifactController,
   DeployController,
   DeployService,
-  HostCommandService,
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";

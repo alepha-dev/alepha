@@ -1,3 +1,4 @@
+import { HostCommandService } from "@lore/core/api";
 import {
   projects,
   hostCommands,
@@ -27,7 +28,6 @@ import type { StackModel } from "../schemas/stackModelSchema.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
-import { HostCommandService } from "./HostCommandService.ts";
 import type { RegistryCredential } from "./ImageRegistryClient.ts";
 import { RegistryCredentialService } from "./RegistryCredentialService.ts";
 import { StackService } from "./StackService.ts";

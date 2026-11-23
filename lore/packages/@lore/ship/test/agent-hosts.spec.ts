@@ -1,4 +1,8 @@
-import { HostCommandTransport } from "@lore/core/api";
+import {
+  HostCommandTransport,
+  HostCommandService,
+  HostJobService,
+} from "@lore/core/api";
 import {
   projects,
   hostCommands,
@@ -15,12 +19,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
 
-import {
-  AgentHostService,
-  HostCommandService,
-  HostJobService,
-  LoreShipApi,
-} from "../src/api/index.ts";
+import { AgentHostService, LoreShipApi } from "../src/api/index.ts";
 import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 

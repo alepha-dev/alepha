@@ -1,4 +1,4 @@
-import type { HostJobController } from "@lore/ship/api";
+import type { HostJobController } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";

@@ -7,13 +7,11 @@ import {
   AgentPromptGuard,
   JobKeyService,
   HostCommandTransport,
-} from "@lore/core/api";
-import { projects, hostJobs, hosts } from "@lore/core/schemas";
-import {
-  AgentHostService,
   HostCommandService,
   HostJobService,
-} from "@lore/ship/api";
+} from "@lore/core/api";
+import { projects, hostJobs, hosts } from "@lore/core/schemas";
+import { AgentHostService } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

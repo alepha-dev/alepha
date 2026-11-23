@@ -2,6 +2,7 @@ import {
   HostCommandHandlerRegistry,
   type HostCommandHandlerInput,
   ProjectSecurityService,
+  HostCommandService,
 } from "@lore/core/api";
 import {
   projects,
@@ -19,7 +20,6 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
-import { HostCommandService } from "./HostCommandService.ts";
 import { HostService } from "./HostService.ts";
 import { ResourceNameService } from "./ResourceNameService.ts";
 

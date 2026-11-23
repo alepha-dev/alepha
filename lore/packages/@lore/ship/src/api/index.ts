@@ -12,7 +12,6 @@ import { DeployController } from "./controllers/DeployController.ts";
 import { HostCommandController } from "./controllers/HostCommandController.ts";
 import { HostController } from "./controllers/HostController.ts";
 import { HostEnrolController } from "./controllers/HostEnrolController.ts";
-import { HostJobController } from "./controllers/HostJobController.ts";
 import { HostPullController } from "./controllers/HostPullController.ts";
 import { HostSocketController } from "./controllers/HostSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
@@ -30,10 +29,8 @@ import { StackVariableController } from "./controllers/StackVariableController.t
 import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
-import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
-import { HostJobJobs } from "./jobs/HostJobJobs.ts";
 import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -73,8 +70,6 @@ import { ErrorThreshold } from "./services/ErrorThreshold.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
-import { HostCommandService } from "./services/HostCommandService.ts";
-import { HostJobService } from "./services/HostJobService.ts";
 import { HostService } from "./services/HostService.ts";
 import { HostsMetric } from "./services/HostsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
@@ -164,8 +159,6 @@ export const LoreShipApi = $module({
     UptimeHttpProber,
     UptimeSocketProber,
     SigilJobs,
-    HostCommandJobs,
-    HostJobJobs,
     HostCredentialJobs,
     HostExpiryJobs,
     HostOfflineJobs,
@@ -244,13 +237,8 @@ export const LoreShipApi = $module({
     DeployHostUsage,
     ShipHostCommands,
     HostService,
-    // The queue behind the connection. Its transport's default is core's
-    // since #E166 (`HostCommandTransport`).
-    HostCommandService,
-    // One-shot jobs on a host (#Q3984): the `host_jobs` queue, registered on
-    // core's `HostJobs` port, and its pages and tools.
-    HostJobService,
-    HostJobController,
+    // The command and job queues are core's since #E166 (`HostCommandService`,
+    // `HostJobService`).
     // Agent hosts (#Q3985): hosts that run Claude Code jobs, their daily
     // check, and the project's default one.
     AgentHostService,
@@ -302,8 +290,7 @@ export { BackupController } from "./controllers/BackupController.ts";
 export { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 export { DeployController } from "./controllers/DeployController.ts";
 export { HostCommandController } from "./controllers/HostCommandController.ts";
-export { HostJobController } from "./controllers/HostJobController.ts";
-export { HostJobService } from "./services/HostJobService.ts";
+
 export { AgentHostService } from "./services/AgentHostService.ts";
 export { AgentHostController } from "./controllers/AgentHostController.ts";
 export { HostController } from "./controllers/HostController.ts";
@@ -351,7 +338,6 @@ export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
 export { DeployService } from "./services/DeployService.ts";
 export { HostCloudflareService } from "./services/HostCloudflareService.ts";
 
-export { HostCommandService } from "./services/HostCommandService.ts";
 export { HostUpgradeService } from "./services/HostUpgradeService.ts";
 
 export { HostInventoryService } from "./services/HostInventoryService.ts";

@@ -1,4 +1,3 @@
-import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
@@ -10,6 +9,7 @@ import {
   jobListParamsSchema,
   jobListResultSchema,
 } from "../schemas/jobSchemas.ts";
+import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * A project's host jobs, for agents (#Q3984): the twins of `lore job list`,
