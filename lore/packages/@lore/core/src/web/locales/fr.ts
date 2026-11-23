@@ -3290,10 +3290,6 @@ export default {
   "feedback.request.title": "Soumettre un retour",
   "feedback.request.description":
     "Signalez un bogue ou demandez une fonctionnalité.",
-  "feedback.request.type.bug": "Problème",
-  "feedback.request.type.idea": "Suggestion",
-  "feedback.request.type.question": "Question",
-  "feedback.request.type.other": "Autre",
   "feedback.request.messageField": "Que voulez-vous nous dire ?",
   "feedback.request.messageHelper":
     "Dites-nous ce qui s'est passé ou ce que vous aimeriez, et soyez aussi précis que possible.",

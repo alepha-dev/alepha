@@ -3280,10 +3280,6 @@ export default {
   "feedback.description": "Description",
   "feedback.request.title": "Submit feedback",
   "feedback.request.description": "Report a bug or request a feature.",
-  "feedback.request.type.bug": "Problem",
-  "feedback.request.type.idea": "Suggestion",
-  "feedback.request.type.question": "Question",
-  "feedback.request.type.other": "Other",
   "feedback.request.messageField": "What would you like to tell us?",
   "feedback.request.messageHelper":
     "Tell us what happened or what you'd like, and be as specific as you can.",
