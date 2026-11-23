@@ -24,6 +24,7 @@ import type {
   ChatMessageResource,
   ChatReactionEmoji,
 } from "../../../schemas/index.ts";
+import { useStreamReveal } from "../hooks/useStreamReveal.ts";
 import { chatMarkdown } from "../services/chatMarkdown.ts";
 import ChatAgentAnswer from "./ChatAgentAnswer.tsx";
 
@@ -96,6 +97,12 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
   const [saving, setSaving] = useState(false);
   const editor = useRef<HTMLTextAreaElement>(null);
   const editing = draft !== undefined;
+  // An agent's answer still streaming types itself out (#Q4190); anything
+  // that arrives finished is shown as it is.
+  const body = useStreamReveal(
+    message.body,
+    !!message.agent && message.agentRun?.status === "running",
+  );
 
   // The editor takes focus when it opens, as the menu item asked.
   useEffect(() => {
@@ -244,7 +251,7 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
                 projectSlug: props.projectSlug,
                 id: message.id,
               }}
-              content={chatMarkdown(message.body, {
+              content={chatMarkdown(body, {
                 projectSlug: props.projectSlug,
                 members: props.handles,
               })}
