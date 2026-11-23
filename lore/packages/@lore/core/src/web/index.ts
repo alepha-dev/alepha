@@ -20,6 +20,7 @@ import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestio
 import { ResourceRailRegistry } from "./app/registries/ResourceRailRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
+import { StackTraceParser } from "./app/services/StackTraceParser.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
 
 /**
@@ -57,6 +58,8 @@ export const LoreCoreWeb = $module({
     // Core's own dashboard metric descriptors (#Q2656), as each module's are.
     alepha.inject(CoreDashboardMetrics);
     alepha.inject(ThemesProvider);
+    // Read by the Errors page's stack viewer (#Q4186), before the lock.
+    alepha.inject(StackTraceParser);
     // Read by `Layout` and `HeaderActions` on every page, so it exists before
     // the container locks whether or not the app registers anything on it.
     alepha.inject(ShellExtensionRegistry);
@@ -173,6 +176,7 @@ export {
 } from "./app/components/shared/DiscussionAttachments.tsx";
 export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";
 export { default as CommitLink } from "./app/components/shared/CommitLink.tsx";
+export { default as StackTraceViewer } from "./app/components/shared/StackTraceViewer.tsx";
 export { OutboundLink } from "./app/components/shared/OutboundLink.tsx";
 export { ProjectIcon } from "./app/components/shared/ProjectIcon.tsx";
 export { default as RedirectPage } from "./app/components/shared/RedirectPage.tsx";

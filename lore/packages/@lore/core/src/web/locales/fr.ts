@@ -145,6 +145,9 @@ export default {
   "notifications.channels.kind.email": "E-mail",
   "notifications.channels.kind.discord": "Discord",
   "notifications.channels.kind.webhook": "Webhook",
+  "stackTrace.copy": "Copier",
+  "stackTrace.copied": "Trace de la pile copiée",
+  "stackTrace.causedBy": "Causée par",
   "notifications.channels.kind.chat": "Salon",
   "notifications.channels.room": "Salon",
   "notifications.channels.chatHelp":
