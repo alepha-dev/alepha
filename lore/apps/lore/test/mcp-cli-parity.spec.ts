@@ -42,6 +42,13 @@ const ALIASES: Record<string, string> = {
   epic_pull_request_add: "epic pull-request add",
   // `verify` is the Alepha CLI's own verb, never a Lore command (#E153).
   criterion_verify_link: "criterion link",
+  // One subject, `lore dashboard`, whose verbs read as the page's (#Q4206).
+  dashboard_metric_catalog: "dashboard metrics",
+  dashboard_card_list: "dashboard cards",
+  dashboard_card_add: "dashboard add",
+  dashboard_card_update: "dashboard update",
+  dashboard_card_remove: "dashboard remove",
+  dashboard_card_reorder: "dashboard reorder",
 };
 
 const GAPS: string[] = [];
@@ -70,6 +77,9 @@ const POSITIONAL = new Set([
   // `lore chat message list <room>` and `send <room> <text>` (#Q3933).
   "room",
   "body",
+  "metric",
+  "card",
+  "ids",
 ]);
 
 /**
@@ -97,6 +107,9 @@ const NOT_A_FLAG: Record<string, string[]> = {
   monitor_create: ["expect"],
   monitor_update: ["expect"],
   // One `--graph` file holds both: a graph is JSON (#Q3809).
+  // A scope object is `--app`, `--epic`, `--release` or `--viewer` (#Q4206).
+  dashboard_card_add: ["scope"],
+  dashboard_card_update: ["scope"],
 };
 
 const tools = (): any[] => {

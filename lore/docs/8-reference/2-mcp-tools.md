@@ -72,6 +72,26 @@ The sections of `project_report` are `summary` (the place to start), `flow`,
 One resource sits beside the tools: `lore://projects`, the projects the caller
 can reach, by id and title.
 
+## Dashboards
+
+A project's [dashboards](/lore/docs/project-dashboard) and their cards. Reading
+needs membership; changing a dashboard needs `project:update`, as on the page.
+A card's value is not read here: `project_report` reads the Reports figures.
+
+| Tool                       | What it does                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `dashboard_list`           | The project's dashboards, in order, by id and name.                                                           |
+| `dashboard_metric_catalog` | The metrics a card can show: the scopes each accepts, the schema of its filters, and the capability it needs. |
+| `dashboard_card_list`      | A dashboard's stored cards, in grid order. Empty while the first dashboard shows the default one.             |
+| `dashboard_card_add`       | Add a card at the end of a dashboard, on the project or narrowed to some of its apps, an epic or a release.   |
+| `dashboard_card_update`    | Change a card's metric, scope, filters, size, height or section.                                              |
+| `dashboard_card_remove`    | Remove a card.                                                                                                |
+| `dashboard_card_reorder`   | Put a dashboard's cards in a new order, given every card id.                                                  |
+
+A card narrowed to apps names them by their sigil ids, which `sigil_list`
+answers: `{ "kind": "apps", "sigilIds": ["..."] }`. Every tool takes
+`dashboard`, a dashboard's id; none means the project's first.
+
 ## Quests
 
 See [Quests](/lore/docs/plan-quests).
@@ -318,7 +338,6 @@ Some of Lore is not reachable over MCP. Reach for the page or the
 | Creating or deleting a project                                   | `lore project create` and `lore project delete`.                                      |
 | Members, ranks and project settings                              | The project's Settings.                                                               |
 | Switching a capability                                           | `lore project capability`, and the project's Settings.                                |
-| The dashboard                                                    | The project's page. `project_report` reads the Reports figures.                       |
 | [Notifications](/lore/docs/project-notifications)                | The bell. A comment naming someone reaches them.                                      |
 | Deleting a feedback report                                       | The Feedback page.                                                                    |
 | Deleting an error                                                | The Errors page.                                                                      |
