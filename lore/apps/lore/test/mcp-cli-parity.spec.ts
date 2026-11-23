@@ -49,6 +49,9 @@ const ALIASES: Record<string, string> = {
   dashboard_card_update: "dashboard update",
   dashboard_card_remove: "dashboard remove",
   dashboard_card_reorder: "dashboard reorder",
+  // git's own verbs (#Q4139): `lore code cat` reads a file, `show` a commit.
+  code_file: "code cat",
+  code_commit: "code show",
 };
 
 const GAPS: string[] = [];
@@ -80,6 +83,9 @@ const POSITIONAL = new Set([
   "metric",
   "card",
   "ids",
+  // `lore code tree|cat|log|blame <path>` and `show <sha>` (#Q4139).
+  "path",
+  "sha",
 ]);
 
 /**
@@ -110,6 +116,8 @@ const NOT_A_FLAG: Record<string, string[]> = {
   // A scope object is `--app`, `--epic`, `--release` or `--viewer` (#Q4206).
   dashboard_card_add: ["scope"],
   dashboard_card_update: ["scope"],
+  // One positional range, `<from>..<to>`, as git takes it (#Q4139).
+  code_diff: ["from", "to"],
 };
 
 const tools = (): any[] => {
