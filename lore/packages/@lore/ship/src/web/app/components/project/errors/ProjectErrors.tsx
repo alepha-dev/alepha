@@ -35,6 +35,7 @@ import {
   CircleDot,
   FileText,
   Send,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -85,6 +86,8 @@ const ProjectErrors = () => {
   const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
+  // Open groups no member trusted yet (#Q4233): no agent reads them.
+  const [awaitingTrust, setAwaitingTrust] = useState(0);
 
   // One `useAction` per triage verb (#E59, #Q2329). A refusal is the server's
   // sentence, toasted by the root `ActionErrorToaster`; follow-ups (the
@@ -133,6 +136,25 @@ const ProjectErrors = () => {
           params: { projectId: project.id, errorId: projectError.id },
         });
         toaster.success(tr("errors.toast.resolved"));
+        refresh();
+      },
+    },
+    [projectErrorApi, project, toaster, tr],
+  );
+
+  // A member reads a group and trusts it, so an agent may read it too
+  // (#Q4233). Only from a signed-in session: the server refuses any key.
+  const trustAction = useAction<
+    [projectError: ProjectErrorResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (_ctx, projectError, refresh) => {
+        if (!project) return;
+        await projectErrorApi.trustProjectError({
+          params: { projectId: project.id, errorId: projectError.id },
+        });
+        toaster.success(tr("errors.toast.trusted"));
         refresh();
       },
     },
@@ -196,6 +218,7 @@ const ProjectErrors = () => {
   const busy =
     deleteManyAction.loading ||
     resolveAction.loading ||
+    trustAction.loading ||
     forwardAction.loading ||
     deleteAction.loading;
 
@@ -291,6 +314,7 @@ const ProjectErrors = () => {
     // infinite refetch loop. `store.set` updates the atom without subscribing.
     alepha.store.set(currentErrorCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
+    setAwaitingTrust(res.awaitingTrust);
 
     const stored = filters?.sigilId;
     // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
@@ -345,18 +369,28 @@ const ProjectErrors = () => {
         // when the project has `agentPrompts` off, and this passes no items
         // when Apps is off, so both have to be on for anything to appear.
         toolbar={
-          <AgentPromptsMenu
-            items={
-              appsEnabled
-                ? [
-                    {
-                      kind: "errorTriage" as const,
-                      subject: () => promptSubject.forPage("projectErrors"),
-                    },
-                  ]
-                : []
-            }
-          />
+          <>
+            {awaitingTrust > 0 && (
+              <span
+                className="text-muted-foreground text-xs"
+                data-testid="errors-awaiting-trust"
+              >
+                {tr("errors.awaitingTrust", { args: [String(awaitingTrust)] })}
+              </span>
+            )}
+            <AgentPromptsMenu
+              items={
+                appsEnabled
+                  ? [
+                      {
+                        kind: "errorTriage" as const,
+                        subject: () => promptSubject.forPage("projectErrors"),
+                      },
+                    ]
+                  : []
+              }
+            />
+          </>
         }
         fetch={fetchProjectErrors}
         // The bulk bar is triage too: a rank that may not resolve one error
@@ -393,6 +427,23 @@ const ProjectErrors = () => {
                     {tr(`errors.origin.${b.origin}`)}
                   </Badge>
                   {renderStatus(b.status)}
+                  {b.trustedAt ? (
+                    <Badge
+                      variant="outline"
+                      title={tr("errors.trustedBy", {
+                        args: [b.trustedByName ?? ""],
+                      })}
+                      data-testid="error-trusted"
+                    >
+                      {tr("errors.trusted")}
+                    </Badge>
+                  ) : (
+                    b.status === "open" && (
+                      <Badge variant="tint" tone="warning">
+                        {tr("errors.untrusted")}
+                      </Badge>
+                    )
+                  )}
                 </div>
                 <p className="text-muted-foreground line-clamp-2 break-words">
                   {b.message}
@@ -474,6 +525,19 @@ const ProjectErrors = () => {
             ...(triaged || !canTriage
               ? []
               : [
+                  ...(b.trustedAt
+                    ? []
+                    : [
+                        {
+                          icon: ShieldCheck,
+                          label: tr("errors.action.trust"),
+                          disabled: () => busy,
+                          onClick: (
+                            projectError: ProjectErrorResource,
+                            { refresh }: { refresh: () => void },
+                          ) => void trustAction.run(projectError, refresh),
+                        },
+                      ]),
                   {
                     icon: CheckCircle2,
                     label: tr("errors.action.resolve"),

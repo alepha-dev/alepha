@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "67203158-758e-47a2-8ae2-50f58f2dfbcd",
+  "prevIds": ["a812ca10-a561-4a24-98f5-095eefd9d2d8"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_errors", "trusted_at"],
+      "writes": [
+        "s|col|public.project_errors.trusted_at",
+        "n|col|public.project_errors.trusted_at",
+        "e|col|public.project_errors.trusted_at"
+      ],
+      "reads": ["n|tbl|public.project_errors", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_errors", "trusted_by"],
+      "writes": [
+        "s|col|public.project_errors.trusted_by",
+        "n|col|public.project_errors.trusted_by",
+        "e|col|public.project_errors.trusted_by"
+      ],
+      "reads": ["n|tbl|public.project_errors", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_errors",
+        "name": "trusted_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_errors",
+        "name": "trusted_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
