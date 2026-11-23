@@ -56,3 +56,14 @@ updates:
           - "patch"
         patterns:
           - "*"
+
+  # The agent image's Claude Code (#Q4175): lore/images/agent pins it in a
+  # package.json and package-lock.json of its own, outside the Yarn project,
+  # because Dependabot cannot read a version inside a Dockerfile's `RUN`.
+  # Same cooldown as the yarn entry.
+  - package-ecosystem: "npm"
+    directory: "/lore/images/agent"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
