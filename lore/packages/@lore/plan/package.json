@@ -21,7 +21,6 @@
     "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/utilities": "^3.2.2",
     "@lore/core": "workspace:*",
     "alepha": "workspace:*",
     "lucide-react": "^1.73.0",

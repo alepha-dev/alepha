@@ -994,7 +994,7 @@ if (jobTimeoutViolations.length > 0) {
  *    importing itself in a cycle.
  * 4. **Layering**, over non-spec sources. `core` imports no other module, so
  *    `import { Button } from "@alepha/ui"` never loads the form stack; `chart`,
- *    `command`, `calendar`, `otp`, `resizable` and `i18n/fr` import only
+ *    `command`, `calendar`, `otp`, `resizable`, `sortable` and `i18n/fr` import only
  *    `core`, so an opt-in wrapper cannot quietly grow a heavy dependency;
  *    `organizations` imports only `core`, `form`, `table`, and `settings`;
  *    `ai` imports only `core`, `markdown` and `form`; and
@@ -1017,6 +1017,7 @@ const UI_LEAF_MODULES = [
   "calendar",
   "otp",
   "resizable",
+  "sortable",
   "i18n/fr",
 ];
 const UI_ALLOWED_IMPORTS: Record<string, ReadonlySet<string>> = {

@@ -64,10 +64,11 @@ the module map and that `@alepha/ui` (the root) imports no other module.
 | `@alepha/ui/calendar`  | The react-day-picker wrapper (`Calendar`). Opt-in                                                                                                                                                                |
 | `@alepha/ui/otp`       | The input-otp wrapper (`InputOTP`). Opt-in                                                                                                                                                                       |
 | `@alepha/ui/resizable` | The react-resizable-panels wrapper. Opt-in                                                                                                                                                                       |
+| `@alepha/ui/sortable`  | `useSortableList` and `useSortableItem`: a vertical list reordered by dragging or from the keyboard, on `@dnd-kit`. Opt-in                                                                                       |
 | `@alepha/ui/i18n/fr`   | `uiFr`, the French catalogue for every key the package asks for                                                                                                                                                  |
 
-The five opt-in wrappers import only the root, so a heavy dependency (recharts,
-react-day-picker, input-otp, react-resizable-panels) is loaded by the app
+The six opt-in wrappers import only the root, so a heavy dependency (recharts,
+react-day-picker, input-otp, react-resizable-panels, `@dnd-kit`) is loaded by the app
 that imports its subpath and by nothing else.
 
 > `useDialog()` throws without a `<DialogProvider>` above it, and toasts need a

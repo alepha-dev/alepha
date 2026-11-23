@@ -44,6 +44,7 @@
     "./calendar": "./src/calendar/index.ts",
     "./otp": "./src/otp/index.ts",
     "./resizable": "./src/resizable/index.ts",
+    "./sortable": "./src/sortable/index.ts",
     "./swagger": "./src/swagger/index.ts",
     "./i18n/fr": "./src/i18n/fr/index.ts",
     "./styles.css": "./src/styles.css",
@@ -119,6 +120,10 @@
         "types": "./dist/resizable/index.d.ts",
         "default": "./dist/resizable/index.js"
       },
+      "./sortable": {
+        "types": "./dist/sortable/index.d.ts",
+        "default": "./dist/sortable/index.js"
+      },
       "./swagger": {
         "types": "./dist/swagger/index.d.ts",
         "default": "./dist/swagger/index.js"
@@ -138,6 +143,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "class-variance-authority": "^0.7.1",

@@ -1,16 +1,9 @@
 import { Button } from "@alepha/ui";
-import {
-  DndContext,
-  type DragEndEvent,
-  type Modifier,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
+import { DndContext, useSortableList } from "@alepha/ui/sortable";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
-import { type KeyboardEvent, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import type { ChatRoomResource } from "../../../schemas/index.ts";
 import { type ChatRoomUnread, orderRooms } from "../services/roomOrder.ts";
@@ -48,128 +41,35 @@ export interface RoomListProps {
  */
 const RoomList = (props: RoomListProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const dndId = useId();
   const hintId = useId();
   const [showQuiet, setShowQuiet] = useState(false);
-  // The order being shown before the server has it: set on a drop (or each
-  // keyboard step), dropped once the rooms read back in that order.
-  const [pending, setPending] = useState<string[] | undefined>();
-  const [picked, setPicked] = useState<
-    { id: string; before: string[] } | undefined
-  >();
-  const [announcement, setAnnouncement] = useState("");
-  const sensors = useSensors(
-    // Without a distance a plain click would start a drag, and a click on a
-    // room must stay a click.
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-  );
-
-  // The server's list has caught up with the order shown: hand back to it,
-  // during render (React's "adjust state when a prop changes"), so the
-  // held order never outlives the save, and no effect runs a second pass.
-  if (
-    pending &&
-    pending.every(
-      (id, at) =>
-        props.rooms.find((room) => room.id === id)?.position === at ||
-        !props.rooms.some((room) => room.id === id),
-    )
-  ) {
-    setPending(undefined);
-  }
-  const shown = pending;
-  const rooms = shown
-    ? props.rooms.map((room) => {
-        const at = shown.indexOf(room.id);
-        return at < 0 ? room : { ...room, position: at };
-      })
-    : props.rooms;
-  const { active, quiet } = orderRooms(rooms, props.unread, {
+  const { active, quiet } = orderRooms(props.rooms, props.unread, {
     filter: "all",
     now: props.now,
     selectedId: props.selectedId,
   });
   const sortable = !!props.onReorder;
-  const ids = active.map((room) => room.id);
-  const nameOf = (id: string) =>
-    props.rooms.find((room) => room.id === id)?.name ?? "";
-
-  // The whole list in its new order: the visible rooms as moved, then the
-  // folded ones, which keep their places after them.
-  const save = (next: string[]) => {
-    const full = [...next, ...quiet.map((room) => room.id)];
-    setPending(full);
-    props.onReorder?.(full);
-  };
-
-  // One column: a row moves up and down it, never sideways, never past its
-  // ends (the dock's `vertical` modifier).
-  const vertical: Modifier = ({
-    transform,
-    draggingNodeRect,
-    containerNodeRect,
-  }) => {
-    let y = transform.y;
-    if (draggingNodeRect && containerNodeRect) {
-      y = Math.min(
-        Math.max(y, containerNodeRect.top - draggingNodeRect.top),
-        containerNodeRect.bottom - draggingNodeRect.bottom,
-      );
-    }
-    return { ...transform, x: 0, y };
-  };
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const from = ids.indexOf(String(event.active.id));
-    const to = event.over ? ids.indexOf(String(event.over.id)) : -1;
-    if (from < 0 || to < 0 || from === to) return;
-    const next = [...ids];
-    next.splice(to, 0, ...next.splice(from, 1));
-    save(next);
-  };
-
-  const onReorderKey =
-    (id: string) => (event: KeyboardEvent<HTMLButtonElement>) => {
-      const held = picked?.id === id;
-      if (event.key === " ") {
-        event.preventDefault();
-        if (!held) {
-          setPicked({ id, before: ids });
-          setAnnouncement(tr("dock.reorder.picked", { args: [nameOf(id)] }));
-          return;
-        }
-      }
-      if (!held) return;
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-        event.preventDefault();
-        const from = ids.indexOf(id);
-        const to = from + (event.key === "ArrowUp" ? -1 : 1);
-        if (to < 0 || to >= ids.length) return;
-        const next = [...ids];
-        next.splice(to, 0, ...next.splice(from, 1));
-        // Drawn now, saved on the drop.
-        setPending([...next, ...quiet.map((room) => room.id)]);
-        setAnnouncement(
-          tr("dock.reorder.moved", {
-            args: [nameOf(id), String(to + 1), String(ids.length)],
-          }),
-        );
-        return;
-      }
-      if (event.key === " " || event.key === "Enter") {
-        event.preventDefault();
-        setPicked(undefined);
-        setAnnouncement(tr("dock.reorder.dropped", { args: [nameOf(id)] }));
-        if (ids.join(",") !== picked.before.join(",")) save(ids);
-        return;
-      }
-      if (event.key === "Escape" || event.key === "Tab") {
-        if (event.key === "Escape") event.preventDefault();
-        setPending(undefined);
-        setPicked(undefined);
-        setAnnouncement(tr("dock.reorder.cancelled", { args: [nameOf(id)] }));
-      }
-    };
+  const byId = new Map(active.map((room) => [room.id, room]));
+  // The shared sortable list (#Q4128): a drop or a keyboard step is drawn
+  // at once and held until the rooms read back in their new order.
+  const list = useSortableList<string>({
+    ids: active.map((room) => room.id),
+    labelOf: (id) => byId.get(id)?.name ?? "",
+    // The whole list in its new order: the visible rooms as moved, then the
+    // folded ones, which keep their places after them.
+    onReorder: (next) =>
+      props.onReorder?.([...next, ...quiet.map((room) => room.id)]),
+    announcements: {
+      picked: (name) => tr("dock.reorder.picked", { args: [name] }),
+      moved: (name, at, total) =>
+        tr("dock.reorder.moved", { args: [name, String(at), String(total)] }),
+      dropped: (name) => tr("dock.reorder.dropped", { args: [name] }),
+      cancelled: (name) => tr("dock.reorder.cancelled", { args: [name] }),
+    },
+  });
+  const shown = list.order
+    .map((id) => byId.get(id))
+    .filter((room) => room !== undefined);
 
   return (
     <nav
@@ -185,7 +85,7 @@ const RoomList = (props: RoomListProps) => {
             {tr("chat.rooms.reorder.hint")}
           </span>
           <span aria-live="assertive" className="sr-only">
-            {announcement}
+            {list.announcement}
           </span>
         </>
       )}
@@ -207,15 +107,9 @@ const RoomList = (props: RoomListProps) => {
           </Button>
         )}
       </div>
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        modifiers={[vertical]}
-        autoScroll={{ threshold: { x: 0, y: 0.2 } }}
-        onDragEnd={onDragEnd}
-      >
+      <DndContext {...list.contextProps}>
         <ul className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2 py-2">
-          {active.map((room) => (
+          {shown.map((room) => (
             <RoomListRow
               key={room.id}
               room={room}
@@ -224,8 +118,8 @@ const RoomList = (props: RoomListProps) => {
               onOpen={props.onOpen}
               actions={props.actionsFor?.(room)}
               sortable={sortable}
-              picked={picked?.id === room.id}
-              onReorderKey={onReorderKey(room.id)}
+              picked={list.picked === room.id}
+              onReorderKey={list.onKeyDown(room.id)}
               describedBy={hintId}
             />
           ))}
