@@ -356,4 +356,4 @@ account `lore login` signed in; an API key is refused. See
 - [Feedback](/lore/docs/plan-feedback): the reports and answers behind
   several of these messages.
 - [Healthchecks](/lore/docs/ship-healthchecks): monitors, and their bell.
-- [Hosts](/lore/docs/ship-hosts): hosts, and their bell.
+- [Hosts](/lore/docs/project-hosts): hosts, and their bell.

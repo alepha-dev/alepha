@@ -14,12 +14,15 @@ import { describe, expect, it } from "vitest";
  * The backup answers, pinned from the Lore side, as `logs-result.json` is.
  *
  * Bay's `cmd/bay/testdata/backup-results/` (copied in
- * `fixtures/bay/backup-results/`) holds what each verb uploads; Bay's
+ * Ship's `test/fixtures/bay/backup-results/`) holds what each verb uploads; Bay's
  * `TestBackupResultsMatchTheSharedFixtures` refuses an upload carrying a field
  * these files lack. This asserts Lore accepts every file and strips nothing,
  * so a field one side adds alone goes red on one side or the other.
  */
-const DIR = join(import.meta.dirname, "fixtures/bay/backup-results");
+const DIR = join(
+  import.meta.dirname,
+  "../../../packages/@lore/ship/test/fixtures/bay/backup-results",
+);
 const load = (name: string): unknown =>
   JSON.parse(readFileSync(join(DIR, name), "utf8"));
 

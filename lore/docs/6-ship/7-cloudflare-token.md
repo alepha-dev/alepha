@@ -2,7 +2,7 @@
 
 To deploy to a Cloudflare account, Lore needs an API token that you create at
 Cloudflare and paste into the form that adds a Cloudflare
-[host](/lore/docs/ship-hosts), beside the account id. This page says which
+[host](/lore/docs/project-hosts), beside the account id. This page says which
 token to create.
 
 ## What to create
@@ -175,7 +175,7 @@ token has stopped passing, the host shows as **credential invalid** with the
 reason, and deploys to it are refused until the token is replaced. A token
 revoked or narrowed at Cloudflare shows within a day, not at the first deploy
 that fails, and whoever turned on a host bell is told (see
-[Hosts](/lore/docs/ship-hosts#who-is-told)).
+[Hosts](/lore/docs/project-hosts#who-is-told)).
 
 **Check again**, in the host's drawer, does the same thing on demand, which
 is what you want right after widening a token at Cloudflare.
@@ -190,7 +190,7 @@ an account-owned one, and delete it there.
 
 ## Next
 
-- [Hosts](/lore/docs/ship-hosts): lending the host to other projects,
+- [Hosts](/lore/docs/project-hosts): lending the host to other projects,
   who can manage it, deleting it.
 - [Deploying an app](/lore/docs/ship-deploying): pick the host and ship a
   build.

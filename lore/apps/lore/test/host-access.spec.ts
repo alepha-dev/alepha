@@ -5,8 +5,14 @@ import {
   ProjectHostController,
 } from "@lore/core/api";
 import { projectCapabilities, hosts } from "@lore/core/schemas";
-import { ReadCounter } from "@lore/core/testing";
+import {
+  ReadCounter,
+  createTestMemberByProjectId,
+  createTestProject,
+} from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { BackupController, LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import {
   MemberService,
@@ -20,13 +26,6 @@ import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ForbiddenError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { BackupController, LoreShipApi } from "../src/api/index.ts";
-import {
-  createTestMemberByProjectId,
-  createTestProject,
-  DeployTestEntities,
-} from "../src/testing/index.ts";
 
 class Repositories {
   hosts = $repository(hosts);

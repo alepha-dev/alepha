@@ -131,26 +131,6 @@ export class DeployShell {
       },
     ]);
 
-    this.shell.registerSettings({
-      key: "ship",
-      order: 50,
-      labelKey: "project.settings.nav.ship",
-      icon: AppWindow,
-      capability: "ship",
-      tabs: [
-        {
-          // ⚠️ Under Apps since #Q2565. It used to sit outside the capability
-          // pages so a project lent a host with no sigils would still see
-          // it; that was the `track` option, and this section is listed
-          // whenever `apps` is on, whatever `track` says. Deploying needs
-          // `apps` anyway.
-          route: "projectSettingsHosts",
-          labelKey: "project.settings.nav.hosts",
-          fullWidth: true,
-        },
-      ],
-    });
-
     // The Errors inbox sits in the sidebar's Plan group, so its settings do
     // too (#Q3703): a tab of Plan's section, while Ship is on. The page and
     // the rules are Ship's, which is why Ship adds it.

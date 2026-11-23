@@ -170,6 +170,6 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
 
 - [Stacks](/bay/docs/guides-stacks): a database or a queue deployed beside the
   app, from Lore.
-- [Hosts](/lore/docs/ship-hosts): lending one machine to several projects.
+- [Hosts](/lore/docs/project-hosts): lending one machine to several projects.
 - [A throwaway server, from a shell](/bay/docs/tutorials-a-throwaway-server): the
   same loop with no web page, for a server bought for an hour.

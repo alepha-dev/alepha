@@ -6,7 +6,13 @@ import {
   ProjectHostController,
 } from "@lore/core/api";
 import { projects, hostProjects, hosts } from "@lore/core/schemas";
+import {
+  createTestMemberByProjectId,
+  createTestProject,
+} from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi, AppController } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -21,13 +27,6 @@ import {
   NotFoundError,
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi, AppController } from "../src/api/index.ts";
-import {
-  createTestMemberByProjectId,
-  createTestProject,
-  DeployTestEntities,
-} from "../src/testing/index.ts";
 
 /**
  * `hosts` and `host_projects` are not part of `DeployTestEntities`,

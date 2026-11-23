@@ -14,10 +14,10 @@ repository (`bay/`), and its copies are the authority:
 - `compose/` is Bay's `internal/stack/testdata/conformance`: compose files Bay
   accepts and refuses, with its words, read by `stack-model.spec.ts`.
 - `logs-result.json` is Bay's `cmd/bay/testdata/logs-result.json`, what a
-  `logs` command uploads, read by `host-command-result.spec.ts`.
+  `logs` command uploads, read by `apps/lore/test/host-command-result.spec.ts`.
 - `backup-results/` is Bay's `cmd/bay/testdata/backup-results`, what the
   `backups-list`, `backup-verify`, `target-probe` and dry-run `restore`
-  commands upload, read by `host-backup-results.spec.ts`.
+  commands upload, read by `apps/lore/test/host-backup-results.spec.ts`.
 
 A change to the wire format changes Bay's fixtures and these copies in the
 same commit. `apps/e2e/cli/bay.e2e.spec.ts` runs the real Bay against a real

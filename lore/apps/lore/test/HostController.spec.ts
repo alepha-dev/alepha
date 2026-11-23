@@ -4,6 +4,7 @@ import {
   HostCommandService,
   HostService,
   HostController,
+  CredentialSealService,
 } from "@lore/core/api";
 import {
   hostInventories,
@@ -13,7 +14,13 @@ import {
   createHostBodySchema,
   type HostServerFrame,
 } from "@lore/core/schemas";
+import { createTestProject } from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi, CloudflareProbeService } from "@lore/ship/api";
+import {
+  DeployTestEntities,
+  MemoryCloudflareProbeService,
+} from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -28,17 +35,6 @@ import {
   ForbiddenError,
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import {
-  LoreShipApi,
-  CloudflareProbeService,
-  CredentialSealService,
-} from "../src/api/index.ts";
-import {
-  createTestProject,
-  DeployTestEntities,
-  MemoryCloudflareProbeService,
-} from "../src/testing/index.ts";
 
 /**
  * `hosts` is not part of `DeployTestEntities`, so this spec registers it

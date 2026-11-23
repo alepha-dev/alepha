@@ -402,13 +402,14 @@ test.describe("Project capabilities", () => {
     // it (#Q2565).
     await page.goto(`/${slug}/settings`);
     await page.waitForLoadState("networkidle");
-    for (const always of ["capabilities", "members"]) {
+    // Hosts is General's since #E166: a host works with every capability off.
+    for (const always of ["capabilities", "members", "hosts"]) {
       await expect(
         page.locator(`a[href="/${slug}/settings/${always}"]`).first(),
         always,
       ).toBeVisible({ timeout: 10_000 });
     }
-    for (const gone of ["work", "knowledge", "apps", "areas", "hosts"]) {
+    for (const gone of ["work", "knowledge", "apps", "areas"]) {
       await expect(
         page.locator(`a[href="/${slug}/settings/${gone}"]`),
         gone,

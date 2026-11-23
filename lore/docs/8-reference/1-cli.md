@@ -659,7 +659,7 @@ hosts the project is the home of; a reading verb (`get`, `wait`, `stats`) and
 `lend` among the hosts you can read, and `--home <project>` picks one when
 two share the slug.
 
-See [Hosts](/lore/docs/ship-hosts).
+See [Hosts](/lore/docs/project-hosts).
 
 ## Container registries
 

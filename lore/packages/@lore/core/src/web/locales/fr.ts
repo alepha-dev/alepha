@@ -1190,7 +1190,6 @@ export default {
   "project.settings.nav.members": "Membres",
   "project.settings.nav.plan": "Planifier",
   "project.settings.nav.remember": "Mémoriser",
-  "project.settings.nav.ship": "Livrer",
   "project.settings.nav.areas": "Domaines",
   "project.settings.tab.details": "Détails",
   "project.settings.tab.capabilities": "Capacités",

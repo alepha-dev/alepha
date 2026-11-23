@@ -5,7 +5,11 @@ import {
   hosts,
   type HostInventoryFrame,
 } from "@lore/core/schemas";
+import { createTestProject } from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { appInstances } from "@lore/ship/schemas";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -15,10 +19,6 @@ import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { appInstances } from "../src/schemas/index.ts";
-import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class InventoryRepositories {
   hosts = $repository(hosts);

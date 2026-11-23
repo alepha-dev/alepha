@@ -103,5 +103,5 @@ they can give the project back.
   which decides what ranks have to cover.
 - [Notifications](/lore/docs/project-notifications): how members hear about
   what concerns them.
-- [Hosts](/lore/docs/ship-hosts): who may add and change the machines a
+- [Hosts](/lore/docs/project-hosts): who may add and change the machines a
   project deploys to.

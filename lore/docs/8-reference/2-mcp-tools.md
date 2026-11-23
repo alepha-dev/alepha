@@ -289,7 +289,7 @@ the rest needs `app:manage` and the **Monitor apps** option.
 
 See [Deploying an app](/lore/docs/ship-deploying),
 [Artifacts](/lore/docs/ship-artifacts), [Stacks](/lore/docs/ship-stacks) and
-[Hosts](/lore/docs/ship-hosts).
+[Hosts](/lore/docs/project-hosts).
 
 | Tool              | What it does                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------- |
@@ -322,12 +322,12 @@ Some of Lore is not reachable over MCP. Reach for the page or the
 | [Notifications](/lore/docs/project-notifications)                | The bell. A comment naming someone reaches them.                                      |
 | Deleting a feedback report                                       | The Feedback page.                                                                    |
 | Deleting an error                                                | The Errors page.                                                                      |
-| Error ignore rules                                               | **Settings ▸ Ship**.                                                                  |
+| Error ignore rules                                               | **Settings ▸ Plan ▸ Errors**.                                                         |
 | Pushing a build                                                  | CI, with `lore artifacts push`.                                                       |
 | Building an app, or taking a deployed copy down                  | `lore deploy` and `lore apps destroy`.                                                |
 | Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                                              |
 | Creating a stack, uploading a revision, its variables and routes | `lore stack`, and the Stacks page.                                                    |
-| [Hosts](/lore/docs/ship-hosts) and their secrets                 | `lore host`. `host_stats` only reads: no tool creates, moves, assigns or deletes one. |
+| [Hosts](/lore/docs/project-hosts) and their secrets              | `lore host`. `host_stats` only reads: no tool creates, moves, assigns or deletes one. |
 | Container registry credentials                                   | `lore registry`.                                                                      |
 | API keys and account settings                                    | Your account, from a signed-in session.                                               |
 

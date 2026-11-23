@@ -16,7 +16,7 @@ Stacks are the **Deploy stacks** option of the Ship capability, off by default, 
 [Capabilities](/lore/docs/project-capabilities)). It adds **Stacks** to the
 sidebar.
 
-A stack needs somewhere to run: a Bay [host](/lore/docs/ship-hosts) lent to
+A stack needs somewhere to run: a Bay [host](/lore/docs/project-hosts) lent to
 the project, with **Allow deploys** on. Only a Bay host runs stacks.
 
 Reading takes `app:read`, which the default Member rank holds. Everything that
@@ -296,7 +296,7 @@ command line. See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Hosts](/lore/docs/ship-hosts): the servers a stack deploys to.
+- [Hosts](/lore/docs/project-hosts): the servers a stack deploys to.
 - [Stacks](/bay/docs/guides-stacks) in the Bay documentation: the Compose
   file, `x-lore` fields, backups and volumes.
 - [A throwaway server](/bay/docs/tutorials-a-throwaway-server): a server, a

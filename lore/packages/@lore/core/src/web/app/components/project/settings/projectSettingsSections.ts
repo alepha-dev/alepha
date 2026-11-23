@@ -68,15 +68,14 @@ export interface SettingsSectionDef {
   order: number;
   /**
    * The section's name in the Settings group: General, Members,
-   * Notifications, then a verb per capability (Plan, Remember, Ship).
+   * Notifications, then a verb per capability (Plan, Remember).
    */
   labelKey:
     | "project.settings.nav.general"
     | "project.settings.nav.members"
     | "project.settings.nav.notifications"
     | "project.settings.nav.plan"
-    | "project.settings.nav.remember"
-    | "project.settings.nav.ship";
+    | "project.settings.nav.remember";
   icon: LucideIcon;
   /**
    * The capability the section belongs to. Listed only while it is on: the
@@ -114,6 +113,14 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
       {
         route: "projectSettingsCapabilities",
         labelKey: "project.settings.tab.capabilities",
+      },
+      {
+        // Core's since #E166: a host works with Ship off, and a project may
+        // exist only to store hosts and lend them. It was a tab of Ship's
+        // section, which had no other and went with it.
+        route: "projectSettingsHosts",
+        labelKey: "project.settings.nav.hosts",
+        fullWidth: true,
       },
     ],
   },

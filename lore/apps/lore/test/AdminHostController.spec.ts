@@ -4,7 +4,10 @@ import {
   HostController,
 } from "@lore/core/api";
 import { hostProjects, hosts } from "@lore/core/schemas";
+import { createTestProject } from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { audits } from "alepha/api/audits";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -19,9 +22,6 @@ import {
   NotFoundError,
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class HostRepositories {
   hosts = $repository(hosts);

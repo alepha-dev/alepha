@@ -75,6 +75,10 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 
 ⚠️ An entry that carries a HOOK (`useReferences`, `useCollection`, `useOptions`, `useLine`...) is called once per entry, in a loop. That is legal only because these registries freeze the first time they are read: register from a shell's constructor, at boot, never later. A badge, a predicate or a breadcrumb reads module state through `ProjectShellContext.get`, never a hook, and declares the atoms it reads in `reads`. A module's account page is its own `$pageAccount` class (`WorkAccountRouter`, `DeployAccountRouter`), and filing across modules goes through core's `ResourceFilingController`. Browser-loadable runtime values (`CapabilityRegistry`, `DashboardMetricCatalog`, `KanbanColumnConfig`, `ProjectSlugService`, constants) live in `api/schemas/`, never in `api/entities` or `api/services`.
 
+## Hosts (#E166, folio #F1537)
+
+A host is core's: identity, enrolment and token, the socket, lending and the home project, events, the command and job queues, inventory, upgrades, stats and the offline alerts (the **monitor** role), Agent hosts (the **agent** role), the Hosts and Jobs pages and the console (`HostRouter`, `HostShell`). No capability gates any of it. A module adds a role through the registries: `HostUsageRegistry` (what deploys to a host, the copies its inventory expects), `HostTypeRegistry` (a type's credential behaviour), `HostCommandHandlerRegistry` (command kinds core does not answer), and on the web `HostRoleRegistry` (pills), `HostConsoleRegistry` (console tabs, Overview sections) and `HostTypeUiRegistry` (create fields, drawer section). Ship fills them for the **deploy** role; Build will add **ci**. `createTestHost` is `@lore/core/testing/hosts`, its own subpath, because browser specs load `./testing`.
+
 ## Capabilities: what a project DOES
 
 Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is

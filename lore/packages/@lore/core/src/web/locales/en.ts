@@ -1200,7 +1200,6 @@ export default {
   "project.settings.nav.members": "Members",
   "project.settings.nav.plan": "Plan",
   "project.settings.nav.remember": "Remember",
-  "project.settings.nav.ship": "Ship",
   "project.settings.nav.areas": "Areas",
   "project.settings.tab.details": "Details",
   "project.settings.tab.capabilities": "Capabilities",

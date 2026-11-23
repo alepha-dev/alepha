@@ -1,6 +1,8 @@
 import { projectEvents, HostOfflineJobs } from "@lore/core/api";
 import { hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -10,9 +12,6 @@ import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
 
 class HostRepositories {
   hosts = $repository(hosts);

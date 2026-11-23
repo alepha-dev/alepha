@@ -13,7 +13,14 @@ import {
   hostProjects,
   hosts,
 } from "@lore/core/schemas";
+import {
+  createTestMemberByProjectId,
+  createTestProject,
+} from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { appInstances } from "@lore/ship/schemas";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { organizationConfigAtom, RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -28,14 +35,6 @@ import {
   ForbiddenError,
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { appInstances } from "../src/schemas/index.ts";
-import {
-  createTestMemberByProjectId,
-  createTestProject,
-  DeployTestEntities,
-} from "../src/testing/index.ts";
 
 class Repositories {
   hosts = $repository(hosts);

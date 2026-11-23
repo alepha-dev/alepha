@@ -6,6 +6,9 @@ import {
 import { HostTools } from "@lore/core/mcp";
 import { hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { LoreShipMcp } from "@lore/ship/mcp";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -14,10 +17,6 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { currentUserAtom, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { LoreShipMcp } from "../src/mcp/index.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
 
 class HostRepositories {
   hosts = $repository(hosts);

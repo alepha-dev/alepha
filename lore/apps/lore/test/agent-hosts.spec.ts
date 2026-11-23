@@ -12,6 +12,8 @@ import {
   hosts,
 } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { LoreShipApi } from "@lore/ship/api";
+import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -20,9 +22,6 @@ import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { beforeEach, describe, it } from "vitest";
-
-import { LoreShipApi } from "../src/api/index.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
 
 class ConnectedTransport extends HostCommandTransport {
   override async push(_host: Host, _frame: unknown): Promise<boolean> {
