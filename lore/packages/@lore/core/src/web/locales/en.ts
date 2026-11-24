@@ -840,6 +840,7 @@ export default {
     "This build carries no manifest, so what it needs is unknown.",
   "artifact.needs.platforms": "Platforms",
   "artifact.needs.resources": "Resources",
+  "artifact.needs.resources.none": "None",
   "artifact.needs.slices": "Runtimes",
   "artifact.needs.crons": "Crons",
   "artifact.needs.secrets": "Secrets",

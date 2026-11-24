@@ -748,6 +748,7 @@ export default {
     "Ce build n'a pas de manifeste : ses besoins sont inconnus.",
   "artifact.needs.platforms": "Plateformes",
   "artifact.needs.resources": "Ressources",
+  "artifact.needs.resources.none": "Aucune",
   "artifact.needs.slices": "Runtimes",
   "artifact.needs.crons": "Crons",
   "artifact.needs.secrets": "Secrets",

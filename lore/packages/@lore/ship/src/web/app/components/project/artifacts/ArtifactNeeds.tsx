@@ -47,22 +47,29 @@ const ArtifactNeeds = (props: ArtifactNeedsProps) => {
         ]);
       }
     };
-    if (summary.resources.length) {
-      rows.push([
-        tr("artifact.needs.resources"),
+    // Only what the build declares (#Q4264): a kind it does not need is
+    // not listed, and a build that needs none says so in a word.
+    const needed = summary.resources.filter((it) => it.on);
+    rows.push([
+      tr("artifact.needs.resources"),
+      needed.length ? (
         <span key="resources" className="flex flex-wrap gap-1.5">
-          {summary.resources.map((it) => (
-            <Badge
-              key={it.name}
-              variant={it.on ? "secondary" : "outline"}
-              className={it.on ? undefined : "text-muted-foreground"}
-            >
+          {needed.map((it) => (
+            <Badge key={it.name} variant="secondary">
               {it.name}
             </Badge>
           ))}
-        </span>,
-      ]);
-    }
+        </span>
+      ) : (
+        <span
+          key="resources"
+          className="text-muted-foreground"
+          data-testid="artifact-needs-no-resources"
+        >
+          {tr("artifact.needs.resources.none")}
+        </span>
+      ),
+    ]);
     list(
       tr("artifact.needs.slices"),
       summary.slices.map((slice) =>
