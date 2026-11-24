@@ -92,6 +92,7 @@ export default {
   "notifications.bell.authors": "From whom",
   "notifications.bell.confirm": "Notify me",
   "notifications.event.feedback.created": "New feedback",
+  "notifications.event.feedback.trusted": "Feedback trusted",
   "notifications.event.release.published": "Release published",
   "notifications.event.epic.completed": "Epic completed",
   "notifications.event.quest.created": "Quest created",

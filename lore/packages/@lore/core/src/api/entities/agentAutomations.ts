@@ -56,6 +56,27 @@ export const agentAutomations = $entity({
       "manual",
     ),
     /**
+     * The project events an `event` automation listens to (#Q4227), keys of
+     * the catalog (`feedback.created`, `quest.created`).
+     */
+    eventKeys: z.array(z.string().max(64)).max(16).optional(),
+    /**
+     * How long a run waits after the first event of a burst (#Q4227), so
+     * the burst lands in one prompt. Seconds.
+     */
+    settleSeconds: db.default(z.integer().min(0).max(3600), 60),
+    /**
+     * An event arrived and its run has not started yet (#Q4227): waiting
+     * out the settle delay, or for the running job to end. Ten events in a
+     * minute set it once.
+     */
+    pending: db.default(z.boolean(), false),
+    /**
+     * The job that raised the pending event, when a job did: the run it
+     * starts records it as its parent, which the chain guard reads.
+     */
+    pendingJobId: z.uuid().optional(),
+    /**
      * Run only when Lore finds something to do first (#Q4228), so an idle
      * project spends no tokens. A run by hand ignores it.
      */

@@ -17,6 +17,7 @@ import { BatchRepository } from "./BatchRepository.ts";
 import { ChannelRoomRegistry } from "./ChannelRoomRegistry.ts";
 import { ProjectChannelService } from "./ProjectChannelService.ts";
 import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
+import { ProjectEventListeners } from "./ProjectEventListeners.ts";
 import { ProjectRecipients } from "./ProjectRecipients.ts";
 
 /**
@@ -47,6 +48,7 @@ export class ProjectEventDelivery {
   protected readonly jobs = $inject(JobProvider);
   protected readonly catalog = $inject(ProjectEventCatalog);
   protected readonly recipients = $inject(ProjectRecipients);
+  protected readonly listeners = $inject(ProjectEventListeners);
   protected readonly notifications = $inject(ProjectEventNotifications);
   protected readonly subscriptions = $repository(eventSubscriptions);
   protected readonly channels = $repository(notificationChannels);
@@ -62,17 +64,23 @@ export class ProjectEventDelivery {
 
   /**
    * The delivery job's row for one event, or nothing when no unmuted
-   * subscription to it exists in the project.
+   * subscription to it exists in the project and no listener hears it (an
+   * agent automation, #Q4227).
    */
   public async prepare(
     projectId: number,
     name: string,
     eventId: string,
   ): Promise<{ id: string; statements: SQLLike[] } | undefined> {
-    const subscribed = await this.subscriptions.findOne({
-      where: { projectId, event: name, mutedAt: { isNull: true } },
-    });
-    if (!subscribed) return undefined;
+    // One round trip: whether anyone is subscribed and whether an
+    // automation listens are asked together (#Q4227).
+    const [subscribed, listening] = await Promise.all([
+      this.subscriptions.findOne({
+        where: { projectId, event: name, mutedAt: { isNull: true } },
+      }),
+      this.listeners.listening(projectId, name),
+    ]);
+    if (!subscribed && !listening) return undefined;
     const registration = this.jobs
       .getRegisteredJobs()
       .get(ProjectEventDelivery.JOB);
@@ -115,9 +123,28 @@ export class ProjectEventDelivery {
 
   /**
    * The delivery job's body: every unmuted subscription to the event whose
-   * filter matches, each channel in its own memoised step.
+   * filter matches, each channel in its own memoised step, then each
+   * listener (#Q4227) in a step of its own.
    */
   public async deliver(
+    event: ProjectEvent,
+    step: (name: string, fn: () => Promise<boolean>) => Promise<boolean>,
+  ): Promise<number> {
+    const sent = await this.tell(event, step);
+    for (const listener of this.listeners.all()) {
+      if (!(await listener.listens(event.projectId, event.name))) continue;
+      await step(`listen.${listener.name}`, async () => {
+        await listener.receive(event);
+        return true;
+      });
+    }
+    return sent;
+  }
+
+  /**
+   * The subscriptions' half of {@link deliver}.
+   */
+  protected async tell(
     event: ProjectEvent,
     step: (name: string, fn: () => Promise<boolean>) => Promise<boolean>,
   ): Promise<number> {
