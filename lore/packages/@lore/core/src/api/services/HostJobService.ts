@@ -93,6 +93,24 @@ export class HostJobService {
             },
           })
         ).map((job) => this.summary(job)),
+      countAutomationJobs: async (filter) =>
+        (
+          await this.jobs.findMany({
+            where: {
+              queuedAt: { gte: filter.since },
+              automationId: filter.automationId
+                ? { eq: filter.automationId }
+                : { isNotNull: true },
+              ...(filter.projectId === undefined
+                ? {}
+                : { projectId: { eq: filter.projectId } }),
+              ...(filter.subjectType
+                ? { subjectType: { eq: filter.subjectType } }
+                : {}),
+            },
+            columns: ["id"],
+          })
+        ).length,
       automationJobsOn: async (projectId, subjectType, subjectIds) =>
         (
           await this.bound.collect(subjectIds, (batch) =>

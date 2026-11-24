@@ -4,6 +4,7 @@ import { $action, okSchema } from "alepha/server";
 import { agentAutomationCreateSchema } from "../schemas/agentAutomationCreateSchema.ts";
 import { agentAutomationResourceSchema } from "../schemas/agentAutomationResourceSchema.ts";
 import { agentAutomationRunResultSchema } from "../schemas/agentAutomationRunResultSchema.ts";
+import { agentAutomationSettingsSchema } from "../schemas/agentAutomationSettingsSchema.ts";
 import { agentAutomationWriteSchema } from "../schemas/agentAutomationWriteSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AgentAutomationService } from "../services/AgentAutomationService.ts";
@@ -111,4 +112,54 @@ export class AgentAutomationController {
         { startedBy: user.id },
       ),
   });
+
+  /**
+   * The project's pause and its daily build ceiling (#Q4230).
+   */
+  getProjectAutomationSettings = $action({
+    use: [$ownsProject({ param: "projectId", requires: "host:read" })],
+    method: "GET",
+    path: "/projects/:projectId/automation-settings",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: agentAutomationSettingsSchema,
+    },
+    handler: ({ params }) => this.settings(params.projectId),
+  });
+
+  /**
+   * Pauses or resumes every automation of the project, and sets its daily
+   * build ceiling (`null` for the default). A run by hand works while
+   * paused.
+   */
+  setProjectAutomationSettings = $action({
+    use: [$ownsProject({ param: "projectId", requires: "automation:manage" })],
+    method: "POST",
+    path: "/projects/:projectId/automation-settings",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        paused: z.boolean().optional(),
+        buildsPerDay: z.integer().min(0).max(1000).nullable().optional(),
+      }),
+      response: agentAutomationSettingsSchema,
+    },
+    handler: async ({ params, body }) => {
+      if (body.paused !== undefined) {
+        await this.service.setPaused(params.projectId, body.paused);
+      }
+      if (body.buildsPerDay !== undefined) {
+        await this.service.setBuildsPerDay(params.projectId, body.buildsPerDay);
+      }
+      return this.settings(params.projectId);
+    },
+  });
+
+  protected async settings(projectId: number) {
+    const pausedAt = await this.service.pausedAt(projectId);
+    return {
+      ...(pausedAt ? { pausedAt } : {}),
+      buildsPerDay: await this.service.buildsPerDay(projectId),
+    };
+  }
 }

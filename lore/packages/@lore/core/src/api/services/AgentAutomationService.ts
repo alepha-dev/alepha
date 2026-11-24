@@ -13,6 +13,8 @@ import {
   type AgentAutomation,
   agentAutomations,
 } from "../entities/agentAutomations.ts";
+import { projects } from "../entities/projects.ts";
+import { projectThresholds } from "../entities/projectThresholds.ts";
 import type { AgentAutomationWrite } from "../schemas/agentAutomationWriteSchema.ts";
 import {
   AgentAutomationKinds,
@@ -20,10 +22,12 @@ import {
 } from "./AgentAutomationKinds.ts";
 import { AgentJobs } from "./AgentJobs.ts";
 import { AgentRunPreamble } from "./AgentRunPreamble.ts";
+import { AutomationProjectEvents } from "./AutomationProjectEvents.ts";
 import { HostJobs } from "./HostJobs.ts";
 import { ProjectDeletionService } from "./ProjectDeletionService.ts";
 import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
+import { SourceRepository } from "./SourceRepository.ts";
 
 /**
  * Agent automations (#E172, #Q4226): a prompt run on an Agent host, by hand,
@@ -62,6 +66,11 @@ export class AgentAutomationService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly deletion = $inject(ProjectDeletionService);
   protected readonly catalog = $inject(ProjectEventCatalog);
+  protected readonly projects = $repository(projects);
+  protected readonly thresholds = $repository(projectThresholds);
+  protected readonly events = $inject(SourceRepository.of(agentAutomations));
+  /** Injected so its events are in the catalog whatever booted core. */
+  protected readonly eventDefinitions = $inject(AutomationProjectEvents);
 
   constructor() {
     // A deleted project is a soft delete: no cascade removes its
@@ -170,7 +179,12 @@ export class AgentAutomationService {
    */
   public async run(
     automation: AgentAutomation,
-    input: { startedBy?: string; startedByJobId?: string } = {},
+    input: {
+      startedBy?: string;
+      startedByJobId?: string;
+      /** The most jobs this run may start: what its ceilings leave. */
+      limit?: number;
+    } = {},
   ): Promise<AgentAutomationRunOutcome> {
     const startedBy = input.startedBy ?? automation.createdBy;
     if (!startedBy) {
@@ -181,7 +195,10 @@ export class AgentAutomationService {
       };
     }
     const active = await this.hostJobs.activeForAutomation(automation.id);
-    const slots = this.concurrencyOf(automation) - active.length;
+    const slots = Math.min(
+      this.concurrencyOf(automation) - active.length,
+      input.limit ?? Number.POSITIVE_INFINITY,
+    );
     if (slots <= 0) {
       return {
         jobIds: [],
@@ -233,12 +250,23 @@ export class AgentAutomationService {
   ): Promise<AgentAutomationRunOutcome> {
     let outcome: AgentAutomationRunOutcome;
     try {
+      // The guards first (#Q4230): the project's pause, the host, the
+      // ceilings. None of them queues anything or counts as a failure.
+      const gate = await this.gate(automation);
       // "Only if there is something" (#Q4228): a plain query before any
       // job is queued, for an event run as for a scheduled one.
       outcome =
-        automation.onlyIfWork && !(await this.hasWork(automation))
-          ? { jobIds: [], skipped: "Nothing to do" }
-          : await this.run(automation, { startedByJobId });
+        "skipped" in gate
+          ? { jobIds: [], skipped: gate.skipped }
+          : automation.onlyIfWork && !(await this.hasWork(automation))
+            ? { jobIds: [], skipped: "Nothing to do" }
+            : await this.run(automation, {
+                startedByJobId,
+                limit: gate.limit,
+              });
+      if ("skipped" in gate && gate.ceiling) {
+        await this.ceilingReached(automation, gate.skipped);
+      }
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "The run was refused";
@@ -255,6 +283,193 @@ export class AgentAutomationService {
       });
     }
     return outcome;
+  }
+
+  /**
+   * The default of the project's daily ceiling on automation builds.
+   */
+  public static readonly BUILDS_PER_DAY = 20;
+
+  /**
+   * What stops a triggered run before anything is asked of a host
+   * (#Q4230), or the most jobs it may start:
+   * - the project's pause (`automationsPausedAt`);
+   * - its host offline, or no longer reporting its agent: a skip, never a
+   *   failure;
+   * - its own ceilings, runs per hour and per day, counted on its jobs;
+   * - for a build, the project's builds per day.
+   */
+  public async gate(
+    automation: AgentAutomation,
+  ): Promise<{ limit: number } | { skipped: string; ceiling?: boolean }> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: automation.projectId } },
+    });
+    if (project?.automationsPausedAt) {
+      return { skipped: "Automations are paused in this project" };
+    }
+    const host = await this.hostOf(automation);
+    if (host) return { skipped: host };
+    const now = this.dateTime.nowMillis();
+    const ago = (ms: number) => new Date(now - ms).toISOString();
+    const hour = await this.hostJobs.countAutomationJobs({
+      automationId: automation.id,
+      since: ago(3_600_000),
+    });
+    if (hour >= automation.maxRunsPerHour) {
+      return {
+        skipped: `Ceiling reached: ${automation.maxRunsPerHour} runs in the last hour`,
+        ceiling: true,
+      };
+    }
+    const day = await this.hostJobs.countAutomationJobs({
+      automationId: automation.id,
+      since: ago(86_400_000),
+    });
+    if (day >= automation.maxRunsPerDay) {
+      return {
+        skipped: `Ceiling reached: ${automation.maxRunsPerDay} runs in the last day`,
+        ceiling: true,
+      };
+    }
+    let limit = Math.min(
+      automation.maxRunsPerHour - hour,
+      automation.maxRunsPerDay - day,
+    );
+    if (automation.promptKind === "build") {
+      const cap = await this.buildsPerDay(automation.projectId);
+      const built = await this.hostJobs.countAutomationJobs({
+        projectId: automation.projectId,
+        subjectType: "quest",
+        since: ago(86_400_000),
+      });
+      if (built >= cap) {
+        return {
+          skipped: `Ceiling reached: the project's ${cap} automation builds in the last day`,
+          ceiling: true,
+        };
+      }
+      limit = Math.min(limit, cap - built);
+    }
+    return { limit };
+  }
+
+  /**
+   * Why the automation's host cannot take a run now, or undefined: offline,
+   * gone, or no longer reporting the agent it names (#Q4220).
+   */
+  protected async hostOf(
+    automation: AgentAutomation,
+  ): Promise<string | undefined> {
+    let resolved: Awaited<ReturnType<AgentJobs["resolve"]>>;
+    try {
+      resolved = await this.agents.resolve(
+        automation.projectId,
+        this.whereOf(automation),
+      );
+    } catch (error) {
+      return error instanceof Error ? error.message : "No Agent host";
+    }
+    if (resolved.host.offline) {
+      return `Host "${resolved.host.slug}" is offline`;
+    }
+    if (resolved.host.status && resolved.host.status !== "available") {
+      return `Host "${resolved.host.slug}" is ${resolved.host.status}`;
+    }
+    return undefined;
+  }
+
+  /**
+   * The project's daily ceiling on automation builds.
+   */
+  public async buildsPerDay(projectId: number): Promise<number> {
+    const row = await this.thresholds.findOne({
+      where: { projectId: { eq: projectId } },
+    });
+    return row?.automationBuildsPerDay ?? AgentAutomationService.BUILDS_PER_DAY;
+  }
+
+  /**
+   * Sets the project's daily ceiling on automation builds, `null` for the
+   * default.
+   */
+  public async setBuildsPerDay(
+    projectId: number,
+    value: number | null,
+  ): Promise<number> {
+    const row = await this.thresholds.findOne({
+      where: { projectId: { eq: projectId } },
+    });
+    if (row) {
+      await this.thresholds.updateById(row.id, {
+        automationBuildsPerDay: value as never,
+      });
+    } else if (value !== null) {
+      await this.thresholds.create({
+        projectId,
+        automationBuildsPerDay: value,
+      });
+    }
+    return this.buildsPerDay(projectId);
+  }
+
+  /**
+   * Pauses every automation of the project, or resumes them (#Q4230).
+   */
+  public async setPaused(projectId: number, paused: boolean): Promise<void> {
+    await this.projects.updateById(projectId, {
+      automationsPausedAt: (paused
+        ? this.dateTime.nowISOString()
+        : null) as never,
+    });
+  }
+
+  public async pausedAt(projectId: number): Promise<string | undefined> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    return project?.automationsPausedAt ?? undefined;
+  }
+
+  /**
+   * Records a ceiling's refusal with `automation.ceiling.reached`, once per
+   * stretch: a second refusal for the same reason tells nobody again.
+   */
+  protected async ceilingReached(
+    automation: AgentAutomation,
+    reason: string,
+  ): Promise<void> {
+    if (automation.lastSkippedReason === reason) return;
+    await this.events
+      .sourceUpdate(
+        { id: automation.id },
+        {
+          lastSkippedAt: this.dateTime.nowISOString(),
+          lastSkippedReason: reason,
+        },
+        {
+          projectId: automation.projectId,
+          name: "automation.ceiling.reached",
+          subjectId: automation.id,
+          fields: {
+            project: (
+              await this.projects.findOne({
+                where: { id: { eq: automation.projectId } },
+              })
+            )?.title,
+            title: automation.name,
+            automation_id: automation.id,
+            automation: automation.name,
+            reason,
+          },
+        },
+      )
+      .catch((error) =>
+        this.log.warn("An automation's ceiling could not be recorded", {
+          automation: automation.id,
+          error,
+        }),
+      );
   }
 
   /**
@@ -392,6 +607,8 @@ export class AgentAutomationService {
       onlyIfWork: body.onlyIfWork ?? row?.onlyIfWork ?? false,
       autoMerge: body.autoMerge ?? row?.autoMerge ?? false,
       concurrency: body.concurrency ?? row?.concurrency ?? 1,
+      maxRunsPerHour: body.maxRunsPerHour ?? row?.maxRunsPerHour ?? 6,
+      maxRunsPerDay: body.maxRunsPerDay ?? row?.maxRunsPerDay ?? 48,
       enabled: body.enabled ?? row?.enabled ?? true,
     };
   }

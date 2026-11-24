@@ -29,6 +29,12 @@ export const projectThresholds = $entity({
     coverageArmed: z.boolean().optional(),
     openErrorsMax: z.integer().min(0).optional(),
     errorsArmed: z.boolean().optional(),
+    /**
+     * The most build jobs the project's agent automations start in a day
+     * (#Q4230), so a triage that files fifty quests does not open fifty
+     * pull requests overnight. Absent reads as 20.
+     */
+    automationBuildsPerDay: z.integer().min(0).max(1000).optional(),
   }),
   indexes: [{ columns: ["projectId"], unique: true }],
 });
