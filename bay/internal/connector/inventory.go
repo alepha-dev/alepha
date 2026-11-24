@@ -46,6 +46,9 @@ type InventoryJobs struct {
 	// write (#E173). Lore refuses a read or write job on a bay that does not
 	// say so, rather than send a spec it would refuse as unreadable.
 	Sources bool `json:"sources,omitempty"`
+	// MaxJobs is how many jobs this machine runs at once, its
+	// `--max-jobs` (#Q4249): Lore dispatches up to that many.
+	MaxJobs int `json:"maxJobs,omitempty"`
 }
 
 /*

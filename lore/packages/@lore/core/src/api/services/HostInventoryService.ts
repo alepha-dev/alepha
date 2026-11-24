@@ -77,8 +77,21 @@ export class HostInventoryService {
     // Whether its Bay prepares a job's source (#E173), which the gate on
     // read and write jobs reads.
     const sources = frame.jobs?.sources === true;
-    if ((host.jobsSources ?? false) !== sources) {
-      await this.hosts.updateById(host.id, { jobsSources: sources });
+    // How many jobs it runs at once, and runs now (#Q4249).
+    const maxJobs = frame.jobs?.maxJobs ?? null;
+    const running = frame.jobs
+      ? (frame.jobs.running ?? "").split(",").filter(Boolean).length
+      : null;
+    if (
+      (host.jobsSources ?? false) !== sources ||
+      (host.jobsMaxJobs ?? null) !== maxJobs ||
+      (host.jobsRunning ?? null) !== running
+    ) {
+      await this.hosts.updateById(host.id, {
+        jobsSources: sources,
+        jobsMaxJobs: maxJobs,
+        jobsRunning: running,
+      });
     }
 
     const existing = await this.findFor(host.id);

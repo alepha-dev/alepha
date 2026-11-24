@@ -41,7 +41,8 @@ func lockWorkspace(root, project, workspace string) (func(), error) {
 		return nil, fmt.Errorf("could not lock the workspace %s/%s: %w", project, workspace, err)
 	}
 	if !ok {
-		return nil, fmt.Errorf("a job already runs in the workspace %s/%s: one at a time", project, workspace)
+		// Busy (#Q4249): a job's ack says so, and Lore queues it again.
+		return nil, busyError{fmt.Sprintf("a job already runs in the workspace %s/%s: one at a time", project, workspace)}
 	}
 	return unlock, nil
 }

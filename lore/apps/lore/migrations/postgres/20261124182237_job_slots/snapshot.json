@@ -1,0 +1,89 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "27e11527-6576-45da-aa4c-020f8b801ac6",
+  "prevIds": ["b40b8471-8130-40f5-87ae-0e88ffec94b8"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "busy_at"],
+      "writes": [
+        "s|col|public.host_jobs.busy_at",
+        "n|col|public.host_jobs.busy_at",
+        "e|col|public.host_jobs.busy_at"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_max_jobs"],
+      "writes": [
+        "s|col|public.hosts.jobs_max_jobs",
+        "n|col|public.hosts.jobs_max_jobs",
+        "e|col|public.hosts.jobs_max_jobs"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_running"],
+      "writes": [
+        "s|col|public.hosts.jobs_running",
+        "n|col|public.hosts.jobs_running",
+        "e|col|public.hosts.jobs_running"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "busy_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "jobs_max_jobs",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "jobs_running",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -164,6 +164,92 @@ describe("HostJobService", () => {
     expect(next.status).toBe("running");
   });
 
+  it("dispatches up to the host's --max-jobs, and never two jobs into a workspace a write job holds (#Q4249)", async ({
+    expect,
+  }) => {
+    await w.repos.hosts.updateById(w.host.id, { jobsMaxJobs: 3 });
+    const startWith = (extra: Record<string, unknown>) =>
+      w.service.start({
+        projectId: w.projectId,
+        hostId: w.host.id,
+        kind: "agent",
+        input: { ...input, ...extra },
+        startedBy: w.ownerId,
+      });
+    const write = await startWith({
+      workspace: "q1",
+      source: { mode: "write", branch: "lore/q1" },
+    });
+    const sameWorkspace = await startWith({ workspace: "q1" });
+    const read = await startWith({
+      workspace: "triage",
+      source: { mode: "read" },
+    });
+    const third = await startWith({
+      workspace: "review",
+      source: { mode: "read" },
+    });
+    const fourth = await startWith({ workspace: "text" });
+    expect(write.status).toBe("running");
+    // Its workspace is held by a running write job: it waits, and the
+    // others behind it go first.
+    expect(sameWorkspace.status).toBe("queued");
+    expect(read.status).toBe("running");
+    expect(third.status).toBe("running");
+    // Three slots, three running.
+    expect(fourth.status).toBe("queued");
+
+    await w.commands.ack(w.host.id, {
+      id: (await commandOf(w, write.id)).id,
+      status: "done",
+      exitCode: 0,
+    });
+    const after = await w.repos.jobs.findMany({
+      where: { id: { inArray: [sameWorkspace.id, fourth.id] } },
+    });
+    // One slot freed: the oldest waiting job takes it, now its workspace
+    // is free.
+    expect(after.find((it) => it.id === sameWorkspace.id)?.status).toBe(
+      "running",
+    );
+    expect(after.find((it) => it.id === fourth.id)?.status).toBe("queued");
+  });
+
+  it("puts a job the host acked busy back in the queue, offered again only once a job of the host ends (#Q4249)", async ({
+    expect,
+  }) => {
+    await w.repos.hosts.updateById(w.host.id, { jobsMaxJobs: 2 });
+    const a = await start(w);
+    const b = await start(w);
+    const busyCommand = await commandOf(w, b.id);
+    await w.commands.ack(w.host.id, {
+      id: busyCommand.id,
+      status: "failed",
+      step: "busy",
+      reason: "a job already runs in the workspace acme/triage: one at a time",
+    });
+    const requeued = await w.repos.jobs.getOne({ where: { id: { eq: b.id } } });
+    expect(requeued.status).toBe("queued");
+    expect(requeued.busyAt).toBeDefined();
+    expect(requeued.commandId ?? undefined).toBeUndefined();
+    // A new job, a sweep: neither retries it while its host ends nothing.
+    await w.service.sweep();
+    await start(w);
+    expect(
+      (await w.repos.jobs.getOne({ where: { id: { eq: b.id } } })).status,
+    ).toBe("queued");
+
+    await w.commands.ack(w.host.id, {
+      id: (await commandOf(w, a.id)).id,
+      status: "done",
+      exitCode: 0,
+    });
+    const again = await w.repos.jobs.getOne({ where: { id: { eq: b.id } } });
+    expect(again.status).toBe("running");
+    expect(again.busyAt ?? undefined).toBeUndefined();
+    expect(again.commandId).not.toBe(busyCommand.id);
+  });
+
   it("refuses a host whose jobs are off", async ({ expect }) => {
     await w.repos.hosts.updateById(w.host.id, { jobsAllowed: false });
     await expect(start(w)).rejects.toThrow("does not run jobs");

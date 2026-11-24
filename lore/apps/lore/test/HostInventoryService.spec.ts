@@ -194,6 +194,24 @@ describe("HostInventoryService", () => {
     });
     expect(row.jobsTools).toEqual(tools);
     expect(AgentHostService.agentsOf(row.jobsTools)).toEqual(["claude"]);
+
+    // Its sources and its slots (#E173, #Q4249): two running of three.
+    const running = [
+      "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
+      "6b8d0f2c-4e3a-4b7c-9d2f-0a1b2c3d4e5f",
+    ].join(",");
+    await ctx.service.record(row, {
+      ...frame([]),
+      jobs: { user: "bay-agent", tools, sources: true, maxJobs: 3, running },
+    });
+    const slots = await ctx.repos.hosts.getOne({
+      where: { id: { eq: host.id } },
+    });
+    expect(slots).toMatchObject({
+      jobsSources: true,
+      jobsMaxJobs: 3,
+      jobsRunning: 2,
+    });
   });
 
   it("answers nothing for a machine that has never reported", async ({

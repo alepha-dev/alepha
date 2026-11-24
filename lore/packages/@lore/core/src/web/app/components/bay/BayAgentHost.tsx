@@ -125,6 +125,18 @@ const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
                 {host.agentError}
               </span>
             )}
+            {/* How many jobs it runs, of how many it may (#Q4249). */}
+            <span
+              className="text-muted-foreground text-xs"
+              data-testid="bay-agent-running"
+            >
+              {tr("hosts.agent.running", {
+                args: [
+                  String(host.jobsRunning ?? 0),
+                  String(host.jobsMaxJobs ?? 1),
+                ],
+              })}
+            </span>
             {host.jobsTools && (
               <ul
                 className="text-muted-foreground flex flex-col gap-0.5 text-xs"

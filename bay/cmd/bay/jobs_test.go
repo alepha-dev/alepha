@@ -442,7 +442,7 @@ func TestJobRunRefusals(t *testing.T) {
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
 		last := w.run("job-b", w.agentSpec(map[string]any{"workspace": "other"})).last()
-		if last.Status != "failed" || !strings.Contains(last.Reason, "its limit") {
+		if last.Status != "failed" || last.Step != stepBusy || !strings.Contains(last.Reason, "its limit") {
 			t.Fatalf("ack = %+v", last)
 		}
 		w.acts.jobs.stop("job-a")
@@ -461,7 +461,7 @@ func TestJobRunRefusals(t *testing.T) {
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
 		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent claude started") })
 		last := w.run("job-same", w.agentSpec(nil)).last()
-		if last.Status != "failed" || !strings.Contains(last.Reason, "already runs in the workspace acme/triage") {
+		if last.Status != "failed" || last.Step != stepBusy || !strings.Contains(last.Reason, "already runs in the workspace acme/triage") {
 			t.Fatalf("ack = %+v", last)
 		}
 		go w.run("job-b", w.agentSpec(map[string]any{"workspace": "q12", "timeoutSeconds": 3600}))
@@ -708,7 +708,7 @@ func TestJobsInventory(t *testing.T) {
 	w.stub(t, "git", "#!/bin/sh\necho 'git version 2.43.0'\n")
 	w.stub(t, "gh", "#!/bin/sh\nexit 1\n")
 	inv, _ := w.acts.Inventory(context.Background())
-	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources {
+	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources || inv.Jobs.MaxJobs != 1 {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
 	}
 	// Every adapter's CLI, then git, gh and lore, in that order (#Q4220).

@@ -688,7 +688,8 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	}
 	// Sources says this bay prepares a job's source (#Q4245): Lore sends a
 	// read or write job to no bay that does not say so.
-	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true}
+	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true,
+		MaxJobs: cfg.jobsLimit()}
 	// What the jobs user has, read again when older than ten minutes: a
 	// version command per tool is cheap, but not on every inventory.
 	j.toolsMu.Lock()
@@ -727,7 +728,9 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	jobCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	defer cancel(nil)
 	if limit := jobsCfg.jobsLimit(); !a.jobs.claim(cmd.ID, cancel, limit) {
-		return "failed", "", fmt.Sprintf("this bay already runs %d job(s) (%s), its limit: bay config jobs --max-jobs raises it", limit, a.jobs.runningIDs()), extra
+		// Busy, not refused (#Q4249): Lore queues it again when a job of
+		// this host ends.
+		return "failed", stepBusy, fmt.Sprintf("this bay already runs %d job(s) (%s), its limit: bay config jobs --max-jobs raises it", limit, a.jobs.runningIDs()), extra
 	}
 	defer a.jobs.release(cmd.ID)
 	if a.kick != nil {

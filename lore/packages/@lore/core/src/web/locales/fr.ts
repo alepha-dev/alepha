@@ -3232,6 +3232,7 @@ export default {
   "hosts.agent.tools.noAgent":
     "Aucune CLI d'agent ne répond pour l'utilisateur des jobs : cet hôte ne peut pas exécuter de jobs d'agent.",
   "hosts.agent.check": "Vérifier",
+  "hosts.agent.running": "$1 tâche(s) sur $2 en cours",
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":
     "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne le lit tant qu'un membre ne l'a pas lu et ne lui a pas fait confiance.",
