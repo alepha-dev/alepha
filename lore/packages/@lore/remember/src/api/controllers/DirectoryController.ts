@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, ResourceLinkService } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -6,6 +6,7 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
+import { folioGraphSchema } from "../schemas/folioGraphSchema.ts";
 import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
 import { FolioSearchTerms } from "../services/FolioSearchTerms.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
@@ -22,6 +23,7 @@ export class DirectoryController {
   protected readonly directoryService = $inject(FolioDirectoryService);
   protected readonly tables = $inject(FolioTableService);
   protected readonly searchTerms = $inject(FolioSearchTerms);
+  protected readonly links = $inject(ResourceLinkService);
 
   /**
    * The two gates this controller needs, declared above the actions: a
@@ -174,6 +176,41 @@ export class DirectoryController {
    * a listing, but finding one by name across the project is exactly
    * what a search is for.
    */
+  /**
+   * The project's folios and the wiki links between them (#Q4262), for the
+   * graph the folio menubar opens. Titles only: a protected folio shows its
+   * title in the tree too, and its links were read from the plaintext it
+   * was saved with.
+   */
+  folioGraph = $action({
+    method: "GET",
+    use: [this.ownsProject("folio:read")],
+    path: "/projects/:projectId/folio/graph",
+    description: "The project's folios and the wiki links between them.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: folioGraphSchema,
+    },
+    handler: async ({ params }) => {
+      const nodes = await this.folios.findMany({
+        where: { projectId: { eq: params.projectId } },
+        columns: ["id", "shortId", "title"],
+        orderBy: [{ column: "shortId", direction: "asc" }],
+      });
+      const edges = await this.links.folioLinksAmong(
+        nodes.map((node) => node.id),
+      );
+      return {
+        nodes: nodes.map((node) => ({
+          id: node.id,
+          shortId: node.shortId,
+          title: node.title,
+        })),
+        edges: edges.map((edge) => ({ from: edge.fromId, to: edge.toId })),
+      };
+    },
+  });
+
   searchFolio = $action({
     method: "GET",
     use: [this.ownsProject("folio:read")],

@@ -209,6 +209,27 @@ test.describe("Folio workspace", () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
+  test("04b — the menubar's graph draws the folio and its link, and a node opens its folio", async () => {
+    // Test 04 left `otherTitle` linking to `folioTitle` (#Q4262).
+    await page.goto(folioUrl);
+    await page.getByTestId("folio-graph-button").click();
+    const graph = page.getByTestId("folio-graph");
+    await expect(graph).toBeVisible({ timeout: 15_000 });
+    await expect(graph.locator("line")).toHaveCount(1);
+    const current = graph.locator('[data-current="true"]');
+    await expect(current).toContainText(folioTitle);
+
+    await graph
+      .getByTestId("folio-graph-node")
+      .filter({ hasText: otherTitle })
+      // The dot: a label never takes a click, so it cannot steal one from
+      // a neighbour.
+      .locator("circle")
+      .click();
+    await expect(graph).toBeHidden();
+    await expect(page).not.toHaveURL(folioUrl);
+  });
+
   test("05 — ⌘F finds every occurrence and Escape closes the bar", async () => {
     await page.goto(folioUrl);
     // Wait for the BODY, not just the summary field. The summary is part of

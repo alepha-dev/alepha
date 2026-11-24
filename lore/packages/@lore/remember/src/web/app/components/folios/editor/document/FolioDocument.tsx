@@ -214,6 +214,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             saving={props.actions.saving}
             dirty={props.draft.dirty}
             mode={props.mode}
+            folioId={props.folio?.id}
           />,
           props.chromeSlot,
         )}
