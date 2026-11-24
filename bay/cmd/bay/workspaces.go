@@ -16,8 +16,8 @@ import (
 
 /*
 Job workspaces (#Q4218): the durable directories agent jobs run in,
-`<jobs base>/<project>/<workspace>`, kept after a run so the next one pulls
-instead of cloning. Nothing deletes them on its own, so Bay lists and removes
+`<jobs base>/<project>/<workspace>`, kept after a run, and beside them the
+project's mirror, `<jobs base>/<project>/.mirror` (#Q4245, sources.go). Nothing deletes them on its own, so Bay lists and removes
 them: `bay jobs workspaces`, `bay jobs workspace rm <project>[/<name>]`, and
 the `job-workspace-remove` command Lore sends when a project is deleted or a
 quest's build is done with.
@@ -46,11 +46,19 @@ func lockWorkspace(root, project, workspace string) (func(), error) {
 	return unlock, nil
 }
 
-// jobWorkspace is one workspace as `bay jobs workspaces` lists it.
+// jobWorkspace is one workspace as `bay jobs workspaces` lists it, or the
+// project's mirror (#Q4245), whose Kind says so.
 type jobWorkspace struct {
 	Project, Name string
-	Modified      time.Time
+	// Kind is `workspace`, or `mirror` for the project's mirror.
+	Kind     string
+	Modified time.Time
 }
+
+const (
+	workspaceKindWorkspace = "workspace"
+	workspaceKindMirror    = "mirror"
+)
 
 // workspaces lists the base's workspaces. A symlink is skipped: the tree is
 // the jobs user's, and Bay reads only real directories in it.
@@ -73,14 +81,22 @@ func (r *processRunner) workspaces(u *user.User) ([]jobWorkspace, error) {
 			continue
 		}
 		for _, n := range names {
-			if !n.IsDir() || !namePattern.MatchString(n.Name()) {
+			// The mirror is listed on purpose: namePattern refuses its
+			// leading dot, which is what keeps a workspace from taking it.
+			kind := workspaceKindWorkspace
+			if n.Name() == mirrorName {
+				kind = workspaceKindMirror
+			} else if !namePattern.MatchString(n.Name()) {
+				continue
+			}
+			if !n.IsDir() {
 				continue
 			}
 			info, err := n.Info()
 			if err != nil {
 				continue
 			}
-			out = append(out, jobWorkspace{Project: p.Name(), Name: n.Name(), Modified: info.ModTime()})
+			out = append(out, jobWorkspace{Project: p.Name(), Name: n.Name(), Kind: kind, Modified: info.ModTime()})
 		}
 	}
 	sort.Slice(out, func(i, k int) bool {
@@ -118,7 +134,7 @@ func (r *processRunner) removeWorkspace(ctx context.Context, project, workspace 
 		}
 		names = names[:0]
 		for _, w := range all {
-			if w.Project == project {
+			if w.Project == project && w.Kind == workspaceKindWorkspace {
 				names = append(names, w.Name)
 			}
 		}
@@ -135,6 +151,16 @@ func (r *processRunner) removeWorkspace(ctx context.Context, project, workspace 
 			return 0, err
 		}
 		unlocks = append(unlocks, unlock)
+	}
+	if workspace == "" {
+		// The whole project goes, its mirror with it: not while a job
+		// fetches or makes a worktree from it.
+		unlock, err := tryLockMirror(r.root, project)
+		if err != nil {
+			return 0, err
+		}
+		unlocks = append(unlocks, unlock)
+		_ = os.Remove(mirrorStamp(r.root, project))
 	}
 	target := filepath.Join(r.base(u), project)
 	if workspace != "" {
@@ -178,7 +204,7 @@ func cmdJobs(args []string) error {
 			return nil
 		}
 		for _, w := range list {
-			fmt.Printf("%-40s last changed %s\n", w.Project+"/"+w.Name, w.Modified.UTC().Format(time.RFC3339))
+			fmt.Printf("%-40s %-9s last changed %s\n", w.Project+"/"+w.Name, w.Kind, w.Modified.UTC().Format(time.RFC3339))
 		}
 		return nil
 	case len(rest) == 3 && rest[0] == "workspace" && rest[1] == "rm":

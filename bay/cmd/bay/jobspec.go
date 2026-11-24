@@ -32,10 +32,13 @@ type jobSpec struct {
 	Model string `json:"model,omitempty"`
 	// Project and Workspace name the directory an agent job runs in,
 	// `<jobs base>/<project>/<workspace>` (#Q4218): created on first use and
-	// kept, so the first run clones and the next ones pull. Bay does no git:
-	// what the directory holds is the agent's business.
+	// kept between runs of the same work.
 	Project   string `json:"project,omitempty"`
 	Workspace string `json:"workspace,omitempty"`
+	// Source is the code the job finds when it starts (#E173): none, a
+	// read-only checkout, or a worktree to change, prepared by Bay from the
+	// project's mirror (sources.go). Absent, it is none.
+	Source *jobSource `json:"source,omitempty"`
 	// Key is the job key: the credential Lore's MCP takes, and nothing
 	// else. Revoked by Lore when the job ends. It reaches the agent in its
 	// environment only.
@@ -132,11 +135,14 @@ func (spec jobSpec) validate(sink string) error {
 		if spec.TimeoutSeconds < minJobTimeoutSeconds || spec.TimeoutSeconds > maxJobTimeoutSeconds {
 			return fmt.Errorf("timeoutSeconds %d is outside %d to %d", spec.TimeoutSeconds, minJobTimeoutSeconds, maxJobTimeoutSeconds)
 		}
+		if err := spec.Source.validate(); err != nil {
+			return fmt.Errorf("the source: %w", err)
+		}
 	case jobKindCheck:
 		// A check asks its fixed question with nothing in reach: no
 		// workspace, no key, no MCP server, no prompt of Lore's.
-		if spec.Project != "" || spec.Workspace != "" || spec.Key != "" || spec.MCPURL != "" || spec.Prompt != "" {
-			return errors.New("a check carries no workspace, key, MCP URL or prompt")
+		if spec.Project != "" || spec.Workspace != "" || spec.Key != "" || spec.MCPURL != "" || spec.Prompt != "" || spec.Source != nil {
+			return errors.New("a check carries no workspace, source, key, MCP URL or prompt")
 		}
 		if spec.TimeoutSeconds < minJobTimeoutSeconds || spec.TimeoutSeconds > maxCheckTimeout {
 			return fmt.Errorf("a check's timeoutSeconds %d is outside %d to %d", spec.TimeoutSeconds, minJobTimeoutSeconds, maxCheckTimeout)

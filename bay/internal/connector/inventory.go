@@ -42,6 +42,10 @@ type InventoryJobs struct {
 	User    string          `json:"user,omitempty"`
 	Running string          `json:"running,omitempty"`
 	Tools   []InventoryTool `json:"tools,omitempty"`
+	// Sources is true on a bay that prepares a job's source, none, read or
+	// write (#E173). Lore refuses a read or write job on a bay that does not
+	// say so, rather than send a spec it would refuse as unreadable.
+	Sources bool `json:"sources,omitempty"`
 }
 
 /*
