@@ -69,6 +69,7 @@ describe("the Lore CLI command surface", () => {
       "attachments",
       "channel",
       "chat",
+      "commits",
       "criterion",
       "dashboard",
       "deploy",
@@ -204,6 +205,7 @@ describe("the Lore CLI command surface", () => {
       insights: ["read"],
       job: ["list", "get", "cancel", "logs"],
       agent: ["run", "hosts"],
+      commits: ["push"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
       requirement: [
         "list",

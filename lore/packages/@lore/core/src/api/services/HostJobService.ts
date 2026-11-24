@@ -13,6 +13,7 @@ import { projects } from "../entities/projects.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
+import { BoundParameters } from "./BoundParameters.ts";
 import { CoreBuckets } from "./CoreBuckets.ts";
 import { HostCommandService } from "./HostCommandService.ts";
 import {
@@ -58,6 +59,7 @@ export class HostJobService {
   protected readonly loans = $repository(hostProjects);
   protected readonly projects = $repository(projects);
   protected readonly commands = $inject(HostCommandService);
+  protected readonly bound = $inject(BoundParameters);
   protected readonly files = $inject(FileService);
   protected readonly port = $inject(HostJobs);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -90,6 +92,20 @@ export class HostJobService {
               status: { inArray: ["queued", "running"] },
             },
           })
+        ).map((job) => this.summary(job)),
+      automationJobsOn: async (projectId, subjectType, subjectIds) =>
+        (
+          await this.bound.collect(subjectIds, (batch) =>
+            this.jobs.findMany({
+              where: {
+                projectId: { eq: projectId },
+                subjectType: { eq: subjectType },
+                subjectId: { inArray: batch },
+                automationId: { isNotNull: true },
+              },
+              orderBy: [{ column: "queuedAt", direction: "desc" }],
+            }),
+          )
         ).map((job) => this.summary(job)),
       subjectsOfAutomation: async (automationId, subjectType) =>
         (

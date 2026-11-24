@@ -27,6 +27,7 @@ import { ReleaseResourceKind } from "./resources/ReleaseResourceKind.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { BoardColumnsMetric } from "./services/BoardColumnsMetric.ts";
+import { BuiltQuestLanding } from "./services/BuiltQuestLanding.ts";
 import { BurnupMetric } from "./services/BurnupMetric.ts";
 import { CompletedPerWeekMetric } from "./services/CompletedPerWeekMetric.ts";
 import { CompletedThisWeekMetric } from "./services/CompletedThisWeekMetric.ts";
@@ -115,6 +116,8 @@ export const LorePlanApi = $module({
     FeedbackAgentService,
     // The Triage and Build kinds of an agent automation (#E172).
     PlanAutomationKinds,
+    // A built quest completes when its commit reaches the default branch.
+    BuiltQuestLanding,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
     QuestAgentService,
     QuestAgentController,
@@ -306,6 +309,7 @@ export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
 export { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
+export { BuiltQuestLanding } from "./services/BuiltQuestLanding.ts";
 export { EpicAgentController } from "./controllers/EpicAgentController.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";
 export { EpicAgentService } from "./services/EpicAgentService.ts";

@@ -674,6 +674,26 @@ succeed.
 
 See [Agent jobs](/lore/docs/agents-jobs).
 
+## Commits
+
+| Command             | What it does                                                                                                                                                          | Flags                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `lore commits push` | Record the quests the current commit's history names, with no artifact. On the default branch, a quest an agent automation built that the history names is completed. | `--branch`, `--default-branch`, `--project` |
+
+A project that does not deploy through Lore runs it on every push of its
+default branch, so a quest built into a pull request completes once that pull
+request merges. In GitHub Actions, after a checkout with its history
+(`fetch-depth: 0`) and with `LORE_API_KEY` set:
+
+```yaml
+- run: npx @alepha/lore commits push --project acme
+```
+
+The branch comes from `GITHUB_REF_NAME`, the default branch from the event's
+repository; elsewhere from git, and `main` when nothing names it. A project
+that deploys through Lore needs nothing more: `lore artifacts push` records the
+same quests.
+
 ## Container registries
 
 A project stores one credential per registry host. Private images are pulled

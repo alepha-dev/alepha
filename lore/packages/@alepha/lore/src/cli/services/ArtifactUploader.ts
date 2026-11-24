@@ -140,6 +140,15 @@ export class ArtifactUploader {
     if (input.dirty !== undefined) {
       fields.dirty = input.dirty ? "true" : "false";
     }
+    // The branch and the repository's default one (#Q4234): on the default
+    // branch, the quests an automation built that the history names
+    // complete. An older Lore ignores both.
+    if (input.branch) {
+      fields.branch = this.field("branch", input.branch);
+    }
+    if (input.defaultBranch) {
+      fields.defaultBranch = this.field("defaultBranch", input.defaultBranch);
+    }
 
     for (let attempt = 0; ; attempt++) {
       try {
@@ -426,6 +435,12 @@ export interface ArtifactUploadInput {
    * say.
    */
   dirty?: boolean;
+
+  /**
+   * The branch pushed, and the repository's default branch (#Q4234).
+   */
+  branch?: string;
+  defaultBranch?: string;
 }
 
 /**

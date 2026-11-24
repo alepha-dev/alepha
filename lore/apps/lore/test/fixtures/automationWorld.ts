@@ -12,7 +12,12 @@ import {
   HostJobService,
 } from "@lore/core/api";
 import { projectEvents } from "@lore/core/api";
-import { agentAutomations, hostJobs, hosts } from "@lore/core/schemas";
+import {
+  agentAutomations,
+  hostCommands,
+  hostJobs,
+  hosts,
+} from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackController } from "@lore/plan/api";
 import { feedback, quests } from "@lore/plan/schemas";
@@ -62,6 +67,7 @@ export class AutomationRepos {
   hosts = $repository(hosts);
   automations = $repository(agentAutomations);
   events = $repository(projectEvents);
+  commands = $repository(hostCommands);
   errors = $repository(projectErrors);
   feedback = $repository(feedback);
   quests = $repository(quests);

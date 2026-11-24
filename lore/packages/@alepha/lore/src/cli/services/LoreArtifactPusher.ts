@@ -210,9 +210,10 @@ export class LoreArtifactPusher {
     // The quests this commit's history references, and whether the tree
     // the build came from had tracked changes (#E154). Never a refusal: a
     // push that cannot read git sends a partial set and says so.
-    const [walks, tree] = await Promise.all([
+    const [walks, tree, defaultBranch] = await Promise.all([
       git.commitSha ? this.walk(root, projectId, app) : undefined,
       this.git.dirty(root),
+      this.git.defaultBranch(root),
     ]);
     const walk = walks?.whole;
     const scoped = walks?.scoped;
@@ -270,6 +271,10 @@ export class LoreArtifactPusher {
             }
           : {}),
         ...(tree ? { dirty: tree.dirty } : {}),
+        ...(git.branch && git.branch !== GitContextService.UNKNOWN_BRANCH
+          ? { branch: git.branch }
+          : {}),
+        ...(defaultBranch ? { defaultBranch } : {}),
       });
 
       const { artifact } = result;

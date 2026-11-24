@@ -188,6 +188,13 @@ export class ArtifactController {
          * never count.
          */
         dirty: z.boolean().optional(),
+        /**
+         * The branch pushed, and the repository's default branch as the
+         * pusher read it (#Q4234): on the default branch, the quests an
+         * automation built that the history names complete.
+         */
+        branch: z.string().max(255).optional(),
+        defaultBranch: z.string().max(255).optional(),
       }),
       response: artifactPushResultSchema,
     },
@@ -239,6 +246,16 @@ export class ArtifactController {
               complete: body.appQuests.complete,
             })
           : undefined;
+
+      if (quests && body.commitSha) {
+        await this.questSets.landed({
+          projectId: params.projectId,
+          commitSha: body.commitSha,
+          branch: body.branch,
+          defaultBranch: body.defaultBranch,
+          numbers: quests.numbers,
+        });
+      }
 
       return {
         artifact: this.resource(artifact),
