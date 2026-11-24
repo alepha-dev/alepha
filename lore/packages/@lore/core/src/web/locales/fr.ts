@@ -2761,9 +2761,9 @@ export default {
   "errors.action.trust": "Faire confiance",
   "errors.toast.trusted":
     "Confiance accordée : un agent peut maintenant lire cette erreur",
-  "errors.trusted": "De confiance",
   "errors.trustedBy": "Confiance accordée par $1",
-  "errors.untrusted": "Non vérifiée",
+  "errors.untrustedHint":
+    "Source non vérifiée : un membre doit l'approuver avant qu'elle soit traitée automatiquement",
   "errors.action.forward": "Convertir en quête",
   "errors.action.delete": "Supprimer",
   "errors.action.deleteSelected": "Supprimer la sélection",
