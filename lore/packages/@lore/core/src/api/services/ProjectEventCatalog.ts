@@ -87,7 +87,8 @@ export type ProjectEventResource =
   | "apps"
   | "monitors"
   | "hosts"
-  | "automations";
+  | "automations"
+  | "jobs";
 
 export interface ProjectEventDefinition {
   /**
@@ -119,6 +120,12 @@ export interface ProjectEventDefinition {
    * The permission a reader needs, at delivery and in `event_list`.
    */
   permission: string;
+  /**
+   * A `member` field naming who the event concerns personally (#Q4276): told
+   * in-app with no subscription to set up, once even when also subscribed,
+   * unless their own subscription to the event is muted.
+   */
+  notifies?: string;
   /**
    * The field a subscription's filter matches, and the resource its value
    * names: the app of a deployment, not the deployment.

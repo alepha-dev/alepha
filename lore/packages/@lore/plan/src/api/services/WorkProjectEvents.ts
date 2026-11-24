@@ -79,6 +79,61 @@ export class WorkProjectEvents {
         text: `All ${this.count(it.quest_count, "quest")} of the epic are done or set aside.`,
       }),
     });
+    // An epic filed and an epic marked ready (#Q4276): what a prompt's
+    // trigger listens to, `review-epic` on a new one, `work-epic` on a ready
+    // one. Its `epic` arg is filled from the event's subject.
+    this.catalog.register({
+      name: "epic.created",
+      label: "Epic created",
+      resource: "epics",
+      subject: "epic",
+      fields: { epic_id: "number", shortId: "number", actor_id: "member" },
+      needs: { capability: "plan", option: "epics" },
+      permission: "epic:read",
+      message: (it) => ({
+        title: `New epic #E${this.text(it.shortId)}: ${this.text(it.title)}`,
+        text: "It is a draft: its plan is open.",
+      }),
+    });
+    this.catalog.register({
+      name: "epic.ready",
+      label: "Epic marked ready",
+      resource: "epics",
+      subject: "epic",
+      fields: { epic_id: "number", shortId: "number", actor_id: "member" },
+      needs: { capability: "plan", option: "epics" },
+      permission: "epic:read",
+      message: (it) => ({
+        title: `Epic #E${this.text(it.shortId)} is ready: ${this.text(it.title)}`,
+        text: "Its plan is done: its quests can be worked.",
+      }),
+    });
+    // A pull request recorded on a quest or an epic (#Q4276), once per pull
+    // request and project: `review-pr` listens to it.
+    this.catalog.register({
+      name: "pull_request.added",
+      label: "Pull request added",
+      resource: "quests",
+      subject: "pull_request",
+      fields: {
+        number: "number",
+        repository: "text",
+        pull_request_url: "text",
+        quest_shortId: "number",
+        epic_number: "number",
+        actor_id: "member",
+      },
+      needs: { capability: "plan" },
+      permission: "quest:read",
+      message: (it) => ({
+        title: `Pull request #${this.text(it.number)} added: ${this.text(it.title)}`,
+        text: `Recorded on ${
+          it.quest_shortId
+            ? `quest #Q${this.text(it.quest_shortId)}`
+            : `epic #E${this.text(it.epic_number)}`
+        }.`,
+      }),
+    });
     const quest = {
       quest_id: "number",
       shortId: "number",

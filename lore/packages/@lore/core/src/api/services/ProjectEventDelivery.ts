@@ -16,7 +16,10 @@ import type { SubscriptionChannel } from "../schemas/subscriptionChannelSchema.t
 import { BatchRepository } from "./BatchRepository.ts";
 import { ChannelRoomRegistry } from "./ChannelRoomRegistry.ts";
 import { ProjectChannelService } from "./ProjectChannelService.ts";
-import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
+import {
+  ProjectEventCatalog,
+  type ProjectEventDefinition,
+} from "./ProjectEventCatalog.ts";
 import { ProjectEventListeners } from "./ProjectEventListeners.ts";
 import { ProjectRecipients } from "./ProjectRecipients.ts";
 
@@ -71,7 +74,12 @@ export class ProjectEventDelivery {
     projectId: number,
     name: string,
     eventId: string,
+    fields: Record<string, unknown> = {},
   ): Promise<{ id: string; statements: SQLLike[] } | undefined> {
+    // A member the event concerns personally is told with no subscription
+    // (#Q4276): the delivery job runs for them.
+    const notifies = this.catalog.find(name)?.notifies;
+    const personal = notifies ? typeof fields[notifies] === "string" : false;
     // One round trip: whether anyone is subscribed and whether an
     // automation listens are asked together (#Q4227).
     const [subscribed, listening] = await Promise.all([
@@ -80,7 +88,7 @@ export class ProjectEventDelivery {
       }),
       this.listeners.listening(projectId, name),
     ]);
-    if (!subscribed && !listening) return undefined;
+    if (!subscribed && !listening && !personal) return undefined;
     const registration = this.jobs
       .getRegisteredJobs()
       .get(ProjectEventDelivery.JOB);
@@ -162,6 +170,9 @@ export class ProjectEventDelivery {
     const project = await this.projects.findById(event.projectId);
     if (!project) return 0;
     let sent = 0;
+    // The members told in-app here, so the one the event concerns is told
+    // once (#Q4276).
+    const told = new Set<string>();
     // Whether the event's actor is a member, read once for the rows whose
     // `notMembers` asks (#Q4055).
     let actorIsMember: boolean | undefined;
@@ -204,6 +215,7 @@ export class ProjectEventDelivery {
         // The inbox files by account, whatever the address's spelling.
         const contact =
           channel === "inapp" ? `lore-user:${account.id}` : account.email;
+        if (channel === "inapp") told.add(account.id);
         if (!contact) continue;
         if (
           await step(`deliver.${row.id}.${channel}`, () =>
@@ -213,7 +225,52 @@ export class ProjectEventDelivery {
           sent++;
       }
     }
+    sent += await this.tellPersonally(event, definition, told, step);
     return sent;
+  }
+
+  /**
+   * The member an event concerns personally (`notifies`, #Q4276): told
+   * in-app when no subscription told them already, unless they muted their
+   * own subscription to it, and only while they may read it.
+   */
+  protected async tellPersonally(
+    event: ProjectEvent,
+    definition: ProjectEventDefinition,
+    told: Set<string>,
+    step: (name: string, fn: () => Promise<boolean>) => Promise<boolean>,
+  ): Promise<number> {
+    const memberId = definition.notifies
+      ? event.fields[definition.notifies]
+      : undefined;
+    if (typeof memberId !== "string" || told.has(memberId)) return 0;
+    const muted = await this.subscriptions.findOne({
+      where: {
+        projectId: event.projectId,
+        event: event.name,
+        memberId,
+        mutedAt: { isNotNull: true },
+      },
+    });
+    if (muted) return 0;
+    if (
+      await this.recipients.refusal(
+        event.projectId,
+        memberId,
+        definition.permission,
+      )
+    ) {
+      return 0;
+    }
+    const account = await this.users.findById(memberId);
+    if (!account) return 0;
+    const project = await this.projects.findById(event.projectId);
+    if (!project) return 0;
+    return (await step(`deliver.personal.${memberId}`, () =>
+      this.send("inapp", `lore-user:${account.id}`, project, event),
+    ))
+      ? 1
+      : 0;
   }
 
   /**

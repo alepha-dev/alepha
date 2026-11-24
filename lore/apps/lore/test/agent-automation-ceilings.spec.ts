@@ -65,7 +65,8 @@ describe("agent automation ceilings and self-disable", () => {
     expect(disabled.lastSkippedReason).toContain(
       "Disabled after 3 failed runs",
     );
-    expect(await events("automation.run.failed")).toHaveLength(5);
+    // Every failed agent job raises agent.job.failed (#Q4276).
+    expect(await events("agent.job.failed")).toHaveLength(5);
     const [said] = await events("automation.disabled");
     expect(said?.fields).toMatchObject({
       automation: "notes",

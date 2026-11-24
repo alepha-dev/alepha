@@ -82,19 +82,14 @@ export class AgentAutomationHealth {
       reason: reason.slice(0, 500),
     };
     // The count moves from the value read, so two endings racing count
-    // once each rather than overwrite each other.
-    await this.events.sourceUpdate(
+    // once each rather than overwrite each other. The failure itself is
+    // `agent.job.failed`, raised for every agent job (#Q4276).
+    await this.rows.updateMany(
       {
-        id: automation.id,
-        consecutiveFailures: automation.consecutiveFailures,
+        id: { eq: automation.id },
+        consecutiveFailures: { eq: automation.consecutiveFailures },
       },
       { consecutiveFailures: failures },
-      {
-        projectId: automation.projectId,
-        name: "automation.run.failed",
-        subjectId: automation.id,
-        fields,
-      },
     );
     if (!disable) return;
     await this.events.sourceUpdate(
