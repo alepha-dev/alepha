@@ -16,6 +16,7 @@ import { agentAutomations, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackController } from "@lore/plan/api";
 import { feedback, quests } from "@lore/plan/schemas";
+import { projectErrors } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
 import {
   JobProvider,
@@ -61,6 +62,7 @@ export class AutomationRepos {
   hosts = $repository(hosts);
   automations = $repository(agentAutomations);
   events = $repository(projectEvents);
+  errors = $repository(projectErrors);
   feedback = $repository(feedback);
   quests = $repository(quests);
 }

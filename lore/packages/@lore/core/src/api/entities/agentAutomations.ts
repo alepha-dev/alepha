@@ -4,6 +4,7 @@ import { $entity, db } from "alepha/orm";
 import {
   AUTOMATION_NAME_PATTERN,
   AUTOMATION_PROMPT_KINDS,
+  AUTOMATION_SCHEDULES,
   AUTOMATION_TRIGGERS,
 } from "../schemas/agentAutomationValues.ts";
 import { projects } from "./projects.ts";
@@ -77,6 +78,23 @@ export const agentAutomations = $entity({
      */
     pendingJobId: z.uuid().optional(),
     /**
+     * A `schedule` automation's interval (#Q4228), and the hour of a daily
+     * one, in UTC: Lore has no project time zone.
+     */
+    schedule: z.enum(AUTOMATION_SCHEDULES).meta({ mode: "text" }).optional(),
+    dailyHour: z.integer().min(0).max(23).optional(),
+    /**
+     * When the hourly job runs it next (#Q4228). A tick missed while the
+     * host was offline is not replayed: the next tick decides again.
+     */
+    nextRunAt: z.string().optional(),
+    /**
+     * The last run its trigger asked for and that started nothing, and why
+     * (#Q4228): "it did not run" explained on its row.
+     */
+    lastSkippedAt: z.string().optional(),
+    lastSkippedReason: z.string().max(500).optional(),
+    /**
      * Run only when Lore finds something to do first (#Q4228), so an idle
      * project spends no tokens. A run by hand ignores it.
      */
@@ -87,7 +105,11 @@ export const agentAutomations = $entity({
     /** Failed or timed-out jobs in a row (#Q4230). */
     consecutiveFailures: db.default(z.integer().min(0), 0),
   }),
-  indexes: [{ columns: ["projectId", "name"], unique: true }],
+  indexes: [
+    { columns: ["projectId", "name"], unique: true },
+    // The hourly check's one query: what is due, across every project.
+    { columns: ["nextRunAt"] },
+  ],
 });
 
 export type AgentAutomation = Infer<typeof agentAutomations.schema>;

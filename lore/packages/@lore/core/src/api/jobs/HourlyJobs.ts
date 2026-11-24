@@ -19,7 +19,7 @@ export class HourlyJobs {
   public readonly hourly = $job({
     name: "project-events.hourly",
     description:
-      "Runs the hourly checks: quest reminders and the open-errors threshold.",
+      "Runs the hourly checks: quest reminders, the open-errors threshold and scheduled agent automations.",
     cron: "0 * * * *",
     handler: async () => {
       const now = this.dateTime.nowISOString();

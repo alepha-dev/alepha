@@ -177,8 +177,10 @@ export {
 export {
   AUTOMATION_NAME_PATTERN,
   AUTOMATION_PROMPT_KINDS,
+  AUTOMATION_SCHEDULES,
   AUTOMATION_TRIGGERS,
   type AutomationPromptKind,
+  type AutomationSchedule,
   type AutomationTrigger,
 } from "../api/schemas/agentAutomationValues.ts";
 export {

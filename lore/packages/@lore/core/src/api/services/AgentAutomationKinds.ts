@@ -12,6 +12,7 @@ import type { AutomationPromptKind } from "../schemas/agentAutomationValues.ts";
  */
 export class AgentAutomationKinds {
   protected readonly kinds = new Map<string, AgentAutomationKind>();
+  protected readonly work = new Map<string, AgentAutomationWorkSource[]>();
 
   public register(kind: AgentAutomationKind): void {
     if (this.kinds.has(kind.key)) {
@@ -25,7 +26,40 @@ export class AgentAutomationKinds {
   public find(key: string): AgentAutomationKind | undefined {
     return this.kinds.get(key);
   }
+
+  /**
+   * What tells whether a kind has something to do in a project (#Q4228),
+   * one source per module: Plan's pending feedback for a triage, Ship's
+   * trusted open errors. A plain query each, asked before any job is
+   * queued, so an idle project spends no tokens.
+   */
+  public registerWork(
+    key: AgentAutomationKind["key"],
+    source: AgentAutomationWorkSource,
+  ): void {
+    this.work.set(key, [...(this.work.get(key) ?? []), source]);
+  }
+
+  /**
+   * Whether any source of the kind finds something to do.
+   */
+  public async hasWork(
+    key: string,
+    automation: AgentAutomation,
+  ): Promise<boolean> {
+    for (const source of this.work.get(key) ?? []) {
+      if (await source(automation)) return true;
+    }
+    return false;
+  }
 }
+
+/**
+ * One module's answer to "is there something for this automation to do".
+ */
+export type AgentAutomationWorkSource = (
+  automation: AgentAutomation,
+) => Promise<boolean>;
 
 /**
  * What a run of an automation is given: who starts it (the member whose

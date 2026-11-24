@@ -18,6 +18,8 @@ export const agentAutomationWriteSchema = agentAutomations.schema
     enabled: true,
     eventKeys: true,
     settleSeconds: true,
+    schedule: true,
+    dailyHour: true,
   })
   .partial()
   .extend({
