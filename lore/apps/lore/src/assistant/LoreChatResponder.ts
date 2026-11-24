@@ -1,11 +1,12 @@
 import {
+  ChatAgentBudgetService,
   type ChatAgentDecision,
   type ChatAgentEvent,
   type ChatAgentPersona,
   type ChatAgentRequest,
   ChatResponderRegistry,
 } from "@lore/chat/api";
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import {
   type AiChatBody,
   AiBudgetService,
@@ -14,8 +15,10 @@ import {
   type AiStreamEvent,
   type AiTurnOverrides,
 } from "alepha/api/ai";
+import { DateTimeProvider } from "alepha/datetime";
 import { $rateLimit } from "alepha/rate-limit";
 
+import { LoreAiBudget } from "./LoreAiBudget.ts";
 import { LoreAiSwitch } from "./LoreAiSwitch.ts";
 
 /**
@@ -44,6 +47,8 @@ export class LoreChatResponder {
   protected readonly settings = $inject(AiSettings);
   protected readonly switch = $inject(LoreAiSwitch);
   protected readonly registry = $inject(ChatResponderRegistry);
+  protected readonly projectBudgets = $inject(ChatAgentBudgetService);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * The assistant's turn limit, for runs started from a room.
@@ -56,6 +61,9 @@ export class LoreChatResponder {
   });
 
   constructor() {
+    // A project's budget counts over the same window as a member's (#Q4237).
+    this.projectBudgets.windowHours = () =>
+      this.settings.current.budgetWindowHours;
     if (!this.switch.enabled) return;
     this.registry.register({
       name: LoreChatResponder.NAME,
@@ -73,6 +81,7 @@ export class LoreChatResponder {
     const refused = await this.refused(
       request.user.id,
       request.agent?.name ?? "Lore",
+      request.projectId,
     );
     if (refused) {
       yield { type: "error", message: refused };
@@ -96,12 +105,17 @@ export class LoreChatResponder {
         }),
       );
     yield { type: "conversation", conversationId: conversation.id };
-    yield* this.mapped(
-      this.ai.chat(
-        conversation,
-        request.user,
-        body,
-        this.overrides(request.agent),
+    yield* this.charged(
+      request.projectId,
+      request.user.id,
+      conversation.id,
+      this.mapped(
+        this.ai.chat(
+          conversation,
+          request.user,
+          body,
+          this.overrides(request.agent),
+        ),
       ),
     );
   }
@@ -114,19 +128,64 @@ export class LoreChatResponder {
       decision.conversationId,
       decision.callId,
     );
-    yield* this.mapped(
-      this.ai.resume(
-        conversation,
-        decision.user,
-        this.ai.toResume({
-          callId: decision.callId,
-          decision: decision.decision,
-        }),
-        LoreChatResponder.NAME,
-        this.context(decision.projectId),
-        this.overrides(decision.agent),
+    yield* this.charged(
+      decision.projectId,
+      decision.user.id,
+      conversation.id,
+      this.mapped(
+        this.ai.resume(
+          conversation,
+          decision.user,
+          this.ai.toResume({
+            callId: decision.callId,
+            decision: decision.decision,
+          }),
+          LoreChatResponder.NAME,
+          this.context(decision.projectId),
+          this.overrides(decision.agent),
+        ),
       ),
     );
+  }
+
+  /**
+   * Runs `events`, and when the project's budget paid for the run (#Q4237),
+   * records what it spent there, so the member's own budget does not count
+   * it. Who pays is decided as the run starts: the project while its budget
+   * has tokens left, which is also what `LoreAiBudget` hands the turn.
+   */
+  protected async *charged(
+    projectId: number,
+    userId: string,
+    conversationId: string,
+    events: AsyncIterable<ChatAgentEvent>,
+  ): AsyncIterable<ChatAgentEvent> {
+    const payer = await this.lore.payer(projectId);
+    const since = this.dateTime.nowISOString();
+    try {
+      yield* events;
+    } finally {
+      if (payer === "project") {
+        await this.projectBudgets.charge({
+          projectId,
+          userId,
+          conversationId,
+          tokens: await this.lore.spentSince(conversationId, since),
+        });
+      }
+    }
+  }
+
+  /**
+   * The budget service, which `LoreAssistant` substitutes with Lore's.
+   */
+  protected get lore(): LoreAiBudget {
+    if (!(this.budget instanceof LoreAiBudget)) {
+      throw new AlephaError(
+        "AiBudgetService is not substituted by LoreAiBudget",
+      );
+    }
+    return this.budget;
   }
 
   /**
@@ -187,11 +246,13 @@ export class LoreChatResponder {
   protected async refused(
     userId: string,
     name: string,
+    projectId: number,
   ): Promise<string | undefined> {
-    try {
-      await this.budget.assertAvailable(userId);
-    } catch (error) {
-      return error instanceof Error ? error.message : "Your AI budget is spent";
+    // The project's budget first, then the member's (#Q4237): the refusal
+    // names the one that ran out, and when enough of it frees up.
+    const spent = await this.lore.refusal(userId, projectId);
+    if (spent) {
+      return `${name} could not run. ${spent}`;
     }
     if (!(await this.turns.consume(userId)).allowed) {
       return `Too many questions to ${name} this minute: ask again in a moment.`;

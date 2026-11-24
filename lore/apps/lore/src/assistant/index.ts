@@ -1,10 +1,16 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaAiAnthropic } from "alepha/ai/anthropic";
 import { AlephaAiCloudflare } from "alepha/ai/cloudflare";
-import { AiController, AiSettings, AlephaApiAi } from "alepha/api/ai";
+import {
+  AiBudgetService,
+  AiController,
+  AiSettings,
+  AlephaApiAi,
+} from "alepha/api/ai";
 
 import { LoreAiAssistant } from "./LoreAiAssistant.ts";
 import { LoreAiAudits } from "./LoreAiAudits.ts";
+import { LoreAiBudget } from "./LoreAiBudget.ts";
 import { LoreAiContext } from "./LoreAiContext.ts";
 import { LoreAiController } from "./LoreAiController.ts";
 import { LoreAiDocsController } from "./LoreAiDocsController.ts";
@@ -22,6 +28,7 @@ export { LoreAiContext } from "./LoreAiContext.ts";
 export { LoreAiController } from "./LoreAiController.ts";
 export { LoreAiDocsController } from "./LoreAiDocsController.ts";
 export { LoreAiPrompt } from "./LoreAiPrompt.ts";
+export { LoreAiBudget } from "./LoreAiBudget.ts";
 export { LoreAiSettings } from "./LoreAiSettings.ts";
 export { LoreAiStatusController } from "./LoreAiStatusController.ts";
 export { LoreAiSwitch } from "./LoreAiSwitch.ts";
@@ -58,6 +65,8 @@ export const LoreAssistant = $module({
     alepha.with(AlephaAiCloudflare);
     alepha.with({ provide: AiController, use: LoreAiController });
     alepha.with({ provide: AiSettings, use: LoreAiSettings });
+    // A chat agent run draws on its project's budget first (#Q4237).
+    alepha.with({ provide: AiBudgetService, use: LoreAiBudget });
   },
   imports: [AlephaApiAi],
   services: [

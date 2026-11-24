@@ -1211,6 +1211,17 @@ export default {
   "chat.agents.empty":
     "No agent yet. An agent is a persona with a standing playbook: mention it, and it knows what to do.",
   "chat.agents.docs": "How agents work",
+  "chat.agents.budget.title": "AI budget for agents",
+  "chat.agents.budget.description":
+    "The tokens this project's agents may spend per window. A run draws on it first, then on the budget of the member who asked. Empty: every run is the member's.",
+  "chat.agents.budget.spentOf": "$1 of $2 tokens spent over the last $3 hours.",
+  "chat.agents.budget.none":
+    "No project budget: every run spends the budget of the member who asked.",
+  "chat.agents.budget.freesAt": "Enough frees up at $1.",
+  "chat.agents.budget.tokens": "Tokens per window",
+  "chat.agents.budget.tokensHint":
+    "At least 1,000. Leave empty for no project budget.",
+  "chat.agents.budget.save": "Save",
   "chat.agents.aiOff":
     "AI is off on this Lore: no agent answers until it is on.",
   "chat.agents.create": "New agent",
@@ -4780,7 +4791,8 @@ export default {
   "permission.chat.read": "Read the open rooms and the rooms they are in",
   "permission.chat.write": "Write in rooms, create rooms and join open ones",
   "permission.chat.manage": "Rename and archive any room, delete any message",
-  "permission.chat.agent": "Create, edit and delete the project's chat agents",
+  "permission.chat.agent":
+    "Create, edit and delete the project's chat agents, and set their AI budget",
   "folios.wikilink.broken.requirementNotFound":
     "No requirement matches this reference.",
   "project.settings.nav.ranks": "Ranks",

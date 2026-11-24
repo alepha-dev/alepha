@@ -1202,6 +1202,18 @@ export default {
   "chat.agents.empty":
     "Aucun agent pour l'instant. Un agent est un personnage doté d'un mode opératoire : mentionnez-le, il sait quoi faire.",
   "chat.agents.docs": "Comment fonctionnent les agents",
+  "chat.agents.budget.title": "Budget IA des agents",
+  "chat.agents.budget.description":
+    "Les jetons que les agents du projet peuvent dépenser par fenêtre. Une exécution y puise d'abord, puis dans le budget du membre qui l'a demandée. Vide : chaque exécution est à la charge du membre.",
+  "chat.agents.budget.spentOf":
+    "$1 jetons dépensés sur $2 au cours des $3 dernières heures.",
+  "chat.agents.budget.none":
+    "Pas de budget de projet : chaque exécution dépense le budget du membre qui l'a demandée.",
+  "chat.agents.budget.freesAt": "Assez de jetons se libèrent à $1.",
+  "chat.agents.budget.tokens": "Jetons par fenêtre",
+  "chat.agents.budget.tokensHint":
+    "Au moins 1 000. Laisser vide pour ne pas avoir de budget de projet.",
+  "chat.agents.budget.save": "Enregistrer",
   "chat.agents.aiOff":
     "L'IA est désactivée sur ce Lore : aucun agent ne répond tant qu'elle ne l'est pas.",
   "chat.agents.create": "Nouvel agent",
@@ -4812,7 +4824,7 @@ export default {
   "permission.chat.manage":
     "Renommer et archiver tout salon, supprimer tout message",
   "permission.chat.agent":
-    "Créer, modifier et supprimer les agents de discussion du projet",
+    "Créer, modifier et supprimer les agents de discussion du projet, et fixer leur budget IA",
   "folios.wikilink.broken.requirementNotFound":
     "Aucune exigence ne correspond à cette référence.",
   "project.settings.nav.ranks": "Rangs",

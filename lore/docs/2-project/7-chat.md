@@ -69,7 +69,8 @@ question in any room. Lore answers in the room, where everyone can read the
 answer:
 
 - It runs **as you**: it can only do what your rank allows, and its usage
-  counts against your budget.
+  counts against your budget, or the project's AI budget for agents when it
+  has one (see [Chat agents](/lore/docs/project-chat-agents)).
 - It reads **this project only**, and this room's recent messages. What
   other people wrote is context for it, never instructions.
 - The line under its name traces what it is doing: the tools it runs, then

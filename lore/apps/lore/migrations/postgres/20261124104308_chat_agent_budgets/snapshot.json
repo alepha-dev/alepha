@@ -1,0 +1,506 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e4a7e89f-c614-43ef-991c-764bf93b6f1a",
+  "prevIds": ["f6b1c298-bea9-4cd2-b8ee-e147a83d58d0"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "chat_agent_budgets"],
+      "writes": [
+        "s|tbl|public.chat_agent_budgets",
+        "n|tbl|public.chat_agent_budgets",
+        "e|tbl|public.chat_agent_budgets",
+        "n|rel|public.chat_agent_budgets",
+        "n|type|public.chat_agent_budgets",
+        "n|rel|public.chat_agent_budgets_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "chat_agent_charges"],
+      "writes": [
+        "s|tbl|public.chat_agent_charges",
+        "n|tbl|public.chat_agent_charges",
+        "e|tbl|public.chat_agent_charges",
+        "n|rel|public.chat_agent_charges",
+        "n|type|public.chat_agent_charges",
+        "n|rel|public.chat_agent_charges_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_agent_budgets",
+        "chat_agent_budgets_project_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_agent_budgets_project_id_idx",
+        "n|idx|public.chat_agent_budgets_project_id_idx",
+        "e|idx|public.chat_agent_budgets_project_id_idx",
+        "n|rel|public.chat_agent_budgets_project_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_agent_budgets",
+        "n|sch|public",
+        "n|col|public.chat_agent_budgets.project_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_agent_charges",
+        "chat_agent_charges_project_id_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_agent_charges_project_id_created_at_idx",
+        "n|idx|public.chat_agent_charges_project_id_created_at_idx",
+        "e|idx|public.chat_agent_charges_project_id_created_at_idx",
+        "n|rel|public.chat_agent_charges_project_id_created_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_agent_charges",
+        "n|sch|public",
+        "n|col|public.chat_agent_charges.project_id",
+        "n|col|public.chat_agent_charges.created_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_agent_charges",
+        "chat_agent_charges_user_id_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_agent_charges_user_id_created_at_idx",
+        "n|idx|public.chat_agent_charges_user_id_created_at_idx",
+        "e|idx|public.chat_agent_charges_user_id_created_at_idx",
+        "n|rel|public.chat_agent_charges_user_id_created_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_agent_charges",
+        "n|sch|public",
+        "n|col|public.chat_agent_charges.user_id",
+        "n|col|public.chat_agent_charges.created_at"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_agent_budgets"],
+      "writes": [
+        "s|fk|public.chat_agent_budgets.chat_agent_budgets_project_id_projects_id_fkey",
+        "n|fk|public.chat_agent_budgets.chat_agent_budgets_project_id_projects_id_fkey",
+        "e|fk|public.chat_agent_budgets.chat_agent_budgets_project_id_projects_id_fkey",
+        "n|con|public.chat_agent_budgets.chat_agent_budgets_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_agent_budgets",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.chat_agent_budgets.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_agent_budgets"],
+      "writes": [
+        "s|fk|public.chat_agent_budgets.chat_agent_budgets_updated_by_users_id_fkey",
+        "n|fk|public.chat_agent_budgets.chat_agent_budgets_updated_by_users_id_fkey",
+        "e|fk|public.chat_agent_budgets.chat_agent_budgets_updated_by_users_id_fkey",
+        "n|con|public.chat_agent_budgets.chat_agent_budgets_updated_by_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_agent_budgets",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.chat_agent_budgets.updated_by",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_agent_charges"],
+      "writes": [
+        "s|fk|public.chat_agent_charges.chat_agent_charges_project_id_projects_id_fkey",
+        "n|fk|public.chat_agent_charges.chat_agent_charges_project_id_projects_id_fkey",
+        "e|fk|public.chat_agent_charges.chat_agent_charges_project_id_projects_id_fkey",
+        "n|con|public.chat_agent_charges.chat_agent_charges_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_agent_charges",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.chat_agent_charges.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "chat_agent_budgets",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "chat_agent_charges",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "tokens",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "updated_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "conversation_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "tokens",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "chat_agent_budgets_project_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "chat_agent_charges_project_id_created_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "created_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "chat_agent_charges_user_id_created_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "created_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "chat_agent_budgets_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "chat_agent_budgets_updated_by_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["updated_by"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "chat_agent_charges_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_budgets",
+        "name": "chat_agent_budgets_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agent_charges",
+        "name": "chat_agent_charges_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

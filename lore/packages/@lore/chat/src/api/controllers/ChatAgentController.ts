@@ -2,10 +2,12 @@ import { $ownsProject } from "@lore/core/api";
 import { $inject, Alepha, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
+import { chatAgentBudgetResourceSchema } from "../schemas/chatAgentBudgetResourceSchema.ts";
 import {
   chatAgentBodySchema,
   chatAgentResourceSchema,
 } from "../schemas/chatAgentResourceSchema.ts";
+import { ChatAgentBudgetService } from "../services/ChatAgentBudgetService.ts";
 import { ChatAgentService } from "../services/ChatAgentService.ts";
 import { ChatBuckets } from "../services/ChatBuckets.ts";
 
@@ -16,6 +18,7 @@ import { ChatBuckets } from "../services/ChatBuckets.ts";
  */
 export class ChatAgentController {
   protected readonly service = $inject(ChatAgentService);
+  protected readonly budgets = $inject(ChatAgentBudgetService);
   protected readonly alepha = $inject(Alepha);
 
   protected ownsProject = (requires: string) =>
@@ -46,6 +49,50 @@ export class ChatAgentController {
       items: await this.service.list(params.projectId),
       enabled: this.service.enabled(),
     }),
+  });
+
+  /**
+   * The project's AI budget for its agents (#Q4237) and what it paid for
+   * over the window. Readable with the agents.
+   */
+  getChatAgentBudget = $action({
+    method: "GET",
+    path: "/projects/:projectId/chat/agent-budget",
+    use: [this.ownsProject("chat:read")],
+    description:
+      "The project's AI budget for its chat agents: `tokens` per `windowHours` (absent with none), what its agents' runs spent over the window, and `freesAt` while it is spent. A run draws on it first, then on the mentioner's own budget.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: chatAgentBudgetResourceSchema,
+    },
+    handler: async ({ params }) => this.budgets.status(params.projectId),
+  });
+
+  /**
+   * Sets the project's AI budget for its agents, or removes it with
+   * `tokens: null` (#Q4237).
+   */
+  setChatAgentBudget = $action({
+    method: "PUT",
+    path: "/projects/:projectId/chat/agent-budget",
+    use: [this.ownsProject("chat:agent")],
+    description:
+      "Set the project's AI budget for its chat agents, in tokens per window, or remove it with `tokens: null`.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        tokens: z.integer().min(1000).max(100_000_000).nullable(),
+      }),
+      response: chatAgentBudgetResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.budgets.setLimit(
+        params.projectId,
+        body.tokens ?? undefined,
+        user!.id,
+      );
+      return this.budgets.status(params.projectId);
+    },
   });
 
   getChatAgent = $action({

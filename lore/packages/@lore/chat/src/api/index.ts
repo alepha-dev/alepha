@@ -7,6 +7,7 @@ import { ChatMessageController } from "./controllers/ChatMessageController.ts";
 import { ChatRoomController } from "./controllers/ChatRoomController.ts";
 import { ChatSocketController } from "./controllers/ChatSocketController.ts";
 import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
+import { ChatAgentBudgetService } from "./services/ChatAgentBudgetService.ts";
 import { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
 import { ChatAgentService } from "./services/ChatAgentService.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
@@ -57,6 +58,7 @@ export const LoreChatApi = $module({
     ChatTyping,
     ChatResponderRegistry,
     ChatAgentService,
+    ChatAgentBudgetService,
     ChatAgentRunner,
     ChatMessageController,
     ChatAgentController,
@@ -77,6 +79,19 @@ export { ChatBuckets } from "./services/ChatBuckets.ts";
 export { chatRoomMembers } from "./entities/chatRoomMembers.ts";
 export { type ChatRoom, chatRooms } from "./entities/chatRooms.ts";
 export { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
+export { ChatAgentBudgetService } from "./services/ChatAgentBudgetService.ts";
+export {
+  type ChatAgentBudget,
+  chatAgentBudgets,
+} from "./entities/chatAgentBudgets.ts";
+export {
+  type ChatAgentCharge,
+  chatAgentCharges,
+} from "./entities/chatAgentCharges.ts";
+export {
+  type ChatAgentBudgetResource,
+  chatAgentBudgetResourceSchema,
+} from "./schemas/chatAgentBudgetResourceSchema.ts";
 export { ChatAgentService } from "./services/ChatAgentService.ts";
 export {
   type ChatAgentBody,
