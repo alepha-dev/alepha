@@ -161,7 +161,7 @@ func TestJobMirror(t *testing.T) {
 	t.Run("a read job clones the mirror once, then reuses a fresh one, and the agent never fetches", func(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntrue\n")
 		src := map[string]any{"mode": "read", "repository": origin}
 		rec := w.run("job-1", w.agentSpec(map[string]any{"source": src}))
 		if last := rec.last(); last.Status != "done" {
@@ -198,7 +198,7 @@ func TestJobMirror(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
 		setFetchTTL(t, w, 0)
-		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntrue\n")
 		src := map[string]any{"mode": "read", "repository": origin}
 		if last := w.run("job-1", w.agentSpec(map[string]any{"source": src})).last(); last.Status != "done" {
 			t.Fatalf("ack = %+v", last)
@@ -227,7 +227,7 @@ func TestJobMirror(t *testing.T) {
 	t.Run("a ref the mirror does not know yet is fetched once more, a ref nobody has fails the job", func(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntouch \""+w.bin+"/ran\"\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntouch \""+w.bin+"/ran\"\n")
 		src := map[string]any{"mode": "read", "repository": origin}
 		if last := w.run("job-1", w.agentSpec(map[string]any{"source": src})).last(); last.Status != "done" {
 			t.Fatalf("ack = %+v", last)
@@ -250,7 +250,7 @@ func TestJobMirror(t *testing.T) {
 	t.Run("a failed fetch fails the job with git's message, before the agent starts", func(t *testing.T) {
 		originRepo(t)
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntouch \""+w.bin+"/ran\"\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntouch \""+w.bin+"/ran\"\n")
 		missing := filepath.Join(w.work, "no-such-repo")
 		last := w.run("job-1", w.agentSpec(map[string]any{"source": map[string]any{"mode": "read", "repository": missing}})).last()
 		if last.Status != "failed" || !strings.Contains(last.Reason, "could not fetch "+missing+": git fetch:") || !strings.Contains(strings.ToLower(last.Reason), "repository") {
@@ -291,7 +291,7 @@ func TestJobMirror(t *testing.T) {
 	t.Run("bay jobs workspaces lists the mirror, and removing the project removes it", func(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntrue\n")
 		if last := w.run("job-1", w.agentSpec(map[string]any{"source": map[string]any{"mode": "read", "repository": origin}})).last(); last.Status != "done" {
 			t.Fatalf("ack = %+v", last)
 		}
@@ -344,6 +344,7 @@ func TestReadTrees(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 pwd > "`+w.bin+`/cwd"
 git -C src rev-parse HEAD > "`+w.bin+`/head"
 git -C src log --format=%s > "`+w.bin+`/log"
@@ -392,6 +393,7 @@ echo note > notes.txt
 		setMaxJobs(t, w, 2)
 		// Each run waits until both are running, or gives up.
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 touch "`+w.bin+`/started.$$"
 i=0
 while [ "$(ls "`+w.bin+`" | grep -c '^started\.')" -lt 2 ]; do
@@ -429,7 +431,7 @@ done
 		w := newJobWorld(t)
 		setMaxJobs(t, w, 3)
 		setFetchTTL(t, w, 0)
-		w.stub(t, "claude", "#!/bin/sh\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
 		src := map[string]any{"mode": "read", "repository": origin}
 		first := gitT(t, origin, "rev-parse", "main")
 		done := make(chan connector.Ack, 1)
@@ -467,7 +469,7 @@ done
 		origin := originRepo(t)
 		w := newJobWorld(t)
 		setMaxJobs(t, w, 2)
-		w.stub(t, "claude", "#!/bin/sh\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
 		done := make(chan connector.Ack, 1)
 		go func() {
 			done <- w.run("job-a", w.agentSpec(map[string]any{"source": map[string]any{"mode": "read", "repository": origin}, "timeoutSeconds": 600})).last()
@@ -484,7 +486,7 @@ done
 		origin := originRepo(t)
 		w := newJobWorld(t)
 		setFetchTTL(t, w, 0)
-		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntrue\n")
 		src := map[string]any{"mode": "read", "repository": origin}
 		first := gitT(t, origin, "rev-parse", "main")
 		if last := w.run("job-1", w.agentSpec(map[string]any{"source": src})).last(); last.Status != "done" {
@@ -541,6 +543,7 @@ func TestWriteWorktrees(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 set -e
 git rev-parse --abbrev-ref HEAD > "`+w.bin+`/branch"
 git log -1 --format=%s > "`+w.bin+`/last"
@@ -596,6 +599,7 @@ git push -q 2>"`+w.bin+`/push.err"
 		origin := originRepo(t)
 		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 echo work > work.txt
 git add work.txt
 `+agentGit+` commit -q -m "not pushed"
@@ -637,7 +641,7 @@ exit 1
 		}
 		// The local branch it left is not reused: the next job starts from
 		// main again, as nothing was pushed.
-		w.stub(t, "claude", "#!/bin/sh\ngit log -1 --format=%s > \""+w.bin+"/last\"\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ngit log -1 --format=%s > \""+w.bin+"/last\"\n")
 		if last := w.run("job-3", writeSpec(w, origin, "q2", "lore/q2")).last(); last.Status != "done" {
 			t.Fatalf("ack = %+v", last)
 		}
@@ -649,11 +653,11 @@ exit 1
 	t.Run("uncommitted changes are kept; a clean failed run is removed", func(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\necho draft > draft.txt\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\necho draft > draft.txt\n")
 		if last := w.run("job-1", writeSpec(w, origin, "q3", "lore/q3")).last(); last.Status != "done" || last.Warning != "kept acme/q3, 1 uncommitted change(s)" {
 			t.Fatalf("ack = %+v", last)
 		}
-		w.stub(t, "claude", "#!/bin/sh\nexit 2\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nexit 2\n")
 		last := w.run("job-2", writeSpec(w, origin, "q4", "lore/q4")).last()
 		if last.Status != "failed" || last.Warning != "" || last.ExitCode == nil || *last.ExitCode != 2 {
 			t.Fatalf("ack = %+v", last)
@@ -666,7 +670,7 @@ exit 1
 	t.Run("a clone from before sources is refused, never run over", func(t *testing.T) {
 		origin := originRepo(t)
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntrue\n")
 		old := filepath.Join(w.work, "acme", "q5")
 		gitT(t, filepath.Dir(origin), "clone", "--quiet", origin, old)
 		last := w.run("job-1", writeSpec(w, origin, "q5", "lore/q5")).last()

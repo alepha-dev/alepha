@@ -368,7 +368,23 @@ describe("the agent job", () => {
       await expect(triage(w)).rejects.toThrow(
         'Host "agent-1" runs a Bay that does not prepare job sources: upgrade Bay on agent-1',
       );
-      expect((await w.repos.jobs.findMany({})).length).toBe(before + 1);
+      // Its jobs user's gh signed out (#Q4256): the mirror could not fetch.
+      await w.repos.hosts.updateById(w.host.id, {
+        jobsSources: true,
+        jobsUser: "bay-agent",
+        jobsTools: [
+          { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+          { name: "gh", kind: "tool", found: true, signedIn: false },
+        ],
+      });
+      await expect(triage(w)).rejects.toThrow(
+        `Host "agent-1" reports its jobs user's gh CLI signed out: sudo -iu bay-agent gh auth login`,
+      );
+      // A job with no source needs no gh.
+      expect(
+        (await triage(w, { source: { mode: "none" } })).input.source,
+      ).toEqual({ mode: "none" });
+      expect((await w.repos.jobs.findMany({})).length).toBe(before + 2);
     });
 
     it("keeps the commit and a kept worktree's warning from the terminal ack", async ({

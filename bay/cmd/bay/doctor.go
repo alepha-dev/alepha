@@ -127,6 +127,24 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 				agents++
 				c.Detail += " (agent CLI)"
 			}
+			// Its sign-in (#Q4256): lore must not be signed in, the others
+			// should be.
+			switch {
+			case t.Name == "lore" && t.SignedIn != nil && *t.SignedIn:
+				c.OK, c.Warn = false, true
+				c.Detail += ", " + loreSignedInWarning(t.Account, username)
+			case t.Name == "lore":
+				c.Detail += ", not signed in, as it should be"
+			case t.SignedIn != nil && *t.SignedIn && t.Account != "":
+				c.Detail += ", signed in as " + t.Account
+			case t.SignedIn != nil && *t.SignedIn:
+				c.Detail += ", signed in"
+			case t.SignedIn != nil:
+				c.OK, c.Warn = false, true
+				c.Detail += ", signed out: " + signInCommand(t.Name, username)
+			case t.Name != "git":
+				c.Detail += ", sign-in unknown"
+			}
 		case t.Found:
 			c.Warn = true
 			c.Detail = "found, but " + t.Error
@@ -140,8 +158,6 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 		checks = append(checks, check{Name: "agent jobs", Warn: true,
 			Detail: fmt.Sprintf("no supported agent CLI (%s) answers for %s: this host cannot run agent jobs", strings.Join(adapterNames(), ", "), username)})
 	}
-	checks = append(checks, check{Name: "sign-ins", OK: true,
-		Detail: "not checked: a job that needs gh, lore or an agent's login fails with the tool's own message"})
 	return checks
 }
 

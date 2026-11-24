@@ -15,6 +15,13 @@ export const hostJobToolSchema = z.object({
   found: z.boolean(),
   version: z.string().max(100).optional(),
   error: z.string().max(500).optional(),
+  /**
+   * Whether it says it is signed in (#Q4256), from its own status command;
+   * absent when it has none (gemini, git) or none could be read. `lore`
+   * must not be: a signed-in CLI would reach past a job key's pins.
+   */
+  signedIn: z.boolean().optional(),
+  account: z.string().max(200).optional(),
 });
 
 export type HostJobTool = Infer<typeof hostJobToolSchema>;
@@ -29,8 +36,8 @@ export const hostInventoryJobsSchema = z.object({
   /**
    * What the jobs user has on its PATH (#Q4220): each agent CLI Bay has an
    * adapter for (`kind: "agent"`), then git, gh and lore (`kind: "tool"`),
-   * found or not, with a version or the error of its version command.
-   * Whether one is signed in is not checked.
+   * found or not, with a version or the error of its version command,
+   * and its sign-in (#Q4256).
    */
   tools: z.array(hostJobToolSchema).max(20).optional(),
   /**

@@ -673,6 +673,8 @@ export class HostCommand {
       found: boolean;
       version?: string;
       error?: string;
+      signedIn?: boolean;
+      account?: string;
     }> | null;
   }): string[] {
     if (host.jobsUser === undefined || host.jobsUser === null) {
@@ -692,10 +694,33 @@ export class HostCommand {
               ? "not installed"
               : tool.error
                 ? tool.error
-                : `installed, ${tool.version ?? ""}`
+                : `installed, ${tool.version ?? ""}${this.signInOf(tool, host.jobsUser ?? "")}`
           }`,
       ),
     ];
+  }
+
+  /**
+   * A tool's sign-in (#Q4256), as the Tools section words it: lore signed in
+   * is a warning, git has none.
+   */
+  protected signInOf(
+    tool: { name: string; signedIn?: boolean; account?: string },
+    user: string,
+  ): string {
+    if (tool.name === "git") return "";
+    if (tool.name === "lore") {
+      return tool.signedIn
+        ? `, signed in: a job would reach past its key's pins (sudo -iu ${user} lore logout)`
+        : "";
+    }
+    if (tool.signedIn === true) {
+      return tool.account ? `, signed in as ${tool.account}` : ", signed in";
+    }
+    if (tool.signedIn === false) {
+      return `, signed out: sudo -iu ${user} ${tool.name} auth login`;
+    }
+    return ", sign-in unknown";
   }
 
   public readonly wait = $command({

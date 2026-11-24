@@ -3237,6 +3237,12 @@ export default {
   "hosts.tools.user": "Les tâches tournent sous $1.",
   "hosts.tools.missing": "Non installé",
   "hosts.tools.installed": "Installé, $1",
+  "hosts.tools.signedIn": "connecté",
+  "hosts.tools.signedInAs": "connecté en tant que $1",
+  "hosts.tools.signedOut": "déconnecté : $1",
+  "hosts.tools.signInUnknown": "connexion inconnue",
+  "hosts.tools.loreSignedIn":
+    "connecté : une tâche dépasserait les limites de sa clé ($1)",
   "hosts.agent.tools.link": "Voir les outils de l'utilisateur des tâches",
   "hosts.agent.tools.noAgent":
     "Aucune CLI d'agent ne répond pour l'utilisateur des jobs : cet hôte ne peut pas exécuter de jobs d'agent.",

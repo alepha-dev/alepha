@@ -54,8 +54,7 @@ type InventoryJobs struct {
 /*
 InventoryTool is one tool on the jobs user's PATH. `kind` is `agent` for an
 agent CLI Bay has an adapter for (what a job's `agent` names), `tool` for
-the others. Whether a tool is signed in is not checked: a job that needs it
-fails with the tool's own message.
+the others.
 */
 type InventoryTool struct {
 	Name    string `json:"name"`
@@ -63,6 +62,11 @@ type InventoryTool struct {
 	Found   bool   `json:"found"`
 	Version string `json:"version,omitempty"`
 	Error   string `json:"error,omitempty"`
+	// SignedIn is whether the tool says it is signed in (#Q4256), from its
+	// own status command: absent when it has none, or none could be read.
+	// Account is the account it names, when it names one.
+	SignedIn *bool  `json:"signedIn,omitempty"`
+	Account  string `json:"account,omitempty"`
 }
 
 // InventoryStack is one stack environment as the machine sees it.

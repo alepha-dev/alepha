@@ -658,6 +658,19 @@ describe("Bay connector against a real Lore", () => {
       ].join("\n"),
     );
     await chmod(join(stubs, "claude"), 0o755);
+    // A gh signed in, whatever the machine has: a CI runner's own gh is
+    // installed and signed out, and Lore refuses a read job on a host that
+    // reports it so (#Q4256).
+    await writeFile(
+      join(stubs, "gh"),
+      [
+        "#!/bin/sh",
+        `if [ "$1" = "--version" ]; then echo "gh version 2.40.1"; fi`,
+        "exit 0",
+        "",
+      ].join("\n"),
+    );
+    await chmod(join(stubs, "gh"), 0o755);
     process.env.BAY_DEV_JOBS_AS_SELF = "1";
     process.env.BAY_DEV_JOBS_PATH = stubs;
     await startBay(bay);

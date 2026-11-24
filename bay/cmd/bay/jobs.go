@@ -423,6 +423,11 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	if err != nil {
 		return nil, out, err
 	}
+	// A tool the job needs and that says it is signed out fails it now,
+	// before any git and before its agent starts (#Q4256).
+	if err := r.requireSignedIn(ctx, u, spec); err != nil {
+		return nil, out, err
+	}
 	dir := u.HomeDir
 	if spec.Kind == jobKindAgent {
 		if spec.Source.mode() == sourceRead {
@@ -553,32 +558,45 @@ func (r *processRunner) toolVersion(ctx context.Context, u *user.User, binary st
 // toolOutput runs a tool as the jobs user and answers its stdout, or the
 // error of a run that did not exit 0.
 func (r *processRunner) toolOutput(ctx context.Context, u *user.User, binary string, args, env []string) (string, error) {
-	bin, err := r.lookPath(u.HomeDir, binary)
+	stdout, _, code, err := r.toolRun(ctx, u, binary, args, env)
 	if err != nil {
 		return "", err
+	}
+	if code != 0 {
+		return "", fmt.Errorf("%s %s exited with status %d", binary, strings.Join(args, " "), code)
+	}
+	return stdout, nil
+}
+
+// toolRun runs a tool as the jobs user, in its home, for at most 15 s, and
+// answers what it printed on each stream and its exit status.
+func (r *processRunner) toolRun(ctx context.Context, u *user.User, binary string, args, env []string) (stdout, stderr string, code int, err error) {
+	bin, err := r.lookPath(u.HomeDir, binary)
+	if err != nil {
+		return "", "", 0, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	cmd, err := r.command(ctx, u, u.HomeDir, bin, args, append(r.jobEnv(u), env...))
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
-	var out strings.Builder
-	cmd.Stdout = &out
-	code, err := r.wait(ctx, cmd)
+	var out, errOut strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &errOut
+	exit, err := r.wait(ctx, cmd)
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
-	if code != nil && *code != 0 {
-		return "", fmt.Errorf("%s %s exited with status %d", binary, strings.Join(args, " "), *code)
+	if exit != nil {
+		code = *exit
 	}
-	return out.String(), nil
+	return out.String(), errOut.String(), code, nil
 }
 
 /*
 tools is what the jobs user has (#Q4220): each adapter's CLI, then git, gh,
 cf and lore, each found or not on its PATH, with its version or the error of
-its version command.
+its version command, and whether it is signed in (#Q4256, signins.go).
 */
 func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.InventoryTool {
 	var out []connector.InventoryTool
@@ -594,6 +612,9 @@ func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.Inv
 			tool.Error = cut(err.Error(), 500)
 		} else {
 			tool.Version = v
+			// Its sign-in, from its own status command (#Q4256).
+			tool.SignedIn, tool.Account = r.signInOf(ctx, u, name)
+			tool.Account = cut(tool.Account, 200)
 		}
 		out = append(out, tool)
 	}

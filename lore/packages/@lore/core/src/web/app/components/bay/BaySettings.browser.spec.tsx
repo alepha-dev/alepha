@@ -165,6 +165,55 @@ describe("BaySettings", () => {
     );
   });
 
+  it("shows each tool's sign-in, the command for a signed-out one, and warns on a signed-in lore (#Q4256)", async ({
+    expect,
+  }) => {
+    await show(["host:read"], {
+      jobsUser: "bay-agent",
+      jobsTools: [
+        {
+          name: "claude",
+          kind: "agent",
+          found: true,
+          version: "2.1.7",
+          signedIn: true,
+          account: "ops@example.com",
+        },
+        { name: "gemini", kind: "agent", found: true, version: "0.9.0" },
+        { name: "git", kind: "tool", found: true, version: "2.43.0" },
+        {
+          name: "gh",
+          kind: "tool",
+          found: true,
+          version: "2.40.1",
+          signedIn: false,
+        },
+        {
+          name: "lore",
+          kind: "tool",
+          found: true,
+          version: "0.38.0",
+          signedIn: true,
+        },
+      ],
+    });
+    expect(screen.getByTestId("bay-job-tool-claude").textContent).toContain(
+      "signed in as ops@example.com",
+    );
+    expect(screen.getByTestId("bay-job-tool-gemini").textContent).toContain(
+      "sign-in unknown",
+    );
+    expect(screen.getByTestId("bay-job-tool-git").textContent).not.toContain(
+      "sign",
+    );
+    expect(screen.getByTestId("bay-job-tool-gh").textContent).toContain(
+      "signed out: sudo -iu bay-agent gh auth login",
+    );
+    expect(
+      screen.getByTestId("bay-job-tool-lore-warning").textContent,
+    ).toContain("sudo -iu bay-agent lore logout");
+  });
+
   it("tells a host with no jobs user from one that never reported (#Q4254)", async ({
     expect,
   }) => {

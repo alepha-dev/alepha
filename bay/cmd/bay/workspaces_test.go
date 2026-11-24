@@ -13,7 +13,7 @@ import (
 func TestJobWorkspaces(t *testing.T) {
 	t.Run("lists the workspaces jobs left, and removes one, then a whole project", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntouch here\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntouch here\n")
 		for id, ws := range map[string]string{"j1": "triage", "j2": "q12"} {
 			if last := w.run(id, w.agentSpec(map[string]any{"workspace": ws})).last(); last.Status != "done" {
 				t.Fatalf("ack = %+v", last)
@@ -69,7 +69,7 @@ func TestJobWorkspaces(t *testing.T) {
 
 	t.Run("refuses to remove a workspace a job runs in, and a name that climbs", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent claude started") })
 		rm := &ackRecorder{}
