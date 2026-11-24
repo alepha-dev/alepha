@@ -16,21 +16,24 @@ import { assistantConfirmCards } from "./assistantConfirmCards.ts";
 import { assistantOpenAtom } from "./assistantOpenAtom.ts";
 import AssistantReplyLink from "./AssistantReplyLink.tsx";
 import { useAssistantInvalidates } from "./useAssistantInvalidates.ts";
-import { useAssistantStatus } from "./useAssistantStatus.ts";
+import { useAssistantModel, useAssistantStatus } from "./useAssistantStatus.ts";
 import { useAssistantToolLabel } from "./useAssistantToolLabel.ts";
 
 /**
  * Lore's assistant (#Q3211), mounted once at the layout's root through
  * core's `ShellExtensionRegistry`, so the conversation outlives every page.
  *
- * From 1024px up it docks beside the page (`AiChat`'s `auto` mode, into the
- * layout's `AiChatDockSlot`) and folds into a pill; narrower, it is a
- * drawer. Nothing renders until the server says the assistant answers, nor
- * outside a project (#Q3235): project pages only, for now.
+ * A card floating over the page's bottom corner (`AiChat`'s `floating`
+ * mode, #Q4269, the owner's call over the dock): the page under it stays
+ * usable, the header names the agent and the model that answers, and it
+ * minimizes into a pill, expands to full screen or closes. Nothing renders
+ * until the server says the assistant answers, nor outside a project
+ * (#Q3235): project pages only, for now.
  */
 const AssistantPanel = () => {
   const { tr } = useI18n<I18n, "en">();
   const enabled = useAssistantStatus();
+  const model = useAssistantModel();
   const [open, setOpen] = useStore(assistantOpenAtom);
   const [project] = useStore(currentProjectAtom);
   const toolLabel = useAssistantToolLabel();
@@ -62,11 +65,12 @@ const AssistantPanel = () => {
 
   return (
     <AiChat
-      mode="auto"
+      mode="floating"
       assistant="lore"
       open={open}
       onOpenChange={setOpen}
       title={tr("assistant.title")}
+      subtitle={model}
       suggestions={suggestions}
       toolLabel={toolLabel}
       toolSummary={toolSummary}

@@ -107,8 +107,10 @@ describe("LoreAssistant", () => {
         { request: { headers } },
       );
       expect(list.data).toHaveLength(1);
+      // The model the panel names (#Q4269): Workers AI's default here.
       expect(await status.aiAssistantStatus.run({}, { user })).toEqual({
         enabled: true,
+        model: "@cf/mistralai/mistral-small-3.1-24b-instruct",
       });
       await alepha.stop();
     });

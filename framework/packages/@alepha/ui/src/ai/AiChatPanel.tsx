@@ -41,6 +41,10 @@ export interface AiChatViewProps {
    */
   title?: string;
   /**
+   * A second line under the title, quieter: the model that answers, say.
+   */
+  subtitle?: string;
+  /**
    * The app's own controls in the panel's header, before the history menu:
    * a link to the assistant's help page, say.
    */
@@ -133,7 +137,7 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
     : undefined;
 
   const title = props.title ?? tr("ai.chat.title", { default: "Assistant" });
-  const titleClassName = "flex-1 truncate text-base font-medium";
+  const titleClassName = "truncate text-base font-medium";
 
   return (
     <div data-testid="ai-chat" className="flex h-full min-h-0 w-full flex-col">
@@ -141,11 +145,21 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
           two headers' bottom lines continue each other (#Q3584). */}
       <div className="border-border flex h-14 shrink-0 items-center gap-2 border-b ps-4 pe-2.5">
         <Sparkles className="text-primary size-4 shrink-0" />
-        {props.renderTitle ? (
-          props.renderTitle(title, titleClassName)
-        ) : (
-          <h2 className={titleClassName}>{title}</h2>
-        )}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {props.renderTitle ? (
+            props.renderTitle(title, titleClassName)
+          ) : (
+            <h2 className={titleClassName}>{title}</h2>
+          )}
+          {props.subtitle && (
+            <p
+              data-testid="ai-chat-subtitle"
+              className="text-muted-foreground truncate text-xs leading-tight"
+            >
+              {props.subtitle}
+            </p>
+          )}
+        </div>
         {props.headerActions}
         {props.history !== false && (
           <AiChatHistory

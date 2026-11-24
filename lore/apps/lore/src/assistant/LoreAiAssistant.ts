@@ -24,9 +24,16 @@ export class LoreAiAssistant {
   protected readonly toolset = $inject(LoreAiToolset);
   protected readonly access = $inject(LoreAiToolAccess);
 
+  /**
+   * The model that answers, or none when the provider picks (Anthropic
+   * without `AI_MODEL` refuses to start). The panel's header names it
+   * (#Q4269).
+   */
+  public readonly model = this.defaultModel();
+
   public readonly assistant = $ai({
     name: "lore",
-    model: this.defaultModel(),
+    model: this.model,
     system: ({ user }) => this.prompt.system(user),
     // A function, read on the first turn: the tool classes and controllers
     // behind the toolset are created then, not at boot (#Q3398).

@@ -106,6 +106,29 @@ const DockLayout = (props: Partial<AiChatProps>) => {
   );
 };
 
+/**
+ * The same, floating over the page's corner instead (#Q4269): no slot.
+ */
+const FloatLayout = (props: Partial<AiChatProps>) => {
+  const [open, setOpen] = useState(true);
+  const [clicks, setClicks] = useState(0);
+  return (
+    <div data-testid="layout">
+      <main>
+        <button type="button" onClick={() => setOpen(true)}>
+          Ask
+        </button>
+        <button type="button" onClick={() => setClicks((n) => n + 1)}>
+          Page action
+        </button>
+        <span data-testid="open-state">{String(open)}</span>
+        <span data-testid="page-clicks">{clicks}</span>
+      </main>
+      <AiChat {...props} mode="floating" open={open} onOpenChange={setOpen} />
+    </div>
+  );
+};
+
 describe("AiChat", () => {
   let alepha: Alepha | undefined;
 
@@ -812,6 +835,46 @@ describe("AiChat", () => {
       key: "Escape",
     });
     await view.findByTestId("ai-chat-dock");
+  });
+
+  it("floats over the page's corner without a backdrop, keeps the page usable, minimizes into a pill and restores", async () => {
+    const { view } = await mount(
+      () => {},
+      { title: "Lore", subtitle: "claude-sonnet-5-5" },
+      FloatLayout,
+    );
+
+    const card = await view.findByTestId("ai-chat-float");
+    expect(card.parentElement).toBe(document.body);
+    expect(view.queryByRole("dialog")).toBeNull();
+    expect(document.querySelector("[data-slot='drawer-overlay']")).toBeNull();
+    expect(view.getByTestId("ai-chat-subtitle").textContent).toBe(
+      "claude-sonnet-5-5",
+    );
+    // The composer is the card's last part, under the conversation.
+    expect(card.querySelector("textarea")).toBeTruthy();
+
+    // The page under it still answers a click, and the card stays.
+    fireEvent.click(view.getByRole("button", { name: "Page action" }));
+    expect(view.getByTestId("page-clicks").textContent).toBe("1");
+    expect(view.getByTestId("ai-chat-float")).toBeTruthy();
+
+    fireEvent.click(view.getByRole("button", { name: "Minimize" }));
+    expect(view.queryByTestId("ai-chat-float")).toBeNull();
+    expect(view.getByTestId("open-state").textContent).toBe("false");
+    fireEvent.click(view.getByTestId("ai-chat-launcher"));
+    await view.findByTestId("ai-chat-float");
+
+    fireEvent.click(view.getByTestId("ai-chat-maximize"));
+    await view.findByTestId("ai-chat-fullscreen");
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await view.findByTestId("ai-chat-float");
+
+    fireEvent.click(view.getByRole("button", { name: "Close" }));
+    expect(view.queryByTestId("ai-chat-float")).toBeNull();
+    expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
   });
 
   it("docks beside the page without a backdrop, minimizes into a pill that shows a waiting action, and restores", async () => {

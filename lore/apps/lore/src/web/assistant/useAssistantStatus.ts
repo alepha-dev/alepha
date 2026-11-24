@@ -11,8 +11,27 @@ import type { LoreAiStatusController } from "../../assistant/LoreAiStatusControl
  */
 export const useAssistantStatus = (): boolean => {
   const auth = useAuth();
+  const status = useAssistantStatusQuery();
+  return !!auth.user && status.data?.enabled === true;
+};
+
+/**
+ * The model that answers, for the panel's header (#Q4269): the last segment
+ * of its id (`mistral-small-3.1-24b-instruct` for Workers AI's
+ * `@cf/mistralai/...`), or none while loading or when the server names none.
+ */
+export const useAssistantModel = (): string | undefined => {
+  const model = useAssistantStatusQuery().data?.model;
+  return model ? model.split("/").pop() : undefined;
+};
+
+/**
+ * One `aiAssistantStatus` read, shared by the button and the panel.
+ */
+const useAssistantStatusQuery = () => {
+  const auth = useAuth();
   const api = useClient<LoreAiStatusController>();
-  const status = useQuery(
+  return useQuery(
     {
       key: ["ai-assistant-status"],
       handler: () => api.aiAssistantStatus(),
@@ -21,5 +40,4 @@ export const useAssistantStatus = (): boolean => {
     },
     [api, auth.user?.id],
   );
-  return !!auth.user && status.data?.enabled === true;
 };

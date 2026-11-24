@@ -10,8 +10,8 @@ import {
 
 /**
  * The assistant in Lore's chrome (#Q3211): the header button appears when the
- * switch is on, the dock opens beside the page, a turn renders, and a link in
- * the reply navigates the page next to the conversation.
+ * switch is on, the panel floats over the page's corner (#Q4269), a turn
+ * renders, and a link in the reply navigates the page under the conversation.
  *
  * The e2e server runs the production build with `AI_ASSISTANT_ENABLED`
  * unset, as every copy does by default (and a production boot with it set
@@ -19,7 +19,7 @@ import {
  * on, and the turn is scripted, at the network: `aiAssistantStatus` (direct
  * or inside `/api/_batch`), the conversation list, and the chat stream. What
  * runs for real is everything in the browser: the registry entries, the
- * dock, the stream parser, the reply's markdown and its link, and the page
+ * floating panel, the stream parser, the reply's markdown and its link, and the page
  * context a turn carries (#Q3972).
  */
 const scriptAssistant = async (
@@ -28,7 +28,7 @@ const scriptAssistant = async (
   sent: unknown[] = [],
 ) => {
   const scripted: Record<string, unknown> = {
-    aiAssistantStatus: { enabled: true },
+    aiAssistantStatus: { enabled: true, model: "claude-sonnet-5-5" },
     listConversations: [],
   };
 
@@ -80,7 +80,7 @@ const scriptAssistant = async (
 };
 
 test.describe("the assistant", () => {
-  test("docks beside the page, renders a turn, and its link navigates the page", async ({
+  test("floats over the page, renders a turn, and its link navigates the page", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -101,8 +101,12 @@ test.describe("the assistant", () => {
     await expect(button).toBeVisible({ timeout: 15_000 });
     await button.click();
 
-    const dock = page.getByTestId("ai-chat-dock");
+    const dock = page.getByTestId("ai-chat-float");
     await expect(dock).toBeVisible();
+    // The header names the model that answers (#Q4269).
+    await expect(dock.getByTestId("ai-chat-subtitle")).toHaveText(
+      "claude-sonnet-5-5",
+    );
 
     await dock
       .getByTestId("ai-chat-composer")
@@ -116,14 +120,14 @@ test.describe("the assistant", () => {
 
     await dock.getByTestId("assistant-link").click();
     await page.waitForURL((url) => url.pathname === `/${slug}/quests`);
-    // The page changed beside the conversation, which is still there.
+    // The page changed under the conversation, which is still there.
     await expect(dock.getByText("Two quests are open.")).toBeVisible();
 
-    // Project pages only: Home has neither the button nor the dock.
+    // Project pages only: Home has neither the button nor the panel.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("assistant-button")).toHaveCount(0);
-    await expect(page.getByTestId("ai-chat-dock")).toHaveCount(0);
+    await expect(page.getByTestId("ai-chat-float")).toHaveCount(0);
   });
 
   test("on a use case's page, a turn about 'this use case' carries that use case (#Q3972)", async ({
@@ -165,7 +169,7 @@ test.describe("the assistant", () => {
     );
     await page.waitForLoadState("networkidle");
     await page.getByTestId("assistant-button").click();
-    const dock = page.getByTestId("ai-chat-dock");
+    const dock = page.getByTestId("ai-chat-float");
     await expect(dock).toBeVisible();
     const composer = dock.getByTestId("ai-chat-composer").locator("textarea");
     await composer.fill("What is missing in this use case?");

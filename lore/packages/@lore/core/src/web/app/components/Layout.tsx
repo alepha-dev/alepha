@@ -1,5 +1,4 @@
 import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
-import { AiChatDockSlot } from "@alepha/ui/ai";
 import { ActionErrorToaster, NavigationProgress } from "@alepha/ui/shell";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -33,23 +32,12 @@ const Layout = () => {
             the layout it outlives every transition the app can make.
             `ProjectView` passes `progress={false}` so there is exactly one. */}
         <NavigationProgress />
-        {/* A row: the page, and beside it the framework's dock slot, where a
-            docked panel (the app's assistant, through an overlay below) takes
-            its width from the page rather than covering it. Empty, the slot
-            takes none. The slot is `bg-sidebar`, the frame the project's
-            inset shell draws around its page, so the dock sits in the same
-            frame instead of on the body's colour (#Q3372).
-
-            `md:pt-[calc(0.5rem+1px)]` is the project frame's own top, its
-            `md:mt-2 md:border-t` in `ProjectView`: without it the dock started
-            9px above the page card beside it, while its bottom, radius,
-            border and surface already matched (#Q3584). Change one, change
-            the other. */}
+        {/* The page. The assistant floats over it (#Q4269), an overlay
+            below, so nothing docks beside it and the row needs no slot. */}
         <div className="flex h-svh overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <NestedView />
           </div>
-          <AiChatDockSlot className="bg-sidebar md:pt-[calc(0.5rem+1px)]" />
         </div>
         {/* What the app adds at the root (`ShellExtensionRegistry`), mounted
             once so it outlives every page. Core names none of them. */}
