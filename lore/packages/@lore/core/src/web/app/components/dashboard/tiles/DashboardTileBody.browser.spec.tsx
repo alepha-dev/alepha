@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
@@ -205,6 +205,39 @@ describe("DashboardTileBody", () => {
       const end = screen.getByTestId("dashboard-sparkline-end");
       expect(end.style.left).toBe("100%");
       expect(end.style.top).toBe("0%");
+    });
+
+    it("marks the hovered day and gives its date and count (#Q4239)", async ({
+      expect,
+    }) => {
+      await mount(
+        "trend",
+        value({
+          value: 40,
+          series: [
+            { at: "2026-10-12", value: 20 },
+            { at: "2026-10-13", value: 0 },
+            { at: "2026-10-14", value: 40 },
+          ],
+        }),
+      );
+      const graph = screen.getByTestId("dashboard-sparkline");
+      // jsdom lays nothing out: a 200px-wide box, so the pointer has a day
+      // to be nearest to.
+      graph.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 200, height: 36 }) as DOMRect;
+      expect(screen.queryByTestId("dashboard-sparkline-tooltip")).toBeNull();
+
+      fireEvent.mouseMove(graph, { clientX: 90 });
+
+      const tooltip = screen.getByTestId("dashboard-sparkline-tooltip");
+      expect(tooltip.textContent).toBe("Oct 13, 2026: 0");
+      const dot = screen.getByTestId("dashboard-sparkline-hover");
+      expect(dot.style.left).toBe("50%");
+      expect(dot.style.top).toBe("100%");
+
+      fireEvent.mouseLeave(graph);
+      expect(screen.queryByTestId("dashboard-sparkline-tooltip")).toBeNull();
     });
   });
 
