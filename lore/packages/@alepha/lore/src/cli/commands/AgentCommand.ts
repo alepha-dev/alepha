@@ -45,9 +45,16 @@ export class AgentCommand {
   public readonly run = $command({
     name: "run",
     description:
-      "Run a prompt on an Agent host: triage (the inbox and the open errors), build --quest <n>, review-pr --pr <n> [--fix] [--trust], or text --text '...'; --wait follows its log",
+      "Run a prompt on an Agent host: triage (the inbox and the open errors), build --quest <n>, review-pr --pr <n> [--fix] [--trust], security-check, dependency-update [--text packages], or text --text '...'; --wait follows its log",
     args: z
-      .enum(["triage", "build", "text", "review-pr"])
+      .enum([
+        "triage",
+        "build",
+        "text",
+        "review-pr",
+        "security-check",
+        "dependency-update",
+      ])
       .meta({ title: "prompt" }),
     flags: z.object({
       project: z
@@ -78,7 +85,12 @@ export class AgentCommand {
           "You trust the pull request's author: the host does not check that they can write to the repository first",
         )
         .optional(),
-      text: z.text({ description: "A text prompt's words." }).optional(),
+      text: z
+        .text({
+          description:
+            "A text prompt's words, or the packages a dependency-update updates.",
+        })
+        .optional(),
       host: z
         .text({
           description:

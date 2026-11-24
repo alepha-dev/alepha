@@ -7,6 +7,7 @@ import { agentRunSchema, agentRunSourceSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, BadRequestError, ForbiddenError } from "alepha/server";
 
+import { DependencyAgentService } from "../services/DependencyAgentService.ts";
 import { FeedbackAgentService } from "../services/FeedbackAgentService.ts";
 import { PullRequestAgentService } from "../services/PullRequestAgentService.ts";
 import { QuestAgentService } from "../services/QuestAgentService.ts";
@@ -21,6 +22,8 @@ import { QuestAgentService } from "../services/QuestAgentService.ts";
  *   `feedback:triage`;
  * - `build`: the Build prompt on one accepted quest (`questWork`), under
  *   `quest:update`;
+ * - `security-check` (`quest:create`) and `dependency-update`
+ *   (`quest:update`, `text` naming the packages): the dependencies (#Q4252);
  * - `review-pr`: the Review prompt on a pull request (#Q4251), under
  *   `quest:update`: a read job at its head, or `fix` to push to its branch;
  * - `text`: a free prompt the member writes, under `host:update`, since it
@@ -37,6 +40,7 @@ export class AgentRunController {
   protected readonly feedbackAgent = $inject(FeedbackAgentService);
   protected readonly questAgent = $inject(QuestAgentService);
   protected readonly prAgent = $inject(PullRequestAgentService);
+  protected readonly dependencyAgent = $inject(DependencyAgentService);
   protected readonly agents = $inject(AgentJobs);
   protected readonly security = $inject(ProjectSecurityService);
 
@@ -47,7 +51,14 @@ export class AgentRunController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: agentRunSchema.merge(agentRunSourceSchema).extend({
-        prompt: z.enum(["triage", "build", "text", "review-pr"]),
+        prompt: z.enum([
+          "triage",
+          "build",
+          "text",
+          "review-pr",
+          "security-check",
+          "dependency-update",
+        ]),
         /** The quest a `build` works, or the one a `review-pr` is about. */
         quest: z.integer().optional(),
         /** The pull request a `review-pr` reviews, by its number (#Q4251). */
@@ -59,7 +70,10 @@ export class AgentRunController {
          * they can write to the repository. Never an automation's.
          */
         trust: z.boolean().optional(),
-        /** A `text` prompt's words. */
+        /**
+         * A `text` prompt's words, or the packages a `dependency-update`
+         * updates.
+         */
         text: z.string().max(131_072).optional(),
         /** The workspace a `text` prompt runs in; `text` by default. */
         workspace: z
@@ -122,6 +136,28 @@ export class AgentRunController {
           body.quest,
           user.id,
           run,
+        );
+        return { jobId: out.jobId, skipped: [] };
+      }
+      if (body.prompt === "security-check") {
+        // It files quests (#Q4252).
+        await need("quest:create");
+        const out = await this.dependencyAgent.securityCheck(
+          params.projectId,
+          user.id,
+          run,
+        );
+        return { jobId: out.jobId, skipped: [] };
+      }
+      if (body.prompt === "dependency-update") {
+        // It opens a pull request, as a build does (#Q4252).
+        await need("quest:update");
+        const out = await this.dependencyAgent.dependencyUpdate(
+          params.projectId,
+          user.id,
+          run,
+          {},
+          body.text,
         );
         return { jobId: out.jobId, skipped: [] };
       }

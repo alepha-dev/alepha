@@ -202,9 +202,9 @@ export class AutomationCommand {
     flags: z.object({
       project: AutomationCommand.PROJECT,
       prompt: z
-        .enum(["triage", "build", "text", "chat"])
+        .enum(["triage", "build", "text", "chat", "security", "dependencies"])
         .describe(
-          "triage (the inbox and the open errors), build (every quest not tagged needs-human into a pull request), text, or chat (a chat agent's rounds in a room: --agent, --room and --text)",
+          "triage (the inbox and the open errors), build (every quest not tagged needs-human into a pull request), text, chat (a chat agent's rounds in a room: --agent, --room and --text), security (the dependencies audited) or dependencies (updated into a pull request)",
         )
         .optional(),
       ...AutomationCommand.WRITE,
@@ -253,7 +253,7 @@ export class AutomationCommand {
       project: AutomationCommand.PROJECT,
       newName: z.text({ description: "A new name" }).optional(),
       prompt: z
-        .enum(["triage", "build", "text", "chat"])
+        .enum(["triage", "build", "text", "chat", "security", "dependencies"])
         .describe("Another prompt: triage, build, text or chat")
         .optional(),
       ...AutomationCommand.WRITE,

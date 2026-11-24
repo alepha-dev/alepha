@@ -12,6 +12,7 @@ import { $repository } from "alepha/orm";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { DependencyAgentService } from "./DependencyAgentService.ts";
 import { FeedbackAgentService } from "./FeedbackAgentService.ts";
 import { QuestAgentService } from "./QuestAgentService.ts";
 
@@ -39,6 +40,7 @@ export class PlanAutomationKinds {
   protected readonly questRows = $repository(quests);
   protected readonly epicRows = $repository(epics);
   protected readonly hostJobs = $inject(HostJobs);
+  protected readonly dependencyAgent = $inject(DependencyAgentService);
 
   /**
    * The one tag that keeps a quest from a build automation, fixed in code
@@ -76,6 +78,51 @@ export class PlanAutomationKinds {
       "build",
       async (automation) => (await this.picks(automation, 1)).length > 0,
     );
+    // The dependencies (#Q4252): what running each by hand asks. Neither
+    // has a cheap "is there work" check: their prompt files or opens
+    // nothing when there is nothing.
+    this.kinds.register({
+      key: "security",
+      permission: "quest:create",
+      run: async (automation, context) => ({
+        jobIds: [
+          (
+            await this.dependencyAgent.securityCheck(
+              automation.projectId,
+              context.startedBy,
+              this.automations.whereOf(automation),
+              {
+                automationId: automation.id,
+                ...(context.startedByJobId
+                  ? { startedByJobId: context.startedByJobId }
+                  : {}),
+              },
+            )
+          ).jobId,
+        ],
+      }),
+    });
+    this.kinds.register({
+      key: "dependencies",
+      permission: "quest:update",
+      run: async (automation, context) => ({
+        jobIds: [
+          (
+            await this.dependencyAgent.dependencyUpdate(
+              automation.projectId,
+              context.startedBy,
+              this.automations.whereOf(automation),
+              {
+                automationId: automation.id,
+                ...(context.startedByJobId
+                  ? { startedByJobId: context.startedByJobId }
+                  : {}),
+              },
+            )
+          ).jobId,
+        ],
+      }),
+    });
   }
 
   /**

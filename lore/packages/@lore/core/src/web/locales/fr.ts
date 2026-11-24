@@ -1380,6 +1380,8 @@ export default {
   "automations.prompt.build": "Build",
   "automations.prompt.text": "Texte",
   "automations.prompt.chat": "Tournée d'un agent de discussion",
+  "automations.prompt.security": "Vérification de sécurité",
+  "automations.prompt.dependencies": "Mise à jour des dépendances",
   "automations.form.chatAgent": "Agent de discussion",
   "automations.form.chatAgent.description":
     "Son identifiant, sans le @ : il répond dans le salon comme si vous l'aviez mentionné.",
@@ -4072,6 +4074,15 @@ export default {
   "agentPrompts.settings.feedbackLoop.description":
     "Proposée sur la boîte des retours et sur celle des anomalies. Accepte, rejette ou questionne chaque retour en attente, crée une quête pour chaque vrai défaut parmi les anomalies de confiance et résout le bruit, jusqu’à ce qu’il ne reste rien.",
   "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
+  "agentPrompts.securityCheck": "Vérifier les vulnérabilités des dépendances",
+  "agentPrompts.settings.securityCheck.title":
+    "Dépendances : Vérification de sécurité",
+  "agentPrompts.settings.securityCheck.description":
+    "Lancé sur un hôte Agent : audite les dépendances depuis le fichier de verrouillage et crée une quête par vulnérabilité réelle.",
+  "agentPrompts.dependencyUpdate": "Mettre à jour les dépendances",
+  "agentPrompts.settings.dependencyUpdate.title": "Dépendances : Mise à jour",
+  "agentPrompts.settings.dependencyUpdate.description":
+    "Lancé sur un hôte Agent : met à jour les dépendances, lance les vérifications et n'ouvre une pull request que si elles passent.",
   "agentPrompts.prReview": "Relire une pull request",
   "agentPrompts.settings.prReview.title": "Quêtes : Relire une pull request",
   "agentPrompts.settings.prReview.description":

@@ -205,6 +205,53 @@ describe("lore agent run, and agent_run", () => {
     ).rejects.toThrow("A review-pr names its pull request");
   });
 
+  it("checks the dependencies as a read job, and updates them as a write job on a branch Lore names (#Q4252)", async ({
+    expect,
+  }) => {
+    await w.repos.projects.updateById(w.projectId, {
+      repositoryUrl: "https://github.com/acme/web",
+    });
+    await w.repos.hosts.updateById((await w.repos.hosts.findMany({}))[0]!.id, {
+      jobsSources: true,
+    });
+    const check = await w.runs.runAgent.run(
+      {
+        params: { projectId: w.projectId },
+        body: { prompt: "security-check" },
+      },
+      { user: w.owner },
+    );
+    const read = await w.repos.jobs.getOne({
+      where: { id: { eq: check.jobId } },
+    });
+    expect(read.input).toMatchObject({
+      workspace: "security",
+      source: { mode: "read" },
+    });
+    expect(read.input.prompt).toContain("Check the dependencies");
+    expect(read.input.prompt).toContain("One quest per real vulnerability");
+
+    const update = await w.runs.runAgent.run(
+      {
+        params: { projectId: w.projectId },
+        body: { prompt: "dependency-update", text: "react, vite" },
+      },
+      { user: w.owner },
+    );
+    const write = await w.repos.jobs.getOne({
+      where: { id: { eq: update.jobId } },
+    });
+    const name = `job-${write.id.slice(0, 8)}`;
+    expect(write.input).toMatchObject({
+      workspace: name,
+      source: { mode: "write", branch: `lore/${name}` },
+    });
+    expect(write.input.prompt).toContain(
+      "## This run's request\n\nreact, vite",
+    );
+    expect(write.input.prompt).toContain("open a pull request with `gh`");
+  });
+
   it("runs a text prompt under Lore's preamble, in the workspace it names", async ({
     expect,
   }) => {

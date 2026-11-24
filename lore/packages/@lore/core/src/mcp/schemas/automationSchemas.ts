@@ -121,7 +121,7 @@ export const automationCreateParamsSchema = projectParamsSchema.extend({
   prompt: z
     .enum(AUTOMATION_PROMPT_KINDS)
     .describe(
-      "`triage` (the project's Triage prompt over the inbox and the open errors), `build` (every quest not tagged needs-human into a pull request), `text` (your own words) or `chat` (a project chat agent's rounds in a room, run in Lore: `agent`, `room` and `text`).",
+      "`triage` (the project's Triage prompt over the inbox and the open errors), `build` (every quest not tagged needs-human into a pull request), `text` (your own words), `chat` (a project chat agent's rounds in a room, run in Lore: `agent`, `room` and `text`), `security` (the dependencies audited, a quest per real vulnerability) or `dependencies` (the dependencies updated into a pull request).",
     ),
   ...writeFields,
   enabled: z
