@@ -110,6 +110,7 @@ export class AgentAutomationService {
     try {
       return await this.rows.create({
         ...draft,
+        nextRunAt: draft.nextRunAt ?? undefined,
         projectId,
         name: body.name,
         createdBy: userId,
@@ -143,6 +144,7 @@ export class AgentAutomationService {
     try {
       await this.rows.updateById(row.id, {
         ...draft,
+        nextRunAt: draft.nextRunAt as never,
         ...(body.name ? { name: body.name } : {}),
         ...(row.createdBy ? {} : { createdBy: userId }),
       });
@@ -229,8 +231,14 @@ export class AgentAutomationService {
     automation: AgentAutomation,
     startedByJobId?: string,
   ): Promise<AgentAutomationRunOutcome> {
+    let outcome: AgentAutomationRunOutcome;
     try {
-      return await this.run(automation, { startedByJobId });
+      // "Only if there is something" (#Q4228): a plain query before any
+      // job is queued, for an event run as for a scheduled one.
+      outcome =
+        automation.onlyIfWork && !(await this.hasWork(automation))
+          ? { jobIds: [], skipped: "Nothing to do" }
+          : await this.run(automation, { startedByJobId });
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "The run was refused";
@@ -238,8 +246,46 @@ export class AgentAutomationService {
         automation: automation.id,
         reason,
       });
-      return { jobIds: [], skipped: reason };
+      outcome = { jobIds: [], skipped: reason };
     }
+    if (!outcome.jobIds.length && outcome.skipped) {
+      await this.rows.updateById(automation.id, {
+        lastSkippedAt: this.dateTime.nowISOString(),
+        lastSkippedReason: outcome.skipped.slice(0, 500),
+      });
+    }
+    return outcome;
+  }
+
+  /**
+   * Whether the automation's prompt has something to do now (#Q4228), as
+   * the modules that own it answer. A text prompt has no such check.
+   */
+  public async hasWork(automation: AgentAutomation): Promise<boolean> {
+    if (automation.promptKind === "text") return true;
+    return this.kinds.hasWork(automation.promptKind, automation);
+  }
+
+  /**
+   * The next time a schedule runs after `now` (#Q4228), on the hour in UTC:
+   * the next hour, the next of 00, 06, 12 and 18, or the next `dailyHour`.
+   */
+  public nextRunAfter(
+    automation: Pick<AgentAutomation, "schedule" | "dailyHour">,
+    now: number,
+  ): string | undefined {
+    if (!automation.schedule) return undefined;
+    const hour = 3_600_000;
+    let next = Math.floor(now / hour) * hour + hour;
+    const fits = (at: number) => {
+      const h = new Date(at).getUTCHours();
+      if (automation.schedule === "6h") return h % 6 === 0;
+      if (automation.schedule === "daily")
+        return h === (automation.dailyHour ?? 0);
+      return true;
+    };
+    while (!fits(next)) next += hour;
+    return new Date(next).toISOString();
   }
 
   /**
@@ -297,6 +343,7 @@ export class AgentAutomationService {
     body: AgentAutomationWrite,
   ): Omit<AgentAutomationWrite, "name"> & {
     promptKind: AgentAutomation["promptKind"];
+    nextRunAt: string | null;
   } {
     const pick = <K extends "promptText" | "host" | "agent" | "model">(
       key: K,
@@ -309,13 +356,34 @@ export class AgentAutomationService {
     if (!promptKind) {
       throw new BadRequestError("An automation names its prompt");
     }
+    const trigger = body.trigger ?? row?.trigger ?? "manual";
+    const schedule = body.schedule ?? row?.schedule ?? undefined;
+    const dailyHour = body.dailyHour ?? row?.dailyHour ?? undefined;
+    // A schedule keeps its next run unless what decides it changed.
+    const kept =
+      row?.trigger === "schedule" &&
+      row.schedule === schedule &&
+      row.dailyHour === dailyHour &&
+      row.nextRunAt;
+    const nextRunAt =
+      trigger !== "schedule"
+        ? null
+        : kept
+          ? (row?.nextRunAt ?? null)
+          : (this.nextRunAfter(
+              { schedule, dailyHour },
+              this.dateTime.nowMillis(),
+            ) ?? null);
     return {
       promptKind,
       promptText: pick("promptText"),
       host: pick("host"),
       agent: pick("agent"),
       model: pick("model"),
-      trigger: body.trigger ?? row?.trigger ?? "manual",
+      trigger,
+      schedule,
+      dailyHour,
+      nextRunAt,
       eventKeys: body.eventKeys ?? row?.eventKeys ?? undefined,
       settleSeconds: body.settleSeconds ?? row?.settleSeconds ?? 60,
       onlyIfWork: body.onlyIfWork ?? row?.onlyIfWork ?? false,
@@ -338,6 +406,23 @@ export class AgentAutomationService {
       throw new BadRequestError(
         `A ${draft.promptKind} automation runs the project's own prompt: only a text automation carries words`,
       );
+    }
+    if (draft.onlyIfWork && draft.promptKind === "text") {
+      throw new BadRequestError(
+        'A text automation has no "only if there is something" check: Lore cannot tell what its words need',
+      );
+    }
+    if (draft.trigger === "schedule") {
+      if (!draft.schedule) {
+        throw new BadRequestError(
+          "A scheduled automation names its interval: hourly, 6h or daily",
+        );
+      }
+      if (draft.schedule === "daily" && draft.dailyHour === undefined) {
+        throw new BadRequestError(
+          "A daily automation names its hour, in UTC (0 to 23)",
+        );
+      }
     }
     if (draft.trigger === "event") {
       if (!draft.eventKeys?.length) {
