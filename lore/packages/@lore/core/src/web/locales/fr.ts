@@ -4736,6 +4736,9 @@ export default {
   "permission.host.create": "Ajouter un hébergement au projet",
   "permission.host.delete":
     "Supprimer un hébergement du projet, ou le déplacer vers un autre",
+  "permission.group.automation": "Automatisations d'agent",
+  "permission.automation.manage":
+    "Créer, modifier, supprimer et lancer les automatisations d'agent du projet",
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",

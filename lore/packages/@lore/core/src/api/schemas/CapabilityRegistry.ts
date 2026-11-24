@@ -884,8 +884,8 @@ export class CapabilityRegistry {
    * render at all - which is a different question and the one that decides
    * whether a permission is offerable.
    *
-   * `project`, `member`, `rank`, `capability`, `invitation`, `stats` and
-   * `host` (since #E166) answer
+   * `project`, `member`, `rank`, `capability`, `invitation`, `stats`,
+   * `host` (since #E166) and `automation` (#Q4226) answer
    * `undefined` on purpose: they describe the container rather than a surface
    * inside it, and a project with no capabilities at all still has members,
    * still gets renamed and still has ranks to edit.

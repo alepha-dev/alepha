@@ -46,6 +46,7 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
 import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { PlanLiveQuests } from "./services/PlanLiveQuests.ts";
@@ -112,6 +113,8 @@ export const LorePlanApi = $module({
   services: [
     // Feedback triaged by an agent job on the Agent host (#Q3988).
     FeedbackAgentService,
+    // The Triage and Build kinds of an agent automation (#E172).
+    PlanAutomationKinds,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
     QuestAgentService,
     QuestAgentController,

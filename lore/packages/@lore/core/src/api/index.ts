@@ -21,6 +21,7 @@ import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificati
 import { AdminHostController } from "./controllers/AdminHostController.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AgentAutomationController } from "./controllers/AgentAutomationController.ts";
 import { AgentHostController } from "./controllers/AgentHostController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
@@ -83,6 +84,8 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AgentAutomationKinds } from "./services/AgentAutomationKinds.ts";
+import { AgentAutomationService } from "./services/AgentAutomationService.ts";
 import { AgentHostService } from "./services/AgentHostService.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentJobService } from "./services/AgentJobService.ts";
@@ -399,6 +402,11 @@ export const LoreCoreApi = $module({
     // The port agent jobs start through (#Q3988): Build registers it.
     AgentJobs,
     AgentJobService,
+    // Agent automations (#E172): a prompt run on an Agent host by hand, on
+    // an event or on a schedule. Plan registers its Triage and Build kinds.
+    AgentAutomationKinds,
+    AgentAutomationService,
+    AgentAutomationController,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,
@@ -642,6 +650,14 @@ export {
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
 export { AgentJobService } from "./services/AgentJobService.ts";
+export { AgentAutomationController } from "./controllers/AgentAutomationController.ts";
+export {
+  type AgentAutomationKind,
+  AgentAutomationKinds,
+  type AgentAutomationRunContext,
+  type AgentAutomationRunOutcome,
+} from "./services/AgentAutomationKinds.ts";
+export { AgentAutomationService } from "./services/AgentAutomationService.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
 export type { AgentJobRequest } from "./services/AgentJobs.ts";
 export { AgentRunPreamble } from "./services/AgentRunPreamble.ts";

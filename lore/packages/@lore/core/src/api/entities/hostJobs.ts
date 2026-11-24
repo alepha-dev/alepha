@@ -50,6 +50,13 @@ export const hostJobs = $entity({
      * A soft reference, read by id.
      */
     startedByJobId: z.uuid().optional(),
+    /**
+     * The agent automation that started it (#Q4226), when one did. The job
+     * keeps the subject it is about (the quest a build works); "one run at a
+     * time per automation" reads this column. A soft reference, read by id:
+     * a deleted automation leaves its runs as they ran.
+     */
+    automationId: z.uuid().optional(),
     /** What the job is about, for its page: `feedback`, `quest`, `host`. */
     subjectType: z.string().max(32).optional(),
     subjectId: z.string().max(64).optional(),
@@ -76,6 +83,8 @@ export const hostJobs = $entity({
     // The project's job list, newest first.
     { columns: ["projectId", "queuedAt"] },
     { columns: ["commandId"] },
+    // An automation's runs: the single-flight check and its ceilings.
+    { columns: ["automationId", "status"] },
   ],
 });
 

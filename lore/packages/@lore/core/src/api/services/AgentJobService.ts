@@ -77,6 +77,7 @@ export class AgentJobService {
       kind: "agent",
       startedBy: request.startedBy,
       startedByJobId: parent,
+      automationId: request.automationId,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
       input: {

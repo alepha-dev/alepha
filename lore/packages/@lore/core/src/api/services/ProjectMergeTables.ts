@@ -102,7 +102,9 @@ export class ProjectMergeTables {
           ]);
           let free = key;
           for (let count = 2; taken.has(free); count++)
-            free = `${key.slice(0, 56)} (${count})`;
+            free = table.renamed
+              ? table.renamed(key, count)
+              : `${key.slice(0, 56)} (${count})`;
           target.set(free, sourceId);
           changed.push({
             kind: table.kind,
@@ -187,4 +189,9 @@ export interface ProjectMergeTable {
    */
   keys?: string[];
   onCollision?: "refuse" | "keepTarget" | "rename";
+  /**
+   * The free name a `rename` tries, for a key with a format of its own (an
+   * automation's lowercase name, #Q4226). Default: `alerts (2)`.
+   */
+  renamed?: (key: string, count: number) => string;
 }

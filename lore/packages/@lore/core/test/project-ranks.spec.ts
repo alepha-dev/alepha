@@ -424,8 +424,10 @@ describe("Lore's rank resource", () => {
         organizationId,
         key: "admin",
         name: "Admin",
-        // A permission the automations declared, gone since #Q3896.
-        permissions: [...permissions, "automation:manage"],
+        // A permission the earlier automations declared, gone since #Q3896.
+        // (`automation:manage` came back with agent automations, #Q4226,
+        // and is the Admin default's: `automation:read` stays retired.)
+        permissions: [...permissions, "automation:read"],
         createdAt: updatedAt,
         updatedAt,
       } as never);

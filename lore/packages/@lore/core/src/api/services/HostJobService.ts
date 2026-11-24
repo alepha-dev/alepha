@@ -82,6 +82,15 @@ export class HostJobService {
         return job ? this.summary(job) : undefined;
       },
       cancel: async (id, by) => this.summary(await this.cancel(id, by)),
+      activeForAutomation: async (automationId) =>
+        (
+          await this.jobs.findMany({
+            where: {
+              automationId: { eq: automationId },
+              status: { inArray: ["queued", "running"] },
+            },
+          })
+        ).map((job) => this.summary(job)),
       chainHolds: (id, kind) => this.chainHolds(id, kind),
       removeWorkspaces: (projectId, workspace) =>
         this.removeWorkspaces(projectId, workspace),
@@ -132,6 +141,7 @@ export class HostJobService {
       input: request.input,
       startedBy: request.startedBy,
       startedByJobId: request.startedByJobId,
+      automationId: request.automationId,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
       queuedAt: this.now(),
@@ -626,6 +636,7 @@ export class HostJobService {
       status: job.status,
       startedBy: job.startedBy,
       startedByJobId: job.startedByJobId,
+      automationId: job.automationId,
       subjectType: job.subjectType,
       subjectId: job.subjectId,
       reason: job.reason,
