@@ -58,8 +58,12 @@ const DialogContent = (props: DialogContentProps) => {
         data-slot="dialog-content"
         className={cn(
           // `left-1/2` with `-translate-x-1/2` is physical on purpose: centring
-          // lands on the same point in either reading direction.
-          "bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl p-4 text-sm ring-1 duration-100 outline-none sm:max-w-sm",
+          // lands on the same point in either reading direction. The height is
+          // bound to the viewport and the popup scrolls, so a tall body never
+          // pushes the footer's buttons out of reach. A dialog that sizes and
+          // scrolls itself overrides both (`overflow-visible` keeps what it
+          // had before the cap).
+          "bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl p-4 text-sm ring-1 duration-100 outline-none sm:max-w-sm",
           className,
         )}
         {...rest}

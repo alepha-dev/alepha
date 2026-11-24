@@ -48,7 +48,7 @@ export const RequestDialog = (props: RequestDialogProps) => {
         if (!open) setCopied(false);
       }}
     >
-      <DialogContent className="flex max-h-[78vh] flex-col gap-3 sm:max-w-[560px]">
+      <DialogContent className="flex max-h-[78vh] flex-col gap-3 overflow-visible sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>
             {tr("admin.analytics.requestTitle", { default: "Request body" })}
