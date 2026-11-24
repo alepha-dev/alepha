@@ -1,9 +1,10 @@
 import {
+  HostJobController,
   ProjectController,
   ProjectDashboardController,
   SearchController,
 } from "@lore/core/api";
-import { DashboardTools, ProjectTools } from "@lore/core/mcp";
+import { DashboardTools, JobTools, ProjectTools } from "@lore/core/mcp";
 import {
   EpicController,
   FeedbackController,
@@ -19,6 +20,18 @@ import {
 } from "@lore/plan/mcp";
 import { FolioController } from "@lore/remember/api";
 import { FolioTools } from "@lore/remember/mcp";
+import {
+  DeployController,
+  MonitorController,
+  ProjectErrorController,
+  StackController,
+} from "@lore/ship/api";
+import {
+  DeployTools,
+  MonitorTools,
+  ProjectErrorTools,
+  StackTools,
+} from "@lore/ship/mcp";
 import { $inject, Alepha } from "alepha";
 import type { ToolPrimitive } from "alepha/mcp";
 import type { ActionPrimitive } from "alepha/server";
@@ -42,8 +55,10 @@ import { LoreAiDocsController } from "./LoreAiDocsController.ts";
  * runs the tool as the turn's user, and the action's gate decides.
  *
  * Declaration order is what the vendor sees, and it stays stable so the
- * vendor caches it. Seventeen read tools and eight writes, at the ~25 a small
- * model handles.
+ * vendor caches it. Twenty-five read tools and eight writes: the eight
+ * operations reads (#Q4235) went past the ~25 a small model handles, on
+ * purpose, since an agent asked to watch the house had nothing to watch it
+ * with.
  */
 export class LoreAiToolset {
   protected readonly alepha = $inject(Alepha);
@@ -112,6 +127,16 @@ export class LoreAiToolset {
     const feedbackController = this.alepha.inject(FeedbackController);
     const commentController = this.alepha.inject(QuestCommentController);
     const docsController = this.alepha.inject(LoreAiDocsController);
+    const monitorTools = this.alepha.inject(MonitorTools);
+    const errorTools = this.alepha.inject(ProjectErrorTools);
+    const jobTools = this.alepha.inject(JobTools);
+    const deployTools = this.alepha.inject(DeployTools);
+    const stackTools = this.alepha.inject(StackTools);
+    const monitorController = this.alepha.inject(MonitorController);
+    const errorController = this.alepha.inject(ProjectErrorController);
+    const jobController = this.alepha.inject(HostJobController);
+    const deployController = this.alepha.inject(DeployController);
+    const stackController = this.alepha.inject(StackController);
 
     const inProject: LoreAiTool[] = [
       {
@@ -207,6 +232,51 @@ export class LoreAiToolset {
         tool: dashboardTools.dashboard_card_list,
         permissions: ["project:read"],
         gate: dashboardController.listProjectDashboardCards,
+      },
+      // How the project's apps run (#Q4235): reads only. Resolving an error,
+      // deploying and rolling back stay on their pages.
+      {
+        tool: monitorTools.monitor_list,
+        permissions: ["app:read"],
+        gate: monitorController.listMonitors,
+      },
+      {
+        tool: monitorTools.monitor_get,
+        permissions: ["app:read"],
+        gate: monitorController.getMonitorDetail,
+      },
+      {
+        // Inside a run, the trusted groups only (#Q4233): a run is pinned to
+        // its room's project, and `listProjectErrors` holds a pinned call to
+        // the groups a member trusted, as it does a job key's.
+        tool: errorTools.error_list,
+        permissions: ["error:read"],
+        gate: errorController.listProjectErrors,
+      },
+      {
+        tool: jobTools.job_list,
+        permissions: ["host:read"],
+        gate: jobController.listProjectJobs,
+      },
+      {
+        tool: jobTools.job_get,
+        permissions: ["host:read"],
+        gate: jobController.getJob,
+      },
+      {
+        tool: deployTools.deploy_status,
+        permissions: ["app:read"],
+        gate: deployController.getDeployment,
+      },
+      {
+        tool: stackTools.stack_list,
+        permissions: ["app:read"],
+        gate: stackController.listStacks,
+      },
+      {
+        tool: stackTools.stack_get,
+        permissions: ["app:read"],
+        gate: stackController.listStackRevisions,
       },
     ];
 

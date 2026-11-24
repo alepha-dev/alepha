@@ -42,6 +42,14 @@ const READ_SET = [
   "dashboard_list",
   "dashboard_metric_catalog",
   "dashboard_card_list",
+  "monitor_list",
+  "monitor_get",
+  "error_list",
+  "job_list",
+  "job_get",
+  "deploy_status",
+  "stack_list",
+  "stack_get",
 ];
 
 /**

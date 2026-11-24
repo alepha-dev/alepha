@@ -78,6 +78,25 @@ Each member has a conversation of their own with each agent in each room, so
 When the assistant is off for your Lore, no agent answers, `@lore` included:
 the settings page still lists and edits them, and says so.
 
+## What an agent can read
+
+An agent runs as the member who mentioned it, so it is offered only what that
+member's rank reads in this project:
+
+- **Plan and Remember**: quests, epics, releases, feedback, folios, the
+  dashboards and search, and Lore's own guides.
+- **How the apps run**, with the **Ship** capability on: uptime monitors, the
+  errors inbox, Agent host jobs and their logs, deploys, and stacks. Monitors,
+  deploys and stacks need **See the deployed copies**, errors **Read the crash
+  inbox**, and jobs the permission to see the project's hosts.
+- **Errors a member trusted, and only those.** Error text comes from the
+  apps that report it, so an agent never reads a group nobody on the team has
+  trusted on the Errors page; it is told how many wait.
+
+It writes only through a card you approve: a quest, a comment, a folio, a
+dashboard card or a feedback item. It never resolves an error, deploys or
+rolls back.
+
 ## Editing and deleting
 
 The pencil on an agent's row edits it; a new name or avatar shows on its past
