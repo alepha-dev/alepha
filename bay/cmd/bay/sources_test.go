@@ -302,7 +302,8 @@ func TestJobMirror(t *testing.T) {
 		for _, ws := range list {
 			names = append(names, ws.Project+"/"+ws.Name+":"+ws.Kind)
 		}
-		if strings.Join(names, " ") != "acme/.mirror:mirror acme/triage:workspace" {
+		main := gitT(t, origin, "rev-parse", "main")
+		if strings.Join(names, " ") != "acme/.mirror:mirror acme/.trees/"+main+":tree acme/triage:workspace" {
 			t.Fatalf("workspaces = %v", names)
 		}
 		rm := &ackRecorder{}
@@ -327,4 +328,198 @@ func TestParseFetchTTL(t *testing.T) {
 			t.Errorf("parseFetchTTL(%q) was accepted", raw)
 		}
 	}
+}
+
+func setMaxJobs(t *testing.T, w *jobWorld, n int) {
+	t.Helper()
+	cfg, _ := loadJobsConfig(w.f.root)
+	cfg.MaxJobs = n
+	if err := saveJobsConfig(w.f.root, cfg); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReadTrees(t *testing.T) {
+	t.Run("a read job runs in its workspace with ./src at the commit, read-only, with its history", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", `#!/bin/sh
+pwd > "`+w.bin+`/cwd"
+git -C src rev-parse HEAD > "`+w.bin+`/head"
+git -C src log --format=%s > "`+w.bin+`/log"
+if echo changed > src/README.md 2>/dev/null; then echo wrote > "`+w.bin+`/wrote"; fi
+if touch src/new-file 2>/dev/null; then echo wrote > "`+w.bin+`/wrote"; fi
+echo note > notes.txt
+`)
+		src := map[string]any{"mode": "read", "repository": origin, "ref": "feature"}
+		rec := w.run("job-1", w.agentSpec(map[string]any{"source": src}))
+		if last := rec.last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		feature := gitT(t, origin, "rev-parse", "feature")
+		if head, _ := os.ReadFile(filepath.Join(w.bin, "head")); strings.TrimSpace(string(head)) != feature {
+			t.Fatalf("./src is at %q, want feature %s", head, feature)
+		}
+		if log, _ := os.ReadFile(filepath.Join(w.bin, "log")); string(log) != "feature\nfirst\n" {
+			t.Fatalf("the tree's history reads %q", log)
+		}
+		if _, err := os.Stat(filepath.Join(w.bin, "wrote")); err == nil {
+			t.Fatal("the agent wrote into the read tree")
+		}
+		work, _ := filepath.EvalSymlinks(w.work)
+		if cwd, _ := os.ReadFile(filepath.Join(w.bin, "cwd")); strings.TrimSpace(string(cwd)) != filepath.Join(work, "acme", "triage") {
+			t.Fatalf("the agent ran in %q, want the stable workspace", cwd)
+		}
+		if target, _ := os.Readlink(filepath.Join(w.work, "acme", "triage", srcLink)); target != filepath.Join(w.work, "acme", treesName, feature) {
+			t.Fatalf("./src points at %q", target)
+		}
+		// The workspace itself stays the agent's to write in.
+		if _, err := os.Stat(filepath.Join(w.work, "acme", "triage", "notes.txt")); err != nil {
+			t.Fatal("the agent could not write in its workspace")
+		}
+		if log := w.frames.textOf("job-1", "stderr"); !strings.Contains(log, "./src read-only at "+feature[:12]) {
+			t.Fatalf("the log does not say where the code is: %q", log)
+		}
+	})
+
+	t.Run("two read jobs of a project run at the same time, in one workspace", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		setMaxJobs(t, w, 2)
+		// Each run waits until both are running, or gives up.
+		w.stub(t, "claude", `#!/bin/sh
+touch "`+w.bin+`/started.$$"
+i=0
+while [ "$(ls "`+w.bin+`" | grep -c '^started\.')" -lt 2 ]; do
+  i=$((i+1)); [ $i -gt 100 ] && exit 3
+  sleep 0.1
+done
+`)
+		src := map[string]any{"mode": "read", "repository": origin}
+		// A first run makes the mirror and the tree; the two after it meet.
+		w.stub(t, "claude-first", "")
+		if last := w.run("warm", w.agentSpec(map[string]any{"source": src, "workspace": "other"})); last.last().Status == "" {
+			t.Fatal("no ack")
+		}
+		for _, f := range []string{"started"} {
+			matches, _ := filepath.Glob(filepath.Join(w.bin, f+".*"))
+			for _, m := range matches {
+				_ = os.Remove(m)
+			}
+		}
+		results := make(chan connector.Ack, 2)
+		for _, id := range []string{"job-a", "job-b"} {
+			go func(id string) {
+				results <- w.run(id, w.agentSpec(map[string]any{"source": src, "timeoutSeconds": 600})).last()
+			}(id)
+		}
+		for range 2 {
+			if last := <-results; last.Status != "done" {
+				t.Fatalf("a concurrent read job ended %+v", last)
+			}
+		}
+	})
+
+	t.Run("a held workspace on another commit refuses the read as busy, and ./src never moves under a run", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		setMaxJobs(t, w, 3)
+		setFetchTTL(t, w, 0)
+		w.stub(t, "claude", "#!/bin/sh\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
+		src := map[string]any{"mode": "read", "repository": origin}
+		first := gitT(t, origin, "rev-parse", "main")
+		done := make(chan connector.Ack, 1)
+		go func() {
+			done <- w.run("job-a", w.agentSpec(map[string]any{"source": src, "timeoutSeconds": 600})).last()
+		}()
+		waitFor(t, func() bool { return strings.Contains(w.frames.textOf("job-a", "stderr"), "agent claude started") })
+
+		commitTo(t, origin, "main", "second.txt")
+		busy := w.run("job-b", w.agentSpec(map[string]any{"source": src}))
+		if last := busy.last(); last.Status != "failed" || last.Step != stepBusy || !strings.Contains(last.Reason, "waits for it to end") {
+			t.Fatalf("ack = %+v, want failed with step busy", last)
+		}
+		if target, _ := os.Readlink(filepath.Join(w.work, "acme", "triage", srcLink)); filepath.Base(target) != first {
+			t.Fatalf("./src moved under a running job to %s", target)
+		}
+		// Another workspace of the project reads the new commit meanwhile.
+		w.stub(t, "go", "")
+		if last := w.run("job-c", w.agentSpec(map[string]any{"source": src, "workspace": "review"})).last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if last := <-done; last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		// Free again: the workspace follows the new commit.
+		if last := w.run("job-d", w.agentSpec(map[string]any{"source": src})).last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if target, _ := os.Readlink(filepath.Join(w.work, "acme", "triage", srcLink)); filepath.Base(target) == first {
+			t.Fatal("./src did not follow the new commit once the workspace was free")
+		}
+	})
+
+	t.Run("a job changing code waits for no reader: it is refused while one holds the workspace", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		setMaxJobs(t, w, 2)
+		w.stub(t, "claude", "#!/bin/sh\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
+		done := make(chan connector.Ack, 1)
+		go func() {
+			done <- w.run("job-a", w.agentSpec(map[string]any{"source": map[string]any{"mode": "read", "repository": origin}, "timeoutSeconds": 600})).last()
+		}()
+		waitFor(t, func() bool { return strings.Contains(w.frames.textOf("job-a", "stderr"), "agent claude started") })
+		if last := w.run("job-b", w.agentSpec(nil)).last(); last.Status != "failed" || !strings.Contains(last.Reason, "already runs") {
+			t.Fatalf("ack = %+v", last)
+		}
+		w.stub(t, "go", "")
+		<-done
+	})
+
+	t.Run("trees nobody reads are removed, and removing the project removes read-only trees", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		setFetchTTL(t, w, 0)
+		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		src := map[string]any{"mode": "read", "repository": origin}
+		first := gitT(t, origin, "rev-parse", "main")
+		if last := w.run("job-1", w.agentSpec(map[string]any{"source": src})).last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		second := commitTo(t, origin, "main", "second.txt")
+		if last := w.run("job-2", w.agentSpec(map[string]any{"source": src})).last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		trees := filepath.Join(w.work, "acme", treesName)
+		if _, err := os.Stat(filepath.Join(trees, first)); !os.IsNotExist(err) {
+			t.Fatal("the tree of a commit nobody reads any more is still there")
+		}
+		if _, err := os.Stat(filepath.Join(trees, second)); err != nil {
+			t.Fatal("the tree the workspace reads was removed")
+		}
+		mirror := filepath.Join(w.work, "acme", mirrorName)
+		if list := gitT(t, mirror, "worktree", "list"); strings.Contains(list, first) {
+			t.Fatalf("the mirror still lists the removed tree:\n%s", list)
+		}
+
+		r := w.acts.jobs.runner
+		u, _ := r.jobsUser()
+		list, _ := r.workspaces(u)
+		var names []string
+		for _, ws := range list {
+			names = append(names, ws.Name+":"+ws.Kind)
+		}
+		if strings.Join(names, " ") != ".mirror:mirror .trees/"+second+":tree triage:workspace" {
+			t.Fatalf("workspaces = %v", names)
+		}
+
+		rm := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "rm-1", Kind: "job-workspace-remove", Project: "acme"}, rm.send)
+		if rm.last().Status != "done" {
+			t.Fatalf("ack = %+v", rm.last())
+		}
+		if _, err := os.Stat(filepath.Join(w.work, "acme")); !os.IsNotExist(err) {
+			t.Fatal("the project's read-only trees outlived its removal")
+		}
+	})
 }

@@ -425,18 +425,21 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	}
 	dir := u.HomeDir
 	if spec.Kind == jobKindAgent {
-		unlock, err := lockWorkspace(r.root, spec.Project, spec.Workspace)
-		if err != nil {
+		if spec.Source.mode() == sourceRead {
+			// Deferred first, so it runs last: once the run ended and its
+			// holds are gone, the trees nobody reads any more, on a clock of
+			// their own.
+			defer func() {
+				cleanCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+				defer cancel()
+				r.cleanTrees(cleanCtx, u, spec.Project)
+			}()
+		}
+		var release func()
+		if dir, _, release, err = r.prepareWorkspace(ctx, u, spec, log); err != nil {
 			return nil, err
 		}
-		defer unlock()
-		if dir, err = r.workspaceDir(ctx, u, spec.Project, spec.Workspace); err != nil {
-			return nil, err
-		}
-		log.Step("workspace " + spec.Project + "/" + spec.Workspace + " ready")
-		if _, err := r.prepareSource(ctx, u, spec, log); err != nil {
-			return nil, err
-		}
+		defer release()
 	}
 
 	run := agentRunOf(spec)
@@ -756,6 +759,10 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 		status, reason = connector.AckTimedOut, fmt.Sprintf("the job ran past its %d s timeout; the process group was killed", spec.TimeoutSeconds)
 	case runErr != nil:
 		status, reason = "failed", runErr.Error()
+		var busy busyError
+		if errors.As(runErr, &busy) {
+			step = stepBusy
+		}
 	case exit != nil && *exit == 0:
 		status = "done"
 	default:
@@ -772,7 +779,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	stopDeadline()
 	<-streamed
 	a.drainJobLog(ctx, log, 5*time.Second)
-	return status, "", reason, exit
+	return status, step, reason, exit
 }
 
 // streamJobLog flushes the spool every jobFlushEvery until ctx ends.

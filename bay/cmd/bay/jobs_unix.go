@@ -82,3 +82,47 @@ func lockFile(path string) (func(), bool, error) {
 		f.Close()
 	}, true, nil
 }
+
+/*
+lockFileForRead takes a lock a reader shares with other readers, refused by a
+writer's exclusive lockFile. When no one holds the lock it is taken
+exclusively first and `whileAlone` runs under it, the one moment a reader may
+change what every reader sees; then it is turned into a shared lock. It
+answers whether whileAlone ran, and false for `ok` when a writer holds it.
+*/
+func lockFileForRead(path string, whileAlone func() error) (unlock func(), alone, ok bool, err error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, false, false, err
+	}
+	fd := int(f.Fd())
+	unlock = func() {
+		_ = syscall.Flock(fd, syscall.LOCK_UN)
+		f.Close()
+	}
+	if err := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
+		if whileAlone != nil {
+			if err := whileAlone(); err != nil {
+				unlock()
+				return nil, false, false, err
+			}
+		}
+		// Held alone, so turning it shared waits for nobody.
+		if err := syscall.Flock(fd, syscall.LOCK_SH); err != nil {
+			unlock()
+			return nil, false, false, err
+		}
+		return unlock, true, true, nil
+	} else if !errors.Is(err, syscall.EWOULDBLOCK) {
+		f.Close()
+		return nil, false, false, err
+	}
+	if err := syscall.Flock(fd, syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		f.Close()
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			return nil, false, false, nil
+		}
+		return nil, false, false, err
+	}
+	return unlock, false, true, nil
+}

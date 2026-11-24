@@ -58,6 +58,8 @@ type jobWorkspace struct {
 const (
 	workspaceKindWorkspace = "workspace"
 	workspaceKindMirror    = "mirror"
+	// workspaceKindTree is a read tree (#Q4246), `.trees/<commit>`.
+	workspaceKindTree = "tree"
 )
 
 // workspaces lists the base's workspaces. A symlink is skipped: the tree is
@@ -81,6 +83,17 @@ func (r *processRunner) workspaces(u *user.User) ([]jobWorkspace, error) {
 			continue
 		}
 		for _, n := range names {
+			if n.Name() == treesName && n.IsDir() {
+				trees, _ := os.ReadDir(filepath.Join(base, p.Name(), treesName))
+				for _, t := range trees {
+					info, err := t.Info()
+					if err != nil || !t.IsDir() || !commitPattern.MatchString(t.Name()) {
+						continue
+					}
+					out = append(out, jobWorkspace{Project: p.Name(), Name: treesName + "/" + t.Name(), Kind: workspaceKindTree, Modified: info.ModTime()})
+				}
+				continue
+			}
 			// The mirror is listed on purpose: namePattern refuses its
 			// leading dot, which is what keeps a workspace from taking it.
 			kind := workspaceKindWorkspace
@@ -169,8 +182,25 @@ func (r *processRunner) removeWorkspace(ctx context.Context, project, workspace 
 	if _, err := os.Lstat(target); os.IsNotExist(err) {
 		return 0, nil
 	}
+	if workspace == "" {
+		// Read trees are not writable (#Q4246), and rm cannot empty a
+		// directory it may not write: made writable first, as the jobs user,
+		// following no link.
+		if err := r.asJobsUser(ctx, u, "chmod", "-R", "--", "u+w", target); err != nil {
+			return 0, fmt.Errorf("could not make %s writable to remove it: %w", target, err)
+		}
+	}
 	if err := r.asJobsUser(ctx, u, "rm", "-rf", "--", target); err != nil {
 		return 0, fmt.Errorf("could not remove %s: %w", target, err)
+	}
+	if workspace != "" {
+		// The mirror forgets a worktree that was this workspace.
+		if unlock, err := tryLockMirror(r.root, project); err == nil {
+			if _, err := os.Lstat(r.mirrorDir(u, project)); err == nil {
+				_, _ = r.git(ctx, u, r.mirrorDir(u, project), "worktree", "prune")
+			}
+			unlock()
+		}
 	}
 	return len(names), nil
 }
