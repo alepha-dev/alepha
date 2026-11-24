@@ -45,6 +45,7 @@ import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQues
 import type { ProjectErrorResource } from "../../../../../api/schemas/projectErrorResourceSchema.ts";
 import { currentErrorCountAtom } from "../../../atoms/currentErrorCountAtom.ts";
 import ErrorSourceCell from "./ErrorSourceCell.tsx";
+import ErrorTrustIcon from "./ErrorTrustIcon.tsx";
 import { sigilNameParts } from "./sigilNameParts.ts";
 
 /**
@@ -414,22 +415,11 @@ const ProjectErrors = () => {
                     {tr(`errors.origin.${b.origin}`)}
                   </Badge>
                   {renderStatus(b.status)}
-                  {b.trustedAt ? (
-                    <Badge
-                      variant="outline"
-                      title={tr("errors.trustedBy", {
-                        args: [b.trustedByName ?? ""],
-                      })}
-                      data-testid="error-trusted"
-                    >
-                      {tr("errors.trusted")}
-                    </Badge>
-                  ) : (
-                    b.status === "open" && (
-                      <Badge variant="tint" tone="warning">
-                        {tr("errors.untrusted")}
-                      </Badge>
-                    )
+                  {(b.trustedAt || b.status === "open") && (
+                    <ErrorTrustIcon
+                      trusted={!!b.trustedAt}
+                      trustedByName={b.trustedByName}
+                    />
                   )}
                 </div>
                 <p className="text-muted-foreground line-clamp-2 break-words">

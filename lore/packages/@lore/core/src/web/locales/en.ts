@@ -2756,9 +2756,9 @@ export default {
   "errors.action.resolve": "Resolve",
   "errors.action.trust": "Trust",
   "errors.toast.trusted": "Trusted: an agent may now read this error",
-  "errors.trusted": "Trusted",
   "errors.trustedBy": "Trusted by $1",
-  "errors.untrusted": "Untrusted",
+  "errors.untrustedHint":
+    "Source not trusted: a member must approve it before it is processed automatically",
   "errors.action.forward": "Forward to quest",
   "errors.action.delete": "Delete",
   "errors.action.deleteSelected": "Delete selected",
