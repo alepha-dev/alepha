@@ -25,7 +25,8 @@ import { JobKeyService } from "./JobKeyService.ts";
  *   the job, and reaches Lore's MCP only;
  * - the guard on chains: a job started with a job key records that key's
  *   job as its parent, and a chain never holds two agent jobs, so an agent
- *   cannot start its successor;
+ *   cannot start its successor, with one hop open (#Q4229): a triage's
+ *   quest built by an automation, once ({@link chainAllows});
  * - the gate on outside text: an untrusted request never starts.
  *
  * Nothing of the agent's output is read. The job succeeds or fails by its
@@ -66,7 +67,7 @@ export class AgentJobService {
       );
     }
     const parent = request.startedByJobId ?? (await this.callerJob());
-    if (parent && (await this.port.chainHolds(parent, "agent"))) {
+    if (parent && !(await this.chainAllows(parent, request))) {
       throw new ForbiddenError(
         "An agent job's output cannot start another agent job of its chain",
       );
@@ -189,6 +190,37 @@ export class AgentJobService {
       AgentJobService.MAX_TIMEOUT_SECONDS,
     );
   }
+
+  /**
+   * The chain rule (#Q4229): a job whose chain holds an agent job starts no
+   * agent job, with one hop open and no further. A build an automation
+   * starts may follow a **triage** job that itself has no agent parent, so a
+   * quest a triage filed is built once; a build job's output starts
+   * nothing, and every other chain is refused.
+   */
+  public async chainAllows(
+    parentId: string,
+    request: Pick<AgentJobRequest, "build" | "automationId">,
+  ): Promise<boolean> {
+    if (!(await this.port.chainHolds(parentId, "agent"))) return true;
+    if (!request.build || !request.automationId) return false;
+    const parent = await this.port.get(parentId);
+    if (
+      parent?.kind !== "agent" ||
+      !AgentJobService.TRIAGE_SUBJECTS.includes(parent.subjectType ?? "")
+    ) {
+      return false;
+    }
+    return (
+      !parent.startedByJobId ||
+      !(await this.port.chainHolds(parent.startedByJobId, "agent"))
+    );
+  }
+
+  /**
+   * The subjects of a triage job: one item, or the inbox.
+   */
+  public static readonly TRIAGE_SUBJECTS = ["feedback", "feedback-inbox"];
 
   /**
    * The job whose key made the current request, if a job key made it: an

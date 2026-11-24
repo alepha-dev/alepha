@@ -1,0 +1,73 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "312e9a8c-08c7-4f39-b88d-2410a1ae9ed3",
+  "prevIds": ["11358e7a-259b-4f50-9639-ca156d0fb2b7"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "auto_merge"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.auto_merge",
+        "n|col|public.agent_automations.auto_merge",
+        "e|col|public.agent_automations.auto_merge"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "concurrency"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.concurrency",
+        "n|col|public.agent_automations.concurrency",
+        "e|col|public.agent_automations.concurrency"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "auto_merge",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "concurrency",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "1",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

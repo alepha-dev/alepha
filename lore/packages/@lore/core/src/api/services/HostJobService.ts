@@ -91,6 +91,18 @@ export class HostJobService {
             },
           })
         ).map((job) => this.summary(job)),
+      subjectsOfAutomation: async (automationId, subjectType) =>
+        (
+          await this.jobs.findMany({
+            where: {
+              automationId: { eq: automationId },
+              subjectType: { eq: subjectType },
+            },
+            columns: ["subjectId"],
+          })
+        )
+          .map((job) => job.subjectId)
+          .filter((id): id is string => Boolean(id)),
       chainHolds: (id, kind) => this.chainHolds(id, kind),
       removeWorkspaces: (projectId, workspace) =>
         this.removeWorkspaces(projectId, workspace),
