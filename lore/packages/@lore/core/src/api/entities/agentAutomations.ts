@@ -61,6 +61,13 @@ export const agentAutomations = $entity({
      */
     room: z.string().max(64).optional(),
     model: z.string().max(96).optional(),
+    /**
+     * The code its jobs find (#E173), as a run by hand asks for it: `none`,
+     * `read` or `write`, and the ref. Absent, the prompt's default: a build
+     * writes, every other kind reads the default branch.
+     */
+    source: z.enum(["none", "read", "write"]).meta({ mode: "text" }).optional(),
+    ref: z.string().max(200).optional(),
     trigger: db.default(
       z.enum(AUTOMATION_TRIGGERS).meta({ mode: "text" }),
       "manual",

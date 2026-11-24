@@ -1,10 +1,9 @@
 import {
   $ownsProject,
   AgentJobs,
-  AgentRunPreamble,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { agentRunSchema } from "@lore/core/schemas";
+import { agentRunSchema, agentRunSourceSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, BadRequestError, ForbiddenError } from "alepha/server";
 
@@ -22,7 +21,11 @@ import { QuestAgentService } from "../services/QuestAgentService.ts";
  * - `build`: the Build prompt on one accepted quest (`questWork`), under
  *   `quest:update`;
  * - `text`: a free prompt the member writes, under `host:update`, since it
- *   asks the host for anything their rank allows.
+ *   asks the host for anything their rank allows. Read-only by default
+ *   since #E173: a text run that changes code asks for `source: "write"`.
+ *
+ * `source` and `ref` override a run's default source (#Q4248): a triage
+ * reads, a build writes, every read at the default branch.
  *
  * A request made with a job key records that key's job as the parent, and a
  * chain never holds two agent jobs (#Q4222): an agent cannot start a job.
@@ -32,7 +35,6 @@ export class AgentRunController {
   protected readonly questAgent = $inject(QuestAgentService);
   protected readonly agents = $inject(AgentJobs);
   protected readonly security = $inject(ProjectSecurityService);
-  protected readonly preamble = $inject(AgentRunPreamble);
 
   runAgent = $action({
     use: [$ownsProject({ param: "projectId", requires: "host:read" })],
@@ -40,13 +42,13 @@ export class AgentRunController {
     path: "/projects/:projectId/agent-run",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      body: agentRunSchema.extend({
+      body: agentRunSchema.merge(agentRunSourceSchema).extend({
         prompt: z.enum(["triage", "build", "text"]),
         /** The quest a `build` works, by its number. */
         quest: z.integer().optional(),
         /** A `text` prompt's words. */
         text: z.string().max(131_072).optional(),
-        /** The workspace a `text` prompt runs in; `triage` by default. */
+        /** The workspace a `text` prompt runs in; `text` by default. */
         workspace: z
           .string()
           .regex(/^[a-z0-9][a-z0-9_-]{0,62}$/)
@@ -65,6 +67,16 @@ export class AgentRunController {
         ...(body.host ? { host: body.host } : {}),
         ...(body.agent ? { agent: body.agent } : {}),
         ...(body.model ? { model: body.model } : {}),
+        ...(body.source
+          ? {
+              source: {
+                mode: body.source,
+                ...(body.ref ? { ref: body.ref } : {}),
+              },
+            }
+          : body.ref
+            ? { source: { mode: "read" as const, ref: body.ref } }
+            : {}),
       };
       const need = async (permission: string) => {
         if (
@@ -104,16 +116,17 @@ export class AgentRunController {
       if (!body.text?.trim()) {
         throw new BadRequestError("A text prompt carries its words: --text");
       }
+      const workspace = body.workspace ?? "text";
       const job = await this.agents.start({
         projectId: params.projectId,
         ...run,
-        // Lore's preamble above the member's words: where things are.
-        prompt: `${await this.preamble.render(params.projectId, true)}\n\n${body.text}`,
-        ...(body.workspace ? { workspace: body.workspace } : {}),
+        // Lore's preamble goes above the member's words when the job starts.
+        prompt: body.text,
+        workspace,
         ...(body.timeout ? { timeoutSeconds: body.timeout } : {}),
         startedBy: user.id,
         subjectType: "prompt",
-        subjectId: body.workspace ?? "triage",
+        subjectId: workspace,
       });
       return { jobId: job.id, skipped: [] };
     },

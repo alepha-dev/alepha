@@ -40,7 +40,20 @@ export const agentRunParamsSchema = projectParamsSchema.extend({
     .max(63)
     .optional()
     .describe(
-      "The workspace a `text` prompt runs in, a directory kept on the host between runs; `triage` by default.",
+      "The workspace a `text` prompt runs in, a directory kept on the host between runs; `text` by default.",
+    ),
+  source: z
+    .enum(["none", "read", "write"])
+    .optional()
+    .describe(
+      "The code the job finds: `none`, `read` (the repository at `ref`, read-only, at ./src) or `write` (a git worktree on a branch Lore names, lore/q<n> or lore/job-<id>). A build writes, the others read; a `text` run that changes code asks for `write`.",
+    ),
+  ref: z
+    .string()
+    .max(200)
+    .optional()
+    .describe(
+      "The branch, tag, commit or pull/<n>/head the job's code is at; the default branch when absent.",
     ),
   timeout: z
     .integer()

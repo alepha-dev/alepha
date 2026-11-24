@@ -761,7 +761,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	}()
 
 	exit, outcome, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
-	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning}
+	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning, Commit: outcome.Commit}
 	cause := context.Cause(runCtx)
 	switch {
 	case errors.Is(cause, errJobCancelled):

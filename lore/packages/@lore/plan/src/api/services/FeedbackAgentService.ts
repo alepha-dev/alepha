@@ -5,7 +5,7 @@ import {
   ProjectSecurityService,
 } from "@lore/core/api";
 import {
-  type AgentRun,
+  type AgentRunRequest as AgentRun,
   projectPrompts,
   projects,
   renderPromptTemplate,
@@ -97,7 +97,6 @@ export class FeedbackAgentService {
   protected readonly prompts = $repository(projectPrompts);
   protected readonly agents = $inject(AgentJobs);
   protected readonly hostJobs = $inject(HostJobs);
-  protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly security = $inject(ProjectSecurityService);
 
@@ -272,7 +271,8 @@ export class FeedbackAgentService {
     waiting = 0,
   ): Promise<string> {
     return globalTriagePrompt({
-      preamble: await this.preamble.render(project.id, false),
+      // Rendered when the job starts, once its source is settled (#E173).
+      preamble: AgentRunPreamble.MARKER,
       waiting,
       project: project.title,
       items: items.map((it) => ({

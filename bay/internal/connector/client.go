@@ -160,6 +160,10 @@ type Ack struct {
 	// the process ran to an exit (a timeout or a cancel kills it, and says so
 	// in Status instead). Optional, like URL.
 	ExitCode *int `json:"exitCode,omitempty"`
+	// Commit is the commit a `job-run`'s source resolved (#E173), on its
+	// terminal ack: what a read job read, what a write job's branch started
+	// from. Optional, like ExitCode.
+	Commit string `json:"commit,omitempty"`
 }
 
 // The terminal statuses a `job-run` may end in beside `done` and `failed`:

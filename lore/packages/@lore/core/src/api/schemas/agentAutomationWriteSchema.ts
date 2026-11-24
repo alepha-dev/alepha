@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { agentAutomations } from "../entities/agentAutomations.ts";
-import { agentRunSchema } from "./agentRunSchema.ts";
+import { agentRunSchema, agentRunSourceSchema } from "./agentRunSchema.ts";
 
 /**
  * What a write of an agent automation may set (#Q4226), every field
@@ -41,6 +41,13 @@ export const agentAutomationWriteSchema = agentAutomations.schema
       .optional(),
     room: z
       .union([agentAutomations.schema.shape.room.unwrap(), z.literal("")])
+      .optional(),
+    /** Its jobs' source and ref (#E173); an empty string clears either. */
+    source: z
+      .union([agentRunSourceSchema.shape.source.unwrap(), z.literal("")])
+      .optional(),
+    ref: z
+      .union([agentRunSourceSchema.shape.ref.unwrap(), z.literal("")])
       .optional(),
     /**
      * When it runs, in one word, as the CLI and MCP take it (#Q4231):

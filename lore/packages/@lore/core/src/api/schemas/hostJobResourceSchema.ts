@@ -27,6 +27,8 @@ export const hostJobResourceSchema = z.object({
   endedAt: z.string().optional(),
   reason: z.string().optional(),
   exitCode: z.integer().optional(),
+  commit: z.string().optional(),
+  warning: z.string().optional(),
   logBytes: z.integer().optional(),
   logTruncated: z.boolean().optional(),
 });

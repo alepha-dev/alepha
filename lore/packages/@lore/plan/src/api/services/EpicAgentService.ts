@@ -61,7 +61,6 @@ export class EpicAgentService {
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(projectPrompts);
   protected readonly agents = $inject(AgentJobs);
-  protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly keys = $inject(JobKeyService);
 
@@ -120,6 +119,9 @@ export class EpicAgentService {
       prompt: await this.prompt(project, epic),
       timeoutSeconds: t.baseSeconds + t.secondsPerQuest * members.length,
       epicNumber: epic.number,
+      // A review reads the code at the default branch (#E173), in a
+      // workspace of its own that no triage waits on.
+      workspace: "review",
       startedBy,
       subjectType: EpicAgentService.SUBJECT,
       subjectId: String(epic.number),
@@ -163,7 +165,8 @@ export class EpicAgentService {
       title: epic.title,
     });
     return [
-      await this.preamble.render(project.id, false),
+      // Rendered when the job starts, once its source is settled (#E173).
+      AgentRunPreamble.MARKER,
       "",
       `## This run's rules, which override the procedure below where they differ`,
       "",

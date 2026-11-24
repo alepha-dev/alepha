@@ -40,6 +40,8 @@ declare module "alepha" {
        */
       jobOutcome?: "done" | "failed" | "timed_out" | "cancelled";
       exitCode?: number;
+      /** The commit a job's source resolved (#E173). */
+      commit?: string;
     };
   }
 }
@@ -59,6 +61,7 @@ export interface HostCommandAck {
   appSecretSource?: string;
   warning?: string;
   exitCode?: number;
+  commit?: string;
 }
 
 /**
@@ -404,11 +407,18 @@ export class HostCommandService {
       ...(ack.status === "done" && ack.appSecretSource
         ? { appSecretSource: ack.appSecretSource }
         : {}),
-      ...(ack.status === "done" && ack.warning ? { warning: ack.warning } : {}),
+      // A deploy's warning rides its `done`; a job's any terminal ack: a
+      // worktree kept with unpushed work is said on a failed run too.
+      ...((ack.status === "done" ||
+        (command.kind === "job-run" && ack.status !== "running")) &&
+      ack.warning
+        ? { warning: ack.warning }
+        : {}),
       ...(command.kind === "job-run" && ack.status !== "running"
         ? { jobOutcome: ack.status }
         : {}),
       ...(ack.exitCode === undefined ? {} : { exitCode: ack.exitCode }),
+      ...(ack.commit ? { commit: ack.commit } : {}),
     });
     return updated;
   }

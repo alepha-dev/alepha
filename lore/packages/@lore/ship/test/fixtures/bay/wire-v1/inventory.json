@@ -222,6 +222,7 @@
         "found": false,
         "error": "lore is not on the jobs user's PATH"
       }
-    ]
+    ],
+    "sources": true
   }
 }

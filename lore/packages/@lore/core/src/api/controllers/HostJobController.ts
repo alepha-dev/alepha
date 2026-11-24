@@ -153,6 +153,8 @@ export class HostJobController {
       endedAt: row.endedAt ?? undefined,
       reason: row.reason ?? undefined,
       exitCode: row.exitCode ?? undefined,
+      commit: row.commit ?? undefined,
+      warning: row.warning ?? undefined,
       logBytes: row.logBytes ?? undefined,
       logTruncated: row.logTruncated ?? undefined,
     }));

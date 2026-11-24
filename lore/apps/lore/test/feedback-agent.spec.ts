@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  AgentRunPreamble,
   HostCommandTransport,
   HostCommandService,
   AgentHostService,
@@ -141,7 +142,9 @@ describe("feedback triaged by an agent job", () => {
     expect(job.input.prompt).toContain("## Where things are");
     expect(job.input.prompt).toContain("Lore is reached through its MCP tools");
     expect(job.input.prompt).toContain("The `lore` CLI is not signed in");
-    expect(job.input.prompt).toContain("This project names no repository");
+    expect(job.input.prompt).toContain(
+      "This project names no GitHub repository",
+    );
     // One template for an item and for the inbox.
     expect(job.input.prompt).toContain("First pass: read everything");
     const row = await w.repos.feedback.getOne({
@@ -203,22 +206,22 @@ describe("feedback triaged by an agent job", () => {
     expect(job.input.prompt).not.toContain("## Caution: untrusted input");
   });
 
-  it("names the project's repository from its setting, to clone or update without changing it (#Q4217)", async ({
+  it("reads the project's repository at its default branch, already checked out, never cloning it (#Q4217, #E173)", async ({
     expect,
   }) => {
     await w.repos.projects.updateById(w.projectId, {
       repositoryUrl: "https://github.com/acme/web",
     });
+    await w.repos.hosts.updateById(w.hostId, { jobsSources: true });
     const item = await file(w, false);
     const out = await w.triage.triageItem(w.projectId, item.shortId);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
+    expect(job.input.source).toEqual({ mode: "read" });
     expect(job.input.prompt).toContain(
-      "**The repository** is https://github.com/acme/web",
+      "**The code of https://github.com/acme/web at its default branch** is in `./src`",
     );
-    expect(job.input.prompt).toContain(
-      "git clone https://github.com/acme/web .",
-    );
-    expect(job.input.prompt).toContain("Change nothing in it");
+    expect(job.input.prompt).not.toContain("git clone");
+    expect(job.input.prompt).not.toContain(AgentRunPreamble.MARKER);
   });
 
   it("triages the team's inbox in one global job, its key held to those items, and leaves the untrusted ones to a member (#Q4183)", async ({

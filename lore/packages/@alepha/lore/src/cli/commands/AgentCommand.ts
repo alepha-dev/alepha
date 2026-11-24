@@ -79,7 +79,19 @@ export class AgentCommand {
       workspace: z
         .text({
           description:
-            "The workspace a text prompt runs in, kept on the host; triage by default",
+            "The workspace a text prompt runs in, kept on the host; text by default",
+        })
+        .optional(),
+      source: z
+        .enum(["none", "read", "write"])
+        .describe(
+          "The code the job finds: none, read (the repository at --ref, read-only) or write (a worktree on a branch Lore names). A build writes, the others read; a text run that changes code asks for write",
+        )
+        .optional(),
+      ref: z
+        .text({
+          description:
+            "The branch, tag, commit or pull/<n>/head the job's code is at; the default branch when absent",
         })
         .optional(),
       timeout: z
@@ -113,6 +125,8 @@ export class AgentCommand {
             ...(flags.agent ? { agent: flags.agent } : {}),
             ...(flags.model ? { model: flags.model } : {}),
             ...(flags.workspace ? { workspace: flags.workspace } : {}),
+            ...(flags.source ? { source: flags.source } : {}),
+            ...(flags.ref ? { ref: flags.ref } : {}),
             ...(flags.timeout ? { timeout: flags.timeout } : {}),
           },
         });

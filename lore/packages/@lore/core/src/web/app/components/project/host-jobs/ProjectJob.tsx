@@ -111,6 +111,35 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
               [string, string]
             >)
           : []),
+        // The code it found (#E173): the source, its ref or branch, and the
+        // commit the host resolved.
+        ...(row.input.source
+          ? ([
+              [
+                tr("jobs.field.source"),
+                {
+                  none: tr("jobs.source.none"),
+                  read: tr("jobs.source.read"),
+                  write: tr("jobs.source.write"),
+                }[row.input.source.mode],
+              ],
+            ] as Array<[string, string]>)
+          : []),
+        ...(row.input.source?.ref
+          ? ([[tr("jobs.field.ref"), row.input.source.ref]] as Array<
+              [string, string]
+            >)
+          : []),
+        ...(row.input.source?.branch
+          ? ([[tr("jobs.field.branch"), row.input.source.branch]] as Array<
+              [string, string]
+            >)
+          : []),
+        ...(row.commit
+          ? ([[tr("jobs.field.commit"), row.commit.slice(0, 12)]] as Array<
+              [string, string]
+            >)
+          : []),
         ...(row.subjectType
           ? ([
               [
@@ -127,6 +156,12 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
           : []),
         ...(row.exitCode !== undefined
           ? ([[tr("jobs.field.exit"), row.exitCode]] as Array<[string, number]>)
+          : []),
+        // A write worktree the host kept with work not pushed (#Q4247).
+        ...(row.warning
+          ? ([[tr("jobs.field.warning"), row.warning]] as Array<
+              [string, string]
+            >)
           : []),
       ]
     : [];

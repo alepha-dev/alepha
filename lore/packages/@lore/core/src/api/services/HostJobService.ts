@@ -13,6 +13,7 @@ import { projects } from "../entities/projects.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
+import { jobRepositoryOf } from "../schemas/jobRepository.ts";
 import { BoundParameters } from "./BoundParameters.ts";
 import { CoreBuckets } from "./CoreBuckets.ts";
 import { HostCommandService } from "./HostCommandService.ts";
@@ -181,6 +182,7 @@ export class HostJobService {
     }
     await this.assertRuns(host, request.projectId);
     const created = await this.jobs.create({
+      ...(request.id ? { id: request.id } : {}),
       projectId: request.projectId,
       hostId: host.id,
       kind: request.kind,
@@ -276,18 +278,55 @@ export class HostJobService {
     const key = input.key
       ? await this.port.mintKey(this.summary(job), input.key)
       : undefined;
+    const source = await this.sourceSpec(job);
     return {
       kind: job.kind,
       ...agent,
       // The workspace directory (#Q4218): `<jobs base>/<project>/<workspace>`
-      // on the host, kept between runs. Bay does no git.
+      // on the host, kept between runs; its code is the source's (#E173).
       project: await this.projectDirName(job.projectId),
       workspace: input.workspace ?? HostJobService.DEFAULT_WORKSPACE,
+      ...(source ? { source } : {}),
       ...(key ? { key } : {}),
       mcpUrl: `${origin}/mcp`,
       prompt: input.prompt ?? "",
       timeoutSeconds: input.timeoutSeconds,
     };
+  }
+
+  /**
+   * A job's `source` as Bay reads it (#E173): its mode, ref and branch, and
+   * the project's repository as it is when the host pulls the spec. None is
+   * left out, so a `none` job reaches a Bay older than sources unchanged.
+   */
+  protected async sourceSpec(
+    job: HostJob,
+  ): Promise<Record<string, unknown> | undefined> {
+    const source = job.input.source;
+    if (!source || source.mode === "none") return undefined;
+    const project = await this.projects.findOne({
+      where: { id: { eq: job.projectId } },
+    });
+    const github = jobRepositoryOf(project?.repositoryUrl);
+    const repository = github ? (this.localRepository() ?? github) : undefined;
+    return {
+      mode: source.mode,
+      ...(repository ? { repository } : {}),
+      ...(source.ref ? { ref: source.ref } : {}),
+      ...(source.branch ? { branch: source.branch } : {}),
+      ...(source.trust ? { trust: source.trust } : {}),
+    };
+  }
+
+  /**
+   * The local repository a spec names in place of the project's GitHub one:
+   * the e2e suite's way in (`JOBS_DEV_REPOSITORY_PATH`), with a dev Bay that
+   * accepts a path (BAY_DEV_JOBS_AS_SELF). Nothing else sets it, and a
+   * released Bay refuses a path whatever Lore sends.
+   */
+  protected localRepository(): string | undefined {
+    const path = this.alepha.env.JOBS_DEV_REPOSITORY_PATH;
+    return typeof path === "string" && path.startsWith("/") ? path : undefined;
   }
 
   /**
@@ -547,7 +586,7 @@ export class HostJobService {
    */
   protected readonly onCommandProgressed = $hook({
     on: "host:command:progressed",
-    handler: async ({ command, jobOutcome, exitCode }) => {
+    handler: async ({ command, jobOutcome, exitCode, commit, warning }) => {
       if (command.kind !== "job-run") return;
       const job = await this.jobs.findOne({
         where: { commandId: { eq: command.id } },
@@ -570,6 +609,8 @@ export class HostJobService {
         status,
         reason: command.reason,
         exitCode,
+        commit,
+        warning,
       });
     },
   });
@@ -584,6 +625,8 @@ export class HostJobService {
       status: "succeeded" | "failed" | "cancelled" | "timed_out";
       reason?: string;
       exitCode?: number;
+      commit?: string;
+      warning?: string;
     },
   ): Promise<HostJob> {
     const job = await this.getRow(jobId);
@@ -592,6 +635,8 @@ export class HostJobService {
       endedAt: this.now(),
       ...(outcome.reason ? { reason: outcome.reason.slice(0, 2000) } : {}),
       ...(outcome.exitCode === undefined ? {} : { exitCode: outcome.exitCode }),
+      ...(outcome.commit ? { commit: outcome.commit } : {}),
+      ...(outcome.warning ? { warning: outcome.warning.slice(0, 2000) } : {}),
     });
     await this.archive(job.id);
     await this.port.revokeKey(job.id);
@@ -687,6 +732,8 @@ export class HostJobService {
       subjectId: job.subjectId,
       reason: job.reason,
       exitCode: job.exitCode,
+      commit: job.commit,
+      warning: job.warning,
       queuedAt: job.queuedAt,
       startedAt: job.startedAt,
       endedAt: job.endedAt,

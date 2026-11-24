@@ -357,6 +357,10 @@ echo note > notes.txt
 			t.Fatalf("ack = %+v", last)
 		}
 		feature := gitT(t, origin, "rev-parse", "feature")
+		// The terminal ack says which commit was read (#Q4248).
+		if last := rec.last(); last.Commit != feature {
+			t.Fatalf("the ack's commit is %q, want %s", last.Commit, feature)
+		}
 		if head, _ := os.ReadFile(filepath.Join(w.bin, "head")); strings.TrimSpace(string(head)) != feature {
 			t.Fatalf("./src is at %q, want feature %s", head, feature)
 		}

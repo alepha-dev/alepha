@@ -135,7 +135,10 @@ describe("a quest worked by an agent job", () => {
     // Build on a light host (#Q4224): branch, checks, a commit naming the
     // quest, a pull request with gh recorded on the quest.
     expect(job.input.prompt).toContain("## Where things are");
-    expect(job.input.prompt).toContain("branch from the default branch");
+    // No repository on this project: no worktree, and nothing tells the
+    // agent to clone or branch (#E173).
+    expect(job.input.source).toEqual({ mode: "none" });
+    expect(job.input.prompt).not.toContain("branch from the default branch");
     expect(job.input.prompt).toContain("open a pull request with `gh`");
     expect(job.input.prompt).toContain("quest_pull_request_add");
     expect(job.input.prompt).toContain("so do not complete it yourself");

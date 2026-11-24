@@ -192,6 +192,8 @@ func TestWireClientFramesEncode(t *testing.T) {
 		{"ack-job-failed.json", func() Ack {
 			ack := NewAck("5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e", "failed", "", "claude exited with status 1")
 			ack.ExitCode = ptr(1)
+			ack.Warning = "kept acme/q12, 1 unpushed commit(s)"
+			ack.Commit = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b"
 			return ack
 		}()},
 		{"log.json", NewLogFrame("5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e", "stdout", 0, "{\"type\":\"system\",\"subtype\":\"init\"}\n")},
@@ -335,6 +337,7 @@ func sampleInventoryFrame() Inventory {
 		},
 		Jobs: &InventoryJobs{User: "bay-agent",
 			Running: "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
+			Sources: true,
 			Tools: []InventoryTool{
 				{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},
 				{Name: "gemini", Kind: "agent", Error: "gemini is not on the jobs user's PATH"},

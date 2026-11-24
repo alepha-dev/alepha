@@ -21,7 +21,6 @@ import {
   type AgentAutomationRunOutcome,
 } from "./AgentAutomationKinds.ts";
 import { AgentJobs } from "./AgentJobs.ts";
-import { AgentRunPreamble } from "./AgentRunPreamble.ts";
 import { AutomationProjectEvents } from "./AutomationProjectEvents.ts";
 import { HostJobs } from "./HostJobs.ts";
 import { ProjectDeletionService } from "./ProjectDeletionService.ts";
@@ -61,7 +60,6 @@ export class AgentAutomationService {
   protected readonly kinds = $inject(AgentAutomationKinds);
   protected readonly agents = $inject(AgentJobs);
   protected readonly hostJobs = $inject(HostJobs);
-  protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly deletion = $inject(ProjectDeletionService);
@@ -519,7 +517,8 @@ export class AgentAutomationService {
 
   /**
    * A `text` automation's run: its words under Lore's preamble, in a
-   * workspace of its own.
+   * workspace of its own. It reads the code unless it stores `write`
+   * (#E173): before sources it ran as a run that may change code.
    */
   protected async runText(
     automation: AgentAutomation,
@@ -530,7 +529,8 @@ export class AgentAutomationService {
     const job = await this.agents.start({
       projectId: automation.projectId,
       ...this.whereOf(automation),
-      prompt: `${await this.preamble.render(automation.projectId, true)}\n\n${automation.promptText ?? ""}`,
+      // Lore's preamble goes above its words when the job starts (#E173).
+      prompt: automation.promptText ?? "",
       workspace,
       startedBy,
       startedByJobId,
@@ -548,11 +548,23 @@ export class AgentAutomationService {
     host?: string;
     agent?: string;
     model?: string;
+    source?: { mode: "none" | "read" | "write"; ref?: string };
   } {
     return {
       ...(automation.host ? { host: automation.host } : {}),
       ...(automation.agent ? { agent: automation.agent } : {}),
       ...(automation.model ? { model: automation.model } : {}),
+      // The source it stores (#E173), as a run by hand asks for one.
+      ...(automation.source
+        ? {
+            source: {
+              mode: automation.source,
+              ...(automation.ref ? { ref: automation.ref } : {}),
+            },
+          }
+        : automation.ref
+          ? { source: { mode: "read" as const, ref: automation.ref } }
+          : {}),
     };
   }
 
@@ -563,11 +575,21 @@ export class AgentAutomationService {
   protected merged(
     row: AgentAutomation | undefined,
     body: AgentAutomationWrite,
-  ): Omit<AgentAutomationWrite, "name" | "on"> & {
+  ): Omit<AgentAutomationWrite, "name" | "on" | "source"> & {
+    source?: AgentAutomation["source"];
     promptKind: AgentAutomation["promptKind"];
     nextRunAt: string | null;
   } {
-    const pick = <K extends "promptText" | "host" | "agent" | "model" | "room">(
+    const pick = <
+      K extends
+        | "promptText"
+        | "host"
+        | "agent"
+        | "model"
+        | "room"
+        | "source"
+        | "ref",
+    >(
       key: K,
     ) => {
       const value = body[key];
@@ -608,6 +630,9 @@ export class AgentAutomationService {
       agent: pick("agent"),
       model: pick("model"),
       room: pick("room"),
+      // An empty string was cleared to undefined by `pick`.
+      source: pick("source") as AgentAutomation["source"],
+      ref: pick("ref"),
       trigger,
       schedule,
       dailyHour,

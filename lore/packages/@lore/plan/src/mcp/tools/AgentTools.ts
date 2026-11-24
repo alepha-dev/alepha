@@ -38,6 +38,8 @@ export class AgentTools {
           ...(params.agent ? { agent: params.agent } : {}),
           ...(params.model ? { model: params.model } : {}),
           ...(params.workspace ? { workspace: params.workspace } : {}),
+          ...(params.source ? { source: params.source } : {}),
+          ...(params.ref ? { ref: params.ref } : {}),
           ...(params.timeout ? { timeout: params.timeout } : {}),
         },
       });
