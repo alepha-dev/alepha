@@ -105,14 +105,10 @@ export class ChatRows {
  * viewer, and a stranger who is not in the project.
  */
 export class ChatTestKit {
-  public static async boot(
-    before: (alepha: Alepha) => void = () => {},
-  ): Promise<ChatTestKit> {
+  public static async boot(): Promise<ChatTestKit> {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
     });
-    // A spec's own substitutions, before anything resolves them.
-    before(alepha);
     alepha.with(AlephaOrm);
     alepha.with(AlephaServer);
     alepha.with(AlephaSecurity);

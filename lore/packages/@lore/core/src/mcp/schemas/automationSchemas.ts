@@ -24,9 +24,7 @@ const ON_DESCRIPTION =
 const writeFields = {
   text: z
     .string()
-    .describe(
-      "A `text` automation's words, run under Lore's preamble; a `chat` automation's request to its agent.",
-    )
+    .describe("A `text` automation's words, run under Lore's preamble.")
     .optional(),
   host: z
     .string()
@@ -37,13 +35,7 @@ const writeFields = {
   agent: z
     .string()
     .describe(
-      "The agent CLI (claude, gemini); needed when the host has several. For a `chat` automation, the handle of the project chat agent it runs.",
-    )
-    .optional(),
-  room: z
-    .string()
-    .describe(
-      "A `chat` automation's room, by name: its agent answers there. Chat only.",
+      "The agent CLI (claude, gemini); needed when the host has several.",
     )
     .optional(),
   model: z
@@ -121,7 +113,7 @@ export const automationCreateParamsSchema = projectParamsSchema.extend({
   prompt: z
     .enum(AUTOMATION_PROMPT_KINDS)
     .describe(
-      "`triage` (the project's Triage prompt over the inbox and the open errors), `build` (every quest not tagged needs-human into a pull request), `text` (your own words), `chat` (a project chat agent's rounds in a room, run in Lore: `agent`, `room` and `text`), `security` (the dependencies audited, a quest per real vulnerability) or `dependencies` (the dependencies updated into a pull request).",
+      "`triage` (the project's Triage prompt over the inbox and the open errors), `build` (every quest not tagged needs-human into a pull request), `text` (your own words), `security` (the dependencies audited, a quest per real vulnerability) or `dependencies` (the dependencies updated into a pull request).",
     ),
   ...writeFields,
   enabled: z

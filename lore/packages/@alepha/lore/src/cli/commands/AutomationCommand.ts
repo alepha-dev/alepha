@@ -24,7 +24,6 @@ import {
  * ```bash
  * lore automation create triage --prompt triage --on event:feedback.created,feedback.trusted
  * lore automation create build --prompt build --on event:quest.created --auto-merge
- * lore automation create rounds --prompt chat --agent bruce --room ops --text 'Do your rounds' --on daily@7
  * lore automation create nightly --text "Summarise the week" --on daily@7
  * ```
  */
@@ -80,13 +79,7 @@ export class AutomationCommand {
     agent: z
       .text({
         description:
-          "The agent CLI (claude, gemini); needed when the host has several. For --prompt chat, the chat agent's handle",
-      })
-      .optional(),
-    room: z
-      .text({
-        description:
-          "A chat automation's room, by name: its agent answers there",
+          "The agent CLI (claude, gemini); needed when the host has several",
       })
       .optional(),
     model: z
@@ -175,10 +168,8 @@ export class AutomationCommand {
             handle: it.name,
             title: `${it.promptKind} on ${this.onOf(it)}${it.enabled ? "" : " (disabled)"}`,
             fields: [
-              it.promptKind === "chat"
-                ? `@${it.agent} in #${it.room}`
-                : [it.host, it.agent, it.model].filter(Boolean).join(" / ") ||
-                  "the project's Agent host",
+              [it.host, it.agent, it.model].filter(Boolean).join(" / ") ||
+                "the project's Agent host",
               ...(it.lastRunAt ? [`last run ${it.lastRunAt}`] : []),
               ...(it.lastJobId ? [`job ${it.lastJobId}`] : []),
               ...(it.nextRunAt ? [`next run ${it.nextRunAt}`] : []),
@@ -197,14 +188,14 @@ export class AutomationCommand {
   public readonly create = $command({
     name: "create",
     description:
-      "Create an agent automation: --prompt triage|build|chat, or --text '...', and --on for when it runs",
+      "Create an agent automation: --prompt triage|build, or --text '...', and --on for when it runs",
     args: AutomationCommand.NAME,
     flags: z.object({
       project: AutomationCommand.PROJECT,
       prompt: z
-        .enum(["triage", "build", "text", "chat", "security", "dependencies"])
+        .enum(["triage", "build", "text", "security", "dependencies"])
         .describe(
-          "triage (the inbox and the open errors), build (every quest not tagged needs-human into a pull request), text, chat (a chat agent's rounds in a room: --agent, --room and --text), security (the dependencies audited) or dependencies (updated into a pull request)",
+          "triage (the inbox and the open errors), build (every quest not tagged needs-human into a pull request), text, security (the dependencies audited) or dependencies (updated into a pull request)",
         )
         .optional(),
       ...AutomationCommand.WRITE,
@@ -216,9 +207,7 @@ export class AutomationCommand {
     }),
     handler: async ({ args, flags, print }) => {
       await this.guarded(flags.project, async (projectId) => {
-        const promptKind =
-          flags.prompt ??
-          (flags.room ? "chat" : flags.text ? "text" : undefined);
+        const promptKind = flags.prompt ?? (flags.text ? "text" : undefined);
         if (!promptKind) {
           throw new CommandError(
             { exitCode: LoreRefusals.EXIT_FAILURE },
@@ -253,8 +242,8 @@ export class AutomationCommand {
       project: AutomationCommand.PROJECT,
       newName: z.text({ description: "A new name" }).optional(),
       prompt: z
-        .enum(["triage", "build", "text", "chat", "security", "dependencies"])
-        .describe("Another prompt: triage, build, text or chat")
+        .enum(["triage", "build", "text", "security", "dependencies"])
+        .describe("Another prompt: triage, build or text")
         .optional(),
       ...AutomationCommand.WRITE,
       enabled: z.boolean().describe("Turn its trigger on or off").optional(),
@@ -523,7 +512,6 @@ export class AutomationCommand {
     host?: string;
     agent?: string;
     model?: string;
-    room?: string;
     source?: "none" | "read" | "write" | "";
     ref?: string;
     on?: string;
@@ -539,7 +527,6 @@ export class AutomationCommand {
       ...(flags.host === undefined ? {} : { host: flags.host }),
       ...(flags.agent === undefined ? {} : { agent: flags.agent }),
       ...(flags.model === undefined ? {} : { model: flags.model }),
-      ...(flags.room === undefined ? {} : { room: flags.room }),
       ...(flags.source === undefined ? {} : { source: flags.source }),
       ...(flags.ref === undefined ? {} : { ref: flags.ref }),
       ...(flags.on === undefined ? {} : { on: flags.on }),

@@ -51,15 +51,9 @@ export const agentAutomations = $entity({
     promptText: z.string().max(131_072).optional(),
     host: z.string().max(64).optional(),
     /**
-     * The Agent host's agent CLI; for a `chat` automation (#Q4236), the
-     * handle of the project chat agent it runs.
+     * The Agent host's agent CLI.
      */
     agent: z.string().max(32).optional(),
-    /**
-     * A `chat` automation's room, by name (#Q4236), read at each run like
-     * `host`: the agent answers there.
-     */
-    room: z.string().max(64).optional(),
     model: z.string().max(96).optional(),
     /**
      * The code its jobs find (#E173), as a run by hand asks for it: `none`,

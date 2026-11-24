@@ -245,56 +245,7 @@ export class ChatCommand {
     avatar: z
       .text({ description: "An image to upload as its avatar, 2 MB at most." })
       .optional(),
-    engine: z
-      .enum(["api", "host"])
-      .describe(
-        "Its AI provider: api (the instance's model) or host (an agent CLI on an Agent host, reading the code)",
-      )
-      .optional(),
-    "engine-host": z
-      .text({
-        description:
-          "With --engine host: the Agent host by slug; empty for the project's only one",
-      })
-      .optional(),
-    "engine-agent": z
-      .text({
-        description:
-          "With --engine host: the agent CLI (claude, gemini); empty for the host's only one",
-      })
-      .optional(),
-    "engine-model": z
-      .text({
-        description:
-          "With --engine host: the CLI's model; empty for its default",
-      })
-      .optional(),
   };
-
-  /**
-   * A write's engine fields, from the flags (#Q4250).
-   */
-  protected engineBody(flags: {
-    engine?: "api" | "host";
-    "engine-host"?: string;
-    "engine-agent"?: string;
-    "engine-model"?: string;
-  }) {
-    const field = (value?: string) =>
-      value === undefined ? undefined : value.trim() ? value : null;
-    return {
-      ...(flags.engine ? { engine: flags.engine } : {}),
-      ...(flags["engine-host"] === undefined
-        ? {}
-        : { engineHost: field(flags["engine-host"]) }),
-      ...(flags["engine-agent"] === undefined
-        ? {}
-        : { engineAgent: field(flags["engine-agent"]) }),
-      ...(flags["engine-model"] === undefined
-        ? {}
-        : { engineModel: field(flags["engine-model"]) }),
-    };
-  }
 
   public readonly agentList = $command({
     name: "list",
@@ -354,9 +305,6 @@ export class ChatCommand {
         }
         print(`@${agent.handle}  ${agent.name}`);
         print(`model: ${agent.model ?? "the instance default"}`);
-        print(
-          `engine: ${agent.engine === "host" ? `host ${[agent.engine_host, agent.engine_agent, agent.engine_model].filter(Boolean).join(" / ") || "(the project's only Agent host)"}` : "api"}`,
-        );
         print("");
         print(agent.pre_prompt ?? "");
       });
@@ -391,7 +339,6 @@ export class ChatCommand {
             name: flags.name,
             prePrompt: flags["pre-prompt"] ?? "",
             ...(flags.model ? { model: flags.model } : {}),
-            ...this.engineBody(flags),
             ...(avatar ? { avatar } : {}),
           },
         });
@@ -447,7 +394,6 @@ export class ChatCommand {
             ...(flags.model !== undefined
               ? { model: flags.model.trim() ? flags.model : null }
               : {}),
-            ...this.engineBody(flags),
             ...(avatar !== undefined ? { avatar } : {}),
           },
         });
@@ -492,10 +438,6 @@ export class ChatCommand {
       name: agent.name,
       builtin: agent.builtin,
       ...(agent.model ? { model: agent.model } : {}),
-      ...(agent.engine ? { engine: agent.engine } : {}),
-      ...(agent.engineHost ? { engine_host: agent.engineHost } : {}),
-      ...(agent.engineAgent ? { engine_agent: agent.engineAgent } : {}),
-      ...(agent.engineModel ? { engine_model: agent.engineModel } : {}),
       avatar: !!agent.avatarId,
       ...(agent.prePrompt !== undefined ? { pre_prompt: agent.prePrompt } : {}),
     };
@@ -524,10 +466,7 @@ export class ChatCommand {
     const { projectId } = await this.projects.named(project, context);
     const wanted = handle.replace(/^@/, "").toLowerCase();
     const page = await this.agents.listChatAgents({ params: { projectId } });
-    // The built-in `lore` resolves too: its engine is the project's (#Q4250).
-    const agent = page.items.find(
-      (it) => (!it.builtin || it.handle === "lore") && it.handle === wanted,
-    );
+    const agent = page.items.find((it) => !it.builtin && it.handle === wanted);
     if (!agent) {
       throw new AlephaError(
         `No agent @${wanted} in this project: lore chat agent list gives their handles.`,

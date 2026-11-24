@@ -26,11 +26,7 @@ export class ChatAgentController {
 
   protected readonly agentParams = z.object({
     projectId: z.integer(),
-    /**
-     * A project agent's id, or `lore`: the built-in's engine is the
-     * project's to set (#Q4250).
-     */
-    agentId: z.union([z.uuid(), z.literal("lore")]),
+    agentId: z.uuid(),
   });
 
   listChatAgents = $action({

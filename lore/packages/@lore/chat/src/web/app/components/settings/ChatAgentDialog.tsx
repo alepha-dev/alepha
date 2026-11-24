@@ -111,10 +111,6 @@ const EditForm = (
       prePrompt: props.agent.prePrompt ?? "",
       avatar: props.agent.avatarId ?? null,
       model: props.agent.model ?? null,
-      engine: props.agent.engine ?? "api",
-      engineHost: props.agent.engineHost ?? null,
-      engineAgent: props.agent.engineAgent ?? null,
-      engineModel: props.agent.engineModel ?? null,
     },
     onSuccess: () => props.onSaved(),
   });
@@ -134,15 +130,7 @@ const EditForm = (
 const AgentForm = (props: {
   form: { submit: () => Promise<unknown> } & Parameters<typeof useFormState>[0];
   input: Record<
-    | "handle"
-    | "name"
-    | "avatar"
-    | "model"
-    | "prePrompt"
-    | "engine"
-    | "engineHost"
-    | "engineAgent"
-    | "engineModel",
+    "handle" | "name" | "avatar" | "model" | "prePrompt",
     BaseInputField
   >;
   /**
@@ -214,30 +202,6 @@ const AgentForm = (props: {
               />
             </div>
           </div>
-        </div>
-        {/* Its AI provider (#Q4250): the instance's model, or an agent CLI
-            on one of the project's Agent hosts. */}
-        <div
-          className="grid gap-4 sm:grid-cols-2"
-          data-testid="chat-agent-engine"
-        >
-          <Control
-            input={props.input.engine}
-            label={tr("chat.agents.form.engine")}
-            description={tr("chat.agents.form.engineHint")}
-          />
-          <Control
-            input={props.input.engineHost}
-            label={tr("chat.agents.form.engineHost")}
-          />
-          <Control
-            input={props.input.engineAgent}
-            label={tr("chat.agents.form.engineAgent")}
-          />
-          <Control
-            input={props.input.engineModel}
-            label={tr("chat.agents.form.engineModel")}
-          />
         </div>
         <Control
           input={props.input.prePrompt}

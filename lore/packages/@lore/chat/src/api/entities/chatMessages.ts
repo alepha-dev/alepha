@@ -72,19 +72,6 @@ export const chatMessages = $entity({
         mentionerId: z.uuid(),
         callId: z.text().optional(),
         tool: z.text().optional(),
-        /**
-         * The host job answering it (#Q4250), on a host agent's answer:
-         * written from the job's result when the job ends.
-         */
-        jobId: z.uuid().optional(),
-        /**
-         * The host session the turn used, made resumable once it ends done.
-         */
-        sessionKey: z.text().optional(),
-        /**
-         * Asked by an automation (#Q4236): dropped when it has nothing.
-         */
-        unasked: z.boolean().optional(),
         input: z.record(z.text(), z.any()).optional(),
         /**
          * The tools the run used, in order: the answer's trace line.

@@ -1235,12 +1235,6 @@ export default {
   "chat.agents.form.name": "Nom",
   "chat.agents.form.avatar": "Avatar",
   "chat.agents.form.model": "Modèle",
-  "chat.agents.form.engine": "Fournisseur d'IA",
-  "chat.agents.form.engineHint":
-    "api est le modèle de l'instance ; host est un CLI d'agent sur un hôte Agent du projet, qui lit le code.",
-  "chat.agents.form.engineHost": "Hôte Agent",
-  "chat.agents.form.engineAgent": "CLI d'agent",
-  "chat.agents.form.engineModel": "Modèle du CLI",
   "chat.agents.form.modelHint":
     "Vide, il utilise le modèle par défaut de l'instance. Le budget IA compte les jetons, quel que soit le modèle.",
   "chat.agents.form.modelPlaceholder": "Modèle par défaut",
@@ -1385,13 +1379,8 @@ export default {
   "automations.prompt.triage": "Tri",
   "automations.prompt.build": "Build",
   "automations.prompt.text": "Texte",
-  "automations.prompt.chat": "Tournée d'un agent de discussion",
   "automations.prompt.security": "Vérification de sécurité",
   "automations.prompt.dependencies": "Mise à jour des dépendances",
-  "automations.form.chatAgent": "Agent de discussion",
-  "automations.form.chatAgent.description":
-    "Son identifiant, sans le @ : il répond dans le salon comme si vous l'aviez mentionné.",
-  "automations.form.room": "Salon",
   "automations.trigger.manual": "À la main",
   "automations.trigger.event": "Sur $1",
   "automations.trigger.hourly": "Toutes les heures",
