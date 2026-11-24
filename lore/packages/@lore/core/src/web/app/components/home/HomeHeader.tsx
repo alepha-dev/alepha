@@ -2,7 +2,7 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { ButtonInbox } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
@@ -61,7 +61,7 @@ const HomeHeader = () => {
             />
           }
         >
-          <Sparkles className="size-4" />
+          <Plus className="size-4" />
           <span className="max-sm:sr-only">{tr("home.create-project")}</span>
         </TooltipTrigger>
         <TooltipContent className="sm:hidden">
