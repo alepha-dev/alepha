@@ -41,11 +41,17 @@ func (r *frameRecorder) send(frame any) error {
 // text is what Lore would hold for a stream: each frame's bytes past what it
 // already has, by offset, as the Lore side keeps them.
 func (r *frameRecorder) text(stream string) string {
+	return r.textOf("", stream)
+}
+
+// textOf is text for one job's frames; an empty id reads every job's, which
+// is right while a test runs one job.
+func (r *frameRecorder) textOf(id, stream string) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var held []byte
 	for _, f := range r.frames {
-		if f.Stream != stream {
+		if f.Stream != stream || (id != "" && f.ID != id) {
 			continue
 		}
 		end := f.Offset + int64(len(f.Data))
@@ -698,7 +704,7 @@ func TestJobsInventory(t *testing.T) {
 	w.stub(t, "git", "#!/bin/sh\necho 'git version 2.43.0'\n")
 	w.stub(t, "gh", "#!/bin/sh\nexit 1\n")
 	inv, _ := w.acts.Inventory(context.Background())
-	if inv.Jobs == nil || inv.Jobs.User == "" {
+	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
 	}
 	// Every adapter's CLI, then git, gh and lore, in that order (#Q4220).

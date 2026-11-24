@@ -30,10 +30,11 @@ The runner is a host process (folio #F1531, the owner's choice of
 2026-11-20): the job runs as a DEDICATED Unix user named in Bay's config
 (`bay config jobs --user bay-agent`), never root and never the user Bay runs
 as, in a durable workspace under that user's home,
-`~/bay-jobs/<project>/<workspace>` (#Q4218): created on first use and kept, so
-the first run of a prompt clones what it needs and the next ones pull. Bay
-does no git. The agent CLI uses that user's own login, set up by hand by the
-host's operator.
+`~/bay-jobs/<project>/<workspace>` (#Q4218): created on first use and kept.
+Bay prepares the code a job's source asks for before the agent starts
+(sources.go, #E173): nothing, a read-only checkout or a worktree, from one
+mirror of the project's repository; the agent never clones. The agent CLI
+uses that user's own login, set up by hand by the host's operator.
 
 ⚠️ **There is no sandbox** (#E171). The job has that user's shell, network
 and sign-ins: what bounds it is what the host's owner gives that user, and
@@ -61,6 +62,9 @@ type jobsConfig struct {
 	// MaxJobs is how many jobs this machine runs at once (#Q4218); zero is
 	// one, today's behaviour.
 	MaxJobs int `json:"maxJobs,omitempty"`
+	// FetchTTLSeconds is how long a fetch of a project's mirror is good for
+	// (#Q4245); absent is 30 s, zero fetches before every job.
+	FetchTTLSeconds *int `json:"fetchTTLSeconds,omitempty"`
 }
 
 // maxJobsCeiling bounds `--max-jobs`: each job is an agent CLI with its own
@@ -102,7 +106,7 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--max-jobs N] [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--max-jobs N] [--fetch-ttl DURATION] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
@@ -140,6 +144,16 @@ func cmdConfigJobs(args []string) error {
 				return fmt.Errorf("--max-jobs is a number from 1 to %d", maxJobsCeiling)
 			}
 			cfg.MaxJobs, changed = n, true
+		case "--fetch-ttl":
+			raw, err := value()
+			if err != nil {
+				return err
+			}
+			n, err := parseFetchTTL(raw)
+			if err != nil {
+				return err
+			}
+			cfg.FetchTTLSeconds, changed = &n, true
 		case "--root", "--control-socket":
 			// Read by resolveRoot, or not needed: the file is read per job.
 			i++
@@ -178,7 +192,7 @@ func cmdConfigJobs(args []string) error {
 	if err := saveJobsConfig(root, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("jobs run as %s, %d at a time, in workspaces under ~%s/bay-jobs\n", cfg.User, cfg.jobsLimit(), cfg.User)
+	fmt.Printf("jobs run as %s, %d at a time, in workspaces under ~%s/bay-jobs; a mirror fetch is good for %s\n", cfg.User, cfg.jobsLimit(), cfg.User, cfg.fetchTTL())
 	fmt.Printf("  an agent CLI (%s) must be on that user's PATH, signed in by hand as that user (sudo -iu %s)\n", strings.Join(adapterNames(), ", "), cfg.User)
 	fmt.Println("  ⚠ a host that runs process jobs should do nothing else: no production app, no other project's secrets")
 	return nil
@@ -420,6 +434,9 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 			return nil, err
 		}
 		log.Step("workspace " + spec.Project + "/" + spec.Workspace + " ready")
+		if _, err := r.prepareSource(ctx, u, spec, log); err != nil {
+			return nil, err
+		}
 	}
 
 	run := agentRunOf(spec)
@@ -656,7 +673,9 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	if err != nil || cfg.User == "" {
 		return nil
 	}
-	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs()}
+	// Sources says this bay prepares a job's source (#Q4245): Lore sends a
+	// read or write job to no bay that does not say so.
+	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true}
 	// What the jobs user has, read again when older than ten minutes: a
 	// version command per tool is cheap, but not on every inventory.
 	j.toolsMu.Lock()
