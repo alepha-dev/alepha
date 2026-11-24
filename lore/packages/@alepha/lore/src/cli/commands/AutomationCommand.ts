@@ -24,6 +24,7 @@ import {
  * ```bash
  * lore automation create triage --prompt triage --on event:feedback.created,feedback.trusted
  * lore automation create build --prompt build --on event:quest.created --auto-merge
+ * lore automation create rounds --prompt chat --agent bruce --room ops --text 'Do your rounds' --on daily@7
  * lore automation create nightly --text "Summarise the week" --on daily@7
  * ```
  */
@@ -79,7 +80,13 @@ export class AutomationCommand {
     agent: z
       .text({
         description:
-          "The agent CLI (claude, gemini); needed when the host has several",
+          "The agent CLI (claude, gemini); needed when the host has several. For --prompt chat, the chat agent's handle",
+      })
+      .optional(),
+    room: z
+      .text({
+        description:
+          "A chat automation's room, by name: its agent answers there",
       })
       .optional(),
     model: z
@@ -156,8 +163,10 @@ export class AutomationCommand {
             handle: it.name,
             title: `${it.promptKind} on ${this.onOf(it)}${it.enabled ? "" : " (disabled)"}`,
             fields: [
-              [it.host, it.agent, it.model].filter(Boolean).join(" / ") ||
-                "the project's Agent host",
+              it.promptKind === "chat"
+                ? `@${it.agent} in #${it.room}`
+                : [it.host, it.agent, it.model].filter(Boolean).join(" / ") ||
+                  "the project's Agent host",
               ...(it.lastRunAt ? [`last run ${it.lastRunAt}`] : []),
               ...(it.lastJobId ? [`job ${it.lastJobId}`] : []),
               ...(it.nextRunAt ? [`next run ${it.nextRunAt}`] : []),
@@ -176,14 +185,14 @@ export class AutomationCommand {
   public readonly create = $command({
     name: "create",
     description:
-      "Create an agent automation: --prompt triage|build, or --text '...', and --on for when it runs",
+      "Create an agent automation: --prompt triage|build|chat, or --text '...', and --on for when it runs",
     args: AutomationCommand.NAME,
     flags: z.object({
       project: AutomationCommand.PROJECT,
       prompt: z
-        .enum(["triage", "build", "text"])
+        .enum(["triage", "build", "text", "chat"])
         .describe(
-          "triage (the inbox and the open errors), build (every quest not tagged needs-human into a pull request), or text",
+          "triage (the inbox and the open errors), build (every quest not tagged needs-human into a pull request), text, or chat (a chat agent's rounds in a room: --agent, --room and --text)",
         )
         .optional(),
       ...AutomationCommand.WRITE,
@@ -195,7 +204,9 @@ export class AutomationCommand {
     }),
     handler: async ({ args, flags, print }) => {
       await this.guarded(flags.project, async (projectId) => {
-        const promptKind = flags.prompt ?? (flags.text ? "text" : undefined);
+        const promptKind =
+          flags.prompt ??
+          (flags.room ? "chat" : flags.text ? "text" : undefined);
         if (!promptKind) {
           throw new CommandError(
             { exitCode: LoreRefusals.EXIT_FAILURE },
@@ -230,8 +241,8 @@ export class AutomationCommand {
       project: AutomationCommand.PROJECT,
       newName: z.text({ description: "A new name" }).optional(),
       prompt: z
-        .enum(["triage", "build", "text"])
-        .describe("Another prompt: triage, build or text")
+        .enum(["triage", "build", "text", "chat"])
+        .describe("Another prompt: triage, build, text or chat")
         .optional(),
       ...AutomationCommand.WRITE,
       enabled: z.boolean().describe("Turn its trigger on or off").optional(),
@@ -500,6 +511,7 @@ export class AutomationCommand {
     host?: string;
     agent?: string;
     model?: string;
+    room?: string;
     on?: string;
     onlyIfWork?: boolean;
     autoMerge?: boolean;
@@ -513,6 +525,7 @@ export class AutomationCommand {
       ...(flags.host === undefined ? {} : { host: flags.host }),
       ...(flags.agent === undefined ? {} : { agent: flags.agent }),
       ...(flags.model === undefined ? {} : { model: flags.model }),
+      ...(flags.room === undefined ? {} : { room: flags.room }),
       ...(flags.on === undefined ? {} : { on: flags.on }),
       ...(flags.onlyIfWork === undefined
         ? {}

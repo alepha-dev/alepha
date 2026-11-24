@@ -1373,6 +1373,11 @@ export default {
   "automations.prompt.triage": "Tri",
   "automations.prompt.build": "Build",
   "automations.prompt.text": "Texte",
+  "automations.prompt.chat": "Tournée d'un agent de discussion",
+  "automations.form.chatAgent": "Agent de discussion",
+  "automations.form.chatAgent.description":
+    "Son identifiant, sans le @ : il répond dans le salon comme si vous l'aviez mentionné.",
+  "automations.form.room": "Salon",
   "automations.trigger.manual": "À la main",
   "automations.trigger.event": "Sur $1",
   "automations.trigger.hourly": "Toutes les heures",

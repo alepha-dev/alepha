@@ -1384,6 +1384,11 @@ export default {
   "automations.prompt.triage": "Triage",
   "automations.prompt.build": "Build",
   "automations.prompt.text": "Text",
+  "automations.prompt.chat": "Chat agent's rounds",
+  "automations.form.chatAgent": "Chat agent",
+  "automations.form.chatAgent.description":
+    "Its handle, without the @: it answers in the room as if you had mentioned it.",
+  "automations.form.room": "Room",
   "automations.trigger.manual": "By hand",
   "automations.trigger.event": "On $1",
   "automations.trigger.hourly": "Every hour",

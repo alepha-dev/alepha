@@ -30,6 +30,14 @@ export interface AgentAutomationDialogProps {
 }
 
 /**
+ * Whether a prompt kind carries words of its own: a text automation's, or
+ * a chat automation's request to its agent (#Q4236). Neither has an "only
+ * if there is something" check.
+ */
+const worded = (kind: AgentAutomationForm["promptKind"] | undefined) =>
+  kind === "text" || kind === "chat";
+
+/**
  * New automation (#Q4231): the create action's fields in a small form. The
  * trigger is the one word the CLI takes (`manual`, `event:<key>`, `hourly`,
  * `6h`, `daily@<utc-hour>`), so the page teaches what the command line
@@ -44,19 +52,31 @@ const AgentAutomationDialog = (props: AgentAutomationDialogProps) => {
     {
       handler: async (_ctx, values) => {
         const text = (value?: string) => value?.trim() || undefined;
+        // A chat automation (#Q4236) runs a chat agent in a room, in Lore:
+        // an agent handle, a room and words, no host and no model.
+        const chat = values.promptKind === "chat";
         await api.createProjectAutomation({
           params: { projectId: props.projectId },
           body: {
             name: values.name,
             promptKind: values.promptKind,
-            ...(values.promptKind === "text" && text(values.promptText)
+            ...(worded(values.promptKind) && text(values.promptText)
               ? { promptText: text(values.promptText) }
               : {}),
-            ...(text(values.host) ? { host: text(values.host) } : {}),
+            ...(chat
+              ? {}
+              : text(values.host)
+                ? { host: text(values.host) }
+                : {}),
             ...(text(values.agent) ? { agent: text(values.agent) } : {}),
-            ...(text(values.model) ? { model: text(values.model) } : {}),
+            ...(chat
+              ? {}
+              : text(values.model)
+                ? { model: text(values.model) }
+                : {}),
+            ...(chat && text(values.room) ? { room: text(values.room) } : {}),
             ...(text(values.on) ? { on: text(values.on) } : {}),
-            ...(values.promptKind === "text"
+            ...(worded(values.promptKind)
               ? {}
               : { onlyIfWork: values.onlyIfWork ?? false }),
             ...(values.promptKind === "build"
@@ -124,10 +144,26 @@ const AgentAutomationDialog = (props: AgentAutomationDialogProps) => {
               { value: "triage", label: tr("automations.prompt.triage") },
               { value: "build", label: tr("automations.prompt.build") },
               { value: "text", label: tr("automations.prompt.text") },
+              { value: "chat", label: tr("automations.prompt.chat") },
             ]}
             disabled={busy}
           />
-          {values.promptKind === "text" && (
+          {values.promptKind === "chat" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Control
+                input={form.input.agent}
+                label={tr("automations.form.chatAgent")}
+                description={tr("automations.form.chatAgent.description")}
+                disabled={busy}
+              />
+              <Control
+                input={form.input.room}
+                label={tr("automations.form.room")}
+                disabled={busy}
+              />
+            </div>
+          )}
+          {worded(values.promptKind) && (
             <Control
               input={form.input.promptText}
               label={tr("automations.form.text")}
@@ -141,24 +177,26 @@ const AgentAutomationDialog = (props: AgentAutomationDialogProps) => {
             description={tr("automations.form.on.description")}
             disabled={busy}
           />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Control
-              input={form.input.host}
-              label={tr("automations.form.host")}
-              disabled={busy}
-            />
-            <Control
-              input={form.input.agent}
-              label={tr("automations.form.agent")}
-              disabled={busy}
-            />
-            <Control
-              input={form.input.model}
-              label={tr("automations.form.model")}
-              disabled={busy}
-            />
-          </div>
-          {values.promptKind !== "text" && (
+          {values.promptKind !== "chat" && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Control
+                input={form.input.host}
+                label={tr("automations.form.host")}
+                disabled={busy}
+              />
+              <Control
+                input={form.input.agent}
+                label={tr("automations.form.agent")}
+                disabled={busy}
+              />
+              <Control
+                input={form.input.model}
+                label={tr("automations.form.model")}
+                disabled={busy}
+              />
+            </div>
+          )}
+          {!worded(values.promptKind) && (
             <Control
               input={form.input.onlyIfWork}
               label={tr("automations.form.onlyIfWork")}

@@ -196,6 +196,7 @@ export class AutomationTools {
     host?: string;
     agent?: string;
     model?: string;
+    room?: string;
     on?: string;
     only_if_work?: boolean;
     auto_merge?: boolean;
@@ -209,6 +210,7 @@ export class AutomationTools {
       ...(params.host === undefined ? {} : { host: params.host }),
       ...(params.agent === undefined ? {} : { agent: params.agent }),
       ...(params.model === undefined ? {} : { model: params.model }),
+      ...(params.room === undefined ? {} : { room: params.room }),
       ...(params.on === undefined ? {} : { on: params.on }),
       ...(params.only_if_work === undefined
         ? {}

@@ -114,6 +114,10 @@ It writes only through a card you approve: a quest, a comment, a folio, a
 dashboard card or a feedback item. It never resolves an error, deploys or
 rolls back.
 
+To have an agent speak unasked, on a schedule or on project events, give it
+rounds: an [agent automation](/lore/docs/agents-automations#a-chat-agents-rounds)
+of kind **Chat agent's rounds**.
+
 ## Editing and deleting
 
 The pencil on an agent's row edits it; a new name or avatar shows on its past

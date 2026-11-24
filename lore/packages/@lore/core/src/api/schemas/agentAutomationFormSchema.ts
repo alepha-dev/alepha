@@ -21,6 +21,7 @@ export const agentAutomationFormSchema = agentAutomationCreateSchema
     host: z.string().max(64).optional(),
     agent: z.string().max(32).optional(),
     model: z.string().max(96).optional(),
+    room: z.string().max(64).optional(),
     on: z.string().max(1024).optional(),
   });
 

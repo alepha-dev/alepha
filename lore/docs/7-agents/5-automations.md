@@ -11,7 +11,8 @@ An automation is one row, and nothing more:
 - a **name**, unique in the project, and its **owner**, the member who created
   it: every job it starts runs with the owner's permissions;
 - a **prompt**: Triage (the project's Triage prompt over the inbox and the open
-  errors), Build (the project's Build prompt on a quest), or your own text;
+  errors), Build (the project's Build prompt on a quest), your own text, or a
+  chat agent's rounds (see [A chat agent's rounds](#a-chat-agents-rounds));
 - **where it runs**: the Agent host, the agent CLI and its model, each left out
   when the project has only one;
 - **when it runs**: by hand, on project events, or on a schedule;
@@ -61,7 +62,26 @@ for anything, so an idle project spends no tokens:
   trusted, when the project tracks errors;
 - a Build runs when a quest its rule would pick exists.
 
-A text prompt has no such check. When a run is skipped, the row says why.
+A text prompt has no such check, nor has a chat agent's rounds. When a run is
+skipped, the row says why.
+
+## A chat agent's rounds
+
+A chat agent only answers when it is mentioned. A **Chat agent's rounds**
+automation runs one of the project's [chat agents](/lore/docs/project-chat-agents)
+in a room on its trigger, as if you, its owner, had mentioned it there with
+the words you gave it: "do the morning rounds" every day at 7, for an agent
+whose playbook says what to inspect.
+
+- It runs in Lore, with the agent's own model, not on an Agent host: it needs
+  no host, and names none.
+- It acts as you, with your rank, and draws on the project's AI budget for
+  agents first, then on yours.
+- When the agent finds nothing worth telling the room, it says so and nothing
+  is posted: a clean house stays quiet. Its answer is posted once, when the run
+  ends.
+- A room that no longer exists, or a private room you are not in, skips the
+  run, and the row says why.
 
 ## Building quests into pull requests
 
@@ -141,6 +161,12 @@ Then every hour, catch the errors that came in:
 
 ```bash
 lore automation create errors --prompt triage --on hourly --only-if-work
+```
+
+And every morning, have the agent `bruce` do its rounds in `#ops`:
+
+```bash
+lore automation create rounds --prompt chat --agent bruce --room ops --text 'Do the morning rounds.' --on daily@7
 ```
 
 ## From the command line
