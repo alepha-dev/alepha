@@ -9,7 +9,7 @@ import {
   HostCommandTransport,
   HostJobService,
 } from "@lore/core/api";
-import { hostJobs, hosts } from "@lore/core/schemas";
+import { hostJobs, hosts, projects } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { AgentRunController } from "@lore/plan/api";
 import { Alepha } from "alepha";
@@ -39,6 +39,7 @@ class ConnectedTransport extends HostCommandTransport {
 class Repos {
   jobs = $repository(hostJobs);
   hosts = $repository(hosts);
+  projects = $repository(projects);
 }
 
 const setup = async () => {
@@ -127,6 +128,81 @@ describe("lore agent run, and agent_run", () => {
   afterEach(async () => {
     await w.alepha.stop();
     await rm(w.dataDir, { recursive: true, force: true });
+  });
+
+  it("reviews a pull request as a read job at its head, the author checked unless a member trusts it, and fixes on its branch (#Q4251)", async ({
+    expect,
+  }) => {
+    await w.repos.projects.updateById(w.projectId, {
+      repositoryUrl: "https://github.com/acme/web",
+    });
+    await w.repos.hosts.updateById((await w.repos.hosts.findMany({}))[0]!.id, {
+      jobsSources: true,
+    });
+    const review = await w.runs.runAgent.run(
+      {
+        params: { projectId: w.projectId },
+        body: { prompt: "review-pr", pr: 42 },
+      },
+      { user: w.owner },
+    );
+    const read = await w.repos.jobs.getOne({
+      where: { id: { eq: review.jobId } },
+    });
+    expect(read.input).toMatchObject({
+      workspace: "pr-42",
+      source: {
+        mode: "read",
+        ref: "pull/42/head",
+        trust: "pr-author-writes",
+      },
+    });
+    expect(read.subjectType).toBe("pull-request");
+    expect(read.input.prompt).toContain(
+      "Review pull request #42 of the Lore project",
+    );
+    expect(read.input.prompt).toContain("https://github.com/acme/web/pull/42");
+    expect(read.input.prompt).toContain("gh pr review 42");
+
+    // A member's trust sends none: the host asks nothing of GitHub.
+    const trusted = await w.runs.runAgent.run(
+      {
+        params: { projectId: w.projectId },
+        body: { prompt: "review-pr", pr: 43, trust: true },
+      },
+      { user: w.owner },
+    );
+    const trustedJob = await w.repos.jobs.getOne({
+      where: { id: { eq: trusted.jobId } },
+    });
+    expect(trustedJob.input.source).toEqual({
+      mode: "read",
+      ref: "pull/43/head",
+    });
+
+    // Review and fix: a write job whose branch Bay asks GitHub for.
+    const fix = await w.runs.runAgent.run(
+      {
+        params: { projectId: w.projectId },
+        body: { prompt: "review-pr", pr: 44, fix: true },
+      },
+      { user: w.owner },
+    );
+    const fixJob = await w.repos.jobs.getOne({
+      where: { id: { eq: fix.jobId } },
+    });
+    expect(fixJob.input.source).toEqual({
+      mode: "write",
+      ref: "pull/44/head",
+      trust: "pr-author-writes",
+    });
+
+    await expect(
+      w.runs.runAgent.run(
+        { params: { projectId: w.projectId }, body: { prompt: "review-pr" } },
+        { user: w.owner },
+      ),
+    ).rejects.toThrow("A review-pr names its pull request");
   });
 
   it("runs a text prompt under Lore's preamble, in the workspace it names", async ({

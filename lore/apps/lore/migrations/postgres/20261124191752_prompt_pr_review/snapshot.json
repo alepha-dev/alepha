@@ -1,0 +1,40 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "196b0627-8193-4e1f-8bb2-c1b05db3350a",
+  "prevIds": ["b55fd86f-43d2-47f9-864e-de3c57c4d8cb"],
+  "footprints": [
+    {
+      "statementType": "alter_enum",
+      "statementTarget": ["enum", "public", "project_prompts_kind_enum"],
+      "writes": ["s|enum|public.project_prompts_kind_enum"],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "enums\u0000[\"public\",\"project_prompts_kind_enum\"]",
+      "set": {
+        "values": [
+          "epicReview",
+          "epicActivate",
+          "questWork",
+          "feedbackWork",
+          "feedbackLoop",
+          "errorTriage",
+          "questLoop",
+          "weeklyStatus",
+          "prReview",
+          "useCaseTest",
+          "useCaseSpec",
+          "personaExplore",
+          "useCaseDemo",
+          "requirementImport",
+          "useCaseDraft"
+        ]
+      }
+    }
+  ]
+}

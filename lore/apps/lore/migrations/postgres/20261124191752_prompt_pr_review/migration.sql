@@ -1,0 +1,1 @@
+ALTER TYPE "project_prompts_kind_enum" ADD VALUE 'prReview' BEFORE 'useCaseTest';

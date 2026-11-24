@@ -8,6 +8,7 @@ import { $inject, z } from "alepha";
 import { $action, BadRequestError, ForbiddenError } from "alepha/server";
 
 import { FeedbackAgentService } from "../services/FeedbackAgentService.ts";
+import { PullRequestAgentService } from "../services/PullRequestAgentService.ts";
 import { QuestAgentService } from "../services/QuestAgentService.ts";
 
 /**
@@ -20,6 +21,8 @@ import { QuestAgentService } from "../services/QuestAgentService.ts";
  *   `feedback:triage`;
  * - `build`: the Build prompt on one accepted quest (`questWork`), under
  *   `quest:update`;
+ * - `review-pr`: the Review prompt on a pull request (#Q4251), under
+ *   `quest:update`: a read job at its head, or `fix` to push to its branch;
  * - `text`: a free prompt the member writes, under `host:update`, since it
  *   asks the host for anything their rank allows. Read-only by default
  *   since #E173: a text run that changes code asks for `source: "write"`.
@@ -33,6 +36,7 @@ import { QuestAgentService } from "../services/QuestAgentService.ts";
 export class AgentRunController {
   protected readonly feedbackAgent = $inject(FeedbackAgentService);
   protected readonly questAgent = $inject(QuestAgentService);
+  protected readonly prAgent = $inject(PullRequestAgentService);
   protected readonly agents = $inject(AgentJobs);
   protected readonly security = $inject(ProjectSecurityService);
 
@@ -43,9 +47,18 @@ export class AgentRunController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: agentRunSchema.merge(agentRunSourceSchema).extend({
-        prompt: z.enum(["triage", "build", "text"]),
-        /** The quest a `build` works, by its number. */
+        prompt: z.enum(["triage", "build", "text", "review-pr"]),
+        /** The quest a `build` works, or the one a `review-pr` is about. */
         quest: z.integer().optional(),
+        /** The pull request a `review-pr` reviews, by its number (#Q4251). */
+        pr: z.integer().min(1).optional(),
+        /** A `review-pr` that pushes its fixes to the pull request's branch. */
+        fix: z.boolean().optional(),
+        /**
+         * A member trusts the pull request's author: Bay does not check that
+         * they can write to the repository. Never an automation's.
+         */
+        trust: z.boolean().optional(),
         /** A `text` prompt's words. */
         text: z.string().max(131_072).optional(),
         /** The workspace a `text` prompt runs in; `text` by default. */
@@ -109,6 +122,26 @@ export class AgentRunController {
           body.quest,
           user.id,
           run,
+        );
+        return { jobId: out.jobId, skipped: [] };
+      }
+      if (body.prompt === "review-pr") {
+        await need("quest:update");
+        if (body.pr === undefined) {
+          throw new BadRequestError(
+            "A review-pr names its pull request: --pr <n>",
+          );
+        }
+        const out = await this.prAgent.review(
+          params.projectId,
+          body.pr,
+          user.id,
+          run,
+          {
+            ...(body.fix ? { fix: true } : {}),
+            ...(body.trust ? { trust: true } : {}),
+            ...(body.quest === undefined ? {} : { questNumber: body.quest }),
+          },
         );
         return { jobId: out.jobId, skipped: [] };
       }

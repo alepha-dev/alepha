@@ -38,6 +38,8 @@ export const agentPromptKindSchema = z.enum([
   "errorTriage",
   "questLoop",
   "weeklyStatus",
+  // A pull request reviewed by an agent job (#Q4251).
+  "prReview",
   // Plan's Requirements (#E153): rendered on the server, editable with the
   // `requirements` option alone.
   "useCaseTest",

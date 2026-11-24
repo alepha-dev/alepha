@@ -3274,6 +3274,10 @@ export default {
     "Claude trie les retours et les erreurs en une seule passe ; $1 laissés à un membre",
   "feedback.agent.job": "Tâche d'agent",
   "quest.agent.work": "Travailler avec un agent",
+  "quest.agent.review": "Relire #$1",
+  "quest.agent.reviewFix": "Relire et corriger #$1",
+  "quest.agent.review.trust": "Je fais confiance à son auteur",
+  "quest.agent.review.started": "La relecture tourne sur l'hôte Agent",
   "quest.agent.started":
     "Claude travaille sur cette quête sur l'hôte d'agent : il pousse sa propre branche",
   "quest.untrusted": "Non fiable",
@@ -4068,6 +4072,10 @@ export default {
   "agentPrompts.settings.feedbackLoop.description":
     "Proposée sur la boîte des retours et sur celle des anomalies. Accepte, rejette ou questionne chaque retour en attente, crée une quête pour chaque vrai défaut parmi les anomalies de confiance et résout le bruit, jusqu’à ce qu’il ne reste rien.",
   "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
+  "agentPrompts.prReview": "Relire une pull request",
+  "agentPrompts.settings.prReview.title": "Quêtes : Relire une pull request",
+  "agentPrompts.settings.prReview.description":
+    "Depuis une pull request d'une quête, lancé sur un hôte Agent : lit le diff et publie une relecture avec gh.",
   "agentPrompts.settings.weeklyStatus.title":
     "Rapports : rédiger le point hebdomadaire",
   "agentPrompts.settings.weeklyStatus.description":

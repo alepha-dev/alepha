@@ -29,6 +29,7 @@ import {
   ScrollText,
   SquareCheckBig,
   Wrench,
+  GitPullRequest,
 } from "lucide-react";
 
 import { currentAreaAtom } from "../atoms/currentAreaAtom.ts";
@@ -61,6 +62,7 @@ import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
 import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
+import { prReviewPromptDefault } from "../prompts/prReviewPrompt.ts";
 import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
 import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
 import { weeklyStatusPromptDefault } from "../prompts/weeklyStatusPrompt.ts";
@@ -505,6 +507,14 @@ export class WorkShell {
       template: weeklyStatusPromptDefault,
       icon: Newspaper,
       labelKey: "agentPrompts.weeklyStatus",
+    });
+    // Run on an Agent host from the quest rail (#Q4251); registered so a
+    // project edits it in Settings like the others.
+    this.prompts.register({
+      kind: "prReview",
+      template: prReviewPromptDefault,
+      icon: GitPullRequest,
+      labelKey: "agentPrompts.prReview",
     });
 
     this.pickers.registerTags({ useTags: useDashboardQuestTags });

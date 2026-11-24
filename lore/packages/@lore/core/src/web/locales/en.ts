@@ -3260,6 +3260,10 @@ export default {
     "Claude is triaging the feedback and errors in one run; $1 left for a member",
   "feedback.agent.job": "Agent job",
   "quest.agent.work": "Work it with an agent",
+  "quest.agent.review": "Review #$1",
+  "quest.agent.reviewFix": "Review and fix #$1",
+  "quest.agent.review.trust": "I trust its author",
+  "quest.agent.review.started": "The review runs on the Agent host",
   "quest.agent.started":
     "Claude is working on this quest on the Agent host: it pushes its own branch",
   "quest.untrusted": "Untrusted",
@@ -4043,6 +4047,10 @@ export default {
   "agentPrompts.settings.feedbackLoop.description":
     "Offered on the feedback inbox and on the errors inbox. Accepts, rejects or asks about every pending report, files a quest for each real defect among the trusted errors and resolves the noise, until nothing is left.",
   "agentPrompts.weeklyStatus": "Write the weekly status",
+  "agentPrompts.prReview": "Review a pull request",
+  "agentPrompts.settings.prReview.title": "Quests: Review a pull request",
+  "agentPrompts.settings.prReview.description":
+    "From a pull request on a quest, run on an Agent host: reads the diff and posts a review with gh.",
   "agentPrompts.settings.weeklyStatus.title":
     "Reports: Write the weekly status",
   "agentPrompts.settings.weeklyStatus.description":
