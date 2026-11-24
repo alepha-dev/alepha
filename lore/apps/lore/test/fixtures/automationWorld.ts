@@ -10,8 +10,9 @@ import {
   HostCommandService,
   HostCommandTransport,
   HostJobService,
+  LoreInboxRecipientProvider,
 } from "@lore/core/api";
-import { projectEvents } from "@lore/core/api";
+import { eventSubscriptions, projectEvents } from "@lore/core/api";
 import {
   agentAutomations,
   hostCommands,
@@ -28,6 +29,10 @@ import {
   JobQueueProvider,
   jobExecutionEntity,
 } from "alepha/api/jobs";
+import {
+  NotificationInboxRecipientProvider,
+  notificationInboxEntity,
+} from "alepha/api/notifications";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -71,6 +76,8 @@ export class AutomationRepos {
   errors = $repository(projectErrors);
   feedback = $repository(feedback);
   quests = $repository(quests);
+  inbox = $repository(notificationInboxEntity);
+  subscriptions = $repository(eventSubscriptions);
 }
 
 export const automationWorld = async (env: Record<string, unknown> = {}) => {
@@ -87,6 +94,11 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
   alepha.with({ provide: HostCommandTransport, use: ConnectedTransport });
   alepha.with({ provide: CronProvider, use: ManualCronProvider });
   alepha.with({ provide: JobQueueProvider, use: HeldQueue });
+  // The inbox files by account, as the app wires it (#Q4276).
+  alepha.with({
+    provide: NotificationInboxRecipientProvider,
+    use: LoreInboxRecipientProvider,
+  });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);

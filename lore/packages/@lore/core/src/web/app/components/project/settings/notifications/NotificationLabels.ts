@@ -19,6 +19,7 @@ export class NotificationLabels {
     "monitors",
     "hosts",
     "automations",
+    "jobs",
   ];
 
   public static event(

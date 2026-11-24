@@ -17,12 +17,6 @@ export class AutomationProjectEvents {
       text: "It failed three times in a row. Read its last job, then enable it again.",
     },
     {
-      name: "automation.run.failed",
-      label: "Automation run failed",
-      title: "had a run fail",
-      text: "Read the job's log for why.",
-    },
-    {
       name: "automation.ceiling.reached",
       label: "Automation ceiling reached",
       title: "reached a ceiling",

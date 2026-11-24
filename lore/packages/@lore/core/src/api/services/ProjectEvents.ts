@@ -88,7 +88,12 @@ export class ProjectEvents {
     const now = this.database.timestamp(this.dateTime.nowISOString());
     const id = this.crypto.randomUUID();
     const jobId = input.jobId ?? (await this.callerJob());
-    const job = await this.delivery.prepare(input.projectId, input.name, id);
+    const job = await this.delivery.prepare(
+      input.projectId,
+      input.name,
+      id,
+      fields,
+    );
     return {
       id,
       statements: [

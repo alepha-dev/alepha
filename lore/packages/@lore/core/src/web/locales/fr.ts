@@ -125,10 +125,14 @@ export default {
   "notifications.resource.apps": "Applications",
   "notifications.resource.monitors": "Moniteurs",
   "notifications.resource.hosts": "Hôtes",
+  "notifications.resource.jobs": "Tâches d'agent",
   "notifications.resource.automations": "Automatisations d'agent",
+  "notifications.event.epic.created": "Épopée créée",
+  "notifications.event.epic.ready": "Épopée prête",
+  "notifications.event.pull_request.added": "Pull request ajoutée",
+  "notifications.event.agent.job.succeeded": "Tâche d'agent réussie",
+  "notifications.event.agent.job.failed": "Tâche d'agent en échec",
   "notifications.event.automation.disabled": "Automatisation désactivée",
-  "notifications.event.automation.run.failed":
-    "Exécution d'automatisation échouée",
   "notifications.event.automation.ceiling.reached":
     "Plafond d'automatisation atteint",
   "notifications.capability.plan": "Plan",

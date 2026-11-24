@@ -91,6 +91,7 @@ import { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
 import { AgentAutomationService } from "./services/AgentAutomationService.ts";
 import { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
 import { AgentHostService } from "./services/AgentHostService.ts";
+import { AgentJobProjectEvents } from "./services/AgentJobProjectEvents.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentJobService } from "./services/AgentJobService.ts";
 import { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
@@ -422,6 +423,8 @@ export const LoreCoreApi = $module({
     PromptService,
     PromptRunService,
     PromptController,
+    // A job that ends tells its starter, and its subscribers (#Q4276).
+    AgentJobProjectEvents,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,

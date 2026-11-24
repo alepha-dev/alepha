@@ -118,13 +118,16 @@ describe.skipIf(onPostgres)("Project events", () => {
   }) => {
     const catalog = alepha.inject(ProjectEventCatalog).all();
     expect(catalog.map((event) => event.name).sort()).toEqual([
+      "agent.job.failed",
+      "agent.job.succeeded",
       "automation.ceiling.reached",
       "automation.disabled",
-      "automation.run.failed",
       "coverage.dropped",
       "deploy.failed",
       "deploy.succeeded",
       "epic.completed",
+      "epic.created",
+      "epic.ready",
       "errors.threshold_crossed",
       "feedback.created",
       "feedback.trusted",
@@ -134,6 +137,7 @@ describe.skipIf(onPostgres)("Project events", () => {
       "host.online",
       "monitor.down",
       "monitor.up",
+      "pull_request.added",
       "quest.assigned",
       "quest.completed",
       "quest.created",

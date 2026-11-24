@@ -782,14 +782,19 @@ export class QuestController {
     handler: async ({ params, body, user }) => {
       const quest = this.owned.get<Quest>();
 
-      const updated = await this.quests.updateById(params.id, {
-        pullRequests: appendPullRequests(
+      // With `pull_request.added` the first time the project records it
+      // (#Q4276).
+      const updated = (await this.eventSources.addPullRequest(
+        { kind: "quest", row: quest },
+        appendPullRequests(
           quest.pullRequests,
           [body],
           user.id,
           this.dt.nowISOString(),
         ),
-      });
+        body.url,
+        user.id,
+      )) as Quest;
       await this.logQuest("pull_request", updated, user, { url: body.url });
 
       return this.mapQuestToResource(updated);

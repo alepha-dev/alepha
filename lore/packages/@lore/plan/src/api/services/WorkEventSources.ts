@@ -1,4 +1,4 @@
-import { SourceRepository } from "@lore/core/api";
+import { projectEvents, SourceRepository } from "@lore/core/api";
 import { projects, type Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -32,6 +32,131 @@ export class WorkEventSources {
   protected readonly releases = $inject(SourceRepository.of(releases));
   protected readonly quests = $inject(SourceRepository.of(quests));
   protected readonly epics = $inject(SourceRepository.of(epics));
+  protected readonly events = $repository(projectEvents);
+
+  /**
+   * A new epic, with `epic.created` (#Q4276).
+   */
+  public async createEpic(
+    data: Parameters<typeof this.epics.create>[0],
+    actorId?: string,
+  ): Promise<Epic> {
+    const project = await this.projects.getById(data.projectId);
+    return this.epics.sourceCreate(
+      data,
+      { projectId: data.projectId, number: data.number },
+      {
+        projectId: data.projectId,
+        name: "epic.created",
+        subjectId: data.number,
+        ...(actorId ? { actorId } : {}),
+        generatedIdField: "epic_id",
+        fields: {
+          project: project.title,
+          title: data.title,
+          shortId: data.number,
+          ...(actorId ? { actor_id: actorId } : {}),
+          url: `/${project.slug || `project-${project.id}`}/epics/${data.number}`,
+        },
+      },
+    );
+  }
+
+  /**
+   * An epic moved to a status by hand, with `epic.ready` when it is marked
+   * ready (#Q4276), by the page or a tool.
+   */
+  public async setEpicStatus(
+    epic: Epic,
+    status: Epic["status"],
+    actorId?: string,
+  ): Promise<Epic> {
+    if (status !== "ready") {
+      return this.epics.updateById(epic.id, { status });
+    }
+    const project = await this.projects.getById(epic.projectId);
+    return this.epics.sourceUpdate(
+      { id: epic.id, status: epic.status },
+      { status },
+      {
+        projectId: epic.projectId,
+        name: "epic.ready",
+        subjectId: epic.number,
+        ...(actorId ? { actorId } : {}),
+        fields: {
+          project: project.title,
+          title: epic.title,
+          epic_id: epic.id,
+          shortId: epic.number,
+          ...(actorId ? { actor_id: actorId } : {}),
+          url: `/${project.slug || `project-${project.id}`}/epics/${epic.number}`,
+        },
+      },
+    );
+  }
+
+  /**
+   * A pull request recorded on a quest or an epic, with `pull_request.added`
+   * the first time the project records it (#Q4276).
+   */
+  public async addPullRequest(
+    target: { kind: "quest"; row: Quest } | { kind: "epic"; row: Epic },
+    pullRequests: NonNullable<Quest["pullRequests"]>,
+    url: string,
+    actorId?: string,
+  ): Promise<Quest | Epic> {
+    const { row } = target;
+    const already = (row.pullRequests ?? []).some((it) => it.url === url);
+    const seen = already || (await this.recorded(row.projectId, url));
+    const number = Number(/\/pull\/(\d+)/.exec(url)?.[1] ?? 0);
+    if (seen || !number) {
+      return target.kind === "quest"
+        ? this.quests.updateById(row.id, { pullRequests })
+        : this.epics.updateById(row.id, { pullRequests });
+    }
+    const project = await this.projects.getById(row.projectId);
+    const slug = project.slug || `project-${project.id}`;
+    const event = {
+      projectId: row.projectId,
+      name: "pull_request.added",
+      subjectId: number,
+      ...(actorId ? { actorId } : {}),
+      fields: {
+        project: project.title,
+        title: row.title,
+        number,
+        repository: url.replace(/\/pull\/\d+.*$/, ""),
+        pull_request_url: url,
+        ...(target.kind === "quest"
+          ? { quest_shortId: target.row.shortId }
+          : { epic_number: target.row.number }),
+        ...(actorId ? { actor_id: actorId } : {}),
+        url:
+          target.kind === "quest"
+            ? `/${slug}/quests/${target.row.shortId}`
+            : `/${slug}/epics/${target.row.number}`,
+      },
+    };
+    return target.kind === "quest"
+      ? this.quests.sourceUpdate({ id: row.id }, { pullRequests }, event)
+      : this.epics.sourceUpdate({ id: row.id }, { pullRequests }, event);
+  }
+
+  /**
+   * Whether the project raised `pull_request.added` for this URL already,
+   * in the events it keeps.
+   */
+  protected async recorded(projectId: number, url: string): Promise<boolean> {
+    const rows = await this.events.findMany({
+      where: {
+        projectId: { eq: projectId },
+        name: { eq: "pull_request.added" },
+      },
+      orderBy: [{ column: "occurredAt", direction: "desc" }],
+      limit: 500,
+    });
+    return rows.some((it) => it.fields.pull_request_url === url);
+  }
 
   public async submit(data: FeedbackInsert) {
     const project = await this.projects.getById(data.projectId);

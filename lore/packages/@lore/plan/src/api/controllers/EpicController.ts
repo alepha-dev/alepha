@@ -49,6 +49,7 @@ import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
+import { WorkEventSources } from "../services/WorkEventSources.ts";
 
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
@@ -85,6 +86,7 @@ import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
  */
 export class EpicController {
   epics = $repository(epics);
+  protected readonly eventSources = $inject(WorkEventSources);
   quests = $repository(quests);
   resources = $inject(ResourceRegistry);
   linkService = $inject(ResourceLinkService);
@@ -427,14 +429,18 @@ export class EpicController {
       );
 
       const number = await this.epicNumber.next(String(params.projectId));
-      const epic = await this.epics.create({
-        projectId: params.projectId,
-        number,
-        title: body.title,
-        description: body.description ?? "",
-        status: "draft",
-        ...(dependsOn !== null ? { dependsOn } : {}),
-      });
+      // With `epic.created` (#Q4276).
+      const epic = await this.eventSources.createEpic(
+        {
+          projectId: params.projectId,
+          number,
+          title: body.title,
+          description: body.description ?? "",
+          status: "draft",
+          ...(dependsOn !== null ? { dependsOn } : {}),
+        },
+        user.id,
+      );
       // A brand-new id has no links to clear, so the delete is skipped.
       // Best effort (#Q2555): the epic exists now, and a 500 here would
       // invite a retry that creates a second one.
@@ -468,14 +474,17 @@ export class EpicController {
     handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
 
-      const updated = await this.epics.updateById(params.id, {
-        pullRequests: appendPullRequests(
+      const updated = (await this.eventSources.addPullRequest(
+        { kind: "epic", row: epic },
+        appendPullRequests(
           epic.pullRequests,
           [body],
           user.id,
           this.dt.nowISOString(),
         ),
-      });
+        body.url,
+        user.id,
+      )) as Epic;
       await this.logEpic("pull_request", updated, user, { url: body.url });
 
       return await this.buildEpicResource(updated);
@@ -632,9 +641,12 @@ export class EpicController {
       }
       this.workflow.assertManualEdge(epic, body.status);
 
-      const updated = await this.epics.updateById(params.id, {
-        status: body.status,
-      });
+      // `epic.ready` when marked ready (#Q4276).
+      const updated = await this.eventSources.setEpicStatus(
+        epic,
+        body.status,
+        user.id,
+      );
 
       await this.logEpic("status", updated, user, {
         from: epic.status,
