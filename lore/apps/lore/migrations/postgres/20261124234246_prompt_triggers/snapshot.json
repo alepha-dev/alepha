@@ -1,0 +1,748 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e16c1452-80e9-4c36-8e79-1620daa627d3",
+  "prevIds": ["c73c73d4-0c4e-48b4-b904-a221be03fbd5"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "agent_automations"],
+      "writes": [
+        "s|tbl|public.agent_automations",
+        "n|tbl|public.agent_automations",
+        "e|tbl|public.agent_automations",
+        "n|rel|public.agent_automations",
+        "n|type|public.agent_automations"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "projects",
+        "automations_paused_at"
+      ],
+      "writes": [
+        "s|col|public.projects.automations_paused_at",
+        "n|col|public.projects.automations_paused_at",
+        "s|col|public.projects.prompts_paused_at",
+        "n|col|public.projects.prompts_paused_at"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_jobs",
+        "host_jobs_automation_id_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.host_jobs_automation_id_status_idx",
+        "n|idx|public.host_jobs_automation_id_status_idx",
+        "e|idx|public.host_jobs_automation_id_status_idx",
+        "n|rel|public.host_jobs_automation_id_status_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_jobs",
+        "n|sch|public",
+        "e|col|public.host_jobs.automation_id",
+        "e|col|public.host_jobs.status"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "event_keys"],
+      "writes": [
+        "s|col|public.prompts.event_keys",
+        "n|col|public.prompts.event_keys",
+        "e|col|public.prompts.event_keys"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "settle_seconds"],
+      "writes": [
+        "s|col|public.prompts.settle_seconds",
+        "n|col|public.prompts.settle_seconds",
+        "e|col|public.prompts.settle_seconds"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pending"],
+      "writes": [
+        "s|col|public.prompts.pending",
+        "n|col|public.prompts.pending",
+        "e|col|public.prompts.pending"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pending_job_id"],
+      "writes": [
+        "s|col|public.prompts.pending_job_id",
+        "n|col|public.prompts.pending_job_id",
+        "e|col|public.prompts.pending_job_id"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "schedule"],
+      "writes": [
+        "s|col|public.prompts.schedule",
+        "n|col|public.prompts.schedule",
+        "e|col|public.prompts.schedule"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "daily_hour"],
+      "writes": [
+        "s|col|public.prompts.daily_hour",
+        "n|col|public.prompts.daily_hour",
+        "e|col|public.prompts.daily_hour"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "weekday"],
+      "writes": [
+        "s|col|public.prompts.weekday",
+        "n|col|public.prompts.weekday",
+        "e|col|public.prompts.weekday"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "next_run_at"],
+      "writes": [
+        "s|col|public.prompts.next_run_at",
+        "n|col|public.prompts.next_run_at",
+        "e|col|public.prompts.next_run_at"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "check"],
+      "writes": [
+        "s|col|public.prompts.check",
+        "n|col|public.prompts.check",
+        "e|col|public.prompts.check"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "arg_values"],
+      "writes": [
+        "s|col|public.prompts.arg_values",
+        "n|col|public.prompts.arg_values",
+        "e|col|public.prompts.arg_values"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "max_runs_per_hour"],
+      "writes": [
+        "s|col|public.prompts.max_runs_per_hour",
+        "n|col|public.prompts.max_runs_per_hour",
+        "e|col|public.prompts.max_runs_per_hour"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "max_runs_per_day"],
+      "writes": [
+        "s|col|public.prompts.max_runs_per_day",
+        "n|col|public.prompts.max_runs_per_day",
+        "e|col|public.prompts.max_runs_per_day"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "prompts",
+        "consecutive_failures"
+      ],
+      "writes": [
+        "s|col|public.prompts.consecutive_failures",
+        "n|col|public.prompts.consecutive_failures",
+        "e|col|public.prompts.consecutive_failures"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "last_job_id"],
+      "writes": [
+        "s|col|public.prompts.last_job_id",
+        "n|col|public.prompts.last_job_id",
+        "e|col|public.prompts.last_job_id"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "last_run_at"],
+      "writes": [
+        "s|col|public.prompts.last_run_at",
+        "n|col|public.prompts.last_run_at",
+        "e|col|public.prompts.last_run_at"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "last_skipped_at"],
+      "writes": [
+        "s|col|public.prompts.last_skipped_at",
+        "n|col|public.prompts.last_skipped_at",
+        "e|col|public.prompts.last_skipped_at"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "last_skipped_reason"],
+      "writes": [
+        "s|col|public.prompts.last_skipped_reason",
+        "n|col|public.prompts.last_skipped_reason",
+        "e|col|public.prompts.last_skipped_reason"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "host_jobs", "automation_id"],
+      "writes": [
+        "s|col|public.host_jobs.automation_id",
+        "n|col|public.host_jobs.automation_id",
+        "e|col|public.host_jobs.automation_id"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "project_thresholds",
+        "automation_builds_per_day"
+      ],
+      "writes": [
+        "s|col|public.project_thresholds.automation_builds_per_day",
+        "n|col|public.project_thresholds.automation_builds_per_day",
+        "e|col|public.project_thresholds.automation_builds_per_day"
+      ],
+      "reads": ["n|tbl|public.project_thresholds", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "prompts",
+        "prompts_next_run_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.prompts_next_run_at_idx",
+        "n|idx|public.prompts_next_run_at_idx",
+        "e|idx|public.prompts_next_run_at_idx",
+        "n|rel|public.prompts_next_run_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.prompts",
+        "n|sch|public",
+        "n|col|public.prompts.next_run_at"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"projects\",\"automations_paused_at\"]",
+      "set": {
+        "name": "prompts_paused_at"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "event_keys",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "settle_seconds",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "60",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pending",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pending_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "schedule",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "daily_hour",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "weekday",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "next_run_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "check",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "arg_values",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "max_runs_per_hour",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "6",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "max_runs_per_day",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "48",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "consecutive_failures",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "last_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "last_run_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "last_skipped_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "last_skipped_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "prompts_next_run_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "next_run_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"agent_automations\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"name\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"enabled\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"created_by\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"prompt_kind\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"prompt_text\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"host\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"agent\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"model\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"trigger\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"only_if_work\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"last_job_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"last_run_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"consecutive_failures\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"host_jobs\",\"automation_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"event_keys\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"settle_seconds\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"pending\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"pending_job_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"schedule\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"daily_hour\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"next_run_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"last_skipped_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"last_skipped_reason\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"auto_merge\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"concurrency\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"max_runs_per_hour\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"max_runs_per_day\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_thresholds\",\"automation_builds_per_day\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"source\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"ref\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"agent_automations_project_id_name_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"host_jobs_automation_id_status_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"agent_automations_next_run_at_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"agent_automations\",\"agent_automations_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"agent_automations\",\"agent_automations_created_by_users_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"agent_automations\",\"agent_automations_pkey\"]"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { promptArgSchema } from "./promptArgSchema.ts";
-import { PROMPT_SOURCES } from "./promptValues.ts";
+import { PROMPT_CHECKS, PROMPT_SOURCES } from "./promptValues.ts";
 
 /**
  * A prompt as the API answers it (#Q4274): a built-in merged with the
@@ -28,6 +28,23 @@ export const promptResourceSchema = z.object({
   timeoutSeconds: z.integer(),
   createdBy: z.uuid().optional(),
   updatedAt: z.datetime().optional(),
+  /**
+   * Its trigger (#Q4277): `on` in one word, `manual` when it has none, what
+   * it checks first, the values stored for its args, its ceilings, and what
+   * its last runs did.
+   */
+  on: z.string(),
+  check: z.array(z.enum(PROMPT_CHECKS)).optional(),
+  argValues: z.record(z.string(), z.string()).optional(),
+  maxRunsPerHour: z.integer(),
+  maxRunsPerDay: z.integer(),
+  settleSeconds: z.integer(),
+  nextRunAt: z.string().optional(),
+  lastRunAt: z.string().optional(),
+  lastJobId: z.uuid().optional(),
+  lastSkippedAt: z.string().optional(),
+  lastSkippedReason: z.string().optional(),
+  consecutiveFailures: z.integer(),
 });
 
 export type PromptResource = Infer<typeof promptResourceSchema>;

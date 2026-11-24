@@ -10,7 +10,6 @@ import { AppsCommand } from "./commands/AppsCommand.ts";
 import { AreaCommand } from "./commands/AreaCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
-import { AutomationCommand } from "./commands/AutomationCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
 import { ChatCommand } from "./commands/ChatCommand.ts";
 import { CommitsCommand } from "./commands/CommitsCommand.ts";
@@ -159,9 +158,7 @@ export const AlephaLoreCli = $module({
     JobCommand,
     // A prompt run on an Agent host, and the hosts (#Q4225).
     AgentCommand,
-    // Agent automations (#E172), and the commit push that completes what
-    // a build automation built (#Q4234).
-    AutomationCommand,
+    // The commit push that records a quest's commits (#Q4234).
     CommitsCommand,
     RegistryCommand,
     StackCommand,

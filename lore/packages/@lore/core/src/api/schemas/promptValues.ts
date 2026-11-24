@@ -74,3 +74,40 @@ export const PROMPT_MAX_ARGS = 4;
  * A custom prompt's run time (#E174): no column and no setting.
  */
 export const PROMPT_CUSTOM_TIMEOUT_SECONDS = 30 * 60;
+
+/**
+ * A prompt's schedule (#Q4277), from a fixed list, on the hour of the hourly
+ * job, in UTC: every hour, every six hours (00, 06, 12, 18), once a day at
+ * an hour, or once a week on a weekday at an hour.
+ */
+export const PROMPT_SCHEDULES = ["hourly", "6h", "daily", "weekly"] as const;
+
+export type PromptSchedule = (typeof PROMPT_SCHEDULES)[number];
+
+/**
+ * The weekdays a weekly schedule names, `getUTCDay` order: `sun` is 0.
+ */
+export const PROMPT_WEEKDAYS = [
+  "sun",
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+] as const;
+
+/**
+ * What a triggered run checks first (#Q4277): it starts only when one of
+ * the listed sources holds something to do, so an idle project spends no
+ * tokens. A run by hand ignores it.
+ */
+export const PROMPT_CHECKS = ["feedback", "errors", "quests", "epics"] as const;
+
+export type PromptCheck = (typeof PROMPT_CHECKS)[number];
+
+/**
+ * The tag that keeps a quest from an agent working it alone (#E172): an
+ * event never fills a `quest` arg with a quest carrying it.
+ */
+export const PROMPT_NEEDS_HUMAN_TAG = "needs-human";

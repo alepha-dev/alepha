@@ -26,6 +26,7 @@ import {
   type PromptArgItem,
   PromptRegistry,
 } from "./PromptRegistry.ts";
+import { PromptTriggers } from "./PromptTriggers.ts";
 
 /**
  * A project's prompts (#E174, #Q4274): the built-ins of the registry merged
@@ -188,7 +189,20 @@ export class PromptService {
       ...this.wherePatch(body),
       ...(body.source === undefined ? {} : { source: body.source }),
       ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
+      // Its trigger (#Q4277), checked against its args. Resolved here: the
+      // triggers read this service.
+      ...this.alepha
+        .inject(PromptTriggers)
+        .patch(this.toResource(builtin, row), row, body),
     };
+    // A trigger runs as its owner: whoever set it last owns it.
+    if (
+      body.on !== undefined ||
+      body.argValues !== undefined ||
+      body.check !== undefined
+    ) {
+      patch.createdBy = user.id;
+    }
     if (!builtin) {
       for (const key of ["title", "description", "text", "args"] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
@@ -489,6 +503,20 @@ export class PromptService {
       timeoutSeconds: builtin?.timeoutSeconds ?? PROMPT_CUSTOM_TIMEOUT_SECONDS,
       ...(row?.createdBy ? { createdBy: row.createdBy } : {}),
       ...(row?.updatedAt ? { updatedAt: row.updatedAt } : {}),
+      on: row ? this.alepha.inject(PromptTriggers).onOf(row) : "manual",
+      ...(row?.check?.length ? { check: row.check } : {}),
+      ...(row?.argValues ? { argValues: row.argValues } : {}),
+      maxRunsPerHour: row?.maxRunsPerHour ?? 6,
+      maxRunsPerDay: row?.maxRunsPerDay ?? 48,
+      settleSeconds: row?.settleSeconds ?? 60,
+      ...(row?.nextRunAt ? { nextRunAt: row.nextRunAt } : {}),
+      ...(row?.lastRunAt ? { lastRunAt: row.lastRunAt } : {}),
+      ...(row?.lastJobId ? { lastJobId: row.lastJobId } : {}),
+      ...(row?.lastSkippedAt ? { lastSkippedAt: row.lastSkippedAt } : {}),
+      ...(row?.lastSkippedReason
+        ? { lastSkippedReason: row.lastSkippedReason }
+        : {}),
+      consecutiveFailures: row?.consecutiveFailures ?? 0,
     };
   }
 }

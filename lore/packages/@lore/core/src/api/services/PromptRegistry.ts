@@ -5,7 +5,11 @@ import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type { PromptArg } from "../schemas/promptArgSchema.ts";
 import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
 import type { PromptResource } from "../schemas/promptResourceSchema.ts";
-import type { PromptArgType, PromptSource } from "../schemas/promptValues.ts";
+import type {
+  PromptArgType,
+  PromptCheck,
+  PromptSource,
+} from "../schemas/promptValues.ts";
 import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
 import type { AgentJobRequest } from "./AgentJobs.ts";
 
@@ -22,6 +26,10 @@ import type { AgentJobRequest } from "./AgentJobs.ts";
 export class PromptRegistry {
   protected readonly prompts = new Map<string, BuiltinPrompt>();
   protected readonly resolvers = new Map<PromptArgType, PromptArgResolver>();
+  protected readonly checks = new Map<
+    PromptCheck,
+    (projectId: number) => Promise<boolean>
+  >();
 
   public register(prompt: BuiltinPrompt): void {
     if (!PROMPT_NAME_PATTERN.test(prompt.name)) {
@@ -55,6 +63,27 @@ export class PromptRegistry {
 
   public arg(type: PromptArgType): PromptArgResolver | undefined {
     return this.resolvers.get(type);
+  }
+
+  /**
+   * A source a triggered run's `check` asks (#Q4277), one per module that
+   * owns it: Plan's feedback, quests and epics, Ship's errors. A plain
+   * query, asked before any job is queued.
+   */
+  public registerCheck(
+    source: PromptCheck,
+    has: (projectId: number) => Promise<boolean>,
+  ): void {
+    if (this.checks.has(source)) {
+      throw new AlephaError(`Prompt check '${source}' is registered twice`);
+    }
+    this.checks.set(source, has);
+  }
+
+  public check(
+    source: PromptCheck,
+  ): ((projectId: number) => Promise<boolean>) | undefined {
+    return this.checks.get(source);
   }
 }
 
@@ -130,6 +159,15 @@ export interface PromptArgResolver {
   type: PromptArgType;
   permission: string;
   resolve(context: PromptArgContext): Promise<PromptArgItem | undefined>;
+  /**
+   * Why an event may not fill this arg with this item, or nothing (#Q4277):
+   * a quest tagged `needs-human` or born of outside text nobody confirmed,
+   * an item no member trusted. A recorded skip, never a run.
+   */
+  triggerRefusal?(
+    projectId: number,
+    value: string,
+  ): Promise<string | undefined>;
 }
 
 /**

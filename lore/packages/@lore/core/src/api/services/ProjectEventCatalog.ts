@@ -87,7 +87,7 @@ export type ProjectEventResource =
   | "apps"
   | "monitors"
   | "hosts"
-  | "automations"
+  | "prompts"
   | "jobs";
 
 export interface ProjectEventDefinition {

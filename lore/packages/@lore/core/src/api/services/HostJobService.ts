@@ -89,59 +89,6 @@ export class HostJobService {
         return job ? this.summary(job) : undefined;
       },
       cancel: async (id, by) => this.summary(await this.cancel(id, by)),
-      activeForAutomation: async (automationId) =>
-        (
-          await this.jobs.findMany({
-            where: {
-              automationId: { eq: automationId },
-              status: { inArray: ["queued", "running"] },
-            },
-          })
-        ).map((job) => this.summary(job)),
-      countAutomationJobs: async (filter) =>
-        (
-          await this.jobs.findMany({
-            where: {
-              queuedAt: { gte: filter.since },
-              automationId: filter.automationId
-                ? { eq: filter.automationId }
-                : { isNotNull: true },
-              ...(filter.projectId === undefined
-                ? {}
-                : { projectId: { eq: filter.projectId } }),
-              ...(filter.subjectType
-                ? { subjectType: { eq: filter.subjectType } }
-                : {}),
-            },
-            columns: ["id"],
-          })
-        ).length,
-      automationJobsOn: async (projectId, subjectType, subjectIds) =>
-        (
-          await this.bound.collect(subjectIds, (batch) =>
-            this.jobs.findMany({
-              where: {
-                projectId: { eq: projectId },
-                subjectType: { eq: subjectType },
-                subjectId: { inArray: batch },
-                automationId: { isNotNull: true },
-              },
-              orderBy: [{ column: "queuedAt", direction: "desc" }],
-            }),
-          )
-        ).map((job) => this.summary(job)),
-      subjectsOfAutomation: async (automationId, subjectType) =>
-        (
-          await this.jobs.findMany({
-            where: {
-              automationId: { eq: automationId },
-              subjectType: { eq: subjectType },
-            },
-            columns: ["subjectId"],
-          })
-        )
-          .map((job) => job.subjectId)
-          .filter((id): id is string => Boolean(id)),
       chainHolds: (id, kind) => this.chainHolds(id, kind),
       removeWorkspaces: (projectId, workspace) =>
         this.removeWorkspaces(projectId, workspace),
@@ -193,7 +140,6 @@ export class HostJobService {
       input: request.input,
       startedBy: request.startedBy,
       startedByJobId: request.startedByJobId,
-      automationId: request.automationId,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
       ...(request.prompt ? { prompt: request.prompt } : {}),
@@ -805,7 +751,6 @@ export class HostJobService {
       status: job.status,
       startedBy: job.startedBy,
       startedByJobId: job.startedByJobId,
-      automationId: job.automationId,
       subjectType: job.subjectType,
       subjectId: job.subjectId,
       reason: job.reason,

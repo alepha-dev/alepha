@@ -67,9 +67,9 @@ import { ProjectReliabilityReportService } from "./services/ProjectReliabilityRe
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { RunErrorService } from "./services/RunErrorService.ts";
-import { ShipAutomationWork } from "./services/ShipAutomationWork.ts";
 import { ShipHostCommands } from "./services/ShipHostCommands.ts";
 import { ShipProjectEvents } from "./services/ShipProjectEvents.ts";
+import { ShipPromptChecks } from "./services/ShipPromptChecks.ts";
 import { SigilIngestRefusals } from "./services/SigilIngestRefusals.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -131,7 +131,7 @@ export const LoreShipApi = $module({
     UptimeMetric,
     DeployProjectCounts,
     // Whether a triage automation has errors to read (#Q4228).
-    ShipAutomationWork,
+    ShipPromptChecks,
     ProjectErrorJobs,
     UptimeRetentionJobs,
     UptimeJobs,

@@ -108,8 +108,8 @@ export class AgentJobService {
     // trigger started, is never trusted: only a member's own run may skip
     // the author's check (#Q4251, #Q4275).
     if (
-      (request.automationId ||
-        (request.record && request.record.cause.kind !== "hand")) &&
+      request.record &&
+      request.record.cause.kind !== "hand" &&
       source.ref?.startsWith("pull/") &&
       source.mode !== "none"
     ) {
@@ -147,7 +147,6 @@ export class AgentJobService {
       kind: "agent",
       startedBy: request.startedBy,
       startedByJobId: parent,
-      automationId: request.automationId,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
       ...(request.record
@@ -326,35 +325,25 @@ export class AgentJobService {
   }
 
   /**
-   * The chain rule (#Q4229): a job whose chain holds an agent job starts no
-   * agent job, with one hop open and no further. A build an automation
-   * starts may follow a **triage** job that itself has no agent parent, so a
-   * quest a triage filed is built once; a build job's output starts
-   * nothing, and every other chain is refused.
+   * The chain rule (#Q4277): a chain holds at most two agent jobs, whatever
+   * started the first, a member by hand or a trigger. The second is always
+   * started by a trigger (an event the first job's output raised), and its
+   * own events start nothing. A job key never starts a job by hand: an
+   * agent calling Lore to run a prompt is refused.
    */
   public async chainAllows(
     parentId: string,
-    request: Pick<AgentJobRequest, "build" | "automationId">,
+    request: Pick<AgentJobRequest, "record">,
   ): Promise<boolean> {
     if (!(await this.port.chainHolds(parentId, "agent"))) return true;
-    if (!request.build || !request.automationId) return false;
+    if (!request.record || request.record.cause.kind === "hand") return false;
     const parent = await this.port.get(parentId);
-    if (
-      parent?.kind !== "agent" ||
-      !AgentJobService.TRIAGE_SUBJECTS.includes(parent.subjectType ?? "")
-    ) {
-      return false;
-    }
+    if (parent?.kind !== "agent") return false;
     return (
       !parent.startedByJobId ||
       !(await this.port.chainHolds(parent.startedByJobId, "agent"))
     );
   }
-
-  /**
-   * The subjects of a triage job: one item, or the inbox.
-   */
-  public static readonly TRIAGE_SUBJECTS = ["feedback", "feedback-inbox"];
 
   /**
    * The job whose key made the current request, if a job key made it: an

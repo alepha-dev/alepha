@@ -18,7 +18,7 @@ export class NotificationLabels {
     "apps",
     "monitors",
     "hosts",
-    "automations",
+    "prompts",
     "jobs",
   ];
 

@@ -181,6 +181,12 @@ export {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_STATUSES,
   PROMPT_ARG_TYPES,
+  PROMPT_CHECKS,
+  PROMPT_NEEDS_HUMAN_TAG,
+  PROMPT_SCHEDULES,
+  PROMPT_WEEKDAYS,
+  type PromptCheck,
+  type PromptSchedule,
   PROMPT_CUSTOM_TIMEOUT_SECONDS,
   PROMPT_MAX_ARGS,
   PROMPT_NAME_PATTERN,
@@ -209,40 +215,6 @@ export {
   promptPlaceholders,
   renderPromptText,
 } from "../api/schemas/renderPromptText.ts";
-// ---- agent automations (#E172) ----
-export {
-  type AgentAutomation,
-  agentAutomations,
-} from "../api/entities/agentAutomations.ts";
-export {
-  AUTOMATION_NAME_PATTERN,
-  AUTOMATION_PROMPT_KINDS,
-  AUTOMATION_SCHEDULES,
-  AUTOMATION_TRIGGERS,
-  type AutomationPromptKind,
-  type AutomationSchedule,
-  type AutomationTrigger,
-} from "../api/schemas/agentAutomationValues.ts";
-export {
-  type AgentAutomationResource,
-  agentAutomationResourceSchema,
-} from "../api/schemas/agentAutomationResourceSchema.ts";
-export {
-  type AgentAutomationWrite,
-  agentAutomationWriteSchema,
-} from "../api/schemas/agentAutomationWriteSchema.ts";
-export {
-  type AgentAutomationCreate,
-  agentAutomationCreateSchema,
-} from "../api/schemas/agentAutomationCreateSchema.ts";
-export {
-  type AgentAutomationSettings,
-  agentAutomationSettingsSchema,
-} from "../api/schemas/agentAutomationSettingsSchema.ts";
-export {
-  type AgentAutomationRunResult,
-  agentAutomationRunResultSchema,
-} from "../api/schemas/agentAutomationRunResultSchema.ts";
 export type { HostJob } from "../api/entities/hostJobs.ts";
 export { hostEvents } from "../api/entities/hostEvents.ts";
 export type { HostEvent } from "../api/entities/hostEvents.ts";

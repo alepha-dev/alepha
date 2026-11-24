@@ -5,6 +5,7 @@ import {
   type PromptRunContext,
   type PromptRunPlan,
 } from "@lore/core/api";
+import { PROMPT_NEEDS_HUMAN_TAG } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
@@ -199,12 +200,112 @@ export class PlanPrompts {
       type: "quest",
       permission: "quest:read",
       resolve: (context) => this.questOf(context),
+      // An event never fills a quest arg with a quest an agent should not
+      // work alone, nor one born of outside text nobody confirmed (#Q4277).
+      triggerRefusal: async (projectId, value) => {
+        const quest = await this.quests.findOne({
+          where: {
+            projectId: { eq: projectId },
+            shortId: { eq: this.numberOf(value) ?? 0 },
+          },
+        });
+        if (!quest) return undefined;
+        const reference = formatReference("quest", quest.shortId);
+        if ((quest.tags ?? []).includes(PROMPT_NEEDS_HUMAN_TAG)) {
+          return `${reference} is tagged ${PROMPT_NEEDS_HUMAN_TAG}: no trigger works it`;
+        }
+        if (quest.untrusted && !quest.untrustedConfirmedAt) {
+          return `${reference} was born of feedback written outside the team: a member confirms its text first`;
+        }
+        return undefined;
+      },
     });
     this.registry.registerArg({
       type: "feedback",
       permission: "feedback:read",
       resolve: (context) => this.feedbackOf(context),
+      triggerRefusal: async (projectId, value) => {
+        const item = await this.feedback.findOne({
+          where: {
+            projectId: { eq: projectId },
+            shortId: { eq: this.numberOf(value) ?? 0 },
+          },
+        });
+        return item && FeedbackAgentService.awaitsTrust(item)
+          ? `${formatReference("feedback", item.shortId)} was written outside the team and no member has trusted it`
+          : undefined;
+      },
     });
+
+    // What a triggered run's `check` asks (#Q4277): Plan's three sources.
+    this.registry.registerCheck("feedback", (projectId) =>
+      this.pendingFeedback(projectId),
+    );
+    this.registry.registerCheck("quests", (projectId) =>
+      this.looseQuests(projectId),
+    );
+    this.registry.registerCheck("epics", (projectId) =>
+      this.workableEpics(projectId),
+    );
+  }
+
+  /**
+   * A pending feedback item an agent may read: written by the team, or
+   * trusted by a member.
+   */
+  public async pendingFeedback(projectId: number): Promise<boolean> {
+    const pending = await this.feedback.findMany({
+      where: { projectId: { eq: projectId }, status: { eq: "pending" } },
+      limit: 200,
+    });
+    return pending.some((item) => !FeedbackAgentService.awaitsTrust(item));
+  }
+
+  /**
+   * A loose quest to do, not on hold, that a job key can read and an agent
+   * may work alone: what `work-loose-quests` takes.
+   */
+  public async looseQuests(projectId: number): Promise<boolean> {
+    const candidates = await this.quests.findMany({
+      where: {
+        projectId: { eq: projectId },
+        epicId: { isNull: true },
+        acceptedAt: { isNull: true },
+        completedAt: { isNull: true },
+        shelvedAt: { isNull: true },
+        heldAt: { isNull: true },
+      },
+      limit: 200,
+    });
+    return candidates.some(
+      (quest) =>
+        !(quest.tags ?? []).includes(PROMPT_NEEDS_HUMAN_TAG) &&
+        !(quest.untrusted && !quest.untrustedConfirmedAt),
+    );
+  }
+
+  /**
+   * An epic ready or in progress that holds a quest to do.
+   */
+  public async workableEpics(projectId: number): Promise<boolean> {
+    const open = await this.epics.findMany({
+      where: {
+        projectId: { eq: projectId },
+        status: { inArray: ["ready", "in_progress"] },
+      },
+      limit: 100,
+    });
+    if (!open.length) return false;
+    const todo = await this.quests.findOne({
+      where: {
+        projectId: { eq: projectId },
+        epicId: { inArray: open.map((epic) => epic.id) },
+        acceptedAt: { isNull: true },
+        completedAt: { isNull: true },
+        shelvedAt: { isNull: true },
+      },
+    });
+    return Boolean(todo);
   }
 
   /**

@@ -86,54 +86,6 @@ export class QuestAgentService {
   }
 
   /**
-   * A build automation's job on a todo quest (#Q4229): the quest the build
-   * rule picked, accepted by the job itself as its first act, in its own
-   * workspace. The automation's gates are its own (`PlanAutomationKinds`):
-   * a `needs-human` quest, an untrusted one nobody confirmed, or one
-   * already built never gets here.
-   */
-  public async build(
-    projectId: number,
-    quest: Quest,
-    startedBy: string,
-    run: AgentRun,
-    origin: {
-      automationId: string;
-      startedByJobId?: string;
-      autoMerge: boolean;
-    },
-  ): Promise<{ jobId: string }> {
-    if (quest.untrusted && !quest.untrustedConfirmedAt) {
-      throw new ForbiddenError(
-        `Quest ${quest.shortId} was born of feedback written outside the team: a member confirms its text before an agent works it`,
-      );
-    }
-    const project = await this.projects.getOne({
-      where: { id: { eq: projectId } },
-    });
-    const job = await this.agents.start({
-      projectId,
-      ...run,
-      prompt: await this.prompt(project, quest, {
-        accept: true,
-        autoMerge: origin.autoMerge,
-      }),
-      timeoutSeconds: QuestAgentService.WORK_SECONDS,
-      questNumber: quest.shortId,
-      defaultSource: "write",
-      startedBy,
-      automationId: origin.automationId,
-      ...(origin.startedByJobId
-        ? { startedByJobId: origin.startedByJobId }
-        : {}),
-      build: true,
-      subjectType: "quest",
-      subjectId: String(quest.shortId),
-    });
-    return { jobId: job.id };
-  }
-
-  /**
    * What a run may pick now (#Q4223): each available Agent host with each
    * agent it reports. Empty, the quest offers no agent button.
    */
@@ -171,7 +123,6 @@ export class QuestAgentService {
   public async prompt(
     project: { id: number; title: string; slug?: string | null },
     quest: Quest,
-    options: { accept?: boolean; autoMerge?: boolean } = {},
   ): Promise<string> {
     const [stored] = await this.prompts.findMany({
       where: { projectId: { eq: project.id }, kind: { eq: "questWork" } },
@@ -197,16 +148,9 @@ export class QuestAgentService {
       `## This run's rules, which override the procedure below where they differ`,
       "",
       `- Follow the repository's own agent instructions (AGENTS.md or CLAUDE.md), the branch naming its convention gives included: Lore states none.`,
-      ...(options.accept
-        ? [
-            `- Accept ${reference} first with \`quest_accept\`: a build automation picked it, and nobody holds it yet.`,
-          ]
-        : []),
       `- Do the work of ${reference}, then run the project's checks and fix what is red before you commit.`,
-      `- Commit as the project asks, each message naming ${reference}: the merged commit naming it is what completes the quest later, so do not complete it yourself.`,
-      options.autoMerge
-        ? "- Push the branch and open a pull request with `gh`, then turn auto-merge on (`gh pr merge --auto`): the repository's own protections decide when it merges."
-        : "- Push the branch and open a pull request with `gh`. Turn auto-merge on only when the repository's instructions ask for it.",
+      `- Commit as the project asks, each message naming ${reference}.`,
+      "- Push the branch and open a pull request with `gh`. Turn auto-merge on only when the repository's instructions ask for it.",
       `- Record the pull request on the quest with \`quest_pull_request_add\`, tick the objectives you met with \`quest_objective_set\`, and end with \`quest_comment_add\` on ${reference}: what you changed, what is left, and the pull request.`,
       "",
       work,

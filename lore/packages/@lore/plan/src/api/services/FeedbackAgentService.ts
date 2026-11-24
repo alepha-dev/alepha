@@ -176,7 +176,6 @@ export class FeedbackAgentService {
     projectId: number,
     startedBy?: string,
     run: AgentRun = {},
-    origin: { automationId?: string; startedByJobId?: string } = {},
   ): Promise<{ started: string[]; skipped: number[]; global?: string }> {
     await this.agents.resolve(projectId, run);
     const plan = await this.inboxPlan(projectId, startedBy);
@@ -188,11 +187,6 @@ export class FeedbackAgentService {
       feedbackNumbers: plan.run.feedbackNumbers,
       timeoutSeconds: plan.run.timeoutSeconds,
       startedBy,
-      // An automation's run (#Q4226), and the job whose event caused it.
-      ...(origin.automationId ? { automationId: origin.automationId } : {}),
-      ...(origin.startedByJobId
-        ? { startedByJobId: origin.startedByJobId }
-        : {}),
       subjectType: FeedbackAgentService.GLOBAL_SUBJECT,
       subjectId: String(projectId),
     });

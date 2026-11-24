@@ -165,6 +165,10 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // engine per project, a leaf referenced by nothing.
   "20261124224232_chat_host_engine_dropped": ["chat_lore_engines"],
   "20261124224246_chat_host_engine_dropped": ["chat_lore_engines"],
+  // Agent automations become triggers on prompts (#Q4277): a leaf, since
+  // host_jobs.automation_id was a soft reference, dropped with its index.
+  "20261124234229_prompt_triggers": ["agent_automations"],
+  "20261124234246_prompt_triggers": ["agent_automations"],
 };
 
 /**
