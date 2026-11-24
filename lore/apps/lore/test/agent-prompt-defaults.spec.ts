@@ -71,10 +71,17 @@ const namedTools = (template: string): string[] => {
   return [...new Set(found.map((it) => it.slice(1, -1)))];
 };
 
+/**
+ * Kinds kept in the schema only because `project_prompts.kind` is a
+ * Postgres enum and a stored row must still parse: nothing registers or
+ * offers them. `errorTriage` folded into `feedbackLoop` (#Q4240).
+ */
+const RETIRED = new Set<AgentPromptKind>(["errorTriage"]);
+
 describe("the default prompts", () => {
   it("has a default for every kind, and no kind without one", () => {
     expect(Object.keys(AGENT_PROMPT_DEFAULTS).sort()).toEqual(
-      [...agentPromptKindSchema.options].sort(),
+      agentPromptKindSchema.options.filter((kind) => !RETIRED.has(kind)).sort(),
     );
     for (const template of Object.values(AGENT_PROMPT_DEFAULTS)) {
       expect(template.length).toBeGreaterThan(0);
@@ -139,7 +146,6 @@ describe("the default prompts", () => {
    */
   const SURFACE_SCOPED: AgentPromptKind[] = [
     "feedbackLoop",
-    "errorTriage",
     "questLoop",
     "weeklyStatus",
   ];

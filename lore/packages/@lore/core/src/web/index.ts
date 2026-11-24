@@ -317,6 +317,7 @@ export {
   ProjectBlockerRegistry,
 } from "./app/registries/ProjectBlockerRegistry.ts";
 export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
+export { TriageRunRegistry } from "./app/registries/TriageRunRegistry.ts";
 export {
   type AssistantSuggestionEntry,
   type AssistantSuggestionKey,

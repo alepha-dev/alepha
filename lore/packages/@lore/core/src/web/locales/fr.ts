@@ -3163,8 +3163,7 @@ export default {
   "feedback.awaitingTrust":
     "$1 retour(s) non fiable(s) en attente qu'un membre leur fasse confiance : aucun agent ne les lit avant.",
   "feedback.agent.triage": "Trier avec un agent",
-  "feedback.agent.triageInbox":
-    "Trier tous les retours et les erreurs avec un agent",
+  "feedback.agent.triageInbox": "Trier retours et anomalies avec un agent",
   "feedback.agent.startedMany":
     "$1 tâches de tri lancées ; $2 laissées à un membre",
   "feedback.agent.startedGlobal":
@@ -3889,8 +3888,7 @@ export default {
   "epic.action.setRelease": "Définir la version",
   "agentPrompts.menu": "Invites pour agents",
   "agentPrompts.review": "Relire l’épopée",
-  "agentPrompts.triageInbox": "Traiter la boîte",
-  "agentPrompts.triageErrors": "Traiter les anomalies",
+  "agentPrompts.triageInbox": "Traiter retours et anomalies",
   "agentPrompts.workLooseQuests": "Traiter les quêtes libres",
   "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.copied":
@@ -3962,12 +3960,9 @@ export default {
   "agentPrompts.settings.feedbackWork.title": "Retour : s’en charger",
   "agentPrompts.settings.feedbackWork.description":
     "Proposée sur un retour en attente ou accepté. Crée la quête, fait le travail, répond au rapporteur.",
-  "agentPrompts.settings.feedbackLoop.title": "Retours : traiter la boîte",
+  "agentPrompts.settings.feedbackLoop.title": "Retours et anomalies : traiter",
   "agentPrompts.settings.feedbackLoop.description":
-    "Proposée sur la boîte des retours. Accepte, rejette ou questionne chaque retour en attente jusqu’à ce qu’il n’en reste aucun.",
-  "agentPrompts.settings.errorTriage.title": "Anomalies : traiter",
-  "agentPrompts.settings.errorTriage.description":
-    "Proposée sur la boîte des anomalies. Crée une quête pour chaque vrai défaut et résout le bruit.",
+    "Proposée sur la boîte des retours et sur celle des anomalies. Accepte, rejette ou questionne chaque retour en attente, crée une quête pour chaque vrai défaut parmi les anomalies de confiance et résout le bruit, jusqu’à ce qu’il ne reste rien.",
   "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
   "agentPrompts.settings.weeklyStatus.title":
     "Rapports : rédiger le point hebdomadaire",

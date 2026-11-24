@@ -3,6 +3,7 @@ import {
   lazyPart,
   AccountDeletionRegistry,
   AgentPromptRegistry,
+  TriageRunRegistry,
   DashboardPickerRegistry,
   ElementReferenceRegistry,
   ProjectShellRegistry,
@@ -39,6 +40,7 @@ import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import { useDashboardEpicOptions } from "../components/project/epics/useDashboardEpicOptions.ts";
 import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
 import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
+import { useTriageInboxRun } from "../components/project/feedback/useTriageInboxRun.ts";
 import ProjectQuestLogAside from "../components/project/ProjectQuestLogAside.tsx";
 import { useAuthoredQuestsDeletionLine } from "../components/project/quest/useAuthoredQuestsDeletionLine.ts";
 import { useDashboardQuestTags } from "../components/project/quest/useDashboardQuestTags.ts";
@@ -77,6 +79,7 @@ export class WorkShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
   protected readonly prompts = $inject(AgentPromptRegistry);
+  protected readonly triageRuns = $inject(TriageRunRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
@@ -485,6 +488,9 @@ export class WorkShell {
       icon: ListChecks,
       labelKey: "agentPrompts.triageInbox",
     });
+    // The one triage run, over the feedback and the errors (#Q4240): the
+    // Errors page, in Ship, reads it from core.
+    this.triageRuns.register(useTriageInboxRun);
     // `ListTodo`, not `Wrench`: "Work on it" hands over ONE item, and this
     // hands over a list. A wrench here would read as working the quest the
     // page happens to show.

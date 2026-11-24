@@ -3155,7 +3155,7 @@ export default {
   "feedback.agent.started":
     "Claude is triaging this feedback on the Agent host",
   "feedback.agent.triage": "Triage with an agent",
-  "feedback.agent.triageInbox": "Triage all feedback and errors with an agent",
+  "feedback.agent.triageInbox": "Triage feedback and errors with an agent",
   "feedback.agent.startedMany": "Started $1 triage jobs; $2 left for a member",
   "feedback.agent.startedGlobal":
     "Claude is triaging the feedback and errors in one run; $1 left for a member",
@@ -3868,8 +3868,7 @@ export default {
   "agentPrompts.menu": "Agent Prompts",
   "agentPrompts.review": "Review Epic",
   "agentPrompts.workOnIt": "Work on it",
-  "agentPrompts.triageInbox": "Triage the inbox",
-  "agentPrompts.triageErrors": "Triage the errors",
+  "agentPrompts.triageInbox": "Triage feedback and errors",
   "agentPrompts.workLooseQuests": "Work the loose quests",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into your coding agent.",
@@ -3941,12 +3940,9 @@ export default {
   "agentPrompts.settings.feedbackWork.title": "Feedback: Work on it",
   "agentPrompts.settings.feedbackWork.description":
     "Offered on a pending or accepted report. Creates the quest, does the work, answers the reporter.",
-  "agentPrompts.settings.feedbackLoop.title": "Feedback: Triage the inbox",
+  "agentPrompts.settings.feedbackLoop.title": "Feedback and errors: Triage",
   "agentPrompts.settings.feedbackLoop.description":
-    "Offered on the feedback inbox. Accepts, rejects or asks about every pending report until none is left.",
-  "agentPrompts.settings.errorTriage.title": "Errors: Triage",
-  "agentPrompts.settings.errorTriage.description":
-    "Offered on the errors inbox. Files a quest for each real defect and resolves the noise.",
+    "Offered on the feedback inbox and on the errors inbox. Accepts, rejects or asks about every pending report, files a quest for each real defect among the trusted errors and resolves the noise, until nothing is left.",
   "agentPrompts.weeklyStatus": "Write the weekly status",
   "agentPrompts.settings.weeklyStatus.title":
     "Reports: Write the weekly status",

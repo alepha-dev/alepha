@@ -2,7 +2,6 @@ import {
   ROUTES_APP,
   lazyPart,
   ProjectBlockerRegistry,
-  AgentPromptRegistry,
   DashboardPickerRegistry,
   ProjectShellRegistry,
   ReportsTabRegistry,
@@ -23,7 +22,6 @@ import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { useQuestLiveRow } from "../components/project/quests/useQuestLiveRow.tsx";
-import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 
 /**
  * Deploy's part of the project shell, registered on core's
@@ -37,7 +35,6 @@ export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly tabs = $inject(ResourceTabRegistry);
   protected readonly rails = $inject(ResourceRailRegistry);
-  protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly blockers = $inject(ProjectBlockerRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
@@ -256,15 +253,6 @@ export class DeployShell {
       labelKey: "quest.rail.live",
       icon: Rocket,
       useValue: useQuestLiveRow,
-    });
-
-    // `Bug`, not `ListChecks`: both are triage loops, and the surface is
-    // what tells them apart in a menu.
-    this.prompts.register({
-      kind: "errorTriage",
-      template: errorTriagePromptDefault,
-      icon: Bug,
-      labelKey: "agentPrompts.triageErrors",
     });
 
     this.pickers.registerApps({ useApps: useDashboardApps });
