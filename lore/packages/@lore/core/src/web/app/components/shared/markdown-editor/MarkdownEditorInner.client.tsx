@@ -152,10 +152,16 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   const frame = bare
     ? ""
     : "border-border dark:bg-input/30 rounded-lg border bg-transparent p-3";
+  // The editable frame reacts like a `Control` input (#Q4270): the shared
+  // hover line, and the input's ring while the caret is anywhere inside it
+  // (the text, or a toolbar button). A rendered preview stays still.
+  const editFrame = bare
+    ? ""
+    : `${frame} hover:border-border-hover focus-within:border-ring focus-within:ring-ring/50 transition-[color,box-shadow,border-color] focus-within:ring-3`;
 
   if (props.mode === "edit" || props.mode === "both") {
     const editor = (
-      <div className={`lore-md-edit min-w-0 ${frame}`.trim()}>
+      <div className={`lore-md-edit min-w-0 ${editFrame}`.trim()}>
         {/* Mounted only once the editor exists — before that it has no
             selection to act on, and mounting it early would make every
             consumer of this component need an i18n provider it does not
