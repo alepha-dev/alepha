@@ -140,6 +140,11 @@ export interface HostJobQueue {
     subjectType: string,
   ): Promise<string[]>;
   /**
+   * How many jobs automations started since an instant (#Q4230): one
+   * automation's, or a project's of one subject type (its builds).
+   */
+  countAutomationJobs(filter: AutomationJobCount): Promise<number>;
+  /**
    * The jobs an automation started on these subjects of a project (#Q4234),
    * newest first: whether a quest was built by one.
    */
@@ -158,12 +163,24 @@ export interface HostJobQueue {
 }
 
 /**
+ * Which automation jobs {@link HostJobQueue.countAutomationJobs} counts.
+ */
+export interface AutomationJobCount {
+  since: string;
+  automationId?: string;
+  projectId?: number;
+  subjectType?: string;
+}
+
+/**
  * A project's Agent host as an agent kind sees it.
  */
 export interface AgentHostRef {
   id: string;
   slug: string;
   status?: string;
+  /** Past its grace period without reporting (#Q3733): `host.offline`. */
+  offline?: boolean;
   /**
    * The agent CLIs the host's inventory reports as answering (#Q4220), by
    * adapter name. Undefined when it reported none yet.
@@ -267,6 +284,16 @@ export class HostJobs {
     automationId: string,
   ): Promise<HostJobSummary[]> {
     return (await this.queue?.activeForAutomation(automationId)) ?? [];
+  }
+
+  /**
+   * How many jobs automations started since an instant (#Q4230). Zero
+   * without Ship.
+   */
+  public async countAutomationJobs(
+    filter: AutomationJobCount,
+  ): Promise<number> {
+    return (await this.queue?.countAutomationJobs(filter)) ?? 0;
   }
 
   /**

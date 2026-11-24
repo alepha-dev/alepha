@@ -1,0 +1,135 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f6b1c298-bea9-4cd2-b8ee-e147a83d58d0",
+  "prevIds": ["312e9a8c-08c7-4f39-b88d-2410a1ae9ed3"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "max_runs_per_hour"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.max_runs_per_hour",
+        "n|col|public.agent_automations.max_runs_per_hour",
+        "e|col|public.agent_automations.max_runs_per_hour"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "max_runs_per_day"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.max_runs_per_day",
+        "n|col|public.agent_automations.max_runs_per_day",
+        "e|col|public.agent_automations.max_runs_per_day"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "project_thresholds",
+        "automation_builds_per_day"
+      ],
+      "writes": [
+        "s|col|public.project_thresholds.automation_builds_per_day",
+        "n|col|public.project_thresholds.automation_builds_per_day",
+        "e|col|public.project_thresholds.automation_builds_per_day"
+      ],
+      "reads": ["n|tbl|public.project_thresholds", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "projects",
+        "automations_paused_at"
+      ],
+      "writes": [
+        "s|col|public.projects.automations_paused_at",
+        "n|col|public.projects.automations_paused_at",
+        "e|col|public.projects.automations_paused_at"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "max_runs_per_hour",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "6",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "max_runs_per_day",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "48",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "automation_builds_per_day",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "automations_paused_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

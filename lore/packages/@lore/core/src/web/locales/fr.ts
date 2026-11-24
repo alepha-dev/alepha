@@ -125,6 +125,12 @@ export default {
   "notifications.resource.apps": "Applications",
   "notifications.resource.monitors": "Moniteurs",
   "notifications.resource.hosts": "Hôtes",
+  "notifications.resource.automations": "Automatisations d'agent",
+  "notifications.event.automation.disabled": "Automatisation désactivée",
+  "notifications.event.automation.run.failed":
+    "Exécution d'automatisation échouée",
+  "notifications.event.automation.ceiling.reached":
+    "Plafond d'automatisation atteint",
   "notifications.capability.plan": "Plan",
   "notifications.capability.remember": "Remember",
   "notifications.capability.ship": "Ship",

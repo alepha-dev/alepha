@@ -22,6 +22,8 @@ export const agentAutomationWriteSchema = agentAutomations.schema
     dailyHour: true,
     autoMerge: true,
     concurrency: true,
+    maxRunsPerHour: true,
+    maxRunsPerDay: true,
   })
   .partial()
   .extend({

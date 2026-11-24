@@ -196,6 +196,10 @@ export {
   agentAutomationCreateSchema,
 } from "../api/schemas/agentAutomationCreateSchema.ts";
 export {
+  type AgentAutomationSettings,
+  agentAutomationSettingsSchema,
+} from "../api/schemas/agentAutomationSettingsSchema.ts";
+export {
   type AgentAutomationRunResult,
   agentAutomationRunResultSchema,
 } from "../api/schemas/agentAutomationRunResultSchema.ts";

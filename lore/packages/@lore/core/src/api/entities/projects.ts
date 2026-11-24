@@ -67,6 +67,11 @@ export const projects = $entity({
      * (`repositoryForge.ts`). `quests.commits[].repo` stays stored and
      * accepted, but the link is built from this alone.
      */
+    /**
+     * Every agent automation of the project paused (#Q4230): its triggers
+     * start nothing until it is cleared. A run by hand still works.
+     */
+    automationsPausedAt: z.string().optional(),
     repositoryUrl: z.string().max(200).optional(),
     /**
      * Errors retention window, in days. A daily purge cron deletes `open`

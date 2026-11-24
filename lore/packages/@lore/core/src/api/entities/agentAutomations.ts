@@ -111,6 +111,12 @@ export const agentAutomations = $entity({
      * extra jobs wait in its queue.
      */
     concurrency: db.default(z.integer().min(1).max(16), 1),
+    /**
+     * The most runs its trigger starts in an hour and in a day (#Q4230),
+     * counted on the jobs with its id. A run by hand is never refused.
+     */
+    maxRunsPerHour: db.default(z.integer().min(1).max(60), 6),
+    maxRunsPerDay: db.default(z.integer().min(1).max(1000), 48),
     /** The last job a run started. A soft reference, read by id. */
     lastJobId: z.uuid().optional(),
     lastRunAt: z.string().optional(),

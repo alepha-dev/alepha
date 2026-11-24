@@ -86,7 +86,8 @@ export type ProjectEventResource =
   | "quality"
   | "apps"
   | "monitors"
-  | "hosts";
+  | "hosts"
+  | "automations";
 
 export interface ProjectEventDefinition {
   /**

@@ -84,6 +84,7 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AgentAutomationHealth } from "./services/AgentAutomationHealth.ts";
 import { AgentAutomationKinds } from "./services/AgentAutomationKinds.ts";
 import { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
 import { AgentAutomationService } from "./services/AgentAutomationService.ts";
@@ -410,6 +411,7 @@ export const LoreCoreApi = $module({
     AgentAutomationService,
     AgentAutomationTriggers,
     AgentAutomationSchedule,
+    AgentAutomationHealth,
     AgentAutomationController,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
@@ -667,6 +669,8 @@ export {
 export { AgentAutomationService } from "./services/AgentAutomationService.ts";
 export { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
 export { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
+export { AgentAutomationHealth } from "./services/AgentAutomationHealth.ts";
+export { AutomationProjectEvents } from "./services/AutomationProjectEvents.ts";
 export {
   type ProjectEventListener,
   ProjectEventListeners,
@@ -680,6 +684,7 @@ export {
   JobKeyService,
 } from "./services/JobKeyService.ts";
 export type {
+  AutomationJobCount,
   AgentHostDirectory,
   AgentHostRef,
   HostJobInput,
