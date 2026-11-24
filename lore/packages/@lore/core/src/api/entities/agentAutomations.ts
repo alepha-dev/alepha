@@ -50,7 +50,16 @@ export const agentAutomations = $entity({
     /** A `text` automation's words, under Lore's preamble. */
     promptText: z.string().max(131_072).optional(),
     host: z.string().max(64).optional(),
+    /**
+     * The Agent host's agent CLI; for a `chat` automation (#Q4236), the
+     * handle of the project chat agent it runs.
+     */
     agent: z.string().max(32).optional(),
+    /**
+     * A `chat` automation's room, by name (#Q4236), read at each run like
+     * `host`: the agent answers there.
+     */
+    room: z.string().max(64).optional(),
     model: z.string().max(96).optional(),
     trigger: db.default(
       z.enum(AUTOMATION_TRIGGERS).meta({ mode: "text" }),

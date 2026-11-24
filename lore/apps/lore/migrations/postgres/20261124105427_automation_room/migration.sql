@@ -1,0 +1,1 @@
+ALTER TABLE "agent_automations" ADD COLUMN "room" text;

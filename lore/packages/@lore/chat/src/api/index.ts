@@ -11,6 +11,7 @@ import { ChatAgentBudgetService } from "./services/ChatAgentBudgetService.ts";
 import { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
 import { ChatAgentService } from "./services/ChatAgentService.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
+import { ChatAutomationKind } from "./services/ChatAutomationKind.ts";
 import { ChatBuckets } from "./services/ChatBuckets.ts";
 import { ChatChannelRooms } from "./services/ChatChannelRooms.ts";
 import { ChatFileAccess } from "./services/ChatFileAccess.ts";
@@ -64,6 +65,8 @@ export const LoreChatApi = $module({
     ChatAgentController,
     // Room channels (#Q4052): registered on core's registry at boot.
     ChatChannelRooms,
+    // A chat agent's rounds (#Q4236): the `chat` automation kind.
+    ChatAutomationKind,
   ],
 });
 

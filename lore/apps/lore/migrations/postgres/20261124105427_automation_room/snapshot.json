@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e0876cf0-b961-400f-bd97-2a5f3157b76c",
+  "prevIds": ["e4a7e89f-c614-43ef-991c-764bf93b6f1a"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "agent_automations", "room"],
+      "writes": [
+        "s|col|public.agent_automations.room",
+        "n|col|public.agent_automations.room",
+        "e|col|public.agent_automations.room"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "room",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -170,9 +170,11 @@ const ProjectSettingsAutomationsPage = () => {
               label: tr("automations.table.where"),
               cell: (row) => (
                 <span className="text-muted-foreground text-xs">
-                  {[row.host, row.agent, row.model]
-                    .filter(Boolean)
-                    .join(" / ") || tr("automations.where.default")}
+                  {row.promptKind === "chat"
+                    ? `@${row.agent} · #${row.room}`
+                    : [row.host, row.agent, row.model]
+                        .filter(Boolean)
+                        .join(" / ") || tr("automations.where.default")}
                 </span>
               ),
             },
