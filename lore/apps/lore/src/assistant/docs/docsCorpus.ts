@@ -429,7 +429,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Notifications",
     section: "What Lore does not do",
     url: "https://alepha.dev/lore/docs/project-notifications#what-lore-does-not-do",
-    text: 'Lore tells people and systems that something happened. It does not run\nanything for you:\n\n- no schedule ("every Monday at nine"), apart from quest reminders;\n- no condition ("only if the release has more than ten quests");\n- no action on quests, folios or anything else in Lore;\n- no message of your own: the text is the event\'s.\n\nFor any of those, react to the event where you have the tools to:\n\n- **A scheduled agent session** connected over MCP reads the project, decides,\n  and writes back: a weekly digest, a triage pass, a folio kept up to date.\n  See [Connecting an agent](/lore/docs/agents-connecting).\n- **A webhook channel** hands each event to your own code, which can do\n  anything with it.',
+    text: 'Lore tells people and systems that something happened. A subscription runs\nnothing for you:\n\n- no schedule ("every Monday at nine"), apart from quest reminders;\n- no condition ("only if the release has more than ten quests");\n- no action on quests, folios or anything else in Lore;\n- no message of your own: the text is the event\'s.\n\nFor any of those, react to the event where you have the tools to:\n\n- **An agent automation** runs a prompt on one of your Agent hosts on an\n  event or a schedule: a triage of each new report, a build of each new quest.\n  See [Agent automations](/lore/docs/agents-automations).\n- **A scheduled agent session** connected over MCP reads the project, decides,\n  and writes back: a weekly digest, a triage pass, a folio kept up to date.\n  See [Connecting an agent](/lore/docs/agents-connecting).\n- **A webhook channel** hands each event to your own code, which can do\n  anything with it.',
   },
   {
     guide: "Notifications",
@@ -2140,6 +2140,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Agent jobs",
+    section: "Automations",
+    url: "https://alepha.dev/lore/docs/agents-jobs#automations",
+    text: "To run a prompt on its own, at each new feedback item or every hour, make it\nan [agent automation](/lore/docs/agents-automations).",
+  },
+  {
+    guide: "Agent jobs",
     section: "From the command line",
     url: "https://alepha.dev/lore/docs/agents-jobs#from-the-command-line",
     text: "Start a job, and follow its log until it ends with `--wait`:\n\n```bash\nlore agent run triage --wait\n```\n\n```bash\nlore agent run build --quest 42\n```\n\n```bash\nlore agent run text --text \"List the open quests of area web\" --workspace notes\n```\n\n`--host`, `--agent` and `--model` pick the host, the agent CLI and its model:\n`--host` when the project has several Agent hosts, `--agent` when the host has\nseveral agents. Without `--model`, the agent's own default applies.\n\n```bash\nlore job list\n```\n\n```bash\nlore job logs <id> --follow\n```\n\n`lore job get <id>` shows what a job ran (agent, model, workspace) and how it\nended; `lore job cancel <id>` stops it. A job succeeds or fails by the agent's\nexit code: what it did is what it wrote to Lore.",
@@ -2161,6 +2167,60 @@ export const docsCorpus: DocsSection[] = [
     section: "What Lore never sees",
     url: "https://alepha.dev/lore/docs/agents-jobs#what-lore-never-sees",
     text: "- **Your agent's sign-in, and your `gh` sign-in.** They stay with the jobs\n  user on the host.\n- **Your host's other files and secrets.** A job pulls its spec and nothing\n  else; what the jobs user can reach on the host is yours to decide.\n- **Your agent account.** Usage and billing stay between you and the agent's\n  vendor.\n\nWhat Lore does keep: the prompt it sent and the job's log, up to a size cap.",
+  },
+  {
+    guide: "Agent automations",
+    section: "Agent automations",
+    url: "https://alepha.dev/lore/docs/agents-automations",
+    text: "An agent automation runs a prompt on one of your Agent hosts for you: once\nwhen you ask, at each new feedback item, or every hour if there is something\nto do. It is how a project triages its feedback and errors on your own agent\nsubscription, then turns the quests the triage filed into pull requests,\nwithout anyone pasting a prompt.\n\nAn automation is one row, and nothing more:\n\n- a **name**, unique in the project, and its **owner**, the member who created\n  it: every job it starts runs with the owner's permissions;\n- a **prompt**: Triage (the project's Triage prompt over the inbox and the open\n  errors), Build (the project's Build prompt on a quest), or your own text;\n- **where it runs**: the Agent host, the agent CLI and its model, each left out\n  when the project has only one;\n- **when it runs**: by hand, on project events, or on a schedule;\n- an optional **only if there is something** check;\n- a switch to turn it on or off.\n\nThere are no steps, branches or conditions: an automation starts agent jobs,\nand each run is a job with its own page and log under **Jobs**.",
+  },
+  {
+    guide: "Agent automations",
+    section: "The page",
+    url: "https://alepha.dev/lore/docs/agents-automations#the-page",
+    text: "**Settings ▸ General ▸ Automations** lists the project's automations: the\nprompt, when it runs, its host and agent, its last run with that job's status\n(a link to the job), its next run or why its trigger last started nothing, and\na switch. **Run now**, in a row's menu, runs it once as you. **New automation**\nopens a small form with the same fields as the command line.\n\nReading the page needs the permission to see the project's hosts; creating,\nchanging and running automations needs **Create, change, delete and run the\nproject's agent automations**, which the Admin rank holds.",
+  },
+  {
+    guide: "Agent automations",
+    section: "When it runs",
+    url: "https://alepha.dev/lore/docs/agents-automations#when-it-runs",
+    text: "- **By hand** (`manual`): only **Run now**, `lore automation run`, or\n  `automation_run`.\n- **On project events** (`event:<key>`): the events of **Settings ▸\n  Notifications**, by their key, such as `feedback.created`, `feedback.trusted`\n  (a member trusted a report written outside the team) or `quest.created`.\n  Events that arrive together are gathered: the first one starts a short wait\n  (60 seconds by default), and everything that arrives meanwhile lands in the\n  same run. An event that arrives while the automation's job runs starts one\n  more run when that job ends. What an automation's own jobs write never starts\n  it again.\n- **On a schedule**: `hourly`, `6h` (00:00, 06:00, 12:00 and 18:00 UTC) or\n  `daily@<hour>`, an hour in UTC. A run missed while a host was down is not\n  replayed: the next one decides again.\n\nA run its trigger starts is the owner's, whoever caused the event.",
+  },
+  {
+    guide: "Agent automations",
+    section: "Only if there is something",
+    url: "https://alepha.dev/lore/docs/agents-automations#only-if-there-is-something",
+    text: "With **Only if there is something to do**, Lore checks before it asks the host\nfor anything, so an idle project spends no tokens:\n\n- a Triage runs when a pending feedback item an agent may read waits (written\n  by the team, or trusted by a member), or an open error group a member\n  trusted, when the project tracks errors;\n- a Build runs when a quest its rule would pick exists.\n\nA text prompt has no such check. When a run is skipped, the row says why.",
+  },
+  {
+    guide: "Agent automations",
+    section: "Building quests into pull requests",
+    url: "https://alepha.dev/lore/docs/agents-automations#building-quests-into-pull-requests",
+    text: "A Build automation, usually on `event:quest.created`, picks every quest that is\nall of:\n\n- not accepted, completed or set aside, assigned to nobody, not on hold, with\n  no unfinished dependency, and not in a draft epic;\n- not tagged **`needs-human`**;\n- not born of feedback written outside the team, unless a member confirmed its\n  text;\n- never built by this automation before, whatever that build's outcome: a\n  failed build is retried by hand.\n\nEach quest gets one job in its own workspace: the agent accepts the quest,\nbranches, does the work, runs the checks, commits naming the quest, pushes,\nopens a pull request with `gh` and records it on the quest. With **Ask for\nauto-merge**, it turns auto-merge on; the repository's own protections decide\nthe rest. **Builds at once** runs several quests side by side, one per job,\nup to what the host itself allows.\n\nThe default Triage prompt tags `needs-human` any quest it is not sure of, that\ntouches security, migrations or money, or that came from a report it could not\nreproduce. A project that edited its Triage prompt adds that sentence itself.\n\nA built quest completes when a commit naming it reaches the default branch.\nLore learns it from th...",
+  },
+  {
+    guide: "Agent automations",
+    section: "When something goes wrong",
+    url: "https://alepha.dev/lore/docs/agents-automations#when-something-goes-wrong",
+    text: "An automation runs unattended, on your subscription and with your `gh`\nsign-in, so it stops by itself:\n\n- **Ceilings**: at most 6 runs an hour and 48 a day for each automation, and\n  20 builds a day for the project. A run past a ceiling is skipped and says so.\n- **Three failures in a row** turn the automation off. A successful run resets\n  the count. An agent that keeps hitting its usage limit fails its jobs, so\n  this stops it too.\n- **A host that cannot take a run** (offline, failing its check, or no longer\n  reporting the agent the automation names) skips the run without counting a\n  failure.\n- **Pause all**: `lore automation pause-all` stops every trigger of the\n  project until `lore automation resume-all`. A run by hand still works.\n\nThree events let you hear about it in **Settings ▸ Notifications**:\n**Automation disabled** (with its last job and why), **Automation run failed**\nand **Automation ceiling reached**.\n\nNone of these limits applies to a run by hand.",
+  },
+  {
+    guide: "Agent automations",
+    section: "An example",
+    url: "https://alepha.dev/lore/docs/agents-automations#an-example",
+    text: "Triage each new feedback item, and build what it files that needs no human:\n\n```bash\nlore automation create triage --prompt triage --on event:feedback.created,feedback.trusted --only-if-work\n```\n\n```bash\nlore automation create build --prompt build --on event:quest.created --auto-merge --concurrency 2\n```\n\nThen every hour, catch the errors that came in:\n\n```bash\nlore automation create errors --prompt triage --on hourly --only-if-work\n```",
+  },
+  {
+    guide: "Agent automations",
+    section: "From the command line",
+    url: "https://alepha.dev/lore/docs/agents-automations#from-the-command-line",
+    text: "```bash\nlore automation list\n```\n\n```bash\nlore automation run triage --wait\n```\n\n`lore automation update <name>` changes only the flags it is given;\n`enable`, `disable` and `delete` do what they say; `lore automation settings\n--builds-per-day 10` sets the project's daily build ceiling. The full list is\nin the [CLI reference](/lore/docs/reference-cli).",
+  },
+  {
+    guide: "Agent automations",
+    section: "From an agent",
+    url: "https://alepha.dev/lore/docs/agents-automations#from-an-agent",
+    text: "`automation_list`, `automation_create`, `automation_update`,\n`automation_delete`, `automation_run`, `automation_pause_all`,\n`automation_resume_all` and `automation_settings` are the twins of `lore\nautomation`. Called with an agent job's own key, `automation_run` is refused:\na job never starts another.",
   },
   {
     guide: "The lore CLI",
@@ -2332,6 +2392,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "The lore CLI",
+    section: "Agent automations",
+    url: "https://alepha.dev/lore/docs/reference-cli#agent-automations",
+    text: "A prompt run on an Agent host by hand, on project events or on a schedule.\n\n| Command                          | What it does                                                                                    | Flags                                                                                                                                                                                            |\n| -------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |\n| `lore automation list`           | The project's automations: prompt, trigger, where they run, last run and why they last skipped. |                                                                                                                                                                                                  |\n| `lore automation create <name>`  | Create one.                                                                                     |...",
+  },
+  {
+    guide: "The lore CLI",
     section: "Commits",
     url: "https://alepha.dev/lore/docs/reference-cli#commits",
     text: "| Command             | What it does                                                                                                                                                          | Flags                                       |\n| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |\n| `lore commits push` | Record the quests the current commit's history names, with no artifact. On the default branch, a quest an agent automation built that the history names is completed. | `--branch`, `--default-branch`, `--project` |\n\nA project that does not deploy through Lore runs it on every push of its\ndefault branch, so a quest built into a pull request completes once that pull\nrequest merges. In GitHub Actions, after a checkout with its history\n(`fetch-depth: 0`) and with `LORE_API_KEY` set:\n\n```yaml\n- run: npx @alepha/lore commits push --project acme\n```\n\nThe branch comes from `GITHUB_REF_NAME`, the default branch from the event's\nrepository; elsewhere from git, and `main` when nothing names it. A projec...",
@@ -2430,7 +2496,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "MCP tools",
     section: "Notifications",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#notifications",
-    text: 'Who is told when something changes in a project, and your own inbox. A\nchannel is added, and its URL or signing secret changed, with `lore channel`\nonly, so a webhook or Discord URL never travels through a tool. Lore runs\nno schedules and no multi-step reactions: for those, use a scheduled agent\nsession over MCP, or subscribe a webhook channel and react in whatever it\ncalls. See [Notifications](/lore/docs/project-notifications).\n\n| Tool                | What it does                                                                                                    |\n| ------------------- | --------------------------------------------------------------------------------------------------------------- |\n| `event_catalog`     | The events this project can emit: their fields, the capability each needs, and why an unavailable one is so.    |\n| `event_list`        | The recent events, newest first, by name or subject, for "did it fire?". Only those you may read.               |\n| `subscription_list` | Who is notified of what, on which channel, and the project\'s channels by id, kind and name.                     |\n| `subscription_set`  | Notify a member (you by default) or a channel of an ...',
+    text: 'Who is told when something changes in a project, and your own inbox. A\nchannel is added, and its URL or signing secret changed, with `lore channel`\nonly, so a webhook or Discord URL never travels through a tool. A\nsubscription only tells someone: to run a prompt on an event or a schedule,\nuse an agent automation (below); for a multi-step reaction, subscribe a\nwebhook channel and react in whatever it calls. See\n[Notifications](/lore/docs/project-notifications).\n\n| Tool                | What it does                                                                                                    |\n| ------------------- | --------------------------------------------------------------------------------------------------------------- |\n| `event_catalog`     | The events this project can emit: their fields, the capability each needs, and why an unavailable one is so.    |\n| `event_list`        | The recent events, newest first, by name or subject, for "did it fire?". Only those you may read.               |\n| `subscription_list` | Who is notified of what, on which channel, and the project\'s channels by id, kind and name.                     |\n| `subscription_set`  | Notify a member (you...',
   },
   {
     guide: "MCP tools",
@@ -2449,6 +2515,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Deploys",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#deploys",
     text: "See [Deploying an app](/lore/docs/ship-deploying),\n[Artifacts](/lore/docs/ship-artifacts), [Stacks](/lore/docs/ship-stacks) and\n[Hosts](/lore/docs/project-hosts).\n\n| Tool              | What it does                                                                                |\n| ----------------- | ------------------------------------------------------------------------------------------- |\n| `artifact_list`   | What a project has built, one entry per tag.                                                |\n| `artifact_get`    | One tag's builds, with their digests.                                                       |\n| `deploy_start`    | Deploy a stored build onto a copy. Nothing is built, and an omitted tag means `latest`.     |\n| `deploy_status`   | Where a run got to, and the tail of its log.                                                |\n| `deploy_rollback` | Point a copy back at an earlier build. Refuses once if the build no longer fits the schema. |\n| `stack_list`      | Every stack with its environments.                                                          |\n| `stack_get`       | One stack: services and newest deploys.                                               ...",
+  },
+  {
+    guide: "MCP tools",
+    section: "Agent jobs and automations",
+    url: "https://alepha.dev/lore/docs/reference-mcp-tools#agent-jobs-and-automations",
+    text: "See [Agent jobs](/lore/docs/agents-jobs) and\n[Agent automations](/lore/docs/agents-automations). Reading needs `host:read`;\ncreating, changing and running an automation needs `automation:manage`. Called\nwith an agent job's own key, `agent_run` and `automation_run` are refused.\n\n| Tool                                            | What it does                                                                                               |\n| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |\n| `agent_hosts`                                   | The project's Agent hosts, their last check, agent CLIs and tools.                                         |\n| `agent_run`                                     | Start an agent job: `triage`, `build` on one quest, or `text`.                                             |\n| `job_list`, `job_get`, `job_cancel`             | The project's jobs, one job with its log, and stopping one.                                                |\n| `automation_list`                               | The automations: prompt, trigger, host and agent, last run, next...",
   },
   {
     guide: "MCP tools",

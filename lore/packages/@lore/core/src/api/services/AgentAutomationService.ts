@@ -559,7 +559,7 @@ export class AgentAutomationService {
   protected merged(
     row: AgentAutomation | undefined,
     body: AgentAutomationWrite,
-  ): Omit<AgentAutomationWrite, "name"> & {
+  ): Omit<AgentAutomationWrite, "name" | "on"> & {
     promptKind: AgentAutomation["promptKind"];
     nextRunAt: string | null;
   } {
@@ -574,9 +574,14 @@ export class AgentAutomationService {
     if (!promptKind) {
       throw new BadRequestError("An automation names its prompt");
     }
-    const trigger = body.trigger ?? row?.trigger ?? "manual";
-    const schedule = body.schedule ?? row?.schedule ?? undefined;
-    const dailyHour = body.dailyHour ?? row?.dailyHour ?? undefined;
+    const on = body.on === undefined ? undefined : this.parseOn(body.on);
+    const trigger = on?.trigger ?? body.trigger ?? row?.trigger ?? "manual";
+    const schedule = on
+      ? on.schedule
+      : (body.schedule ?? row?.schedule ?? undefined);
+    const dailyHour = on
+      ? on.dailyHour
+      : (body.dailyHour ?? row?.dailyHour ?? undefined);
     // A schedule keeps its next run unless what decides it changed.
     const kept =
       row?.trigger === "schedule" &&
@@ -602,7 +607,9 @@ export class AgentAutomationService {
       schedule,
       dailyHour,
       nextRunAt,
-      eventKeys: body.eventKeys ?? row?.eventKeys ?? undefined,
+      eventKeys: on
+        ? on.eventKeys
+        : (body.eventKeys ?? row?.eventKeys ?? undefined),
       settleSeconds: body.settleSeconds ?? row?.settleSeconds ?? 60,
       onlyIfWork: body.onlyIfWork ?? row?.onlyIfWork ?? false,
       autoMerge: body.autoMerge ?? row?.autoMerge ?? false,
@@ -611,6 +618,62 @@ export class AgentAutomationService {
       maxRunsPerDay: body.maxRunsPerDay ?? row?.maxRunsPerDay ?? 48,
       enabled: body.enabled ?? row?.enabled ?? true,
     };
+  }
+
+  /**
+   * Reads `on` (#Q4231): `manual`, `event:<key>[,<key>]`, `hourly`, `6h` or
+   * `daily@<utc-hour>`.
+   */
+  public parseOn(on: string): {
+    trigger: AgentAutomation["trigger"];
+    eventKeys?: string[];
+    schedule?: AgentAutomation["schedule"];
+    dailyHour?: number;
+  } {
+    const value = on.trim();
+    if (value === "manual") return { trigger: "manual" };
+    if (value === "hourly" || value === "6h") {
+      return { trigger: "schedule", schedule: value };
+    }
+    const daily = /^daily@(\d{1,2})$/.exec(value);
+    if (daily) {
+      const hour = Number(daily[1]);
+      if (hour > 23) {
+        throw new BadRequestError("A daily hour is 0 to 23, in UTC");
+      }
+      return { trigger: "schedule", schedule: "daily", dailyHour: hour };
+    }
+    if (value.startsWith("event:")) {
+      const keys = value
+        .slice("event:".length)
+        .split(",")
+        .map((key) => key.trim())
+        .filter(Boolean);
+      return { trigger: "event", eventKeys: keys };
+    }
+    throw new BadRequestError(
+      `"${value}" is no trigger: manual, event:<key>[,<key>], hourly, 6h or daily@<utc-hour>`,
+    );
+  }
+
+  /**
+   * How a row's trigger reads in one word, the inverse of {@link parseOn}.
+   */
+  public onOf(
+    automation: Pick<
+      AgentAutomation,
+      "trigger" | "eventKeys" | "schedule" | "dailyHour"
+    >,
+  ): string {
+    if (automation.trigger === "event") {
+      return `event:${(automation.eventKeys ?? []).join(",")}`;
+    }
+    if (automation.trigger === "schedule") {
+      return automation.schedule === "daily"
+        ? `daily@${automation.dailyHour ?? 0}`
+        : (automation.schedule ?? "hourly");
+    }
+    return "manual";
   }
 
   /**

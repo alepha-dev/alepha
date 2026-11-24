@@ -32,10 +32,11 @@ import { ProjectTools } from "./ProjectTools.ts";
 export class NotificationTools {
   /**
    * What every description says, because agents look for automations:
-   * what replaced them.
+   * what a subscription is not, and where a prompt on a trigger lives
+   * (#Q4231).
    */
   public static readonly INSTEAD =
-    "Lore has no automations: a schedule, a condition or a multi-step reaction is not in Lore. Use a scheduled agent session over MCP, or subscribe a webhook channel and react in whatever it calls.";
+    "A subscription only tells someone. To run a prompt on an Agent host on a project event or a schedule, use an agent automation (automation_create); a condition or a multi-step reaction is not in Lore: subscribe a webhook channel and react in whatever it calls.";
 
   protected readonly alepha = $inject(Alepha);
   protected readonly projects = $inject(ProjectTools);

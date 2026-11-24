@@ -674,6 +674,27 @@ succeed.
 
 See [Agent jobs](/lore/docs/agents-jobs).
 
+## Agent automations
+
+A prompt run on an Agent host by hand, on project events or on a schedule.
+
+| Command                          | What it does                                                                                    | Flags                                                                                                                                                                                            |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lore automation list`           | The project's automations: prompt, trigger, where they run, last run and why they last skipped. |                                                                                                                                                                                                  |
+| `lore automation create <name>`  | Create one.                                                                                     | `--prompt triage\|build` or `--text`, `--on`, `--host`, `--agent`, `--model`, `--only-if-work`, `--auto-merge`, `--concurrency`, `--settle-seconds`, `--max-runs-per-hour`, `--max-runs-per-day` |
+| `lore automation update <name>`  | Change the flags given.                                                                         | the same, `--new-name`, `--enabled`                                                                                                                                                              |
+| `lore automation enable <name>`  | Turn its trigger on.                                                                            |                                                                                                                                                                                                  |
+| `lore automation disable <name>` | Turn its trigger off.                                                                           |                                                                                                                                                                                                  |
+| `lore automation delete <name>`  | Delete it; its jobs stay.                                                                       |                                                                                                                                                                                                  |
+| `lore automation run <name>`     | Run it once, as you.                                                                            | `--wait`                                                                                                                                                                                         |
+| `lore automation pause-all`      | Stop every trigger of the project; a run by hand still works.                                   |                                                                                                                                                                                                  |
+| `lore automation resume-all`     | Start them again.                                                                               |                                                                                                                                                                                                  |
+| `lore automation settings`       | Whether they are paused, and the daily build ceiling.                                           | `--builds-per-day`                                                                                                                                                                               |
+
+`--on` is `manual`, `event:<key>[,<key>]` (the keys of `lore event catalog`),
+`hourly`, `6h` or `daily@<hour>`, an hour in UTC. See [Agent
+automations](/lore/docs/agents-automations).
+
 ## Commits
 
 | Command             | What it does                                                                                                                                                          | Flags                                       |

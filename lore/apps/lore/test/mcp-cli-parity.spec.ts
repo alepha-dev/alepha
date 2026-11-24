@@ -49,6 +49,9 @@ const ALIASES: Record<string, string> = {
   dashboard_card_update: "dashboard update",
   dashboard_card_remove: "dashboard remove",
   dashboard_card_reorder: "dashboard reorder",
+  // One hyphenated verb each, as `lore automation pause-all` (#Q4231).
+  automation_pause_all: "automation pause-all",
+  automation_resume_all: "automation resume-all",
 };
 
 const GAPS: string[] = [];

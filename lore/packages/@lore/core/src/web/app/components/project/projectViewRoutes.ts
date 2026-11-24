@@ -80,6 +80,7 @@ const ROUTES_SETTINGS = [
   "projectSettingsPrompts",
   "projectSettingsKnowledge",
   "projectSettingsHosts",
+  "projectSettingsAutomations",
   // Ship's page under Plan's section (#Q3703), missed here until #Q4063:
   // it rendered in the centred column under a "Plan" crumb.
   "projectSettingsErrors",
