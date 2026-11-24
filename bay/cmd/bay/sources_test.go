@@ -523,3 +523,151 @@ done
 		}
 	})
 }
+
+// agentGit is how a stub agent commits, with an identity of its own.
+const agentGit = `git -c user.name=agent -c user.email=agent@example.com`
+
+func writeSpec(w *jobWorld, origin, workspace, branch string) []byte {
+	return w.agentSpec(map[string]any{"workspace": workspace,
+		"source": map[string]any{"mode": "write", "repository": origin, "branch": branch}})
+}
+
+func TestWriteWorktrees(t *testing.T) {
+	t.Run("a new branch from the default one, pushed, then removed; a follow-up continues it", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", `#!/bin/sh
+set -e
+git rev-parse --abbrev-ref HEAD > "`+w.bin+`/branch"
+git log -1 --format=%s > "`+w.bin+`/last"
+echo work > work-$(date +%s%N).txt
+git add -A
+`+agentGit+` commit -q -m "agent work"
+git push -q 2>"`+w.bin+`/push.err"
+`)
+		rec := w.run("job-1", writeSpec(w, origin, "q1", "lore/q1"))
+		last := rec.last()
+		if last.Status != "done" || last.Warning != "" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if b, _ := os.ReadFile(filepath.Join(w.bin, "branch")); strings.TrimSpace(string(b)) != "lore/q1" {
+			t.Fatalf("the worktree was on %q", b)
+		}
+		if l, _ := os.ReadFile(filepath.Join(w.bin, "last")); strings.TrimSpace(string(l)) != "first" {
+			t.Fatalf("the new branch started at %q, want main's commit", l)
+		}
+		if got := gitT(t, origin, "log", "-1", "--format=%s", "lore/q1"); got != "agent work" {
+			t.Fatalf("origin's lore/q1 is at %q", got)
+		}
+		if _, err := os.Stat(filepath.Join(w.work, "acme", "q1")); !os.IsNotExist(err) {
+			t.Fatal("a pushed, clean worktree was kept")
+		}
+		mirror := filepath.Join(w.work, "acme", mirrorName)
+		if out, _ := exec.Command("git", "-C", mirror, "rev-parse", "--verify", "--quiet", "refs/heads/lore/q1").Output(); len(out) != 0 {
+			t.Fatal("the worktree's local branch outlived it")
+		}
+		if list := gitT(t, mirror, "worktree", "list"); strings.Contains(list, "q1") {
+			t.Fatalf("the mirror still lists the worktree:\n%s", list)
+		}
+		if log := w.frames.textOf("job-1", "stderr"); !strings.Contains(log, "on new branch lore/q1 from") || !strings.Contains(log, "worktree acme/q1 removed, its work pushed") {
+			t.Fatalf("the log: %q", log)
+		}
+
+		// A follow-up (a CI fix) finds the pushed branch again.
+		if last := w.run("job-2", writeSpec(w, origin, "q1", "lore/q1")).last(); last.Status != "done" || last.Warning != "" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if l, _ := os.ReadFile(filepath.Join(w.bin, "last")); strings.TrimSpace(string(l)) != "agent work" {
+			t.Fatalf("the follow-up started at %q, want the pushed branch", l)
+		}
+		if got := gitT(t, origin, "rev-list", "--count", "lore/q1"); got != "3" {
+			t.Fatalf("origin's lore/q1 holds %s commits, want 3", got)
+		}
+		if log := w.frames.textOf("job-2", "stderr"); !strings.Contains(log, "continuing origin/lore/q1") {
+			t.Fatalf("the log: %q", log)
+		}
+	})
+
+	t.Run("unpushed work is kept, said in the ack's warning, listed kept, and refuses the next job", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", `#!/bin/sh
+echo work > work.txt
+git add work.txt
+`+agentGit+` commit -q -m "not pushed"
+exit 1
+`)
+		last := w.run("job-1", writeSpec(w, origin, "q2", "lore/q2")).last()
+		if last.Status != "failed" || last.Warning != "kept acme/q2, 1 unpushed commit(s)" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if _, err := os.Stat(filepath.Join(w.work, "acme", "q2", "work.txt")); err != nil {
+			t.Fatal("the kept worktree lost its work")
+		}
+		r := w.acts.jobs.runner
+		u, _ := r.jobsUser()
+		list, _ := r.workspaces(u)
+		kinds := map[string]string{}
+		for _, ws := range list {
+			kinds[ws.Name] = ws.Kind
+		}
+		if kinds["q2"] != workspaceKindKept {
+			t.Fatalf("workspaces = %v", kinds)
+		}
+		next := w.run("job-2", writeSpec(w, origin, "q2", "lore/q2")).last()
+		if next.Status != "failed" || !strings.Contains(next.Reason, "kept with work not pushed") {
+			t.Fatalf("ack = %+v", next)
+		}
+		if _, err := os.Stat(filepath.Join(w.work, "acme", "q2", "work.txt")); err != nil {
+			t.Fatal("a refused job touched the kept worktree")
+		}
+
+		// The quest's completion removes it, and the mirror forgets it.
+		rm := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "rm-1", Kind: "job-workspace-remove", Project: "acme", Workspace: "q2"}, rm.send)
+		if rm.last().Status != "done" {
+			t.Fatalf("ack = %+v", rm.last())
+		}
+		if list := gitT(t, filepath.Join(w.work, "acme", mirrorName), "worktree", "list"); strings.Contains(list, "q2") {
+			t.Fatalf("the mirror still lists the removed worktree:\n%s", list)
+		}
+		// The local branch it left is not reused: the next job starts from
+		// main again, as nothing was pushed.
+		w.stub(t, "claude", "#!/bin/sh\ngit log -1 --format=%s > \""+w.bin+"/last\"\n")
+		if last := w.run("job-3", writeSpec(w, origin, "q2", "lore/q2")).last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if l, _ := os.ReadFile(filepath.Join(w.bin, "last")); strings.TrimSpace(string(l)) != "first" {
+			t.Fatalf("the branch was reused as it stood: %q", l)
+		}
+	})
+
+	t.Run("uncommitted changes are kept; a clean failed run is removed", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", "#!/bin/sh\necho draft > draft.txt\n")
+		if last := w.run("job-1", writeSpec(w, origin, "q3", "lore/q3")).last(); last.Status != "done" || last.Warning != "kept acme/q3, 1 uncommitted change(s)" {
+			t.Fatalf("ack = %+v", last)
+		}
+		w.stub(t, "claude", "#!/bin/sh\nexit 2\n")
+		last := w.run("job-2", writeSpec(w, origin, "q4", "lore/q4")).last()
+		if last.Status != "failed" || last.Warning != "" || last.ExitCode == nil || *last.ExitCode != 2 {
+			t.Fatalf("ack = %+v", last)
+		}
+		if _, err := os.Stat(filepath.Join(w.work, "acme", "q4")); !os.IsNotExist(err) {
+			t.Fatal("a clean worktree was kept after a failed run")
+		}
+	})
+
+	t.Run("a clone from before sources is refused, never run over", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", "#!/bin/sh\ntrue\n")
+		old := filepath.Join(w.work, "acme", "q5")
+		gitT(t, filepath.Dir(origin), "clone", "--quiet", origin, old)
+		last := w.run("job-1", writeSpec(w, origin, "q5", "lore/q5")).last()
+		if last.Status != "failed" || !strings.Contains(last.Reason, "from before job sources") {
+			t.Fatalf("ack = %+v", last)
+		}
+	})
+}

@@ -60,6 +60,11 @@ const (
 	workspaceKindMirror    = "mirror"
 	// workspaceKindTree is a read tree (#Q4246), `.trees/<commit>`.
 	workspaceKindTree = "tree"
+	// workspaceKindKept is a write worktree no job runs in (#Q4247): one a
+	// job kept because its work was not all pushed. A running one is
+	// `worktree`.
+	workspaceKindKept     = "kept"
+	workspaceKindWorktree = "worktree"
 )
 
 // workspaces lists the base's workspaces. A symlink is skipped: the tree is
@@ -109,6 +114,15 @@ func (r *processRunner) workspaces(u *user.User) ([]jobWorkspace, error) {
 			if err != nil {
 				continue
 			}
+			if kind == workspaceKindWorkspace {
+				if dotgit, err := os.Lstat(filepath.Join(base, p.Name(), n.Name(), ".git")); err == nil && dotgit.Mode().IsRegular() {
+					kind = workspaceKindWorktree
+					if unlock, err := lockWorkspace(r.root, p.Name(), n.Name()); err == nil {
+						unlock()
+						kind = workspaceKindKept
+					}
+				}
+			}
 			out = append(out, jobWorkspace{Project: p.Name(), Name: n.Name(), Kind: kind, Modified: info.ModTime()})
 		}
 	}
@@ -147,7 +161,7 @@ func (r *processRunner) removeWorkspace(ctx context.Context, project, workspace 
 		}
 		names = names[:0]
 		for _, w := range all {
-			if w.Project == project && w.Kind == workspaceKindWorkspace {
+			if w.Project == project && w.Kind != workspaceKindMirror && w.Kind != workspaceKindTree {
 				names = append(names, w.Name)
 			}
 		}

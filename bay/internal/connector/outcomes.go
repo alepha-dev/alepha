@@ -44,6 +44,10 @@ type Extra struct {
 	AppSecretSource string
 	Warning         string
 	ExitCode        *int
+	// Job marks a job-run's extra: its exit code and its warning (a kept
+	// worktree, #Q4247) ride every terminal ack, a failed one most of all,
+	// where a deploy's ride its `done` only.
+	Job bool
 }
 
 /*
