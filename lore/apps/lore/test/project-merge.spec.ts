@@ -61,6 +61,12 @@ const NOT_MOVED: Record<string, string> = {
   // A job key is pinned to the project it was minted for (#Q3995), and dies
   // with its job: moved, it would widen to the target.
   job_keys: "the source's keys, pinned to the source",
+  // A project's AI budget for its agents (#Q4237): one row per project, so
+  // the merged project keeps the target's, as it keeps its thresholds.
+  chat_agent_budgets: "the target's own budget stands",
+  // What the source's budget paid for (#Q4237), counted against the source:
+  // moved, it would spend the target's budget for runs it never paid.
+  chat_agent_charges: "the source's spending, against its own budget",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

@@ -55,6 +55,11 @@ class FakeLinkProvider extends LinkProvider {
       }),
       getProjectUsers: async () => [],
       getChatAgent: async () => JARVIS,
+      getChatAgentBudget: async () => ({
+        tokens: 50_000,
+        spent: 12_500,
+        windowHours: 24,
+      }),
       createChatAgent: async (config: { body: { handle: string } }) => {
         if (config.body.handle === "lore") {
           const message = "@lore is the built-in agent";
@@ -123,12 +128,27 @@ describe("Settings > Chat > Agents", () => {
     expect(rows[1]!.textContent).toContain("claude-haiku-5-5");
   });
 
+  it("shows the project's AI budget for agents and what it spent (#Q4237)", async ({
+    expect,
+  }) => {
+    await mount();
+
+    const spent = await screen.findByTestId("chat-agent-budget-spent");
+    expect(spent.textContent).toContain(
+      "12,500 of 50,000 tokens spent over the last 24 hours.",
+    );
+    expect(screen.getByTestId("chat-agent-budget-tokens")).toBeTruthy();
+  });
+
   it("hides create, edit and delete without chat:agent", async ({ expect }) => {
     await mount(["project:read", "chat:read", "chat:write"]);
 
     expect(screen.queryByTestId("chat-agent-create")).toBeNull();
     expect(screen.queryByTestId("chat-agent-edit")).toBeNull();
     expect(screen.queryByTestId("chat-agent-delete")).toBeNull();
+    // The budget is read, not set.
+    await screen.findByTestId("chat-agent-budget-spent");
+    expect(screen.queryByTestId("chat-agent-budget-tokens")).toBeNull();
   });
 
   it("shows a refused handle under its field", async ({ expect }) => {

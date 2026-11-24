@@ -29,6 +29,7 @@ import { useState } from "react";
 import type { ChatAgentController } from "../../../../api/controllers/ChatAgentController.ts";
 import type { ChatAgentResource } from "../../../../api/schemas/chatAgentResourceSchema.ts";
 import ChatAgentAvatar from "../ChatAgentAvatar.tsx";
+import ChatAgentBudgetCard from "./ChatAgentBudgetCard.tsx";
 import ChatAgentDialog from "./ChatAgentDialog.tsx";
 
 /**
@@ -91,133 +92,137 @@ const ChatAgentsSettingsPage = () => {
   };
 
   return (
-    <Card className={settingsCardEdge}>
-      <CardContent className="flex flex-col gap-4 px-4 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-sm font-medium">
-              {tr("chat.agents.title")}
-            </span>
-            <span className="text-muted-foreground text-xs">
-              {tr("chat.agents.description")}
-            </span>
-          </div>
-          {canWrite && (
-            <Button
-              size="sm"
-              onClick={() => setEditing("new")}
-              data-testid="chat-agent-create"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {tr("chat.agents.create")}
-            </Button>
-          )}
-        </div>
-
-        {data && !data.enabled && (
-          <p
-            className="text-muted-foreground text-xs"
-            data-testid="chat-agents-ai-off"
-          >
-            {tr("chat.agents.aiOff")}
-          </p>
-        )}
-
-        {data && own.length === 0 && (
-          <p
-            className="text-muted-foreground text-sm"
-            data-testid="chat-agents-empty"
-          >
-            {tr("chat.agents.empty")}{" "}
-            <a
-              href={loreDocsUrl("project-chat-agents")}
-              target="_blank"
-              rel="noreferrer"
-              className="text-primary underline-offset-2 hover:underline"
-            >
-              {tr("chat.agents.docs")}
-            </a>
-          </p>
-        )}
-
-        {agents.length > 0 && (
-          <ul className="divide-y rounded-md border">
-            {agents.map((agent) => (
-              <li
-                key={agent.id}
-                data-testid="chat-agent-row"
-                data-handle={agent.handle}
-                className="flex items-center gap-3 px-3 py-2"
+    <div className="flex flex-col gap-4">
+      <Card className={settingsCardEdge}>
+        <CardContent className="flex flex-col gap-4 px-4 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-sm font-medium">
+                {tr("chat.agents.title")}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {tr("chat.agents.description")}
+              </span>
+            </div>
+            {canWrite && (
+              <Button
+                size="sm"
+                onClick={() => setEditing("new")}
+                data-testid="chat-agent-create"
               >
-                <ChatAgentAvatar
-                  name={agent.name}
-                  avatarId={agent.avatarId}
-                  builtin={agent.builtin}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="truncate text-sm font-medium">
-                      {agent.name}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      @{agent.handle}
-                    </span>
-                    {agent.builtin && (
-                      <Badge variant="tint" tone="violet">
-                        {tr("chat.agents.builtin")}
-                      </Badge>
+                <Plus className="size-4" aria-hidden="true" />
+                {tr("chat.agents.create")}
+              </Button>
+            )}
+          </div>
+
+          {data && !data.enabled && (
+            <p
+              className="text-muted-foreground text-xs"
+              data-testid="chat-agents-ai-off"
+            >
+              {tr("chat.agents.aiOff")}
+            </p>
+          )}
+
+          {data && own.length === 0 && (
+            <p
+              className="text-muted-foreground text-sm"
+              data-testid="chat-agents-empty"
+            >
+              {tr("chat.agents.empty")}{" "}
+              <a
+                href={loreDocsUrl("project-chat-agents")}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                {tr("chat.agents.docs")}
+              </a>
+            </p>
+          )}
+
+          {agents.length > 0 && (
+            <ul className="divide-y rounded-md border">
+              {agents.map((agent) => (
+                <li
+                  key={agent.id}
+                  data-testid="chat-agent-row"
+                  data-handle={agent.handle}
+                  className="flex items-center gap-3 px-3 py-2"
+                >
+                  <ChatAgentAvatar
+                    name={agent.name}
+                    avatarId={agent.avatarId}
+                    builtin={agent.builtin}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="truncate text-sm font-medium">
+                        {agent.name}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        @{agent.handle}
+                      </span>
+                      {agent.builtin && (
+                        <Badge variant="tint" tone="violet">
+                          {tr("chat.agents.builtin")}
+                        </Badge>
+                      )}
+                    </div>
+                    {!agent.builtin && (
+                      <span className="text-muted-foreground truncate text-xs">
+                        {agent.model ?? tr("chat.agents.defaultModel")}
+                        {creator(agent)
+                          ? ` · ${tr("chat.agents.by", { args: [creator(agent)!] })}`
+                          : ""}
+                      </span>
                     )}
                   </div>
-                  {!agent.builtin && (
-                    <span className="text-muted-foreground truncate text-xs">
-                      {agent.model ?? tr("chat.agents.defaultModel")}
-                      {creator(agent)
-                        ? ` · ${tr("chat.agents.by", { args: [creator(agent)!] })}`
-                        : ""}
-                    </span>
+                  {canWrite && !agent.builtin && (
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        size="sm"
+                        variant="minimal"
+                        aria-label={tr("chat.agents.edit")}
+                        onClick={() => setEditing(agent)}
+                        data-testid="chat-agent-edit"
+                      >
+                        <Pencil className="size-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="minimal"
+                        aria-label={tr("chat.agents.delete")}
+                        onClick={() => void remove.run(agent)}
+                        data-testid="chat-agent-delete"
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </Button>
+                    </div>
                   )}
-                </div>
-                {canWrite && !agent.builtin && (
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      size="sm"
-                      variant="minimal"
-                      aria-label={tr("chat.agents.edit")}
-                      onClick={() => setEditing(agent)}
-                      data-testid="chat-agent-edit"
-                    >
-                      <Pencil className="size-4" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="minimal"
-                      aria-label={tr("chat.agents.delete")}
-                      onClick={() => void remove.run(agent)}
-                      data-testid="chat-agent-delete"
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
 
-        {editing && (
-          <ChatAgentDialog
-            projectId={projectId}
-            agentId={editing === "new" ? undefined : editing.id}
-            onClose={() => setEditing(undefined)}
-            onSaved={() => {
-              setEditing(undefined);
-              refresh();
-              toaster.success(tr("chat.agents.saved"));
-            }}
-          />
-        )}
-      </CardContent>
-    </Card>
+          {editing && (
+            <ChatAgentDialog
+              projectId={projectId}
+              agentId={editing === "new" ? undefined : editing.id}
+              onClose={() => setEditing(undefined)}
+              onSaved={() => {
+                setEditing(undefined);
+                refresh();
+                toaster.success(tr("chat.agents.saved"));
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
+      {/* What the agents may spend, and spent (#Q4237). */}
+      <ChatAgentBudgetCard />
+    </div>
   );
 };
 

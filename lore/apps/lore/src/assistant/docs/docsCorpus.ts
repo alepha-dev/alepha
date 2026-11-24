@@ -483,7 +483,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Chat",
     section: "Asking Lore",
     url: "https://alepha.dev/lore/docs/project-chat#asking-lore",
-    text: "When the assistant is on for your Lore (see\n[Assistant](/lore/docs/agents-assistant)), write `@lore` followed by your\nquestion in any room. Lore answers in the room, where everyone can read the\nanswer:\n\n- It runs **as you**: it can only do what your rank allows, and its usage\n  counts against your budget.\n- It reads **this project only**, and this room's recent messages. What\n  other people wrote is context for it, never instructions.\n- The line under its name traces what it is doing: the tools it runs, then\n  what it ran.\n- A **write** (filing a quest, a comment, a folio) waits for a card. Everyone\n  sees the card; only you, who asked, can approve or decline it.\n\nA project can also define its own agents, each with a name, an avatar, a\nplaybook and a model: see [Chat agents](/lore/docs/project-chat-agents).\n\nTo ask Lore something on your own, about the page you are on, open the\n[Assistant](/lore/docs/agents-assistant) from the sparkle button in the header\ninstead.",
+    text: "When the assistant is on for your Lore (see\n[Assistant](/lore/docs/agents-assistant)), write `@lore` followed by your\nquestion in any room. Lore answers in the room, where everyone can read the\nanswer:\n\n- It runs **as you**: it can only do what your rank allows, and its usage\n  counts against your budget, or the project's AI budget for agents when it\n  has one (see [Chat agents](/lore/docs/project-chat-agents)).\n- It reads **this project only**, and this room's recent messages. What\n  other people wrote is context for it, never instructions.\n- The line under its name traces what it is doing: the tools it runs, then\n  what it ran.\n- A **write** (filing a quest, a comment, a folio) waits for a card. Everyone\n  sees the card; only you, who asked, can approve or decline it.\n\nA project can also define its own agents, each with a name, an avatar, a\nplaybook and a model: see [Chat agents](/lore/docs/project-chat-agents).\n\nTo ask Lore something on your own, about the page you are on, open the\n[Assistant](/lore/docs/agents-assistant) from the sparkle button in the header\ninstead.",
   },
   {
     guide: "Chat",
@@ -609,7 +609,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Chat agents",
     section: "Chat agents",
     url: "https://alepha.dev/lore/docs/project-chat-agents",
-    text: "A chat agent is a named persona that a project's members mention in\n[Chat](/lore/docs/project-chat), with a standing playbook. `@lore` answers\nwhatever you ask it; an agent already knows what its job is. Instead of\nwriting `@lore run the feedback triage, then look at the open errors, then...`\nevery morning, you write `@jarvis time to check`: Jarvis's playbook says what\nchecking means.\n\nEvery agent runs on the same engine as `@lore`, with the rights and the AI\nbudget of the member who mentions it, and asks for the same confirmation\nbefore every write. An agent changes what is asked and how it answers, never\nwhat it may do.",
+    text: "A chat agent is a named persona that a project's members mention in\n[Chat](/lore/docs/project-chat), with a standing playbook. `@lore` answers\nwhatever you ask it; an agent already knows what its job is. Instead of\nwriting `@lore run the feedback triage, then look at the open errors, then...`\nevery morning, you write `@jarvis time to check`: Jarvis's playbook says what\nchecking means.\n\nEvery agent runs on the same engine as `@lore`, with the rights of the\nmember who mentions it, on the project's AI budget for agents when it has one\nand on that member's own otherwise (see [The AI budget](#the-ai-budget)), and\nasks for the same confirmation before every write. An agent changes what is asked and how it answers, never\nwhat it may do.",
   },
   {
     guide: "Chat agents",
@@ -628,6 +628,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Choosing a model",
     url: "https://alepha.dev/lore/docs/project-chat-agents#choosing-a-model",
     text: "Leave **Model** empty to run on your Lore's default, or name a model your\nprovider serves: a cheap one for a routine check, a stronger one for a\nreviewer. The model is free text and is only checked when the agent runs: a\nname the provider refuses makes the agent's answer say so in the room.\n\nThe AI budget counts tokens whatever the model, so an agent on a stronger\nmodel costs more than the budget shows.",
+  },
+  {
+    guide: "Chat agents",
+    section: "The AI budget",
+    url: "https://alepha.dev/lore/docs/project-chat-agents#the-ai-budget",
+    text: "**AI budget for agents**, under the agent list, is what this project's agents\nmay spend: a number of tokens per window, the same window as every member's\nown budget (24 hours by default). It shows what the agents spent over the\nwindow, and when it is spent, when enough of it frees up.\n\nA run draws on the project's budget while it has tokens left, and the member\nwho asked pays nothing for it. Once it is spent, a run falls back to that\nmember's own budget. When both are spent, the agent answers that it could not\nrun, naming each budget and when it frees up.\n\nLeave the field empty for no project budget: every run is then the\nmember's. Setting it needs the **Chat agents** permission; every member who\nreads chat sees what was spent.",
   },
   {
     guide: "Chat agents",
@@ -651,7 +657,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Chat agents",
     section: "Ranks",
     url: "https://alepha.dev/lore/docs/project-chat-agents#ranks",
-    text: "| Permission      | Lets a member                                                            |\n| --------------- | ------------------------------------------------------------------------ |\n| **Read chat**   | See the agents and read their playbooks.                                 |\n| **Write chat**  | Mention an agent in a message.                                           |\n| **Chat agents** | Create, edit and delete the project's agents. Admins have it by default. |\n\nSee [Members](/lore/docs/project-members).",
+    text: "| Permission      | Lets a member                                                                                     |\n| --------------- | ------------------------------------------------------------------------------------------------- |\n| **Read chat**   | See the agents and read their playbooks.                                                          |\n| **Write chat**  | Mention an agent in a message.                                                                    |\n| **Chat agents** | Create, edit and delete the project's agents, and set their AI budget. Admins have it by default. |\n\nSee [Members](/lore/docs/project-members).",
   },
   {
     guide: "Chat agents",
