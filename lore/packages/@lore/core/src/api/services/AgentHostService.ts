@@ -67,6 +67,7 @@ export class AgentHostService {
           ...(host.jobsTools
             ? { agents: AgentHostService.agentsOf(host.jobsTools) }
             : {}),
+          ...(host.jobsSources ? { sources: true } : {}),
         })),
     });
   }

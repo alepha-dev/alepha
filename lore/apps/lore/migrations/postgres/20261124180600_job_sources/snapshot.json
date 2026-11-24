@@ -1,0 +1,141 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b40b8471-8130-40f5-87ae-0e88ffec94b8",
+  "prevIds": ["58907a93-e853-453d-b100-adcd468086e2"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "agent_automations", "source"],
+      "writes": [
+        "s|col|public.agent_automations.source",
+        "n|col|public.agent_automations.source",
+        "e|col|public.agent_automations.source"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "agent_automations", "ref"],
+      "writes": [
+        "s|col|public.agent_automations.ref",
+        "n|col|public.agent_automations.ref",
+        "e|col|public.agent_automations.ref"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "commit"],
+      "writes": [
+        "s|col|public.host_jobs.commit",
+        "n|col|public.host_jobs.commit",
+        "e|col|public.host_jobs.commit"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "warning"],
+      "writes": [
+        "s|col|public.host_jobs.warning",
+        "n|col|public.host_jobs.warning",
+        "e|col|public.host_jobs.warning"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_sources"],
+      "writes": [
+        "s|col|public.hosts.jobs_sources",
+        "n|col|public.hosts.jobs_sources",
+        "e|col|public.hosts.jobs_sources"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "source",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "ref",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "commit",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "warning",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "jobs_sources",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

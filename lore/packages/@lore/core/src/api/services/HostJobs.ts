@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 
+import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import type { HostJobKind, HostJobStatus } from "../schemas/hostJobValues.ts";
 
 declare module "alepha" {
@@ -22,6 +23,11 @@ declare module "alepha" {
  * row ever stores it.
  */
 export interface HostJobRequest {
+  /**
+   * The job's id, when the caller needs it before the row exists: a write
+   * job's branch `lore/job-<id>` is named from it (#Q4248).
+   */
+  id?: string;
   projectId: number;
   hostId: string;
   kind: HostJobKind;
@@ -58,6 +64,11 @@ export interface HostJobInput {
    */
   workspace?: string;
   prompt?: string;
+  /**
+   * The code the job finds when it starts (#E173): none, a read-only
+   * checkout, or a worktree to change. Absent is `none`.
+   */
+  source?: HostJobSource;
   timeoutSeconds: number;
   /**
    * What the job's key is pinned to, minted at pull time. Absent for a job
@@ -99,6 +110,10 @@ export interface HostJobSummary {
   subjectId?: string;
   reason?: string;
   exitCode?: number;
+  /** The commit its source resolved, from the host's terminal ack. */
+  commit?: string;
+  /** A kept worktree's sentence, from the host's terminal ack. */
+  warning?: string;
   queuedAt: string;
   startedAt?: string;
   endedAt?: string;
@@ -186,6 +201,11 @@ export interface AgentHostRef {
    * adapter name. Undefined when it reported none yet.
    */
   agents?: string[];
+  /**
+   * The host's Bay prepares a job's source (#E173). A read or write job is
+   * refused on a host that does not say so.
+   */
+  sources?: boolean;
 }
 
 /**

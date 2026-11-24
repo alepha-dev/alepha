@@ -197,6 +197,8 @@ export class AutomationTools {
     agent?: string;
     model?: string;
     room?: string;
+    source?: "none" | "read" | "write" | "";
+    ref?: string;
     on?: string;
     only_if_work?: boolean;
     auto_merge?: boolean;
@@ -211,6 +213,8 @@ export class AutomationTools {
       ...(params.agent === undefined ? {} : { agent: params.agent }),
       ...(params.model === undefined ? {} : { model: params.model }),
       ...(params.room === undefined ? {} : { room: params.room }),
+      ...(params.source === undefined ? {} : { source: params.source }),
+      ...(params.ref === undefined ? {} : { ref: params.ref }),
       ...(params.on === undefined ? {} : { on: params.on }),
       ...(params.only_if_work === undefined
         ? {}

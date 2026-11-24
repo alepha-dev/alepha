@@ -37,6 +37,14 @@ export const hostAckFrameSchema = z.object({
    * an exit.
    */
   exitCode: z.integer().optional(),
+  /**
+   * The commit a `job-run`'s source resolved (#E173), on its terminal ack:
+   * what a read job read, what a write job's branch started from.
+   */
+  commit: z
+    .string()
+    .regex(/^[0-9a-f]{40}$/)
+    .optional(),
 });
 
 export type HostAckFrame = Infer<typeof hostAckFrameSchema>;

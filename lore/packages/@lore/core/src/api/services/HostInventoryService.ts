@@ -74,6 +74,12 @@ export class HostInventoryService {
     if (JSON.stringify(host.jobsTools ?? null) !== JSON.stringify(tools)) {
       await this.hosts.updateById(host.id, { jobsTools: tools });
     }
+    // Whether its Bay prepares a job's source (#E173), which the gate on
+    // read and write jobs reads.
+    const sources = frame.jobs?.sources === true;
+    if ((host.jobsSources ?? false) !== sources) {
+      await this.hosts.updateById(host.id, { jobsSources: sources });
+    }
 
     const existing = await this.findFor(host.id);
     if (existing) {

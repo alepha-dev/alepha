@@ -50,6 +50,19 @@ const writeFields = {
     .string()
     .describe("The model passed to the agent; absent, its own default.")
     .optional(),
+  source: z
+    .enum(["none", "read", "write", ""])
+    .describe(
+      "The code its jobs find: `none`, `read` (the repository at `ref`, read-only) or `write` (a worktree on a branch Lore names). Absent, a build writes and the others read; an empty string clears it.",
+    )
+    .optional(),
+  ref: z
+    .string()
+    .max(200)
+    .describe(
+      "The branch, tag, commit or pull/<n>/head its jobs' code is at; the default branch when absent. An empty string clears it.",
+    )
+    .optional(),
   on: z.string().describe(ON_DESCRIPTION).optional(),
   only_if_work: z
     .boolean()

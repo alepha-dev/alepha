@@ -52,6 +52,7 @@ export const hostResourceSchema = hosts.schema
     agentCheckedAt: true,
     agentError: true,
     jobsTools: true,
+    jobsSources: true,
     statsIntervalSeconds: true,
     connectedAt: true,
     disconnectedAt: true,

@@ -1,6 +1,6 @@
 import { AgentJobs, AgentRunPreamble, HostJobs } from "@lore/core/api";
 import {
-  type AgentRun,
+  type AgentRunRequest as AgentRun,
   projectPrompts,
   projects,
   renderPromptTemplate,
@@ -43,7 +43,6 @@ export class QuestAgentService {
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(projectPrompts);
   protected readonly agents = $inject(AgentJobs);
-  protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -77,6 +76,8 @@ export class QuestAgentService {
       prompt: await this.prompt(project, quest),
       timeoutSeconds: QuestAgentService.WORK_SECONDS,
       questNumber: quest.shortId,
+      // A build changes code: a worktree on `lore/q<n>` (#E173).
+      defaultSource: "write",
       startedBy,
       subjectType: "quest",
       subjectId: String(quest.shortId),
@@ -119,6 +120,7 @@ export class QuestAgentService {
       }),
       timeoutSeconds: QuestAgentService.WORK_SECONDS,
       questNumber: quest.shortId,
+      defaultSource: "write",
       startedBy,
       automationId: origin.automationId,
       ...(origin.startedByJobId
@@ -189,7 +191,8 @@ export class QuestAgentService {
       title: quest.title,
     });
     return [
-      await this.preamble.render(project.id, true),
+      // Rendered when the job starts, once its source is settled (#E173).
+      AgentRunPreamble.MARKER,
       "",
       `## This run's rules, which override the procedure below where they differ`,
       "",
@@ -199,7 +202,6 @@ export class QuestAgentService {
             `- Accept ${reference} first with \`quest_accept\`: a build automation picked it, and nobody holds it yet.`,
           ]
         : []),
-      `- Update the workspace first, then branch from the default branch.`,
       `- Do the work of ${reference}, then run the project's checks and fix what is red before you commit.`,
       `- Commit as the project asks, each message naming ${reference}: the merged commit naming it is what completes the quest later, so do not complete it yourself.`,
       options.autoMerge

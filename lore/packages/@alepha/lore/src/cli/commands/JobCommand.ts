@@ -136,6 +136,12 @@ export class JobCommand {
             ["Agent", job.input.agent],
             ["Model", job.input.model],
             ["Workspace", job.input.workspace],
+            // What code it found (#E173): the source, its ref or branch, and
+            // the commit the host resolved.
+            ["Source", job.input.source?.mode],
+            ["Ref", job.input.source?.ref],
+            ["Branch", job.input.source?.branch],
+            ["Commit", job.commit],
             [
               "Subject",
               job.subjectType
@@ -148,6 +154,7 @@ export class JobCommand {
             ["Ended", job.endedAt],
             ["Exit code", job.exitCode],
             ["Reason", job.reason],
+            ["Warning", job.warning],
           ],
           ...(log
             ? {

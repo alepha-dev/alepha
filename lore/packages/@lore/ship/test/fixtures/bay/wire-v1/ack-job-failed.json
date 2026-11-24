@@ -3,5 +3,7 @@
   "id": "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
   "status": "failed",
   "reason": "claude exited with status 1",
-  "exitCode": 1
+  "exitCode": 1,
+  "warning": "kept acme/q12, 1 unpushed commit(s)",
+  "commit": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b"
 }

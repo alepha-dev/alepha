@@ -94,6 +94,18 @@ export class AutomationCommand {
         description: "The model passed to the agent; absent, its default",
       })
       .optional(),
+    source: z
+      .enum(["none", "read", "write", ""])
+      .describe(
+        "The code its jobs find: none, read or write; absent, a build writes and the others read. An empty value clears it",
+      )
+      .optional(),
+    ref: z
+      .text({
+        description:
+          "The branch, tag, commit or pull/<n>/head its jobs' code is at; the default branch when absent",
+      })
+      .optional(),
     on: z
       .text({
         description:
@@ -512,6 +524,8 @@ export class AutomationCommand {
     agent?: string;
     model?: string;
     room?: string;
+    source?: "none" | "read" | "write" | "";
+    ref?: string;
     on?: string;
     onlyIfWork?: boolean;
     autoMerge?: boolean;
@@ -526,6 +540,8 @@ export class AutomationCommand {
       ...(flags.agent === undefined ? {} : { agent: flags.agent }),
       ...(flags.model === undefined ? {} : { model: flags.model }),
       ...(flags.room === undefined ? {} : { room: flags.room }),
+      ...(flags.source === undefined ? {} : { source: flags.source }),
+      ...(flags.ref === undefined ? {} : { ref: flags.ref }),
       ...(flags.on === undefined ? {} : { on: flags.on }),
       ...(flags.onlyIfWork === undefined
         ? {}

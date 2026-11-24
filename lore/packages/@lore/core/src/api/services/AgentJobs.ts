@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 
+import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import { AgentJobService } from "./AgentJobService.ts";
 import type { AgentHostRef, HostJobSummary } from "./HostJobs.ts";
 
@@ -23,9 +24,22 @@ export interface AgentJobRequest {
   model?: string;
   /**
    * The workspace the job runs in on the host (#Q4218): `q<n>` for a
-   * quest's work, `triage` otherwise, unless the caller names one.
+   * quest's work, `job-<id>` for another write job, `triage` otherwise,
+   * unless the caller names one.
    */
   workspace?: string;
+  /**
+   * The code the job asks for (#E173), as a member asked: `read` or `write`
+   * is refused when the project has no GitHub repository or the host's Bay
+   * predates sources. Absent, {@link defaultSource} applies.
+   */
+  source?: { mode: HostJobSource["mode"]; ref?: string; branch?: string };
+  /**
+   * What the job needs when the request names no source: `write` for a
+   * quest's build, `read` for everything else. Falls back to `none` on a
+   * project with no GitHub repository, where today's runs work from Lore.
+   */
+  defaultSource?: "read" | "write";
   /** The job's time, clamped by `AgentJobService.timeoutOf`. */
   timeoutSeconds?: number;
   questNumber?: number;

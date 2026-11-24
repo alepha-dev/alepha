@@ -69,6 +69,17 @@ export const hostJobs = $entity({
     reason: z.string().max(2000).optional(),
     exitCode: z.integer().optional(),
     /**
+     * The commit the job's source resolved (#E173), from Bay's terminal ack:
+     * not read from the log, and not in the prompt, which Lore renders
+     * before the host resolves the ref.
+     */
+    commit: z.string().max(40).optional(),
+    /**
+     * What the host said without failing the job: a write worktree kept with
+     * work not pushed (#Q4247), from the terminal ack's warning.
+     */
+    warning: z.string().max(2000).optional(),
+    /**
      * The whole log, both streams, written to the bucket at the end. A
      * logical reference, like `host_commands.resultFileId`.
      */

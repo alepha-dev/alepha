@@ -1,9 +1,16 @@
+import { randomUUID } from "node:crypto";
+
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
+import { projects } from "../entities/projects.ts";
+import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
+import { jobRepositoryOf } from "../schemas/jobRepository.ts";
 import type { AgentJobRequest } from "./AgentJobs.ts";
+import { AgentRunPreamble } from "./AgentRunPreamble.ts";
 import {
   type AgentHostRef,
   HostJobs,
@@ -27,7 +34,10 @@ import { JobKeyService } from "./JobKeyService.ts";
  *   job as its parent, and a chain never holds two agent jobs, so an agent
  *   cannot start its successor, with one hop open (#Q4229): a triage's
  *   quest built by an automation, once ({@link chainAllows});
- * - the gate on outside text: an untrusted request never starts.
+ * - the gate on outside text: an untrusted request never starts;
+ * - the job's source (#E173): none, read or write, its workspace and its
+ *   branch, and the preamble that says where the code is, rendered once the
+ *   source is settled ({@link sourceOf}).
  *
  * Nothing of the agent's output is read. The job succeeds or fails by its
  * exit code; what the agent did is what it wrote to Lore.
@@ -52,6 +62,8 @@ export class AgentJobService {
   protected readonly alepha = $inject(Alepha);
   protected readonly port = $inject(HostJobs);
   protected readonly keys = $inject(JobKeyService);
+  protected readonly preamble = $inject(AgentRunPreamble);
+  protected readonly projects = $repository(projects);
 
   /**
    * Starts an agent job on the project's Agent host.
@@ -72,7 +84,42 @@ export class AgentJobService {
         "An agent job's output cannot start another agent job of its chain",
       );
     }
+    const repository = await this.repositoryOf(request.projectId);
+    const source = this.sourceOf(request, repository !== undefined);
+    if (source.mode !== "none") {
+      if (!repository) {
+        throw new BadRequestError(
+          "A read or write job needs the project's repository on GitHub: set its Repository URL to https://github.com/<owner>/<name> in the project's settings",
+        );
+      }
+      if (!host.sources) {
+        throw new BadRequestError(
+          `Host "${host.slug}" runs a Bay that does not prepare job sources: upgrade Bay on ${host.slug}`,
+        );
+      }
+    }
+    // A write job not on one quest is named after itself (#Q4248).
+    const id = randomUUID();
+    const jobName = `job-${id.slice(0, 8)}`;
+    if (source.mode === "write" && !source.branch) {
+      source.branch =
+        this.oneQuest(request) === undefined
+          ? `lore/${jobName}`
+          : `lore/q${request.questNumber}`;
+    }
+    const workspace =
+      request.workspace ??
+      (request.questNumber !== undefined && this.oneQuest(request) !== undefined
+        ? `q${request.questNumber}`
+        : source.mode === "write"
+          ? jobName
+          : "triage");
+    const prompt = this.preamble.place(
+      request.prompt,
+      this.preamble.render(source, repository),
+    );
     return this.port.start({
+      id,
       projectId: request.projectId,
       hostId: host.id,
       kind: "agent",
@@ -84,12 +131,9 @@ export class AgentJobService {
       input: {
         ...(agent ? { agent } : {}),
         ...(request.model ? { model: request.model } : {}),
-        workspace:
-          request.workspace ??
-          (request.questNumber === undefined
-            ? "triage"
-            : `q${request.questNumber}`),
-        prompt: request.prompt,
+        workspace,
+        prompt,
+        source,
         timeoutSeconds: this.timeoutOf(request.timeoutSeconds),
         key: {
           ...(request.questNumber === undefined
@@ -107,6 +151,58 @@ export class AgentJobService {
         },
       },
     });
+  }
+
+  /**
+   * The job's source (#E173, the epic's review items 2 and 4): what the
+   * request asks, else its default (`write` for a quest's build, `read`
+   * otherwise), every read at the default branch unless it names a ref. A
+   * default on a project with no GitHub repository is `none`, where the run
+   * works from Lore as before; a source the request asks for is kept, and
+   * refused by {@link start} when the project cannot have it.
+   */
+  public sourceOf(
+    request: Pick<AgentJobRequest, "source" | "defaultSource">,
+    hasRepository: boolean,
+  ): HostJobSource {
+    if (request.source) {
+      return {
+        mode: request.source.mode,
+        ...(request.source.ref ? { ref: request.source.ref } : {}),
+        ...(request.source.branch && request.source.mode === "write"
+          ? { branch: request.source.branch }
+          : {}),
+      };
+    }
+    if (!hasRepository) return { mode: "none" };
+    return { mode: request.defaultSource ?? "read" };
+  }
+
+  /**
+   * The quest a job is on, when it is on one quest and nothing else: its
+   * branch is `lore/q<n>` and its workspace `q<n>`.
+   */
+  protected oneQuest(request: AgentJobRequest): number | undefined {
+    if (
+      request.questNumber === undefined ||
+      request.epicNumber !== undefined ||
+      request.feedbackNumber !== undefined ||
+      request.feedbackNumbers?.length
+    ) {
+      return undefined;
+    }
+    return request.questNumber;
+  }
+
+  /**
+   * The project's repository as a job is prepared from it: on GitHub, or
+   * undefined.
+   */
+  public async repositoryOf(projectId: number): Promise<string | undefined> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    return jobRepositoryOf(project?.repositoryUrl);
   }
 
   /**

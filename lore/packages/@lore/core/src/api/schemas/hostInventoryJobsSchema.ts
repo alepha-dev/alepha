@@ -30,6 +30,12 @@ export const hostInventoryJobsSchema = z.object({
    * Whether one is signed in is not checked.
    */
   tools: z.array(hostJobToolSchema).max(20).optional(),
+  /**
+   * The machine prepares a job's source, none, read or write (#E173): Lore
+   * sends a read or write job to no host that does not say so, since an
+   * older Bay refuses a spec that carries `source` as unreadable.
+   */
+  sources: z.boolean().optional(),
 });
 
 export type HostInventoryJobs = Infer<typeof hostInventoryJobsSchema>;

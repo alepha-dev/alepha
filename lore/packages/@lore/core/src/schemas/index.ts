@@ -12,10 +12,16 @@
 export { CapabilityRegistry } from "../api/schemas/CapabilityRegistry.ts";
 export {
   type AgentRun,
+  type AgentRunRequest,
   type AgentRunChoice,
   agentRunChoiceSchema,
   agentRunSchema,
+  agentRunSourceSchema,
 } from "../api/schemas/agentRunSchema.ts";
+export {
+  type HostJobSource,
+  hostJobSourceSchema,
+} from "../api/schemas/hostJobInputSchema.ts";
 export {
   HOST_JOB_KINDS,
   HOST_JOB_STATUSES,

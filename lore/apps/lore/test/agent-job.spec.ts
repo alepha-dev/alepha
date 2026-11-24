@@ -122,13 +122,18 @@ describe("the agent job", () => {
     await makeAgentHost(w);
     const job = await triage(w, { timeoutSeconds: 900 });
     expect(job.kind).toBe("agent");
-    expect(job.input).toEqual({
-      prompt: "Triage feedback 4.",
+    expect(job.input).toMatchObject({
       timeoutSeconds: 900,
       // A triage runs in the project's `triage` workspace (#Q4218).
       workspace: "triage",
+      // No GitHub repository: no code (#E173).
+      source: { mode: "none" },
       key: { feedbackId: 4 },
     });
+    // Lore's preamble above the caller's words (#Q4248).
+    expect(job.input.prompt).toMatch(
+      /^## Where things are\n[\s\S]*names no GitHub repository[\s\S]*\n\nTriage feedback 4\.$/,
+    );
 
     const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
     const spec = await w.hostRows.spec(row, "https://lore.test");
@@ -273,6 +278,124 @@ describe("the agent job", () => {
         { host: "agent-2", agent: "gemini" },
       ]),
     );
+  });
+
+  describe("its source (#E173)", () => {
+    const withRepository = async (url = "https://github.com/acme/web.git") => {
+      await w.repos.projects.updateById(w.host.projectId, {
+        repositoryUrl: url,
+      });
+    };
+    const withSources = async () => {
+      await w.repos.hosts.updateById(w.host.id, { jobsSources: true });
+    };
+
+    it("reads the default branch by default, at ./src, and the spec carries the GitHub repository", async ({
+      expect,
+    }) => {
+      await makeAgentHost(w);
+      await withRepository();
+      await withSources();
+      const job = await triage(w);
+      expect(job.input.source).toEqual({ mode: "read" });
+      expect(job.input.workspace).toBe("triage");
+      expect(job.input.prompt).toContain(
+        "**The code of https://github.com/acme/web at its default branch** is in `./src`",
+      );
+      expect(job.input.prompt).toContain("It is read-only");
+      expect(job.input.prompt).not.toMatch(/git clone|git fetch/);
+      const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+      const spec = await w.hostRows.spec(row, "https://lore.test");
+      expect(spec.source).toEqual({
+        mode: "read",
+        repository: "https://github.com/acme/web",
+      });
+    });
+
+    it("writes on lore/q<n> for one quest, lore/job-<id> otherwise, and a request overrides the default", async ({
+      expect,
+    }) => {
+      await makeAgentHost(w);
+      await withRepository("git@github.com:acme/web.git");
+      await withSources();
+      const build = await triage(w, {
+        questNumber: 12,
+        feedbackNumber: undefined,
+        defaultSource: "write",
+      });
+      expect(build.input.source).toEqual({ mode: "write", branch: "lore/q12" });
+      expect(build.input.workspace).toBe("q12");
+      expect(build.input.prompt).toContain(
+        "**You are already in a git worktree of https://github.com/acme/web**, on branch `lore/q12`",
+      );
+      expect(build.input.prompt).toContain("Push before you finish");
+
+      const text = await triage(w, {
+        feedbackNumber: undefined,
+        source: { mode: "write" },
+        workspace: undefined,
+      });
+      const name = `job-${text.id.slice(0, 8)}`;
+      expect(text.input.source).toEqual({
+        mode: "write",
+        branch: `lore/${name}`,
+      });
+      expect(text.input.workspace).toBe(name);
+
+      const atTag = await triage(w, { source: { mode: "read", ref: "v1.2" } });
+      expect(atTag.input.source).toEqual({ mode: "read", ref: "v1.2" });
+      expect(atTag.input.prompt).toContain("at `v1.2`** is in `./src`");
+
+      const none = await triage(w, { source: { mode: "none" } });
+      expect(none.input.source).toEqual({ mode: "none" });
+    });
+
+    it("refuses a read or write without a GitHub repository, or on a Bay that predates sources, before queueing", async ({
+      expect,
+    }) => {
+      await makeAgentHost(w);
+      const before = (await w.repos.jobs.findMany({})).length;
+      await expect(triage(w, { source: { mode: "read" } })).rejects.toThrow(
+        "needs the project's repository on GitHub",
+      );
+      await withRepository("https://gitlab.com/acme/web");
+      await expect(triage(w, { source: { mode: "write" } })).rejects.toThrow(
+        "needs the project's repository on GitHub",
+      );
+      // A default on a project off GitHub works from Lore, as before.
+      expect((await triage(w)).input.source).toEqual({ mode: "none" });
+      await withRepository();
+      await expect(triage(w)).rejects.toThrow(
+        'Host "agent-1" runs a Bay that does not prepare job sources: upgrade Bay on agent-1',
+      );
+      expect((await w.repos.jobs.findMany({})).length).toBe(before + 1);
+    });
+
+    it("keeps the commit and a kept worktree's warning from the terminal ack", async ({
+      expect,
+    }) => {
+      await makeAgentHost(w);
+      await withRepository();
+      await withSources();
+      const job = await triage(w, { source: { mode: "write" } });
+      const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+      const commit = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b";
+      await w.commands.ack(w.host.id, {
+        id: row.commandId as string,
+        status: "failed",
+        exitCode: 1,
+        commit,
+        warning: "kept acme/job-1, 1 unpushed commit(s)",
+      });
+      const ended = await w.repos.jobs.getOne({
+        where: { id: { eq: job.id } },
+      });
+      expect(ended).toMatchObject({
+        status: "failed",
+        commit,
+        warning: "kept acme/job-1, 1 unpushed commit(s)",
+      });
+    });
   });
 
   it("succeeds or fails by its exit code, and reads nothing of what the agent printed", async ({

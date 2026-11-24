@@ -31,7 +31,7 @@
  * reports nothing off Linux by design, so the gauge on the host row is
  * asserted on Linux only; CI runs there.
  */
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -521,6 +521,9 @@ describe("Bay connector against a real Lore", () => {
    * The deploy cases below borrow it in a second one.
    */
   let homeId: number;
+  /** The local repository read jobs are prepared from, and its commit. */
+  let origin: string;
+  let originHead: string;
 
   const readHost = (): Promise<HostRow> =>
     ok<HostRow>(call(lore, owner, "getHost", { params: { hostId: host.id } }));
@@ -603,6 +606,34 @@ describe("Bay connector against a real Lore", () => {
     }
     console.info(`[bay e2e] go build (warm cache): ${Date.now() - started} ms`);
 
+    // The repository a read job is prepared from (#E173): a local one, which
+    // Lore names in place of the project's GitHub repository and a dev Bay
+    // takes as a path. A released Bay refuses a path.
+    origin = join(work, "origin");
+    await mkdir(origin, { recursive: true });
+    for (const args of [
+      ["init", "--quiet", "-b", "main"],
+      [
+        "-c",
+        "user.name=e2e",
+        "-c",
+        "user.email=e2e@example.com",
+        "commit",
+        "--quiet",
+        "--allow-empty",
+        "-m",
+        "first",
+      ],
+    ]) {
+      const ran = spawnSync("git", args, { cwd: origin, encoding: "utf8" });
+      if (ran.status !== 0) throw new Error(`git ${args[0]}: ${ran.stderr}`);
+    }
+    originHead = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: origin,
+      encoding: "utf8",
+    }).stdout.trim();
+    process.env.JOBS_DEV_REPOSITORY_PATH = origin;
+
     const lorePort = e2ePort("bay");
     bay.port = await freeSlotPort("bay-proxy");
     lore = await bootLore(lorePort);
@@ -620,6 +651,8 @@ describe("Bay connector against a real Lore", () => {
         `if [ "$1" = "--version" ]; then echo "9.9.9 (Claude Code)"; exit 0; fi`,
         // An agent job runs in its workspace with the key in its env only.
         `if [ -n "$LORE_JOB_KEY" ]; then echo "agent ran in $(basename "$PWD") with a key"; touch agent-ran; fi`,
+        // A read job finds its code at ./src, already checked out (#E173).
+        `if [ -d src ]; then echo "src at $(git -C src rev-parse HEAD)"; fi`,
         `echo '{"type":"result","subtype":"success","is_error":false,"result":"OK"}'`,
         "",
       ].join("\n"),
@@ -851,6 +884,69 @@ describe("Bay connector against a real Lore", () => {
     expect(
       existsSync(join(jobsBase, projectDir ?? "", "triage", "agent-ran")),
     ).toBe(true);
+  });
+
+  it("runs a read job in the code at the default branch, already checked out at ./src, and keeps the commit (#Q4248)", async () => {
+    await ok(
+      call(lore, owner, "updateProjectById", {
+        params: { id: homeId },
+        body: { repositoryUrl: "https://github.com/acme/e2e" },
+      }),
+    );
+    // The host's Bay says it prepares sources once its inventory landed.
+    await until(
+      "the host to report job sources",
+      async () =>
+        ((await readHost()) as { jobsSources?: boolean }).jobsSources ||
+        undefined,
+      60_000,
+    );
+    const started = await ok<{ jobId?: string }>(
+      call(lore, owner, "runAgent", {
+        params: { projectId: homeId },
+        body: { prompt: "text", text: "Read the code." },
+      }),
+    );
+    const ended = await until(
+      "the read job to end",
+      async () => {
+        const listed = await ok<{
+          items: Array<{
+            id: string;
+            status: string;
+            reason?: string;
+            commit?: string;
+            input: { workspace?: string; source?: { mode: string } };
+          }>;
+        }>(
+          call(lore, owner, "listProjectJobs", {
+            params: { projectId: homeId },
+          }),
+        );
+        const job = listed.items.find((it) => it.id === started.jobId);
+        return job && !["queued", "running"].includes(job.status)
+          ? job
+          : undefined;
+      },
+      90_000,
+    );
+    expect(ended.status, `${ended.reason}\n${bay.log.slice(-2000)}`).toBe(
+      "succeeded",
+    );
+    expect(ended.input.source).toEqual({ mode: "read" });
+    expect(ended.input.workspace).toBe("text");
+    expect(ended.commit).toBe(originHead);
+    const log = await ok<{ stdout: string; stderr: string }>(
+      call(lore, owner, "getJobLog", { params: { jobId: ended.id } }),
+    );
+    expect(log.stdout).toContain(`src at ${originHead}`);
+    expect(log.stderr).toContain("mirror fetched");
+    await ok(
+      call(lore, owner, "updateProjectById", {
+        params: { id: homeId },
+        body: { repositoryUrl: null },
+      }),
+    );
   });
 
   it("reports an inventory after the welcome, and answers a query with a fresher one", async () => {

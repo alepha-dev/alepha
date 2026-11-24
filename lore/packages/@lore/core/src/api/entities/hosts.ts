@@ -221,6 +221,12 @@ export const hosts = $entity({
      */
     jobsTools: z.array(hostJobToolSchema).optional(),
     /**
+     * Whether the machine's Bay prepares a job's source (#E173), from its
+     * inventory: a read or write job is refused on a host that does not,
+     * with "upgrade Bay", never sent to be refused there.
+     */
+    jobsSources: z.boolean().optional(),
+    /**
      * The last capability check: `checking` while one runs, then `available`
      * or `unavailable` with the CLI's message in `agentError` (an expired
      * token, a reached usage limit). A usage limit clears itself at the next
