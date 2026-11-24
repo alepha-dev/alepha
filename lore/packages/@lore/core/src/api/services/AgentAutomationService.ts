@@ -22,6 +22,7 @@ import { AgentJobs } from "./AgentJobs.ts";
 import { AgentRunPreamble } from "./AgentRunPreamble.ts";
 import { HostJobs } from "./HostJobs.ts";
 import { ProjectDeletionService } from "./ProjectDeletionService.ts";
+import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
@@ -60,6 +61,7 @@ export class AgentAutomationService {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly deletion = $inject(ProjectDeletionService);
+  protected readonly catalog = $inject(ProjectEventCatalog);
 
   constructor() {
     // A deleted project is a soft delete: no cascade removes its
@@ -218,6 +220,29 @@ export class AgentAutomationService {
   }
 
   /**
+   * A run its trigger started (#Q4227): as its owner, never thrown. A
+   * refusal (the chain guard, a host gone, a permission the owner lost) is
+   * logged and answered as a skip, so the event or tick that caused it is
+   * not retried into the same refusal.
+   */
+  public async runTriggered(
+    automation: AgentAutomation,
+    startedByJobId?: string,
+  ): Promise<AgentAutomationRunOutcome> {
+    try {
+      return await this.run(automation, { startedByJobId });
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "The run was refused";
+      this.log.warn("An agent automation's run was refused", {
+        automation: automation.id,
+        reason,
+      });
+      return { jobIds: [], skipped: reason };
+    }
+  }
+
+  /**
    * How many of its jobs an automation runs at once: one.
    */
   public concurrencyOf(_automation: AgentAutomation): number {
@@ -291,6 +316,8 @@ export class AgentAutomationService {
       agent: pick("agent"),
       model: pick("model"),
       trigger: body.trigger ?? row?.trigger ?? "manual",
+      eventKeys: body.eventKeys ?? row?.eventKeys ?? undefined,
+      settleSeconds: body.settleSeconds ?? row?.settleSeconds ?? 60,
       onlyIfWork: body.onlyIfWork ?? row?.onlyIfWork ?? false,
       enabled: body.enabled ?? row?.enabled ?? true,
     };
@@ -311,6 +338,19 @@ export class AgentAutomationService {
       throw new BadRequestError(
         `A ${draft.promptKind} automation runs the project's own prompt: only a text automation carries words`,
       );
+    }
+    if (draft.trigger === "event") {
+      if (!draft.eventKeys?.length) {
+        throw new BadRequestError(
+          "An event automation names the project events it listens to",
+        );
+      }
+      const unknown = draft.eventKeys.filter((key) => !this.catalog.find(key));
+      if (unknown.length) {
+        throw new BadRequestError(
+          `No project event ${unknown.join(", ")}: see \`lore event catalog\``,
+        );
+      }
     }
     if (draft.host || draft.agent) {
       await this.agents.resolve(projectId, {

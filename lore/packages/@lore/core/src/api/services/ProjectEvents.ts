@@ -1,4 +1,4 @@
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -7,9 +7,11 @@ import {
   sql,
   type SQLLike,
 } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
 
 import { projectEvents } from "../entities/projectEvents.ts";
 import type { ProjectEventFields } from "../schemas/projectEventFieldsSchema.ts";
+import { JobKeyService } from "./JobKeyService.ts";
 import { LoreDatabase } from "./LoreDatabase.ts";
 import {
   ProjectEventCatalog,
@@ -48,6 +50,7 @@ export class ProjectEvents {
    */
   public static readonly RETENTION_DAYS = 30;
 
+  protected readonly alepha = $inject(Alepha);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly database = $inject(LoreDatabase);
@@ -84,18 +87,36 @@ export class ProjectEvents {
     }
     const now = this.database.timestamp(this.dateTime.nowISOString());
     const id = this.crypto.randomUUID();
+    const jobId = input.jobId ?? (await this.callerJob());
     const job = await this.delivery.prepare(input.projectId, input.name, id);
     return {
       id,
       statements: [
-        sql`INSERT INTO project_events (id, project_id, name, subject_kind, subject_id, fields, actor_id, occurred_at)
-          VALUES (${id}, ${input.projectId}, ${input.name}, ${definition.subject}, ${input.subjectId === undefined ? null : String(input.subjectId)}, ${encoded}, ${input.actorId ?? null}, ${now})`,
+        sql`INSERT INTO project_events (id, project_id, name, subject_kind, subject_id, fields, actor_id, job_id, occurred_at)
+          VALUES (${id}, ${input.projectId}, ${input.name}, ${definition.subject}, ${input.subjectId === undefined ? null : String(input.subjectId)}, ${encoded}, ${input.actorId ?? null}, ${jobId ?? null}, ${now})`,
         ...(job?.statements ?? []),
       ],
       committed: async () => {
         if (job) await this.delivery.dispatch(job.id);
       },
     };
+  }
+
+  /**
+   * The host job whose key made the current request (#Q4227), if a job key
+   * made it. Resolved here rather than injected: the key service reaches
+   * the MCP scope, which most event sources never load.
+   */
+  protected async callerJob(): Promise<string | undefined> {
+    const request = this.alepha.store.get("alepha.http.request") as
+      | { user?: UserAccountToken }
+      | undefined;
+    if (!request?.user) return undefined;
+    const key = await this.alepha
+      .inject(JobKeyService)
+      .scopeOf(request.user)
+      .catch(() => undefined);
+    return key?.jobId;
   }
 
   /**
@@ -175,6 +196,11 @@ export interface ProjectEventInput {
    * The account whose action caused it, when one did (#Q3916).
    */
   actorId?: string;
+  /**
+   * The host job that caused it (#Q4227). Absent, the job whose key made
+   * the current request, if one did.
+   */
+  jobId?: string;
 }
 
 /**

@@ -124,6 +124,7 @@ describe.skipIf(onPostgres)("Project events", () => {
       "epic.completed",
       "errors.threshold_crossed",
       "feedback.created",
+      "feedback.trusted",
       "host.credential_invalid",
       "host.expired",
       "host.offline",

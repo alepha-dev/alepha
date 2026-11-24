@@ -101,6 +101,7 @@ export default {
   "notifications.bell.authors": "De qui",
   "notifications.bell.confirm": "Me notifier",
   "notifications.event.feedback.created": "Nouveau retour",
+  "notifications.event.feedback.trusted": "Retour approuvé",
   "notifications.event.release.published": "Version publiée",
   "notifications.event.epic.completed": "Épopée terminée",
   "notifications.event.quest.created": "Quête créée",

@@ -23,6 +23,7 @@ import { $secure } from "alepha/security";
 import {
   $action,
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   HttpError,
   NotFoundError,
@@ -788,10 +789,21 @@ export class FeedbackController {
         };
       }
       const trustedAt = this.dateTime.nowISOString();
-      await this.feedback.updateById(item.id, {
-        trustedAt,
-        trustedBy: user.id,
-      });
+      // With `feedback.trusted` (#Q4227): a triage automation hears it. A
+      // trust that landed in between is the answer.
+      try {
+        await this.eventSources.trustFeedback(item, user.id, trustedAt);
+      } catch (error) {
+        if (!(error instanceof ConflictError)) throw error;
+        const won = await this.loadFeedback(
+          params.projectId,
+          params.feedbackId,
+        );
+        return {
+          trustedAt: won.trustedAt ?? trustedAt,
+          trustedBy: won.trustedBy ?? undefined,
+        };
+      }
       await this.audits.feedback.logSuccess("trust", {
         ...this.audits.actor(user),
         ...this.audits.scope(params.projectId),

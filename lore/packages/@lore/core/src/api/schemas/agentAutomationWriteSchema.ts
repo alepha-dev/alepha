@@ -16,6 +16,8 @@ export const agentAutomationWriteSchema = agentAutomations.schema
     trigger: true,
     onlyIfWork: true,
     enabled: true,
+    eventKeys: true,
+    settleSeconds: true,
   })
   .partial()
   .extend({

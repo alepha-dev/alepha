@@ -38,6 +38,13 @@ export const projectEvents = $entity({
      * key: an event outlives the account, and nothing joins on it.
      */
     actorId: z.uuid().optional(),
+    /**
+     * The host job whose key made the change (#Q4227), when an agent job
+     * did: an automation never hears its own jobs' events, and a run an
+     * event starts records this job as its parent, which the chain guard
+     * reads. A soft reference.
+     */
+    jobId: z.uuid().optional(),
     occurredAt: z.datetime(),
   }),
   indexes: [

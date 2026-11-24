@@ -27,6 +27,26 @@ export class WorkProjectEvents {
         text: this.text(it.description) || "The report has no description.",
       }),
     });
+    // A member trusted an item written outside the team (#Q4216, #Q4227):
+    // an agent may read it from now on, so a triage automation hears it.
+    this.catalog.register({
+      name: "feedback.trusted",
+      label: "Feedback trusted",
+      resource: "feedback",
+      subject: "feedback",
+      fields: {
+        feedback_id: "number",
+        shortId: "number",
+        reference: "text",
+        trusted_by: "member",
+      },
+      needs: { capability: "plan", option: "feedback" },
+      permission: "feedback:read",
+      message: (it) => ({
+        title: `Feedback ${this.text(it.reference)} trusted: ${this.text(it.title)}`,
+        text: "A member trusted this report written outside the team: an agent may read it now.",
+      }),
+    });
     this.catalog.register({
       name: "release.published",
       label: "Release published",

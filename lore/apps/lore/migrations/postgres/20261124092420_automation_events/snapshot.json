@@ -1,0 +1,156 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a2dadf5e-5911-48ac-90fe-9e7b802cb19a",
+  "prevIds": ["a7155b56-22dc-46ab-ab8c-8be6e1428558"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "event_keys"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.event_keys",
+        "n|col|public.agent_automations.event_keys",
+        "e|col|public.agent_automations.event_keys"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "settle_seconds"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.settle_seconds",
+        "n|col|public.agent_automations.settle_seconds",
+        "e|col|public.agent_automations.settle_seconds"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "agent_automations", "pending"],
+      "writes": [
+        "s|col|public.agent_automations.pending",
+        "n|col|public.agent_automations.pending",
+        "e|col|public.agent_automations.pending"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "agent_automations",
+        "pending_job_id"
+      ],
+      "writes": [
+        "s|col|public.agent_automations.pending_job_id",
+        "n|col|public.agent_automations.pending_job_id",
+        "e|col|public.agent_automations.pending_job_id"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_events", "job_id"],
+      "writes": [
+        "s|col|public.project_events.job_id",
+        "n|col|public.project_events.job_id",
+        "e|col|public.project_events.job_id"
+      ],
+      "reads": ["n|tbl|public.project_events", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "event_keys",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "settle_seconds",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "60",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "pending",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "agent_automations",
+        "name": "pending_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_events",
+        "name": "job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

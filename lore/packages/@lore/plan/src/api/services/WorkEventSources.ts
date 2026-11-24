@@ -5,7 +5,11 @@ import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
 
 import { epics, type Epic } from "../entities/epics.ts";
-import { feedback, type FeedbackInsert } from "../entities/feedback.ts";
+import {
+  type Feedback,
+  feedback,
+  type FeedbackInsert,
+} from "../entities/feedback.ts";
 import { quests, type Quest } from "../entities/quests.ts";
 import { releases, type Release } from "../entities/releases.ts";
 import { FeedbackEventFields } from "./FeedbackEventFields.ts";
@@ -51,6 +55,44 @@ export class WorkEventSources {
               description: data.description ?? "",
             },
           ),
+        },
+      },
+    );
+  }
+  /**
+   * A member trusts an item written outside the team (#Q4216), and
+   * `feedback.trusted` is recorded with it (#Q4227), so a triage automation
+   * reads it without waiting for the next feedback or the next tick. The
+   * guard is the item still untrusted.
+   */
+  public async trustFeedback(
+    item: Feedback,
+    trustedBy: string,
+    trustedAt: string,
+  ) {
+    const project = await this.projects.getById(item.projectId);
+    const path = `/${project.slug || `project-${project.id}`}`;
+    const fields = this.feedbackFields.build(path, {
+      shortId: item.shortId,
+      description: "",
+    });
+    return this.feedback.sourceUpdate(
+      { id: item.id, trustedAt: { isNull: true } },
+      { trustedAt, trustedBy },
+      {
+        projectId: item.projectId,
+        name: "feedback.trusted",
+        subjectId: item.shortId,
+        resourceId: item.id,
+        actorId: trustedBy,
+        fields: {
+          project: project.title,
+          title: item.title,
+          feedback_id: item.id,
+          shortId: item.shortId,
+          reference: fields.reference,
+          trusted_by: trustedBy,
+          url: fields.url,
         },
       },
     );

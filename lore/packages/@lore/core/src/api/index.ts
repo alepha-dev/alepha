@@ -86,6 +86,7 @@ import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentAutomationKinds } from "./services/AgentAutomationKinds.ts";
 import { AgentAutomationService } from "./services/AgentAutomationService.ts";
+import { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
 import { AgentHostService } from "./services/AgentHostService.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { AgentJobService } from "./services/AgentJobService.ts";
@@ -406,6 +407,7 @@ export const LoreCoreApi = $module({
     // an event or on a schedule. Plan registers its Triage and Build kinds.
     AgentAutomationKinds,
     AgentAutomationService,
+    AgentAutomationTriggers,
     AgentAutomationController,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
@@ -658,6 +660,11 @@ export {
   type AgentAutomationRunOutcome,
 } from "./services/AgentAutomationKinds.ts";
 export { AgentAutomationService } from "./services/AgentAutomationService.ts";
+export { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
+export {
+  type ProjectEventListener,
+  ProjectEventListeners,
+} from "./services/ProjectEventListeners.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
 export type { AgentJobRequest } from "./services/AgentJobs.ts";
 export { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
