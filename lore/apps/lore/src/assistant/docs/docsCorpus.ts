@@ -1193,7 +1193,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Release readiness",
     url: "https://alepha.dev/lore/docs/plan-traceability#release-readiness",
     capability: "plan",
-    text: "Picking a release in the **Release** filter shows its readiness: the Must\nand Should requirements verified out of all, and the failing Musts by name.\n\nBy default this is a warning. **Block a release on a failing Must**, under\n**Settings ▸ Plan**, makes it a rule: publishing a release whose Must\nrequirements fail is refused, naming them. The switch needs the Requirements\noption on.",
+    text: "Picking a release in the **Release** filter shows its readiness: the Must\nand Should requirements verified out of all, and the failing Musts by name.\n\nBy default this is a warning. **Block a release on a failing Must**, under\n**Settings ▸ Plan ▸ Requirements**, makes it a rule: publishing a release\nwhose Must requirements fail is refused, naming them. The tab is listed while\nthe Requirements option is on.",
   },
   {
     guide: "Traceability",

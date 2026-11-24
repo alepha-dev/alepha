@@ -1261,6 +1261,7 @@ export default {
   "project.settings.tab.roadmap": "Feuille de route",
   "project.settings.tab.quality": "Qualité",
   "project.settings.tab.prompts": "Invites",
+  "project.settings.tab.requirements": "Exigences",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":

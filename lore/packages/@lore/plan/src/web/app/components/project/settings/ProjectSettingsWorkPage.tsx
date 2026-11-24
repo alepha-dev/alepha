@@ -20,7 +20,11 @@ const ProjectSettingsWorkPage = () => {
       <ProjectSettingsCapabilitySection
         capability="plan"
         master={false}
-        options={shell.settingsOptions("plan")}
+        // "Block a release on a failing Must" is the Requirements tab's
+        // (#Q4259), listed only while Requirements is on.
+        options={shell
+          .settingsOptions("plan")
+          .filter((option) => option !== "blockFailingMust")}
       />
     </div>
   );
