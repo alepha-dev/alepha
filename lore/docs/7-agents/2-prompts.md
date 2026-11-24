@@ -9,7 +9,7 @@ Nothing is sent anywhere. The prompt is put together in your browser and copied.
 Lore does not transmit it and keeps no copy of what you pasted.
 
 **It starts off.** Turn on the **Prompts** option in **Settings ▸ Plan
-▸ Features**, once per project. Until then the menus are not shown. See
+▸ Quests**, once per project. Until then the menus are not shown. See
 [Capabilities](/lore/docs/project-capabilities).
 
 ## Copying a prompt

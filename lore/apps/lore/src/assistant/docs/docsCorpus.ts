@@ -417,7 +417,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Notifications",
     section: "Quest reminders",
     url: "https://alepha.dev/lore/docs/project-notifications#quest-reminders",
-    text: "With **Reminders** on (**Settings ▸ Plan ▸ Features**), whoever holds a quest\ncan ask for a daily, weekly or monthly nudge on it, from the quest's\n**Reminder** panel. Lore checks every hour, at the top of the hour, and sends\neach reminder due once, to the quest's assignee, in the app and by email\n(as their own preferences allow). A quest of an epic still in draft is not\nreminded.\nTurning **Reminders** off stops them without clearing them: they resume when\nit comes back on.\n\nA reminder is also a project event, **Quest reminder due**, so a channel can\nbe told about it too.",
+    text: "With **Reminders** on (**Settings ▸ Plan ▸ Quests**), whoever holds a quest\ncan ask for a daily, weekly or monthly nudge on it, from the quest's\n**Reminder** panel. Lore checks every hour, at the top of the hour, and sends\neach reminder due once, to the quest's assignee, in the app and by email\n(as their own preferences allow). A quest of an epic still in draft is not\nreminded.\nTurning **Reminders** off stops them without clearing them: they resume when\nit comes back on.\n\nA reminder is also a project event, **Quest reminder due**, so a channel can\nbe told about it too.",
   },
   {
     guide: "Notifications",
@@ -2040,7 +2040,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Agent prompts",
     section: "Agent prompts",
     url: "https://alepha.dev/lore/docs/agents-prompts",
-    text: 'An agent prompt is a ready-made instruction for a coding agent: "review this\nepic", "work on this quest", "triage the inbox". Lore offers one wherever a\npiece of work is named, and a click copies it to your clipboard, for you to\npaste into your agent or anything else that reads a paste.\n\nNothing is sent anywhere. The prompt is put together in your browser and copied.\nLore does not transmit it and keeps no copy of what you pasted.\n\n**It starts off.** Turn on the **Prompts** option in **Settings ▸ Plan\n▸ Features**, once per project. Until then the menus are not shown. See\n[Capabilities](/lore/docs/project-capabilities).',
+    text: 'An agent prompt is a ready-made instruction for a coding agent: "review this\nepic", "work on this quest", "triage the inbox". Lore offers one wherever a\npiece of work is named, and a click copies it to your clipboard, for you to\npaste into your agent or anything else that reads a paste.\n\nNothing is sent anywhere. The prompt is put together in your browser and copied.\nLore does not transmit it and keeps no copy of what you pasted.\n\n**It starts off.** Turn on the **Prompts** option in **Settings ▸ Plan\n▸ Quests**, once per project. Until then the menus are not shown. See\n[Capabilities](/lore/docs/project-capabilities).',
   },
   {
     guide: "Agent prompts",

@@ -1254,7 +1254,7 @@ export default {
   "project.settings.nav.areas": "Domaines",
   "project.settings.tab.details": "Détails",
   "project.settings.tab.capabilities": "Capacités",
-  "project.settings.tab.features": "Fonctionnalités",
+  "project.settings.tab.quests": "Quêtes",
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.tagColors": "Étiquettes",
