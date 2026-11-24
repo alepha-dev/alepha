@@ -35,6 +35,11 @@ your coding agent. The agent needs access to the project to act on it: see
 | **Work the loose quests**      | the Quests page toolbar                                            | always                                                                           |
 | **Write the weekly status**    | the Reports **Summary** tab                                        | always                                                                           |
 
+Three more run on an [Agent host](/lore/docs/agents-jobs) rather than being
+copied: **Review a pull request** (under a quest's pull requests),
+**Security check** and **Dependency update** (from the command line, or as an
+automation). You edit their text here like the others.
+
 ### On an epic
 
 **Review Epic** asks an agent to sharpen a plan before anyone works it: take
@@ -91,6 +96,23 @@ not missed.
 opens the section behind each figure that moved, and answers with what shipped,
 what moved and what needs a decision. See
 [Reports](/lore/docs/project-reports).
+
+### On an Agent host
+
+**Review a pull request** reads the diff against its base, the quest the pull
+request is recorded on and the repository's agent instructions, posts its
+review with `gh pr review`, and sums it up on the quest. The host first checks
+that the pull request's author can write to the repository, unless a member
+trusts the author.
+
+**Security check** runs each package manager's own audit on the lockfiles,
+keeps what the code really reaches, and files one quest per real
+vulnerability, or comments on the open quest that covers it. With nothing real,
+it files nothing.
+
+**Dependency update** updates the packages its run names, or the ones a minor
+or patch version behind, runs the project's checks, and opens a pull request
+only when they pass, naming what changed and what it left behind.
 
 ### How the work lands
 

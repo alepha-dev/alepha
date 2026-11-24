@@ -11,8 +11,13 @@ An automation is one row, and nothing more:
 - a **name**, unique in the project, and its **owner**, the member who created
   it: every job it starts runs with the owner's permissions;
 - a **prompt**: Triage (the project's Triage prompt over the inbox and the open
-  errors), Build (the project's Build prompt on a quest), your own text, or a
-  chat agent's rounds (see [A chat agent's rounds](#a-chat-agents-rounds));
+  errors), Build (the project's Build prompt on a quest), your own text, a
+  chat agent's rounds (see [A chat agent's rounds](#a-chat-agents-rounds)), a
+  Security check or a Dependency update (see
+  [Agent jobs](/lore/docs/agents-jobs));
+- the **code** its jobs find: read at the default branch unless it says
+  otherwise. A Build and a Dependency update write; a text automation reads,
+  and asks for **write** when its words change code;
 - **where it runs**: the Agent host, the agent CLI and its model, each left out
   when the project has only one;
 - **when it runs**: by hand, on project events, or on a schedule;
@@ -62,8 +67,9 @@ for anything, so an idle project spends no tokens:
   a member trusted, or a server error), when the project tracks errors;
 - a Build runs when a quest its rule would pick exists.
 
-A text prompt has no such check, nor has a chat agent's rounds. When a run is
-skipped, the row says why.
+A text prompt has no such check, nor has a chat agent's rounds, a Security
+check or a Dependency update: those two file or open nothing when there is
+nothing. When a run is skipped, the row says why.
 
 ## A chat agent's rounds
 
