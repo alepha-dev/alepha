@@ -42,7 +42,6 @@ import { USE_CASE_STATUS_LABEL_KEYS } from "../usecases/useCaseLabels.ts";
 import UseCaseSheet from "../usecases/UseCaseSheet.tsx";
 import UseCaseStatusBadge from "../usecases/UseCaseStatusBadge.tsx";
 import VerifyDialog from "../verify/VerifyDialog.tsx";
-import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
  * The Use cases page (#E153): every use case of the project in one table,
@@ -50,8 +49,7 @@ import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
  * groups that fold: by persona (the default since #Q3979), covering epic,
  * status, or none, the reader's last pick kept per project.
  *
- * The whole list is loaded (the counters, the sidebar and the persona cards
- * count it), and the table pages it, 50 rows at a time (#Q3978): drawing all
+ * The whole list is loaded (the counters and the persona cards count it), and the table pages it, 50 rows at a time (#Q3978): drawing all
  * 276 rows of a large project is what made the page lag. The table groups the
  * whole filtered set before it pages, so a page holds the next rows group by
  * group and each group header counts the group over every page.
@@ -114,7 +112,6 @@ const UseCasesPage = () => {
     [groups],
   );
 
-  useSyncRequirementsCount("useCases", useCases.data);
   if (!project) return null;
 
   const byKey = new Map(groups.map((it, index) => [it.key, { it, index }]));

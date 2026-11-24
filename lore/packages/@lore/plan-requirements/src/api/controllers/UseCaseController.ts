@@ -104,23 +104,6 @@ export class UseCaseController {
     });
   }
 
-  /**
-   * How many use cases the project holds: the sidebar's count beside its
-   * Use cases entry, read once when the project opens.
-   */
-  countUseCases = $action({
-    method: "GET",
-    path: "/countUseCases/:projectId",
-    use: [this.ownsProject("usecase:read")],
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.object({ count: z.integer() }),
-    },
-    handler: async ({ params }) => ({
-      count: await this.useCases.count({ projectId: { eq: params.projectId } }),
-    }),
-  });
-
   getUseCases = $action({
     method: "GET",
     path: "/getUseCases/:projectId",

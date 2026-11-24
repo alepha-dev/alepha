@@ -24,7 +24,6 @@ import {
 import { RequirementsPromptDefaults } from "../../../api/schemas/RequirementsPromptDefaults.ts";
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
-import { requirementsCountsAtom } from "../atoms/requirementsCountsAtom.ts";
 import { REQUIREMENTS_NAV_ROUTES } from "../components/pages/requirementsNavRoutes.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
 import { useRequirementReferences } from "../components/requirements/useRequirementReferences.ts";
@@ -81,8 +80,8 @@ export class RequirementsShell {
     });
     // A band of its own, between Errors and Folios (#Q3830), holding one
     // entry per list page: Personas, Use cases, then Requirements. Each is lit on its list and on the pages a row
-    // of it opens. Each counts its list; hovered, the count gives way to a
-    // "+" that opens the same sheet as the header's create menu.
+    // of it opens. No count (#Q4241): a total says nothing there. Hovered,
+    // a "+" opens the same sheet as the header's create menu.
     const isOn =
       (routes: readonly string[]) =>
       (name: string): boolean =>
@@ -97,8 +96,6 @@ export class RequirementsShell {
         order: 30,
         option: "requirements",
         activeOn: isOn(REQUIREMENTS_NAV_ROUTES.requirements),
-        reads: [requirementsCountsAtom],
-        badge: (ctx) => ctx.get(requirementsCountsAtom)?.requirements,
       },
       {
         route: "projectUseCases",
@@ -109,8 +106,6 @@ export class RequirementsShell {
         order: 20,
         option: "requirements",
         activeOn: isOn(REQUIREMENTS_NAV_ROUTES.useCases),
-        reads: [requirementsCountsAtom],
-        badge: (ctx) => ctx.get(requirementsCountsAtom)?.useCases,
       },
       {
         route: "projectPersonas",
@@ -121,8 +116,6 @@ export class RequirementsShell {
         order: 10,
         option: "requirements",
         activeOn: isOn(REQUIREMENTS_NAV_ROUTES.personas),
-        reads: [requirementsCountsAtom],
-        badge: (ctx) => ctx.get(requirementsCountsAtom)?.personas,
       },
     ]);
 

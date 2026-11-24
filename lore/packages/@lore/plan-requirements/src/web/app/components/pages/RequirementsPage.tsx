@@ -63,7 +63,6 @@ import ImpactChain from "../traceability/ImpactChain.tsx";
 import ReadinessBanner from "../traceability/ReadinessBanner.tsx";
 import TraceabilityMatrix from "../traceability/TraceabilityMatrix.tsx";
 import VerifyDialog from "../verify/VerifyDialog.tsx";
-import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
  * The Requirements page (#E153). The List view is a table of every
@@ -166,9 +165,6 @@ const RequirementsPage = () => {
     [coverageApi, projectId, matrix, releaseId],
   );
 
-  useSyncRequirementsCount("requirements", list.data);
-  useSyncRequirementsCount("useCases", useCases.data);
-  useSyncRequirementsCount("personas", personas.data);
   if (!project) return null;
   const all = list.data ?? [];
   const changed = all.filter((it) => it.sourceChanged);

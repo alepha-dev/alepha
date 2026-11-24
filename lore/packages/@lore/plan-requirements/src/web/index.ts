@@ -4,9 +4,7 @@ import { $module } from "alepha";
 import { RequirementsDashboardMetrics } from "../api/services/RequirementsDashboardMetrics.ts";
 import { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
-import { requirementsCountsAtom } from "./app/atoms/requirementsCountsAtom.ts";
 import { useCaseGroupingAtom } from "./app/atoms/useCaseGroupingAtom.ts";
-import { RequirementsProjectLoader } from "./app/loaders/RequirementsProjectLoader.ts";
 import { RequirementsRouter } from "./app/RequirementsRouter.ts";
 import { RequirementsShell } from "./app/shell/RequirementsShell.ts";
 
@@ -27,20 +25,13 @@ export const LorePlanRequirementsWeb = $module({
   // Plan first: Requirements extends Plan's sidebar, so booting this module
   // alone boots the shell it extends.
   imports: [LorePlanWeb],
-  atoms: [
-    currentPersonaAtom,
-    currentUseCaseAtom,
-    requirementsCountsAtom,
-    useCaseGroupingAtom,
-  ],
+  atoms: [currentPersonaAtom, currentUseCaseAtom, useCaseGroupingAtom],
   register(alepha) {
     // Injected rather than listed in `services`, as `LorePlanWeb` does: a
     // listed service is tagged with this module, and injecting it anywhere
     // would register the whole module.
     alepha.with(RequirementsRouter);
     alepha.inject(RequirementsShell);
-    // The sidebar counts, read when a project opens.
-    alepha.inject(RequirementsProjectLoader);
     // The dashboard cards' declarative half, which the browser needs to
     // draw the tiles (#Q3775).
     alepha.inject(RequirementsDashboardMetrics);
