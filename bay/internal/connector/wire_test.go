@@ -338,6 +338,7 @@ func sampleInventoryFrame() Inventory {
 		Jobs: &InventoryJobs{User: "bay-agent",
 			Running: "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
 			Sources: true,
+			MaxJobs: 2,
 			Tools: []InventoryTool{
 				{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},
 				{Name: "gemini", Kind: "agent", Error: "gemini is not on the jobs user's PATH"},

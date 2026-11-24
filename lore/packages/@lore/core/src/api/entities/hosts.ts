@@ -227,6 +227,13 @@ export const hosts = $entity({
      */
     jobsSources: z.boolean().optional(),
     /**
+     * How many jobs the machine runs at once (`--max-jobs`, #Q4249), and how
+     * many it said it runs in its last inventory: the dispatcher hands it up
+     * to `jobsMaxJobs` queued jobs, and the Agent card shows both.
+     */
+    jobsMaxJobs: z.integer().optional(),
+    jobsRunning: z.integer().optional(),
+    /**
      * The last capability check: `checking` while one runs, then `available`
      * or `unavailable` with the CLI's message in `agentError` (an expired
      * token, a reached usage limit). A usage limit clears itself at the next

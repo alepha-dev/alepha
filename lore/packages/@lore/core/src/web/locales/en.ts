@@ -3220,6 +3220,7 @@ export default {
   "hosts.agent.tools.noAgent":
     "No agent CLI answers for the jobs user: this host cannot run agent jobs.",
   "hosts.agent.check": "Check now",
+  "hosts.agent.running": "$1 of $2 jobs running",
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
     "Written by someone outside the project's team. No agent reads it until a member has read it and trusted it.",

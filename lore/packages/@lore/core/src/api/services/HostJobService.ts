@@ -31,8 +31,11 @@ import {
  * kind starts jobs without importing Ship.
  *
  * Rules:
- * - **One job at a time per host**, the others waiting `queued`, oldest
- *   first. Bay refuses a second `job-run` too.
+ * - **Up to the host's `--max-jobs` at a time** (#Q4249, one when it reports
+ *   none), the others waiting `queued`, oldest first. A queued job whose
+ *   workspace a running write job holds waits for it. A job the host acks
+ *   `busy` (its slots full, its workspace held) goes back to the queue and is
+ *   dispatched again only once a job of that host ends.
  * - A host takes jobs only with `jobsAllowed`, and only for its home
  *   project or a project it is lent to.
  * - The job follows its command: `running` when the machine picks it up,
@@ -199,56 +202,77 @@ export class HostJobService {
   }
 
   /**
-   * Dispatches the host's oldest queued job, unless one is running.
+   * Dispatches the host's oldest queued jobs, up to its free slots: its
+   * `--max-jobs` (#Q4249) less what runs. A job the host acked busy waits
+   * for a job of that host to end ({@link end} clears it), and a job whose
+   * workspace a running write job holds waits for that job.
    */
   public async pump(hostId: string): Promise<void> {
-    const running = await this.jobs.findOne({
-      where: { hostId: { eq: hostId }, status: { eq: "running" } },
-    });
-    if (running) {
-      return;
-    }
-    const [next] = await this.jobs.findMany({
-      where: { hostId: { eq: hostId }, status: { eq: "queued" } },
-      orderBy: [{ column: "queuedAt", direction: "asc" }],
-      limit: 1,
-    });
-    if (!next) {
-      return;
-    }
     const host = await this.hosts.findOne({ where: { id: { eq: hostId } } });
     if (!host) {
       return;
     }
-    // Claimed first, by one conditional write: a second pump racing this
-    // one finds the row no longer queued.
-    const claimed = await this.jobs.updateMany(
-      { id: { eq: next.id }, status: { eq: "queued" } },
-      { status: "running" },
-    );
-    if (Array.isArray(claimed) ? claimed.length === 0 : !claimed) {
+    const running = await this.jobs.findMany({
+      where: { hostId: { eq: hostId }, status: { eq: "running" } },
+    });
+    let free = Math.max(1, host.jobsMaxJobs ?? 1) - running.length;
+    if (free <= 0) {
       return;
     }
-    try {
-      const command = await this.commands.enqueue(
-        host,
-        {
-          kind: "job-run",
-          payload: { app: "", environment: "", jobId: next.id },
-        },
-        next.startedBy,
+    const queued = await this.jobs.findMany({
+      where: { hostId: { eq: hostId }, status: { eq: "queued" } },
+      orderBy: [{ column: "queuedAt", direction: "asc" }],
+      limit: 50,
+    });
+    const held = new Set(
+      running
+        .filter((job) => job.input.source?.mode === "write")
+        .map((job) => `${job.projectId}/${job.input.workspace ?? ""}`),
+    );
+    for (const next of queued) {
+      if (free <= 0) break;
+      if (next.busyAt) continue;
+      const workspace = `${next.projectId}/${next.input.workspace ?? ""}`;
+      if (next.kind === "agent" && held.has(workspace)) continue;
+      // Claimed first, by one conditional write: a second pump racing this
+      // one finds the row no longer queued.
+      const claimed = await this.jobs.updateMany(
+        { id: { eq: next.id }, status: { eq: "queued" } },
+        { status: "running" },
       );
-      await this.jobs.updateById(next.id, { commandId: command.id });
-    } catch (error) {
-      await this.end(next.id, {
-        status: "failed",
-        reason:
-          error instanceof Error
-            ? error.message.slice(0, 2000)
-            : "The host refused the job",
-      });
+      if (Array.isArray(claimed) ? claimed.length === 0 : !claimed) {
+        continue;
+      }
+      free -= 1;
+      if (next.input.source?.mode === "write") held.add(workspace);
+      try {
+        const command = await this.commands.enqueue(
+          host,
+          {
+            kind: "job-run",
+            payload: { app: "", environment: "", jobId: next.id },
+          },
+          next.startedBy,
+        );
+        await this.jobs.updateById(next.id, { commandId: command.id });
+      } catch (error) {
+        await this.end(next.id, {
+          status: "failed",
+          reason:
+            error instanceof Error
+              ? error.message.slice(0, 2000)
+              : "The host refused the job",
+        });
+      }
     }
   }
+
+  /**
+   * How long a job acked busy waits for one of its host's jobs to end
+   * before the sweep offers it again: a host whose jobs Lore did not start
+   * (its operator's own) ends none Lore hears of.
+   */
+  public static readonly BUSY_WAIT_MS = 15 * 60_000;
 
   /**
    * The spec the machine pulls for a job-run, Bay's `jobSpec`, built when
@@ -568,10 +592,19 @@ export class HostJobService {
   }
 
   /**
-   * Every host with a queued job and nothing running, dispatched. What the
+   * Every host with a queued job, dispatched up to its free slots. What the
    * quarter-hour job runs, so nothing waits on an ack that was lost.
    */
   public async sweep(): Promise<void> {
+    // A busy job whose host ended nothing Lore heard of in a while is
+    // offered again: once per sweep at most, never in a loop.
+    const stale = new Date(
+      this.dateTime.nowMillis() - HostJobService.BUSY_WAIT_MS,
+    ).toISOString();
+    await this.jobs.updateMany(
+      { status: { eq: "queued" }, busyAt: { lt: stale } },
+      { busyAt: null },
+    );
     const queued = await this.jobs.findMany({
       where: { status: { eq: "queued" } },
       columns: ["hostId"],
@@ -592,6 +625,17 @@ export class HostJobService {
         where: { commandId: { eq: command.id } },
       });
       if (!job || HOST_JOB_TERMINAL.includes(job.status)) return;
+      if (command.status === "failed" && command.step === "busy") {
+        // Not started yet, not failed (#Q4249): back to the queue, until a
+        // job of this host ends. Never a retry loop.
+        await this.jobs.updateById(job.id, {
+          status: "queued",
+          commandId: null,
+          startedAt: null,
+          busyAt: this.now(),
+        });
+        return;
+      }
       if (command.status === "running") {
         if (!job.startedAt) {
           await this.jobs.updateById(job.id, { startedAt: this.now() });
@@ -644,6 +688,15 @@ export class HostJobService {
     await this.alepha.events.emit("host:job:ended", {
       job: this.summary(ended),
     });
+    // A job of this host ended: what it acked busy may start now (#Q4249).
+    await this.jobs.updateMany(
+      {
+        hostId: { eq: job.hostId },
+        status: { eq: "queued" },
+        busyAt: { isNotNull: true },
+      },
+      { busyAt: null },
+    );
     await this.pump(job.hostId);
     return ended;
   }

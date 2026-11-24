@@ -64,6 +64,12 @@ export const hostJobs = $entity({
       onDelete: "set null",
     }),
     queuedAt: z.string(),
+    /**
+     * When the host said it could not start the job yet (#Q4249): its slots
+     * were full or its workspace held. The job is back in the queue, and is
+     * dispatched again only once a job of its host ends.
+     */
+    busyAt: z.string().optional(),
     startedAt: z.string().optional(),
     endedAt: z.string().optional(),
     reason: z.string().max(2000).optional(),
