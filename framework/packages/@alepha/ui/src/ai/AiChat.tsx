@@ -3,6 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Dialog, DialogContent, DialogTitle } from "../core/Dialog.tsx";
 import { Drawer, DrawerContent, DrawerTitle } from "../core/Drawer.tsx";
 import { AiChatDock } from "./AiChatDock.tsx";
+import { AiChatFloat } from "./AiChatFloat.tsx";
 import { AiChatLauncher } from "./AiChatLauncher.tsx";
 import { AiChatPanel, type AiChatViewProps } from "./AiChatPanel.tsx";
 import { type UseAiChatOptions, useAiChat } from "./useAiChat.ts";
@@ -14,8 +15,10 @@ import { type UseAiChatOptions, useAiChat } from "./useAiChat.ts";
  *   (see `AiChatDock`), and folds into a pill.
  * - `auto`: the dock from 1024px up, the drawer below, where a page has no
  *   width to give.
+ * - `floating`: a card over the page's bottom corner, the page under it
+ *   still usable (see `AiChatFloat`), and folds into a pill.
  */
-export type AiChatMode = "auto" | "dock" | "drawer";
+export type AiChatMode = "auto" | "dock" | "drawer" | "floating";
 
 export interface AiChatProps extends UseAiChatOptions, AiChatViewProps {
   open: boolean;
@@ -46,12 +49,13 @@ const useWideScreen = () =>
   );
 
 /**
- * The assistant: the conversation of `AiChatPanel`, in a drawer or a dock.
+ * The assistant: the conversation of `AiChatPanel`, in a drawer, a dock or a
+ * floating card.
  * It knows the page through `useAiContext()`, and runs `navigate` and
  * `fillForm` for the model. The conversation lives here, so it survives a
  * close, a minimize and a switch between drawer and dock.
  *
- * A docked chat minimizes into a pill (`AiChatLauncher`): it reports itself
+ * A docked or floating chat minimizes into a pill (`AiChatLauncher`): it reports itself
  * closed through `onOpenChange(false)`, so the app's own button opens it
  * again, and the pill does too.
  *
@@ -121,10 +125,11 @@ export const AiChat = (props: AiChatProps) => {
     );
   }
 
-  if (docked) {
+  if (docked || mode === "floating") {
+    const Container = docked ? AiChatDock : AiChatFloat;
     if (props.open) {
       return (
-        <AiChatDock>
+        <Container>
           <AiChatPanel
             {...props}
             chat={chat}
@@ -135,7 +140,7 @@ export const AiChat = (props: AiChatProps) => {
             }}
             onMaximize={toggleMaximized}
           />
-        </AiChatDock>
+        </Container>
       );
     }
     return minimized ? (

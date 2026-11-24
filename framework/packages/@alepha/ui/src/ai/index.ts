@@ -1,6 +1,6 @@
 /**
- * The in-app assistant on the client: a chat in a drawer or docked beside
- * the page, with streamed replies, history and a confirmation card per
+ * The in-app assistant on the client: a chat in a drawer, docked beside
+ * the page or floating over its corner, with streamed replies, history and a confirmation card per
  * mutation, the headless `useAiChat`, and `useAiContext` for a page to
  * declare what it shows. Talks to `alepha/api/ai`.
  *
@@ -14,6 +14,7 @@ export * from "./AiChatConfirmFields.tsx";
 export * from "./AiChatDock.tsx";
 export * from "./AiChatDockSlot.tsx";
 export * from "./AiChatEmpty.tsx";
+export * from "./AiChatFloat.tsx";
 export * from "./AiChatHistory.tsx";
 export * from "./AiChatLauncher.tsx";
 export * from "./AiChatMessage.tsx";
