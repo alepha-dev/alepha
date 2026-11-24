@@ -86,8 +86,6 @@ const ProjectErrors = () => {
   const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
-  // Open groups no member trusted yet (#Q4233): no agent reads them.
-  const [awaitingTrust, setAwaitingTrust] = useState(0);
 
   // One `useAction` per triage verb (#E59, #Q2329). A refusal is the server's
   // sentence, toasted by the root `ActionErrorToaster`; follow-ups (the
@@ -314,7 +312,6 @@ const ProjectErrors = () => {
     // infinite refetch loop. `store.set` updates the atom without subscribing.
     alepha.store.set(currentErrorCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
-    setAwaitingTrust(res.awaitingTrust);
 
     const stored = filters?.sigilId;
     // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
@@ -369,28 +366,18 @@ const ProjectErrors = () => {
         // when the project has `agentPrompts` off, and this passes no items
         // when Apps is off, so both have to be on for anything to appear.
         toolbar={
-          <>
-            {awaitingTrust > 0 && (
-              <span
-                className="text-muted-foreground text-xs"
-                data-testid="errors-awaiting-trust"
-              >
-                {tr("errors.awaitingTrust", { args: [String(awaitingTrust)] })}
-              </span>
-            )}
-            <AgentPromptsMenu
-              items={
-                appsEnabled
-                  ? [
-                      {
-                        kind: "errorTriage" as const,
-                        subject: () => promptSubject.forPage("projectErrors"),
-                      },
-                    ]
-                  : []
-              }
-            />
-          </>
+          <AgentPromptsMenu
+            items={
+              appsEnabled
+                ? [
+                    {
+                      kind: "errorTriage" as const,
+                      subject: () => promptSubject.forPage("projectErrors"),
+                    },
+                  ]
+                : []
+            }
+          />
         }
         fetch={fetchProjectErrors}
         // The bulk bar is triage too: a rank that may not resolve one error
