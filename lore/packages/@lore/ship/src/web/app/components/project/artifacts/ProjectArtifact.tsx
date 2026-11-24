@@ -12,14 +12,15 @@ import {
 import { ArrowLeft } from "lucide-react";
 
 import type { ArtifactController } from "../../../../../api/controllers/ArtifactController.ts";
+import ArtifactBuilds from "./ArtifactBuilds.tsx";
 import ArtifactDeployments from "./ArtifactDeployments.tsx";
 import ArtifactManifest from "./ArtifactManifest.tsx";
 import ArtifactOverview from "./ArtifactOverview.tsx";
 import ArtifactPlate from "./ArtifactPlate.tsx";
 import { artifactVariantQuerySchema } from "./artifactVariantQuerySchema.ts";
-import { artifactVariantKey } from "./artifactView.ts";
+import { artifactBuildRows, artifactVariantKey } from "./artifactView.ts";
 
-type TabKey = "overview" | "manifest" | "deployments";
+type TabKey = "overview" | "manifest" | "builds" | "deployments";
 
 /**
  * One tag of one app: what was built, what it asks for, and where it runs.
@@ -138,6 +139,12 @@ const ProjectArtifact = () => {
   const tabs: PlateTab[] = [
     { key: "overview", label: tr("artifact.tab.overview") },
     { key: "manifest", label: tr("artifact.tab.manifest") },
+    // The app's builds, out of the overview (#Q4265).
+    {
+      key: "builds",
+      label: tr("artifact.tab.builds"),
+      count: artifactBuildRows(builds?.groups ?? [], variant).length,
+    },
     {
       key: "deployments",
       label: tr("artifact.tab.deployments"),
@@ -161,11 +168,17 @@ const ProjectArtifact = () => {
       }
     >
       {tab === "overview" && (
-        <ArtifactOverview
-          detail={data}
-          variant={variant}
-          builds={builds?.groups ?? []}
-        />
+        <ArtifactOverview detail={data} variant={variant} />
+      )}
+      {tab === "builds" && (
+        <div className="p-4">
+          <ArtifactBuilds
+            app={data.app}
+            tag={data.tag}
+            variant={variant}
+            builds={builds?.groups ?? []}
+          />
+        </div>
       )}
       {tab === "manifest" && <ArtifactManifest variant={variant} />}
       {tab === "deployments" && <ArtifactDeployments detail={data} />}

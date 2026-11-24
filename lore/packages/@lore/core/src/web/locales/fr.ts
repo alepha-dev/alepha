@@ -729,6 +729,7 @@ export default {
   "artifact.back": "Retour aux artefacts",
   "artifact.tab.overview": "Vue d'ensemble",
   "artifact.tab.manifest": "Manifeste",
+  "artifact.tab.builds": "Builds",
   "artifact.tab.deployments": "Déploiements",
   "artifact.meta.release": "Release $1",
   "artifact.stat.size": "Taille",

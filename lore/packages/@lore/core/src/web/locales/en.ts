@@ -821,6 +821,7 @@ export default {
   "artifact.back": "Back to artifacts",
   "artifact.tab.overview": "Overview",
   "artifact.tab.manifest": "Manifest",
+  "artifact.tab.builds": "Builds",
   "artifact.tab.deployments": "Deployments",
   "artifact.meta.release": "Release $1",
   "artifact.stat.size": "Size",
