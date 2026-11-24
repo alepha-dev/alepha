@@ -34,7 +34,9 @@ sudo bay config jobs --user bay-agent
 ```
 
 Bay never runs a job as root or as its own user. `--max-jobs 2` lets the host
-run two jobs at once (one by default); two jobs never share a workspace.
+run two jobs at once (one by default), and Lore sends it up to that many.
+Jobs that only read the code share a workspace; a job that changes code has
+its workspace to itself.
 
 **3. Install an agent CLI, and sign it in as the jobs user.** Claude Code or
 Gemini CLI, or both. Sign in as that user, the way you do on your own machine:
@@ -47,15 +49,26 @@ sudo -iu bay-agent claude
 sudo -iu bay-agent gemini
 ```
 
-**4. Install `git` and `gh`** for work on a repository, and sign `gh` in as
-the jobs user (`sudo -iu bay-agent gh auth login`): a Build job pushes a
-branch and opens a pull request with them. A triage that only reads the code
-needs `git` alone.
+**4. Install `git` and `gh`, and sign `gh` in as the jobs user.** A job that
+reads or changes the project's code needs the project's repository on GitHub
+and `gh` signed in: Bay fetches the code through it, and a job pushes and opens
+pull requests with it. Install `cf` too if your prompts deploy with
+Cloudflare's CLI, and sign it in the same way.
+
+```bash
+sudo -iu bay-agent gh auth login
+```
+
+Install the `lore` CLI only if a prompt asks for it, and **never sign it in**
+as the jobs user: a job reaches Lore with a key held to its project and its
+subject, and a signed-in CLI would reach past that.
 
 **5. Check what the host has.** `bay doctor` lists the jobs user's tools: each
-agent CLI, `git`, `gh` and `lore`, with its version, and says plainly when no
-agent CLI answers. Whether a tool is signed in is not checked: a job that
-needs it fails with the tool's own message.
+agent CLI, `git`, `gh`, `cf` and `lore`, with its version and whether it is
+signed in, and says plainly when no agent CLI answers or when `lore` is signed
+in. A job fails at once, before its agent starts, when a tool it needs says it
+is signed out: its agent CLI, and `gh` for a job that reads or changes code.
+The reason names the tool and the command that signs it in.
 
 ```bash
 sudo bay doctor
@@ -65,8 +78,9 @@ sudo bay doctor
 turn on **Allow jobs**, then **Agent host**. Lore checks the host at once: the
 agent prints its version, then answers a one-line prompt. The host shows
 **Available**, or **Unavailable** with the agent's own message. The check runs
-again once a day and on **Check now**. The **Agent host** card lists the tools
-the host reported.
+again once a day and on **Check now**. The host's **Tools** section lists what
+the jobs user has, installed or not, with its version and its sign-in, and the
+**Agent host** card says how many jobs run, of how many the host allows.
 
 From the CLI:
 
@@ -87,17 +101,61 @@ default one: with a single host and a single agent CLI, one click runs the job
 there; with several, the menu offers one entry per host and agent, your last
 pick first.
 
-## Workspaces
+## Sources and workspaces
+
+Bay prepares the code a job works on before the agent starts, so the agent
+never clones, fetches or resets. Each job has a **source**:
+
+- **read**: the project's repository at the default branch, checked out at
+  `./src` and made read-only. A triage, an epic's review, a pull request's
+  review, a security check and a `text` run read. Any number of read jobs of a
+  project run at once.
+- **write**: a git worktree on a branch Lore names, `lore/q<number>` for a job
+  on one quest and `lore/job-<id>` for any other. When the branch is already on
+  GitHub the worktree continues it, so a follow-up on a quest (a CI fix, review
+  comments) finds its work again. A build and a dependency update write.
+- **none**: an empty workspace, for a project with no GitHub repository. Its
+  jobs work from Lore alone.
+
+Read-only is a guard against a run changing the code other runs read, not a
+sandbox: the jobs user can undo it.
+
+Read and write need the project's **Repository URL** on GitHub
+(`https://github.com/<owner>/<name>`), set in the project's settings. Without
+one, a job that asks for read or write is refused before it is queued, and the
+others run with no code.
+
+A `text` run reads the code: one that changes code asks for it with
+`--source write`. `--ref` names a branch, a tag, a commit or `pull/<n>/head`
+instead of the default branch.
+
+```bash
+lore agent run text --text "Bump the copyright year" --source write
+```
+
+```bash
+lore agent run text --text "Explain the release script" --ref v1.4.0
+```
 
 Each job runs in a **workspace**: a directory under the jobs user's home,
-`~/bay-jobs/<project>/<workspace>`, kept between runs. The first run of a
-triage clones the project's repository there; the next ones fetch it. A
-triage uses the project's `triage` workspace, and a quest's work its own,
-`q<number>`, which Bay removes when the quest is completed. Deleting a project
+`~/bay-jobs/<project>/<workspace>`, kept between runs, its code at `./src` for
+a read job. A triage uses the `triage` workspace, a review `review`, a `text`
+run `text`, and a quest's work `q<number>`. The repository itself is kept once
+per project on the host, in a mirror Bay fetches at most every 30 seconds
+(`bay config jobs --fetch-ttl`), so a burst of jobs fetches once.
+
+**A write worktree goes when its job ends**, whatever the outcome, once every
+commit is pushed and nothing is left uncommitted. Otherwise Bay keeps it, the
+job shows **kept** with the count of unpushed commits, and the next job on that
+workspace is refused until someone pushes or removes it. Deleting a project
 removes its workspaces on every host that ran its jobs.
 
-On the host, `bay jobs workspaces` lists them, and
-`bay jobs workspace rm <project>/<name>` removes one.
+The job's page and `lore job get <id>` show the source, its ref or branch, the
+commit the job ran on, and a kept worktree's warning.
+
+On the host, `bay jobs workspaces` lists the workspaces, the mirror, the read
+trees and the kept worktrees, and `bay jobs workspace rm <project>/<name>`
+removes one.
 
 ## How a job reaches Lore
 
@@ -144,12 +202,47 @@ questions and decisions. It may also sharpen the epic and its quests, add the
 quests the plan is missing, and write a folio under the epic. Its key reaches
 this epic and its quests only.
 
+### A pull request's review
+
+**Review #n**, under a quest's pull requests, runs the project's pull request
+Review prompt on it: the job reads the pull request's head, its diff, the
+quest and the repository's instructions, posts a review with `gh pr review`,
+and sums it up on the quest. **Review and fix #n** runs the same prompt on the
+pull request's own branch, and may push to it; it is refused for a pull
+request from a fork.
+
+A pull request is its author's text. Before the agent starts, the host asks
+GitHub whether the author can write to the repository, and fails the job when
+they cannot. A member who trusts the author ticks **I trust its author** (or
+passes `--trust`), and the host asks nothing. An automation never can.
+
+```bash
+lore agent run review-pr --pr 118 --quest 42
+```
+
+### The dependencies
+
+**Security check** audits the dependencies from the lockfile and files one
+quest per real vulnerability, or comments on the open one that covers it.
+**Dependency update** updates the dependencies a run names, or the ones a minor
+or patch version behind, runs the project's checks, and opens a pull request
+only when they pass. Run either by hand or as an
+[automation](/lore/docs/agents-automations).
+
+```bash
+lore agent run security-check
+```
+
+```bash
+lore agent run dependency-update --text "react, vite"
+```
+
 ### Build: a quest to a pull request
 
-**Work it with an agent**, on an accepted quest, updates the quest's
-workspace, branches from the default branch, does the work, runs the
-project's checks, commits naming the quest, pushes, and opens a pull request
-with `gh`, which it records on the quest. It turns auto-merge on only when the
+**Work it with an agent**, on an accepted quest, runs in a worktree on the
+quest's branch, does the work, runs the project's checks, commits naming the
+quest, pushes, and opens a pull request with `gh`, which it records on the
+quest. It turns auto-merge on only when the
 repository's own agent instructions ask for it, and follows their branch
 naming. A quest a [Build automation](/lore/docs/agents-automations) built
 completes when the commit naming it reaches the default branch.
@@ -187,8 +280,8 @@ lore job list
 lore job logs <id> --follow
 ```
 
-`lore job get <id>` shows what a job ran (agent, model, workspace) and how it
-ended; `lore job cancel <id>` stops it. A job succeeds or fails by the agent's
+`lore job get <id>` shows what a job ran (agent, model, workspace, source,
+branch and commit) and how it ended; `lore job cancel <id>` stops it. A job succeeds or fails by the agent's
 exit code: what it did is what it wrote to Lore.
 
 ## From an agent

@@ -63,8 +63,8 @@ See [Deploying](/bay/docs/guides-deploying) and [Operating](/bay/docs/guides-ope
 | `bay runtimes set <name/env> <image>`     | this app's own image, from its next start                           |
 | `bay runtimes clear <name/env>`           | back to the image Bay picks                                         |
 | `bay config registry-mirror (HOST\|--clear)` | pull Docker Hub images through a mirror                          |
-| `bay config jobs (--user NAME\|--clear) [--max-jobs N]` | how Lore's one-shot jobs run: as a dedicated Unix user, and how many at once (1 by default). See [Jobs](/bay/docs/guides-lore-connector#jobs) |
-| `bay jobs workspaces` | the job workspaces kept under the jobs user's `~/bay-jobs` |
+| `bay config jobs (--user NAME\|--clear) [--max-jobs N] [--fetch-ttl DURATION]` | how Lore's one-shot jobs run: as a dedicated Unix user, how many at once (1 by default), and how long a fetch of a project's repository is good for (30 s by default). See [Jobs](/bay/docs/guides-lore-connector#jobs) |
+| `bay jobs workspaces` | the job workspaces kept under the jobs user's `~/bay-jobs`: each workspace, the project's mirror, its read trees and the write worktrees kept with work not pushed |
 | `bay jobs workspace rm <project>[/<name>]` | remove a workspace, or every one of a project; refused while a job runs in it |
 | `bay secret (set NAME -\|list\|delete NAME)` | host-local secrets, values from stdin, names only reported to Lore |
 

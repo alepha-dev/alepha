@@ -152,15 +152,18 @@ and base domain, which replace those set with `bay stack route`.
 
 A job is not an app: it runs once, to an exit, under a deadline. The first kind
 is an **agent job**: an agent CLI (Claude Code or Gemini CLI) run on a prompt in
-a workspace directory, which Lore starts from its own pages. Bay understands
-nothing of what the agent prints: the log is its raw output, the status its exit
-code. The agent reports its result to Lore itself, through Lore's MCP server.
+a workspace directory, which Lore starts from its own pages. Before the agent
+starts, Bay prepares the code the job asks for (its **source**, below). Bay
+understands nothing of what the agent prints: the log is its raw output, the
+status its exit code. The agent reports its result to Lore itself, through
+Lore's MCP server; a chat agent's turn asks the CLI for one JSON result, which
+Lore writes into the room.
 
 A `job-run` carries nothing but its id. The machine pulls the job's spec over
 HTTPS by that id and checks every field before anything runs: the kind, the
 agent (one of the CLIs Bay has an adapter for), the model, the project and
-workspace names, the Lore MCP URL (on the Lore this machine is connected to),
-the prompt and the timeout. Bay builds the command line itself from the agent's
+workspace names, the source, the Lore MCP URL (on the Lore this machine is
+connected to), the prompt and the timeout. Bay builds the command line itself from the agent's
 adapter, so nothing Lore sends is run as written. A field Bay does not know
 refuses the job.
 
@@ -169,13 +172,18 @@ MCP configuration names the variable, never the key, so it is on no command line
 `ps` shows and in no file.
 
 The output goes back up the connection as it is printed, with Bay's own
-timestamped steps (workspace ready, agent started, agent exited). If the link
+timestamped steps (mirror fetched, workspace ready, agent started, agent
+exited). The job's last acknowledgement carries the commit its source resolved,
+and a kept worktree's warning. If the link
 drops mid-job, the job keeps running and its output waits on disk until Lore is
 back. A timeout kills the job's whole process group; so does `job-cancel`.
 
 **Jobs are refused until somebody who manages the host allows them**, with a
 switch of their own, separate from deploys. One job runs at a time unless
-`--max-jobs` says more, never two in one workspace, and a job never makes a
+`--max-jobs` says more, and Lore sends up to that many. Jobs that read share a
+workspace; a job that changes code has its own to itself. A job the host cannot
+start yet (its slots are full, its workspace is held) is acknowledged **busy**,
+and Lore sends it again once one of the host's jobs ends. A job never makes a
 deploy wait. A host that only runs jobs needs no Docker.
 
 ### The jobs user
@@ -192,12 +200,26 @@ sudo bay config jobs --user bay-agent
 
 The agent must be on that user's `PATH` (`~/.local/bin`, `~/.npm-global/bin`,
 `~/bin`, `/usr/local/bin` or `/usr/bin`). Install `git` and `gh` there too, and
-sign `gh` in, for jobs that work on a repository. `bay doctor` lists what the
-jobs user has, and the host reports the same list to Lore: each agent CLI,
-`git`, `gh` and `lore`, with a version or the error of its version command.
-Whether a tool is signed in is not checked.
+**sign `gh` in**: a job that reads or changes the project's code needs the
+repository on GitHub, and Bay fetches it through the jobs user's `gh`. Bay holds
+no credential.
+
+```bash
+sudo -iu bay-agent gh auth login
+```
+
+`bay doctor` lists what the jobs user has, and the host reports the same list
+to Lore: each agent CLI, `git`, `gh`, `cf` (Cloudflare's CLI) and `lore`, with
+a version or the error of its version command, and whether each is signed in,
+read with the tool's own status command. A job fails at once, before any git,
+when a tool it needs says it is signed out: its agent CLI, and `gh` for a job
+with code. `lore` is the exception: it must **not** be signed in as the jobs
+user, since a job reaches Lore with a key held to its project, and `bay doctor`
+warns when it is (`sudo -iu bay-agent lore logout`).
 
 `bay config jobs --max-jobs 2` lets two jobs run at once (one by default).
+`bay config jobs --fetch-ttl 30s` is how long a fetch of a project's repository
+is good for (30 seconds by default, `0` fetches before every job).
 `bay config jobs --clear` makes the host refuse every job again.
 
 ⚠️ **There is no sandbox.** A job has the jobs user's shell on the machine, its
@@ -206,20 +228,51 @@ jobs on a machine you would trust a colleague with for the same work. Lore
 gives an agent no text written outside the project's team until a member has
 trusted it.
 
-### Workspaces
+### Sources and workspaces
 
-A job runs in `~/bay-jobs/<project>/<workspace>` under the jobs user's home,
-created on first use and **kept**: the first run of a prompt clones what it
-needs, the next ones pull. Bay does no git itself. Lore names the workspace
-(`triage` for a project's triage, `q<number>` for a quest's work) and asks the
-machine to remove one when a quest is completed or its project deleted.
+A job's **source** is the code it finds when it starts, prepared by Bay so the
+agent never clones or fetches:
+
+- **none**: an empty workspace;
+- **read**: the repository at a ref (the default branch unless the job names a
+  branch, a tag, a commit or `pull/<n>/head`), checked out once per commit and
+  made read-only, at `./src` in the job's workspace. Read jobs of a project run
+  together; `./src` moves to a newer commit only when no job holds the
+  workspace;
+- **write**: a git worktree on the job's branch, which continues the branch on
+  GitHub when it exists and starts from the ref otherwise.
+
+Bay keeps one **mirror** of each project's repository,
+`~/bay-jobs/<project>/.mirror`, a bare clone fetched as the jobs user with
+`gh` as its credential helper, at most once per `--fetch-ttl`. Read trees and
+worktrees are made from it.
+
+A job runs in `~/bay-jobs/<project>/<workspace>`, kept between runs. Lore names
+the workspace (`triage`, `review`, `text`, `q<number>` for a quest's work) and
+asks the machine to remove one when a quest is completed or its project
+deleted.
+
+**A write worktree is removed when its job ends**, whatever the exit, once
+every commit is pushed and the tree is clean. Otherwise Bay **keeps** it, says
+so in the log and in the job's warning, and refuses the next job on that
+workspace until someone pushes or removes it.
+
+A job at `pull/<n>/head` may ask Bay to check its author: Bay asks GitHub, with
+the jobs user's `gh`, whether the author can write to the repository, and fails
+the job before its agent starts when they cannot. A write job on a pull
+request works on the pull request's own branch, and is refused for a fork.
 
 ```bash
 sudo bay jobs workspaces
 sudo bay jobs workspace rm acme/q12
 ```
 
-A removal is refused while a job runs in that workspace.
+`bay jobs workspaces` lists the workspaces, the mirror, the read trees and the
+kept worktrees. A removal is refused while a job runs in that workspace.
+
+A Bay older than job sources has no `sources` in its inventory: Lore refuses to
+send it a job that reads or changes code, and says to upgrade Bay there. Its
+jobs with no code keep running.
 
 ## The console
 

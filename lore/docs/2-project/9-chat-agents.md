@@ -66,6 +66,40 @@ name the provider refuses makes the agent's answer say so in the room.
 The AI budget counts tokens whatever the model, so an agent on a stronger
 model costs more than the budget shows.
 
+## Answering from an Agent host
+
+An agent's **AI provider** is your Lore's model (`api`, the default) or one of
+the project's [Agent hosts](/lore/docs/agents-jobs) (`host`). On a host, each
+turn is an agent job: the agent CLI (Claude Code or Gemini CLI) runs in the
+project's code, checked out read-only at the default branch, so it can answer
+about the code itself. Nothing changes in the room: the agent answers as
+before, and its message is the CLI's final answer.
+
+Pick **Agent host**, **Agent CLI** and **CLI model** in the agent's dialog, or
+leave them empty for the project's only Agent host, the host's only CLI and the
+CLI's own default model. `@lore` answers from a host too: its engine is set per
+project from the command line.
+
+```bash
+lore chat agent update jarvis --engine host --engine-host agent-1
+```
+
+```bash
+lore chat agent update lore --engine host
+```
+
+What it costs and gains against your Lore's model:
+
+- it reads the code, and runs on the subscription signed in on the host,
+  outside the AI budget;
+- a turn takes as long as a job: the time to start the CLI and answer, often
+  tens of seconds, and the room shows the agent thinking until then;
+- it answers with AI off on your Lore, since it needs no model of Lore's.
+
+The conversation is kept per member, room and agent, and per host: your next
+mention continues where the last one ended, until the agent's playbook, CLI or
+model changes, which starts a new one.
+
 ## The AI budget
 
 **AI budget for agents**, under the agent list, is what this project's agents
@@ -141,6 +175,8 @@ See [Members](/lore/docs/project-members).
 `lore chat agent delete <handle>` do what the page does. The playbook comes
 from `--pre-prompt`: inline, `@playbook.md` for a file, or `@-` for stdin;
 `--avatar <image>` uploads an avatar and `--no-avatar` removes it.
+`--engine`, `--engine-host`, `--engine-agent` and `--engine-model` choose where
+it answers from.
 
 ```bash
 lore chat agent create --handle jarvis --name Jarvis --pre-prompt @jarvis.md --avatar jarvis.png
