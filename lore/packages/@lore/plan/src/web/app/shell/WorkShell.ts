@@ -198,7 +198,7 @@ export class WorkShell {
       tabs: [
         {
           route: "projectSettingsWork",
-          labelKey: "project.settings.tab.features",
+          labelKey: "project.settings.tab.quests",
         },
         {
           // Areas moved here from the top of the old rail: a quest carries an

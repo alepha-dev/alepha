@@ -247,7 +247,7 @@ the receiver can switch without missing a call.
 
 ## Quest reminders
 
-With **Reminders** on (**Settings ▸ Plan ▸ Features**), whoever holds a quest
+With **Reminders** on (**Settings ▸ Plan ▸ Quests**), whoever holds a quest
 can ask for a daily, weekly or monthly nudge on it, from the quest's
 **Reminder** panel. Lore checks every hour, at the top of the hour, and sends
 each reminder due once, to the quest's assignee, in the app and by email

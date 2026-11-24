@@ -1262,7 +1262,7 @@ export default {
   "project.settings.nav.areas": "Areas",
   "project.settings.tab.details": "Details",
   "project.settings.tab.capabilities": "Capabilities",
-  "project.settings.tab.features": "Features",
+  "project.settings.tab.quests": "Quests",
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
   "project.settings.tab.tagColors": "Tags",
