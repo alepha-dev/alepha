@@ -1,5 +1,5 @@
 import { $env, $inject, z } from "alepha";
-import { ShellProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 /**
  * Which commit, and which branch, a run belongs to.
@@ -20,8 +20,38 @@ export class GitContextService {
     z.object({
       GITHUB_SHA: z.text({ default: "", secret: false }).optional(),
       GITHUB_REF_NAME: z.text({ default: "", secret: false }).optional(),
+      GITHUB_EVENT_PATH: z.text({ default: "", secret: false }).optional(),
     }),
   );
+
+  protected readonly fs = $inject(FileSystemProvider);
+
+  /**
+   * The repository's default branch (#Q4234): what a push to it means to
+   * Lore, since a commit landing there completes the quests an automation
+   * built. GitHub Actions names it in the event payload
+   * (`repository.default_branch`); otherwise git's `origin/HEAD`. Undefined
+   * when neither says, and Lore then takes `main`.
+   */
+  public async defaultBranch(root: string): Promise<string | undefined> {
+    const path = String(this.env.GITHUB_EVENT_PATH ?? "");
+    if (path) {
+      try {
+        const event = JSON.parse(await this.fs.readTextFile(path)) as {
+          repository?: { default_branch?: unknown };
+        };
+        const named = event.repository?.default_branch;
+        if (typeof named === "string" && named) return named;
+      } catch {
+        // No readable payload: ask git.
+      }
+    }
+    const head = await this.git(
+      root,
+      "git symbolic-ref --short refs/remotes/origin/HEAD",
+    );
+    return head ? head.replace(/^origin\//, "") : undefined;
+  }
 
   public async resolve(root: string): Promise<GitContext> {
     const sha = String(this.env.GITHUB_SHA ?? "");

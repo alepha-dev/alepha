@@ -12,6 +12,7 @@ import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
 import { ChatCommand } from "./commands/ChatCommand.ts";
+import { CommitsCommand } from "./commands/CommitsCommand.ts";
 import { DashboardCommand } from "./commands/DashboardCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
@@ -157,6 +158,7 @@ export const AlephaLoreCli = $module({
     JobCommand,
     // A prompt run on an Agent host, and the hosts (#Q4225).
     AgentCommand,
+    CommitsCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,

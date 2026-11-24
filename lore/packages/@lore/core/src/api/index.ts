@@ -649,6 +649,8 @@ export {
   type CommitQuest,
   type CommitQuestReader,
   type CommitReferenceInput,
+  type CommitLanding,
+  type CommitLandingHandler,
   type CommitReferenceRecorder,
   type CommitReferenceResult,
   CommitReferenceRegistry,

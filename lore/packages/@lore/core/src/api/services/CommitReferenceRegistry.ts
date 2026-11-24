@@ -21,6 +21,27 @@ import { AlephaError } from "alepha";
 export class CommitReferenceRegistry {
   protected recorder?: CommitReferenceRecorder;
   protected reader?: CommitQuestReader;
+  protected landings: CommitLandingHandler[] = [];
+
+  /**
+   * What hears a commit reach the default branch (#Q4234): Plan, which
+   * completes the quests an automation built that the commit's history
+   * names.
+   */
+  public registerLanding(handler: CommitLandingHandler): void {
+    this.landings.push(handler);
+  }
+
+  /**
+   * A commit reached the project's default branch, with every quest its
+   * history names (its whole-history set). Ship calls it after a push of
+   * that branch recorded the set.
+   */
+  public async landed(input: CommitLanding): Promise<void> {
+    for (const handler of this.landings) {
+      await handler(input);
+    }
+  }
 
   public register(recorder: CommitReferenceRecorder): void {
     if (this.recorder) {
@@ -65,6 +86,18 @@ export class CommitReferenceRegistry {
     return this.recorder(input);
   }
 }
+
+/**
+ * A commit of the default branch and the quests its history names.
+ */
+export interface CommitLanding {
+  projectId: number;
+  commitSha: string;
+  branch: string;
+  numbers: number[];
+}
+
+export type CommitLandingHandler = (landing: CommitLanding) => Promise<void>;
 
 export type CommitQuestReader = (
   projectId: number,

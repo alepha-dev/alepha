@@ -139,6 +139,15 @@ export interface HostJobQueue {
     automationId: string,
     subjectType: string,
   ): Promise<string[]>;
+  /**
+   * The jobs an automation started on these subjects of a project (#Q4234),
+   * newest first: whether a quest was built by one.
+   */
+  automationJobsOn(
+    projectId: number,
+    subjectType: string,
+    subjectIds: string[],
+  ): Promise<HostJobSummary[]>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
   /**
@@ -258,6 +267,25 @@ export class HostJobs {
     automationId: string,
   ): Promise<HostJobSummary[]> {
     return (await this.queue?.activeForAutomation(automationId)) ?? [];
+  }
+
+  /**
+   * The jobs an automation started on these subjects (#Q4234), newest
+   * first. Empty without Ship.
+   */
+  public async automationJobsOn(
+    projectId: number,
+    subjectType: string,
+    subjectIds: string[],
+  ): Promise<HostJobSummary[]> {
+    if (!subjectIds.length) return [];
+    return (
+      (await this.queue?.automationJobsOn(
+        projectId,
+        subjectType,
+        subjectIds,
+      )) ?? []
+    );
   }
 
   /**

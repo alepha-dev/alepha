@@ -3,6 +3,7 @@ import { appNameSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 
+import { commitPushSchema } from "../schemas/commitPushSchema.ts";
 import { instanceLiveQuestsSchema } from "../schemas/instanceLiveQuestsSchema.ts";
 import { knownCommitsResultSchema } from "../schemas/knownCommitsResultSchema.ts";
 import { questLivenessSchema } from "../schemas/questLivenessSchema.ts";
@@ -55,6 +56,48 @@ export class LiveQuestController {
         };
       }
       return { known: await this.sets.known(params.projectId, body.shas) };
+    },
+  });
+
+  /**
+   * A bare commit push (#Q4234): the quest set of a commit, for a project
+   * that does not deploy through Lore, sent by `lore commits push` from CI.
+   * Kept like an artifact push's, and on the default branch it completes
+   * the quests an automation built that the history names.
+   */
+  pushCommitQuests = $action({
+    use: [$ownsProject({ requires: "artifact:push", param: "projectId" })],
+    method: "POST",
+    path: "/projects/:projectId/commits",
+    description:
+      "Record the quests a commit's history references, and complete the automation-built ones it lands on the default branch.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: commitPushSchema,
+      response: z.object({
+        count: z.integer(),
+        complete: z.boolean(),
+        /** Whether the commit was on the default branch. */
+        landed: z.boolean(),
+      }),
+    },
+    handler: async ({ params, body }) => {
+      const set = await this.sets.record({
+        projectId: params.projectId,
+        commitSha: body.commitSha,
+        base: body.quests.base,
+        numbers: body.quests.numbers,
+        walked: body.walked.map((sha) => sha.toLowerCase()),
+        complete: body.quests.complete,
+      });
+      const landed = await this.sets.landed({
+        projectId: params.projectId,
+        commitSha: body.commitSha,
+        branch: body.branch,
+        defaultBranch: body.defaultBranch,
+        numbers: set.numbers,
+      });
+      return { count: set.numbers.size, complete: set.complete, landed };
     },
   });
 

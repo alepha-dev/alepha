@@ -1,4 +1,8 @@
-import { BoundParameters, LiveQuestRegistry } from "@lore/core/api";
+import {
+  BoundParameters,
+  CommitReferenceRegistry,
+  LiveQuestRegistry,
+} from "@lore/core/api";
 import { $inject, type FileLike } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
@@ -29,6 +33,37 @@ export class CommitQuestSetService {
   protected readonly rows = $repository(commitQuestSets);
   protected readonly bound = $inject(BoundParameters);
   protected readonly registry = $inject(LiveQuestRegistry);
+  protected readonly references = $inject(CommitReferenceRegistry);
+
+  /**
+   * The default branch when the pusher could not read it.
+   */
+  public static readonly DEFAULT_BRANCH = "main";
+
+  /**
+   * A recorded set, told to Plan when its commit is on the default branch
+   * (#Q4234): the quests an automation built that it names complete. A push
+   * from any other branch, or naming none, completes nothing.
+   */
+  public async landed(input: {
+    projectId: number;
+    commitSha: string;
+    branch?: string;
+    defaultBranch?: string;
+    numbers: Set<number>;
+  }): Promise<boolean> {
+    const target =
+      input.defaultBranch?.trim() || CommitQuestSetService.DEFAULT_BRANCH;
+    const branch = input.branch?.trim().replace(/^refs\/heads\//, "");
+    if (!branch || branch !== target) return false;
+    await this.references.landed({
+      projectId: input.projectId,
+      commitSha: input.commitSha.toLowerCase(),
+      branch,
+      numbers: [...input.numbers],
+    });
+    return true;
+  }
 
   /**
    * Which of `shas` already have a set, in the order given (the pusher sends
