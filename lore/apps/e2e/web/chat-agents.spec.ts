@@ -53,7 +53,7 @@ test.describe("Chat agents", () => {
     try {
       await inviteAndAccept(page, member, slug);
 
-      await page.goto(`/${slug}/settings/chat/agents`);
+      await page.goto(`/${slug}/settings/members/agents`);
       // AI is off on the e2e server: the page lists and edits, and says so.
       await expect(page.getByTestId("chat-agents-ai-off")).toBeVisible();
       await expect(page.getByTestId("chat-agents-empty")).toBeVisible();
@@ -116,7 +116,7 @@ test.describe("Chat agents", () => {
       await page.emulateMedia({ colorScheme: "light" });
 
       // A Member reads the list and the playbook, and has no write control.
-      await member.page.goto(`/${slug}/settings/chat/agents`);
+      await member.page.goto(`/${slug}/settings/members/agents`);
       const theirs = member.page.locator(
         '[data-testid="chat-agent-row"][data-handle="jarvis"]',
       );
@@ -149,7 +149,7 @@ test.describe("Chat agents", () => {
       ).toHaveCount(0);
 
       // Deleting asks, then frees the handle.
-      await page.goto(`/${slug}/settings/chat/agents`);
+      await page.goto(`/${slug}/settings/members/agents`);
       await row.getByTestId("chat-agent-delete").click();
       await confirmDialog(page, "Delete agent");
       await expect(row).toHaveCount(0);
@@ -178,7 +178,7 @@ test.describe("Chat agent dialog", () => {
     const { slug } = await createProjectViaWizard(page, "Long playbook", {
       capabilities: ["chat"],
     });
-    await page.goto(`/${slug}/settings/chat/agents`);
+    await page.goto(`/${slug}/settings/members/agents`);
     await page.getByTestId("chat-agent-create").click();
     const form = page.getByTestId("chat-agent-form");
     await expect(form).toBeVisible();

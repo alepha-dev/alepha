@@ -1204,7 +1204,6 @@ export default {
   "project.settings.nav.members": "Members",
   "project.settings.nav.plan": "Plan",
   "project.settings.nav.remember": "Remember",
-  "project.settings.nav.chat": "Chat agents",
   "project.settings.tab.chatAgents": "Agents",
   "chat.agents.title": "Chat agents",
   "chat.agents.description":
