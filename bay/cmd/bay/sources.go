@@ -449,10 +449,20 @@ func (r *processRunner) resolveRef(ctx context.Context, u *user.User, dir, ref s
 
 /*
 preparedSource is what Bay prepared for a job: the commit it resolved, and
-where the agent runs.
+what ends the job's hold on its workspace. A write job's release also removes
+or keeps its worktree, and answers the warning a kept one carries.
 */
 type preparedSource struct {
-	Commit string
+	Commit  string
+	release func() string
+}
+
+// held wraps a plain unlock as a release that has nothing to say.
+func held(unlock func()) func() string {
+	return func() string {
+		unlock()
+		return ""
+	}
 }
 
 /*
@@ -484,33 +494,27 @@ func (r *processRunner) prepareMirror(ctx context.Context, u *user.User, project
 
 /*
 prepareWorkspace prepares an agent job's directory before its agent starts,
-and answers it with what releases its holds. A read job is prepareRead; a
-`none` job holds its workspace alone, as before sources; a write job also
-fetches the mirror and resolves its ref.
+and answers it with what releases its holds. A read job is prepareRead, a write
+job prepareWrite; a `none` job holds its workspace alone, as before sources.
 */
-func (r *processRunner) prepareWorkspace(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, func(), error) {
-	if spec.Source.mode() == sourceRead {
+func (r *processRunner) prepareWorkspace(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, error) {
+	switch spec.Source.mode() {
+	case sourceRead:
 		return r.prepareRead(ctx, u, spec, log)
+	case sourceWrite:
+		return r.prepareWrite(ctx, u, spec, log)
 	}
 	unlock, err := lockWorkspace(r.root, spec.Project, spec.Workspace)
 	if err != nil {
-		return "", preparedSource{}, nil, err
+		return "", preparedSource{}, err
 	}
 	dir, err := r.workspaceDir(ctx, u, spec.Project, spec.Workspace)
 	if err != nil {
 		unlock()
-		return "", preparedSource{}, nil, err
+		return "", preparedSource{}, err
 	}
 	log.Step("workspace " + spec.Project + "/" + spec.Workspace + " ready")
-	if spec.Source.mode() == sourceNone {
-		return dir, preparedSource{}, unlock, nil
-	}
-	sha, err := r.prepareMirror(ctx, u, spec.Project, spec.Source, log)
-	if err != nil {
-		unlock()
-		return "", preparedSource{}, nil, err
-	}
-	return dir, preparedSource{Commit: sha}, unlock, nil
+	return dir, preparedSource{release: held(unlock)}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -669,30 +673,30 @@ commit's tree made once and held, and the workspace held with `./src` on it.
 The run's directory stays `<jobs base>/<project>/<workspace>`, so an agent CLI
 that keeps its sessions by directory can resume there.
 */
-func (r *processRunner) prepareRead(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, func(), error) {
+func (r *processRunner) prepareRead(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, error) {
 	dir, err := r.workspaceDir(ctx, u, spec.Project, spec.Workspace)
 	if err != nil {
-		return "", preparedSource{}, nil, err
+		return "", preparedSource{}, err
 	}
 	sha, err := r.prepareMirror(ctx, u, spec.Project, spec.Source, log)
 	if err != nil {
-		return "", preparedSource{}, nil, err
+		return "", preparedSource{}, err
 	}
 	tree, releaseTree, err := r.ensureTree(ctx, u, spec.Project, sha)
 	if err != nil {
-		return "", preparedSource{}, nil, err
+		return "", preparedSource{}, err
 	}
 	releaseWorkspace, err := r.holdRead(ctx, u, spec.Project, spec.Workspace, dir, tree)
 	if err != nil {
 		releaseTree()
-		return "", preparedSource{}, nil, err
+		return "", preparedSource{}, err
 	}
 	log.Step(fmt.Sprintf("workspace %s/%s ready, ./src read-only at %s", spec.Project, spec.Workspace, shortSHA(sha)))
 	release := func() {
 		releaseWorkspace()
 		releaseTree()
 	}
-	return dir, preparedSource{Commit: sha}, release, nil
+	return dir, preparedSource{Commit: sha, release: held(release)}, nil
 }
 
 /*
@@ -732,4 +736,180 @@ func (r *processRunner) cleanTrees(ctx context.Context, u *user.User, project st
 		release()
 		_ = os.Remove(treeHoldPath(r.root, project, sha))
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Write worktrees (#Q4247).
+// ---------------------------------------------------------------------------
+
+/*
+prepareWrite makes a write job's worktree, its workspace held alone: a
+`git worktree` of the mirror at `<jobs base>/<project>/<workspace>`, on the
+job's branch, made by the jobs user under the mirror lock.
+
+  - When the remote has the branch, the worktree continues it: a follow-up
+    (a CI fix, review comments) finds its work again with no forge lookup.
+  - Otherwise the branch is made from the source's ref, the default branch
+    when it names none.
+  - A local branch left by an earlier worktree is deleted first, never reused
+    as it stands: what counts is what was pushed.
+
+The worktree shares the mirror's `origin`, so `git push` and `gh pr create`
+work as the jobs user, with `gh` as the credential helper.
+
+A workspace already there is a worktree kept with unpushed work, or a clone
+from before sources: the job is refused, never run over it.
+*/
+func (r *processRunner) prepareWrite(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, error) {
+	src := spec.Source
+	unlock, err := lockWorkspace(r.root, spec.Project, spec.Workspace)
+	if err != nil {
+		return "", preparedSource{}, err
+	}
+	fail := func(err error) (string, preparedSource, error) {
+		unlock()
+		return "", preparedSource{}, err
+	}
+	dir := filepath.Join(r.base(u), spec.Project, spec.Workspace)
+	if err := r.refuseOccupied(u, spec.Project, spec.Workspace, dir); err != nil {
+		return fail(err)
+	}
+	base, err := r.prepareMirror(ctx, u, spec.Project, src, log)
+	if err != nil {
+		return fail(err)
+	}
+	mirror := r.mirrorDir(u, spec.Project)
+	if _, err := r.git(ctx, u, mirror, "check-ref-format", "--branch", src.Branch); err != nil {
+		return fail(fmt.Errorf("%q is not a branch name git takes: %w", src.Branch, err))
+	}
+
+	munlock, err := lockMirror(ctx, r.root, spec.Project)
+	if err != nil {
+		return fail(err)
+	}
+	start, continued := base, false
+	if sha, err := r.git(ctx, u, mirror, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+src.Branch+"^{commit}"); err == nil && commitPattern.MatchString(sha) {
+		start, continued = sha, true
+	}
+	// What an earlier worktree left: a prune for a worktree whose directory
+	// is gone, then its local branch, which no worktree can hold now.
+	_, _ = r.git(ctx, u, mirror, "worktree", "prune")
+	if _, err := r.git(ctx, u, mirror, "rev-parse", "--verify", "--quiet", "refs/heads/"+src.Branch); err == nil {
+		if _, err := r.git(ctx, u, mirror, "branch", "-D", "--", src.Branch); err != nil {
+			munlock()
+			return fail(fmt.Errorf("the branch %s is checked out elsewhere on this host: %w", src.Branch, err))
+		}
+	}
+	if err := r.asJobsUser(ctx, u, "mkdir", "-p", "-m", "700", "--", filepath.Dir(dir)); err != nil {
+		munlock()
+		return fail(err)
+	}
+	if _, err := r.git(ctx, u, mirror, "worktree", "add", "--quiet", "--no-track", "-b", src.Branch, dir, start); err != nil {
+		munlock()
+		return fail(fmt.Errorf("could not make the worktree of %s: %w", src.Branch, err))
+	}
+	munlock()
+	if continued {
+		_, _ = r.git(ctx, u, dir, "branch", "--set-upstream-to=origin/"+src.Branch)
+		log.Step(fmt.Sprintf("worktree %s/%s on %s, continuing origin/%s at %s", spec.Project, spec.Workspace, src.Branch, src.Branch, shortSHA(start)))
+	} else {
+		// A plain `git push` publishes the new branch under its own name.
+		_, _ = r.git(ctx, u, dir, "config", "push.autoSetupRemote", "true")
+		log.Step(fmt.Sprintf("worktree %s/%s on new branch %s from %s", spec.Project, spec.Workspace, src.Branch, shortSHA(start)))
+	}
+
+	release := func() string {
+		defer unlock()
+		// Its own clock: a job killed at its deadline still cleans up.
+		cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+		defer cancel()
+		return r.finishWrite(cctx, u, spec.Project, spec.Workspace, dir, src.Branch, log)
+	}
+	return dir, preparedSource{Commit: start, release: release}, nil
+}
+
+/*
+refuseOccupied refuses a write job's workspace when something is in it: a
+worktree a job kept with unpushed work, or a clone from before sources. Bay
+never deletes work it cannot tell was delivered; the message says how to.
+An empty directory is removed.
+*/
+func (r *processRunner) refuseOccupied(u *user.User, project, workspace, dir string) error {
+	info, err := os.Lstat(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", dir)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) == 0 {
+		return os.Remove(dir)
+	}
+	rm := fmt.Sprintf("bay jobs workspace rm %s/%s", project, workspace)
+	if dotgit, err := os.Lstat(filepath.Join(dir, ".git")); err == nil && dotgit.Mode().IsRegular() {
+		return fmt.Errorf("the worktree %s/%s was kept with work not pushed: push it from there, or remove it (%s)", project, workspace, rm)
+	}
+	return fmt.Errorf("the workspace %s/%s holds a directory from before job sources: remove it once nothing in it is needed (%s)", project, workspace, rm)
+}
+
+/*
+finishWrite ends a write job's worktree, whatever the job's status. When every
+commit is pushed and the tree is clean, the worktree and its local branch are
+removed and the mirror pruned; otherwise it is kept, logged, and the sentence
+that says so is answered, for the terminal ack's warning.
+*/
+func (r *processRunner) finishWrite(ctx context.Context, u *user.User, project, workspace, dir, branch string, log *jobLog) string {
+	mirror := r.mirrorDir(u, project)
+	// What was pushed is read from the remote, not from what the run says.
+	_, _ = r.git(ctx, u, mirror, "fetch", "--quiet", "origin", "+refs/heads/"+branch+":refs/remotes/origin/"+branch)
+	status, err := r.git(ctx, u, dir, "status", "--porcelain")
+	if err != nil {
+		return r.keep(project, workspace, "its state could not be read: "+err.Error(), log)
+	}
+	var unpushed string
+	if _, err := r.git(ctx, u, mirror, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+branch); err == nil {
+		unpushed, err = r.git(ctx, u, dir, "rev-list", "--count", "refs/remotes/origin/"+branch+"..HEAD")
+		if err != nil {
+			return r.keep(project, workspace, "its commits could not be read: "+err.Error(), log)
+		}
+	} else {
+		// Never pushed: what is on no remote branch is unpushed.
+		unpushed, err = r.git(ctx, u, dir, "rev-list", "--count", "HEAD", "--not", "--remotes=origin")
+		if err != nil {
+			return r.keep(project, workspace, "its commits could not be read: "+err.Error(), log)
+		}
+	}
+	if unpushed != "0" || status != "" {
+		var why []string
+		if unpushed != "0" {
+			why = append(why, unpushed+" unpushed commit(s)")
+		}
+		if status != "" {
+			why = append(why, fmt.Sprintf("%d uncommitted change(s)", len(strings.Split(status, "\n"))))
+		}
+		return r.keep(project, workspace, strings.Join(why, " and "), log)
+	}
+	unlock, err := lockMirror(ctx, r.root, project)
+	if err != nil {
+		return r.keep(project, workspace, err.Error(), log)
+	}
+	defer unlock()
+	if _, err := r.git(ctx, u, mirror, "worktree", "remove", "--force", dir); err != nil {
+		return r.keep(project, workspace, "it could not be removed: "+err.Error(), log)
+	}
+	_, _ = r.git(ctx, u, mirror, "branch", "-D", "--", branch)
+	_, _ = r.git(ctx, u, mirror, "worktree", "prune")
+	log.Step(fmt.Sprintf("worktree %s/%s removed, its work pushed", project, workspace))
+	return ""
+}
+
+// keep logs a kept worktree and answers the warning that says so.
+func (r *processRunner) keep(project, workspace, why string, log *jobLog) string {
+	warning := fmt.Sprintf("kept %s/%s, %s", project, workspace, why)
+	log.Step(warning)
+	return warning
 }

@@ -273,10 +273,10 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	case actionJobRun:
 		// Outside the machine mutex, by rule: a 30-minute agent run must not
 		// hold a deploy back. One job at a time is the jobs slot's rule.
-		var exit *int
-		status, step, reason, exit = a.jobRun(ctx, cmd)
-		if exit != nil {
-			a.extras.Store(cmd.ID, connector.Extra{ExitCode: exit})
+		var extra connector.Extra
+		status, step, reason, extra = a.jobRun(ctx, cmd)
+		if extra.Job {
+			a.extras.Store(cmd.ID, extra)
 		}
 	case actionJobCancel:
 		status, step, reason = a.jobCancel(cmd)
@@ -368,11 +368,16 @@ that shows the old state for up to half an hour after the click that changed it.
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
 	extra := connector.Extra{}
 	if held, ok := a.extras.LoadAndDelete(id); ok {
+		h := held.(connector.Extra)
 		if status == "done" {
-			extra = held.(connector.Extra)
+			extra = h
 		}
-		// A job's exit code rides every terminal ack, a failed one most of all.
-		extra.ExitCode = held.(connector.Extra).ExitCode
+		// A job's exit code rides every terminal ack, a failed one most of
+		// all, and so does its warning: a worktree kept with unpushed work.
+		extra.ExitCode = h.ExitCode
+		if h.Job {
+			extra.Warning = h.Warning
+		}
 	}
 	out, err := a.outcomes.Finish(id, status, step, reason, extra, time.Now())
 	if err != nil {

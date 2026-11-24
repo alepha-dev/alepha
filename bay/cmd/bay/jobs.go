@@ -410,18 +410,18 @@ timeout and a cancel apart by the context.
 An agent job runs in its workspace, held for the run by the workspace lock,
 and leaves it as the agent left it. A check runs in the jobs user's home.
 */
-func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (exitCode *int, err error) {
+func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (exitCode *int, out jobOutcome, err error) {
 	u, err := r.jobsUser()
 	if err != nil {
-		return nil, err
+		return nil, out, err
 	}
 	adapter, err := adapterFor(spec.Agent)
 	if err != nil {
-		return nil, err
+		return nil, out, err
 	}
 	bin, err := r.lookPath(u.HomeDir, adapter.Binary)
 	if err != nil {
-		return nil, err
+		return nil, out, err
 	}
 	dir := u.HomeDir
 	if spec.Kind == jobKindAgent {
@@ -435,11 +435,14 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 				r.cleanTrees(cleanCtx, u, spec.Project)
 			}()
 		}
-		var release func()
-		if dir, _, release, err = r.prepareWorkspace(ctx, u, spec, log); err != nil {
-			return nil, err
+		var prepared preparedSource
+		if dir, prepared, err = r.prepareWorkspace(ctx, u, spec, log); err != nil {
+			return nil, out, err
 		}
-		defer release()
+		out.Commit = prepared.Commit
+		// Released whatever the run's end, a timeout or a cancel included;
+		// a write job's worktree is removed or kept then, and says which.
+		defer func() { out.Warning = prepared.release() }()
 	}
 
 	run := agentRunOf(spec)
@@ -452,14 +455,14 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	if adapter.Prepare != nil {
 		extra, cleanup, err := adapter.Prepare(run)
 		if err != nil {
-			return nil, fmt.Errorf("could not prepare the %s run: %w", adapter.Name, err)
+			return nil, out, fmt.Errorf("could not prepare the %s run: %w", adapter.Name, err)
 		}
 		defer cleanup()
 		env = append(env, extra...)
 	}
 	cmd, err := r.command(ctx, u, dir, bin, adapter.Args(run), env)
 	if err != nil {
-		return nil, err
+		return nil, out, err
 	}
 	cmd.Stdout = log.writer("stdout")
 	cmd.Stderr = log.writer("stderr")
@@ -467,7 +470,7 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		// The check is the version first, then the one-line prompt.
 		version, err := r.agentVersion(ctx, u, adapter)
 		if err != nil {
-			return nil, err
+			return nil, out, err
 		}
 		log.Step(adapter.Name + " " + version)
 	}
@@ -476,7 +479,14 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	if code != nil {
 		log.Step(fmt.Sprintf("agent exited with status %d", *code))
 	}
-	return code, err
+	return code, out, err
+}
+
+// jobOutcome is what a run says beside its exit: the commit its source
+// resolved, and a warning (a write worktree kept with unpushed work).
+type jobOutcome struct {
+	Commit  string
+	Warning string
 }
 
 // wait starts cmd and waits for its exit, killing its process group when
@@ -614,7 +624,7 @@ func newJobs(root string) *jobs {
 }
 
 // run executes a job as the jobs user.
-func (j *jobs) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*int, error) {
+func (j *jobs) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*int, jobOutcome, error) {
 	return j.runner.run(ctx, id, spec, log)
 }
 
@@ -699,25 +709,25 @@ jobRun pulls the spec, runs the job and streams its log, outside the machine
 mutex. The terminal status is `done` (exit 0), `failed` (a refusal or another
 exit), `timed_out` or `cancelled`.
 */
-func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, step, reason string, exit *int) {
+func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, step, reason string, extra connector.Extra) {
 	if !a.latestWelcome().JobsAllowed {
-		return "failed", "", "this host does not run jobs: its home project has not allowed them, and the welcome frame said so", nil
+		return "failed", "", "this host does not run jobs: its home project has not allowed them, and the welcome frame said so", extra
 	}
 	if a.jobs == nil {
-		return "failed", "", "this bay process has no job runner", nil
+		return "failed", "", "this bay process has no job runner", extra
 	}
 	cfg, ok, err := connector.NewStore(a.s.root).Load()
 	if err != nil || !ok {
-		return "failed", "", "no connector is configured on this bay, so there is nothing to pull from", nil
+		return "failed", "", "no connector is configured on this bay, so there is nothing to pull from", extra
 	}
 	jobsCfg, err := loadJobsConfig(a.s.root)
 	if err != nil {
-		return "failed", "", "the jobs config is unreadable: " + err.Error(), nil
+		return "failed", "", "the jobs config is unreadable: " + err.Error(), extra
 	}
 	jobCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	defer cancel(nil)
 	if limit := jobsCfg.jobsLimit(); !a.jobs.claim(cmd.ID, cancel, limit) {
-		return "failed", "", fmt.Sprintf("this bay already runs %d job(s) (%s), its limit: bay config jobs --max-jobs raises it", limit, a.jobs.runningIDs()), nil
+		return "failed", "", fmt.Sprintf("this bay already runs %d job(s) (%s), its limit: bay config jobs --max-jobs raises it", limit, a.jobs.runningIDs()), extra
 	}
 	defer a.jobs.release(cmd.ID)
 	if a.kick != nil {
@@ -728,18 +738,18 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	client := &http.Client{Timeout: connector.FetchTimeout}
 	raw, err := connector.PullJobSpec(ctx, client, cfg, cmd.ID)
 	if err != nil {
-		return "failed", "pulling", "could not pull the job spec: " + err.Error(), nil
+		return "failed", "pulling", "could not pull the job spec: " + err.Error(), extra
 	}
 	spec, err := parseJobSpec(raw, cfg.Sink)
 	if err != nil {
-		return "failed", "validating", err.Error(), nil
+		return "failed", "validating", err.Error(), extra
 	}
 	// A spool left by an earlier run of this id (a Bay that died mid-job)
 	// is not this run's log.
 	_ = os.RemoveAll(jobLogDir(a.s.root, cmd.ID))
 	log, err := openJobLog(a.s.root, cmd.ID)
 	if err != nil {
-		return "failed", "", "could not open the job's log spool: " + err.Error(), nil
+		return "failed", "", "could not open the job's log spool: " + err.Error(), extra
 	}
 
 	runCtx, stopDeadline := context.WithTimeoutCause(jobCtx, time.Duration(spec.TimeoutSeconds)*jobSecond, context.DeadlineExceeded)
@@ -750,7 +760,8 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 		a.streamJobLog(runCtx, log)
 	}()
 
-	exit, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
+	exit, outcome, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
+	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning}
 	cause := context.Cause(runCtx)
 	switch {
 	case errors.Is(cause, errJobCancelled):
@@ -779,7 +790,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	stopDeadline()
 	<-streamed
 	a.drainJobLog(ctx, log, 5*time.Second)
-	return status, step, reason, exit
+	return status, step, reason, extra
 }
 
 // streamJobLog flushes the spool every jobFlushEvery until ctx ends.
