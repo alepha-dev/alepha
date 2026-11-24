@@ -25,6 +25,7 @@ import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
 import BayAgentHost from "./BayAgentHost.tsx";
+import BayJobTools from "./BayJobTools.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
@@ -217,6 +218,7 @@ const BaySettings = () => {
           projectTitle={host.project?.title ?? tr("hosts.project.noHome")}
         />
       )}
+      <BayJobTools />
       <BayAgentHost canUpdate={canUpdate} />
       {canUpdate && (
         <Card>

@@ -652,11 +652,51 @@ export class HostCommand {
                     "Never connected: run the connector command on the machine.",
                   ],
             },
+            // What its jobs user has (#Q4254), as the Host page's Tools.
+            ...(host.type === "bay"
+              ? [{ title: "Tools", lines: this.toolLines(host) }]
+              : []),
           ],
         });
       });
     },
   });
+
+  /**
+   * The jobs user's tools (#Q4254), one line each: installed with its
+   * version, or not, the same order and words as the Host page.
+   */
+  protected toolLines(host: {
+    jobsUser?: string | null;
+    jobsTools?: Array<{
+      name: string;
+      found: boolean;
+      version?: string;
+      error?: string;
+    }> | null;
+  }): string[] {
+    if (host.jobsUser === undefined || host.jobsUser === null) {
+      return ["Nothing reported yet."];
+    }
+    if (host.jobsUser === "") {
+      return [
+        "No jobs user: run bay config jobs --user <name> on the machine.",
+      ];
+    }
+    return [
+      `Jobs run as ${host.jobsUser}.`,
+      ...(host.jobsTools ?? []).map(
+        (tool) =>
+          `${tool.name.padEnd(8)}${
+            !tool.found
+              ? "not installed"
+              : tool.error
+                ? tool.error
+                : `installed, ${tool.version ?? ""}`
+          }`,
+      ),
+    ];
+  }
 
   public readonly wait = $command({
     name: "wait",

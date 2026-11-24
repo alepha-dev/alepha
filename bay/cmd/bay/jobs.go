@@ -535,6 +535,24 @@ func (r *processRunner) agentVersion(ctx context.Context, u *user.User, adapter 
 // the first word of what it prints that holds a digit: `2.1.7 (Claude
 // Code)`, `git version 2.43.0`, `gh version 2.40.1 (2024-01-01)`.
 func (r *processRunner) toolVersion(ctx context.Context, u *user.User, binary string, args, env []string) (string, error) {
+	out, err := r.toolOutput(ctx, u, binary, args, env)
+	if err != nil {
+		return "", err
+	}
+	if binary == "cf" && !cfIsCloudflares(out) {
+		return "", errors.New("not Cloudflare's CLI: another program is installed as cf")
+	}
+	for _, field := range strings.Fields(out) {
+		if strings.ContainsAny(field, "0123456789") {
+			return cut(strings.TrimPrefix(field, "v"), 100), nil
+		}
+	}
+	return "", fmt.Errorf("%s %s printed no version", binary, strings.Join(args, " "))
+}
+
+// toolOutput runs a tool as the jobs user and answers its stdout, or the
+// error of a run that did not exit 0.
+func (r *processRunner) toolOutput(ctx context.Context, u *user.User, binary string, args, env []string) (string, error) {
 	bin, err := r.lookPath(u.HomeDir, binary)
 	if err != nil {
 		return "", err
@@ -554,18 +572,13 @@ func (r *processRunner) toolVersion(ctx context.Context, u *user.User, binary st
 	if code != nil && *code != 0 {
 		return "", fmt.Errorf("%s %s exited with status %d", binary, strings.Join(args, " "), *code)
 	}
-	for _, field := range strings.Fields(out.String()) {
-		if strings.ContainsAny(field, "0123456789") {
-			return cut(field, 100), nil
-		}
-	}
-	return "", fmt.Errorf("%s %s printed no version", binary, strings.Join(args, " "))
+	return out.String(), nil
 }
 
 /*
-tools is what the jobs user has (#Q4220): each adapter's CLI, then git, gh
-and lore, each found or not on its PATH, with its version or the error of
-its version command. Whether a tool is signed in is not checked.
+tools is what the jobs user has (#Q4220): each adapter's CLI, then git, gh,
+cf and lore, each found or not on its PATH, with its version or the error of
+its version command.
 */
 func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.InventoryTool {
 	var out []connector.InventoryTool

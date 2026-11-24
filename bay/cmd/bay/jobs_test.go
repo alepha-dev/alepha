@@ -707,6 +707,8 @@ func TestJobsInventory(t *testing.T) {
 	w.stub(t, "claude", "#!/bin/sh\necho '2.0.14 (Claude Code)'\n")
 	w.stub(t, "git", "#!/bin/sh\necho 'git version 2.43.0'\n")
 	w.stub(t, "gh", "#!/bin/sh\nexit 1\n")
+	// Cloudflare's cf prints its mark before its version (#Q4254).
+	w.stub(t, "cf", "#!/bin/sh\necho '\xf0\x9f\x8d\x8a\xe2\x98\x81\xef\xb8\x8f  cf \xc2\xb7 v0.15.0'\n")
 	inv, _ := w.acts.Inventory(context.Background())
 	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources || inv.Jobs.MaxJobs != 1 {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
@@ -718,7 +720,7 @@ func TestJobsInventory(t *testing.T) {
 		byName[tool.Name] = tool
 		names = append(names, tool.Name)
 	}
-	if strings.Join(names, ",") != "claude,gemini,git,gh,lore" {
+	if strings.Join(names, ",") != "claude,gemini,git,gh,cf,lore" {
 		t.Fatalf("tools = %v", names)
 	}
 	if c := byName["claude"]; c.Kind != "agent" || !c.Found || c.Version != "2.0.14" {
@@ -733,11 +735,31 @@ func TestJobsInventory(t *testing.T) {
 	if g := byName["gh"]; !g.Found || !strings.Contains(g.Error, "gh --version exited with status 1") {
 		t.Fatalf("gh = %+v", g)
 	}
+	if c := byName["cf"]; c.Kind != "tool" || !c.Found || c.Version != "0.15.0" || c.Error != "" {
+		t.Fatalf("cf = %+v", c)
+	}
 	if err := saveJobsConfig(w.f.root, jobsConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	if inv, _ := w.acts.Inventory(context.Background()); inv.Jobs != nil {
 		t.Fatalf("a bay without a jobs user reported %+v", inv.Jobs)
+	}
+}
+
+func TestCfIsCloudflares(t *testing.T) {
+	if !cfIsCloudflares("\U0001F34A\u2601\uFE0F  cf \u00b7 v0.15.0\n") {
+		t.Fatal("Cloudflare's cf was not recognised")
+	}
+	if cfIsCloudflares("cf version 8.7.0+5b7c3c8.2023-05-01\n") {
+		t.Fatal("Cloud Foundry's cf read as Cloudflare's")
+	}
+	w := newJobWorld(t)
+	w.stub(t, "cf", "#!/bin/sh\necho 'cf version 8.7.0+5b7c3c8.2023-05-01'\n")
+	u, _ := w.acts.jobs.runner.jobsUser()
+	for _, tool := range w.acts.jobs.runner.tools(context.Background(), u) {
+		if tool.Name == "cf" && (!tool.Found || tool.Version != "" || !strings.Contains(tool.Error, "not Cloudflare's CLI")) {
+			t.Fatalf("Cloud Foundry's cf reads as %+v", tool)
+		}
 	}
 }
 

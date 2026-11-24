@@ -3228,7 +3228,16 @@ export default {
   "hosts.agent.status.checking": "Vérification",
   "hosts.agent.status.available": "Disponible",
   "hosts.agent.status.unavailable": "Indisponible",
-  "hosts.agent.tool.missing": "non installé",
+  "hosts.tools.title": "Outils de l'utilisateur des tâches",
+  "hosts.tools.reported": "Signalé",
+  "hosts.tools.never":
+    "Rien de signalé : la machine ne s'est pas encore connectée.",
+  "hosts.tools.noUser":
+    "Aucun utilisateur des tâches : lancez $1 sur la machine.",
+  "hosts.tools.user": "Les tâches tournent sous $1.",
+  "hosts.tools.missing": "Non installé",
+  "hosts.tools.installed": "Installé, $1",
+  "hosts.agent.tools.link": "Voir les outils de l'utilisateur des tâches",
   "hosts.agent.tools.noAgent":
     "Aucune CLI d'agent ne répond pour l'utilisateur des jobs : cet hôte ne peut pas exécuter de jobs d'agent.",
   "hosts.agent.check": "Vérifier",
