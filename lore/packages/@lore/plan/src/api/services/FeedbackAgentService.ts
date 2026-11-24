@@ -177,6 +177,7 @@ export class FeedbackAgentService {
     projectId: number,
     startedBy?: string,
     run: AgentRun = {},
+    origin: { automationId?: string; startedByJobId?: string } = {},
   ): Promise<{ started: string[]; skipped: number[]; global?: string }> {
     const project = await this.projects.getOne({
       where: { id: { eq: projectId } },
@@ -232,6 +233,11 @@ export class FeedbackAgentService {
         t.secondsPerItem * trusted.length +
         (errors ? t.errorSeconds : 0),
       startedBy,
+      // An automation's run (#Q4226), and the job whose event caused it.
+      ...(origin.automationId ? { automationId: origin.automationId } : {}),
+      ...(origin.startedByJobId
+        ? { startedByJobId: origin.startedByJobId }
+        : {}),
       subjectType: FeedbackAgentService.GLOBAL_SUBJECT,
       subjectId: String(projectId),
     });

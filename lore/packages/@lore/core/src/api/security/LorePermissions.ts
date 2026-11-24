@@ -146,6 +146,9 @@ export class LorePermissions {
     "host:create",
     "host:update",
     "host:delete",
+    // Agent automations (#Q4226): what runs on the project's Agent hosts,
+    // unattended, on whose subscription. Read with `host:read`.
+    "automation:manage",
     "feedback:triage",
     // Notifications (#Q3890): who is told of what. A member subscribes and
     // mutes themselves with neither.
@@ -539,6 +542,19 @@ export class LorePermissions {
     group: "host",
     name: "delete",
     label: "permission.host.delete",
+  });
+
+  /**
+   * Create, change, delete and run the project's agent automations
+   * (#Q4226). Listing them is `host:read`. The name was retired with the
+   * earlier Automations (#Q3896) and means only this now.
+   */
+  automationManage = $permission({
+    group: "automation",
+    name: "manage",
+    label: "permission.automation.manage",
+    groupLabel: "permission.group.automation",
+    groupOrder: 36,
   });
 
   // ---------------------------------------------------------------------------

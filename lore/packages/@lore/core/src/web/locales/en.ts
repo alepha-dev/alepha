@@ -4709,6 +4709,9 @@ export default {
   "permission.host.create": "Add a host to the project",
   "permission.host.delete":
     "Delete a host of the project, or move it to another",
+  "permission.group.automation": "Agent automations",
+  "permission.automation.manage":
+    "Create, change, delete and run the project's agent automations",
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",

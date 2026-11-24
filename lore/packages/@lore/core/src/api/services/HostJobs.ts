@@ -30,6 +30,8 @@ export interface HostJobRequest {
   startedBy?: string;
   /** The job whose output started this one, for the chain guard. */
   startedByJobId?: string;
+  /** The agent automation that started it (#Q4226). */
+  automationId?: string;
   /** What the job is about, for its page and its list: a feedback, a quest. */
   subjectType?: string;
   subjectId?: string;
@@ -92,6 +94,7 @@ export interface HostJobSummary {
   status: HostJobStatus;
   startedBy?: string;
   startedByJobId?: string;
+  automationId?: string;
   subjectType?: string;
   subjectId?: string;
   reason?: string;
@@ -125,6 +128,8 @@ export interface HostJobQueue {
     subjectId: string,
   ): Promise<HostJobSummary | undefined>;
   cancel(jobId: string, by?: string): Promise<HostJobSummary>;
+  /** An automation's jobs that are still queued or running (#Q4226). */
+  activeForAutomation(automationId: string): Promise<HostJobSummary[]>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
   /**
@@ -234,6 +239,16 @@ export class HostJobs {
 
   public async cancel(jobId: string, by?: string): Promise<HostJobSummary> {
     return this.need().cancel(jobId, by);
+  }
+
+  /**
+   * An automation's jobs that are still queued or running (#Q4226): its
+   * single-flight check. Empty without Ship.
+   */
+  public async activeForAutomation(
+    automationId: string,
+  ): Promise<HostJobSummary[]> {
+    return (await this.queue?.activeForAutomation(automationId)) ?? [];
   }
 
   public async chainHolds(jobId: string, kind: HostJobKind): Promise<boolean> {

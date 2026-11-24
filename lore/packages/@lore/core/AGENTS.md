@@ -630,12 +630,37 @@ Organization membership, rank definitions, and invitations are owned by `alepha/
 
 ## Project events and subscriptions (#E159)
 
-Lore tells people and systems that something happened; it runs nothing for
-them. The automation engine (graphs, schedules, conditions, actions, shared
-variables) was deleted by #E159 (spec #F1526): a schedule or a multi-step
-reaction is a scheduled agent session over MCP, or a webhook channel. Do not
-grow events into rules again: no condition, no editable message, no action on
-Lore data.
+Lore tells people and systems that something happened. The automation engine
+(graphs, schedules, conditions, actions, shared variables) was deleted by
+#E159 (spec #F1526). Do not grow events or subscriptions into rules again: a
+subscription notifies or calls a webhook, with no condition, no editable
+message, no schedule and no action on Lore data. The one thing that runs on an
+event or a schedule is an agent automation (below), by the owner's decision
+on #E172.
+
+## Agent automations (#E172)
+
+An **agent automation** (`agent_automations`, `AgentAutomationService`,
+`AgentAutomationController`) is one row: a name unique in the project, its
+owner (`createdBy`, whose rank bounds every job key it starts), a prompt
+(`triage`, `build` or `text`), where it runs (host, agent, model), a trigger
+(by hand, a project event, a schedule), an "only if there is something" check,
+and a switch. Each run is a host job carrying `host_jobs.automationId`, one at
+a time per automation. Plan registers the Triage and Build kinds on
+`AgentAutomationKinds`; core runs a `text` one itself. `automation:manage`
+writes and runs them, `host:read` lists them; the name was retired with the
+earlier Automations (#Q3896) and means only this now.
+
+It must not cross these lines, each of which made the earlier Automations
+what #F1526 deleted:
+
+- no graph, no steps, no branch, no conditions language, no canvas, no outline
+  editor: a need for one is a new epic, not a column;
+- one consumer of the existing project events and one check of the existing
+  hourly job, never a scheduler or a bus of its own;
+- it starts agent jobs, nothing else: no action on Lore data, no message, no
+  webhook (subscriptions stay who is told);
+- the page is a table and a small form.
 
 ### A change and its event: `GuardedBatch` (#Q3899)
 

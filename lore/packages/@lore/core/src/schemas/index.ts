@@ -169,6 +169,34 @@ export { hostsCardFiltersSchema } from "../api/schemas/hostsCardFiltersSchema.ts
 export { hostCommands } from "../api/entities/hostCommands.ts";
 export type { HostCommand } from "../api/entities/hostCommands.ts";
 export { hostJobs } from "../api/entities/hostJobs.ts";
+// ---- agent automations (#E172) ----
+export {
+  type AgentAutomation,
+  agentAutomations,
+} from "../api/entities/agentAutomations.ts";
+export {
+  AUTOMATION_NAME_PATTERN,
+  AUTOMATION_PROMPT_KINDS,
+  AUTOMATION_TRIGGERS,
+  type AutomationPromptKind,
+  type AutomationTrigger,
+} from "../api/schemas/agentAutomationValues.ts";
+export {
+  type AgentAutomationResource,
+  agentAutomationResourceSchema,
+} from "../api/schemas/agentAutomationResourceSchema.ts";
+export {
+  type AgentAutomationWrite,
+  agentAutomationWriteSchema,
+} from "../api/schemas/agentAutomationWriteSchema.ts";
+export {
+  type AgentAutomationCreate,
+  agentAutomationCreateSchema,
+} from "../api/schemas/agentAutomationCreateSchema.ts";
+export {
+  type AgentAutomationRunResult,
+  agentAutomationRunResultSchema,
+} from "../api/schemas/agentAutomationRunResultSchema.ts";
 export type { HostJob } from "../api/entities/hostJobs.ts";
 export { hostEvents } from "../api/entities/hostEvents.ts";
 export type { HostEvent } from "../api/entities/hostEvents.ts";
