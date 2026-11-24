@@ -11,6 +11,7 @@ import { projectChannelResourceSchema } from "../../api/schemas/projectChannelRe
 import { projectEventCatalogPageSchema } from "../../api/schemas/projectEventCatalogPageSchema.ts";
 import { projectEventPageSchema } from "../../api/schemas/projectEventPageSchema.ts";
 import { subscriptionResourceSchema } from "../../api/schemas/subscriptionResourceSchema.ts";
+import { JobKeyService } from "../../api/services/JobKeyService.ts";
 import { ProjectChannelService } from "../../api/services/ProjectChannelService.ts";
 import { ProjectEventCatalogService } from "../../api/services/ProjectEventCatalogService.ts";
 import { ProjectEventReader } from "../../api/services/ProjectEventReader.ts";
@@ -71,13 +72,31 @@ export class NotificationTools {
     description: `The recent events of a project, newest first, for "did it fire?": filtered by name or subject, bounded and paginated, kept 30 days. An event is listed only to a caller holding its read permission. ${NotificationTools.INSTEAD}`,
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: { params: eventListParamsSchema, result: projectEventPageSchema },
-    handler: async ({ params }) =>
-      this.reader.list(await this.project(params), this.user(), {
+    handler: async ({ params }) => {
+      const projectId = await this.project(params);
+      const page = await this.reader.list(projectId, this.user(), {
         ...(params.name ? { name: params.name } : {}),
         ...(params.subject ? { subject: params.subject } : {}),
         ...(params.limit ? { limit: params.limit } : {}),
         ...(params.offset ? { offset: params.offset } : {}),
-      }),
+      });
+      // Under a job key, no event of outside text nobody trusted (#Q4287).
+      const hidden = await this.alepha
+        .inject(JobKeyService)
+        .hiddenFor(projectId);
+      return hidden
+        ? {
+            ...page,
+            items: page.items.filter(
+              (it) =>
+                !JobKeyService.names(hidden, {
+                  kind: it.subjectKind,
+                  number: it.subjectId,
+                }),
+            ),
+          }
+        : page;
+    },
   });
 
   subscription_list = $tool({
@@ -209,7 +228,7 @@ export class NotificationTools {
     },
     handler: async ({ params }) => {
       const scope = await this.scope(params);
-      return this.inbox.listInbox({
+      const page = await this.inbox.listInbox({
         query: {
           ...(scope ? { scope } : {}),
           ...(params.unread ? { unreadOnly: true } : {}),
@@ -217,6 +236,20 @@ export class NotificationTools {
           ...(params.cursor ? { cursor: params.cursor } : {}),
         },
       });
+      // Under a job key, no message about an item written outside the team
+      // that no member trusted, nor a quest born of one (#Q4287): its title
+      // and body quote them. The key's own project is the one it reads.
+      const keys = this.alepha.inject(JobKeyService);
+      const key = await keys.current();
+      const hidden = key ? await keys.hiddenFor(key.projectId) : undefined;
+      return hidden
+        ? {
+            ...page,
+            items: page.items.filter(
+              (it) => !JobKeyService.names(hidden, { href: it.href }),
+            ),
+          }
+        : page;
     },
   });
 

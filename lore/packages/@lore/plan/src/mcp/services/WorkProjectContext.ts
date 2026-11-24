@@ -1,3 +1,4 @@
+import { JobKeyService } from "@lore/core/api";
 import { ProjectContextRegistry } from "@lore/core/mcp";
 import { $inject, Alepha } from "alepha";
 
@@ -26,6 +27,7 @@ export class WorkProjectContext {
   protected readonly alepha = $inject(Alepha);
   protected readonly registry = $inject(ProjectContextRegistry);
   protected readonly areaService = $inject(AreaService);
+  protected readonly jobKeys = $inject(JobKeyService);
 
   /**
    * Resolved on use, never held as a field: a field would make `EpicController`
@@ -53,16 +55,23 @@ export class WorkProjectContext {
       key: "work.areas",
       order: 10,
       capability: "plan",
-      context: async ({ projectId, assignedWork }) => ({
-        areas: await this.areas(projectId),
-        activeQuests: (await assignedWork).map((quest) => ({
-          id: quest.id,
-          shortId: quest.shortId,
-          title: quest.title,
-          area: quest.area,
-          priority: quest.priority,
-        })),
-      }),
+      context: async ({ projectId, assignedWork }) => {
+        // No quest born of outside text nobody confirmed, under a job key
+        // (#Q4287).
+        const hidden = await this.jobKeys.hiddenFor(projectId);
+        return {
+          areas: await this.areas(projectId),
+          activeQuests: (await assignedWork)
+            .filter((quest) => !hidden?.quests.has(quest.shortId))
+            .map((quest) => ({
+              id: quest.id,
+              shortId: quest.shortId,
+              title: quest.title,
+              area: quest.area,
+              priority: quest.priority,
+            })),
+        };
+      },
       info: async ({ projectId }) => ({ areas: await this.areas(projectId) }),
     });
 

@@ -1,4 +1,4 @@
-import { LoreAudits, ProjectController } from "@lore/core/api";
+import { JobKeyService, LoreAudits, ProjectController } from "@lore/core/api";
 import { AttachmentContentService, ProjectTools } from "@lore/core/mcp";
 import { $inject, Alepha } from "alepha";
 import { $tool } from "alepha/mcp";
@@ -33,6 +33,7 @@ import {
  */
 export class FeedbackTools {
   protected readonly feedbackController = $inject(FeedbackController);
+  protected readonly jobKeys = $inject(JobKeyService);
   protected readonly projectController = $inject(ProjectController);
   protected readonly attachmentContent = $inject(AttachmentContentService);
   protected readonly commentController = $inject(FeedbackCommentController);
@@ -191,21 +192,26 @@ export class FeedbackTools {
         },
       });
 
+      // A job key reads no item written outside the team that no member
+      // trusted, pinned or not (#Q4287).
+      const hidden = await this.jobKeys.hiddenFor(projectId);
       return {
         hasMore: result.hasMore,
-        feedback: result.items.map((p) => ({
-          id: p.id,
-          shortId: p.shortId,
-          title: p.title,
-          tags: p.tags ?? [],
-          status: p.status,
-          reporterName: this.reporterName(p),
-          linkedQuestCount: p.linkedQuests?.length ?? 0,
-          // `toResources` already resolved these for the whole page in one
-          // `inArray` lookup, so the count is free.
-          attachmentCount: p.attachmentUrls?.length ?? 0,
-          createdAt: p.createdAt,
-        })),
+        feedback: result.items
+          .filter((p) => !hidden?.feedback.has(p.shortId))
+          .map((p) => ({
+            id: p.id,
+            shortId: p.shortId,
+            title: p.title,
+            tags: p.tags ?? [],
+            status: p.status,
+            reporterName: this.reporterName(p),
+            linkedQuestCount: p.linkedQuests?.length ?? 0,
+            // `toResources` already resolved these for the whole page in one
+            // `inArray` lookup, so the count is free.
+            attachmentCount: p.attachmentUrls?.length ?? 0,
+            createdAt: p.createdAt,
+          })),
       };
     },
   });

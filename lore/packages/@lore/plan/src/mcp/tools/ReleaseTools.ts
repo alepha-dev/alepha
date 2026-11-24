@@ -1,4 +1,4 @@
-import { ProjectController } from "@lore/core/api";
+import { JobKeyService, ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
@@ -50,6 +50,7 @@ import {
  */
 export class ReleaseTools {
   protected readonly releaseController = $inject(ReleaseController);
+  protected readonly jobKeys = $inject(JobKeyService);
   protected readonly projectController = $inject(ProjectController);
   protected readonly epicController = $inject(EpicController);
   protected readonly questController = $inject(QuestController);
@@ -165,6 +166,11 @@ export class ReleaseTools {
       const contents = await this.releaseController.getReleaseContents({
         params: { id: release.id },
       });
+      // No quest born of outside text nobody confirmed, under a job key
+      // (#Q4287).
+      const hidden = await this.jobKeys.hiddenFor(
+        await this.resolveProjectId(params.project, params.project_name),
+      );
 
       return {
         ...this.row(release),
@@ -179,13 +185,15 @@ export class ReleaseTools {
         // also carries `id`, `acceptedAt` and `shelvedAt` now, for the
         // release page's own rows; an agent reading a release wants the
         // reference and the title, and a tool result is a token budget.
-        looseQuests: contents.looseQuests.map((quest) => ({
-          shortId: quest.shortId,
-          title: quest.title,
-          area: quest.area,
-          priority: quest.priority,
-          completedAt: quest.completedAt,
-        })),
+        looseQuests: contents.looseQuests
+          .filter((quest) => !hidden?.quests.has(quest.shortId))
+          .map((quest) => ({
+            shortId: quest.shortId,
+            title: quest.title,
+            area: quest.area,
+            priority: quest.priority,
+            completedAt: quest.completedAt,
+          })),
       };
     },
   });
@@ -358,9 +366,25 @@ export class ReleaseTools {
       const result = await this.releaseController.getReleaseChangelog({
         params: { id: release.id },
       });
+      // A line naming a quest born of outside text nobody confirmed is left
+      // out under a job key (#Q4287).
+      const hidden = await this.jobKeys.hiddenFor(
+        await this.resolveProjectId(params.project, params.project_name),
+      );
+      const markdown = hidden?.quests.size
+        ? result.markdown
+            .split("\n")
+            .filter(
+              (line) =>
+                ![...line.matchAll(/#Q(\d+)\b/g)].some((it) =>
+                  hidden.quests.has(Number(it[1])),
+                ),
+            )
+            .join("\n")
+        : result.markdown;
 
       return {
-        markdown: result.markdown,
+        markdown,
         frozen: !!release.releasedAt,
         stats: result.stats,
       };
