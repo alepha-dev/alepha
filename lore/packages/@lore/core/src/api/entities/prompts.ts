@@ -3,8 +3,10 @@ import { $entity, db } from "alepha/orm";
 
 import { promptArgSchema } from "../schemas/promptArgSchema.ts";
 import {
+  PROMPT_CHECKS,
   PROMPT_MAX_ARGS,
   PROMPT_NAME_PATTERN,
+  PROMPT_SCHEDULES,
   PROMPT_SOURCES,
 } from "../schemas/promptValues.ts";
 import { projects } from "./projects.ts";
@@ -24,8 +26,12 @@ import { users } from "./users.ts";
  *   source, where it runs, enabled. A built-in with no row is still listed.
  *
  * `createdBy` is the owner, whose rank bounds the jobs a trigger starts.
- * Trigger columns come with the triggers quest, pins with the pins quest,
- * each with its migration.
+ *
+ * **Triggers** (#Q4277, from E172's automations): project events, a
+ * schedule, or both; `check` asked before a triggered run; a stored value
+ * per arg the trigger does not fill; ceilings; self-disable after three
+ * failed runs in a row. A built-in's trigger is writable (its text is not),
+ * and writing it creates its row.
  */
 export const prompts = $entity({
   name: "prompts",
@@ -62,8 +68,55 @@ export const prompts = $entity({
     host: z.string().max(64).optional(),
     agent: z.string().max(32).optional(),
     model: z.string().max(96).optional(),
+    /**
+     * The project events it listens to, catalog keys.
+     */
+    eventKeys: z.array(z.string().max(64)).max(16).optional(),
+    /**
+     * How long a run of a prompt with no args waits after a burst's first
+     * event, so the burst lands in one run. Seconds.
+     */
+    settleSeconds: db.default(z.integer().min(0).max(3600), 60),
+    /**
+     * An event arrived and its run has not started yet, and the job that
+     * raised it, when a job did (the chain guard reads it).
+     */
+    pending: db.default(z.boolean(), false),
+    pendingJobId: z.uuid().optional(),
+    schedule: z.enum(PROMPT_SCHEDULES).meta({ mode: "text" }).optional(),
+    /**
+     * A daily or weekly schedule's hour, and a weekly one's day
+     * (`getUTCDay`), in UTC.
+     */
+    dailyHour: z.integer().min(0).max(23).optional(),
+    weekday: z.integer().min(0).max(6).optional(),
+    /**
+     * When the hourly job runs it next. A missed tick is not replayed.
+     */
+    nextRunAt: z.string().optional(),
+    check: z.array(z.enum(PROMPT_CHECKS)).max(4).optional(),
+    /**
+     * A stored value per arg the trigger does not fill: a member for a
+     * weekly status, an epic.
+     */
+    argValues: z.record(z.string().max(32), z.string().max(120)).optional(),
+    maxRunsPerHour: db.default(z.integer().min(1).max(60), 6),
+    maxRunsPerDay: db.default(z.integer().min(1).max(1000), 48),
+    consecutiveFailures: db.default(z.integer().min(0), 0),
+    /**
+     * The last job a run started, and when; the last run a trigger asked
+     * for that started nothing, and why.
+     */
+    lastJobId: z.uuid().optional(),
+    lastRunAt: z.string().optional(),
+    lastSkippedAt: z.string().optional(),
+    lastSkippedReason: z.string().max(500).optional(),
   }),
-  indexes: [{ columns: ["projectId", "name"], unique: true }],
+  indexes: [
+    { columns: ["projectId", "name"], unique: true },
+    // The hourly check: every prompt due, across projects.
+    { columns: ["nextRunAt"] },
+  ],
 });
 
 export type Prompt = Infer<typeof prompts.schema>;

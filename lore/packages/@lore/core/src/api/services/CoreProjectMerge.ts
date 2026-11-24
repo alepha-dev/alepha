@@ -5,7 +5,6 @@ import {
 } from "alepha/api/organizations";
 import { $repository, type SQLLike } from "alepha/orm";
 
-import { agentAutomations } from "../entities/agentAutomations.ts";
 import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
 import { notificationChannels } from "../entities/notificationChannels.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
@@ -32,7 +31,7 @@ import {
  * - **Capabilities and prompts**: the target keeps its own; a capability or
  *   a customised prompt it lacks comes over, so the merged project does
  *   everything both did.
- * - **Agent automations** move, renamed on a clash (#Q4226).
+ * - **Prompts** move, a custom one renamed on a clash (#Q4274).
  * - **Events, subscriptions and channels** move (#Q3889, #Q3890): a
  *   subscription the target already has joins it, a channel name it already
  *   uses gets a free one.
@@ -82,16 +81,6 @@ export class CoreProjectMerge {
       entity: notificationChannels,
       keys: ["name"],
       onCollision: "rename",
-    },
-    // Agent automations (#Q4226) move with the project they run for; a
-    // name the target already uses gets a free one. Their jobs stay: a run
-    // is the source's, as it ran.
-    {
-      kind: "agent automation",
-      entity: agentAutomations,
-      keys: ["name"],
-      onCollision: "rename",
-      renamed: (key, count) => `${key.slice(0, 44)}-${count}`,
     },
     // Prompts (#Q4274): a custom prompt whose name the target uses is
     // renamed `<name>-2`; of two rows configuring the same built-in, the

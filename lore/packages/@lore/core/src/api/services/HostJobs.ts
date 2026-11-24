@@ -38,8 +38,6 @@ export interface HostJobRequest {
   startedBy?: string;
   /** The job whose output started this one, for the chain guard. */
   startedByJobId?: string;
-  /** The agent automation that started it (#Q4226). */
-  automationId?: string;
   /** What the job is about, for its page and its list: a feedback, a quest. */
   subjectType?: string;
   subjectId?: string;
@@ -120,7 +118,6 @@ export interface HostJobSummary {
   status: HostJobStatus;
   startedBy?: string;
   startedByJobId?: string;
-  automationId?: string;
   subjectType?: string;
   subjectId?: string;
   reason?: string;
@@ -169,31 +166,6 @@ export interface HostJobQueue {
     subjectId: string,
   ): Promise<HostJobSummary | undefined>;
   cancel(jobId: string, by?: string): Promise<HostJobSummary>;
-  /** An automation's jobs that are still queued or running (#Q4226). */
-  activeForAutomation(automationId: string): Promise<HostJobSummary[]>;
-  /**
-   * The subjects of every job an automation ever started, whatever their
-   * outcome (#Q4229): a quest a build automation built is never picked
-   * again.
-   */
-  subjectsOfAutomation(
-    automationId: string,
-    subjectType: string,
-  ): Promise<string[]>;
-  /**
-   * How many jobs automations started since an instant (#Q4230): one
-   * automation's, or a project's of one subject type (its builds).
-   */
-  countAutomationJobs(filter: AutomationJobCount): Promise<number>;
-  /**
-   * The jobs an automation started on these subjects of a project (#Q4234),
-   * newest first: whether a quest was built by one.
-   */
-  automationJobsOn(
-    projectId: number,
-    subjectType: string,
-    subjectIds: string[],
-  ): Promise<HostJobSummary[]>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
   /**
@@ -201,16 +173,6 @@ export interface HostJobQueue {
    * or all of them (#Q4218). Answers how many hosts were asked.
    */
   removeWorkspaces(projectId: number, workspace?: string): Promise<number>;
-}
-
-/**
- * Which automation jobs {@link HostJobQueue.countAutomationJobs} counts.
- */
-export interface AutomationJobCount {
-  since: string;
-  automationId?: string;
-  projectId?: number;
-  subjectType?: string;
 }
 
 /**
@@ -336,57 +298,6 @@ export class HostJobs {
 
   public async cancel(jobId: string, by?: string): Promise<HostJobSummary> {
     return this.need().cancel(jobId, by);
-  }
-
-  /**
-   * An automation's jobs that are still queued or running (#Q4226): its
-   * single-flight check. Empty without Ship.
-   */
-  public async activeForAutomation(
-    automationId: string,
-  ): Promise<HostJobSummary[]> {
-    return (await this.queue?.activeForAutomation(automationId)) ?? [];
-  }
-
-  /**
-   * How many jobs automations started since an instant (#Q4230). Zero
-   * without Ship.
-   */
-  public async countAutomationJobs(
-    filter: AutomationJobCount,
-  ): Promise<number> {
-    return (await this.queue?.countAutomationJobs(filter)) ?? 0;
-  }
-
-  /**
-   * The jobs an automation started on these subjects (#Q4234), newest
-   * first. Empty without Ship.
-   */
-  public async automationJobsOn(
-    projectId: number,
-    subjectType: string,
-    subjectIds: string[],
-  ): Promise<HostJobSummary[]> {
-    if (!subjectIds.length) return [];
-    return (
-      (await this.queue?.automationJobsOn(
-        projectId,
-        subjectType,
-        subjectIds,
-      )) ?? []
-    );
-  }
-
-  /**
-   * What an automation's jobs were about (#Q4229), by subject id.
-   */
-  public async subjectsOfAutomation(
-    automationId: string,
-    subjectType: string,
-  ): Promise<string[]> {
-    return (
-      (await this.queue?.subjectsOfAutomation(automationId, subjectType)) ?? []
-    );
   }
 
   public async chainHolds(jobId: string, kind: HostJobKind): Promise<boolean> {

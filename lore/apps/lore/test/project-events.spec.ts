@@ -120,8 +120,6 @@ describe.skipIf(onPostgres)("Project events", () => {
     expect(catalog.map((event) => event.name).sort()).toEqual([
       "agent.job.failed",
       "agent.job.succeeded",
-      "automation.ceiling.reached",
-      "automation.disabled",
       "coverage.dropped",
       "deploy.failed",
       "deploy.succeeded",
@@ -137,6 +135,8 @@ describe.skipIf(onPostgres)("Project events", () => {
       "host.online",
       "monitor.down",
       "monitor.up",
+      "prompt.ceiling.reached",
+      "prompt.disabled",
       "pull_request.added",
       "quest.assigned",
       "quest.completed",

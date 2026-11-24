@@ -9,6 +9,7 @@ import { promptWriteSchema } from "../schemas/promptWriteSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { PromptRunService } from "../services/PromptRunService.ts";
 import { PromptService } from "../services/PromptService.ts";
+import { PromptTriggers } from "../services/PromptTriggers.ts";
 
 /**
  * A project's prompts (#E174, #Q4274): the built-ins merged with the
@@ -19,6 +20,7 @@ import { PromptService } from "../services/PromptService.ts";
 export class PromptController {
   protected readonly service = $inject(PromptService);
   protected readonly runs = $inject(PromptRunService);
+  protected readonly triggers = $inject(PromptTriggers);
 
   protected readonly nameParams = z.object({
     projectId: z.integer(),
@@ -33,11 +35,39 @@ export class PromptController {
       "The project's prompts: the built-ins it can use, then its custom prompts.",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      response: z.object({ items: z.array(promptResourceSchema) }),
+      response: z.object({
+        items: z.array(promptResourceSchema),
+        /** When every prompt's trigger was paused (#Q4277). */
+        pausedAt: z.string().optional(),
+      }),
     },
-    handler: async ({ params }) => ({
-      items: await this.service.list(params.projectId),
-    }),
+    handler: async ({ params }) => {
+      const pausedAt = await this.triggers.pausedAt(params.projectId);
+      return {
+        items: await this.service.list(params.projectId),
+        ...(pausedAt ? { pausedAt } : {}),
+      };
+    },
+  });
+
+  /**
+   * Pauses every prompt's trigger in the project, or resumes them
+   * (#Q4277). A run by hand is never paused.
+   */
+  setPromptsPaused = $action({
+    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
+    method: "POST",
+    path: "/projects/:projectId/prompts-paused",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({ paused: z.boolean() }),
+      response: z.object({ pausedAt: z.string().optional() }),
+    },
+    handler: async ({ params, body }) => {
+      await this.triggers.setPaused(params.projectId, body.paused);
+      const pausedAt = await this.triggers.pausedAt(params.projectId);
+      return pausedAt ? { pausedAt } : {};
+    },
   });
 
   getPrompt = $action({

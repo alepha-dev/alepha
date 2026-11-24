@@ -149,18 +149,4 @@ export class HostRouter {
     lazy: () =>
       import("./components/project/settings/ProjectSettingsHostsPage.tsx"),
   });
-
-  /**
-   * The project's agent automations (#Q4231), beside Hosts: one table and
-   * a small form, no sidebar entry.
-   */
-  projectSettingsAutomations = $pageProjectSettings({
-    name: "projectSettingsAutomations",
-    path: "/automations",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Automations`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsAutomationsPage.tsx"),
-  });
 }

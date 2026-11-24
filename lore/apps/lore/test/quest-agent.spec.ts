@@ -141,7 +141,7 @@ describe("a quest worked by an agent job", () => {
     expect(job.input.prompt).not.toContain("branch from the default branch");
     expect(job.input.prompt).toContain("open a pull request with `gh`");
     expect(job.input.prompt).toContain("quest_pull_request_add");
-    expect(job.input.prompt).toContain("so do not complete it yourself");
+    expect(job.input.prompt).toContain(`each message naming #Q`);
     expect(job.input.prompt).not.toContain("lore/q");
     expect(job.input.prompt).toContain("Work on quest #Q");
   });

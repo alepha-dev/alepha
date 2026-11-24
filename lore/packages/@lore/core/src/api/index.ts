@@ -21,7 +21,6 @@ import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificati
 import { AdminHostController } from "./controllers/AdminHostController.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
-import { AgentAutomationController } from "./controllers/AgentAutomationController.ts";
 import { AgentHostController } from "./controllers/AgentHostController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
@@ -85,11 +84,6 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
-import { AgentAutomationHealth } from "./services/AgentAutomationHealth.ts";
-import { AgentAutomationKinds } from "./services/AgentAutomationKinds.ts";
-import { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
-import { AgentAutomationService } from "./services/AgentAutomationService.ts";
-import { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
 import { AgentHostService } from "./services/AgentHostService.ts";
 import { AgentJobProjectEvents } from "./services/AgentJobProjectEvents.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
@@ -158,6 +152,7 @@ import { ProjectThresholds } from "./services/ProjectThresholds.ts";
 import { PromptRegistry } from "./services/PromptRegistry.ts";
 import { PromptRunService } from "./services/PromptRunService.ts";
 import { PromptService } from "./services/PromptService.ts";
+import { PromptTriggers } from "./services/PromptTriggers.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityProjectEvents } from "./services/QualityProjectEvents.ts";
 import { QualityProjectMerge } from "./services/QualityProjectMerge.ts";
@@ -410,14 +405,6 @@ export const LoreCoreApi = $module({
     // The port agent jobs start through (#Q3988): Build registers it.
     AgentJobs,
     AgentJobService,
-    // Agent automations (#E172): a prompt run on an Agent host by hand, on
-    // an event or on a schedule. Plan registers its Triage and Build kinds.
-    AgentAutomationKinds,
-    AgentAutomationService,
-    AgentAutomationTriggers,
-    AgentAutomationSchedule,
-    AgentAutomationHealth,
-    AgentAutomationController,
     // Prompts (#E174): the built-ins Plan registers, the project's own.
     PromptRegistry,
     PromptService,
@@ -425,6 +412,8 @@ export const LoreCoreApi = $module({
     PromptController,
     // A job that ends tells its starter, and its subscribers (#Q4276).
     AgentJobProjectEvents,
+    // A prompt's triggers (#Q4277): events, schedule, check, ceilings.
+    PromptTriggers,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,
@@ -670,15 +659,6 @@ export {
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
 export { AgentJobService } from "./services/AgentJobService.ts";
-export { AgentAutomationController } from "./controllers/AgentAutomationController.ts";
-export {
-  type AgentAutomationKind,
-  AgentAutomationKinds,
-  type AgentAutomationRunContext,
-  type AgentAutomationRunOutcome,
-  type AgentAutomationWorkSource,
-} from "./services/AgentAutomationKinds.ts";
-export { AgentAutomationService } from "./services/AgentAutomationService.ts";
 export { PromptController } from "./controllers/PromptController.ts";
 export {
   type BuiltinPrompt,
@@ -690,14 +670,11 @@ export {
   type PromptRunPlan,
 } from "./services/PromptRegistry.ts";
 export { PromptService } from "./services/PromptService.ts";
+export { PromptTriggers } from "./services/PromptTriggers.ts";
 export {
   type PromptRunBody,
   PromptRunService,
 } from "./services/PromptRunService.ts";
-export { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
-export { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
-export { AgentAutomationHealth } from "./services/AgentAutomationHealth.ts";
-export { AutomationProjectEvents } from "./services/AutomationProjectEvents.ts";
 export {
   type ProjectEventListener,
   ProjectEventListeners,
@@ -713,7 +690,6 @@ export {
   JobKeyService,
 } from "./services/JobKeyService.ts";
 export type {
-  AutomationJobCount,
   AgentHostDirectory,
   AgentHostRef,
   HostJobInput,

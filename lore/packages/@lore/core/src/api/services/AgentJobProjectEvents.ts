@@ -131,10 +131,9 @@ export class AgentJobProjectEvents {
     const duration = job.endedAt
       ? (Date.parse(job.endedAt) - Date.parse(started)) / 1000
       : 0;
-    // A run by hand, or a job started before prompts recorded a cause by a
-    // member and no automation: told to its starter.
-    const byHand =
-      job.cause?.kind === "hand" || (!job.cause && !job.automationId);
+    // A run by hand, or a job a member started with no prompt (a text run):
+    // told to its starter.
+    const byHand = !job.cause || job.cause.kind === "hand";
     const reply = (job.result ?? "")
       .split("\n")
       .map((line) => line.trim())
@@ -154,7 +153,7 @@ export class AgentJobProjectEvents {
         cause:
           job.cause?.kind === "event"
             ? `event ${job.cause.event ?? ""}`.trim()
-            : (job.cause?.kind ?? (job.automationId ? "automation" : "hand")),
+            : (job.cause?.kind ?? "hand"),
         host: job.hostId ?? "",
         duration_secs: Math.round(duration),
         ...(job.status === "succeeded"

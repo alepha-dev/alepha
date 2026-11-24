@@ -27,7 +27,6 @@ import { ReleaseResourceKind } from "./resources/ReleaseResourceKind.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { BoardColumnsMetric } from "./services/BoardColumnsMetric.ts";
-import { BuiltQuestLanding } from "./services/BuiltQuestLanding.ts";
 import { BurnupMetric } from "./services/BurnupMetric.ts";
 import { CompletedPerWeekMetric } from "./services/CompletedPerWeekMetric.ts";
 import { CompletedThisWeekMetric } from "./services/CompletedThisWeekMetric.ts";
@@ -48,7 +47,6 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
-import { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
 import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { PlanLiveQuests } from "./services/PlanLiveQuests.ts";
@@ -118,14 +116,10 @@ export const LorePlanApi = $module({
   services: [
     // Feedback triaged by an agent job on the Agent host (#Q3988).
     FeedbackAgentService,
-    // The Triage and Build kinds of an agent automation (#E172).
-    PlanAutomationKinds,
     // The built-in prompts and their epic, quest and feedback args (#E174).
     PlanPrompts,
     // What a job key may not read: outside text nobody trusted (#Q4287).
     PlanOutsideText,
-    // A built quest completes when its commit reaches the default branch.
-    BuiltQuestLanding,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
     QuestAgentService,
     PullRequestAgentService,
@@ -318,10 +312,8 @@ export {
 export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
-export { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
 export { PlanOutsideText } from "./services/PlanOutsideText.ts";
 export { PlanPrompts } from "./services/PlanPrompts.ts";
-export { BuiltQuestLanding } from "./services/BuiltQuestLanding.ts";
 export { EpicAgentController } from "./controllers/EpicAgentController.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";
 export { EpicAgentService } from "./services/EpicAgentService.ts";

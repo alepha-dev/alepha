@@ -50,6 +50,7 @@ export class PromptRunService {
     name: string,
     body: PromptRunBody,
     cause: PromptJobCause = { kind: "hand" },
+    startedByJobId?: string,
   ): Promise<{ jobId: string; skipped: number[] }> {
     const prompt = await this.prompts.get(projectId, name);
     for (const permission of ["host:read", prompt.permission]) {
@@ -127,6 +128,9 @@ export class PromptRunService {
       source,
       timeoutSeconds: prompt.timeoutSeconds,
       startedBy: user.id,
+      // The job whose event started a triggered run: the chain guard reads
+      // it (#Q4277).
+      ...(startedByJobId ? { startedByJobId } : {}),
       subjectType: "prompt",
       subjectId: name,
       ...changes,

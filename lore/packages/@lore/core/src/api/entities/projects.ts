@@ -68,10 +68,11 @@ export const projects = $entity({
      * accepted, but the link is built from this alone.
      */
     /**
-     * Every agent automation of the project paused (#Q4230): its triggers
-     * start nothing until it is cleared. A run by hand still works.
+     * Every prompt's trigger paused in the project (#Q4277, `automations`
+     * until then): they start nothing until it is cleared. A run by hand
+     * still works.
      */
-    automationsPausedAt: z.string().optional(),
+    promptsPausedAt: z.string().optional(),
     repositoryUrl: z.string().max(200).optional(),
     /**
      * Errors retention window, in days. A daily purge cron deletes `open`

@@ -3,22 +3,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AgentAutomationController,
-  AgentAutomationService,
   AgentHostService,
-  AgentAutomationTriggers,
+  PromptController,
+  PromptTriggers,
   HostCommandService,
   HostCommandTransport,
   HostJobService,
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
 import { eventSubscriptions, projectEvents } from "@lore/core/api";
-import {
-  agentAutomations,
-  hostCommands,
-  hostJobs,
-  hosts,
-} from "@lore/core/schemas";
+import { hostCommands, prompts, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackController } from "@lore/plan/api";
 import { feedback, quests } from "@lore/plan/schemas";
@@ -48,7 +42,7 @@ import { TestEntityRepositories } from "./entities.ts";
 import { ManualCronProvider } from "./ManualCronProvider.ts";
 
 /**
- * The world an agent automation spec runs in (#E172): Lore's api and mcp, a
+ * The world a prompt run or trigger spec runs in (#E172, #E174): Lore's api and mcp, a
  * project whose one Agent host reports `claude` and answered its check, and
  * helpers to file feedback and to end a job as its host would.
  */
@@ -70,7 +64,7 @@ export class AutomationRepos {
   executions = $repository(jobExecutionEntity);
   jobs = $repository(hostJobs);
   hosts = $repository(hosts);
-  automations = $repository(agentAutomations);
+  prompts = $repository(prompts);
   events = $repository(projectEvents);
   commands = $repository(hostCommands);
   errors = $repository(projectErrors);
@@ -140,9 +134,8 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
     hostId: host.id,
     projectId: host.projectId,
     baseUrl,
-    service: alepha.inject(AgentAutomationService),
-    triggers: alepha.inject(AgentAutomationTriggers),
-    controller: alepha.inject(AgentAutomationController),
+    triggers: alepha.inject(PromptTriggers),
+    controller: alepha.inject(PromptController),
     /**
      * Feedback submitted through the inbox's own action, as the owner: its
      * `feedback.created` event recorded with it.
@@ -216,7 +209,7 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
      * and the automations' settle jobs, until none is left.
      */
     drain: async (
-      names: string[] = ["project-events.deliver", "agent-automations.settle"],
+      names: string[] = ["project-events.deliver", "prompts.settle"],
     ) => {
       const jobs = alepha.inject(JobProvider);
       const now = alepha.inject(DateTimeProvider).nowISOString();
@@ -244,7 +237,7 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
     waiting: async () =>
       repos.executions.findMany({
         where: {
-          jobName: { eq: "agent-automations.settle" },
+          jobName: { eq: "prompts.settle" },
           status: { eq: "scheduled" },
         },
       }),

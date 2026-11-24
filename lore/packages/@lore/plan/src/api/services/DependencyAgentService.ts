@@ -39,9 +39,8 @@ export class DependencyAgentService {
     projectId: number,
     startedBy: string,
     run: AgentRunRequest = {},
-    origin: { automationId?: string; startedByJobId?: string } = {},
   ): Promise<{ jobId: string }> {
-    return this.start(projectId, startedBy, run, origin, {
+    return this.start(projectId, startedBy, run, {
       kind: "securityCheck",
       defaultSource: "read",
       workspace: "security",
@@ -53,9 +52,8 @@ export class DependencyAgentService {
     projectId: number,
     startedBy: string,
     run: AgentRunRequest = {},
-    origin: { automationId?: string; startedByJobId?: string } = {},
   ): Promise<{ jobId: string }> {
-    return this.start(projectId, startedBy, run, origin, {
+    return this.start(projectId, startedBy, run, {
       kind: "dependencyUpdate",
       defaultSource: "write",
       timeoutSeconds: DependencyAgentService.UPDATE_SECONDS,
@@ -66,7 +64,6 @@ export class DependencyAgentService {
     projectId: number,
     startedBy: string,
     run: AgentRunRequest,
-    origin: { automationId?: string; startedByJobId?: string },
     options: {
       kind: "securityCheck" | "dependencyUpdate";
       defaultSource: "read" | "write";
@@ -105,10 +102,6 @@ export class DependencyAgentService {
       ...(options.workspace ? { workspace: options.workspace } : {}),
       timeoutSeconds: options.timeoutSeconds,
       startedBy,
-      ...(origin.automationId ? { automationId: origin.automationId } : {}),
-      ...(origin.startedByJobId
-        ? { startedByJobId: origin.startedByJobId }
-        : {}),
       subjectType:
         options.kind === "securityCheck" ? "security" : "dependencies",
       subjectId: slug,

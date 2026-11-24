@@ -2,7 +2,7 @@ import { type Infer, z } from "alepha";
 
 import { agentRunSchema, agentRunSourceSchema } from "./agentRunSchema.ts";
 import { promptArgSchema } from "./promptArgSchema.ts";
-import { PROMPT_MAX_ARGS } from "./promptValues.ts";
+import { PROMPT_CHECKS, PROMPT_MAX_ARGS } from "./promptValues.ts";
 
 /**
  * The fields of a prompt a write sets (#Q4274). On a built-in only `source`,
@@ -20,6 +20,23 @@ export const promptWriteSchema = z.object({
   agent: agentRunSchema.shape.agent.unwrap().nullable().optional(),
   model: agentRunSchema.shape.model.unwrap().nullable().optional(),
   enabled: z.boolean().optional(),
+  /**
+   * The trigger, in one word (#Q4277): `manual`, `event:<key>[,<key>]`,
+   * `hourly`, `6h`, `daily@<h>`, `weekly@<day>@<h>`, or an event part and a
+   * schedule part joined by a comma. Writable on a built-in.
+   */
+  on: z.string().max(1024).optional(),
+  check: z.array(z.enum(PROMPT_CHECKS)).max(4).nullable().optional(),
+  /**
+   * A stored value per arg the trigger does not fill.
+   */
+  argValues: z
+    .record(z.string().max(32), z.string().max(120))
+    .nullable()
+    .optional(),
+  maxRunsPerHour: z.integer().min(1).max(60).optional(),
+  maxRunsPerDay: z.integer().min(1).max(1000).optional(),
+  settleSeconds: z.integer().min(0).max(3600).optional(),
 });
 
 export type PromptWrite = Infer<typeof promptWriteSchema>;

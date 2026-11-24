@@ -122,13 +122,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         labelKey: "project.settings.nav.hosts",
         fullWidth: true,
       },
-      {
-        // Agent automations (#Q4231): what runs on those hosts.
-        route: "projectSettingsAutomations",
-        labelKey: "project.settings.nav.automations",
-        fullWidth: true,
-        requires: "host:read",
-      },
     ],
   },
   {
