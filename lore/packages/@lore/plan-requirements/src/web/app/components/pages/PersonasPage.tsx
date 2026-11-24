@@ -27,7 +27,6 @@ import {
 } from "../personas/personaKindLabels.ts";
 import PersonaSheet from "../personas/PersonaSheet.tsx";
 import PersonasToCover from "../personas/PersonasToCover.tsx";
-import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
  * The Personas page (#E153): the "To cover" banner
@@ -69,8 +68,6 @@ const PersonasPage = () => {
 
   const [kind, setKind] = useState<"all" | "human" | "system" | "agent">("all");
 
-  useSyncRequirementsCount("personas", personas.data);
-  useSyncRequirementsCount("useCases", useCases.data);
   if (!project) return null;
 
   const all = personas.data ?? [];

@@ -87,8 +87,9 @@ describe("the Requirements sidebar entries", () => {
     ]);
     for (const entry of band) {
       expect(entry.option).toBe("requirements");
-      // A count, from the project's requirements counts.
-      expect(entry.badge).toBeTypeOf("function");
+      // No count (#Q4241): a total said nothing there, and it was wrong.
+      expect(entry.badge).toBeUndefined();
+      expect(entry.reads).toBeUndefined();
     }
   });
 

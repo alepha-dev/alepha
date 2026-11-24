@@ -76,23 +76,6 @@ export class PersonaController {
     });
   }
 
-  /**
-   * How many personas the project holds: the sidebar's count beside its
-   * Personas entry, read once when the project opens.
-   */
-  countPersonas = $action({
-    method: "GET",
-    path: "/countPersonas/:projectId",
-    use: [this.ownsProject("persona:read")],
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.object({ count: z.integer() }),
-    },
-    handler: async ({ params }) => ({
-      count: await this.personas.count({ projectId: { eq: params.projectId } }),
-    }),
-  });
-
   getPersonas = $action({
     method: "GET",
     path: "/getPersonas/:projectId",

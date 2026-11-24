@@ -140,25 +140,6 @@ export class RequirementController {
     );
   }
 
-  /**
-   * How many requirements the project holds: the sidebar's count beside its
-   * Requirements entry, read once when the project opens.
-   */
-  countRequirements = $action({
-    method: "GET",
-    path: "/countRequirements/:projectId",
-    use: [this.ownsProject("requirement:read")],
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.object({ count: z.integer() }),
-    },
-    handler: async ({ params }) => ({
-      count: await this.requirements.count({
-        projectId: { eq: params.projectId },
-      }),
-    }),
-  });
-
   getRequirements = $action({
     method: "GET",
     path: "/getRequirements/:projectId",
