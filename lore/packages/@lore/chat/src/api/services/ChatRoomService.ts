@@ -14,9 +14,11 @@ import {
   NotFoundError,
 } from "alepha/server";
 
+import { chatAgents } from "../entities/chatAgents.ts";
 import { type ChatMessage, chatMessages } from "../entities/chatMessages.ts";
 import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
 import { type ChatRoom, chatRooms } from "../entities/chatRooms.ts";
+import type { ChatRoomAgentResource } from "../schemas/chatRoomAgentResourceSchema.ts";
 import {
   CHAT_PREVIEW_LENGTH,
   type ChatRoomResource,
@@ -51,6 +53,7 @@ export class ChatRoomService {
   protected readonly rooms = $repository(chatRooms);
   protected readonly members = $repository(chatRoomMembers);
   protected readonly messages = $repository(chatMessages);
+  protected readonly agents = $repository(chatAgents);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly roster = $inject(ProjectRoster);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -354,6 +357,55 @@ export class ChatRoomService {
         ...(entry ? { name: entry.name, label: entry.label } : {}),
       };
     });
+  }
+
+  /**
+   * The agents that have answered in a room (#Q4268), for its members panel:
+   * one per handle, `@lore` and the project's own, a deleted agent still
+   * named as its answers are. Visible to whoever sees the room.
+   */
+  public async agentsOf(
+    projectId: number,
+    roomId: string,
+    userId: string,
+  ): Promise<ChatRoomAgentResource[]> {
+    const room = await this.visibleRoom(projectId, roomId, userId);
+    const rows = await this.messages.findMany({
+      where: {
+        roomId: { eq: room.id },
+        agent: { isNotNull: true },
+        deletedAt: { isNull: true },
+      },
+      columns: ["agent", "agentId"],
+      distinct: ["agent", "agentId"],
+    });
+    const ids = [
+      ...new Set(rows.flatMap((row) => (row.agentId ? [row.agentId] : []))),
+    ];
+    const agents = ids.length
+      ? await this.agents.findMany({
+          where: { id: { inArray: ids } },
+          columns: ["id", "name", "avatar"],
+        })
+      : [];
+    const agentById = new Map(agents.map((agent) => [agent.id, agent]));
+    const seen = new Set<string>();
+    const out: ChatRoomAgentResource[] = [];
+    for (const row of rows) {
+      const key = row.agentId ?? row.agent!;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const agent = row.agentId ? agentById.get(row.agentId) : undefined;
+      out.push({
+        handle: row.agent!,
+        ...(row.agentId ? { agentId: row.agentId } : {}),
+        ...(agent ? { name: agent.name } : {}),
+        ...(agent?.avatar ? { avatarId: agent.avatar } : {}),
+      });
+    }
+    return out.sort((a, b) =>
+      (a.name ?? a.handle).localeCompare(b.name ?? b.handle),
+    );
   }
 
   /**

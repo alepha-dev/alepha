@@ -1,4 +1,4 @@
-import { Button, UserAvatar } from "@alepha/ui";
+import { Badge, Button, UserAvatar } from "@alepha/ui";
 import { displayName, type I18n, type ProjectUser } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -6,7 +6,11 @@ import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import type { ChatRoomController } from "../../../api/controllers/ChatRoomController.ts";
-import type { ChatRoomResource } from "../../../schemas/index.ts";
+import type {
+  ChatRoomAgentResource,
+  ChatRoomResource,
+} from "../../../schemas/index.ts";
+import ChatAgentAvatar from "./ChatAgentAvatar.tsx";
 import RoomInviteDialog from "./RoomInviteDialog.tsx";
 
 export interface RoomMembersPanelProps {
@@ -19,6 +23,15 @@ export interface RoomMembersPanelProps {
   canManage: boolean;
   users: ProjectUser[];
   members: Array<{ userId: string }>;
+  /**
+   * The agents that have answered in the room (#Q4268), listed after the
+   * people with the badge their messages carry.
+   */
+  agents?: ChatRoomAgentResource[];
+  /**
+   * The page's names for the agents it offers, by handle: `@lore`'s own.
+   */
+  agentLabels?: Record<string, string>;
   onClose: () => void;
 }
 
@@ -66,6 +79,7 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
 
   const invitable = props.users.filter((user) => !memberIds.has(user.id));
   const busy = invite.loading || remove.loading;
+  const count = props.members.length + (props.agents?.length ?? 0);
 
   return (
     <aside
@@ -78,7 +92,7 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
       {/* The twin of the room list's and the conversation's headers. */}
       <div className="flex h-[46px] shrink-0 items-center justify-between border-b pr-2 pl-4">
         <h2 className="text-sm font-semibold">
-          {tr("chat.room.members")} ({props.members.length})
+          {tr("chat.room.members")} ({count})
         </h2>
         <Button
           variant="minimal"
@@ -116,6 +130,28 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
                       {tr("chat.room.remove")}
                     </Button>
                   )}
+              </li>
+            );
+          })}
+          {props.agents?.map((agent) => {
+            const name =
+              agent.name ?? props.agentLabels?.[agent.handle] ?? agent.handle;
+            return (
+              <li
+                key={agent.agentId ?? agent.handle}
+                data-testid="chat-room-agent"
+                className="flex items-center gap-2 text-sm"
+              >
+                <ChatAgentAvatar
+                  name={name}
+                  avatarId={agent.avatarId}
+                  builtin={!agent.agentId}
+                  className="size-6 rounded-md"
+                />
+                <span className="min-w-0 flex-1 truncate">{name}</span>
+                <Badge variant="tint" tone="violet">
+                  {tr("chat.agent.tag")}
+                </Badge>
               </li>
             );
           })}

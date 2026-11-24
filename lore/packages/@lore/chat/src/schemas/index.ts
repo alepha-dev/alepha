@@ -21,6 +21,10 @@ export {
   type ChatReactionEmoji,
   chatReactionSchema,
 } from "../api/schemas/chatReactionSchema.ts";
+export {
+  type ChatRoomAgentResource,
+  chatRoomAgentResourceSchema,
+} from "../api/schemas/chatRoomAgentResourceSchema.ts";
 export { chatRoomMemberResourceSchema } from "../api/schemas/chatRoomMemberResourceSchema.ts";
 export { chatRoomNameSchema } from "../api/schemas/chatRoomNameSchema.ts";
 export {
