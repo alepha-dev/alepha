@@ -43,6 +43,17 @@ describe("ErrorTrustIcon", () => {
     expect(view.queryByText("Trusted")).toBeNull();
   });
 
+  it("shows a server group trusted on arrival as a green check naming no member", async ({
+    expect,
+  }) => {
+    const view = await mount(<ErrorTrustIcon trusted onArrival />);
+
+    const icon = view.getByTestId("error-trusted");
+    expect(icon.getAttribute("aria-label")).toBe(
+      "Trusted on arrival: a server error, reported by the app's own server",
+    );
+  });
+
   it("shows an untrusted group as an orange warning saying it needs approval", async ({
     expect,
   }) => {

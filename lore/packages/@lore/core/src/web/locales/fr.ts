@@ -2830,6 +2830,11 @@ export default {
   "errors.action.trust": "Faire confiance",
   "errors.toast.trusted":
     "Confiance accordée : un agent peut maintenant lire cette erreur",
+  "errors.action.untrust": "Retirer la confiance",
+  "errors.toast.untrusted":
+    "Confiance retirée : aucun agent ne lit cette erreur avant qu'un membre lui refasse confiance",
+  "errors.trustedOnArrival":
+    "Confiance accordée à l'arrivée : une erreur serveur, signalée par le serveur de l'application",
   "errors.trustedBy": "Confiance accordée par $1",
   "errors.untrustedHint":
     "Source non vérifiée : un membre doit l'approuver avant qu'elle soit traitée automatiquement",

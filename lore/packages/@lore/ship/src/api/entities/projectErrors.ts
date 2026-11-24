@@ -82,7 +82,9 @@ export const projectErrors = $entity({
      * from an ingest open to anyone, so no agent reads it before a member
      * did: a job key's error list holds trusted groups only, and refuses to
      * act on another. Kept when the group is reported again (same
-     * fingerprint, same row); a new group starts untrusted.
+     * fingerprint, same row). A new browser group starts untrusted; a new
+     * server group from the sigil ingest starts trusted, `trustedBy` empty
+     * (#Q4255). A member may withdraw the trust, which clears both.
      */
     trustedAt: z.string().optional(),
     trustedBy: z.uuid().optional(),

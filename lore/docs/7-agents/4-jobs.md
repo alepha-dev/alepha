@@ -211,13 +211,21 @@ agent reads it until a member trusts it.**
   items wait. A member who can triage reads it and clicks **Trust**, which
   Lore records with their name. The **Untrusted** marker stays, and from then
   on the item is triaged like one the team wrote.
-- **Errors.** An agent's error list holds only the error groups a member
-  trusted; the **Errors** page marks each one, offers **Trust** on an open
-  group, and says how many wait. A group reported again keeps its trust; a
-  new group starts untrusted.
-- **Trust** takes a person signed in to Lore. An API key, a job key and the
-  MCP are refused: an agent that could trust text would undo the rule, so no
-  MCP tool and no CLI command does it.
+- **Errors.** An agent's error list holds only the trusted error groups;
+  the **Errors** page marks each one, offers **Trust** on an open group, and
+  says how many wait. An error your app's server reports is trusted on
+  arrival: no browser can pass for it, since your app's server labels
+  everything a browser reports as a browser error, and a refusal such as a
+  400 or a 404 is never reported, so the usual echoes of a visitor's input
+  do not arrive. A browser error and an uptime outage start untrusted. A group
+  reported again keeps its trust.
+- **Withdraw trust** puts a trusted group back out of an agent's reach, for
+  a server error whose message carries outside text (a driver message
+  quoting a value, a third party's response). It stays withdrawn when the
+  group is reported again, until a member trusts it.
+- **Trust** and **Withdraw trust** take a person signed in to Lore. An API
+  key, a job key and the MCP are refused: an agent that could trust text
+  would undo the rule, so no MCP tool and no CLI command does it.
 - A quest filed from untrusted feedback is marked **Untrusted** too: **Work it
   with an agent** waits until a member has clicked **Confirm its text**, and a
   review of an epic holding such a quest is refused until then. A quest filed

@@ -6,9 +6,9 @@ import { projectErrors } from "../entities/projectErrors.ts";
 
 /**
  * Ship's half of a triage automation's "only if there is something" check
- * (#Q4228): an open error group a member trusted (#Q4233), when the project
- * tracks errors (Ship's `track` option). An untrusted group is no work: no
- * agent reads it.
+ * (#Q4228): an open trusted error group (#Q4233; a server one is trusted on
+ * arrival, #Q4255), when the project tracks errors (Ship's `track` option).
+ * An untrusted group is no work: no agent reads it.
  */
 export class ShipAutomationWork {
   protected readonly kinds = $inject(AgentAutomationKinds);

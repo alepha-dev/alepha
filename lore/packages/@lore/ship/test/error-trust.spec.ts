@@ -12,6 +12,7 @@ import {
   ProjectErrorController,
   SigilIngestService,
 } from "../src/api/index.ts";
+import { UptimeErrorService } from "../src/api/services/UptimeErrorService.ts";
 import { projectErrors, type Sigil, sigils } from "../src/schemas/index.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
@@ -57,7 +58,11 @@ const setup = async () => {
 
 type World = Awaited<ReturnType<typeof setup>>;
 
-const report = (w: World, message: string) =>
+const report = (
+  w: World,
+  message: string,
+  origin: "client" | "server" = "client",
+) =>
   w.ingest.absorb(w.sigil, {
     errors: [
       {
@@ -67,10 +72,18 @@ const report = (w: World, message: string) =>
         // message makes one group per message.
         stack: `TypeError: ${message}\n    at ${message} (app.js:12:3)`,
         sourceUrl: "https://acme.example/cart",
-        origin: "client",
+        origin,
       },
     ],
   } as never);
+
+const group = async (w: World, message: string) => {
+  const [row] = await w.repos.errors.findMany({
+    where: { message: { eq: message } },
+  });
+  if (!row) throw new Error(`no group "${message}"`);
+  return row;
+};
 
 /**
  * The caller an agent's job key makes: an API key whose `job_keys` row pins
@@ -202,5 +215,95 @@ describe("error group Trust", () => {
       where: { message: { eq: "another" } },
     });
     expect(fresh[0]?.trustedAt).toBeFalsy();
+  });
+
+  it("trusts a server group on arrival, naming no member, and lists it to a job key", async ({
+    expect,
+  }) => {
+    await report(w, "crash", "server");
+    await report(w, "click", "client");
+
+    const crash = await group(w, "crash");
+    expect(crash.trustedAt).toBeTruthy();
+    expect(crash.trustedBy).toBeFalsy();
+    expect((await group(w, "click")).trustedAt).toBeFalsy();
+
+    const job = await asJob(w);
+    const list = await w.controller.listProjectErrors.run(
+      { params: { projectId: w.projectId }, query: {} },
+      { user: job },
+    );
+    expect(list.items.map((it) => it.message)).toEqual(["crash"]);
+    expect(list.items[0]?.trustedBy).toBeUndefined();
+    expect(list.awaitingTrust).toBe(1);
+  });
+
+  it("withdraws a group's trust, from a session only, and keeps it withdrawn when reported again", async ({
+    expect,
+  }) => {
+    await report(w, "crash", "server");
+    const crash = await group(w, "crash");
+
+    for (const credential of [
+      { type: "api-key", id: "key-1" },
+      { type: "oauth", clientId: "mcp-client" },
+    ]) {
+      await expect(
+        w.controller.untrustProjectError.run(
+          { params: { projectId: w.projectId, errorId: crash.id } },
+          { user: { ...w.owner, credential } as UserAccountToken },
+        ),
+      ).rejects.toThrow(/signed-in session/);
+    }
+    expect((await group(w, "crash")).trustedAt).toBeTruthy();
+
+    await w.controller.untrustProjectError.run(
+      { params: { projectId: w.projectId, errorId: crash.id } },
+      { user: w.owner },
+    );
+    await report(w, "crash", "server");
+    const again = await group(w, "crash");
+    expect(again.trustedAt).toBeFalsy();
+    expect(again.trustedBy).toBeFalsy();
+    expect(again.count).toBe(2);
+
+    const job = await asJob(w);
+    const list = await w.controller.listProjectErrors.run(
+      { params: { projectId: w.projectId }, query: {} },
+      { user: job },
+    );
+    expect(list.items).toEqual([]);
+    expect(list.awaitingTrust).toBe(1);
+
+    // A member may trust it again, by name this time.
+    const trusted = await w.controller.trustProjectError.run(
+      { params: { projectId: w.projectId, errorId: crash.id } },
+      { user: w.owner },
+    );
+    expect(trusted.trustedBy).toBe(w.owner.id);
+  });
+
+  it("leaves an uptime outage untrusted: its error text comes from the monitored URL", async ({
+    expect,
+  }) => {
+    await w.alepha.inject(UptimeErrorService).handle({
+      kind: "opened",
+      monitor: {
+        id: crypto.randomUUID(),
+        projectId: w.projectId,
+        name: "Home",
+        target: "https://acme.example/",
+      },
+      incident: {
+        cause: "status",
+        lastError: "HTTP 500",
+        startedAt: new Date().toISOString(),
+      },
+    } as never);
+    const [row] = await w.repos.errors.findMany({
+      where: { name: { eq: "UptimeOutage" } },
+    });
+    expect(row?.origin).toBe("server");
+    expect(row?.trustedAt).toBeFalsy();
   });
 });
