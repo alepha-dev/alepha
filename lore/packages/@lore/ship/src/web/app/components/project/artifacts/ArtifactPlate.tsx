@@ -141,6 +141,9 @@ const ArtifactPlate = (props: ArtifactPlateProps) => {
       {detail.variants.length > 1 && (
         <Segmented
           size="sm"
+          // As wide as its builds (#Q4263): a column's child stretches
+          // across it otherwise.
+          className="self-start"
           value={artifactVariantKey(variant)}
           onChange={props.onVariant}
           options={detail.variants.map((it) => ({
