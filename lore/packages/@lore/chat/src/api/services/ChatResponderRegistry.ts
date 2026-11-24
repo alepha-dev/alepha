@@ -3,6 +3,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 
 import { type ChatAgent, chatAgents } from "../entities/chatAgents.ts";
+import { chatLoreEngines } from "../entities/chatLoreEngines.ts";
 
 /**
  * The agents a room can mention (#E161, #Q3930, #E170): a name that is not
@@ -25,6 +26,48 @@ export class ChatResponderRegistry {
   protected readonly responders = new Map<string, ChatResponder>();
   protected engineName?: string;
   protected readonly agents = $repository(chatAgents);
+  protected readonly loreEngines = $repository(chatLoreEngines);
+
+  /**
+   * What stands for the responder of an agent whose provider is a host
+   * (#Q4250): the runner starts a host job for it and never calls it, so it
+   * answers with AI off too.
+   */
+  protected hostResponder(name: string, label: string): ChatResponder {
+    const never = (): AsyncIterable<ChatAgentEvent> => {
+      throw new AlephaError(`@${name} answers from an Agent host`);
+    };
+    return { name, label, respond: never, resume: never };
+  }
+
+  /**
+   * `@lore`'s host engine in a project, when it has one (#Q4250).
+   */
+  public async loreHost(
+    projectId: number,
+  ): Promise<ChatHostEngine | undefined> {
+    const row = await this.loreEngines.findOne({
+      where: { projectId: { eq: projectId } },
+    });
+    return row?.engine === "host"
+      ? ChatResponderRegistry.hostOf(row)
+      : undefined;
+  }
+
+  /**
+   * A row's host engine: its host, agent CLI and model.
+   */
+  public static hostOf(row: {
+    engineHost?: string | null;
+    engineAgent?: string | null;
+    engineModel?: string | null;
+  }): ChatHostEngine {
+    return {
+      ...(row.engineHost ? { host: row.engineHost } : {}),
+      ...(row.engineAgent ? { agent: row.engineAgent } : {}),
+      ...(row.engineModel ? { model: row.engineModel } : {}),
+    };
+  }
 
   public register(responder: ChatResponder): void {
     if (this.responders.has(responder.name)) {
@@ -66,17 +109,38 @@ export class ChatResponderRegistry {
     handle: string,
   ): Promise<ChatAgentMatch | undefined> {
     const engine = this.engine();
-    if (engine) {
-      const agent = await this.agents.findOne({
-        where: {
-          projectId: { eq: projectId },
-          handle: { eq: handle.toLowerCase() },
-          deletedAt: { isNull: true },
-        },
-      });
-      if (agent) return { handle: agent.handle!, responder: engine, agent };
+    const agent = await this.agents.findOne({
+      where: {
+        projectId: { eq: projectId },
+        handle: { eq: handle.toLowerCase() },
+        deletedAt: { isNull: true },
+      },
+    });
+    // A host agent answers whether AI is on or not (#Q4250).
+    if (agent && agent.engine === "host") {
+      return {
+        handle: agent.handle!,
+        responder: engine ?? this.hostResponder(agent.handle!, agent.name),
+        agent,
+        host: ChatResponderRegistry.hostOf(agent),
+      };
     }
-    const responder = this.responders.get(handle.toLowerCase());
+    if (agent && engine) {
+      return { handle: agent.handle!, responder: engine, agent };
+    }
+    const name = handle.toLowerCase();
+    if (name === "lore") {
+      const host = await this.loreHost(projectId);
+      if (host) {
+        return {
+          handle: "lore",
+          responder:
+            this.responders.get("lore") ?? this.hostResponder("lore", "Lore"),
+          host,
+        };
+      }
+    }
+    const responder = this.responders.get(name);
     return responder ? { handle: responder.name, responder } : undefined;
   }
 
@@ -110,23 +174,36 @@ export class ChatResponderRegistry {
    * the project's live agents, oldest first. Empty with AI off.
    */
   public async list(projectId: number): Promise<ChatAgentMatch[]> {
+    const loreHost = await this.loreHost(projectId);
     const matches: ChatAgentMatch[] = this.builtins().map((responder) => ({
       handle: responder.name,
       responder,
+      ...(responder.name === "lore" && loreHost ? { host: loreHost } : {}),
     }));
+    if (loreHost && !this.responders.has("lore")) {
+      matches.unshift({
+        handle: "lore",
+        responder: this.hostResponder("lore", "Lore"),
+        host: loreHost,
+      });
+    }
     const engine = this.engine();
-    if (!engine) return matches;
-    const own = await this.agents.findMany({
-      where: { projectId: { eq: projectId }, deletedAt: { isNull: true } },
-      orderBy: [{ column: "createdAt", direction: "asc" }],
-    });
+    const own = (
+      await this.agents.findMany({
+        where: { projectId: { eq: projectId }, deletedAt: { isNull: true } },
+        orderBy: [{ column: "createdAt", direction: "asc" }],
+      })
+    ).filter((agent) => engine || agent.engine === "host");
     const taken = new Set(own.map((agent) => agent.handle!));
     return [
       ...matches.filter((it) => !taken.has(it.handle)),
       ...own.map((agent) => ({
         handle: agent.handle!,
-        responder: engine,
+        responder: engine ?? this.hostResponder(agent.handle!, agent.name),
         agent,
+        ...(agent.engine === "host"
+          ? { host: ChatResponderRegistry.hostOf(agent) }
+          : {}),
       })),
     ];
   }
@@ -147,6 +224,21 @@ export interface ChatAgentMatch {
   handle: string;
   responder: ChatResponder;
   agent?: ChatAgent;
+  /**
+   * Set when the agent answers from an Agent host (#Q4250): the runner
+   * starts a host job instead of calling the responder.
+   */
+  host?: ChatHostEngine;
+}
+
+/**
+ * Where a host agent runs: an Agent host by slug, an agent CLI and its
+ * model, each absent for the project's only one or the CLI's default.
+ */
+export interface ChatHostEngine {
+  host?: string;
+  agent?: string;
+  model?: string;
 }
 
 /**

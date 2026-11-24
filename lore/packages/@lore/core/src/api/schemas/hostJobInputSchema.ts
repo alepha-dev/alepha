@@ -56,6 +56,18 @@ export const hostJobInputSchema = z.object({
   prompt: z.string().max(131_072).optional(),
   /** Absent is `none`: a job queued before sources (#E173). */
   source: hostJobSourceSchema.optional(),
+  /**
+   * `json` for a chat agent's turn (#Q4250): its answer is read from the
+   * CLI's one JSON result when the job ends.
+   */
+  output: z.enum(["json"]).optional(),
+  /**
+   * The conversation the turn starts, or resumes once a job that used it
+   * ended done (#Q4250).
+   */
+  session: z
+    .object({ id: z.uuid(), resume: z.boolean().optional() })
+    .optional(),
   timeoutSeconds: z.integer().min(10).max(14_400),
   key: z
     .object({

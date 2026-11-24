@@ -679,3 +679,50 @@ exit 1
 		}
 	})
 }
+
+func TestAgentSessions(t *testing.T) {
+	sink := "https://lore.example.com"
+	spec := func(extra map[string]any) jobSpec {
+		m := map[string]any{"kind": "agent", "agent": "claude", "project": "acme", "workspace": "agent-lore",
+			"key": "lore_job_0123456789abcdef", "mcpUrl": sink + "/mcp", "prompt": "Hi.", "timeoutSeconds": 600}
+		for k, v := range extra {
+			m[k] = v
+		}
+		raw, _ := json.Marshal(m)
+		parsed, err := parseJobSpec(raw, sink)
+		if err != nil {
+			t.Fatalf("spec refused: %v", err)
+		}
+		return parsed
+	}
+	id := "0b3c6a2e-1d4f-4a8b-9c7d-2e5f6a7b8c9d"
+	args := func(s jobSpec) string { return strings.Join(agentAdapters[s.Agent].Args(agentRunOf(s)), " ") }
+
+	first := args(spec(map[string]any{"output": "json", "session": map[string]any{"id": id}}))
+	if !strings.Contains(first, "--output-format json") || !strings.Contains(first, "--session-id "+id) || strings.Contains(first, "--verbose") {
+		t.Fatalf("a first turn ran claude as %q", first)
+	}
+	next := args(spec(map[string]any{"output": "json", "session": map[string]any{"id": id, "resume": true}}))
+	if !strings.Contains(next, "--resume "+id) || strings.Contains(next, "--session-id") {
+		t.Fatalf("a resumed turn ran claude as %q", next)
+	}
+	// Gemini keeps no session: every turn is new.
+	gem := args(spec(map[string]any{"agent": "gemini", "output": "json", "session": map[string]any{"id": id, "resume": true}}))
+	if strings.Contains(gem, id) || !strings.Contains(gem, "--output-format json") {
+		t.Fatalf("gemini ran as %q", gem)
+	}
+	for name, extra := range map[string]map[string]any{
+		"an unknown output":    {"output": "yaml"},
+		"a session not a uuid": {"session": map[string]any{"id": "--resume"}},
+	} {
+		m := map[string]any{"kind": "agent", "agent": "claude", "project": "acme", "workspace": "x1",
+			"key": "lore_job_0123456789abcdef", "mcpUrl": sink + "/mcp", "prompt": "Hi.", "timeoutSeconds": 600}
+		for k, v := range extra {
+			m[k] = v
+		}
+		raw, _ := json.Marshal(m)
+		if _, err := parseJobSpec(raw, sink); err == nil {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+}

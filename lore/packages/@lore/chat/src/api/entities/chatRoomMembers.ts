@@ -45,6 +45,22 @@ export const chatRoomMembers = $entity({
      * so `@jarvis` never continues `@lore`'s thread.
      */
     aiConversations: z.record(z.text(), z.uuid()).optional(),
+    /**
+     * The agent CLI sessions this member's host turns in this room continue
+     * (#Q4250), keyed by agent and host, since a session lives on one host's
+     * disk. Resumable once a job that used it ended done; a changed playbook,
+     * CLI or model (`fingerprint`) starts a new one.
+     */
+    hostSessions: z
+      .record(
+        z.text(),
+        z.object({
+          id: z.uuid(),
+          resumable: z.boolean(),
+          fingerprint: z.text({ maxLength: 64 }),
+        }),
+      )
+      .optional(),
   }),
   indexes: [
     { columns: ["roomId", "userId"], unique: true },

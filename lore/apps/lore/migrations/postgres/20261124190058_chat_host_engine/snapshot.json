@@ -1,0 +1,370 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b55fd86f-43d2-47f9-864e-de3c57c4d8cb",
+  "prevIds": ["19ce649e-ecd5-4d21-8cef-67068ce31373"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "chat_lore_engines"],
+      "writes": [
+        "s|tbl|public.chat_lore_engines",
+        "n|tbl|public.chat_lore_engines",
+        "e|tbl|public.chat_lore_engines",
+        "n|rel|public.chat_lore_engines",
+        "n|type|public.chat_lore_engines",
+        "n|rel|public.chat_lore_engines_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine"],
+      "writes": [
+        "s|col|public.chat_agents.engine",
+        "n|col|public.chat_agents.engine",
+        "e|col|public.chat_agents.engine"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine_host"],
+      "writes": [
+        "s|col|public.chat_agents.engine_host",
+        "n|col|public.chat_agents.engine_host",
+        "e|col|public.chat_agents.engine_host"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine_agent"],
+      "writes": [
+        "s|col|public.chat_agents.engine_agent",
+        "n|col|public.chat_agents.engine_agent",
+        "e|col|public.chat_agents.engine_agent"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine_model"],
+      "writes": [
+        "s|col|public.chat_agents.engine_model",
+        "n|col|public.chat_agents.engine_model",
+        "e|col|public.chat_agents.engine_model"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "chat_room_members",
+        "host_sessions"
+      ],
+      "writes": [
+        "s|col|public.chat_room_members.host_sessions",
+        "n|col|public.chat_room_members.host_sessions",
+        "e|col|public.chat_room_members.host_sessions"
+      ],
+      "reads": ["n|tbl|public.chat_room_members", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_lore_engines",
+        "chat_lore_engines_project_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_lore_engines_project_id_idx",
+        "n|idx|public.chat_lore_engines_project_id_idx",
+        "e|idx|public.chat_lore_engines_project_id_idx",
+        "n|rel|public.chat_lore_engines_project_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_lore_engines",
+        "n|sch|public",
+        "n|col|public.chat_lore_engines.project_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_lore_engines"],
+      "writes": [
+        "s|fk|public.chat_lore_engines.chat_lore_engines_project_id_projects_id_fkey",
+        "n|fk|public.chat_lore_engines.chat_lore_engines_project_id_projects_id_fkey",
+        "e|fk|public.chat_lore_engines.chat_lore_engines_project_id_projects_id_fkey",
+        "n|con|public.chat_lore_engines.chat_lore_engines_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_lore_engines",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.chat_lore_engines.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "chat_lore_engines",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agents",
+        "name": "engine",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'api'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agents",
+        "name": "engine_host",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agents",
+        "name": "engine_agent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_agents",
+        "name": "engine_model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "engine",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'api'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "engine_host",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "engine_agent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "engine_model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_room_members",
+        "name": "host_sessions",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "chat_lore_engines_project_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "chat_lore_engines_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_lore_engines",
+        "name": "chat_lore_engines_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

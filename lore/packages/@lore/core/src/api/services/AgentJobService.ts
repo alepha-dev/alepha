@@ -140,6 +140,8 @@ export class AgentJobService {
         workspace,
         prompt,
         source,
+        ...(request.output ? { output: request.output } : {}),
+        ...(request.session ? { session: request.session } : {}),
         timeoutSeconds: this.timeoutOf(request.timeoutSeconds),
         key: {
           ...(request.questNumber === undefined

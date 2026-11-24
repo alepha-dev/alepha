@@ -67,6 +67,9 @@ const NOT_MOVED: Record<string, string> = {
   // What the source's budget paid for (#Q4237), counted against the source:
   // moved, it would spend the target's budget for runs it never paid.
   chat_agent_charges: "the source's spending, against its own budget",
+  // `@lore`'s engine in a project (#Q4250): one row per project, so the
+  // merged project keeps the target's, as it keeps its budget.
+  chat_lore_engines: "the target's own @lore engine stands",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

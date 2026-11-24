@@ -51,6 +51,9 @@ type agentAdapter struct {
 	// environment that points the CLI at it and how to remove it. Nil when
 	// the CLI takes everything on its command line.
 	Prepare func(run agentRun) (env []string, cleanup func(), err error)
+	// Sessions says the CLI starts and resumes a named conversation
+	// (#Q4250); without it a run's session is ignored, and every turn is new.
+	Sessions bool
 }
 
 // agentRun is what an adapter builds a run from.
@@ -59,6 +62,13 @@ type agentRun struct {
 	Model  string
 	// MCPURL is Lore's MCP endpoint; empty for a run with no MCP server.
 	MCPURL string
+	// JSON asks for the CLI's single JSON result instead of its stream
+	// (#Q4250): a chat agent's answer is read from it when the job ends.
+	JSON bool
+	// SessionID names the conversation the run starts, or continues when
+	// Resume is set (#Q4250), on a CLI whose adapter has Sessions.
+	SessionID string
+	Resume    bool
 }
 
 // jobKeyEnv is the variable the job key travels in, which the adapters'
@@ -79,12 +89,23 @@ var agentAdapters = map[string]agentAdapter{
 		HomeBin:     []string{".local/bin", ".claude/local", ".npm-global/bin", "bin"},
 		VersionArgs: []string{"--version"},
 		// Telemetry and update checks: nothing a job needs.
-		Env: []string{"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1"},
+		Env:      []string{"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1"},
+		Sessions: true,
 		Args: func(run agentRun) []string {
 			args := []string{"-p", run.Prompt, "--output-format", "stream-json", "--verbose",
 				"--permission-mode", "bypassPermissions"}
+			if run.JSON {
+				// One JSON object at the end, its `result` the answer.
+				args = []string{"-p", run.Prompt, "--output-format", "json",
+					"--permission-mode", "bypassPermissions"}
+			}
 			if run.Model != "" {
 				args = append(args, "--model", run.Model)
+			}
+			if run.SessionID != "" && run.Resume {
+				args = append(args, "--resume", run.SessionID)
+			} else if run.SessionID != "" {
+				args = append(args, "--session-id", run.SessionID)
 			}
 			if run.MCPURL != "" {
 				args = append(args, "--mcp-config", string(claudeMCPConfig(run.MCPURL)), "--strict-mcp-config")
@@ -104,7 +125,11 @@ var agentAdapters = map[string]agentAdapter{
 		HomeBin:     []string{".local/bin", ".npm-global/bin", "bin"},
 		VersionArgs: []string{"--version"},
 		Args: func(run agentRun) []string {
-			args := []string{"-p", run.Prompt, "--output-format", "stream-json",
+			format := "stream-json"
+			if run.JSON {
+				format = "json"
+			}
+			args := []string{"-p", run.Prompt, "--output-format", format,
 				"--approval-mode", "yolo", "--skip-trust"}
 			if run.Model != "" {
 				args = append(args, "--model", run.Model)
