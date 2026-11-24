@@ -55,4 +55,16 @@ describe("settings tabs fullWidth", () => {
       expect(found?.tab.fullWidth, route).toBeUndefined();
     }
   });
+
+  it("should list the chat agents as Members' Agents tab, with no Chat section", ({
+    expect,
+  }) => {
+    // #Q4260: the agents sit beside the people, while chat is on.
+    const found = shell.findSettingsTab("projectSettingsChatAgents");
+    expect(found?.section.key).toBe("members");
+    expect(found?.tab.capability).toBe("chat");
+    expect(
+      shell.settingsSections().some((section) => section.key === "chat"),
+    ).toBe(false);
+  });
 });

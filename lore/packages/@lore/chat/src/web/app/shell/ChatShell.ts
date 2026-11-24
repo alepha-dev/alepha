@@ -37,20 +37,13 @@ export class ChatShell {
         },
       },
     ]);
-    // Settings > Chat (#E170): the project's agents.
-    this.shell.registerSettings({
-      key: "chat",
-      order: 50,
-      labelKey: "project.settings.nav.chat",
-      icon: MessagesSquare,
+    // The project's agents (#E170) sit beside its people, as Settings >
+    // Members' Agents tab (#Q4260), while chat is on.
+    this.shell.registerSettingsTab("members", {
+      route: "projectSettingsChatAgents",
+      labelKey: "project.settings.tab.chatAgents",
       capability: "chat",
-      tabs: [
-        {
-          route: "projectSettingsChatAgents",
-          labelKey: "project.settings.tab.chatAgents",
-          requires: "chat:read",
-        },
-      ],
+      requires: "chat:read",
     });
     this.extensions.registerOverlay({
       key: "chat-live",

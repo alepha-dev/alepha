@@ -15,7 +15,7 @@ what it may do.
 
 ## Creating an agent
 
-Open **Settings ▸ Chat agents ▸ Agents**. The page lists `@lore`, the
+Open **Settings ▸ Members ▸ Agents**. The page lists `@lore`, the
 built-in agent, then the project's own. Everyone who reads chat sees the
 list; creating, editing and deleting agents needs the
 **Chat agents** permission.

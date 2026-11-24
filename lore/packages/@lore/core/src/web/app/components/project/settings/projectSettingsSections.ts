@@ -75,8 +75,7 @@ export interface SettingsSectionDef {
     | "project.settings.nav.members"
     | "project.settings.nav.notifications"
     | "project.settings.nav.plan"
-    | "project.settings.nav.remember"
-    | "project.settings.nav.chat";
+    | "project.settings.nav.remember";
   icon: LucideIcon;
   /**
    * The capability the section belongs to. Listed only while it is on: the
