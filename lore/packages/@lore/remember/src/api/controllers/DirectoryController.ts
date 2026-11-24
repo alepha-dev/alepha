@@ -7,6 +7,7 @@ import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
+import { FolioSearchTerms } from "../services/FolioSearchTerms.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
@@ -20,6 +21,7 @@ export class DirectoryController {
   protected readonly attachments = $repository(folioAttachments);
   protected readonly directoryService = $inject(FolioDirectoryService);
   protected readonly tables = $inject(FolioTableService);
+  protected readonly searchTerms = $inject(FolioSearchTerms);
 
   /**
    * The two gates this controller needs, declared above the actions: a
@@ -198,12 +200,14 @@ export class DirectoryController {
       }),
     },
     handler: async ({ params, query }) => {
-      const needle = `%${query.q.toLowerCase()}%`;
+      // Each word of the query, escaped and cut to D1's pattern limit
+      // (#Q4271): a blank query finds nothing.
+      if (this.searchTerms.terms(query.q).length === 0) return { entries: [] };
       const [dirs, textRows, attachmentRows, byRow] = await Promise.all([
         this.directories.findMany({
           where: {
             projectId: { eq: params.projectId },
-            name: { like: `%${query.q}%` },
+            and: this.searchTerms.conditions("name", query.q),
           },
           orderBy: [{ column: "name", direction: "asc" }],
           limit: 50,
@@ -211,7 +215,7 @@ export class DirectoryController {
         this.folios.findMany({
           where: {
             projectId: { eq: params.projectId },
-            searchText: { like: needle },
+            and: this.searchTerms.conditions("searchText", query.q),
           },
           orderBy: [
             { column: "pinned", direction: "desc" },
@@ -222,7 +226,7 @@ export class DirectoryController {
         this.attachments.findMany({
           where: {
             projectId: { eq: params.projectId },
-            name: { like: `%${query.q}%` },
+            and: this.searchTerms.conditions("name", query.q),
           },
           orderBy: [{ column: "updatedAt", direction: "desc" }],
           limit: 50,

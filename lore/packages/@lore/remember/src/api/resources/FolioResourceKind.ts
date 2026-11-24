@@ -7,6 +7,7 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { folios } from "../entities/folios.ts";
+import { FolioSearchTerms } from "../services/FolioSearchTerms.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
@@ -19,6 +20,7 @@ export class FolioResourceKind {
   protected readonly bound = $inject(BoundParameters);
   protected readonly search = $inject(SearchPreview);
   protected readonly tables = $inject(FolioTableService);
+  protected readonly searchTerms = $inject(FolioSearchTerms);
 
   constructor() {
     this.resources.register({
@@ -108,15 +110,17 @@ export class FolioResourceKind {
     number: number | undefined,
     limit: number,
   ) {
+    const text = this.searchTerms.conditions("searchText", needle);
+    if (text.length === 0 && number === undefined) return [];
     return this.folios.findMany({
       where: {
         projectId: { eq: projectId },
         ...(number === undefined
-          ? { searchText: { like: `%${needle}%` } }
+          ? { and: text }
           : {
               or: [
                 { shortId: { eq: number } },
-                { searchText: { like: `%${needle}%` } },
+                ...(text.length ? [{ and: text }] : []),
               ],
             }),
       },
