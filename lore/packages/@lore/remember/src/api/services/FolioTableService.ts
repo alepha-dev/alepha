@@ -22,6 +22,7 @@ import type { FolioRowResource } from "../schemas/folioRowResourceSchema.ts";
 import type { FolioTableView } from "../schemas/folioTableViewSchema.ts";
 import { FolioCellCodec } from "./FolioCellCodec.ts";
 import { FolioHistoryService } from "./FolioHistoryService.ts";
+import { FolioSearchTerms } from "./FolioSearchTerms.ts";
 
 /**
  * The folio a table operation acts on: enough of the row to check that it is
@@ -129,6 +130,7 @@ export class FolioTableService {
   protected readonly history = $inject(FolioHistoryService);
   protected readonly links = $inject(ResourceLinkService);
   protected readonly bound = $inject(BoundParameters);
+  protected readonly searchTerms = $inject(FolioSearchTerms);
   protected readonly folios = $repository(folios);
   protected readonly views = $repository(folioViews);
 
@@ -1059,8 +1061,9 @@ export class FolioTableService {
     needle: string,
     limit = 50,
   ): Promise<Array<{ folioId: string; number: number; text: string }>> {
-    const lower = needle.trim().toLowerCase();
-    if (!lower) return [];
+    // Each word of the needle, escaped and cut to D1's pattern limit (#Q4271).
+    const text = this.searchTerms.conditions("searchText", needle);
+    if (text.length === 0) return [];
     const tableIds = (
       await this.folios.findMany({
         where: {
@@ -1076,7 +1079,7 @@ export class FolioTableService {
       this.rows.findMany({
         where: {
           folioId: { inArray: batch },
-          searchText: { like: `%${lower}%` },
+          and: text,
         },
         orderBy: [{ column: "position", direction: "asc" }],
       }),

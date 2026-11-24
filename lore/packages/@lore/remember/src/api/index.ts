@@ -99,6 +99,7 @@ export {
   FolioHistoryService,
 } from "./services/FolioHistoryService.ts";
 export { FolioNameService } from "./services/FolioNameService.ts";
+export { FolioSearchTerms } from "./services/FolioSearchTerms.ts";
 export { FolioCellCodec } from "./services/FolioCellCodec.ts";
 export {
   type FolioRowInput,

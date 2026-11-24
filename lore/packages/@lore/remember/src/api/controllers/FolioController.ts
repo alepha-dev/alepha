@@ -55,6 +55,7 @@ import {
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRecentlyDeleted } from "../services/FolioRecentlyDeleted.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
+import { FolioSearchTerms } from "../services/FolioSearchTerms.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
@@ -101,6 +102,7 @@ export class FolioController {
   protected readonly directoryService = $inject(FolioDirectoryService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
+  protected readonly searchTerms = $inject(FolioSearchTerms);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly bestEffort = $inject(BestEffort);
@@ -227,7 +229,8 @@ export class FolioController {
 
   /**
    * List folios in a project (project-shared — any member sees every
-   * folio). Optional `q` runs `LIKE %q%` over `searchText`.
+   * folio). Optional `q` matches each of its words over `searchText`
+   * (`FolioSearchTerms`, #Q4271).
    *
    * No body unless `withContent`, which a search (`q`) turns on by default:
    * a page of 50 on a large project was 770 KB, half of it bodies and half
@@ -247,7 +250,8 @@ export class FolioController {
         projectId: { eq: query.projectId },
       };
       if (query.q) {
-        where.searchText = { like: `%${query.q.toLowerCase()}%` };
+        const text = this.searchTerms.conditions("searchText", query.q);
+        if (text.length) where.and = text;
       }
       const orderBy = [
         { column: "pinned" as const, direction: "desc" as const },
