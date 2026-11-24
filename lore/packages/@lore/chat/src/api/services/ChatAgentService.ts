@@ -4,10 +4,9 @@ import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, NotFoundError, ValidationError } from "alepha/server";
+import { NotFoundError, ValidationError } from "alepha/server";
 
 import { type ChatAgent, chatAgents } from "../entities/chatAgents.ts";
-import { chatLoreEngines } from "../entities/chatLoreEngines.ts";
 import type {
   ChatAgentBody,
   ChatAgentResource,
@@ -38,7 +37,6 @@ export class ChatAgentService {
   public static readonly RESERVED = ["lore"];
 
   protected readonly agents = $repository(chatAgents);
-  protected readonly loreEngines = $repository(chatLoreEngines);
   protected readonly registry = $inject(ChatResponderRegistry);
   protected readonly roster = $inject(ProjectRoster);
   protected readonly files = $inject(FileService);
@@ -56,12 +54,6 @@ export class ChatAgentService {
    * read by the composer and the settings page alike.
    */
   public async list(projectId: number): Promise<ChatAgentResource[]> {
-    // `@lore`'s engine in this project (#Q4250); a host engine makes it
-    // answer with AI off too.
-    const lore = await this.loreEngines.findOne({
-      where: { projectId: { eq: projectId } },
-    });
-    const loreEngine = lore ? this.engineOf(lore) : {};
     const builtins = this.registry
       .builtins()
       .map((responder): ChatAgentResource => ({
@@ -69,17 +61,7 @@ export class ChatAgentService {
         handle: responder.name,
         name: responder.label,
         builtin: true,
-        ...(responder.name === "lore" ? loreEngine : {}),
       }));
-    if (lore?.engine === "host" && !builtins.some((it) => it.id === "lore")) {
-      builtins.unshift({
-        id: "lore",
-        handle: "lore",
-        name: "Lore",
-        builtin: true,
-        ...loreEngine,
-      });
-    }
     const own = await this.agents.findMany({
       where: { projectId: { eq: projectId }, deletedAt: { isNull: true } },
       orderBy: [{ column: "createdAt", direction: "asc" }],
@@ -112,7 +94,6 @@ export class ChatAgentService {
       prePrompt: body.prePrompt ?? "",
       ...(body.avatar ? { avatar: body.avatar } : {}),
       ...(body.model?.trim() ? { model: body.model.trim() } : {}),
-      ...this.enginePatch(body),
       createdBy: user.id,
     });
     return this.toResource(agent, true);
@@ -128,7 +109,6 @@ export class ChatAgentService {
     user: UserAccountToken,
     body: Partial<ChatAgentBody>,
   ): Promise<ChatAgentResource> {
-    if (agentId === "lore") return this.updateLore(projectId, body);
     const agent = await this.live(projectId, agentId);
     const patch: Record<string, unknown> = {};
     if (body.handle !== undefined && body.handle !== agent.handle) {
@@ -139,7 +119,6 @@ export class ChatAgentService {
     if (body.model !== undefined) {
       patch.model = body.model?.trim() ? body.model.trim() : null;
     }
-    Object.assign(patch, this.enginePatch(body));
     let replaced: string | undefined;
     if (body.avatar !== undefined && body.avatar !== (agent.avatar ?? null)) {
       if (body.avatar) await this.assertAvatar(body.avatar, user);
@@ -181,77 +160,10 @@ export class ChatAgentService {
         ? { avatarId: agent.avatar, avatarUrl: `/api/files/${agent.avatar}` }
         : {}),
       ...(agent.model ? { model: agent.model } : {}),
-      ...this.engineOf(agent),
       ...(agent.createdBy ? { createdBy: agent.createdBy } : {}),
       createdAt: agent.createdAt,
       ...(agent.deletedAt ? { deletedAt: agent.deletedAt } : {}),
       ...(full ? { prePrompt: agent.prePrompt } : {}),
-    };
-  }
-
-  /**
-   * `@lore`'s engine in the project (#Q4250): the only thing about the
-   * built-in a project changes. Its name, handle and playbook are Lore's.
-   */
-  protected async updateLore(
-    projectId: number,
-    body: Partial<ChatAgentBody>,
-  ): Promise<ChatAgentResource> {
-    if (
-      body.handle !== undefined ||
-      body.name !== undefined ||
-      body.prePrompt !== undefined ||
-      body.model !== undefined ||
-      body.avatar !== undefined
-    ) {
-      throw new BadRequestError(
-        "@lore is the built-in agent: only its engine changes in a project",
-      );
-    }
-    const patch = this.enginePatch(body);
-    const existing = await this.loreEngines.findOne({
-      where: { projectId: { eq: projectId } },
-    });
-    const row = existing
-      ? await this.loreEngines.updateById(existing.id, patch as never)
-      : await this.loreEngines.create({ projectId, ...(patch as object) });
-    return {
-      id: "lore",
-      handle: "lore",
-      name: "Lore",
-      builtin: true,
-      ...this.engineOf(row),
-    };
-  }
-
-  /**
-   * The engine fields a body sets: `null` clears a host field.
-   */
-  protected enginePatch(body: Partial<ChatAgentBody>): Record<string, unknown> {
-    const patch: Record<string, unknown> = {};
-    if (body.engine !== undefined) patch.engine = body.engine;
-    for (const key of ["engineHost", "engineAgent", "engineModel"] as const) {
-      if (body[key] !== undefined) {
-        patch[key] = body[key]?.trim() ? body[key]?.trim() : null;
-      }
-    }
-    return patch;
-  }
-
-  /**
-   * A row's engine, as the resource says it.
-   */
-  protected engineOf(row: {
-    engine?: "api" | "host";
-    engineHost?: string | null;
-    engineAgent?: string | null;
-    engineModel?: string | null;
-  }): Partial<ChatAgentResource> {
-    return {
-      engine: row.engine ?? "api",
-      ...(row.engineHost ? { engineHost: row.engineHost } : {}),
-      ...(row.engineAgent ? { engineAgent: row.engineAgent } : {}),
-      ...(row.engineModel ? { engineModel: row.engineModel } : {}),
     };
   }
 

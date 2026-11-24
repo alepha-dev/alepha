@@ -15,7 +15,6 @@ import {
 } from "../entities/chatRoomMembers.ts";
 import type { ChatRoom } from "../entities/chatRooms.ts";
 import { ChatAudience } from "./ChatAudience.ts";
-import { ChatHostTurns } from "./ChatHostTurns.ts";
 import { ChatLive } from "./ChatLive.ts";
 import { ChatMessageService } from "./ChatMessageService.ts";
 import {
@@ -77,7 +76,6 @@ export class ChatAgentRunner {
   protected readonly scope = $inject(McpProjectScope);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly hostTurns = $inject(ChatHostTurns);
 
   /**
    * Answer `trigger`, a member's message naming `handle`.
@@ -117,19 +115,6 @@ export class ChatAgentRunner {
     await this.publish(room, answer, "message.created");
 
     const history = await this.history(room, trigger);
-    if (match.host) {
-      // From an Agent host (#Q4250): a job answers, when it ends.
-      await this.hostTurns.start({
-        room,
-        answer,
-        user,
-        match,
-        prompt: trigger.body,
-        history,
-        key,
-      });
-      return;
-    }
     const membership = await this.rooms.membershipOf(room.id, user.id);
     const conversationId = this.conversationOf(membership, key);
     const persona = ChatAgentRunner.personaOf(match);
@@ -145,84 +130,6 @@ export class ChatAgentRunner {
         ...(persona ? { agent: persona } : {}),
       }),
     );
-  }
-
-  /**
-   * What an unasked run answers when it has nothing worth posting
-   * (#Q4236): the answer is then dropped, so a clean house stays quiet.
-   */
-  public static readonly NOTHING = "NOTHING TO REPORT";
-
-  /**
-   * Run the agent `handle` in `room` as `user` with no message to answer
-   * (#Q4236): an automation's rounds, as if `user` had mentioned it. The
-   * room's latest messages are its context. Its answer is posted once, when
-   * the run ends, and not at all when it is {@link NOTHING}. Answers why it
-   * did not start, or nothing.
-   */
-  public async startUnasked(
-    room: ChatRoom,
-    user: UserAccountToken,
-    handle: string,
-    prompt: string,
-  ): Promise<string | undefined> {
-    const match = await this.registry.get(room.projectId, handle);
-    if (!match) return `No agent @${handle} answers in this project`;
-    const key = ChatAgentRunner.keyOf(match);
-    if (await this.running(room.id, key, user.id)) {
-      return `@${handle} is still answering in #${room.name}`;
-    }
-    // Stored, not sent: the room sees it only once it has something to say.
-    const answer = await this.messages.create({
-      roomId: room.id,
-      agent: match.handle,
-      ...(match.agent?.id ? { agentId: match.agent.id } : {}),
-      body: "",
-      references: [],
-      agentRun: { status: "running", mentionerId: user.id },
-    });
-    const history = await this.history(room, answer);
-    const unaskedPrompt = [
-      prompt.trim(),
-      `Nobody mentioned you: this run was started on a schedule or an event, for the member who set it up. If there is nothing worth telling the room, answer exactly "${ChatAgentRunner.NOTHING}" and nothing else, and nothing is posted.`,
-    ].join("\n\n");
-    if (match.host) {
-      await this.hostTurns.start({
-        room,
-        answer,
-        user,
-        match,
-        prompt: unaskedPrompt,
-        history,
-        key,
-        unasked: true,
-      });
-      return undefined;
-    }
-    const membership = await this.rooms.membershipOf(room.id, user.id);
-    const conversationId = this.conversationOf(membership, key);
-    const persona = ChatAgentRunner.personaOf(match);
-    this.detach(
-      room,
-      answer,
-      this.nameOf(match),
-      () =>
-        match.responder.respond({
-          projectId: room.projectId,
-          roomId: room.id,
-          roomName: room.name,
-          user,
-          prompt: [
-            prompt.trim(),
-            `Nobody mentioned you: this run was started on a schedule or an event, for the member who set it up. If there is nothing worth telling the room, answer exactly "${ChatAgentRunner.NOTHING}" and nothing else, and nothing is posted.`,
-          ].join("\n\n"),
-          history,
-          ...(conversationId ? { conversationId } : {}),
-          ...(persona ? { agent: persona } : {}),
-        }),
-      true,
-    );
-    return undefined;
   }
 
   /**
@@ -332,13 +239,12 @@ export class ChatAgentRunner {
     answer: ChatMessage,
     name: string,
     events: () => AsyncIterable<ChatAgentEvent>,
-    unasked = false,
   ): void {
     this.background.defer(() =>
       this.alepha.context.run(
         () =>
           this.scope.pinned(room.projectId, () =>
-            this.drive(room, answer, name, events(), unasked),
+            this.drive(room, answer, name, events()),
           ),
         { signal: AbortSignal.timeout(ChatAgentRunner.TIMEOUT_MS) },
       ),
@@ -348,17 +254,12 @@ export class ChatAgentRunner {
   /**
    * Consume a run's events into the answer message, sent to the room as it
    * grows, stored at the end. Never throws: a failure is the answer.
-   *
-   * An `unasked` run (#Q4236) sends nothing while it runs: its answer is
-   * sent once, at the end, and deleted instead when it is
-   * {@link ChatAgentRunner.NOTHING}.
    */
   protected async drive(
     room: ChatRoom,
     answer: ChatMessage,
     name: string,
     events: AsyncIterable<ChatAgentEvent>,
-    unasked = false,
   ): Promise<void> {
     const mentionerId = answer.agentRun!.mentionerId;
     let text = answer.body;
@@ -368,30 +269,16 @@ export class ChatAgentRunner {
       run: NonNullable<ChatMessage["agentRun"]>,
       body: string,
     ) => {
-      if (
-        unasked &&
-        run.status === "done" &&
-        (!body.trim() ||
-          body.trim().replace(/[."]/g, "") === ChatAgentRunner.NOTHING)
-      ) {
-        await this.messages.deleteById(answer.id);
-        return;
-      }
       const stored = await this.messages.updateById(answer.id, {
         body,
         agentRun: { ...run, ...(tools.length ? { tools } : {}) },
       });
-      await this.publish(
-        room,
-        stored,
-        unasked ? "message.created" : "message.updated",
-      );
+      await this.publish(room, stored, "message.updated");
     };
     // Stored as it grows, not only sent: a page reloaded mid-answer reads
     // the text so far, then the frames bring the rest.
     const progress = async () => {
       flushed = this.dateTime.nowMillis();
-      if (unasked) return;
       const stored = await this.messages.updateById(answer.id, {
         body: text,
         agentRun: {

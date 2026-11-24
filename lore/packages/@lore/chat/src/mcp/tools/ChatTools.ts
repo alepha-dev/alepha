@@ -168,66 +168,9 @@ export class ChatTools {
     name: z.text(),
     builtin: z.boolean(),
     model: z.text().optional(),
-    engine: z.enum(["api", "host"]).optional(),
-    engine_host: z.text().optional(),
-    engine_agent: z.text().optional(),
-    engine_model: z.text().optional(),
     avatar: z.boolean(),
     pre_prompt: z.text({ size: "rich" }).optional(),
   });
-
-  /**
-   * The engine params of create and update (#Q4250).
-   */
-  protected readonly engineParams = {
-    engine: z
-      .enum(["api", "host"])
-      .describe(
-        "Its AI provider: `api` (the instance's model) or `host` (an agent CLI on one of the project's Agent hosts, reading the code at the default branch). The room sees no difference.",
-      )
-      .optional(),
-    engine_host: z
-      .string()
-      .describe(
-        "With engine host: the Agent host by slug; empty for the project's only one.",
-      )
-      .optional(),
-    engine_agent: z
-      .string()
-      .describe(
-        "With engine host: the agent CLI (claude, gemini); empty for the host's only one.",
-      )
-      .optional(),
-    engine_model: z
-      .string()
-      .describe("With engine host: the CLI's model; empty for its default.")
-      .optional(),
-  };
-
-  /**
-   * A write's engine fields, from the params.
-   */
-  protected engineBody(params: {
-    engine?: "api" | "host";
-    engine_host?: string;
-    engine_agent?: string;
-    engine_model?: string;
-  }) {
-    const field = (value?: string) =>
-      value === undefined ? undefined : value.trim() ? value : null;
-    return {
-      ...(params.engine ? { engine: params.engine } : {}),
-      ...(params.engine_host === undefined
-        ? {}
-        : { engineHost: field(params.engine_host) }),
-      ...(params.engine_agent === undefined
-        ? {}
-        : { engineAgent: field(params.engine_agent) }),
-      ...(params.engine_model === undefined
-        ? {}
-        : { engineModel: field(params.engine_model) }),
-    };
-  }
 
   chat_agent_list = $tool({
     description:
@@ -291,7 +234,6 @@ export class ChatTools {
           .string()
           .describe("A model id; omit for the instance default.")
           .optional(),
-        ...this.engineParams,
         ...this.projectParams,
       }),
       result: this.agentSchema,
@@ -309,7 +251,6 @@ export class ChatTools {
             name: params.name,
             prePrompt: params.pre_prompt ?? "",
             ...(params.model ? { model: params.model } : {}),
-            ...this.engineBody(params),
           },
         }),
       );
@@ -318,7 +259,7 @@ export class ChatTools {
 
   chat_agent_update = $tool({
     description:
-      "Edit a chat agent by its handle (needs chat:agent): only the fields given change. For the built-in `lore`, only its engine changes, per project. `new_handle` renames what members mention; `model` set to an empty string goes back to the instance default. The avatar changes with `lore chat agent update --avatar <image>` or `--no-avatar`.",
+      "Edit a chat agent by its handle (needs chat:agent): only the fields given change. `new_handle` renames what members mention; `model` set to an empty string goes back to the instance default. The avatar changes with `lore chat agent update --avatar <image>` or `--no-avatar`.",
     title: "Edit a chat agent",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -334,7 +275,6 @@ export class ChatTools {
           .string()
           .describe("A model id, or an empty string for the default.")
           .optional(),
-        ...this.engineParams,
         ...this.projectParams,
       }),
       result: this.agentSchema,
@@ -353,7 +293,6 @@ export class ChatTools {
             ...(params.model !== undefined
               ? { model: params.model.trim() ? params.model : null }
               : {}),
-            ...this.engineBody(params),
           },
         }),
       );
@@ -385,10 +324,6 @@ export class ChatTools {
       name: agent.name,
       builtin: agent.builtin,
       ...(agent.model ? { model: agent.model } : {}),
-      ...(agent.engine ? { engine: agent.engine } : {}),
-      ...(agent.engineHost ? { engine_host: agent.engineHost } : {}),
-      ...(agent.engineAgent ? { engine_agent: agent.engineAgent } : {}),
-      ...(agent.engineModel ? { engine_model: agent.engineModel } : {}),
       avatar: !!agent.avatarId,
       ...(agent.prePrompt !== undefined ? { pre_prompt: agent.prePrompt } : {}),
     };
@@ -408,10 +343,7 @@ export class ChatTools {
     );
     const wanted = params.handle.replace(/^@/, "").toLowerCase();
     const page = await this.agents.listChatAgents({ params: { projectId } });
-    // The built-in `lore` resolves too: its engine is the project's (#Q4250).
-    const agent = page.items.find(
-      (it) => (!it.builtin || it.handle === "lore") && it.handle === wanted,
-    );
+    const agent = page.items.find((it) => !it.builtin && it.handle === wanted);
     if (!agent) {
       throw new NotFoundError(
         `No agent @${wanted} in this project: chat_agent_list gives their handles.`,

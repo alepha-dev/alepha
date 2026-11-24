@@ -122,7 +122,7 @@ A table rebuild is how drizzle-kit changes what SQLite cannot alter in place (`C
 2. **`test/migration-safety.spec.ts`.** Every dropped table needs a per-migration `SANCTIONED_DROPS` entry, and since `CASCADE_BASELINE` a table whose previous snapshot shows a `CASCADE` or `SET NULL` child is refused **whatever the entry says**. Only a leaf can be rebuilt or dropped (precedent: `folio_blobs` in `20261004225050_drop_dead_folio_columns`, now in git history).
 3. **The Time Travel bookmark.** `Deploy` prints `wrangler d1 time-travel info lore-production` before every deploy; the restore is the one command it prints.
 
-**A column stops being read before it is dropped,** and the drop ships alone, in its own push to `main`.
+**A drop ships in the pull request that stops reading it** (#E174), under the migrate-before-deploy window below. The guards above still hold: the marker, the `SANCTIONED_DROPS` entry, leaves only, and never a rebuild of a table with children.
 
 **The migrate-before-deploy window is accepted.** `alepha deploy` migrates, then deploys, so for a few seconds the previous Worker still SELECTs a dropped column and its reads of that table fail. With one user, the owner accepted it (2026-10-04): a drop simply deploys, with no quiet hour and no post-deploy migration phase.
 

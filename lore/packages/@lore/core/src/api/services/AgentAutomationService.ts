@@ -306,11 +306,7 @@ export class AgentAutomationService {
     if (project?.automationsPausedAt) {
       return { skipped: "Automations are paused in this project" };
     }
-    // A chat automation runs in Lore (#Q4236): no host to wait for.
-    const host =
-      automation.promptKind === "chat"
-        ? undefined
-        : await this.hostOf(automation);
+    const host = await this.hostOf(automation);
     if (host) return { skipped: host };
     const now = this.dateTime.nowMillis();
     const ago = (ms: number) => new Date(now - ms).toISOString();
@@ -581,14 +577,7 @@ export class AgentAutomationService {
     nextRunAt: string | null;
   } {
     const pick = <
-      K extends
-        | "promptText"
-        | "host"
-        | "agent"
-        | "model"
-        | "room"
-        | "source"
-        | "ref",
+      K extends "promptText" | "host" | "agent" | "model" | "source" | "ref",
     >(
       key: K,
     ) => {
@@ -629,7 +618,6 @@ export class AgentAutomationService {
       host: pick("host"),
       agent: pick("agent"),
       model: pick("model"),
-      room: pick("room"),
       // An empty string was cleared to undefined by `pick`.
       source: pick("source") as AgentAutomation["source"],
       ref: pick("ref"),
@@ -714,29 +702,6 @@ export class AgentAutomationService {
     projectId: number,
     draft: ReturnType<AgentAutomationService["merged"]>,
   ): Promise<void> {
-    if (draft.promptKind === "chat") {
-      // A chat agent's rounds (#Q4236): an agent, a room and the words it
-      // is asked, run in Lore, so no host and no model of its own.
-      if (!draft.agent || !draft.room || !draft.promptText?.trim()) {
-        throw new BadRequestError(
-          "A chat automation names its agent (--agent <handle>), its room (--room <name>) and what it is asked (--text)",
-        );
-      }
-      if (draft.host || draft.model) {
-        throw new BadRequestError(
-          "A chat automation runs in Lore, with its agent's own model: no host and no model",
-        );
-      }
-      if (draft.onlyIfWork) {
-        throw new BadRequestError(
-          'A chat automation has no "only if there is something" check: its agent answers that there is nothing to report, and nothing is posted',
-        );
-      }
-      return this.validateSchedule(draft);
-    }
-    if (draft.room) {
-      throw new BadRequestError("Only a chat automation names a room");
-    }
     if (draft.promptKind === "text" && !draft.promptText?.trim()) {
       throw new BadRequestError("A text automation carries its words");
     }

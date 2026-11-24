@@ -44,19 +44,6 @@ export const chatAgents = $entity({
      * A model id, or none for the instance default.
      */
     model: z.text({ maxLength: 120 }).optional(),
-    /**
-     * Its AI provider (#Q4250): `api` (the instance's model, through
-     * `alepha/ai`) or `host` (an agent CLI on one of the project's Agent
-     * hosts, reading the code). The room sees no difference.
-     */
-    engine: db.default(z.enum(["api", "host"]).meta({ mode: "text" }), "api"),
-    /**
-     * With `engine: host`: the Agent host by slug, the agent CLI and its
-     * model; each absent is the project's only one, or the CLI's default.
-     */
-    engineHost: z.text({ maxLength: 64 }).optional(),
-    engineAgent: z.text({ maxLength: 32 }).optional(),
-    engineModel: z.text({ maxLength: 80 }).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),

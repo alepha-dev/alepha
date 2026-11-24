@@ -39,9 +39,6 @@ export const agentAutomationWriteSchema = agentAutomations.schema
     model: z
       .union([agentRunSchema.shape.model.unwrap(), z.literal("")])
       .optional(),
-    room: z
-      .union([agentAutomations.schema.shape.room.unwrap(), z.literal("")])
-      .optional(),
     /** Its jobs' source and ref (#E173); an empty string clears either. */
     source: z
       .union([agentRunSourceSchema.shape.source.unwrap(), z.literal("")])

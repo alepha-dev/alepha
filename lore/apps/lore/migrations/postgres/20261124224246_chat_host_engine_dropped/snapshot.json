@@ -1,0 +1,156 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "9c62d38e-8b53-4184-9813-86a43e80682f",
+  "prevIds": ["e91df59f-f047-4835-9d7e-7f99b8d9529a"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "chat_lore_engines"],
+      "writes": [
+        "s|tbl|public.chat_lore_engines",
+        "n|tbl|public.chat_lore_engines",
+        "e|tbl|public.chat_lore_engines",
+        "n|rel|public.chat_lore_engines",
+        "n|type|public.chat_lore_engines"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "agent_automations", "room"],
+      "writes": [
+        "s|col|public.agent_automations.room",
+        "n|col|public.agent_automations.room",
+        "e|col|public.agent_automations.room"
+      ],
+      "reads": ["n|tbl|public.agent_automations", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine"],
+      "writes": [
+        "s|col|public.chat_agents.engine",
+        "n|col|public.chat_agents.engine",
+        "e|col|public.chat_agents.engine"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine_host"],
+      "writes": [
+        "s|col|public.chat_agents.engine_host",
+        "n|col|public.chat_agents.engine_host",
+        "e|col|public.chat_agents.engine_host"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine_agent"],
+      "writes": [
+        "s|col|public.chat_agents.engine_agent",
+        "n|col|public.chat_agents.engine_agent",
+        "e|col|public.chat_agents.engine_agent"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "chat_agents", "engine_model"],
+      "writes": [
+        "s|col|public.chat_agents.engine_model",
+        "n|col|public.chat_agents.engine_model",
+        "e|col|public.chat_agents.engine_model"
+      ],
+      "reads": ["n|tbl|public.chat_agents", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "chat_room_members",
+        "host_sessions"
+      ],
+      "writes": [
+        "s|col|public.chat_room_members.host_sessions",
+        "n|col|public.chat_room_members.host_sessions",
+        "e|col|public.chat_room_members.host_sessions"
+      ],
+      "reads": ["n|tbl|public.chat_room_members", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"chat_lore_engines\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"agent_automations\",\"room\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_agents\",\"engine\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_agents\",\"engine_host\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_agents\",\"engine_agent\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_agents\",\"engine_model\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"engine\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"engine_host\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"engine_agent\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_lore_engines\",\"engine_model\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"chat_room_members\",\"host_sessions\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"chat_lore_engines_project_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"chat_lore_engines\",\"chat_lore_engines_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"chat_lore_engines\",\"chat_lore_engines_pkey\"]"
+    }
+  ]
+}

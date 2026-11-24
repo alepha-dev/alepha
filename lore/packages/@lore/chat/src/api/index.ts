@@ -11,11 +11,9 @@ import { ChatAgentBudgetService } from "./services/ChatAgentBudgetService.ts";
 import { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
 import { ChatAgentService } from "./services/ChatAgentService.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
-import { ChatAutomationKind } from "./services/ChatAutomationKind.ts";
 import { ChatBuckets } from "./services/ChatBuckets.ts";
 import { ChatChannelRooms } from "./services/ChatChannelRooms.ts";
 import { ChatFileAccess } from "./services/ChatFileAccess.ts";
-import { ChatHostTurns } from "./services/ChatHostTurns.ts";
 import { ChatLifecycle } from "./services/ChatLifecycle.ts";
 import { ChatLive } from "./services/ChatLive.ts";
 import { ChatMentionNotifier } from "./services/ChatMentionNotifier.ts";
@@ -62,14 +60,10 @@ export const LoreChatApi = $module({
     ChatAgentService,
     ChatAgentBudgetService,
     ChatAgentRunner,
-    // A chat agent's turn on an Agent host (#Q4250), its end hook.
-    ChatHostTurns,
     ChatMessageController,
     ChatAgentController,
     // Room channels (#Q4052): registered on core's registry at boot.
     ChatChannelRooms,
-    // A chat agent's rounds (#Q4236): the `chat` automation kind.
-    ChatAutomationKind,
   ],
 });
 
@@ -78,11 +72,6 @@ export { ChatMessageController } from "./controllers/ChatMessageController.ts";
 export { ChatRoomController } from "./controllers/ChatRoomController.ts";
 export { ChatSocketController } from "./controllers/ChatSocketController.ts";
 export { type ChatAgent, chatAgents } from "./entities/chatAgents.ts";
-export {
-  type ChatLoreEngine,
-  chatLoreEngines,
-} from "./entities/chatLoreEngines.ts";
-export { ChatHostTurns } from "./services/ChatHostTurns.ts";
 export { type ChatMention, chatMentions } from "./entities/chatMentions.ts";
 export { type ChatMessage, chatMessages } from "./entities/chatMessages.ts";
 export { type ChatReaction, chatReactions } from "./entities/chatReactions.ts";

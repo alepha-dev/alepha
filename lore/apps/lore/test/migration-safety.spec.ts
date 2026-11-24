@@ -161,6 +161,10 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
     "code_commits",
     "code_repositories",
   ],
+  // Chat agents answer through Alepha AI only (#Q4273): `@lore`'s host
+  // engine per project, a leaf referenced by nothing.
+  "20261124224232_chat_host_engine_dropped": ["chat_lore_engines"],
+  "20261124224246_chat_host_engine_dropped": ["chat_lore_engines"],
 };
 
 /**

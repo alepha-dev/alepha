@@ -5,15 +5,13 @@
 
 /**
  * What an agent automation runs (#Q4226): the project's Triage prompt
- * (`feedbackLoop`), its Build prompt (`questWork`), a free text under
- * Lore's preamble, or a chat agent's rounds in a room (#Q4236), which runs
- * in Lore rather than on an Agent host.
+ * (`feedbackLoop`), its Build prompt (`questWork`), or a free text under
+ * Lore's preamble.
  */
 export const AUTOMATION_PROMPT_KINDS = [
   "triage",
   "build",
   "text",
-  "chat",
   // The dependencies (#Q4252): a security check, an update.
   "security",
   "dependencies",

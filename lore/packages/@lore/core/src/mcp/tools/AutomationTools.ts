@@ -196,7 +196,6 @@ export class AutomationTools {
     host?: string;
     agent?: string;
     model?: string;
-    room?: string;
     source?: "none" | "read" | "write" | "";
     ref?: string;
     on?: string;
@@ -212,7 +211,6 @@ export class AutomationTools {
       ...(params.host === undefined ? {} : { host: params.host }),
       ...(params.agent === undefined ? {} : { agent: params.agent }),
       ...(params.model === undefined ? {} : { model: params.model }),
-      ...(params.room === undefined ? {} : { room: params.room }),
       ...(params.source === undefined ? {} : { source: params.source }),
       ...(params.ref === undefined ? {} : { ref: params.ref }),
       ...(params.on === undefined ? {} : { on: params.on }),
