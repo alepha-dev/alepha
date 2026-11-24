@@ -1,4 +1,8 @@
-import { LiveQuestRegistry, ProjectController } from "@lore/core/api";
+import {
+  JobKeyService,
+  LiveQuestRegistry,
+  ProjectController,
+} from "@lore/core/api";
 import {
   AttachmentContentService,
   AttachmentPushCommand,
@@ -76,6 +80,7 @@ import { EpicRefService } from "../services/EpicRefService.ts";
  */
 export class QuestTools {
   protected readonly questController = $inject(QuestController);
+  protected readonly jobKeys = $inject(JobKeyService);
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
   protected readonly epicController = $inject(EpicController);
@@ -391,9 +396,15 @@ export class QuestTools {
       // description was inlined, which the client spilled to a file; the
       // question a list answers is which quests exist and which ones moved.
       const full = params.detail === "full";
+      // A job key reads no quest born of outside text nobody confirmed
+      // (#Q4287).
+      const hidden = await this.jobKeys.hiddenFor(projectId);
+      const rows = hidden
+        ? result.content.filter((quest) => !hidden.quests.has(quest.shortId))
+        : result.content;
 
       return {
-        quests: result.content.map((quest) => ({
+        quests: rows.map((quest) => ({
           id: quest.id,
           shortId: quest.shortId,
           title: quest.title,

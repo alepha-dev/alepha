@@ -52,6 +52,7 @@ import { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
 import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { PlanLiveQuests } from "./services/PlanLiveQuests.ts";
+import { PlanOutsideText } from "./services/PlanOutsideText.ts";
 import { PlanPrompts } from "./services/PlanPrompts.ts";
 import { ProjectBacklogReportService } from "./services/ProjectBacklogReportService.ts";
 import { ProjectFlowReportService } from "./services/ProjectFlowReportService.ts";
@@ -121,6 +122,8 @@ export const LorePlanApi = $module({
     PlanAutomationKinds,
     // The built-in prompts and their epic, quest and feedback args (#E174).
     PlanPrompts,
+    // What a job key may not read: outside text nobody trusted (#Q4287).
+    PlanOutsideText,
     // A built quest completes when its commit reaches the default branch.
     BuiltQuestLanding,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
@@ -316,6 +319,7 @@ export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
 export { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
+export { PlanOutsideText } from "./services/PlanOutsideText.ts";
 export { PlanPrompts } from "./services/PlanPrompts.ts";
 export { BuiltQuestLanding } from "./services/BuiltQuestLanding.ts";
 export { EpicAgentController } from "./controllers/EpicAgentController.ts";

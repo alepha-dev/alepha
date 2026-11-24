@@ -697,6 +697,8 @@ export { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {
   type EpicMembership,
+  type OutsideText,
+  type OutsideTextSource,
   JobKeyService,
 } from "./services/JobKeyService.ts";
 export type {

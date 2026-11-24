@@ -99,6 +99,12 @@ export class JobKeyService {
    */
   protected epicMembership?: EpicMembership;
 
+  /**
+   * The outside text no member trusted (#Q4287): Plan's, registered here,
+   * since feedback and quests are its entities. Absent, nothing is hidden.
+   */
+  protected outsideText?: OutsideTextSource;
+
   constructor() {
     this.port.registerKeyIssuer({
       mint: (job, scope) => this.mint(job, scope),
@@ -111,6 +117,56 @@ export class JobKeyService {
    */
   public registerEpicMembership(lookup: EpicMembership): void {
     this.epicMembership = lookup;
+  }
+
+  /**
+   * Registers Plan's reader of untrusted feedback and the quests born of it
+   * (#Q4287).
+   */
+  public registerOutsideText(source: OutsideTextSource): void {
+    this.outsideText = source;
+  }
+
+  /**
+   * The job key the current MCP call authenticated with, or undefined for a
+   * member's own session or API key.
+   */
+  public async current(): Promise<JobKey | undefined> {
+    const request = this.alepha.store.get("alepha.http.request") as
+      | { user?: UserAccountToken }
+      | undefined;
+    return this.scopeOf(request?.user);
+  }
+
+  /**
+   * What a job key may not read in a project (#Q4287): the untrusted
+   * feedback items no member trusted and the quests born of one nobody
+   * confirmed, by number. Undefined for a member's own session or key, so a
+   * read stays as it was for them. Every MCP read that carries their text
+   * leaves them out with it, whatever the prompt asked.
+   */
+  public async hiddenFor(projectId: number): Promise<OutsideText | undefined> {
+    if (!this.outsideText || !(await this.current())) return undefined;
+    return this.outsideText.hidden(projectId);
+  }
+
+  /**
+   * Whether one of `hidden`'s items is what a row names: its kind
+   * (`quest`, `feedback`) and number, or a link to its page.
+   */
+  public static names(
+    hidden: OutsideText,
+    row: { kind?: string; number?: unknown; href?: string },
+  ): boolean {
+    const number = Number(row.number);
+    if (row.kind === "quest" && hidden.quests.has(number)) return true;
+    if (row.kind === "feedback" && hidden.feedback.has(number)) return true;
+    const href = row.href ?? "";
+    if (!href.includes(`/${hidden.slug}/`)) return false;
+    const quest = /\/quests\/(\d+)/.exec(href);
+    if (quest && hidden.quests.has(Number(quest[1]))) return true;
+    const item = /feedback(?:=|\/)(\d+)/.exec(href);
+    return !!item && hidden.feedback.has(Number(item[1]));
   }
 
   /**
@@ -226,6 +282,7 @@ export class JobKeyService {
       if (!key) return;
       this.check(key, name, args);
       await this.checkEpicQuest(key, name, args);
+      await this.checkOutsideText(key, name, args);
       this.mcp.pin(key.projectId);
     },
   });
@@ -328,6 +385,21 @@ export class JobKeyService {
   }
 
   /**
+   * A tool naming an untrusted feedback item no member trusted, or a quest
+   * born of one nobody confirmed, is refused under a job key, pinned or not
+   * (#Q4287). The refusal names the item and what lets it through.
+   */
+  public async checkOutsideText(
+    key: JobKey,
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.outsideText) return;
+    const refusal = await this.outsideText.refuse(key.projectId, name, args);
+    if (refusal) throw new ForbiddenError(refusal);
+  }
+
+  /**
    * The feedback items a key is pinned to, or undefined when it is not.
    */
   protected feedbackPins(key: JobKey): number[] | undefined {
@@ -383,3 +455,29 @@ export type EpicMembership = (
   epicNumber: number,
   quest: { shortId?: number; id?: number },
 ) => Promise<boolean>;
+
+/**
+ * Plan's reader of outside text (#Q4287): what a job key may not read in a
+ * project, and the refusal of a call naming one of them.
+ */
+export interface OutsideTextSource {
+  hidden(projectId: number): Promise<OutsideText>;
+  refuse(
+    projectId: number,
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<string | undefined>;
+}
+
+/**
+ * The numbers a job key may not read: feedback `shortId`s and quest
+ * `shortId`s.
+ */
+export interface OutsideText {
+  feedback: Set<number>;
+  quests: Set<number>;
+  /**
+   * The project's URL slug, to read a link to one of them.
+   */
+  slug: string;
+}

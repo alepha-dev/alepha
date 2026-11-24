@@ -19,6 +19,7 @@ import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { projectMergeResultSchema } from "../../api/schemas/projectMergeResultSchema.ts";
 import { ProjectSlugService } from "../../api/schemas/ProjectSlugService.ts";
 import { LoreViewerAllowlist } from "../../api/security/LoreViewerAllowlist.ts";
+import { JobKeyService } from "../../api/services/JobKeyService.ts";
 import { McpProjectScope } from "../../api/services/McpProjectScope.ts";
 import { ProjectArchiveGuard } from "../../api/services/ProjectArchiveGuard.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
@@ -527,10 +528,24 @@ export class ProjectTools {
       // serve a default nobody asked for would be the wrong place to spend it.
       // The cursor below is computed from what was READ, not from what was
       // kept, so an excluded event is never handed out again.
-      const kept =
+      const own =
         params.includeOwn || !me?.id
           ? rows
           : rows.filter((row) => row.userId !== me.id);
+      // Under a job key, no event of an item written outside the team that
+      // no member trusted, nor of a quest born of one (#Q4287).
+      const hidden = await this.alepha
+        .inject(JobKeyService)
+        .hiddenFor(projectId);
+      const kept = hidden
+        ? own.filter(
+            (row) =>
+              !JobKeyService.names(hidden, {
+                kind: row.type,
+                number: row.resourceId,
+              }),
+          )
+        : own;
 
       return {
         events: kept.map((row) => ({
