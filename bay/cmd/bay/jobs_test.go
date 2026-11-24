@@ -116,6 +116,10 @@ func newJobWorld(t *testing.T) *jobWorld {
 	r.killGrace = time.Second
 	jobSecond = 50 * time.Millisecond
 	t.Cleanup(func() { jobSecond = time.Second })
+	// A gh signed in, whatever the machine has: a CI runner's own gh is
+	// installed and signed out, and a job with code would fail on it
+	// (#Q4256). A test about gh writes its own.
+	w.stub(t, "gh", "#!/bin/sh\n[ \"$1\" = --version ] && echo 'gh version 2.40.1'\nexit 0\n")
 	return w
 }
 
@@ -170,6 +174,7 @@ func TestJobRun(t *testing.T) {
 		w := newJobWorld(t)
 		// The cwd and args are recorded through files the stub can reach.
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 pwd > "`+w.bin+`/claude.cwd"
 printf '%s' "$LORE_JOB_KEY" > "`+w.bin+`/claude.key"
@@ -226,7 +231,7 @@ touch cloned-here
 		}
 
 		// The next run of the workspace finds it as the last one left it.
-		w.stub(t, "claude", "#!/bin/sh\ntest -f cloned-here\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntest -f cloned-here\n")
 		if last := w.run("job-2", w.agentSpec(nil)).last(); last.Status != "done" {
 			t.Fatalf("the second run did not find the workspace: %+v", last)
 		}
@@ -235,6 +240,7 @@ touch cloned-here
 	t.Run("a check asks the agent its version, then its fixed question, with nothing in reach", func(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 if [ "$1" = "--version" ]; then echo "2.1.7 (Claude Code)"; exit 0; fi
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 printf '%s' "$LORE_JOB_KEY" > "`+w.bin+`/claude.key"
@@ -261,7 +267,7 @@ echo 'OK'
 
 	t.Run("a check fails when the agent's version command does", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\nexit 2\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nexit 2\n")
 		last := w.run("check-broken", w.checkSpec(nil)).last()
 		if last.Status != "failed" || !strings.Contains(last.Reason, "claude --version exited with status 2") {
 			t.Fatalf("ack = %+v", last)
@@ -271,6 +277,7 @@ echo 'OK'
 	t.Run("the run's model reaches the agent, and none leaves the CLI's own default", func(t *testing.T) {
 		w := newJobWorld(t)
 		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
 if [ "$1" = "--version" ]; then echo "2.1.7"; exit 0; fi
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 `)
@@ -355,7 +362,7 @@ pwd > "`+w.bin+`/gemini.cwd"
 
 	t.Run("a non-zero exit is a failed ack with its code and stderr's tail", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\necho 'Invalid API key' >&2\nexit 3\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\necho 'Invalid API key' >&2\nexit 3\n")
 		last := w.run("job-fail", w.agentSpec(nil)).last()
 		if last.Status != "failed" || last.ExitCode == nil || *last.ExitCode != 3 || !strings.Contains(last.Reason, "Invalid API key") {
 			t.Fatalf("ack = %+v", last)
@@ -365,7 +372,7 @@ pwd > "`+w.bin+`/gemini.cwd"
 	t.Run("a timeout kills the process group and acks timed_out", func(t *testing.T) {
 		w := newJobWorld(t)
 		// A child that would outlive its parent if only the parent were killed.
-		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\necho started\nwait\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\necho started\nwait\n")
 		start := time.Now()
 		last := w.run("job-slow", w.agentSpec(map[string]any{"timeoutSeconds": 20})).last()
 		if last.Status != connector.AckTimedOut || last.ExitCode != nil {
@@ -381,7 +388,7 @@ pwd > "`+w.bin+`/gemini.cwd"
 
 	t.Run("a job-cancel kills it and the run acks cancelled", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\nwait\n")
 		done := make(chan *ackRecorder)
 		go func() { done <- w.run("job-long", w.agentSpec(map[string]any{"timeoutSeconds": 3600})) }()
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-long" })
@@ -415,7 +422,7 @@ func TestJobRunRefusals(t *testing.T) {
 
 	t.Run("without a jobs user", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\nexit 0\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nexit 0\n")
 		if err := saveJobsConfig(w.f.root, jobsConfig{}); err != nil {
 			t.Fatal(err)
 		}
@@ -427,7 +434,7 @@ func TestJobRunRefusals(t *testing.T) {
 
 	t.Run("when bay cannot become the jobs user", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\nexit 0\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nexit 0\n")
 		r := w.acts.jobs.runner
 		r.testRunAsSelf, r.switchUser, r.selfUID = false, false, -1
 		last := w.run("job-noroot", w.agentSpec(nil)).last()
@@ -438,7 +445,7 @@ func TestJobRunRefusals(t *testing.T) {
 
 	t.Run("a second job while one runs, at the default limit of one", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
 		last := w.run("job-b", w.agentSpec(map[string]any{"workspace": "other"})).last()
@@ -456,7 +463,7 @@ func TestJobRunRefusals(t *testing.T) {
 		if err := saveJobsConfig(w.f.root, cfg); err != nil {
 			t.Fatal(err)
 		}
-		w.stub(t, "claude", "#!/bin/sh\nsleep 30 &\nwait\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
 		waitFor(t, func() bool { return strings.Contains(w.frames.text("stderr"), "agent claude started") })
@@ -473,7 +480,7 @@ func TestJobRunRefusals(t *testing.T) {
 
 	t.Run("a job never waits for the machine mutex", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\necho ok\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\necho ok\n")
 		// A deploy holds the machine; the job runs all the same.
 		w.acts.mu.Lock()
 		defer w.acts.mu.Unlock()
@@ -491,7 +498,7 @@ func TestJobRunRefusals(t *testing.T) {
 
 	t.Run("a spec this bay does not accept runs nothing", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\ntouch \""+w.bin+"/ran\"\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntouch \""+w.bin+"/ran\"\n")
 		last := w.run("job-bad", w.agentSpec(map[string]any{"allowedTools": []string{"Bash"}})).last()
 		if last.Status != "failed" || last.Step != "validating" {
 			t.Fatalf("ack = %+v", last)
@@ -678,7 +685,7 @@ func TestJobLogReplay(t *testing.T) {
 
 	t.Run("a job-run redelivered after its end replays the tail, then re-acks", func(t *testing.T) {
 		w := newJobWorld(t)
-		w.stub(t, "claude", "#!/bin/sh\necho hello\nexit 2\n")
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\necho hello\nexit 2\n")
 		w.frames.down = true
 		first := w.run("job-offline", w.agentSpec(nil)).last()
 		if first.Status != "failed" {
@@ -704,7 +711,7 @@ func TestJobLogReplay(t *testing.T) {
 
 func TestJobsInventory(t *testing.T) {
 	w := newJobWorld(t)
-	w.stub(t, "claude", "#!/bin/sh\necho '2.0.14 (Claude Code)'\n")
+	w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\necho '2.0.14 (Claude Code)'\n")
 	w.stub(t, "git", "#!/bin/sh\necho 'git version 2.43.0'\n")
 	w.stub(t, "gh", "#!/bin/sh\nexit 1\n")
 	// Cloudflare's cf prints its mark before its version (#Q4254).

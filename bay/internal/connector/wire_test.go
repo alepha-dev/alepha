@@ -340,7 +340,7 @@ func sampleInventoryFrame() Inventory {
 			Sources: true,
 			MaxJobs: 2,
 			Tools: []InventoryTool{
-				{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},
+				{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7", SignedIn: ptr(true), Account: "ops@example.com"},
 				{Name: "gemini", Kind: "agent", Error: "gemini is not on the jobs user's PATH"},
 				{Name: "git", Kind: "tool", Found: true, Version: "2.43.0"},
 				{Name: "gh", Kind: "tool", Found: true, Error: "gh --version exited with status 1"},

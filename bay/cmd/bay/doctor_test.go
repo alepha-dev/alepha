@@ -167,22 +167,28 @@ func TestPortHeldByBayItself(t *testing.T) {
 }
 
 func TestDoctorToolChecks(t *testing.T) {
-	t.Run("lists the tools, warns on what is missing, and says what it does not check", func(t *testing.T) {
+	t.Run("lists the tools with their sign-ins, warns on what is missing or signed out, and on a signed-in lore", func(t *testing.T) {
+		yes, no := true, false
 		checks := toolChecks([]connector.InventoryTool{
-			{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7"},
+			{Name: "claude", Kind: "agent", Found: true, Version: "2.1.7", SignedIn: &yes, Account: "ops@example.com"},
 			{Name: "gemini", Kind: "agent"},
 			{Name: "gh", Kind: "tool", Found: true, Error: "gh --version exited with status 1"},
+			{Name: "cf", Kind: "tool", Found: true, Version: "0.15.0", SignedIn: &no},
+			{Name: "git", Kind: "tool", Found: true, Version: "2.43.0"},
+			{Name: "lore", Kind: "tool", Found: true, Version: "0.38.0", SignedIn: &yes},
 		}, "bay-agent")
 		var lines []string
 		for _, c := range checks {
 			lines = append(lines, fmt.Sprintf("%s ok=%v warn=%v %s", c.Name, c.OK, c.Warn, c.Detail))
 		}
-		got := strings.Join(lines, "\n")
+		got := strings.Join(lines, "\n") + "\n"
 		for _, want := range []string{
-			"claude ok=true warn=false 2.1.7 (agent CLI)",
+			"claude ok=true warn=false 2.1.7 (agent CLI), signed in as ops@example.com",
 			"gemini ok=false warn=true not installed for bay-agent",
 			"gh ok=false warn=true found, but gh --version exited with status 1",
-			"sign-ins ok=true",
+			"cf ok=false warn=true 0.15.0, signed out: sudo -iu bay-agent cf auth login --no-browser",
+			"git ok=true warn=false 2.43.0\n",
+			"lore ok=false warn=true 0.38.0, the jobs user's lore CLI is signed in: a job would reach past its key's pins (sudo -iu bay-agent lore logout)",
 		} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("doctor said:\n%s\nwant a line %q", got, want)

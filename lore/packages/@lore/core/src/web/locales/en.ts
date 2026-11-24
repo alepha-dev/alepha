@@ -3223,6 +3223,12 @@ export default {
   "hosts.tools.user": "Jobs run as $1.",
   "hosts.tools.missing": "Not installed",
   "hosts.tools.installed": "Installed, $1",
+  "hosts.tools.signedIn": "signed in",
+  "hosts.tools.signedInAs": "signed in as $1",
+  "hosts.tools.signedOut": "signed out: $1",
+  "hosts.tools.signInUnknown": "sign-in unknown",
+  "hosts.tools.loreSignedIn":
+    "signed in: a job would reach past its key's pins ($1)",
   "hosts.agent.tools.link": "See the jobs user's tools",
   "hosts.agent.tools.noAgent":
     "No agent CLI answers for the jobs user: this host cannot run agent jobs.",

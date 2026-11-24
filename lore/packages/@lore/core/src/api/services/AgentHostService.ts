@@ -68,6 +68,12 @@ export class AgentHostService {
             ? { agents: AgentHostService.agentsOf(host.jobsTools) }
             : {}),
           ...(host.jobsSources ? { sources: true } : {}),
+          ...(host.jobsUser ? { jobsUser: host.jobsUser } : {}),
+          ...(host.jobsTools?.some(
+            (tool) => tool.name === "gh" && tool.signedIn === false,
+          )
+            ? { ghSignedOut: true }
+            : {}),
         })),
     });
   }

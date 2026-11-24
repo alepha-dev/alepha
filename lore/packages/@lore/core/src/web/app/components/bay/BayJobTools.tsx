@@ -4,6 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import BayJobToolSignIn from "./BayJobToolSignIn.tsx";
 import { useBayInventory } from "./useBayInventory.ts";
 
 /**
@@ -13,7 +14,8 @@ import { useBayInventory } from "./useBayInventory.ts";
  * owner sees what a job would find before running one.
  *
  * Three states before any tool: never reported, reported with no jobs user
- * (`bay config jobs --user` was never run), and the list.
+ * (`bay config jobs --user` was never run), and the list, each tool with its
+ * sign-in (#Q4256).
  */
 const BayJobTools = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -71,11 +73,17 @@ const BayJobTools = () => {
                   ) : tool.error ? (
                     <span className="text-danger">{tool.error}</span>
                   ) : (
-                    <span className="text-muted-foreground">
-                      {tr("hosts.tools.installed", {
-                        args: [tool.version ?? ""],
-                      })}
-                    </span>
+                    <>
+                      <span className="text-muted-foreground">
+                        {tr("hosts.tools.installed", {
+                          args: [tool.version ?? ""],
+                        })}
+                      </span>
+                      <BayJobToolSignIn
+                        tool={tool}
+                        user={host.jobsUser ?? ""}
+                      />
+                    </>
                   )}
                 </li>
               ))}

@@ -206,6 +206,12 @@ export interface AgentHostRef {
    * refused on a host that does not say so.
    */
   sources?: boolean;
+  /**
+   * The jobs user, and whether its `gh` says it is signed out (#Q4256): a
+   * read or write job is refused before it is queued then.
+   */
+  jobsUser?: string;
+  ghSignedOut?: boolean;
 }
 
 /**

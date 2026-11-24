@@ -97,6 +97,12 @@ export class AgentJobService {
           `Host "${host.slug}" runs a Bay that does not prepare job sources: upgrade Bay on ${host.slug}`,
         );
       }
+      // The mirror fetches through gh (#Q4256): the job would fail there.
+      if (host.ghSignedOut) {
+        throw new BadRequestError(
+          `Host "${host.slug}" reports its jobs user's gh CLI signed out: sudo -iu ${host.jobsUser ?? "<jobs user>"} gh auth login`,
+        );
+      }
     }
     // A write job not on one quest is named after itself (#Q4248).
     const id = randomUUID();

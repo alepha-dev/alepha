@@ -196,7 +196,9 @@
         "name": "claude",
         "kind": "agent",
         "found": true,
-        "version": "2.1.7"
+        "version": "2.1.7",
+        "signedIn": true,
+        "account": "ops@example.com"
       },
       {
         "name": "gemini",
