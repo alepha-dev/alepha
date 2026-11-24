@@ -260,6 +260,48 @@ export class ProjectErrorController {
   });
 
   /**
+   * Withdraw an error group's trust (#Q4255): a member read its text and
+   * found outside input an agent should not read, typically in a server
+   * group trusted on arrival. The group is untrusted again, and stays so
+   * when it is reported again. A member may trust it later.
+   *
+   * ⚠️ **A signed-in session only**, like {@link trustProjectError}: an
+   * agent that could move the trust either way would decide what it reads.
+   */
+  untrustProjectError = $action({
+    use: [
+      $ownsProject({
+        requires: "error:triage",
+        param: "projectId",
+        capability: { key: "ship", action: "untrust an error" },
+        secure: { sessionOnly: true },
+      }),
+    ],
+    method: "DELETE",
+    path: "/projects/:projectId/errors/:errorId/trust",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        errorId: z.integer(),
+      }),
+      response: z.object({ ok: z.boolean() }),
+    },
+    handler: async ({ params }) => {
+      const projectError = await this.loadProjectError(
+        params.projectId,
+        params.errorId,
+      );
+      if (projectError.trustedAt) {
+        await this.currentProjectErrors.updateById(projectError.id, {
+          trustedAt: null,
+          trustedBy: null,
+        });
+      }
+      return { ok: true };
+    },
+  });
+
+  /**
    * Forward an error to a new quest. Creates a quest in the project with
    * the error's name/message as the title and the stack + spread summary
    * as the (plain-text) description, links the quest back via

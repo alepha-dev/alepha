@@ -106,9 +106,9 @@ member's rank reads in this project:
   errors inbox, Agent host jobs and their logs, deploys, and stacks. Monitors,
   deploys and stacks need **See the deployed copies**, errors **Read the crash
   inbox**, and jobs the permission to see the project's hosts.
-- **Errors a member trusted, and only those.** Error text comes from the
-  apps that report it, so an agent never reads a group nobody on the team has
-  trusted on the Errors page; it is told how many wait.
+- **Trusted errors, and only those.** Error text comes from the apps that
+  report it, so an agent reads a server error, trusted on arrival, or a group
+  a member trusted on the Errors page, and is told how many others wait.
 
 It writes only through a card you approve: a quest, a comment, a folio, a
 dashboard card or a feedback item. It never resolves an error, deploys or

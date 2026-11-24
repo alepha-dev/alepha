@@ -43,6 +43,7 @@ import {
   FileText,
   Send,
   ShieldCheck,
+  ShieldOff,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -167,6 +168,25 @@ const ProjectErrors = () => {
     [projectErrorApi, project, toaster, tr],
   );
 
+  // A member withdraws a group's trust (#Q4255), most often a server group
+  // trusted on arrival whose message carries outside input. Session only too.
+  const untrustAction = useAction<
+    [projectError: ProjectErrorResource, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (_ctx, projectError, refresh) => {
+        if (!project) return;
+        await projectErrorApi.untrustProjectError({
+          params: { projectId: project.id, errorId: projectError.id },
+        });
+        toaster.success(tr("errors.toast.untrusted"));
+        refresh();
+      },
+    },
+    [projectErrorApi, project, toaster, tr],
+  );
+
   // The one triage run over the feedback and the trusted errors (#Q4240):
   // Plan's, registered on core, so the Errors page offers the same entries
   // as the Feedback page.
@@ -230,6 +250,7 @@ const ProjectErrors = () => {
     deleteManyAction.loading ||
     resolveAction.loading ||
     trustAction.loading ||
+    untrustAction.loading ||
     forwardAction.loading ||
     deleteAction.loading;
 
@@ -434,6 +455,7 @@ const ProjectErrors = () => {
                     <ErrorTrustIcon
                       trusted={!!b.trustedAt}
                       trustedByName={b.trustedByName}
+                      onArrival={!!b.trustedAt && !b.trustedBy}
                     />
                   )}
                 </div>
@@ -518,7 +540,17 @@ const ProjectErrors = () => {
               ? []
               : [
                   ...(b.trustedAt
-                    ? []
+                    ? [
+                        {
+                          icon: ShieldOff,
+                          label: tr("errors.action.untrust"),
+                          disabled: () => busy,
+                          onClick: (
+                            projectError: ProjectErrorResource,
+                            { refresh }: { refresh: () => void },
+                          ) => void untrustAction.run(projectError, refresh),
+                        },
+                      ]
                     : [
                         {
                           icon: ShieldCheck,

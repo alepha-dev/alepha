@@ -366,6 +366,15 @@ export class SigilIngestService {
         firstSeenAt: now,
         lastSeenAt: now,
         count: error.count,
+        // A server group is trusted on arrival, with no member named
+        // (#Q4255). Its origin cannot come from a browser: the app's
+        // same-origin proxy rewrites every browser error to `client`, and
+        // only the app's server holds the sigil token. Its reporter drops
+        // every 4xx too, so the validation and 404 echoes of request input
+        // never arrive. A browser group still waits for a member (#Q4233).
+        // Insert only: `set` below leaves the trust alone, so a group
+        // reported again keeps the state it has, a withdrawn trust included.
+        trustedAt: error.origin === "server" ? now : undefined,
       })),
       {
         target: ["projectId", "fingerprint"],

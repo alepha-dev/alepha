@@ -58,8 +58,8 @@ With **Only if there is something to do**, Lore checks before it asks the host
 for anything, so an idle project spends no tokens:
 
 - a Triage runs when a pending feedback item an agent may read waits (written
-  by the team, or trusted by a member), or an open error group a member
-  trusted, when the project tracks errors;
+  by the team, or trusted by a member), or a trusted open error group (one
+  a member trusted, or a server error), when the project tracks errors;
 - a Build runs when a quest its rule would pick exists.
 
 A text prompt has no such check, nor has a chat agent's rounds. When a run is

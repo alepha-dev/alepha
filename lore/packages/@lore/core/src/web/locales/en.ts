@@ -2822,6 +2822,11 @@ export default {
   "errors.action.resolve": "Resolve",
   "errors.action.trust": "Trust",
   "errors.toast.trusted": "Trusted: an agent may now read this error",
+  "errors.action.untrust": "Withdraw trust",
+  "errors.toast.untrusted":
+    "Trust withdrawn: no agent reads this error until a member trusts it again",
+  "errors.trustedOnArrival":
+    "Trusted on arrival: a server error, reported by the app's own server",
   "errors.trustedBy": "Trusted by $1",
   "errors.untrustedHint":
     "Source not trusted: a member must approve it before it is processed automatically",
