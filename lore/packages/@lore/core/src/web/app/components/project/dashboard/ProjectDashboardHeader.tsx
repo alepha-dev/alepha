@@ -89,7 +89,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
     >
       {props.lead && <div className="min-w-0 px-1">{props.lead}</div>}
       <span className="flex-1" />
-      <div className="w-40 shrink-0">
+      <div className="w-36 shrink-0">
         <ProjectDashboardWindow onChange={props.onWindowChange} />
       </div>
       {/* No Customize step (#Q3675): Add card and Edit are offered on the
@@ -100,7 +100,8 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           onClick={props.onAdd}
           disabled={props.busy}
           data-testid="dashboard-add"
-          className="h-9 shrink-0 px-3"
+          size="sm"
+          className="shrink-0"
         >
           <Plus className="size-4" />
           {tr("dashboard.addCard")}
@@ -116,7 +117,8 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           disabled={props.busy}
           data-testid="dashboard-edit"
           aria-pressed={props.editing}
-          className="h-9 shrink-0 px-3"
+          size="sm"
+          className="shrink-0"
         >
           {props.editing ? (
             <Check className="size-4" />

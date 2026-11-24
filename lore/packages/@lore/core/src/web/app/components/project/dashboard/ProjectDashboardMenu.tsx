@@ -91,7 +91,7 @@ const ProjectDashboardMenu = (props: ProjectDashboardMenuProps) => {
       <DropdownMenuTrigger
         aria-label={tr("dashboard.menu")}
         data-testid="dashboard-menu"
-        className="text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-9 shrink-0 items-center justify-center rounded-md transition-colors"
+        className="text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
       >
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>

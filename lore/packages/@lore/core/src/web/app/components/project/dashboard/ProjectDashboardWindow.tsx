@@ -40,7 +40,8 @@ const ProjectDashboardWindow = (props: ProjectDashboardWindowProps) => {
         "data-testid": "dashboard-window",
         "aria-label": tr("dashboard.window"),
       }}
-      triggerClassName="h-9"
+      // The toolbar's small size (#Q4266), like its buttons.
+      size="sm"
       items={(["7", "14", "30"] as const).map((days) => ({
         value: days,
         label: tr("dashboard.window.days", { args: [days] }),
