@@ -78,12 +78,12 @@ const ProjectDashboardSelector = (props: ProjectDashboardSelectorProps) => {
       <DropdownMenuTrigger
         data-testid="dashboard-selector"
         aria-label={tr("project.dashboards.selector")}
-        className="border-input bg-background hover:border-border-hover inline-flex h-9 max-w-64 min-w-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors"
+        className="border-input bg-background hover:border-border-hover inline-flex h-7 max-w-64 min-w-0 items-center gap-1.5 rounded-md border px-2.5 text-[0.8rem] font-medium transition-colors"
       >
         <span className="truncate" data-testid="dashboard-selector-current">
           {nameOf(props.current)}
         </span>
-        <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" />
+        <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-56">
         {props.dashboards.map((dashboard) => (
