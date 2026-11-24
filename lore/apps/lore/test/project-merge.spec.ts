@@ -1,5 +1,5 @@
-import { qualityRuns } from "@lore/build/schemas";
 import { ProjectMergeController, ProjectMergeService } from "@lore/core/api";
+import { qualityRuns } from "@lore/core/schemas";
 import { appInstances, sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
@@ -212,7 +212,6 @@ describe("ProjectMergeService across every module", () => {
     });
     expect(capabilities.map((row) => row.key).sort()).toEqual([
       "activity",
-      "build",
       "plan",
       "remember",
       "reports",

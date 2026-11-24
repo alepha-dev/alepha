@@ -6,9 +6,8 @@ import {
   HostCommandTransport,
   HostCommandService,
   AgentHostService,
-  AgentRunPreamble,
 } from "@lore/core/api";
-import { projectPrompts, hostJobs, hosts } from "@lore/core/schemas";
+import { projectPrompts, hostJobs, hosts, projects } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackAgentService } from "@lore/plan/api";
 import { feedback, feedbackComments } from "@lore/plan/schemas";
@@ -42,6 +41,7 @@ class Repos {
   feedback = $repository(feedback);
   comments = $repository(feedbackComments);
   prompts = $repository(projectPrompts);
+  projects = $repository(projects);
 }
 
 const setup = async () => {
@@ -203,12 +203,12 @@ describe("feedback triaged by an agent job", () => {
     expect(job.input.prompt).not.toContain("## Caution: untrusted input");
   });
 
-  it("names the project's repository when one is registered, to clone or update without changing it", async ({
+  it("names the project's repository from its setting, to clone or update without changing it (#Q4217)", async ({
     expect,
   }) => {
-    w.alepha
-      .inject(AgentRunPreamble)
-      .registerRepository(async () => "https://github.com/acme/web");
+    await w.repos.projects.updateById(w.projectId, {
+      repositoryUrl: "https://github.com/acme/web",
+    });
     const item = await file(w, false);
     const out = await w.triage.triageItem(w.projectId, item.shortId);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });

@@ -16,17 +16,17 @@ Each tab appears with the capability behind it, so a project with everything
 off still has Summary and Team. See
 [Capabilities](/lore/docs/project-capabilities).
 
-| Tab           | Needs     | Answers                                                                     |
-| ------------- | --------- | --------------------------------------------------------------------------- |
-| **Summary**   | -         | Every capability's period against the one before, with a link to explain it |
-| **Flow**      | Work      | How work moved: throughput, cycle and lead time, WIP, what is aging         |
-| **Backlog**   | Work      | The open work as it stands: by area, tag, priority, size, age, blockers     |
-| **Planning**  | Work      | Epics and releases: timeline, burn-up, scope change, forecast, slip         |
-| **Support**   | Support   | Feedback from intake to shipped                                             |
-| **Knowledge** | Knowledge | Folio activity, stale pages, orphans, the link graph                        |
-| **Delivery**  | Apps      | The four DORA keys and reliability: errors, errors, uptime                  |
-| **Quality**   | Build     | Coverage and tests CI pushed: see [Quality](/lore/docs/build-quality)       |
-| **Team**      | -         | Load and contribution per member, how work arrives, agents                  |
+| Tab           | Needs          | Answers                                                                     |
+| ------------- | -------------- | --------------------------------------------------------------------------- |
+| **Summary**   | -              | Every capability's period against the one before, with a link to explain it |
+| **Flow**      | Work           | How work moved: throughput, cycle and lead time, WIP, what is aging         |
+| **Backlog**   | Work           | The open work as it stands: by area, tag, priority, size, age, blockers     |
+| **Planning**  | Work           | Epics and releases: timeline, burn-up, scope change, forecast, slip         |
+| **Support**   | Support        | Feedback from intake to shipped                                             |
+| **Knowledge** | Knowledge      | Folio activity, stale pages, orphans, the link graph                        |
+| **Delivery**  | Apps           | The four DORA keys and reliability: errors, errors, uptime                  |
+| **Quality**   | Quality option | Coverage and tests CI pushed: see [Quality](/lore/docs/project-quality)     |
+| **Team**      | -              | Load and contribution per member, how work arrives, agents                  |
 
 Start with **Summary**. Each of its lines links to the tab that explains it,
 and **Copy as status update** copies the whole summary as Markdown, ready to

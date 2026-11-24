@@ -229,9 +229,6 @@ export default {
   "home.pillar.remember.title": "Se souvenir",
   "home.pillar.remember.description":
     "Un wiki de notes reliées, qui garde les décisions et leurs raisons.",
-  "home.pillar.build.title": "Construire",
-  "home.pillar.build.description":
-    "Hébergez vos dépôts git, et suivez ce que vos tests disent du code.",
   "home.pillar.ship.title": "Livrer",
   "home.pillar.ship.description":
     "Déployez vos applications, puis suivez leurs erreurs, leurs performances et leur disponibilité.",
@@ -1075,6 +1072,9 @@ export default {
   "project.create.name.firstChar": "Commencez par une lettre ou un chiffre.",
   "project.create.name.badChar":
     "Le caractère $1 n'est pas autorisé. Utilisez des lettres, des chiffres, des espaces, - et _.",
+  "project.update.repositoryUrl.label": "Dépôt",
+  "project.update.repositoryUrl.helper":
+    "Le dépôt où vivent les commits de ce projet, sur GitHub. Renseignez-le et les commits d'une quête y renvoient, et les tâches d'agent savent où est le code.",
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
     "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios).",
@@ -1277,14 +1277,8 @@ export default {
   "project.capability.remember.label": "Se souvenir",
   "project.capability.remember.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
-  "project.capability.build.label": "Construire",
-  "project.capability.build.description":
-    "Des dépôts git, et la qualité de leur code.",
-  "project.capability.build.option.repositories.label": "Dépôts",
-  "project.capability.build.option.repositories.description":
-    "Hébergement git : cloner et pousser en HTTPS, depuis la CLI lore ou tout client git.",
-  "project.capability.build.option.quality.label": "Qualité",
-  "project.capability.build.option.quality.description":
+  "project.capability.reports.option.quality.label": "Qualité",
+  "project.capability.reports.option.quality.description":
     "Couverture et totaux de tests envoyés par la CI, dans les Rapports.",
   "project.capability.activity.label": "Activité",
   "project.capability.activity.description":
@@ -4472,7 +4466,8 @@ export default {
   "dashboard.preset.delivery.description":
     "Où en sont les prochaines versions, et les épopées et quêtes en cours.",
   "dashboard.preset.needs.ship": "Activez Ship pour l'utiliser",
-  "dashboard.preset.needs.build": "Activez Build pour l'utiliser",
+  "dashboard.preset.needs.quality":
+    "Activez la Qualité dans les Rapports pour l'utiliser",
   "dashboard.preset.needs.plan": "Activez Plan pour l'utiliser",
   "dashboard.preset.needs.plan.requirements":
     "Activez l'option Exigences de Plan pour l'utiliser",
@@ -4719,10 +4714,6 @@ export default {
   "permission.group.area": "Domaines",
   "permission.area.read": "Lire les domaines",
   "permission.area.manage": "Renommer, fusionner et supprimer des domaines",
-  "permission.group.code": "Code",
-  "permission.code.read": "Cloner et récupérer les dépôts",
-  "permission.code.write": "Pousser vers les dépôts",
-  "permission.code.admin": "Créer et supprimer des dépôts",
   "permission.group.folio": "Folios",
   "permission.folio.read": "Lire les folios",
   "permission.folio.write": "Écrire folios, dossiers et pièces jointes",
@@ -5202,83 +5193,4 @@ export default {
   "assistant.confirm.folio_create": "Rédiger ce folio ?",
   "assistant.confirm.project": "Dans",
   "assistant.confirm.elsewhere": "(pas le projet affiché)",
-  // Build's code browser (#E167)
-  "project.menu.code": "Code",
-  "code.clone.lore": "Lore",
-  "code.clone.url": "HTTPS",
-  "code.clone.copy": "Copier",
-  "code.clone.copied": "Copié",
-  "code.repos.empty.title": "Aucun dépôt pour l'instant",
-  "code.repos.empty.admin": "Créez-en un depuis un terminal, puis poussez-y.",
-  "code.repos.empty.member":
-    "Un Admin du projet en crée un depuis un terminal.",
-  "code.repo.empty.title": "Rien n'a encore été poussé",
-  "code.repo.empty.description":
-    "Clonez-le, ou ajoutez-le comme remote d'un dépôt existant, puis poussez.",
-  "code.repo.defaultBranch": "Branche par défaut $1",
-  "code.repo.indexing": "Indexation de l'historique…",
-  "code.tab.files": "Fichiers",
-  "code.revision.pick": "Changer de branche ou de tag",
-  "code.revision.branches": "Branches",
-  "code.revision.tags": "Tags",
-  "code.file.rendered": "Aperçu",
-  "code.file.source": "Source",
-  "code.file.permalink": "Permalien",
-  "code.file.raw": "Brut",
-  "code.file.size": "$1 octets",
-  "code.file.binary": "Un fichier binaire : téléchargez-le pour l'ouvrir.",
-  "code.file.tooLarge":
-    "Trop volumineux pour être affiché ici : téléchargez-le, ou clonez le dépôt.",
-  "code.diff.files": "$1 fichiers modifiés",
-  "code.diff.partial":
-    "(seulement les premiers : le diff est trop grand pour être listé entier)",
-  "code.diff.added": "Ajouté",
-  "code.diff.modified": "Modifié",
-  "code.diff.deleted": "Supprimé",
-  "code.diff.renamed": "Renommé",
-  "code.diff.collapse": "Replier le fichier",
-  "code.diff.expand": "Déplier le fichier",
-  "code.diff.loading": "Chargement du diff…",
-  "code.diff.binary": "Un fichier binaire a changé.",
-  "code.diff.tooLarge": "Trop volumineux pour être affiché ici.",
-  "code.diff.submodule": "Sous-module $1",
-  "code.diff.noChange": "Le contenu n'a pas changé.",
-  "code.diff.more": "Afficher $1 lignes masquées",
-  "code.diff.previous": "Précédent",
-  "code.diff.next": "Suivant",
-  "code.diff.page": "Page $1 sur $2",
-  "code.tab.commits": "Commits",
-  "code.file.history": "Historique",
-  "code.commits.none": "Aucun commit n'a touché ce chemin.",
-  "code.commit.authored": "Écrit par $1",
-  "code.commit.committed": "Commité par $1",
-  "code.commit.browse": "Parcourir les fichiers",
-  "code.commit.root": "Le premier commit : comparé à rien.",
-  "code.commit.parent": "Parent",
-  "code.commit.parents": "Parents",
-  "code.commit.mergeDiff":
-    "Une fusion : le diff est contre $1, son premier parent.",
-  "code.tab.branches": "Branches",
-  "code.tab.tags": "Tags",
-  "code.branches.default": "Par défaut",
-  "code.branches.counts": "$1 en avance, $2 en retard",
-  "code.branches.compare": "Comparer avec la branche par défaut",
-  "code.branches.delete.label": "Supprimer $1",
-  "code.branches.delete.title": "Supprimer la branche $1 ?",
-  "code.branches.delete.description":
-    "Ses commits ne restent accessibles que si une autre branche ou un tag les contient.",
-  "code.branches.delete.confirm": "Supprimer",
-  "code.tags.none": "Aucun tag pour l'instant.",
-  "code.compare.counts": "$1 commits en avance, $2 en retard",
-  "code.compare.capped":
-    "La base de fusion est trop ancienne pour être trouvée ici.",
-  "code.compare.unrelated": "Ces deux révisions n'ont aucun historique commun.",
-  "code.file.blame": "Blame",
-  "code.blame.pending": "Recherche des lignes plus anciennes…",
-  "code.blame.tooLarge":
-    "Trop volumineux pour un blame ici : plus de 256 Kio ou 5 000 lignes.",
-  "code.blame.partial":
-    "Le parcours s'est arrêté à $1 : les lignes restantes sont plus anciennes.",
-  "code.blame.older": "Plus ancien que $1",
-  "code.blame.before": "Blame avant ce commit",
 };

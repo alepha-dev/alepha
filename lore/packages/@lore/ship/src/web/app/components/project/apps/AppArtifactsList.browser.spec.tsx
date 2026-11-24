@@ -1,5 +1,5 @@
 import { projectFixture } from "@lore/core/testing";
-import { CommitLinkRegistry, currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -56,7 +56,7 @@ const instanceOf = (
  * and now render it directly.
  */
 describe("AppArtifactsList", () => {
-  const mount = async (linked = false) => {
+  const mount = async () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -70,12 +70,6 @@ describe("AppArtifactsList", () => {
     // The dictionaries are lazy chunks on a service, so nothing loads them
     // until something injects it.
     alepha.inject(I18n);
-    // Build's part (#Q4136): where a commit links.
-    if (linked) {
-      alepha
-        .inject(CommitLinkRegistry)
-        .register((sha) => `/alepha/code/alepha/commit/${sha}`);
-    }
     await alepha.start();
     return alepha;
   };
@@ -86,15 +80,16 @@ describe("AppArtifactsList", () => {
     linked = false,
   ) => {
     cleanup();
-    const alepha = await mount(linked);
+    const alepha = await mount();
     alepha.store.set(currentInstanceAtom, instance);
     // The list reads the project for its id and its slug, so without this it
     // would stay disabled and every case below would pass by not running the
     // code it is about.
-    alepha.store.set(
-      currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }),
-    );
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ title: "Alepha", slug: "alepha" }),
+      // Where a commit links (#Q4217).
+      repositoryUrl: linked ? "https://github.com/acme/api" : undefined,
+    });
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
     return {
@@ -395,7 +390,7 @@ describe("AppArtifactsList", () => {
 
   /**
    * The row's commit links to its page in the Lore repository the way the
-   * quest rail does (feedback #P2201, #Q2336, #Q4136), and stays text
+   * quest rail does (feedback #P2201, #Q2336, #Q4217), and stays text
    * without one.
    */
   it("links the commit to its page in the project's repository", async ({
@@ -433,7 +428,7 @@ describe("AppArtifactsList", () => {
     const linked = await row(true);
     expect(
       (await linked.findByText("0b35cb3")).closest("a")?.getAttribute("href"),
-    ).toBe("/alepha/code/alepha/commit/0b35cb375ff");
+    ).toBe("https://github.com/acme/api/commit/0b35cb375ff");
 
     const unlinked = await row(false);
     expect((await unlinked.findByText("0b35cb3")).closest("a")).toBeNull();

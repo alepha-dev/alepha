@@ -72,23 +72,6 @@ describe("LorePackageGraph", () => {
     }
   });
 
-  it("lets build import core and nothing else (#E162)", ({ expect }) => {
-    expect(
-      graph.check(
-        "packages/@lore/build/src/api/index.ts",
-        'import { LoreCoreApi } from "@lore/core/api";',
-      ),
-    ).toEqual([]);
-    for (const to of ["plan", "remember", "ship"]) {
-      const violations = graph.check(
-        "packages/@lore/build/src/api/index.ts",
-        `import { Thing } from "@lore/${to}/api";`,
-      );
-      expect(violations).toHaveLength(1);
-      expect(violations[0]).toContain(`@lore/build -> @lore/${to}`);
-    }
-  });
-
   it("refuses core importing a feature module", ({ expect }) => {
     expect(
       graph.check(

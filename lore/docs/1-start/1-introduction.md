@@ -13,20 +13,22 @@ work the same for a Rust service, a mobile app or a hardware product.
 
 ## What a project holds
 
-A project is made of five **capabilities**, one for each thing Lore does:
-**Plan**, **Remember**, **Build**, **Ship** and **Chat**. You pick them when you create the project
-and you can switch any of them later, without losing anything.
+A project is made of four **capabilities**, one for each thing Lore does:
+**Plan**, **Remember**, **Ship** and **Chat**. You pick them when you create the project
+and you can switch any of them later, without losing anything. Your code stays
+on GitHub: name the repository in the project's settings and Lore links its
+commits and pull requests there.
 
 | Capability   | What you get                                                                                                                               | Start here                                      |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
 | **Plan**     | **Quests** (units of work), grouped into **epics** and shipped in **releases**, with a list and a board, and **feedback** your users send. | [Quests](/lore/docs/plan-quests)                |
 | **Remember** | **Folios**: linked notes in a tree, with files and history. The project's memory.                                                          | [Folios](/lore/docs/remember-folios)            |
-| **Build**    | Your code: git **repositories** you clone and push, and the **quality** your tests report.                                                 | [Repositories](/lore/docs/build-repositories)   |
 | **Ship**     | Your deployed apps: deploys, analytics, errors and healthchecks.                                                                           | [Apps and instances](/lore/docs/ship-instances) |
 | **Chat**     | Project rooms where members talk, mention each other and ask Lore's assistant.                                                             | [Chat](/lore/docs/project-chat)                 |
 
 Every project also has a [dashboard](/lore/docs/project-dashboard),
-[reports](/lore/docs/project-reports), members with
+[reports](/lore/docs/project-reports) (with the [quality](/lore/docs/project-quality)
+your tests report), members with
 [ranks](/lore/docs/project-members) and
 [notifications](/lore/docs/project-notifications), whatever its capabilities.
 [Capabilities](/lore/docs/project-capabilities) explains each one and its
@@ -44,7 +46,6 @@ flowchart LR
   CLI[The lore command, CI] --> Project
   Project --> Plan
   Project --> Remember
-  Project --> Build
   Project --> Ship
 ```
 

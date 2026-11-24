@@ -67,7 +67,7 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
           four cells between column rules.
         */}
           <div className="shrink-0 border-y">
-            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-4 md:divide-x md:divide-y-0">
+            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
               <HomeWelcomePillar
                 pillar="plan"
                 title={tr("home.pillar.plan.title")}
@@ -79,12 +79,6 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
                 title={tr("home.pillar.remember.title")}
                 description={tr("home.pillar.remember.description")}
                 href={`${HomeWelcome.docs}/docs/remember-folios`}
-              />
-              <HomeWelcomePillar
-                pillar="build"
-                title={tr("home.pillar.build.title")}
-                description={tr("home.pillar.build.description")}
-                href={`${HomeWelcome.docs}/docs/build-repositories`}
               />
               <HomeWelcomePillar
                 pillar="ship"

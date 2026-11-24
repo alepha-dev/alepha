@@ -5,7 +5,7 @@ export interface HomeWelcomePillarProps {
    * Which pillar, and so which pair of images: `/images/welcome/<pillar>-light.webp`
    * and `<pillar>-dark.webp`, in `apps/lore/public`.
    */
-  pillar: "plan" | "remember" | "build" | "ship";
+  pillar: "plan" | "remember" | "ship";
   title: string;
   description: string;
   /**
@@ -15,7 +15,7 @@ export interface HomeWelcomePillarProps {
 }
 
 /**
- * One of Lore's four pillars (Plan, Remember, Build, Ship): a cell of the welcome
+ * One of Lore's three pillars (Plan, Remember, Ship): a cell of the welcome
  * page's ruled band, an image fading into the card above its words.
  *
  * ## The image is a background, faded on every side

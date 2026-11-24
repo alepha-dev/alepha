@@ -1,18 +1,18 @@
-import { BuildShell } from "@lore/build/web";
 import { projectFixture } from "@lore/core/testing";
-import { ReportsTabRegistry } from "@lore/core/web";
+import { QualityShell, ReportsTabRegistry } from "@lore/core/web";
 import { WorkShell } from "@lore/plan/web";
 import { DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 /**
- * The tabs as Plan, Build and Ship register them (#E75, #Q2611, #E162).
+ * The tabs as Plan, Ship and core's Quality register them (#E75, #Q2611,
+ * #Q4217).
  */
 const registry = (() => {
   const alepha = Alepha.create();
   alepha.inject(WorkShell);
-  alepha.inject(BuildShell);
+  alepha.inject(QualityShell);
   alepha.inject(DeployShell);
   const tabs = alepha.inject(ReportsTabRegistry);
   // Core's own tab, which `CoreRouter` registers.
@@ -32,12 +32,9 @@ const registry = (() => {
  * this epic got wrong - giving Reports to Work would have taken a Ship-only
  * project's Quality tab away with it.
  *
- * ⚠️ Quality has no switch. It was gated on `features.quality`, an optional
- * key absent from every project that predated the module, and the case that
- * mattered was which way ABSENT read. It was Ship baseline, and is Build's
- * since #E162: it shows the push command until CI sends a run (#Q3070), and a
- * project without Build shows no Quality tab at all. Since #Q4005 it is the
- * `quality` option of Build, and the tab hangs off it.
+ * Quality was Ship's, then Build's (#E162), and is Reports' own `quality`
+ * option since Build went (#Q4217): it shows the push command until CI sends
+ * a run (#Q3070), and a project with the option off shows no Quality tab.
  */
 describe("reportsTabs", () => {
   it("declares the filters of each tab, and honours none on an unknown tab", () => {
@@ -48,8 +45,18 @@ describe("reportsTabs", () => {
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
-  const names = (capabilities: Array<"plan" | "remember" | "build" | "ship">) =>
-    registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
+  const names = (
+    capabilities: Array<"plan" | "remember" | "ship" | "reports">,
+    quality = false,
+  ) =>
+    registry
+      .tabs(
+        projectFixture({
+          capabilities,
+          options: { reports: { quality } },
+        }),
+      )
+      .map((tab) => tab.route);
 
   it("gives a Plan project its tabs, plus Team", () => {
     // The fixture turns every option on, `feedback` included.
@@ -83,10 +90,10 @@ describe("reportsTabs", () => {
     expect(names([])).toEqual(["reportsSummary", "reportsTeam"]);
   });
 
-  it("keeps Delivery for a Ship-only project, and no Quality (#E162)", () => {
+  it("keeps Delivery for a Ship-only project, and no Quality while its option is off", () => {
     // The case that decided Reports is Core rather than Work: this project
     // has no quests at all and still needs to reach its deploys. Quality is
-    // Build's: not even its empty state shows here.
+    // an option: not even its empty state shows here.
     expect(names(["ship"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
@@ -94,28 +101,20 @@ describe("reportsTabs", () => {
     ]);
   });
 
-  it("gives a Build-only project its Quality tab", () => {
+  it("gives a project with Quality on its Quality tab, with no pillar at all (#Q4217)", () => {
     // What CI pushed is reached with no quest and no app.
-    expect(names(["build"])).toEqual([
+    expect(names(["reports"], true)).toEqual([
       "reportsSummary",
       "reportsQuality",
       "reportsTeam",
     ]);
   });
 
-  it("hides the Quality tab while Build's quality option is off (#Q4005)", () => {
-    const tabs = registry
-      .tabs(
-        projectFixture({
-          capabilities: ["build"],
-          options: { build: { repositories: true, quality: false } },
-        }),
-      )
-      .map((tab) => tab.route);
-    expect(tabs).not.toContain("reportsQuality");
+  it("hides the Quality tab while Reports' quality option is off", () => {
+    expect(names(["reports"], false)).not.toContain("reportsQuality");
   });
 
-  it("hides Delivery and Quality when Ship and Build are off", () => {
+  it("hides Delivery and Quality when Ship and Quality are off", () => {
     expect(names(["plan"])).not.toContain("reportsDelivery");
     expect(names(["plan"])).not.toContain("reportsQuality");
   });

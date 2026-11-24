@@ -61,7 +61,7 @@ describe("a monitored host without Ship", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "plan" }, { key: "build" }],
+      capabilities: [{ key: "plan" }, { key: "remember" }],
     });
     const host = await rows.hosts.create({
       projectId: project.id,

@@ -49,11 +49,7 @@ const NAV_ROUTE_NAMES = [
   "projectReports",
   "projectSettingsBanner",
   "projectSettingsHosts",
-  // Build's band and the code browser (#Q4133): capabilityNav.ts,
-  // BuildShell.ts, codeRepoTabs.ts.
-  "projectCode",
-  "projectCodeRepo",
-  "codeRepoHome",
+  // Reports' Quality tab (#Q4217): QualityShell.ts.
   "reportsQuality",
   // Apps section + the per-app tab bar — capabilityNav.ts, AppLayout.tsx,
   // AppSettings.tsx

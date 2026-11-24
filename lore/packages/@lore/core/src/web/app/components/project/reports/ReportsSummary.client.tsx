@@ -62,7 +62,6 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
   const sectionTitles: Record<CapabilityKey, string> = {
     plan: tr("project.capability.plan.label"),
     remember: tr("project.capability.remember.label"),
-    build: tr("project.capability.build.label"),
     ship: tr("project.capability.ship.label"),
     chat: tr("project.capability.chat.label"),
     activity: tr("project.capability.activity.label"),

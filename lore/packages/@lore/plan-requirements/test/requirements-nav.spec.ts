@@ -131,8 +131,6 @@ describe("the Requirements sidebar entries", () => {
       "work",
       "requirements",
       "record",
-      // Build's band (#Q4133).
-      "build",
       "ops",
       "config",
     ]);

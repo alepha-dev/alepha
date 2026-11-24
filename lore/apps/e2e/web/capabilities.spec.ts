@@ -254,15 +254,15 @@ test.describe("Project capabilities", () => {
     await expect(
       page.locator(`a[href="/${slug}/reports/backlog"]`),
     ).toHaveCount(0);
-    // Quality is Build's since #E162: a Ship-only project shows no Quality
-    // tab, not even its empty state.
+    // Quality is Reports' option since #Q4217, off by default: a Ship-only
+    // project shows no Quality tab, not even its empty state.
     await expect(
       page.locator(`a[href="/${slug}/reports/quality"]`),
     ).toHaveCount(0);
 
     // ⚠️ But a quality PUSH is accepted whatever the switches say: pushed by
     // CI under a CI credential, it must never turn a build red because
-    // somebody turned Build off.
+    // somebody turned Quality off.
     const pushed = await page.evaluate(
       async ({ projectId }) => {
         const r = await fetch(`/api/projects/${projectId}/quality/runs`, {
@@ -288,8 +288,11 @@ test.describe("Project capabilities", () => {
     );
     expect(pushed).toBe(true);
 
-    // Turning Build on brings the tab back with what CI pushed.
-    await setCapability(page, id, "build", { enabled: true });
+    // Turning Quality on brings the tab back with what CI pushed.
+    await setCapability(page, id, "reports", {
+      enabled: true,
+      options: { quality: true },
+    });
     await page.goto(`/${slug}/reports/quality`);
     await expect(page).toHaveURL(/\/reports\/quality/);
     await expect(page.getByText("Coverage over time")).toBeVisible({

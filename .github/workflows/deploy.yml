@@ -31,7 +31,7 @@ permissions:
 #
 # The order, and why (#Q3869):
 #
-#   lore  ->  docs, ui, shop (together)  ->  docs-latest  ->  lore-code
+#   lore  ->  docs, ui, shop (together)  ->  docs-latest
 #
 # - `lore` first: the others deploy THROUGH Lore with this commit's `lore`
 #   CLI, which may read an API this commit changes.
@@ -43,8 +43,6 @@ permissions:
 #   not put the chain back.
 # - `docs-latest` after `docs`: they are two copies of one Lore app, which
 #   keeps one `latest` tag per app.
-# - `lore-code` last: it copies `main` to Lore's repository `alepha`, and
-#   never holds a deploy.
 #
 # ⚠️ **Every job checks the event and the ref itself**, whatever its caller
 # did: nothing but a push or a dispatch on `main` deploys. A fork's pull
@@ -430,79 +428,3 @@ jobs:
         run: yarn alepha deploy --env latest --prebuilt
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-
-  # ──────────────────────────────────────────────────────────────────────
-  # A copy of `main` on Lore (#Q3936), so `lore clone alepha` returns what
-  # was deployed. GitHub stays this repository's main remote; Lore only
-  # holds a copy, pushed here.
-  #
-  # - **Last, and blocking nothing**: it needs every deploy, whatever their
-  #   result, and only a verified commit. A failed copy never holds a
-  #   deploy, and a failed deploy does not stop the copy.
-  # - **Its own concurrency group**, so two runs push one after the other.
-  # - **Fast-forward only, never a force.** Two Deploy runs can finish out
-  #   of order: when Lore's `main` already contains this commit, the job
-  #   succeeds and pushes nothing. A real divergence is a red job.
-  # - **`LORE_API_KEY`**, the deploy jobs' key, feeds the `lore` CLI, which
-  #   answers git as its credential helper. A key of its own, narrowed to
-  #   `code:read` and `code:write`, was the plan; the owner chose the shared
-  #   one (2026-11-19), since Lore creates keys from a signed-in session only.
-  # ──────────────────────────────────────────────────────────────────────
-  lore-code:
-    needs: [verified, lore, ui, shop, docs, docs-latest]
-    if: >-
-      always()
-      && github.ref == 'refs/heads/main'
-      && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
-      && needs.verified.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    concurrency:
-      group: lore-code-copy
-      cancel-in-progress: false
-    defaults:
-      run:
-        working-directory: lore
-    env:
-      LORE_CODE_REMOTE: https://lore.alepha.app/alepha.git
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # The whole history, so the push sends only what Lore lacks.
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      # The CLI as git's credential helper for Lore's host only, as
-      # `lore login` installs it: the empty entry first clears any other.
-      - name: Credential helper
-        run: |
-          key="credential.https://lore.alepha.app.helper"
-          git config --global --add "$key" ""
-          git config --global --add "$key" "!cd '$PWD' && yarn lore git-credential"
-
-      - name: Push main to Lore
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-        run: |
-          remote=$(git ls-remote "$LORE_CODE_REMOTE" refs/heads/main | cut -f1)
-          if [ "$remote" = "$GITHUB_SHA" ]; then
-            echo "Lore's main is already $GITHUB_SHA."
-            exit 0
-          fi
-          if [ -n "$remote" ] && ! git cat-file -e "$remote^{commit}" 2>/dev/null; then
-            # A later run pushed a commit this checkout does not have yet.
-            git fetch --quiet "$LORE_CODE_REMOTE" refs/heads/main
-          fi
-          if [ -n "$remote" ] && git merge-base --is-ancestor "$GITHUB_SHA" "$remote"; then
-            echo "Lore's main ($remote) already contains $GITHUB_SHA: a later run pushed first."
-            exit 0
-          fi
-          if [ -n "$remote" ] && ! git merge-base --is-ancestor "$remote" "$GITHUB_SHA"; then
-            echo "::error title=Diverged::Lore's main ($remote) is not an ancestor of $GITHUB_SHA. Nothing was forced."
-            exit 1
-          fi
-          git push "$LORE_CODE_REMOTE" "$GITHUB_SHA:refs/heads/main"

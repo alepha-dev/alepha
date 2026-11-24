@@ -1,6 +1,6 @@
 # AGENTS.md: @lore/ship
 
-**Ship**, Lore as Vercel (#E75, folio #F1356; the pillar since #E143): deployed apps, telemetry (sigils, analytics, vitals, errors) and deployments. Hosts are core's since #E166 (folio #F1537): Ship keeps the deploy role only (the deploy pulls in `HostPullController`, its command kinds in `ShipHostCommands`, the copies and stacks a host carries in `DeployHostUsage`, the `cloudflare` type in `HostCloudflareService`, the console's Processes tab and stacks section in `DeployHostConsole`), registered on core's host registries. Quality moved to `@lore/build` with #E162. One package on purpose (owner, 2026-10-04): `app_instances` holds foreign keys into both `sigils` and `hosts`. Each part stays findable by its name prefix (`App*`; `Sigil*`, `Error*`, `Insights*`; `Deploy*`, `Artifact*`; `Host*`; `Stack*`, `Registry*`), so a later split happens inside the package, not across packages. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `AGENTS.md` first, then `packages/@lore/core/AGENTS.md`: the barrels, the registries this package fills, and the conventions every package shares.
+**Ship**, Lore as Vercel (#E75, folio #F1356; the pillar since #E143): deployed apps, telemetry (sigils, analytics, vitals, errors) and deployments. Hosts are core's since #E166 (folio #F1537): Ship keeps the deploy role only (the deploy pulls in `HostPullController`, its command kinds in `ShipHostCommands`, the copies and stacks a host carries in `DeployHostUsage`, the `cloudflare` type in `HostCloudflareService`, the console's Processes tab and stacks section in `DeployHostConsole`), registered on core's host registries. Quality moved to `@lore/build` with #E162, then to `@lore/core` when Build went (#Q4217). One package on purpose (owner, 2026-10-04): `app_instances` holds foreign keys into both `sigils` and `hosts`. Each part stays findable by its name prefix (`App*`; `Sigil*`, `Error*`, `Insights*`; `Deploy*`, `Artifact*`; `Host*`; `Stack*`, `Registry*`), so a later split happens inside the package, not across packages. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `AGENTS.md` first, then `packages/@lore/core/AGENTS.md`: the barrels, the registries this package fills, and the conventions every package shares.
 
 ## Layout
 
@@ -255,7 +255,7 @@ The two thresholds (table `project_thresholds`, #Q3894) are core's since
 #E162 (`ProjectThresholds`, `ProjectThresholdController`, `threshold_*`), and
 still set on Settings ▸ Apps (coverage) and Settings ▸ Errors (open errors).
 Ship checks open errors by core's hourly job (`ErrorThreshold`); coverage is
-Build's (`CoverageThreshold`, on a push on `main`). Both are edge-triggered:
+core's Quality (`CoverageThreshold`, on a push on `main`, #Q4217). Both are edge-triggered:
 an armed flag fires `errors.threshold_crossed` or `coverage.dropped` once, and
 rearms when the value comes back or the threshold changes.
 

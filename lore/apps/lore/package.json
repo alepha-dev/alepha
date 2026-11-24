@@ -27,7 +27,6 @@
     "@alepha/discord": "workspace:*",
     "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:*",
-    "@lore/build": "workspace:*",
     "@lore/chat": "workspace:*",
     "@lore/core": "workspace:*",
     "@lore/plan": "workspace:*",

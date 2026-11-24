@@ -1,13 +1,6 @@
-import { AlephaError } from "alepha";
+import { $repository } from "alepha/orm";
 
-/**
- * Where a project's repository lives, by URL: what an agent job clones into
- * its workspace. Registered by whichever module holds the project's setting
- * for it; with none registered, a project names no repository.
- */
-export type ProjectRepositoryLookup = (
-  projectId: number,
-) => Promise<string | undefined>;
+import { projects } from "../entities/projects.ts";
 
 /**
  * The preamble Lore renders above every agent job's prompt (#Q4224), on a
@@ -15,9 +8,9 @@ export type ProjectRepositoryLookup = (
  * between runs of the same work, with the host's own tools and Lore's MCP
  * server, and no sandbox. It says where things are:
  *
- * - the workspace, and the project's repository: clone it into the
- *   directory when it is empty, otherwise fetch and reset to its default
- *   branch; a read-only run changes nothing in it;
+ * - the workspace, and the project's repository (`projects.repositoryUrl`,
+ *   #Q4217): clone it into the directory when it is empty, otherwise fetch
+ *   and reset to its default branch; a read-only run changes nothing in it;
  * - Lore, reached through its MCP tools, already configured for the run;
  *   the `lore` CLI is not signed in for the job (its key reaches the MCP
  *   only, the epic's blocker 1);
@@ -25,25 +18,16 @@ export type ProjectRepositoryLookup = (
  *   Lore.
  */
 export class AgentRunPreamble {
-  protected repository?: ProjectRepositoryLookup;
-
-  /**
-   * Registers where a project's repository URL is read from.
-   */
-  public registerRepository(lookup: ProjectRepositoryLookup): void {
-    if (this.repository) {
-      throw new AlephaError(
-        "A project repository lookup is already registered",
-      );
-    }
-    this.repository = lookup;
-  }
+  protected readonly projects = $repository(projects);
 
   /**
    * The project's repository URL, or undefined when it names none.
    */
   public async repositoryOf(projectId: number): Promise<string | undefined> {
-    return this.repository?.(projectId);
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    return project?.repositoryUrl || undefined;
   }
 
   /**

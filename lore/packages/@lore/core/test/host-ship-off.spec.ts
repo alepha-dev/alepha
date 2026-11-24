@@ -113,7 +113,7 @@ describe("a host with Ship off", () => {
   it("enrols, connects, lends, upgrades and refreshes", async ({ expect }) => {
     const user = await CoreTestEntities.of(alepha).users.create({});
     const owner: UserAccountToken = { id: user.id, roles: ["user"] };
-    const noShip = [{ key: "plan" as const }, { key: "build" as const }];
+    const noShip = [{ key: "plan" as const }, { key: "remember" as const }];
     const home = await createTestProject(alepha, {
       createdBy: owner.id,
       capabilities: noShip,

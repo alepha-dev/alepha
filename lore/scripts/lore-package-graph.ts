@@ -11,7 +11,6 @@ import { dirname, join, normalize } from "node:path";
  * | `core`      | the glue         | nothing     |
  * | `plan`      | Lore as Jira     | `core`      |
  * | `remember`  | Lore as Obsidian | `core`      |
- * | `build`     | Lore as GitHub   | `core`      |
  * | `ship`      | Lore as Vercel   | `core`      |
  * | `plan-requirements` | Plan's Requirements | `core`, `plan`, `remember`, `ship` |
  * | `chat`      | Lore Chat        | `core`      |
@@ -45,8 +44,6 @@ export class LorePackageGraph {
     core: [],
     plan: ["core"],
     remember: ["core"],
-    // Build, the fourth pillar (#E162): git repositories and Quality.
-    build: ["core"],
     ship: ["core"],
     // Plan's Requirements (#E153): the first package with sibling edges,
     // because it writes Ship's errors, reads Ship's telemetry and Remember's

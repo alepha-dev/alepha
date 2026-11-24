@@ -6,14 +6,13 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 
 ## Layout: packages are modules, apps are executables
 
-`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in seven private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/build`](packages/@lore/build/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md), [`@lore/plan-requirements`](packages/@lore/plan-requirements/AGENTS.md), [`@lore/chat`](packages/@lore/chat/AGENTS.md).
+`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in six private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md), [`@lore/plan-requirements`](packages/@lore/plan-requirements/AGENTS.md), [`@lore/chat`](packages/@lore/chat/AGENTS.md).
 
 | package                   | is                  | owns                                                                                                                                                                                     |
 | ------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@lore/core`              | the glue            | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
 | `@lore/plan`              | Lore as Jira        | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
 | `@lore/remember`          | Lore as Obsidian    | folios, directories, attachments, revisions, names                                                                                                                                       |
-| `@lore/build`             | Lore as GitHub      | git repositories, Quality (#E162)                                                                                                                                                        |
 | `@lore/ship`              | Lore as Vercel      | apps, telemetry, deployments, hosts                                                                                                                                                      |
 | `@lore/plan-requirements` | Plan's Requirements | personas, use cases, requirements and their runs (#E153): an option of Plan, in a package of its own because it reaches Ship and Remember                                                |
 | `@lore/chat`              | Lore Chat           | project rooms, their members and messages, the live socket and the Chat page (#E161): the fifth capability, `chat`                                                                       |
@@ -25,7 +24,6 @@ Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./tes
 ```
 core <- plan
 core <- remember
-core <- build
 core <- ship
 core, plan, remember, ship <- plan-requirements
 core <- chat
@@ -98,7 +96,7 @@ Use Lore over MCP when connected, or via the `lore` CLI (`-p alepha`), which has
 
 Lore's user documentation is `docs/`, published at `alepha.dev/lore/docs/<slug>` by the docs site at the repository root. It is written for a person using Lore in a browser (#Q3492).
 
-- **One folder per thing the reader is doing**: `1-start`, `2-project`, `3-plan`, `4-remember`, `5-build`, `6-ship`, `7-agents`, `8-reference` (Lore's four pillars side by side, since #E143 and #E162). A page's slug is its folder and file name without their order prefixes, joined by a dash: `3-plan/1-quests.md` is `plan-quests`. Pre-v1, a slug may change without a redirect; every link to it changes in the same commit.
+- **One folder per thing the reader is doing**: `1-start`, `2-project`, `3-plan`, `4-remember`, `6-ship`, `7-agents`, `8-reference` (Lore's three pillars side by side, since #E143; `5-build` went with Build, #Q4217). A page's slug is its folder and file name without their order prefixes, joined by a dash: `3-plan/1-quests.md` is `plan-quests`. Pre-v1, a slug may change without a redirect; every link to it changes in the same commit.
 - **A page leads with the browser**: what the thing is for, then the screens in the order a person meets them, with labels as the UI spells them. The command line and agents come last, under `## From the command line` and `## From an agent`, and the full lists live in `8-reference`.
 - **Lore stands on its own.** Never write that Lore needs Alepha. Telemetry and app deploys need an app built with Alepha, and their pages say so once, as a fact about the feature.
 - **Lore's UI links a guide through `loreDocsUrl`** (`packages/@lore/core/src/web/app/services/docsUrl.ts`), whose slug list is the type: a moved page is a type error there.

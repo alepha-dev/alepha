@@ -20,7 +20,7 @@ import { QuestAgentService } from "../services/QuestAgentService.ts";
  *   (`feedbackLoop`, the same run as the robot menu's), under
  *   `feedback:triage`;
  * - `build`: the Build prompt on one accepted quest (`questWork`), under
- *   `code:write`;
+ *   `quest:update`;
  * - `text`: a free prompt the member writes, under `host:update`, since it
  *   asks the host for anything their rank allows.
  *
@@ -88,7 +88,7 @@ export class AgentRunController {
         };
       }
       if (body.prompt === "build") {
-        await need("code:write");
+        await need("quest:update");
         if (body.quest === undefined) {
           throw new BadRequestError("A build names its quest: --quest <n>");
         }

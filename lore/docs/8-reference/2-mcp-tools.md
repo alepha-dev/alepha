@@ -264,23 +264,6 @@ calls. See [Notifications](/lore/docs/project-notifications).
 | `inbox_list`        | Your inbox, newest first, across every project unless one is named.                                             |
 | `inbox_read`        | Mark one message read by `id`, or all of them with `all`.                                                       |
 
-## Code
-
-A project's git repositories, when Build is on. Code itself goes through git:
-clone with `lore clone`, which sets up the credentials.
-
-| Tool               | What it does                                                                           |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `code_repo_list`   | The project's repositories, with their clone URLs.                                     |
-| `code_repo_create` | Create an empty repository. An agent's connection cannot: run `lore code repo create`. |
-| `code_repo_delete` | Delete a repository. An agent's connection cannot: run `lore code repo delete`.        |
-| `code_tree`        | A folder of a repository at a branch, tag or commit.                                   |
-| `code_file`        | A file, 200 numbered lines a call (`start_line`, `end_line`).                          |
-| `code_log`         | The history, 30 a page, of one file or folder when `path` is given.                    |
-| `code_commit`      | One commit: message, parents, quests and changed files.                                |
-| `code_diff`        | Two revisions: the changed files, or one `path`'s unified diff.                        |
-| `code_blame`       | Each line's commit and quests, 200 lines a call; `pending` asks again.                 |
-
 ## Apps and telemetry
 
 See [Apps and instances](/lore/docs/ship-instances) and

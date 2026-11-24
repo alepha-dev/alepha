@@ -6,16 +6,16 @@ import { $action } from "alepha/server";
 import { QuestAgentService } from "../services/QuestAgentService.ts";
 
 /**
- * Work it with an agent (#Q3989): an accepted quest worked by an agent job
- * that pushes `lore/q<n>`, and the confirmation an untrusted quest needs
- * first. Starting the job takes `code:write`: its key pushes as the member
- * who started it, bounded by their rank.
+ * Work it with an agent (#Q3989): an accepted quest worked by an agent job,
+ * and the confirmation an untrusted quest needs first. Starting the job
+ * takes `quest:update` (`code:write` until Lore's git hosting went, #Q4217):
+ * its key acts as the member who started it, bounded by their rank.
  */
 export class QuestAgentController {
   protected readonly service = $inject(QuestAgentService);
 
   workQuestWithAgent = $action({
-    use: [$ownsProject({ param: "projectId", requires: "code:write" })],
+    use: [$ownsProject({ param: "projectId", requires: "quest:update" })],
     method: "POST",
     path: "/projects/:projectId/quests/:shortId/agent-work",
     schema: {
@@ -34,7 +34,7 @@ export class QuestAgentController {
    * small picker with several, nothing with none.
    */
   getQuestAgentWork = $action({
-    use: [$ownsProject({ param: "projectId", requires: "code:write" })],
+    use: [$ownsProject({ param: "projectId", requires: "quest:update" })],
     method: "GET",
     path: "/projects/:projectId/quests-agent-work",
     schema: {

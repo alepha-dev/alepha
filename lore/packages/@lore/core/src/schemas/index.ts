@@ -279,3 +279,7 @@ export {
 export type { HostWelcomeFrame } from "../api/schemas/hostWelcomeFrameSchema.ts";
 export type { HostInventoryBackup } from "../api/schemas/hostInventoryBackupSchema.ts";
 export { HostCost } from "../api/schemas/HostCost.ts";
+
+// ---- Quality (#Q3070), core's since #Q4217 ----
+export { qualityRuns } from "../api/entities/qualityRuns.ts";
+export type { QualityRunPush } from "../api/schemas/qualityRunPushSchema.ts";

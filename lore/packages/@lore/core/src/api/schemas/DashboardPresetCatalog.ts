@@ -60,13 +60,13 @@ export class DashboardPresetCatalog {
       ],
     },
     {
-      // Coverage and tests, Build's since Quality moved there (#E162): the
-      // trend left the apps preset with it.
+      // Coverage and tests, Reports' Quality since Build went (#Q4217): the
+      // trend left the apps preset with it (#E162).
       key: "codeQuality",
       labelKey: "dashboard.preset.codeQuality",
       descriptionKey: "dashboard.preset.codeQuality.description",
-      needsKey: "dashboard.preset.needs.build",
-      needs: { capability: "build", option: "quality" },
+      needsKey: "dashboard.preset.needs.quality",
+      needs: { capability: "reports", option: "quality" },
       cards: [
         { metric: "qualityTrend", size: 2 },
         { metric: "quality.coverage.lines" },

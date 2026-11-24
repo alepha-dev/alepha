@@ -1,4 +1,3 @@
-import { BuildShell } from "@lore/build/web";
 import { CAPABILITY_KEYS, type CapabilityKey } from "@lore/core/schemas";
 import { projectFixture } from "@lore/core/testing";
 import {
@@ -36,7 +35,6 @@ const alepha = Alepha.create();
 alepha.inject(WorkShell);
 alepha.inject(KnowledgeShell);
 alepha.inject(DeployShell);
-alepha.inject(BuildShell);
 const shell = alepha.inject(ProjectShellRegistry);
 
 /**
@@ -153,45 +151,14 @@ describe("the sidebar, derived from capabilities", () => {
     expect(entry.activeOn?.("projectActivity")).toBe(false);
   });
 
-  it("gives Build its own band: Code with repositories, Quality with quality and Reports (#Q4133)", ({
-    expect,
-  }) => {
-    const all = offered(projectFixture());
-    expect(all).toContain("projectCode");
-    expect(all).toContain("reportsQuality");
-    const build = shell.navOf("build");
-    expect(build.map((entry) => entry.group)).toEqual(["build", "build"]);
-
-    expect(
-      offered(
-        projectFixture({
-          options: { build: { repositories: false, quality: true } },
-        }),
-      ),
-    ).not.toContain("projectCode");
-    expect(
-      offered(
-        projectFixture({
-          options: { build: { repositories: true, quality: false } },
-        }),
-      ),
-    ).not.toContain("reportsQuality");
-    // Quality is a Reports tab: without Reports it has no page to open.
-    const noReports = offered(
-      projectFixture({ capabilities: ["build", "activity"] }),
-    );
-    expect(noReports).toContain("projectCode");
-    expect(noReports).not.toContain("reportsQuality");
-  });
-
-  it("lights Quality alone on its tab, never Reports beside it (#Q4133)", ({
+  it("lights Reports on Quality's tab, which has no entry of its own since Build went (#Q4217)", ({
     expect,
   }) => {
     const reports = CORE_NAV.find((entry) => entry.route === "projectReports")!;
-    expect(reports.activeOn?.("reportsQuality")).toBe(false);
+    expect(reports.activeOn?.("reportsQuality")).toBe(true);
     expect(reports.activeOn?.("reportsFlow")).toBe(true);
-    expect(NAV_BANDS.indexOf("build")).toBe(NAV_BANDS.indexOf("record") + 1);
-    expect(NAV_BANDS.indexOf("ops")).toBe(NAV_BANDS.indexOf("build") + 1);
+    expect(offered(projectFixture())).not.toContain("reportsQuality");
+    expect(NAV_BANDS as readonly string[]).not.toContain("build");
   });
 
   it("offers no Notifications entry, at any capability set", ({ expect }) => {

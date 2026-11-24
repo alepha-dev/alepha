@@ -1,4 +1,4 @@
-import type { QualityController } from "@lore/build/api";
+import type { QualityController } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";

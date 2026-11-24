@@ -20,7 +20,7 @@ export class AgentTools {
   agent_run = $tool({
     title: "Run a prompt on an Agent host",
     description:
-      "Start an agent job on one of the project's Agent hosts: `triage` runs the project's Triage prompt over the feedback inbox and the open errors (feedback:triage), `build` the Build prompt on one accepted quest (code:write), `text` your own words (host:update). Name `host` when the project has several Agent hosts and `agent` when the host reports several (agent_hosts lists them). Answers the job's id: follow it with job_get. An agent job cannot start another.",
+      "Start an agent job on one of the project's Agent hosts: `triage` runs the project's Triage prompt over the feedback inbox and the open errors (feedback:triage), `build` the Build prompt on one accepted quest (quest:update), `text` your own words (host:update). Name `host` when the project has several Agent hosts and `agent` when the host reports several (agent_hosts lists them). Answers the job's id: follow it with job_get. An agent job cannot start another.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: { params: agentRunParamsSchema, result: agentRunResultSchema },
     handler: async ({ params }) => {

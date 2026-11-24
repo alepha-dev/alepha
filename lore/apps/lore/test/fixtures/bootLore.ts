@@ -1,12 +1,14 @@
-import { LoreBuildApi } from "@lore/build/api";
-import { LoreBuildMcp } from "@lore/build/mcp";
-import { BuildRouter, LoreBuildWeb } from "@lore/build/web";
 import { LoreChatApi } from "@lore/chat/api";
 import { LoreChatMcp } from "@lore/chat/mcp";
 import { ChatRouter, LoreChatWeb } from "@lore/chat/web";
 import { LoreCoreApi } from "@lore/core/api";
 import { LoreCoreMcp } from "@lore/core/mcp";
-import { CoreRouter, LoreAccountSections, LoreCoreWeb } from "@lore/core/web";
+import {
+  CoreRouter,
+  LoreAccountSections,
+  LoreCoreWeb,
+  QualityRouter,
+} from "@lore/core/web";
 import { LorePlanRequirementsApi } from "@lore/plan-requirements/api";
 import { LorePlanRequirementsMcp } from "@lore/plan-requirements/mcp";
 import {
@@ -43,14 +45,14 @@ export type LoreRouter = CoreRouter &
   WorkRouter &
   RequirementsRouter &
   KnowledgeRouter &
-  BuildRouter &
+  QualityRouter &
   DeployRouter;
 
 /**
  * Boots Lore the way its entries do, for a scenario spec: one that spans
  * several packages, which is why it lives in `apps/lore/test` rather than in
  * a package's own `test/` (#E75, #Q2616). Each layer registers core first,
- * then Plan, Remember, Build and Ship, the entries' order.
+ * then Plan, Remember and Ship, the entries' order.
  *
  * Call it after the spec's own substitutions: a substitution recorded after a
  * module resolved what it replaces is a `TooLateSubstitutionError`.
@@ -64,7 +66,6 @@ export const bootLore = (
       .with(LoreCoreApi)
       .with(LorePlanApi)
       .with(LoreRememberApi)
-      .with(LoreBuildApi)
       .with(LoreShipApi)
       .with(LorePlanRequirementsApi)
       .with(LoreChatApi);
@@ -74,7 +75,6 @@ export const bootLore = (
       .with(LoreCoreMcp)
       .with(LorePlanMcp)
       .with(LoreRememberMcp)
-      .with(LoreBuildMcp)
       .with(LoreShipMcp)
       .with(LorePlanRequirementsMcp)
       .with(LoreChatMcp);
@@ -84,7 +84,6 @@ export const bootLore = (
       .with(LoreCoreWeb)
       .with(LorePlanWeb)
       .with(LoreRememberWeb)
-      .with(LoreBuildWeb)
       .with(LoreShipWeb)
       .with(LorePlanRequirementsWeb)
       .with(LoreChatWeb);
@@ -93,7 +92,7 @@ export const bootLore = (
     alepha.inject(WorkRouter);
     alepha.inject(RequirementsRouter);
     alepha.inject(KnowledgeRouter);
-    alepha.inject(BuildRouter);
+    alepha.inject(QualityRouter);
     alepha.inject(DeployRouter);
     alepha.inject(ChatRouter);
     alepha.inject(LoreAccountSections);

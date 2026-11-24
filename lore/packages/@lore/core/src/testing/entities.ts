@@ -154,11 +154,11 @@ export const createTestProject = async (
       },
     },
     { key: "remember", options: {} },
-    { key: "build", options: { repositories: true, quality: true } },
     { key: "ship", options: { track: true, deploy: false } },
     // On for every project by default (#Q4007).
     { key: "activity", options: {} },
-    { key: "reports", options: {} },
+    // Quality on, as it was under Build (#Q4217).
+    { key: "reports", options: { quality: true } },
   ];
 
   for (const capability of capabilities ?? ALL_ON) {

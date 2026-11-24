@@ -89,8 +89,8 @@ export interface CapabilityDescriptor {
   preselectedCapability: boolean;
   /**
    * Where the wizard and Settings draw it: `general` above the pillars
-   * (Activity, Chat, Reports, #Q4007), `pillar` for Plan, Remember, Build
-   * and Ship.
+   * (Activity, Chat, Reports, #Q4007), `pillar` for Plan, Remember and
+   * Ship.
    */
   group: "general" | "pillar";
   options: CapabilityOptionDescriptor[];
@@ -156,7 +156,7 @@ export interface CapabilityDescriptor {
 }
 
 /**
- * The capabilities a project composes, Lore's four pillars and Chat
+ * The capabilities a project composes, Lore's three pillars and Chat
  * (#E161), declared once.
  *
  * A **capability** is a product surface a project turns on: it owns nav
@@ -175,7 +175,7 @@ export interface CapabilityDescriptor {
  * and activity kind belong to no capability, and each event, selector and
  * preset declares the capability it needs.
  * Reports' tabs declare a capability the way dashboard cards do, because
- * Quality is Build's and Members is derived from a core table. Since #Q4007
+ * Members is derived from a core table. Since #Q4007
  * the Activity PAGE and Reports each have a switch of their own (`activity`,
  * `reports`), on by default, that hides the page and owns nothing else: the
  * feed's data and the reports' API stay Core.
@@ -518,79 +518,6 @@ export class CapabilityRegistry {
       permissionGroups: ["folio"],
     },
     {
-      // Build, the fourth pillar (#E162): the code a project holds, its git
-      // repositories, between planning and shipping. Off by default, and off
-      // hides and never deletes. What it holds keeps the name `code`. Quality
-      // moved in from Ship: a quality PUSH is accepted whatever the switches
-      // say; its tab, tiles, event and permissions follow `build`.
-      key: "build",
-      name: "Build",
-      labelKey: "project.capability.build.label",
-      descriptionKey: "project.capability.build.description",
-      group: "pillar",
-      preselectedCapability: false,
-      // Each half switched on its own (#Q4005): a project may host its code
-      // without pushing coverage, or push coverage from a forge elsewhere.
-      // Both are offered and preselected in the wizard, and every project
-      // that had Build before the split was migrated to both on.
-      options: [
-        {
-          key: "repositories",
-          labelKey: "project.capability.build.option.repositories.label",
-          descriptionKey:
-            "project.capability.build.option.repositories.description",
-          wizard: true,
-          preselected: true,
-        },
-        {
-          key: "quality",
-          labelKey: "project.capability.build.option.quality.label",
-          descriptionKey: "project.capability.build.option.quality.description",
-          wizard: true,
-          preselected: true,
-        },
-      ],
-      mcpTools: [
-        "code_repo_list",
-        "code_repo_create",
-        "code_repo_delete",
-        // Reading code (#Q4139).
-        "code_tree",
-        "code_file",
-        "code_log",
-        "code_commit",
-        "code_diff",
-        "code_blame",
-      ],
-      mcpToolOptions: {
-        code_repo_list: "repositories",
-        code_repo_create: "repositories",
-        code_repo_delete: "repositories",
-        code_tree: "repositories",
-        code_file: "repositories",
-        code_log: "repositories",
-        code_commit: "repositories",
-        code_diff: "repositories",
-        code_blame: "repositories",
-      },
-      searchKinds: [],
-      // A push to a repository (#Q3945).
-      activityKinds: ["code"],
-      activityKindOptions: { code: "repositories" },
-      dashboardCards: [
-        "qualityTrend",
-        "quality.coverage.lines",
-        "quality.coverage.statements",
-        "quality.coverage.functions",
-        "quality.coverage.branches",
-        "quality.tests.total",
-        "quality.tests.passed",
-        "quality.tests.failed",
-        "quality.tests.skipped",
-      ],
-      permissionGroups: ["code", "quality"],
-    },
-    {
       key: "ship",
       name: "Ship",
       labelKey: "project.capability.ship.label",
@@ -731,12 +658,35 @@ export class CapabilityRegistry {
       descriptionKey: "project.capability.reports.description",
       preselectedCapability: true,
       group: "general",
-      options: [],
+      // Quality (#Q3070), Build's option until Build went (#Q4217): the
+      // coverage CI pushes, its tab, tiles, event and permission group. A
+      // quality PUSH is accepted whatever the switch says. Off by default,
+      // like it was in Build; a project that had it kept it.
+      options: [
+        {
+          key: "quality",
+          labelKey: "project.capability.reports.option.quality.label",
+          descriptionKey:
+            "project.capability.reports.option.quality.description",
+          wizard: false,
+          preselected: false,
+        },
+      ],
       mcpTools: [],
       searchKinds: [],
       activityKinds: [],
-      dashboardCards: [],
-      permissionGroups: [],
+      dashboardCards: [
+        "qualityTrend",
+        "quality.coverage.lines",
+        "quality.coverage.statements",
+        "quality.coverage.functions",
+        "quality.coverage.branches",
+        "quality.tests.total",
+        "quality.tests.passed",
+        "quality.tests.failed",
+        "quality.tests.skipped",
+      ],
+      permissionGroups: ["quality"],
     },
   ];
 

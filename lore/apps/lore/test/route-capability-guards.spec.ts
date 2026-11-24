@@ -24,9 +24,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * sidebar is what stops offering them. A
  * future session will be tempted to make the set uniform in one direction or
  * the other; both cases below say which.
- *
- * **The one exception is code** (#Q4133): the code pages 404 with Build's
- * `repositories` option off, as git smart HTTP and the code-read API do.
+
  */
 describe("route guards on a capability", () => {
   /**
@@ -176,33 +174,6 @@ describe("route guards on a capability", () => {
     await expect(
       loaderOf(alepha, "projectQuestsLayout")?.({} as never),
     ).resolves.toBeUndefined();
-  });
-
-  it("404s the code pages with Build's repositories option off, or without code:read: the documented exception (#Q4133)", async ({
-    expect,
-  }) => {
-    // ⚠️ An OPTION guarding a route, against the rule above, on purpose
-    // (review #130 item 1): git smart HTTP 404s a read with `repositories`
-    // off (`GitAccessService`), and so does every code-read action
-    // (`CodeReadAccess`). A code page that still answered would be the
-    // same repository through another door.
-    const alepha = await bootRouter();
-    const names = ["projectCode", "projectCodeRepo"];
-    for (const project of [
-      projectFixture({ capabilities: ["plan"] }),
-      projectFixture({
-        options: { build: { repositories: false, quality: true } },
-      }),
-      projectFixture({ permissions: ["project:read"] }),
-    ]) {
-      alepha.store.set(currentProjectAtom, project);
-      for (const name of names) {
-        await expect(
-          loaderOf(alepha, name)?.({ params: { repoSlug: "api" } } as never),
-          name,
-        ).rejects.toThrow(/not enabled/i);
-      }
-    }
   });
 
   it("leaves the epic, board and release routes unguarded", async ({

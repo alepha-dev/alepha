@@ -1,17 +1,17 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext, AlephaReact } from "alepha/react";
-import { AlephaReactRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { afterEach, describe, it } from "vitest";
 
-import { CommitLinkRegistry } from "../../registries/CommitLinkRegistry.ts";
+import { projectFixture } from "../../../../testing/projectFixture.ts";
+import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import CommitLink from "./CommitLink.tsx";
 
 /**
  * The one commit link the quest rail and both artifact views share (feedback
- * #P2201, #Q2336): into the project's own Lore repository when Build says
- * where (#Q4136), plain text otherwise.
+ * #P2201, #Q2336): to the commit on the project's forge when the project
+ * names a repository Lore can link (#Q4217), plain text otherwise.
  */
 describe("CommitLink", () => {
   const sha = "0b35cb375ff0123456789abcdef0123456789abc";
@@ -23,44 +23,50 @@ describe("CommitLink", () => {
     alepha = undefined;
   });
 
-  const mount = async (node: ReactNode, linked: boolean) => {
-    alepha = Alepha.create().with(AlephaReact).with(AlephaReactRouter);
-    if (linked) {
-      alepha
-        .inject(CommitLinkRegistry)
-        .register((commit, repo) =>
-          repo === "elsewhere" ? undefined : `/acme/code/api/commit/${commit}`,
-        );
-    }
+  const mount = async (node: ReactNode, repositoryUrl?: string) => {
+    alepha = Alepha.create().with(AlephaReact);
     await alepha.start();
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ title: "Acme", slug: "acme" }),
+      repositoryUrl,
+    });
     return render(
       <AlephaContext.Provider value={alepha}>{node}</AlephaContext.Provider>,
     );
   };
 
-  it("links the short sha to its commit page in the Lore repository", async ({
+  it("links the short sha to <repositoryUrl>/commit/<full sha> on GitHub, in a new tab", async ({
     expect,
   }) => {
-    const ui = await mount(<CommitLink sha={sha} />, true);
+    const ui = await mount(
+      <CommitLink sha={sha} />,
+      "https://github.com/acme/api",
+    );
 
     const link = ui.getByRole("link");
     expect(link.textContent).toBe("0b35cb3");
-    expect(link.getAttribute("href")).toBe(`/acme/code/api/commit/${sha}`);
-    // In the app: no new tab, no outbound icon (#Q2222).
-    expect(link.getAttribute("target")).toBeNull();
+    expect(link.getAttribute("href")).toBe(
+      `https://github.com/acme/api/commit/${sha}`,
+    );
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    // No outbound icon on a sha, by decision (#Q2222).
     expect(link.querySelector("svg")).toBeNull();
   });
 
-  it("renders the short sha as plain text when nothing links it", async ({
+  it("renders the short sha as plain text without a repository, or on a forge Lore cannot link", async ({
     expect,
   }) => {
-    const ui = await mount(<CommitLink sha={sha} />, false);
+    const ui = await mount(<CommitLink sha={sha} />);
     expect(ui.queryByRole("link")).toBeNull();
     expect(ui.container.textContent).toBe("0b35cb3");
     cleanup();
     await alepha?.stop();
 
-    const other = await mount(<CommitLink sha={sha} repo="elsewhere" />, true);
+    const other = await mount(
+      <CommitLink sha={sha} />,
+      "https://git.example.app/acme/api",
+    );
     expect(other.queryByRole("link")).toBeNull();
   });
 
@@ -73,7 +79,7 @@ describe("CommitLink", () => {
       <div onClick={() => rowClicks++}>
         <CommitLink sha={sha} />
       </div>,
-      true,
+      "https://github.com/acme/api",
     );
 
     fireEvent.click(ui.getByRole("link"));
