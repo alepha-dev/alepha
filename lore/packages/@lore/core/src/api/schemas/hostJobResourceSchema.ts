@@ -2,6 +2,8 @@ import { type Infer, z } from "alepha";
 
 import { hostJobInputSchema } from "./hostJobInputSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "./hostJobValues.ts";
+import { promptJobArgSchema } from "./promptJobArgSchema.ts";
+import { promptJobCauseSchema } from "./promptJobCauseSchema.ts";
 
 /**
  * A host job as its page and its list show it (#Q3984). The input is shown
@@ -31,6 +33,20 @@ export const hostJobResourceSchema = z.object({
   warning: z.string().optional(),
   logBytes: z.integer().optional(),
   logTruncated: z.boolean().optional(),
+  /**
+   * The prompt a run ran, its args and its cause (#Q4275), and the agent's
+   * final reply with whether Bay cut it.
+   */
+  prompt: z.string().optional(),
+  args: z.array(promptJobArgSchema).optional(),
+  cause: promptJobCauseSchema.optional(),
+  result: z.string().optional(),
+  resultTruncated: z.boolean().optional(),
+  /**
+   * Whether the job's host returns replies (#Q4288): absent, a job that
+   * ended with no reply says to upgrade Bay there.
+   */
+  hostReturnsResult: z.boolean().optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

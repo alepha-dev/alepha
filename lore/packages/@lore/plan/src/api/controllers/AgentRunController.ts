@@ -2,15 +2,11 @@ import {
   $ownsProject,
   AgentJobs,
   ProjectSecurityService,
+  PromptRunService,
 } from "@lore/core/api";
 import { agentRunSchema, agentRunSourceSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, BadRequestError, ForbiddenError } from "alepha/server";
-
-import { DependencyAgentService } from "../services/DependencyAgentService.ts";
-import { FeedbackAgentService } from "../services/FeedbackAgentService.ts";
-import { PullRequestAgentService } from "../services/PullRequestAgentService.ts";
-import { QuestAgentService } from "../services/QuestAgentService.ts";
 
 /**
  * Run a prompt on an Agent host (#Q4225): what `lore agent run` and
@@ -37,10 +33,7 @@ import { QuestAgentService } from "../services/QuestAgentService.ts";
  * chain never holds two agent jobs (#Q4222): an agent cannot start a job.
  */
 export class AgentRunController {
-  protected readonly feedbackAgent = $inject(FeedbackAgentService);
-  protected readonly questAgent = $inject(QuestAgentService);
-  protected readonly prAgent = $inject(PullRequestAgentService);
-  protected readonly dependencyAgent = $inject(DependencyAgentService);
+  protected readonly runs = $inject(PromptRunService);
   protected readonly agents = $inject(AgentJobs);
   protected readonly security = $inject(ProjectSecurityService);
 
@@ -70,10 +63,7 @@ export class AgentRunController {
          * they can write to the repository. Never an automation's.
          */
         trust: z.boolean().optional(),
-        /**
-         * A `text` prompt's words, or the packages a `dependency-update`
-         * updates.
-         */
+        /** A `text` prompt's words. */
         text: z.string().max(131_072).optional(),
         /** The workspace a `text` prompt runs in; `text` by default. */
         workspace: z
@@ -114,72 +104,40 @@ export class AgentRunController {
           );
         }
       };
-      if (body.prompt === "triage") {
-        await need("feedback:triage");
-        const out = await this.feedbackAgent.triageInbox(
-          params.projectId,
-          user.id,
-          run,
-        );
-        return {
-          ...(out.global ? { jobId: out.global } : {}),
-          skipped: out.skipped,
-        };
-      }
-      if (body.prompt === "build") {
-        await need("quest:update");
-        if (body.quest === undefined) {
+      // Every kind but `text` is a built-in prompt now (#Q4275): this route
+      // calls the one run path until `lore prompt run` and `prompt_run`
+      // replace it (Q4282). The prompt's source applies: `source` and `ref`
+      // are a text run's only.
+      const named: Record<string, string> = {
+        triage: "triage",
+        build: "work-quest",
+        "security-check": "security-check",
+        "dependency-update": "dependency-update",
+        "review-pr": "review-pr",
+      };
+      const name = named[body.prompt];
+      if (name) {
+        if (body.prompt === "build" && body.quest === undefined) {
           throw new BadRequestError("A build names its quest: --quest <n>");
         }
-        const out = await this.questAgent.work(
-          params.projectId,
-          body.quest,
-          user.id,
-          run,
-        );
-        return { jobId: out.jobId, skipped: [] };
-      }
-      if (body.prompt === "security-check") {
-        // It files quests (#Q4252).
-        await need("quest:create");
-        const out = await this.dependencyAgent.securityCheck(
-          params.projectId,
-          user.id,
-          run,
-        );
-        return { jobId: out.jobId, skipped: [] };
-      }
-      if (body.prompt === "dependency-update") {
-        // It opens a pull request, as a build does (#Q4252).
-        await need("quest:update");
-        const out = await this.dependencyAgent.dependencyUpdate(
-          params.projectId,
-          user.id,
-          run,
-          {},
-          body.text,
-        );
-        return { jobId: out.jobId, skipped: [] };
-      }
-      if (body.prompt === "review-pr") {
-        await need("quest:update");
-        if (body.pr === undefined) {
+        if (body.prompt === "review-pr" && body.pr === undefined) {
           throw new BadRequestError(
             "A review-pr names its pull request: --pr <n>",
           );
         }
-        const out = await this.prAgent.review(
-          params.projectId,
-          body.pr,
-          user.id,
-          run,
-          {
-            ...(body.fix ? { fix: true } : {}),
-            ...(body.trust ? { trust: true } : {}),
-            ...(body.quest === undefined ? {} : { questNumber: body.quest }),
-          },
-        );
-        return { jobId: out.jobId, skipped: [] };
+        const out = await this.runs.run(params.projectId, user, name, {
+          ...(body.prompt === "build"
+            ? { args: { quest: String(body.quest) } }
+            : body.prompt === "review-pr"
+              ? { args: { pullRequest: String(body.pr) } }
+              : {}),
+          ...(body.host ? { host: body.host } : {}),
+          ...(body.agent ? { agent: body.agent } : {}),
+          ...(body.model ? { model: body.model } : {}),
+          ...(body.fix ? { fix: true } : {}),
+          ...(body.trust ? { trust: true } : {}),
+        });
+        return { jobId: out.jobId, skipped: out.skipped };
       }
       await need("host:update");
       if (!body.text?.trim()) {

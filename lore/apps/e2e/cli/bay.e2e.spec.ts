@@ -934,6 +934,7 @@ describe("Bay connector against a real Lore", () => {
             status: string;
             reason?: string;
             commit?: string;
+            result?: string;
             input: { workspace?: string; source?: { mode: string } };
           }>;
         }>(
@@ -954,6 +955,8 @@ describe("Bay connector against a real Lore", () => {
     expect(ended.input.source).toEqual({ mode: "read" });
     expect(ended.input.workspace).toBe("text");
     expect(ended.commit).toBe(originHead);
+    // The stub's final result line is the job's reply (#Q4288, #Q4275).
+    expect(ended.result).toBe("OK");
     const log = await ok<{ stdout: string; stderr: string }>(
       call(lore, owner, "getJobLog", { params: { jobId: ended.id } }),
     );

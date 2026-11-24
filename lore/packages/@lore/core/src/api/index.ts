@@ -155,6 +155,7 @@ import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
 import { PromptRegistry } from "./services/PromptRegistry.ts";
+import { PromptRunService } from "./services/PromptRunService.ts";
 import { PromptService } from "./services/PromptService.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityProjectEvents } from "./services/QualityProjectEvents.ts";
@@ -419,6 +420,7 @@ export const LoreCoreApi = $module({
     // Prompts (#E174): the built-ins Plan registers, the project's own.
     PromptRegistry,
     PromptService,
+    PromptRunService,
     PromptController,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
@@ -681,8 +683,14 @@ export {
   type PromptArgItem,
   type PromptArgResolver,
   PromptRegistry,
+  type PromptRunContext,
+  type PromptRunPlan,
 } from "./services/PromptRegistry.ts";
 export { PromptService } from "./services/PromptService.ts";
+export {
+  type PromptRunBody,
+  PromptRunService,
+} from "./services/PromptRunService.ts";
 export { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
 export { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
 export { AgentAutomationHealth } from "./services/AgentAutomationHealth.ts";

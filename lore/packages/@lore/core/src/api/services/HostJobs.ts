@@ -2,6 +2,8 @@ import { AlephaError } from "alepha";
 
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import type { HostJobKind, HostJobStatus } from "../schemas/hostJobValues.ts";
+import type { PromptJobArg } from "../schemas/promptJobArgSchema.ts";
+import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -41,6 +43,10 @@ export interface HostJobRequest {
   /** What the job is about, for its page and its list: a feedback, a quest. */
   subjectType?: string;
   subjectId?: string;
+  /** The prompt a run ran, its args and its cause (#Q4275). */
+  prompt?: string;
+  args?: PromptJobArg[];
+  cause?: PromptJobCause;
 }
 
 /**
@@ -127,6 +133,12 @@ export interface HostJobSummary {
   startedAt?: string;
   endedAt?: string;
   input: HostJobInput;
+  /** The prompt a run ran, its args, its cause and its reply (#Q4275). */
+  prompt?: string;
+  args?: PromptJobArg[];
+  cause?: PromptJobCause;
+  result?: string;
+  resultTruncated?: boolean;
 }
 
 /**

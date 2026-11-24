@@ -1,7 +1,14 @@
-import { type PromptArgContext, PromptRegistry } from "@lore/core/api";
+import {
+  AgentRunPreamble,
+  type PromptArgContext,
+  PromptRegistry,
+  type PromptRunContext,
+  type PromptRunPlan,
+} from "@lore/core/api";
 import { formatReference } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
+import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
@@ -16,6 +23,9 @@ import { workEpicPromptText } from "../prompts/workEpicPrompt.ts";
 import { workFeedbackPromptText } from "../prompts/workFeedbackPrompt.ts";
 import { workLooseQuestsPromptText } from "../prompts/workLooseQuestsPrompt.ts";
 import { workQuestPromptText } from "../prompts/workQuestPrompt.ts";
+import { EpicAgentService } from "./EpicAgentService.ts";
+import { FeedbackAgentService } from "./FeedbackAgentService.ts";
+import { PullRequestAgentService } from "./PullRequestAgentService.ts";
 import { QuestResourceMapper } from "./QuestResourceMapper.ts";
 
 /**
@@ -35,6 +45,7 @@ export class PlanPrompts {
   protected readonly quests = $repository(quests);
   protected readonly feedback = $repository(feedback);
   protected readonly mapper = $inject(QuestResourceMapper);
+  protected readonly feedbackAgent = $inject(FeedbackAgentService);
 
   constructor() {
     const epicsOption = { capability: "plan", option: "epics" } as const;
@@ -50,6 +61,7 @@ export class PlanPrompts {
       timeoutSeconds: 30 * 60,
       needs: epicsOption,
       text: reviewEpicPromptText,
+      prepare: (context) => this.prepareReviewEpic(context),
       oneShot: true,
     });
     this.registry.register({
@@ -63,6 +75,7 @@ export class PlanPrompts {
       timeoutSeconds: 2 * 60 * 60,
       needs: epicsOption,
       text: workEpicPromptText,
+      prepare: (context) => this.prepareWorkEpic(context),
       oneShot: true,
     });
     this.registry.register({
@@ -76,6 +89,7 @@ export class PlanPrompts {
       permission: "quest:update",
       timeoutSeconds: 60 * 60,
       text: workQuestPromptText,
+      prepare: (context) => this.prepareWorkQuest(context),
       oneShot: true,
     });
     this.registry.register({
@@ -95,6 +109,7 @@ export class PlanPrompts {
       timeoutSeconds: 60 * 60,
       needs: feedbackOption,
       text: workFeedbackPromptText,
+      prepare: (context) => this.prepareWorkFeedback(context),
       oneShot: true,
     });
     this.registry.register({
@@ -108,6 +123,7 @@ export class PlanPrompts {
       timeoutSeconds: 60 * 60,
       needs: feedbackOption,
       text: triagePromptText,
+      prepare: (context) => this.prepareTriage(context),
       oneShot: true,
     });
     this.registry.register({
@@ -132,6 +148,7 @@ export class PlanPrompts {
       permission: "host:read",
       timeoutSeconds: 30 * 60,
       text: weeklyStatusPromptText,
+      prepare: async () => ({ workspace: "status" }),
       oneShot: true,
     });
     this.registry.register({
@@ -144,6 +161,7 @@ export class PlanPrompts {
       permission: "quest:update",
       timeoutSeconds: 30 * 60,
       text: reviewPrPromptText,
+      prepare: async (context) => this.prepareReviewPr(context),
       oneShot: true,
     });
     this.registry.register({
@@ -156,6 +174,7 @@ export class PlanPrompts {
       permission: "quest:create",
       timeoutSeconds: 30 * 60,
       text: securityCheckPromptText,
+      prepare: async () => ({ workspace: "security" }),
       oneShot: true,
     });
     this.registry.register({
@@ -186,6 +205,184 @@ export class PlanPrompts {
       permission: "feedback:read",
       resolve: (context) => this.feedbackOf(context),
     });
+  }
+
+  /**
+   * The number an arg of the run resolved to.
+   */
+  protected numberIn(context: PromptRunContext, name: string): number {
+    const found = context.items.find((it) => it.arg.name === name);
+    return Number(found?.item.fields.number);
+  }
+
+  /**
+   * An epic's quests born of outside text nobody confirmed: a review or a
+   * work of the epic is refused until a member confirms them.
+   */
+  protected async assertEpicTrusted(projectId: number, number: number) {
+    const epic = await this.epics.findOne({
+      where: { projectId: { eq: projectId }, number: { eq: number } },
+    });
+    if (!epic) return { quests: 0 };
+    const members = await this.quests.findMany({
+      where: { projectId: { eq: projectId }, epicId: { eq: epic.id } },
+    });
+    const unconfirmed = members.filter(
+      (it) => it.untrusted && !it.untrustedConfirmedAt && !it.deletedAt,
+    );
+    if (unconfirmed.length) {
+      throw new ForbiddenError(
+        `Epic ${number} holds quests born of feedback written outside the team (${unconfirmed
+          .map((it) => formatReference("quest", it.shortId))
+          .join(", ")}): a member confirms their text first`,
+      );
+    }
+    return { quests: members.length, id: epic.id };
+  }
+
+  /**
+   * `review-epic`: the key pinned to the epic, a workspace of its own, a
+   * time growing with its quests, and the review's fixed rules above the
+   * text (#Q4214).
+   */
+  protected async prepareReviewEpic(
+    context: PromptRunContext,
+  ): Promise<PromptRunPlan> {
+    const number = this.numberIn(context, "epic");
+    const epic = await this.assertEpicTrusted(context.projectId, number);
+    const t = EpicAgentService.TIME;
+    const reference = formatReference("epic", number);
+    return {
+      prompt: [
+        AgentRunPreamble.MARKER,
+        "",
+        `## This run's rules, which override the procedure below where they differ`,
+        "",
+        `- Read the code to check the plan against it. Do not create branches, commit or push.`,
+        `- Your Lore key reaches ${reference} and its quests only: \`epic_*\` tools on epic ${number}, \`quest_create\` and \`folio_create\` with \`epic_number\` ${number}, quest writes on its own quests. You do not answer the review: the owner does.`,
+        `- Nobody reads this run's conversation. The review you file with \`epic_review_create\` is the report: put every question's context, suggestions and recommendation there. End with a short summary naming the review's item numbers and anything you changed.`,
+        "",
+        context.text,
+      ].join("\n"),
+      epicNumber: number,
+      workspace: "review",
+      timeoutSeconds: t.baseSeconds + t.secondsPerQuest * epic.quests,
+      after: async (jobId) => {
+        if (epic.id) {
+          await this.epics.updateById(epic.id, { agentReviewJobId: jobId });
+        }
+      },
+    };
+  }
+
+  /**
+   * `work-epic`: the key pinned to the epic; refused while it holds a quest
+   * born of outside text nobody confirmed.
+   */
+  protected async prepareWorkEpic(
+    context: PromptRunContext,
+  ): Promise<PromptRunPlan> {
+    const number = this.numberIn(context, "epic");
+    await this.assertEpicTrusted(context.projectId, number);
+    return { epicNumber: number };
+  }
+
+  /**
+   * `work-quest`: the key pinned to the quest, its workspace `q<n>` and its
+   * branch `lore/q<n>`; refused on a quest born of outside text nobody
+   * confirmed.
+   */
+  protected async prepareWorkQuest(
+    context: PromptRunContext,
+  ): Promise<PromptRunPlan> {
+    const number = this.numberIn(context, "quest");
+    const quest = await this.quests.findOne({
+      where: {
+        projectId: { eq: context.projectId },
+        shortId: { eq: number },
+      },
+    });
+    if (quest?.untrusted && !quest.untrustedConfirmedAt) {
+      throw new ForbiddenError(
+        `Quest ${number} was born of feedback written outside the team: a member confirms its text before an agent works it`,
+      );
+    }
+    return { questNumber: number };
+  }
+
+  /**
+   * `work-feedback`: the key pinned to the item; an untrusted item no member
+   * trusted never reaches an agent.
+   */
+  protected async prepareWorkFeedback(
+    context: PromptRunContext,
+  ): Promise<PromptRunPlan> {
+    const number = this.numberIn(context, "feedback");
+    const item = await this.feedback.findOne({
+      where: {
+        projectId: { eq: context.projectId },
+        shortId: { eq: number },
+      },
+    });
+    return {
+      feedbackNumber: number,
+      ...(item && FeedbackAgentService.awaitsTrust(item)
+        ? { untrusted: true }
+        : {}),
+    };
+  }
+
+  /**
+   * `triage`: the global triage around the prompt's text, given the pending
+   * items a member trusted (its key pinned to them), with how many wait for
+   * a member's trust.
+   */
+  protected async prepareTriage(
+    context: PromptRunContext,
+  ): Promise<PromptRunPlan> {
+    const plan = await this.feedbackAgent.inboxPlan(
+      context.projectId,
+      context.startedBy,
+      context.text,
+    );
+    if (!plan.run) {
+      throw new BadRequestError(
+        plan.skipped.length
+          ? `Nothing to triage: ${plan.skipped.length} pending item(s) wait for a member's trust, and no error is open to an agent`
+          : "Nothing to triage, or a triage is already queued or running",
+      );
+    }
+    return {
+      prompt: plan.run.prompt,
+      feedbackNumbers: plan.run.feedbackNumbers,
+      timeoutSeconds: plan.run.timeoutSeconds,
+      workspace: "triage",
+      after: plan.run.mark,
+      skipped: plan.skipped,
+    };
+  }
+
+  /**
+   * `review-pr`: a read job at the pull request's head, or with `fix` a
+   * write job on its branch; Bay checks its author can write to the
+   * repository unless a member trusts them (#Q4251).
+   */
+  protected prepareReviewPr(context: PromptRunContext): PromptRunPlan {
+    const number = this.numberIn(context, "pullRequest");
+    const fix = !!context.options.fix;
+    return {
+      source: {
+        mode: fix ? "write" : "read",
+        ref: `pull/${number}/head`,
+        ...(context.options.trust && context.cause.kind === "hand"
+          ? {}
+          : { trust: "pr-author-writes" as const }),
+      },
+      workspace: `pr-${number}`,
+      timeoutSeconds: fix
+        ? PullRequestAgentService.FIX_SECONDS
+        : PullRequestAgentService.REVIEW_SECONDS,
+    };
   }
 
   /**

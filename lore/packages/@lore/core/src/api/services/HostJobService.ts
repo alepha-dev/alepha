@@ -196,6 +196,9 @@ export class HostJobService {
       automationId: request.automationId,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
+      ...(request.prompt ? { prompt: request.prompt } : {}),
+      ...(request.args ? { args: request.args } : {}),
+      ...(request.cause ? { cause: request.cause } : {}),
       queuedAt: this.now(),
     });
     await this.pump(host.id);
@@ -622,7 +625,15 @@ export class HostJobService {
    */
   protected readonly onCommandProgressed = $hook({
     on: "host:command:progressed",
-    handler: async ({ command, jobOutcome, exitCode, commit, warning }) => {
+    handler: async ({
+      command,
+      jobOutcome,
+      exitCode,
+      commit,
+      warning,
+      result,
+      resultTruncated,
+    }) => {
       if (command.kind !== "job-run") return;
       const job = await this.jobs.findOne({
         where: { commandId: { eq: command.id } },
@@ -658,6 +669,8 @@ export class HostJobService {
         exitCode,
         commit,
         warning,
+        result,
+        resultTruncated,
       });
     },
   });
@@ -674,6 +687,8 @@ export class HostJobService {
       exitCode?: number;
       commit?: string;
       warning?: string;
+      result?: string;
+      resultTruncated?: boolean;
     },
   ): Promise<HostJob> {
     const job = await this.getRow(jobId);
@@ -684,6 +699,13 @@ export class HostJobService {
       ...(outcome.exitCode === undefined ? {} : { exitCode: outcome.exitCode }),
       ...(outcome.commit ? { commit: outcome.commit } : {}),
       ...(outcome.warning ? { warning: outcome.warning.slice(0, 2000) } : {}),
+      // The agent's final reply (#Q4288), kept with the job (#Q4275).
+      ...(outcome.result === undefined
+        ? {}
+        : {
+            result: outcome.result.slice(0, 32_768),
+            ...(outcome.resultTruncated ? { resultTruncated: true } : {}),
+          }),
     });
     await this.archive(job.id);
     await this.port.revokeKey(job.id);
@@ -794,6 +816,13 @@ export class HostJobService {
       startedAt: job.startedAt,
       endedAt: job.endedAt,
       input: job.input,
+      ...(job.prompt ? { prompt: job.prompt } : {}),
+      ...(job.args ? { args: job.args } : {}),
+      ...(job.cause ? { cause: job.cause } : {}),
+      ...(job.result === undefined || job.result === null
+        ? {}
+        : { result: job.result }),
+      ...(job.resultTruncated ? { resultTruncated: true } : {}),
     };
   }
 

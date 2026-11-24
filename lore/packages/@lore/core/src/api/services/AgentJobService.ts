@@ -104,10 +104,12 @@ export class AgentJobService {
         );
       }
     }
-    // A pull request's head read by an automation is never trusted: only a
-    // member's own run may skip the author's check (#Q4251).
+    // A pull request's head read by an automation, or by a prompt a
+    // trigger started, is never trusted: only a member's own run may skip
+    // the author's check (#Q4251, #Q4275).
     if (
-      request.automationId &&
+      (request.automationId ||
+        (request.record && request.record.cause.kind !== "hand")) &&
       source.ref?.startsWith("pull/") &&
       source.mode !== "none"
     ) {
@@ -148,6 +150,13 @@ export class AgentJobService {
       automationId: request.automationId,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
+      ...(request.record
+        ? {
+            prompt: request.record.prompt,
+            args: request.record.args,
+            cause: request.record.cause,
+          }
+        : {}),
       input: {
         ...(agent ? { agent } : {}),
         ...(request.model ? { model: request.model } : {}),
@@ -155,7 +164,11 @@ export class AgentJobService {
         prompt,
         source,
         ...(request.output ? { output: request.output } : {}),
-        ...(request.session ? { session: request.session } : {}),
+        ...(request.session
+          ? { session: request.session }
+          : request.record
+            ? { session: { id: randomUUID() } }
+            : {}),
         timeoutSeconds: this.timeoutOf(request.timeoutSeconds),
         key: {
           ...(request.questNumber === undefined
@@ -238,7 +251,7 @@ export class AgentJobService {
    */
   public async resolve(
     projectId: number,
-    run: { host?: string; agent?: string },
+    run: { host?: string; agent?: string; firstAgent?: boolean },
   ): Promise<{ host: AgentHostRef; agent?: string }> {
     const hosts = await this.port.agentHosts(projectId);
     if (!hosts.length) {
@@ -271,7 +284,9 @@ export class AgentJobService {
       }
       return { host, agent: run.agent };
     }
-    if (agents && agents.length > 1) {
+    // A prompt's run takes the host's first agent (#Q4275): the page, the
+    // CLI and the MCP behave alike.
+    if (agents && agents.length > 1 && !run.firstAgent) {
       throw new BadRequestError(
         `Host "${host.slug}" reports ${agents.length} agents: name one of ${agents.join(", ")}`,
       );
