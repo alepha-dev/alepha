@@ -1,6 +1,8 @@
 import { $inject } from "alepha";
 
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
+import type { PromptJobArg } from "../schemas/promptJobArgSchema.ts";
+import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
 import { AgentJobService } from "./AgentJobService.ts";
 import type { AgentHostRef, HostJobSummary } from "./HostJobs.ts";
 
@@ -22,6 +24,17 @@ export interface AgentJobRequest {
    */
   agent?: string;
   model?: string;
+  /**
+   * With no agent named, the first agent CLI the host reports rather than a
+   * refusal when it reports several (#Q4275): a prompt's run.
+   */
+  firstAgent?: boolean;
+  /**
+   * A prompt's run (#Q4275): the prompt's name, its args as run and what
+   * started it, recorded on the job. A run gets a session id of its own,
+   * never resumed, so "continue" can come later.
+   */
+  record?: { prompt: string; args: PromptJobArg[]; cause: PromptJobCause };
   /**
    * The workspace the job runs in on the host (#Q4218): `q<n>` for a
    * quest's work, `job-<id>` for another write job, `triage` otherwise,
@@ -104,7 +117,7 @@ export class AgentJobs {
    */
   public async resolve(
     projectId: number,
-    run: { host?: string; agent?: string },
+    run: { host?: string; agent?: string; firstAgent?: boolean },
   ): Promise<{ host: AgentHostRef; agent?: string }> {
     return this.service.resolve(projectId, run);
   }

@@ -123,7 +123,7 @@ export class HostJobController {
     const hostList = hostIds.length
       ? await this.hostRows.findMany({
           where: { id: { inArray: hostIds } },
-          columns: ["id", "slug"],
+          columns: ["id", "slug", "jobsResult"],
         })
       : [];
     const people = starterIds.length
@@ -157,6 +157,14 @@ export class HostJobController {
       warning: row.warning ?? undefined,
       logBytes: row.logBytes ?? undefined,
       logTruncated: row.logTruncated ?? undefined,
+      prompt: row.prompt ?? undefined,
+      args: row.args ?? undefined,
+      cause: row.cause ?? undefined,
+      result: row.result ?? undefined,
+      resultTruncated: row.resultTruncated ?? undefined,
+      hostReturnsResult:
+        hostList.find((host) => host.id === row.hostId)?.jobsResult ??
+        undefined,
     }));
   }
 }

@@ -1,11 +1,13 @@
 import { $inject, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
+import { agentRunSchema } from "../schemas/agentRunSchema.ts";
 import { promptCreateSchema } from "../schemas/promptCreateSchema.ts";
 import { promptResourceSchema } from "../schemas/promptResourceSchema.ts";
 import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
 import { promptWriteSchema } from "../schemas/promptWriteSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { PromptRunService } from "../services/PromptRunService.ts";
 import { PromptService } from "../services/PromptService.ts";
 
 /**
@@ -16,6 +18,7 @@ import { PromptService } from "../services/PromptService.ts";
  */
 export class PromptController {
   protected readonly service = $inject(PromptService);
+  protected readonly runs = $inject(PromptRunService);
 
   protected readonly nameParams = z.object({
     projectId: z.integer(),
@@ -123,5 +126,36 @@ export class PromptController {
         )
       ).text,
     }),
+  });
+
+  /**
+   * Run a prompt on an Agent host (#Q4275): a value per arg, and where it
+   * runs. No source and no ref: they are the prompt's. The starter needs
+   * the prompt's own permission besides `host:read`.
+   */
+  runPrompt = $action({
+    use: [$ownsProject({ param: "projectId", requires: "host:read" })],
+    method: "POST",
+    path: "/projects/:projectId/prompts/:name/run",
+    schema: {
+      params: this.nameParams,
+      body: z.object({
+        args: z
+          .record(z.text({ maxLength: 32 }), z.text({ maxLength: 120 }))
+          .optional(),
+        host: agentRunSchema.shape.host,
+        agent: agentRunSchema.shape.agent,
+        model: agentRunSchema.shape.model,
+        fix: z.boolean().optional(),
+        trust: z.boolean().optional(),
+      }),
+      response: z.object({
+        jobId: z.uuid(),
+        /** Feedback items a triage left out for want of a member's trust. */
+        skipped: z.array(z.integer()),
+      }),
+    },
+    handler: ({ params, body, user }) =>
+      this.runs.run(params.projectId, user, params.name, body),
   });
 }

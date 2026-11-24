@@ -178,10 +178,53 @@ export class FeedbackAgentService {
     run: AgentRun = {},
     origin: { automationId?: string; startedByJobId?: string } = {},
   ): Promise<{ started: string[]; skipped: number[]; global?: string }> {
+    await this.agents.resolve(projectId, run);
+    const plan = await this.inboxPlan(projectId, startedBy);
+    if (!plan.run) return { started: [], skipped: plan.skipped };
+    const job = await this.agents.start({
+      projectId,
+      ...run,
+      prompt: plan.run.prompt,
+      feedbackNumbers: plan.run.feedbackNumbers,
+      timeoutSeconds: plan.run.timeoutSeconds,
+      startedBy,
+      // An automation's run (#Q4226), and the job whose event caused it.
+      ...(origin.automationId ? { automationId: origin.automationId } : {}),
+      ...(origin.startedByJobId
+        ? { startedByJobId: origin.startedByJobId }
+        : {}),
+      subjectType: FeedbackAgentService.GLOBAL_SUBJECT,
+      subjectId: String(projectId),
+    });
+    await plan.run.mark(job.id);
+    return { started: [job.id], skipped: plan.skipped, global: job.id };
+  }
+
+  /**
+   * What one inbox triage is given (#Q4275, shared with the `triage`
+   * prompt's run): the pending items a member trusted, with no job of their
+   * own in flight, the global prompt built around `procedure` (the project's
+   * Triage text), its pin and its time. Untrusted items are skipped with a
+   * comment saying a member must look. No `run` when a triage is already
+   * queued or running (it reads the errors too), or when there is nothing to
+   * triage.
+   */
+  public async inboxPlan(
+    projectId: number,
+    startedBy?: string,
+    procedure?: string,
+  ): Promise<{
+    skipped: number[];
+    run?: {
+      prompt: string;
+      feedbackNumbers: number[];
+      timeoutSeconds: number;
+      mark: (jobId: string) => Promise<void>;
+    };
+  }> {
     const project = await this.projects.getOne({
       where: { id: { eq: projectId } },
     });
-    await this.agents.resolve(projectId, run);
     const pending = await this.rows.findMany({
       where: { projectId: { eq: projectId }, status: { eq: "pending" } },
       orderBy: [{ column: "createdAt", direction: "asc" }],
@@ -191,7 +234,6 @@ export class FeedbackAgentService {
     for (const item of pending) {
       if (!(await this.inFlight(item))) open.push(item);
     }
-    const started: string[] = [];
     const skipped: number[] = [];
     for (const item of open.filter((it) =>
       FeedbackAgentService.awaitsTrust(it),
@@ -209,7 +251,7 @@ export class FeedbackAgentService {
         String(projectId),
       )
     ) {
-      return { started, skipped };
+      return { skipped };
     }
     const errors = this.security.capabilityOption(
       await this.security.capabilitiesOf(projectId),
@@ -217,38 +259,37 @@ export class FeedbackAgentService {
       "track",
     );
     if (!trusted.length && !errors) {
-      return { started, skipped };
+      return { skipped };
     }
     const t = FeedbackAgentService.GLOBAL_TIME;
-    const job = await this.agents.start({
-      projectId,
-      ...run,
-      prompt: await this.globalPrompt(project, trusted, errors, skipped.length),
-      // An empty set pins nothing, so the key would reach every item: with
-      // no feedback the job's feedback tools are refused by the pin below.
-      feedbackNumbers: trusted.length ? trusted.map((it) => it.shortId) : [0],
-      timeoutSeconds:
-        t.baseSeconds +
-        t.secondsPerItem * trusted.length +
-        (errors ? t.errorSeconds : 0),
-      startedBy,
-      // An automation's run (#Q4226), and the job whose event caused it.
-      ...(origin.automationId ? { automationId: origin.automationId } : {}),
-      ...(origin.startedByJobId
-        ? { startedByJobId: origin.startedByJobId }
-        : {}),
-      subjectType: FeedbackAgentService.GLOBAL_SUBJECT,
-      subjectId: String(projectId),
-    });
-    const now = new Date(this.dateTime.nowMillis()).toISOString();
-    for (const item of trusted) {
-      await this.rows.updateById(item.id, {
-        agentJobId: job.id,
-        agentTriagedAt: now,
-      });
-    }
-    started.unshift(job.id);
-    return { started, skipped, global: job.id };
+    return {
+      skipped,
+      run: {
+        prompt: await this.globalPrompt(
+          project,
+          trusted,
+          errors,
+          skipped.length,
+          procedure,
+        ),
+        // An empty set pins nothing, so the key would reach every item:
+        // with no feedback the job's feedback tools are refused by the pin.
+        feedbackNumbers: trusted.length ? trusted.map((it) => it.shortId) : [0],
+        timeoutSeconds:
+          t.baseSeconds +
+          t.secondsPerItem * trusted.length +
+          (errors ? t.errorSeconds : 0),
+        mark: async (jobId) => {
+          const now = new Date(this.dateTime.nowMillis()).toISOString();
+          for (const item of trusted) {
+            await this.rows.updateById(item.id, {
+              agentJobId: jobId,
+              agentTriagedAt: now,
+            });
+          }
+        },
+      },
+    };
   }
 
   /**
@@ -269,6 +310,7 @@ export class FeedbackAgentService {
     items: Feedback[],
     errors: boolean,
     waiting = 0,
+    procedure?: string,
   ): Promise<string> {
     return globalTriagePrompt({
       // Rendered when the job starts, once its source is settled (#E173).
@@ -282,7 +324,7 @@ export class FeedbackAgentService {
       })),
       errors,
       trust: FeedbackAgentService.TRUST_PARAGRAPH,
-      procedure: await this.procedure(project),
+      procedure: procedure ?? (await this.procedure(project)),
     });
   }
 

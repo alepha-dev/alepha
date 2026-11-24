@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, PromptRunService } from "@lore/core/api";
 import { agentRunChoiceSchema, agentRunSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
@@ -13,6 +13,7 @@ import { EpicAgentService } from "../services/EpicAgentService.ts";
  */
 export class EpicAgentController {
   protected readonly service = $inject(EpicAgentService);
+  protected readonly runs = $inject(PromptRunService);
 
   reviewEpicWithAgent = $action({
     use: [$ownsProject({ param: "projectId", requires: "epic:write" })],
@@ -23,8 +24,18 @@ export class EpicAgentController {
       body: agentRunSchema.nullish(),
       response: z.object({ jobId: z.uuid() }),
     },
-    handler: async ({ params, body, user }) =>
-      this.service.review(params.projectId, params.number, user.id, body ?? {}),
+    // The `review-epic` prompt's run (#Q4275), until the page's pinned
+    // button replaces this route.
+    handler: async ({ params, body, user }) => ({
+      jobId: (
+        await this.runs.run(params.projectId, user, "review-epic", {
+          args: { epic: String(params.number) },
+          ...(body?.host ? { host: body.host } : {}),
+          ...(body?.agent ? { agent: body.agent } : {}),
+          ...(body?.model ? { model: body.model } : {}),
+        })
+      ).jobId,
+    }),
   });
 
   /**

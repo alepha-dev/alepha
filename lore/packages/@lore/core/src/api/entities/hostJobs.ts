@@ -4,6 +4,8 @@ import { $entity, db } from "alepha/orm";
 
 import { hostJobInputSchema } from "../schemas/hostJobInputSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "../schemas/hostJobValues.ts";
+import { promptJobArgSchema } from "../schemas/promptJobArgSchema.ts";
+import { promptJobCauseSchema } from "../schemas/promptJobCauseSchema.ts";
 import { hostCommands } from "./hostCommands.ts";
 import { hosts } from "./hosts.ts";
 import { projects } from "./projects.ts";
@@ -93,6 +95,23 @@ export const hostJobs = $entity({
     logBytes: z.integer().min(0).optional(),
     /** Set once a stream reached Bay's per-job cap. */
     logTruncated: z.boolean().optional(),
+    /**
+     * The prompt a run ran (#Q4275), by name: a built-in has no row and a
+     * custom prompt can be deleted, so the history keeps its name. The
+     * rendered text stays in `input.prompt`.
+     */
+    prompt: z.string().max(64).optional(),
+    /**
+     * Its args as run, and what started it.
+     */
+    args: z.array(promptJobArgSchema).max(8).optional(),
+    cause: promptJobCauseSchema.optional(),
+    /**
+     * The agent's final reply, from Bay's terminal ack (#Q4288), and whether
+     * Bay cut it. Absent from a host whose Bay returns none.
+     */
+    result: z.string().max(32_768).optional(),
+    resultTruncated: z.boolean().optional(),
   }),
   indexes: [
     // The dispatcher: the oldest queued job of a host, and its running one.
@@ -102,6 +121,8 @@ export const hostJobs = $entity({
     { columns: ["commandId"] },
     // An automation's runs: the single-flight check and its ceilings.
     { columns: ["automationId", "status"] },
+    // A prompt's runs (#Q4275): its single flight per arg value.
+    { columns: ["projectId", "prompt", "status"] },
   ],
 });
 

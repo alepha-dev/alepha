@@ -3,8 +3,11 @@ import { AlephaError } from "alepha";
 import type { Project } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type { PromptArg } from "../schemas/promptArgSchema.ts";
+import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
+import type { PromptResource } from "../schemas/promptResourceSchema.ts";
 import type { PromptArgType, PromptSource } from "../schemas/promptValues.ts";
 import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
+import type { AgentJobRequest } from "./AgentJobs.ts";
 
 /**
  * The built-in prompts and what fills their args (#E174, #Q4274), each
@@ -91,6 +94,12 @@ export interface BuiltinPrompt {
    */
   text: string;
   /**
+   * What only the server knows, added to a run of it (#Q4275): its key's
+   * pin, its workspace, the items it is given, a refusal. Absent, the run
+   * is the rendered text under Lore's preamble and nothing more.
+   */
+  prepare?: (context: PromptRunContext) => Promise<PromptRunPlan>;
+  /**
    * No built-in waits for an answer in its session: a question goes where a
    * person finds it, and the run ends.
    */
@@ -132,3 +141,50 @@ export interface PromptArgItem {
   gone?: boolean;
   fields: Record<string, string | number>;
 }
+
+/**
+ * What a built-in's `prepare` is given for one run (#Q4275).
+ */
+export interface PromptRunContext {
+  projectId: number;
+  startedBy: string;
+  prompt: PromptResource;
+  /**
+   * The prompt's text with its args filled, without Lore's preamble.
+   */
+  text: string;
+  items: Array<{ arg: PromptArg; value: string; item: PromptArgItem }>;
+  /**
+   * A run by hand's options: `fix` and `trust` for a pull request review.
+   */
+  options: { fix?: boolean; trust?: boolean };
+  cause: PromptJobCause;
+  /**
+   * The source the prompt settled, before the built-in changes it.
+   */
+  source: NonNullable<AgentJobRequest["source"]>;
+}
+
+/**
+ * What a built-in changes of a run's job, what it does once the job is
+ * queued, and the items it left out.
+ */
+export type PromptRunPlan = Partial<
+  Pick<
+    AgentJobRequest,
+    | "prompt"
+    | "questNumber"
+    | "feedbackNumber"
+    | "feedbackNumbers"
+    | "epicNumber"
+    | "workspace"
+    | "timeoutSeconds"
+    | "source"
+    | "untrusted"
+    | "subjectType"
+    | "subjectId"
+  >
+> & {
+  after?: (jobId: string) => Promise<void>;
+  skipped?: number[];
+};

@@ -1,0 +1,201 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c73c73d4-0c4e-48b4-b904-a221be03fbd5",
+  "prevIds": ["8caca2c8-972b-4c44-a2da-61812aedd060"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "prompt"],
+      "writes": [
+        "s|col|public.host_jobs.prompt",
+        "n|col|public.host_jobs.prompt",
+        "e|col|public.host_jobs.prompt"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "args"],
+      "writes": [
+        "s|col|public.host_jobs.args",
+        "n|col|public.host_jobs.args",
+        "e|col|public.host_jobs.args"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "cause"],
+      "writes": [
+        "s|col|public.host_jobs.cause",
+        "n|col|public.host_jobs.cause",
+        "e|col|public.host_jobs.cause"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "result"],
+      "writes": [
+        "s|col|public.host_jobs.result",
+        "n|col|public.host_jobs.result",
+        "e|col|public.host_jobs.result"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "result_truncated"],
+      "writes": [
+        "s|col|public.host_jobs.result_truncated",
+        "n|col|public.host_jobs.result_truncated",
+        "e|col|public.host_jobs.result_truncated"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_jobs",
+        "host_jobs_project_id_prompt_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.host_jobs_project_id_prompt_status_idx",
+        "n|idx|public.host_jobs_project_id_prompt_status_idx",
+        "e|idx|public.host_jobs_project_id_prompt_status_idx",
+        "n|rel|public.host_jobs_project_id_prompt_status_idx"
+      ],
+      "reads": [
+        "n|tbl|public.host_jobs",
+        "n|sch|public",
+        "n|col|public.host_jobs.project_id",
+        "n|col|public.host_jobs.prompt",
+        "n|col|public.host_jobs.status"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "prompt",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "args",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "cause",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "result",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "result_truncated",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "host_jobs_project_id_prompt_status_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "prompt",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

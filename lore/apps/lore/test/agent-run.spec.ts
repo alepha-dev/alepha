@@ -157,7 +157,15 @@ describe("lore agent run, and agent_run", () => {
         trust: "pr-author-writes",
       },
     });
-    expect(read.subjectType).toBe("pull-request");
+    // A prompt's run (#Q4275): its subject is the prompt, its arg the pull
+    // request, its cause a member by hand.
+    expect(read).toMatchObject({
+      subjectType: "prompt",
+      subjectId: "review-pr",
+      prompt: "review-pr",
+      args: [{ name: "pullRequest", type: "pullRequest", value: "42" }],
+      cause: { kind: "hand" },
+    });
     expect(read.input.prompt).toContain(
       "Review pull request #42 of the Lore project",
     );
@@ -234,7 +242,7 @@ describe("lore agent run, and agent_run", () => {
     const update = await w.runs.runAgent.run(
       {
         params: { projectId: w.projectId },
-        body: { prompt: "dependency-update", text: "react, vite" },
+        body: { prompt: "dependency-update" },
       },
       { user: w.owner },
     );
@@ -246,9 +254,9 @@ describe("lore agent run, and agent_run", () => {
       workspace: name,
       source: { mode: "write", branch: `lore/${name}` },
     });
-    expect(write.input.prompt).toContain(
-      "## This run's request\n\nreact, vite",
-    );
+    // No free-text package list (#Q4275): a minor or a patch behind.
+    expect(write.input.prompt).not.toContain("## This run's request");
+    expect(write.input.prompt).toContain("a minor or a patch version");
     expect(write.input.prompt).toContain("open a pull request with `gh`");
   });
 

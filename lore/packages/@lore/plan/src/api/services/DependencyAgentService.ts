@@ -20,7 +20,7 @@ import { securityCheckPromptDefault } from "../../web/app/prompts/securityCheckP
  * - **Security check** (`securityCheck`), a read job: the lockfiles audited,
  *   one quest per real vulnerability, nothing filed when there is nothing;
  * - **Dependency update** (`dependencyUpdate`), a write job on a branch Lore
- *   names: the named packages, or the minor and patch updates, a pull
+ *   names: the minor and patch updates, a pull
  *   request only when the checks pass.
  *
  * Run by hand (`lore agent run security-check | dependency-update`,
@@ -54,13 +54,11 @@ export class DependencyAgentService {
     startedBy: string,
     run: AgentRunRequest = {},
     origin: { automationId?: string; startedByJobId?: string } = {},
-    packages?: string,
   ): Promise<{ jobId: string }> {
     return this.start(projectId, startedBy, run, origin, {
       kind: "dependencyUpdate",
       defaultSource: "write",
       timeoutSeconds: DependencyAgentService.UPDATE_SECONDS,
-      ...(packages?.trim() ? { request: packages.trim() } : {}),
     });
   }
 
@@ -74,7 +72,6 @@ export class DependencyAgentService {
       defaultSource: "read" | "write";
       workspace?: string;
       timeoutSeconds: number;
-      request?: string;
     },
   ): Promise<{ jobId: string }> {
     const project = await this.projects.findOne({
@@ -103,9 +100,6 @@ export class DependencyAgentService {
           slug,
           url: `${base}/${slug}`,
         }),
-        ...(options.request
-          ? ["", "## This run's request", "", options.request]
-          : []),
       ].join("\n"),
       defaultSource: options.defaultSource,
       ...(options.workspace ? { workspace: options.workspace } : {}),
