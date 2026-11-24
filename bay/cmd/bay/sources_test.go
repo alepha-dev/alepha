@@ -726,3 +726,62 @@ func TestAgentSessions(t *testing.T) {
 		}
 	}
 }
+
+func TestPullRequestChecks(t *testing.T) {
+	// gh as GitHub answers it: pull request 7 by a collaborator who can
+	// write, 8 by an outsider, 9 from a fork.
+	ghStub := `#!/bin/sh
+case "$*" in
+  "pr view 7 "*) echo '{"author":{"login":"maya"},"isCrossRepository":false,"headRefName":"fix/router"}' ;;
+  "pr view 8 "*) echo '{"author":{"login":"drive-by"},"isCrossRepository":false,"headRefName":"patch-1"}' ;;
+  "pr view 9 "*) echo '{"author":{"login":"maya"},"isCrossRepository":true,"headRefName":"main"}' ;;
+  "api repos/acme/app/collaborators/maya/permission") echo '{"permission":"write","role_name":"maintain"}' ;;
+  "api repos/acme/app/collaborators/drive-by/permission") echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;;
+  *) echo "unexpected: $*" >&2; exit 2 ;;
+esac
+`
+	check := func(t *testing.T, source map[string]any) (jobSpec, error) {
+		t.Helper()
+		w := newJobWorld(t)
+		w.stub(t, "gh", ghStub)
+		raw, _ := json.Marshal(map[string]any{"kind": "agent", "agent": "claude", "project": "acme", "workspace": "pr-7",
+			"key": "lore_job_0123456789abcdef", "mcpUrl": w.sink.URL + "/mcp", "prompt": "Review.", "timeoutSeconds": 600,
+			"source": source})
+		spec, err := parseJobSpec(raw, w.sink.URL)
+		if err != nil {
+			t.Fatalf("spec refused: %v", err)
+		}
+		u, _ := w.acts.jobs.runner.jobsUser()
+		log, _ := openJobLog(w.f.root, "pr")
+		err = w.acts.jobs.runner.checkPullRequest(context.Background(), u, &spec, log)
+		return spec, err
+	}
+	repo := "https://github.com/acme/app"
+
+	t.Run("an author who can write is the team", func(t *testing.T) {
+		if _, err := check(t, map[string]any{"mode": "read", "repository": repo, "ref": "pull/7/head", "trust": "pr-author-writes"}); err != nil {
+			t.Fatalf("refused: %v", err)
+		}
+	})
+	t.Run("an author who cannot write fails the job before the agent starts", func(t *testing.T) {
+		_, err := check(t, map[string]any{"mode": "read", "repository": repo, "ref": "pull/8/head", "trust": "pr-author-writes"})
+		if err == nil || err.Error() != "the pull request's author drive-by cannot write to acme/app: a member trusts it first" {
+			t.Fatalf("err = %v", err)
+		}
+	})
+	t.Run("a member's trust sends no trust, and nothing is asked", func(t *testing.T) {
+		if _, err := check(t, map[string]any{"mode": "read", "repository": repo, "ref": "pull/8/head"}); err != nil {
+			t.Fatalf("refused: %v", err)
+		}
+	})
+	t.Run("review and fix works on the pull request's own branch, never a fork's", func(t *testing.T) {
+		spec, err := check(t, map[string]any{"mode": "write", "repository": repo, "ref": "pull/7/head", "trust": "pr-author-writes"})
+		if err != nil || spec.Source.Branch != "fix/router" {
+			t.Fatalf("branch %q, err %v", spec.Source.Branch, err)
+		}
+		_, err = check(t, map[string]any{"mode": "write", "repository": repo, "ref": "pull/9/head"})
+		if err == nil || !strings.Contains(err.Error(), "comes from a fork") {
+			t.Fatalf("a fork's pull request was accepted: %v", err)
+		}
+	})
+}

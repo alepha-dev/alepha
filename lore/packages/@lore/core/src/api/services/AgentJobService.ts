@@ -104,10 +104,24 @@ export class AgentJobService {
         );
       }
     }
-    // A write job not on one quest is named after itself (#Q4248).
+    // A pull request's head read by an automation is never trusted: only a
+    // member's own run may skip the author's check (#Q4251).
+    if (
+      request.automationId &&
+      source.ref?.startsWith("pull/") &&
+      source.mode !== "none"
+    ) {
+      source.trust = "pr-author-writes";
+    }
+    // A write job not on one quest is named after itself (#Q4248); one on a
+    // pull request works on its branch, which Bay asks GitHub for (#Q4251).
     const id = randomUUID();
     const jobName = `job-${id.slice(0, 8)}`;
-    if (source.mode === "write" && !source.branch) {
+    if (
+      source.mode === "write" &&
+      !source.branch &&
+      !source.ref?.startsWith("pull/")
+    ) {
       source.branch =
         this.oneQuest(request) === undefined
           ? `lore/${jobName}`
@@ -180,6 +194,7 @@ export class AgentJobService {
         ...(request.source.branch && request.source.mode === "write"
           ? { branch: request.source.branch }
           : {}),
+        ...(request.source.trust ? { trust: request.source.trust } : {}),
       };
     }
     if (!hasRepository) return { mode: "none" };

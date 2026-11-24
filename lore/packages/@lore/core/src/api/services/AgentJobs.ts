@@ -33,7 +33,16 @@ export interface AgentJobRequest {
    * is refused when the project has no GitHub repository or the host's Bay
    * predates sources. Absent, {@link defaultSource} applies.
    */
-  source?: { mode: HostJobSource["mode"]; ref?: string; branch?: string };
+  source?: {
+    mode: HostJobSource["mode"];
+    ref?: string;
+    branch?: string;
+    /**
+     * A job at `pull/<n>/head` whose author must be able to write to the
+     * repository (#Q4251); absent is a member's trust.
+     */
+    trust?: "pr-author-writes";
+  };
   /**
    * What the job needs when the request names no source: `write` for a
    * quest's build, `read` for everything else. Falls back to `none` on a

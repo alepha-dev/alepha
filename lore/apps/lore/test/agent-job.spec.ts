@@ -387,6 +387,23 @@ describe("the agent job", () => {
       expect((await w.repos.jobs.findMany({})).length).toBe(before + 2);
     });
 
+    it("never lets an automation skip a pull request author's check (#Q4251)", async ({
+      expect,
+    }) => {
+      await makeAgentHost(w);
+      await withRepository();
+      await withSources();
+      const job = await triage(w, {
+        automationId: "0b3c6a2e-1d4f-4a8b-9c7d-2e5f6a7b8c9d",
+        source: { mode: "read", ref: "pull/5/head" },
+      });
+      expect(job.input.source).toEqual({
+        mode: "read",
+        ref: "pull/5/head",
+        trust: "pr-author-writes",
+      });
+    });
+
     it("keeps the commit and a kept worktree's warning from the terminal ack", async ({
       expect,
     }) => {

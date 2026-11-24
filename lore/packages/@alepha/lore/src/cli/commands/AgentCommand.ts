@@ -45,8 +45,10 @@ export class AgentCommand {
   public readonly run = $command({
     name: "run",
     description:
-      "Run a prompt on an Agent host: triage (the inbox and the open errors), build --quest <n>, or text --text '...'; --wait follows its log",
-    args: z.enum(["triage", "build", "text"]).meta({ title: "prompt" }),
+      "Run a prompt on an Agent host: triage (the inbox and the open errors), build --quest <n>, review-pr --pr <n> [--fix] [--trust], or text --text '...'; --wait follows its log",
+    args: z
+      .enum(["triage", "build", "text", "review-pr"])
+      .meta({ title: "prompt" }),
     flags: z.object({
       project: z
         .text({
@@ -56,7 +58,25 @@ export class AgentCommand {
         .optional(),
       quest: z
         .integer()
-        .describe("The quest a build works, by its number.")
+        .describe(
+          "The quest a build works, or the one a review-pr is about, by its number.",
+        )
+        .optional(),
+      pr: z
+        .integer()
+        .describe("The pull request a review-pr reviews, by its number.")
+        .optional(),
+      fix: z
+        .boolean()
+        .describe(
+          "A review-pr that pushes its fixes to the pull request's branch; refused for a fork",
+        )
+        .optional(),
+      trust: z
+        .boolean()
+        .describe(
+          "You trust the pull request's author: the host does not check that they can write to the repository first",
+        )
         .optional(),
       text: z.text({ description: "A text prompt's words." }).optional(),
       host: z
@@ -120,6 +140,9 @@ export class AgentCommand {
           body: {
             prompt: args,
             ...(flags.quest === undefined ? {} : { quest: flags.quest }),
+            ...(flags.pr === undefined ? {} : { pr: flags.pr }),
+            ...(flags.fix ? { fix: true } : {}),
+            ...(flags.trust ? { trust: true } : {}),
             ...(flags.text ? { text: flags.text } : {}),
             ...(flags.host ? { host: flags.host } : {}),
             ...(flags.agent ? { agent: flags.agent } : {}),

@@ -7,14 +7,33 @@ import { z } from "alepha";
  */
 export const agentRunParamsSchema = projectParamsSchema.extend({
   prompt: z
-    .enum(["triage", "build", "text"])
+    .enum(["triage", "build", "text", "review-pr"])
     .describe(
-      "What to run: `triage` (the project's Triage prompt over the feedback inbox and the open errors), `build` (the Build prompt on one accepted quest, with `quest`), or `text` (your own words, in `text`).",
+      "What to run: `triage` (the project's Triage prompt over the feedback inbox and the open errors), `build` (the Build prompt on one accepted quest, with `quest`), `review-pr` (the Review prompt on a pull request, with `pr`), or `text` (your own words, in `text`).",
     ),
   quest: z
     .integer()
     .optional()
-    .describe("The quest a `build` works, by its number."),
+    .describe(
+      "The quest a `build` works, or the one a `review-pr` is about, by its number.",
+    ),
+  pr: z
+    .integer()
+    .min(1)
+    .optional()
+    .describe("The pull request a `review-pr` reviews, by its number."),
+  fix: z
+    .boolean()
+    .optional()
+    .describe(
+      "A `review-pr` that pushes its fixes to the pull request's branch (a write job); refused for a fork.",
+    ),
+  trust: z
+    .boolean()
+    .optional()
+    .describe(
+      "You trust the pull request's author: the host does not check that they can write to the repository first. Never set by an automation.",
+    ),
   text: z.string().max(131_072).optional().describe("A `text` prompt's words."),
   host: z
     .string()

@@ -324,6 +324,7 @@ export default defineConfig({
         "agentPrompts.settings.feedbackLoop.",
         "agentPrompts.settings.questLoop.",
         "agentPrompts.settings.weeklyStatus.",
+        "agentPrompts.settings.prReview.",
         "agentPrompts.settings.useCaseTest.",
         "agentPrompts.settings.useCaseSpec.",
         "agentPrompts.settings.personaExplore.",

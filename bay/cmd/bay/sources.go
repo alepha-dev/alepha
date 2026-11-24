@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -159,7 +160,9 @@ func (s *jobSource) validate() error {
 		return fmt.Errorf("%q is not a branch, a tag, a commit or pull/<n>/head", s.Ref)
 	}
 	switch {
-	case s.Mode == sourceWrite && s.Branch == "":
+	case s.Mode == sourceWrite && s.Branch == "" && !pullRefPattern.MatchString(s.Ref):
+		// A write at a pull request's head may leave its branch to Bay,
+		// which asks GitHub for the pull request's own (#Q4251).
 		return errors.New("a write source names its branch")
 	case s.Mode == sourceRead && s.Branch != "":
 		return errors.New("a read source names no branch")
@@ -498,6 +501,11 @@ and answers it with what releases its holds. A read job is prepareRead, a write
 job prepareWrite; a `none` job holds its workspace alone, as before sources.
 */
 func (r *processRunner) prepareWorkspace(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, error) {
+	// A pull request's author and branch are asked of GitHub before
+	// anything is made (#Q4251).
+	if err := r.checkPullRequest(ctx, u, &spec, log); err != nil {
+		return "", preparedSource{}, err
+	}
 	switch spec.Source.mode() {
 	case sourceRead:
 		return r.prepareRead(ctx, u, spec, log)
@@ -912,4 +920,106 @@ func (r *processRunner) keep(project, workspace, why string, log *jobLog) string
 	warning := fmt.Sprintf("kept %s/%s, %s", project, workspace, why)
 	log.Step(warning)
 	return warning
+}
+
+// ---------------------------------------------------------------------------
+// Pull requests (#Q4251).
+// ---------------------------------------------------------------------------
+
+// githubSlugPattern reads `owner/name` out of a GitHub repository URL.
+var githubSlugPattern = regexp.MustCompile(`^https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$`)
+
+// pullRequest is what `gh pr view` says of a pull request.
+type pullRequest struct {
+	Author struct {
+		Login string `json:"login"`
+	} `json:"author"`
+	IsCrossRepository bool   `json:"isCrossRepository"`
+	HeadRefName       string `json:"headRefName"`
+}
+
+/*
+checkPullRequest asks GitHub, as the jobs user and with its gh, what a job at
+`pull/<n>/head` needs to know before its agent starts:
+
+  - with `trust: pr-author-writes`, the author's permission on the
+    repository: an author with write, maintain or admin is the team, anyone
+    else fails the job, since the agent would read text from outside it. A
+    member's `--trust` sends no trust, and so skips this;
+  - for a write job that names no branch ("review and fix"), the pull
+    request's own branch, refused for a fork, whose branch is not in the
+    repository.
+
+Lore holds no GitHub token: the check runs where gh is.
+*/
+func (r *processRunner) checkPullRequest(ctx context.Context, u *user.User, spec *jobSpec, log *jobLog) error {
+	src := spec.Source
+	if src == nil || !pullRefPattern.MatchString(src.Ref) {
+		return nil
+	}
+	needBranch := src.Mode == sourceWrite && src.Branch == ""
+	if src.Trust == "" && !needBranch {
+		return nil
+	}
+	m := githubSlugPattern.FindStringSubmatch(src.Repository)
+	if m == nil {
+		return fmt.Errorf("%s is not a GitHub repository gh can ask about", src.Repository)
+	}
+	slug := m[1] + "/" + m[2]
+	number := pullRefPattern.FindStringSubmatch(src.Ref)[1]
+	stdout, stderr, code, err := r.toolRun(ctx, u, "gh",
+		[]string{"pr", "view", number, "--repo", slug, "--json", "author,isCrossRepository,headRefName"}, nil)
+	if err != nil {
+		return fmt.Errorf("could not ask GitHub about pull request #%s: %w", number, err)
+	}
+	if code != 0 {
+		return fmt.Errorf("could not read pull request #%s of %s: %s", number, slug, cut(strings.TrimSpace(stderr), 300))
+	}
+	var pr pullRequest
+	if err := json.Unmarshal([]byte(stdout), &pr); err != nil || pr.Author.Login == "" {
+		return fmt.Errorf("gh answered no author for pull request #%s of %s", number, slug)
+	}
+	if src.Trust == trustPRAuthorWrites {
+		out, errOut, code, err := r.toolRun(ctx, u, "gh",
+			[]string{"api", "repos/" + slug + "/collaborators/" + pr.Author.Login + "/permission"}, nil)
+		if err != nil || code != 0 {
+			// Not a collaborator answers 404: no permission at all.
+			if err == nil && strings.Contains(errOut, "404") {
+				out = `{"permission":"none"}`
+			} else {
+				return fmt.Errorf("could not read %s's permission on %s: %s", pr.Author.Login, slug, cut(strings.TrimSpace(errOut), 300))
+			}
+		}
+		var perm struct {
+			Permission string `json:"permission"`
+			RoleName   string `json:"role_name"`
+		}
+		_ = json.Unmarshal([]byte(out), &perm)
+		if !writes(perm.Permission) && !writes(perm.RoleName) {
+			return fmt.Errorf("the pull request's author %s cannot write to %s: a member trusts it first", pr.Author.Login, slug)
+		}
+		log.Step(fmt.Sprintf("pull request #%s by %s, who can write to %s", number, pr.Author.Login, slug))
+	}
+	if needBranch {
+		if pr.IsCrossRepository {
+			return fmt.Errorf("pull request #%s comes from a fork: its branch is not in %s, so a job cannot push to it", number, slug)
+		}
+		if !validRefName(pr.HeadRefName) || strings.HasPrefix(pr.HeadRefName, "pull/") {
+			return fmt.Errorf("pull request #%s's branch %q is not one this bay checks out", number, pr.HeadRefName)
+		}
+		// The pull request's own branch, continued from the remote.
+		copied := *src
+		copied.Branch = pr.HeadRefName
+		spec.Source = &copied
+	}
+	return nil
+}
+
+// writes is a permission that counts as the team: it can push.
+func writes(permission string) bool {
+	switch permission {
+	case "admin", "maintain", "write":
+		return true
+	}
+	return false
 }
