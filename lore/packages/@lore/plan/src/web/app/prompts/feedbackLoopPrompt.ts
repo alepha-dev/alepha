@@ -40,6 +40,8 @@ For each pending item:
 
 Accept it when it names something the project should change: a defect you can locate in the code, or a request that fits what this project is for. \`feedback_accept\`, then \`quest_create\` with \`feedback_shortId\` set to its number, a title, a description of what will change, an area from \`project_context\`, and objectives. One quest per accepted item, linked back to it.
 
+**Tag a quest \`needs-human\` when an agent should not build it alone**: you are not sure what it asks, it touches security, a migration or money, or it came from a report you could not reproduce in the code. A Build automation builds every new quest without that tag into a pull request, so leave the tag off only when the quest is clear and safe for an agent to carry to a merge.
+
 Reject it when it is a duplicate of an item already accepted, when it asks for something outside what this project does, or when it cannot be acted on as written and the reporter has not answered a question already asked in its discussion. \`feedback_reject\`.
 
 **When you are unsure, do neither.** Ask in the item's discussion with \`feedback_comment_add\` and leave it pending. An item you cannot decide is not an item to guess at: the reporter is told when you comment, and the next round will find it again.

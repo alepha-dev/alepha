@@ -42,6 +42,11 @@ export interface AgentJobRequest {
   startedByJobId?: string;
   /** The agent automation whose run this is (#Q4226). */
   automationId?: string;
+  /**
+   * A quest's build (#Q4229): the one job the chain guard lets a triage
+   * job's output start, when an automation starts it.
+   */
+  build?: boolean;
   subjectType: string;
   subjectId: string;
   /** Text from outside the team no member trusted: refused. */

@@ -289,10 +289,13 @@ export class AgentAutomationService {
   }
 
   /**
-   * How many of its jobs an automation runs at once: one.
+   * How many of its jobs an automation runs at once: a build its
+   * `concurrency` (#Q4229), every other kind one.
    */
-  public concurrencyOf(_automation: AgentAutomation): number {
-    return 1;
+  public concurrencyOf(automation: AgentAutomation): number {
+    return automation.promptKind === "build"
+      ? Math.max(1, automation.concurrency ?? 1)
+      : 1;
   }
 
   /**
@@ -387,6 +390,8 @@ export class AgentAutomationService {
       eventKeys: body.eventKeys ?? row?.eventKeys ?? undefined,
       settleSeconds: body.settleSeconds ?? row?.settleSeconds ?? 60,
       onlyIfWork: body.onlyIfWork ?? row?.onlyIfWork ?? false,
+      autoMerge: body.autoMerge ?? row?.autoMerge ?? false,
+      concurrency: body.concurrency ?? row?.concurrency ?? 1,
       enabled: body.enabled ?? row?.enabled ?? true,
     };
   }
@@ -405,6 +410,16 @@ export class AgentAutomationService {
     if (draft.promptKind !== "text" && draft.promptText) {
       throw new BadRequestError(
         `A ${draft.promptKind} automation runs the project's own prompt: only a text automation carries words`,
+      );
+    }
+    if ((draft.concurrency ?? 1) > 1 && draft.promptKind !== "build") {
+      throw new BadRequestError(
+        `Only a build automation runs several jobs at once: two ${draft.promptKind} runs would race on the same work`,
+      );
+    }
+    if (draft.autoMerge && draft.promptKind !== "build") {
+      throw new BadRequestError(
+        "Only a build automation opens pull requests to merge",
       );
     }
     if (draft.onlyIfWork && draft.promptKind === "text") {

@@ -99,6 +99,18 @@ export const agentAutomations = $entity({
      * project spends no tokens. A run by hand ignores it.
      */
     onlyIfWork: db.default(z.boolean(), false),
+    /**
+     * A build automation's pull requests ask for auto-merge through `gh`
+     * (#Q4229); the repository's own protections decide the rest.
+     */
+    autoMerge: db.default(z.boolean(), false),
+    /**
+     * How many of its jobs a build automation runs at once (#Q4229), one
+     * quest per job. Every other kind runs one: two triages at once would
+     * race on the same inbox and workspace. Above the host's own limit the
+     * extra jobs wait in its queue.
+     */
+    concurrency: db.default(z.integer().min(1).max(16), 1),
     /** The last job a run started. A soft reference, read by id. */
     lastJobId: z.uuid().optional(),
     lastRunAt: z.string().optional(),

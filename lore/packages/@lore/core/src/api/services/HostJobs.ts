@@ -130,6 +130,15 @@ export interface HostJobQueue {
   cancel(jobId: string, by?: string): Promise<HostJobSummary>;
   /** An automation's jobs that are still queued or running (#Q4226). */
   activeForAutomation(automationId: string): Promise<HostJobSummary[]>;
+  /**
+   * The subjects of every job an automation ever started, whatever their
+   * outcome (#Q4229): a quest a build automation built is never picked
+   * again.
+   */
+  subjectsOfAutomation(
+    automationId: string,
+    subjectType: string,
+  ): Promise<string[]>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
   /**
@@ -249,6 +258,18 @@ export class HostJobs {
     automationId: string,
   ): Promise<HostJobSummary[]> {
     return (await this.queue?.activeForAutomation(automationId)) ?? [];
+  }
+
+  /**
+   * What an automation's jobs were about (#Q4229), by subject id.
+   */
+  public async subjectsOfAutomation(
+    automationId: string,
+    subjectType: string,
+  ): Promise<string[]> {
+    return (
+      (await this.queue?.subjectsOfAutomation(automationId, subjectType)) ?? []
+    );
   }
 
   public async chainHolds(jobId: string, kind: HostJobKind): Promise<boolean> {

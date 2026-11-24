@@ -305,6 +305,7 @@ export {
 export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
+export { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
 export { EpicAgentController } from "./controllers/EpicAgentController.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";
 export { EpicAgentService } from "./services/EpicAgentService.ts";
