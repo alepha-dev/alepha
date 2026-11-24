@@ -133,4 +133,34 @@ describe("MarkdownEditorInner mode toggle", () => {
       "border",
     );
   });
+
+  it("gives the editable frame a Control input's hover line and focus ring (#Q4270)", () => {
+    const { container: framed } = render(
+      <MarkdownEditorInner value="x" onChange={() => {}} mode="edit" />,
+    );
+    const edit = framed.querySelector(".lore-md-edit")!.className.split(" ");
+    expect(edit).toContain("hover:border-border-hover");
+    expect(edit).toContain("focus-within:border-ring");
+    expect(edit).toContain("focus-within:ring-3");
+
+    // A rendered preview is not a field: it keeps a still frame.
+    const { container: view } = render(
+      <MarkdownEditorInner value="x" onChange={() => {}} mode="view" />,
+    );
+    expect(view.querySelector(".lore-md-view")!.className).not.toContain(
+      "focus-within",
+    );
+
+    const { container: bare } = render(
+      <MarkdownEditorInner
+        value="x"
+        onChange={() => {}}
+        mode="edit"
+        variant="bare"
+      />,
+    );
+    expect(bare.querySelector(".lore-md-edit")!.className).not.toContain(
+      "hover:",
+    );
+  });
 });
