@@ -159,6 +159,61 @@ test.describe("Chat agents", () => {
   });
 });
 
+/**
+ * A long playbook must not push Save out of reach (#Q4238): at the reporter's
+ * 1920x929 the dialog stays inside the viewport, its body scrolls, and Save
+ * is on screen and saves.
+ */
+test.describe("Chat agent dialog", () => {
+  test("a long playbook keeps the dialog inside the viewport and Save reachable", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1920, height: 929 });
+    await registerAndVerify(
+      page,
+      `agents-long-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const { slug } = await createProjectViaWizard(page, "Long playbook", {
+      capabilities: ["chat"],
+    });
+    await page.goto(`/${slug}/settings/chat/agents`);
+    await page.getByTestId("chat-agent-create").click();
+    const form = page.getByTestId("chat-agent-form");
+    await expect(form).toBeVisible();
+    await form.getByTestId("chat-agent-handle").locator("input").fill("bruce");
+    await form.getByTestId("chat-agent-name").locator("input").fill("Bruce");
+    // Inserted in one go: typing it key by key would take a minute, and
+    // Enter would continue the list markup.
+    const playbook = Array.from(
+      { length: 120 },
+      (_, i) => `Step ${i + 1}: inspect the next part of the project.`,
+    ).join("\n");
+    const editor = form.locator(".lore-md-edit .cm-content");
+    await editor.waitFor({ state: "visible", timeout: 10_000 });
+    await editor.click();
+    await page.keyboard.insertText(playbook);
+    await expect(editor).toContainText("Step 120:");
+
+    const dialog = page.getByTestId("chat-agent-dialog");
+    const box = await dialog.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(929);
+    const save = form.getByTestId("chat-agent-save");
+    await expect(save).toBeInViewport();
+
+    const saved = page.waitForResponse(
+      (r) =>
+        r.request().method() === "POST" && r.url().endsWith("/chat/agents"),
+    );
+    await save.click();
+    expect((await saved).ok()).toBe(true);
+    await expect(form).toBeHidden();
+  });
+});
+
 const inviteAndAccept = async (
   owner: Page,
   member: { page: Page; email: string },

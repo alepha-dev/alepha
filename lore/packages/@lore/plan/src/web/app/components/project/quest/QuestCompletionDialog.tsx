@@ -80,7 +80,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
         list pushed the summary editor and the confirm button off screen and
         the quest could not be closed at all.
       */}
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-visible sm:max-w-3xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>{tr("quest.view.complete.title")}</DialogTitle>
           <DialogDescription>

@@ -62,7 +62,12 @@ const ChatAgentDialog = (props: ChatAgentDialogProps) => {
 
   return (
     <Dialog open onOpenChange={(open) => !open && props.onClose()}>
-      <DialogContent className="sm:max-w-2xl">
+      {/* A flex column whose body alone scrolls, so the title and the
+          footer's Save stay in view however long the playbook (#Q4238). */}
+      <DialogContent
+        className="flex flex-col overflow-hidden sm:max-w-2xl"
+        data-testid="chat-agent-dialog"
+      >
         {!props.agentId ? (
           <CreateForm {...props} />
         ) : agent ? (
@@ -138,7 +143,7 @@ const AgentForm = (props: {
   const { loading } = useFormState(props.form, ["loading"]);
   return (
     <form
-      className="flex flex-col gap-4"
+      className="flex min-h-0 flex-1 flex-col gap-4"
       data-testid="chat-agent-form"
       onSubmit={(event) => {
         event.preventDefault();
@@ -152,55 +157,60 @@ const AgentForm = (props: {
             : tr("chat.agents.form.createTitle")}
         </DialogTitle>
       </DialogHeader>
-      <div className="grid gap-4 sm:grid-cols-[96px_1fr]">
-        <div data-testid="chat-agent-avatar-field">
-          <Control
-            input={props.input.avatar}
-            label={tr("chat.agents.form.avatar")}
-            upload={{
-              accept: "image/*",
-              maxSize: 2 * 1024 * 1024,
-              // `ChatBuckets.AGENT_AVATAR_BUCKET`, a server class the page
-              // does not import.
-              bucket: "chat-agent-avatars",
-              image: { maxWidth: 256 },
-            }}
-          />
+      <div
+        className="-mx-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4"
+        data-testid="chat-agent-form-body"
+      >
+        <div className="grid gap-4 sm:grid-cols-[96px_1fr]">
+          <div data-testid="chat-agent-avatar-field">
+            <Control
+              input={props.input.avatar}
+              label={tr("chat.agents.form.avatar")}
+              upload={{
+                accept: "image/*",
+                maxSize: 2 * 1024 * 1024,
+                // `ChatBuckets.AGENT_AVATAR_BUCKET`, a server class the page
+                // does not import.
+                bucket: "chat-agent-avatars",
+                image: { maxWidth: 256 },
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-4">
+            <div data-testid="chat-agent-handle">
+              <Control
+                input={props.input.handle}
+                label={tr("chat.agents.form.handle")}
+                description={tr("chat.agents.form.handleHint")}
+                icon={AtSign}
+              />
+            </div>
+            <div data-testid="chat-agent-name">
+              <Control
+                input={props.input.name}
+                label={tr("chat.agents.form.name")}
+                icon={Bot}
+              />
+            </div>
+            <div data-testid="chat-agent-model">
+              <Control
+                input={props.input.model}
+                label={tr("chat.agents.form.model")}
+                description={tr("chat.agents.form.modelHint")}
+                placeholder={tr("chat.agents.form.modelPlaceholder")}
+                icon={Cpu}
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4">
-          <div data-testid="chat-agent-handle">
-            <Control
-              input={props.input.handle}
-              label={tr("chat.agents.form.handle")}
-              description={tr("chat.agents.form.handleHint")}
-              icon={AtSign}
-            />
-          </div>
-          <div data-testid="chat-agent-name">
-            <Control
-              input={props.input.name}
-              label={tr("chat.agents.form.name")}
-              icon={Bot}
-            />
-          </div>
-          <div data-testid="chat-agent-model">
-            <Control
-              input={props.input.model}
-              label={tr("chat.agents.form.model")}
-              description={tr("chat.agents.form.modelHint")}
-              placeholder={tr("chat.agents.form.modelPlaceholder")}
-              icon={Cpu}
-            />
-          </div>
-        </div>
+        <Control
+          input={props.input.prePrompt}
+          label={tr("chat.agents.form.prePrompt")}
+          description={tr("chat.agents.form.prePromptHint")}
+          custom={PrePromptEditor}
+        />
       </div>
-      <Control
-        input={props.input.prePrompt}
-        label={tr("chat.agents.form.prePrompt")}
-        description={tr("chat.agents.form.prePromptHint")}
-        custom={PrePromptEditor}
-      />
-      <DialogFooter>
+      <DialogFooter className="mt-0">
         <Button type="button" variant="outlined" onClick={props.onClose}>
           {tr("chat.agents.form.cancel")}
         </Button>
@@ -213,8 +223,9 @@ const AgentForm = (props: {
 };
 
 /**
- * The pre-prompt's Markdown editor, tall enough for a playbook, with the
- * edit and view toggle in its corner as the release description has it.
+ * The pre-prompt's Markdown editor, tall enough for a playbook and bounded
+ * to half the viewport, with the edit and view toggle in its corner as the
+ * release description has it.
  */
 const PrePromptEditor = (props: {
   value?: unknown;
@@ -229,13 +240,16 @@ const PrePromptEditor = (props: {
         iconOnly
         className="absolute top-1.5 right-1.5 z-10 border bg-transparent"
       />
-      <MarkdownEditor
-        value={typeof props.value === "string" ? props.value : ""}
-        onChange={(next) => props.onChange?.(next)}
-        mode={mode}
-        lineNumbers={false}
-        minHeight={320}
-      />
+      {/* Bounded: a long playbook scrolls here, not the whole dialog. */}
+      <div className="max-h-[50dvh] overflow-y-auto rounded-lg">
+        <MarkdownEditor
+          value={typeof props.value === "string" ? props.value : ""}
+          onChange={(next) => props.onChange?.(next)}
+          mode={mode}
+          lineNumbers={false}
+          minHeight={320}
+        />
+      </div>
     </div>
   );
 };

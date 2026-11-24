@@ -76,7 +76,7 @@ const AppAnalyticsDimensionDialog = (
         if (!open) props.onClose();
       }}
     >
-      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-2xl">
+      <DialogContent className="flex max-h-[85dvh] flex-col overflow-visible sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{dimension ? tr(TITLE[dimension]) : ""}</DialogTitle>
         </DialogHeader>
