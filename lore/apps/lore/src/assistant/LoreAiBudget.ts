@@ -39,11 +39,12 @@ export class LoreAiBudget extends AiBudgetService {
     userId: string,
     projectId: number,
   ): Promise<string | undefined> {
+    // The project's window reads `settings.current`: load it first (#Q4244).
+    const { budgetWindowHours: hours } = await this.settings.load();
     const project = await this.projects.usage(projectId);
     if (project && project.used < project.limit) return undefined;
     const member = await this.memberUsage(userId);
     if (!member || member.used < member.limit) return undefined;
-    const hours = this.settings.current.budgetWindowHours;
     const when = (iso: string | undefined) =>
       iso
         ? ` Enough frees up at ${iso.slice(0, 16).replace("T", " ")} UTC.`
@@ -86,6 +87,7 @@ export class LoreAiBudget extends AiBudgetService {
   protected override async usage(
     userId: string,
   ): Promise<{ used: number; limit: number } | undefined> {
+    await this.settings.load();
     const pinned = this.scope.pinnedProject();
     if (pinned !== undefined) {
       const project = await this.projects.usage(pinned);
@@ -107,7 +109,7 @@ export class LoreAiBudget extends AiBudgetService {
     | { used: number; limit: number; rows: { at: string; tokens: number }[] }
     | undefined
   > {
-    const { budgetTokens } = this.settings.current;
+    const { budgetTokens } = await this.settings.load();
     if (!budgetTokens) return undefined;
     const rows = await this.messages.findMany({
       where: {

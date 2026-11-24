@@ -248,6 +248,9 @@ export class LoreChatResponder {
     name: string,
     projectId: number,
   ): Promise<string | undefined> {
+    // The turn limit reads `settings.current`, which on Workers is the
+    // compiled default until something loads the parameter.
+    await this.settings.load();
     // The project's budget first, then the member's (#Q4237): the refusal
     // names the one that ran out, and when enough of it frees up.
     const spent = await this.lore.refusal(userId, projectId);

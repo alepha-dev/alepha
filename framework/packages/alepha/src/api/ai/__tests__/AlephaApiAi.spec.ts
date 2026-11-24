@@ -6,6 +6,7 @@ import {
   clientTool,
   MemoryAiProvider,
 } from "alepha/ai";
+import { ParameterProvider } from "alepha/api/parameters";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import {
@@ -523,6 +524,71 @@ describe("alepha/api/ai", () => {
     await jobs.purgeConversations.trigger();
     expect(await rows.conversations.count()).toBe(0);
     expect(await rows.messages.count()).toBe(0);
+  });
+});
+
+/**
+ * A provider that can drop what it cached, as a Worker isolate that never
+ * loaded the parameter has nothing cached: on serverless nothing loads
+ * parameters at start, so the value an operator saved is in the database
+ * only.
+ */
+class ForgetfulParameterProvider extends ParameterProvider {
+  public forget(): void {
+    this.cachedCurrent.clear();
+    this.cachedNext.clear();
+    this.loaded.clear();
+    this.loadedAt.clear();
+  }
+}
+
+describe("alepha/api/ai settings saved by another isolate", () => {
+  const fresh = async () => {
+    const booted = await boot("sqlite", (alepha) =>
+      alepha.with({
+        provide: ParameterProvider,
+        use: ForgetfulParameterProvider,
+      }),
+    );
+    const saved = async (patch: Record<string, number>) => {
+      await booted.settings.parameter.set({
+        ...booted.settings.current,
+        ...patch,
+      });
+      booted.alepha.inject(ForgetfulParameterProvider).forget();
+    };
+    return { ...booted, saved };
+  };
+
+  it("applies the token budget read from the database", async ({ expect }) => {
+    const { chat, read, ai, saved } = await fresh();
+    await saved({ budgetTokens: 100 });
+    ai.script([
+      { type: "text", text: "a" },
+      { type: "usage", inputTokens: 90, outputTokens: 20 },
+    ]);
+    await read(await chat("u1", { message: "one" }));
+
+    expect((await chat("u1", { message: "two" })).status).toBe(429);
+  });
+
+  it("applies the turn rate read from the database", async ({ expect }) => {
+    const { chat, read, saved } = await fresh();
+    await saved({ turnsPerMinute: 2 });
+    await read(await chat("u1", { message: "one" }));
+    await read(await chat("u1", { message: "two" }));
+
+    expect((await chat("u1", { message: "three" })).status).toBe(429);
+  });
+
+  it("purges with the retention read from the database", async ({ expect }) => {
+    const { alepha, chat, read, rows, saved } = await fresh();
+    await read(await chat("u1", { message: "old" }));
+    await saved({ retentionDays: 7 });
+    await alepha.inject(DateTimeProvider).travel([10, "days"]);
+
+    await alepha.inject(AiJobs).purgeConversations.trigger();
+    expect(await rows.conversations.count()).toBe(0);
   });
 });
 

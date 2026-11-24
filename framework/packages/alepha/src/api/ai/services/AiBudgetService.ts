@@ -44,7 +44,7 @@ export class AiBudgetService {
   protected async usage(
     userId: string,
   ): Promise<{ used: number; limit: number } | undefined> {
-    const { budgetTokens, budgetWindowHours } = this.settings.current;
+    const { budgetTokens, budgetWindowHours } = await this.settings.load();
     if (!budgetTokens) {
       return undefined;
     }
