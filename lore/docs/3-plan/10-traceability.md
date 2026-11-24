@@ -26,9 +26,9 @@ Picking a release in the **Release** filter shows its readiness: the Must
 and Should requirements verified out of all, and the failing Musts by name.
 
 By default this is a warning. **Block a release on a failing Must**, under
-**Settings ▸ Plan**, makes it a rule: publishing a release whose Must
-requirements fail is refused, naming them. The switch needs the Requirements
-option on.
+**Settings ▸ Plan ▸ Requirements**, makes it a rule: publishing a release
+whose Must requirements fail is refused, naming them. The tab is listed while
+the Requirements option is on.
 
 ## Coverage gaps
 

@@ -228,6 +228,12 @@ export class WorkShell {
           // off (#E153, answer 74).
           options: ["agentPrompts", "requirements"],
         },
+        {
+          // What Requirements adds to Plan (#Q4259), out of the Quests tab.
+          route: "projectSettingsRequirements",
+          labelKey: "project.settings.tab.requirements",
+          option: "requirements",
+        },
       ],
     });
 

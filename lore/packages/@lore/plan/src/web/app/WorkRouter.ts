@@ -495,6 +495,20 @@ export class WorkRouter {
   });
 
   /**
+   * Plan > Requirements (#Q4259): the Plan options Requirements adds, listed
+   * while the `requirements` option is on.
+   */
+  projectSettingsRequirements = $pageProjectSettings({
+    name: "projectSettingsRequirements",
+    path: "/work/requirements",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Requirements`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsRequirementsPage.tsx"),
+  });
+
+  /**
    * Plan > Tags (#Q4061, "Tag colours" until #Q4182): a palette colour per quest tag, out of the
    * Features tab.
    */

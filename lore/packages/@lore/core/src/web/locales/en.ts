@@ -1269,6 +1269,7 @@ export default {
   "project.settings.tab.roadmap": "Roadmap",
   "project.settings.tab.quality": "Quality",
   "project.settings.tab.prompts": "Prompts",
+  "project.settings.tab.requirements": "Requirements",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
