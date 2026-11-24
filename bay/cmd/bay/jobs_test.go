@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -81,6 +82,9 @@ func newJobWorld(t *testing.T) *jobWorld {
 		t.Skip("jobs run on unix hosts")
 	}
 	w := &jobWorld{f: newDeployFixture(t), frames: &frameRecorder{}, bin: t.TempDir(), work: t.TempDir()}
+	// Read trees are not writable (#Q4246): made writable again before the
+	// temporary directory is removed.
+	t.Cleanup(func() { _ = exec.Command("chmod", "-R", "u+w", w.work).Run() })
 	w.sink = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/estates/commands/"), "/job")
 		spec, ok := w.specs.Load(id)

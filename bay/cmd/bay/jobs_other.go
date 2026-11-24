@@ -25,3 +25,7 @@ func killGroup(pid int, _ bool) {
 func lockFile(string) (func(), bool, error) {
 	return nil, false, errors.New("jobs run on unix hosts only")
 }
+
+func lockFileForRead(string, func() error) (func(), bool, bool, error) {
+	return nil, false, false, errors.New("jobs run on unix hosts only")
+}

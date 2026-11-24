@@ -482,15 +482,254 @@ func (r *processRunner) prepareMirror(ctx context.Context, u *user.User, project
 	return sha, nil
 }
 
-// prepareSource prepares what a job's source asks for before its agent
-// starts. A `none` source prepares nothing.
-func (r *processRunner) prepareSource(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (preparedSource, error) {
+/*
+prepareWorkspace prepares an agent job's directory before its agent starts,
+and answers it with what releases its holds. A read job is prepareRead; a
+`none` job holds its workspace alone, as before sources; a write job also
+fetches the mirror and resolves its ref.
+*/
+func (r *processRunner) prepareWorkspace(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, func(), error) {
+	if spec.Source.mode() == sourceRead {
+		return r.prepareRead(ctx, u, spec, log)
+	}
+	unlock, err := lockWorkspace(r.root, spec.Project, spec.Workspace)
+	if err != nil {
+		return "", preparedSource{}, nil, err
+	}
+	dir, err := r.workspaceDir(ctx, u, spec.Project, spec.Workspace)
+	if err != nil {
+		unlock()
+		return "", preparedSource{}, nil, err
+	}
+	log.Step("workspace " + spec.Project + "/" + spec.Workspace + " ready")
 	if spec.Source.mode() == sourceNone {
-		return preparedSource{}, nil
+		return dir, preparedSource{}, unlock, nil
 	}
 	sha, err := r.prepareMirror(ctx, u, spec.Project, spec.Source, log)
 	if err != nil {
-		return preparedSource{}, err
+		unlock()
+		return "", preparedSource{}, nil, err
 	}
-	return preparedSource{Commit: sha}, nil
+	return dir, preparedSource{Commit: sha}, unlock, nil
+}
+
+// ---------------------------------------------------------------------------
+// Read trees (#Q4246).
+// ---------------------------------------------------------------------------
+
+// treesName is the directory a project's read trees live in, one per commit.
+// Its leading dot keeps a workspace from taking it, like the mirror's.
+const treesName = ".trees"
+
+// srcLink is the link in a read job's workspace that reaches its tree.
+const srcLink = "src"
+
+/*
+busyError is a job this bay cannot start YET, as opposed to one it refuses:
+its slots are full, its workspace is held, or its workspace reads another
+commit while a run holds it. The job's ack says `failed` with step `busy`
+(#Q4249), and Lore queues it again when a job of this host ends.
+*/
+type busyError struct{ msg string }
+
+func (e busyError) Error() string { return e.msg }
+
+// stepBusy is the step of a busy job's failed ack.
+const stepBusy = "busy"
+
+func (r *processRunner) treesDir(u *user.User, project string) string {
+	return filepath.Join(r.base(u), project, treesName)
+}
+
+// treeHoldPath is the lock a read job holds on its tree, shared with the
+// other readers of that commit, under Bay's root.
+func treeHoldPath(root, project, sha string) string {
+	return filepath.Join(root, workspaceLocks, project, treesName, sha+".lock")
+}
+
+/*
+ensureTree makes the read tree of a commit once, under the mirror lock: a
+detached `git worktree` of the mirror, made BY THE JOBS USER and then made
+read-only by it (`chmod -R a-w`). Not owned by Bay's user: Bay does no
+filesystem work as root in the jobs user's tree, and git refuses to work in a
+repository another user owns. The jobs user can undo the chmod: it is a guard
+against a run changing code other runs read, not a boundary.
+
+It answers with the tree's hold taken, before the mirror lock is released, so
+the clean-up of another job never removes a tree between its making and its
+first reader.
+*/
+func (r *processRunner) ensureTree(ctx context.Context, u *user.User, project, sha string) (string, func(), error) {
+	unlock, err := lockMirror(ctx, r.root, project)
+	if err != nil {
+		return "", nil, err
+	}
+	defer unlock()
+	tree := filepath.Join(r.treesDir(u, project), sha)
+	if head, err := r.git(ctx, u, tree, "rev-parse", "HEAD"); err != nil || head != sha {
+		// Missing, or left half made by a run that died: made again.
+		if _, err := os.Lstat(tree); err == nil {
+			if err := r.removeTree(ctx, u, project, tree); err != nil {
+				return "", nil, err
+			}
+		}
+		if err := r.asJobsUser(ctx, u, "mkdir", "-p", "-m", "700", "--", r.treesDir(u, project)); err != nil {
+			return "", nil, fmt.Errorf("could not create the read trees of %s: %w", project, err)
+		}
+		if _, err := r.git(ctx, u, r.mirrorDir(u, project), "worktree", "add", "--detach", "--quiet", tree, sha); err != nil {
+			return "", nil, fmt.Errorf("could not check out %s: %w", sha, err)
+		}
+		if err := r.asJobsUser(ctx, u, "chmod", "-R", "--", "a-w", tree); err != nil {
+			return "", nil, fmt.Errorf("could not make the tree of %s read-only: %w", sha, err)
+		}
+	}
+	holdDir := filepath.Dir(treeHoldPath(r.root, project, sha))
+	if err := os.MkdirAll(holdDir, 0o700); err != nil {
+		return "", nil, err
+	}
+	release, _, ok, err := lockFileForRead(treeHoldPath(r.root, project, sha), nil)
+	if err != nil {
+		return "", nil, err
+	}
+	if !ok {
+		// Only a clean-up holds a tree's lock exclusively, and it holds the
+		// mirror lock too, which this job has: it cannot happen.
+		return "", nil, busyError{fmt.Sprintf("the tree of %s is being removed", sha)}
+	}
+	return tree, release, nil
+}
+
+/*
+removeTree removes one read tree, the caller holding the mirror lock: as the
+jobs user, the tree made writable again (`chmod -R u+w`, which follows no
+link), then `git worktree remove --force`, and a prune for what that leaves.
+*/
+func (r *processRunner) removeTree(ctx context.Context, u *user.User, project, tree string) error {
+	if err := r.asJobsUser(ctx, u, "chmod", "-R", "--", "u+w", tree); err != nil {
+		return fmt.Errorf("could not make %s writable to remove it: %w", tree, err)
+	}
+	mirror := r.mirrorDir(u, project)
+	if _, err := r.git(ctx, u, mirror, "worktree", "remove", "--force", tree); err != nil {
+		// Not a worktree git knows: a directory, removed as one.
+		if err := r.asJobsUser(ctx, u, "rm", "-rf", "--", tree); err != nil {
+			return err
+		}
+	}
+	_, _ = r.git(ctx, u, mirror, "worktree", "prune")
+	return nil
+}
+
+/*
+holdRead takes a read job's workspace: a shared hold, so any number of read
+jobs run in it together, refused by a write job's exclusive one. `./src` is
+pointed at the job's tree only when no run holds the workspace: a link never
+moves under a running job. A read job that resolves to another commit than the
+one a held workspace reads is busy, and goes back to Lore's queue; with the
+fetch TTL a burst of jobs resolves to one commit, so this is rare.
+*/
+func (r *processRunner) holdRead(ctx context.Context, u *user.User, project, workspace, dir, tree string) (func(), error) {
+	locks := filepath.Join(r.root, workspaceLocks, project)
+	if err := os.MkdirAll(locks, 0o700); err != nil {
+		return nil, err
+	}
+	link := filepath.Join(dir, srcLink)
+	points := func() bool {
+		target, err := os.Readlink(link)
+		return err == nil && target == tree
+	}
+	release, _, ok, err := lockFileForRead(filepath.Join(locks, workspace+".lock"), func() error {
+		if points() {
+			return nil
+		}
+		// `ln -sfn` as the jobs user: the link is that user's, and replacing
+		// it never follows what it pointed at.
+		if err := r.asJobsUser(ctx, u, "ln", "-sfn", "--", tree, link); err != nil {
+			return fmt.Errorf("could not point %s/%s/src at its tree: %w", project, workspace, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, busyError{fmt.Sprintf("a job changing code runs in the workspace %s/%s: this read waits for it", project, workspace)}
+	}
+	if !points() {
+		release()
+		target, _ := os.Readlink(link)
+		return nil, busyError{fmt.Sprintf("the workspace %s/%s reads %s for a running job: this read of %s waits for it to end",
+			project, workspace, shortSHA(filepath.Base(target)), shortSHA(filepath.Base(tree)))}
+	}
+	return release, nil
+}
+
+/*
+prepareRead prepares a read job: the mirror fetched, its ref resolved, the
+commit's tree made once and held, and the workspace held with `./src` on it.
+The run's directory stays `<jobs base>/<project>/<workspace>`, so an agent CLI
+that keeps its sessions by directory can resume there.
+*/
+func (r *processRunner) prepareRead(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, func(), error) {
+	dir, err := r.workspaceDir(ctx, u, spec.Project, spec.Workspace)
+	if err != nil {
+		return "", preparedSource{}, nil, err
+	}
+	sha, err := r.prepareMirror(ctx, u, spec.Project, spec.Source, log)
+	if err != nil {
+		return "", preparedSource{}, nil, err
+	}
+	tree, releaseTree, err := r.ensureTree(ctx, u, spec.Project, sha)
+	if err != nil {
+		return "", preparedSource{}, nil, err
+	}
+	releaseWorkspace, err := r.holdRead(ctx, u, spec.Project, spec.Workspace, dir, tree)
+	if err != nil {
+		releaseTree()
+		return "", preparedSource{}, nil, err
+	}
+	log.Step(fmt.Sprintf("workspace %s/%s ready, ./src read-only at %s", spec.Project, spec.Workspace, shortSHA(sha)))
+	release := func() {
+		releaseWorkspace()
+		releaseTree()
+	}
+	return dir, preparedSource{Commit: sha}, release, nil
+}
+
+/*
+cleanTrees removes the project's read trees no run holds and no workspace's
+`./src` points at: what the next read job of a project does once it ended.
+A tree a workspace points at is the newest that workspace read, kept for its
+next run; the others are commits nobody reads any more.
+*/
+func (r *processRunner) cleanTrees(ctx context.Context, u *user.User, project string) {
+	trees, err := os.ReadDir(r.treesDir(u, project))
+	if err != nil {
+		return
+	}
+	pointed := map[string]bool{}
+	if entries, err := os.ReadDir(filepath.Join(r.base(u), project)); err == nil {
+		for _, e := range entries {
+			if target, err := os.Readlink(filepath.Join(r.base(u), project, e.Name(), srcLink)); err == nil {
+				pointed[filepath.Base(target)] = true
+			}
+		}
+	}
+	unlock, err := tryLockMirror(r.root, project)
+	if err != nil {
+		return
+	}
+	defer unlock()
+	for _, t := range trees {
+		sha := t.Name()
+		if !commitPattern.MatchString(sha) || pointed[sha] {
+			continue
+		}
+		release, ok, err := lockFile(treeHoldPath(r.root, project, sha))
+		if err != nil || !ok {
+			continue
+		}
+		_ = r.removeTree(ctx, u, project, filepath.Join(r.treesDir(u, project), sha))
+		release()
+		_ = os.Remove(treeHoldPath(r.root, project, sha))
+	}
 }
