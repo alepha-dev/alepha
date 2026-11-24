@@ -2759,8 +2759,6 @@ export default {
   "errors.trusted": "Trusted",
   "errors.trustedBy": "Trusted by $1",
   "errors.untrusted": "Untrusted",
-  "errors.awaitingTrust":
-    "$1 open error(s) wait for a member to trust them before an agent reads them",
   "errors.action.forward": "Forward to quest",
   "errors.action.delete": "Delete",
   "errors.action.deleteSelected": "Delete selected",

@@ -2764,8 +2764,6 @@ export default {
   "errors.trusted": "De confiance",
   "errors.trustedBy": "Confiance accordée par $1",
   "errors.untrusted": "Non vérifiée",
-  "errors.awaitingTrust":
-    "$1 erreur(s) ouverte(s) attendent qu'un membre leur accorde sa confiance avant qu'un agent les lise",
   "errors.action.forward": "Convertir en quête",
   "errors.action.delete": "Supprimer",
   "errors.action.deleteSelected": "Supprimer la sélection",
