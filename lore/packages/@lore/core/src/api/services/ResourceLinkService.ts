@@ -588,6 +588,38 @@ export class ResourceLinkService {
   }
 
   /**
+   * The folio-to-folio links among some folios (#Q4262): the edges of a
+   * project's folio graph, both ends in `ids`, one per ordered pair, no
+   * self-link. Read in bounded batches of sources.
+   */
+  public async folioLinksAmong(
+    ids: string[],
+  ): Promise<Array<{ fromId: string; toId: string }>> {
+    const inSet = new Set(ids);
+    const rows = await this.bound.collect(ids, (batch) =>
+      this.links.findMany({
+        where: {
+          fromType: { eq: "folio" },
+          targetType: { eq: "folio" },
+          fromId: { inArray: batch },
+        },
+        columns: ["fromId", "toId"],
+      }),
+    );
+    const seen = new Set<string>();
+    const edges: Array<{ fromId: string; toId: string }> = [];
+    for (const row of rows) {
+      const key = `${row.fromId}>${row.toId}`;
+      if (row.fromId === row.toId || !inSet.has(row.toId) || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      edges.push({ fromId: row.fromId, toId: row.toId });
+    }
+    return edges;
+  }
+
+  /**
    * Inbound links: everything that points TO this folio, whatever kind of
    * element the reference lives in.
    *

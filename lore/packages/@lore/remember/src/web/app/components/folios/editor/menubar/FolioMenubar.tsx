@@ -17,6 +17,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 
 import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
+import FolioGraphButton from "../graph/FolioGraphButton.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
   FOLIO_MENUS,
@@ -48,6 +49,10 @@ export interface FolioMenubarProps {
    * where there is no document and so no editor to take anything.
    */
   mode?: MarkdownEditorMode;
+  /**
+   * The folio being read, which the graph button highlights (#Q4262).
+   */
+  folioId?: string;
 }
 
 /**
@@ -160,6 +165,8 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
         ))}
       </Menubar>
       <div className="flex-1" />
+      {/* The project's folio graph (#Q4262), at the row's right end. */}
+      <FolioGraphButton currentFolioId={props.folioId} />
       {/* Save survives in CREATE MODE ONLY, and the status line not at all.
           Editing a folio that exists is auto-saved (`useFolioAutoSave`: 1.5s
           after typing stops, plus once more on the way out), so a button and a
