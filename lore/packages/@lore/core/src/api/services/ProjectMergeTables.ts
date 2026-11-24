@@ -68,7 +68,7 @@ export class ProjectMergeTables {
       repository.findMany(
         {
           where: { projectId: { eq: projectId } },
-          columns: [idField, ...keys],
+          columns: [idField, ...keys, ...(table.read ?? [])],
         },
         { force: true },
       ) as Promise<Record<string, unknown>[]>;
@@ -95,7 +95,8 @@ export class ProjectMergeTables {
           continue;
         }
         const sourceId = this.text(row[idField]);
-        if (table.onCollision === "rename" && keys.length === 1) {
+        const keep = table.keepTargetIf?.(row) ?? false;
+        if (table.onCollision === "rename" && keys.length === 1 && !keep) {
           const taken = new Set([
             ...target.keys(),
             ...source.map((other) => keyOf(other)),
@@ -122,7 +123,7 @@ export class ProjectMergeTables {
           );
           continue;
         }
-        if (table.onCollision === "keepTarget") {
+        if (table.onCollision === "keepTarget" || keep) {
           moved -= 1;
           changed.push({
             kind: table.kind,
@@ -194,4 +195,11 @@ export interface ProjectMergeTable {
    * automation's lowercase name, #Q4226). Default: `alerts (2)`.
    */
   renamed?: (key: string, count: number) => string;
+  /**
+   * A colliding source row this answers true for is dropped rather than
+   * renamed: of two rows configuring the same built-in prompt, the
+   * target's stands (#Q4274). It reads the fields `read` names.
+   */
+  keepTargetIf?: (row: Record<string, unknown>) => boolean;
+  read?: string[];
 }

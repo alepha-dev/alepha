@@ -31,7 +31,7 @@ import { SourceRepository } from "./SourceRepository.ts";
 /**
  * Agent automations (#E172, #Q4226): a prompt run on an Agent host, by hand,
  * on a project event or on a schedule. Who may call what is the
- * controller's (`automation:manage` to write and run, `host:read` to read);
+ * controller's (`prompt:manage` to write and run, `host:read` to read);
  * this service holds the rules of the row and of a run.
  *
  * **What it is not** (folio #F1526, which deleted Lore's earlier

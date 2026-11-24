@@ -20,7 +20,7 @@ import { ProjectTools } from "./ProjectTools.ts";
 /**
  * Agent automations, for agents (#Q4231): the twins of `lore automation`,
  * never wider. Each goes through the page's own action: reading is
- * `host:read`, writing and running `automation:manage`.
+ * `host:read`, writing and running `prompt:manage`.
  */
 export class AutomationTools {
   protected readonly automations = $inject(AgentAutomationController);
@@ -50,7 +50,7 @@ export class AutomationTools {
   automation_create = $tool({
     title: "Create an agent automation",
     description:
-      "Create an agent automation (needs automation:manage): a prompt run on one of the project's Agent hosts by hand, on project events or on a schedule. A build automation turns every todo quest not tagged `needs-human` into a pull request. Runs are bounded by ceilings and stop themselves after three failures in a row.",
+      "Create an agent automation (needs prompt:manage): a prompt run on one of the project's Agent hosts by hand, on project events or on a schedule. A build automation turns every todo quest not tagged `needs-human` into a pull request. Runs are bounded by ceilings and stop themselves after three failures in a row.",
     schema: {
       params: automationCreateParamsSchema,
       result: automationResultSchema,
@@ -72,7 +72,7 @@ export class AutomationTools {
   automation_update = $tool({
     title: "Change an agent automation",
     description:
-      "Change an agent automation by its name (needs automation:manage): only the fields given change; `enabled` turns its trigger on or off, an empty string clears host, agent or model.",
+      "Change an agent automation by its name (needs prompt:manage): only the fields given change; `enabled` turns its trigger on or off, an empty string clears host, agent or model.",
     schema: {
       params: automationUpdateParamsSchema,
       result: automationResultSchema,
@@ -94,7 +94,7 @@ export class AutomationTools {
   automation_delete = $tool({
     title: "Delete an agent automation",
     description:
-      "Delete an agent automation by its name (needs automation:manage). Its past jobs stay.",
+      "Delete an agent automation by its name (needs prompt:manage). Its past jobs stay.",
     annotations: { destructiveHint: true },
     schema: {
       params: automationNameParamsSchema,
@@ -112,7 +112,7 @@ export class AutomationTools {
   automation_run = $tool({
     title: "Run an agent automation",
     description:
-      "Run an agent automation once, by hand, as you (needs automation:manage): whether it is enabled, paused or under a ceiling is not asked. Answers the jobs it started (job_get reads one), or why it started none. Called with an agent job's own key, it is refused: a job never starts another.",
+      "Run an agent automation once, by hand, as you (needs prompt:manage): whether it is enabled, paused or under a ceiling is not asked. Answers the jobs it started (job_get reads one), or why it started none. Called with an agent job's own key, it is refused: a job never starts another.",
     schema: {
       params: automationNameParamsSchema,
       result: automationRunResultSchema,
@@ -128,7 +128,7 @@ export class AutomationTools {
   automation_pause_all = $tool({
     title: "Pause every agent automation",
     description:
-      "Pause every agent automation of the project (needs automation:manage): no event or schedule starts a run until automation_resume_all. A run by hand still works.",
+      "Pause every agent automation of the project (needs prompt:manage): no event or schedule starts a run until automation_resume_all. A run by hand still works.",
     schema: {
       params: automationListParamsSchema,
       result: automationSettingsResultSchema,
@@ -145,7 +145,7 @@ export class AutomationTools {
   automation_resume_all = $tool({
     title: "Resume the agent automations",
     description:
-      "Resume the project's agent automations after automation_pause_all (needs automation:manage).",
+      "Resume the project's agent automations after automation_pause_all (needs prompt:manage).",
     schema: {
       params: automationListParamsSchema,
       result: automationSettingsResultSchema,
@@ -162,7 +162,7 @@ export class AutomationTools {
   automation_settings = $tool({
     title: "Read or set the automations' settings",
     description:
-      "Whether the project's agent automations are paused, and the daily ceiling on builds they start (20 unless set). Pass `builds_per_day` to change it (needs automation:manage).",
+      "Whether the project's agent automations are paused, and the daily ceiling on builds they start (20 unless set). Pass `builds_per_day` to change it (needs prompt:manage).",
     schema: {
       params: automationSettingsParamsSchema,
       result: automationSettingsResultSchema,

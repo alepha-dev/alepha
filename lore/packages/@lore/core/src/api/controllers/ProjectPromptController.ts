@@ -45,7 +45,7 @@ export class ProjectPromptController {
   getProjectPrompts = $action({
     use: [this.ownsAsMember()],
     method: "GET",
-    path: "/projects/:projectId/prompts",
+    path: "/projects/:projectId/prompt-overrides",
     description: "The agent prompt templates this project has customised.",
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -73,7 +73,7 @@ export class ProjectPromptController {
   setProjectPrompt = $action({
     use: [this.ownsAsOwner()],
     method: "PUT",
-    path: "/projects/:projectId/prompts/:kind",
+    path: "/projects/:projectId/prompt-overrides/:kind",
     description: "Set one agent prompt template for a project.",
     schema: {
       params: z.object({
@@ -132,7 +132,7 @@ export class ProjectPromptController {
   resetProjectPrompt = $action({
     use: [this.ownsAsOwner()],
     method: "DELETE",
-    path: "/projects/:projectId/prompts/:kind",
+    path: "/projects/:projectId/prompt-overrides/:kind",
     description: "Restore one agent prompt template to its built-in default.",
     schema: {
       params: z.object({

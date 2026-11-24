@@ -146,9 +146,10 @@ export class LorePermissions {
     "host:create",
     "host:update",
     "host:delete",
-    // Agent automations (#Q4226): what runs on the project's Agent hosts,
-    // unattended, on whose subscription. Read with `host:read`.
-    "automation:manage",
+    // Prompts (#E174): the project's prompts, their triggers and pins, which
+    // run on its Agent hosts, unattended, on whose subscription. Reading and
+    // copying one is every member's.
+    "prompt:manage",
     "feedback:triage",
     // Notifications (#Q3890): who is told of what. A member subscribes and
     // mutes themselves with neither.
@@ -545,15 +546,16 @@ export class LorePermissions {
   });
 
   /**
-   * Create, change, delete and run the project's agent automations
-   * (#Q4226). Listing them is `host:read`. The name was retired with the
-   * earlier Automations (#Q3896) and means only this now.
+   * Create, change and delete the project's prompts, their triggers and
+   * where they are pinned (#E174; `automation:manage` until then). Reading
+   * and copying one is every member's, and a run needs its prompt's own
+   * permission.
    */
-  automationManage = $permission({
-    group: "automation",
+  promptManage = $permission({
+    group: "prompt",
     name: "manage",
-    label: "permission.automation.manage",
-    groupLabel: "permission.group.automation",
+    label: "permission.prompt.manage",
+    groupLabel: "permission.group.prompt",
     groupOrder: 36,
   });
 

@@ -52,6 +52,7 @@ import { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
 import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { PlanLiveQuests } from "./services/PlanLiveQuests.ts";
+import { PlanPrompts } from "./services/PlanPrompts.ts";
 import { ProjectBacklogReportService } from "./services/ProjectBacklogReportService.ts";
 import { ProjectFlowReportService } from "./services/ProjectFlowReportService.ts";
 import { ProjectPlanningReportService } from "./services/ProjectPlanningReportService.ts";
@@ -118,6 +119,8 @@ export const LorePlanApi = $module({
     FeedbackAgentService,
     // The Triage and Build kinds of an agent automation (#E172).
     PlanAutomationKinds,
+    // The built-in prompts and their epic, quest and feedback args (#E174).
+    PlanPrompts,
     // A built quest completes when its commit reaches the default branch.
     BuiltQuestLanding,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
@@ -313,6 +316,7 @@ export { ReleaseForecast } from "./services/ReleaseForecast.ts";
 export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
 export { PlanAutomationKinds } from "./services/PlanAutomationKinds.ts";
+export { PlanPrompts } from "./services/PlanPrompts.ts";
 export { BuiltQuestLanding } from "./services/BuiltQuestLanding.ts";
 export { EpicAgentController } from "./controllers/EpicAgentController.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";

@@ -72,14 +72,17 @@ test.describe("agent prompts", () => {
     // is owner-gated but not option-gated, so this is a legal state.
     await page.evaluate(
       async ({ projectId }) => {
-        const r = await fetch(`/api/projects/${projectId}/prompts/epicReview`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            template: "Stored review of {{reference}} in {{project}}.",
-          }),
-        });
+        const r = await fetch(
+          `/api/projects/${projectId}/prompt-overrides/epicReview`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              template: "Stored review of {{reference}} in {{project}}.",
+            }),
+          },
+        );
         if (!r.ok) throw new Error(`setPrompt ${r.status} ${await r.text()}`);
       },
       { projectId },
@@ -210,7 +213,7 @@ test.describe("agent prompts", () => {
 
       const saved = page.waitForResponse(
         (r) =>
-          r.url().includes("/prompts/epicReview") &&
+          r.url().includes("/prompt-overrides/epicReview") &&
           r.request().method() === "PUT",
       );
       await page.getByRole("button", { name: "Save" }).first().click();
@@ -285,7 +288,7 @@ test.describe("agent prompts", () => {
 
       const reset = page.waitForResponse(
         (r) =>
-          r.url().includes("/prompts/epicReview") &&
+          r.url().includes("/prompt-overrides/epicReview") &&
           r.request().method() === "DELETE",
       );
       await page.getByTestId("prompt-reset-epicReview").click();

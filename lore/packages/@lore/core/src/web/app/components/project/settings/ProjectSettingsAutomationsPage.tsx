@@ -29,7 +29,7 @@ const ProjectSettingsAutomationsPage = () => {
   const jobsApi = useClient<HostJobController>();
   const [project] = useStore(currentProjectAtom);
   const [adding, setAdding] = useState(false);
-  const manage = can("automation:manage");
+  const manage = can("prompt:manage");
   const key = ["project-automations", project?.id];
 
   const list = useQuery(
