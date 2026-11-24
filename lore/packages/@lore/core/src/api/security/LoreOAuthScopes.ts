@@ -80,9 +80,9 @@ export class LoreOAuthScopes {
     "artifact",
     "deploy",
     "host",
-    // Agent automations (#Q4226): set up from the member's own coding
-    // agent, through the CLI and the MCP first.
-    "automation",
+    // Prompts (#E174): set up from the member's own coding agent, through
+    // the CLI and the MCP first.
+    "prompt",
     // The framework's file upload, which quest and folio attachments go
     // through before they are registered on their project.
     "file",

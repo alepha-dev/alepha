@@ -15,7 +15,7 @@ import {
 
 /**
  * Agent automations, the row and a run by hand (#E172, #Q4226): a name
- * unique in its project, `automation:manage` to write and run, `host:read`
+ * unique in its project, `prompt:manage` to write and run, `host:read`
  * to read, and one job at a time per automation, each carrying its id.
  */
 describe("agent automations", () => {
@@ -108,12 +108,12 @@ describe("agent automations", () => {
     ).rejects.toThrow('No Agent host "nope"');
   });
 
-  it("is written and run with automation:manage, which the Admin holds and a Member does not, and read with host:read", async ({
+  it("is written and run with prompt:manage, which the Admin holds and a Member does not, and read with host:read", async ({
     expect,
   }) => {
-    expect(LorePermissions.OWNER_TODAY).toContain("automation:manage");
-    expect(LorePermissions.MEMBER_DEFAULT).not.toContain("automation:manage");
-    expect(ProjectRankPresets.ADMIN).toContain("automation:manage");
+    expect(LorePermissions.OWNER_TODAY).toContain("prompt:manage");
+    expect(LorePermissions.MEMBER_DEFAULT).not.toContain("prompt:manage");
+    expect(ProjectRankPresets.ADMIN).toContain("prompt:manage");
 
     await create({ name: "nightly", promptKind: "text", promptText: "Hi" });
     const user = await w.entities.users.create({});

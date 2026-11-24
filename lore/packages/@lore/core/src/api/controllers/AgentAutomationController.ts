@@ -11,7 +11,7 @@ import { AgentAutomationService } from "../services/AgentAutomationService.ts";
 
 /**
  * A project's agent automations (#E172, #Q4226): read with `host:read`,
- * written and run with `automation:manage`. An automation is addressed by
+ * written and run with `prompt:manage`. An automation is addressed by
  * its id or its name, which is what `lore automation <verb> <name>` takes.
  */
 export class AgentAutomationController {
@@ -46,7 +46,7 @@ export class AgentAutomationController {
   });
 
   createProjectAutomation = $action({
-    use: [$ownsProject({ param: "projectId", requires: "automation:manage" })],
+    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
     method: "POST",
     path: "/projects/:projectId/automations",
     schema: {
@@ -59,7 +59,7 @@ export class AgentAutomationController {
   });
 
   updateProjectAutomation = $action({
-    use: [$ownsProject({ param: "projectId", requires: "automation:manage" })],
+    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
     method: "PATCH",
     path: "/projects/:projectId/automations/:automation",
     schema: {
@@ -75,7 +75,7 @@ export class AgentAutomationController {
   });
 
   deleteProjectAutomation = $action({
-    use: [$ownsProject({ param: "projectId", requires: "automation:manage" })],
+    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
     method: "DELETE",
     path: "/projects/:projectId/automations/:automation",
     schema: {
@@ -96,7 +96,7 @@ export class AgentAutomationController {
    * and whether there is something to do are not asked.
    */
   runProjectAutomation = $action({
-    use: [$ownsProject({ param: "projectId", requires: "automation:manage" })],
+    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
     method: "POST",
     path: "/projects/:projectId/automations/:automation/run",
     schema: {
@@ -133,7 +133,7 @@ export class AgentAutomationController {
    * paused.
    */
   setProjectAutomationSettings = $action({
-    use: [$ownsProject({ param: "projectId", requires: "automation:manage" })],
+    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
     method: "POST",
     path: "/projects/:projectId/automation-settings",
     schema: {

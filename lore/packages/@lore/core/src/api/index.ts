@@ -45,6 +45,7 @@ import { ProjectPromptController } from "./controllers/ProjectPromptController.t
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportController } from "./controllers/ProjectReportController.ts";
 import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
+import { PromptController } from "./controllers/PromptController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
@@ -153,6 +154,8 @@ import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
+import { PromptRegistry } from "./services/PromptRegistry.ts";
+import { PromptService } from "./services/PromptService.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityProjectEvents } from "./services/QualityProjectEvents.ts";
 import { QualityProjectMerge } from "./services/QualityProjectMerge.ts";
@@ -413,6 +416,10 @@ export const LoreCoreApi = $module({
     AgentAutomationSchedule,
     AgentAutomationHealth,
     AgentAutomationController,
+    // Prompts (#E174): the built-ins Plan registers, the project's own.
+    PromptRegistry,
+    PromptService,
+    PromptController,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,
@@ -667,6 +674,15 @@ export {
   type AgentAutomationWorkSource,
 } from "./services/AgentAutomationKinds.ts";
 export { AgentAutomationService } from "./services/AgentAutomationService.ts";
+export { PromptController } from "./controllers/PromptController.ts";
+export {
+  type BuiltinPrompt,
+  type PromptArgContext,
+  type PromptArgItem,
+  type PromptArgResolver,
+  PromptRegistry,
+} from "./services/PromptRegistry.ts";
+export { PromptService } from "./services/PromptService.ts";
 export { AgentAutomationTriggers } from "./services/AgentAutomationTriggers.ts";
 export { AgentAutomationSchedule } from "./services/AgentAutomationSchedule.ts";
 export { AgentAutomationHealth } from "./services/AgentAutomationHealth.ts";

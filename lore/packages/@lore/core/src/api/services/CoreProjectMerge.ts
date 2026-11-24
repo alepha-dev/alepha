@@ -12,6 +12,7 @@ import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { projectEvents } from "../entities/projectEvents.ts";
 import { projectPrompts } from "../entities/projectPrompts.ts";
 import { projects } from "../entities/projects.ts";
+import { prompts } from "../entities/prompts.ts";
 import {
   type ProjectMergeChange,
   type ProjectMergeConflict,
@@ -60,7 +61,7 @@ export class CoreProjectMerge {
       onCollision: "keepTarget",
     },
     {
-      kind: "prompt",
+      kind: "prompt override",
       entity: projectPrompts,
       keys: ["kind"],
       onCollision: "keepTarget",
@@ -91,6 +92,18 @@ export class CoreProjectMerge {
       keys: ["name"],
       onCollision: "rename",
       renamed: (key, count) => `${key.slice(0, 44)}-${count}`,
+    },
+    // Prompts (#Q4274): a custom prompt whose name the target uses is
+    // renamed `<name>-2`; of two rows configuring the same built-in, the
+    // target's stands.
+    {
+      kind: "prompt",
+      entity: prompts,
+      keys: ["name"],
+      onCollision: "rename",
+      renamed: (key, count) => `${key.slice(0, 60)}-${count}`,
+      read: ["builtin"],
+      keepTargetIf: (row) => !!row.builtin,
     },
   ];
 

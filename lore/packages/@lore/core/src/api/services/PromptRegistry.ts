@@ -1,0 +1,134 @@
+import { AlephaError } from "alepha";
+
+import type { Project } from "../entities/projects.ts";
+import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
+import type { PromptArg } from "../schemas/promptArgSchema.ts";
+import type { PromptArgType, PromptSource } from "../schemas/promptValues.ts";
+import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
+
+/**
+ * The built-in prompts and what fills their args (#E174, #Q4274), each
+ * registered on the server by the module that owns it: Plan registers the
+ * ten built-ins of the epic and the epic, quest and feedback args; core the
+ * pull request and member args.
+ *
+ * A built-in's text is frozen: a project configures it (source, where it
+ * runs, enabled) without copying it, and duplicates it to change its words.
+ * Its name is reserved in every project.
+ */
+export class PromptRegistry {
+  protected readonly prompts = new Map<string, BuiltinPrompt>();
+  protected readonly resolvers = new Map<PromptArgType, PromptArgResolver>();
+
+  public register(prompt: BuiltinPrompt): void {
+    if (!PROMPT_NAME_PATTERN.test(prompt.name)) {
+      throw new AlephaError(`Prompt name '${prompt.name}' is not a slug`);
+    }
+    if (this.prompts.has(prompt.name)) {
+      throw new AlephaError(`Prompt '${prompt.name}' is registered twice`);
+    }
+    this.prompts.set(prompt.name, prompt);
+  }
+
+  public get(name: string): BuiltinPrompt | undefined {
+    return this.prompts.get(name);
+  }
+
+  /**
+   * The built-ins in registration order.
+   */
+  public all(): BuiltinPrompt[] {
+    return [...this.prompts.values()];
+  }
+
+  public registerArg(resolver: PromptArgResolver): void {
+    if (this.resolvers.has(resolver.type)) {
+      throw new AlephaError(
+        `Prompt arg type '${resolver.type}' is registered twice`,
+      );
+    }
+    this.resolvers.set(resolver.type, resolver);
+  }
+
+  public arg(type: PromptArgType): PromptArgResolver | undefined {
+    return this.resolvers.get(type);
+  }
+}
+
+/**
+ * A built-in prompt, as its module registers it.
+ */
+export interface BuiltinPrompt {
+  /**
+   * A slug, reserved in every project: `work-quest`.
+   */
+  name: string;
+  title: string;
+  description: string;
+  args: PromptArg[];
+  /**
+   * Its own source; a project may change it on the prompt.
+   */
+  source: PromptSource;
+  /**
+   * What a run needs beyond `host:read`, held by its starter.
+   */
+  permission: string;
+  /**
+   * A run's time; the run path may compute its own (an epic review's grows
+   * with its quests).
+   */
+  timeoutSeconds: number;
+  /**
+   * The capability and option a project needs to use it: a built-in the
+   * project cannot use is absent from its list and refused by render.
+   */
+  needs?: { capability: CapabilityKey; option?: string };
+  /**
+   * The words, with `{{project}}`, `{{slug}}`, `{{projectUrl}}` and
+   * `{{<arg>.<field>}}` placeholders. English: its words name the tools it
+   * calls.
+   */
+  text: string;
+  /**
+   * No built-in waits for an answer in its session: a question goes where a
+   * person finds it, and the run ends.
+   */
+  oneShot: true;
+}
+
+/**
+ * What a project and a caller resolve an arg's value against.
+ */
+export interface PromptArgContext {
+  project: Project;
+  /**
+   * The address of the project's pages: `<PUBLIC_URL>/<slug>`.
+   */
+  projectUrl: string;
+  /**
+   * The value as given: a number, a reference (`#Q12`), a member's name or
+   * id.
+   */
+  value: string;
+}
+
+/**
+ * One arg type's reader: the permission a caller needs to read the item, and
+ * the item itself, or nothing when it does not exist.
+ */
+export interface PromptArgResolver {
+  type: PromptArgType;
+  permission: string;
+  resolve(context: PromptArgContext): Promise<PromptArgItem | undefined>;
+}
+
+/**
+ * An item an arg resolved to: its status, whether it is gone (a deleted or
+ * shelved item is never accepted), and the fields its placeholders read.
+ */
+export interface PromptArgItem {
+  status?: string;
+  gone?: boolean;
+  fields: Record<string, string | number>;
+}

@@ -175,6 +175,40 @@ export { hostsCardFiltersSchema } from "../api/schemas/hostsCardFiltersSchema.ts
 export { hostCommands } from "../api/entities/hostCommands.ts";
 export type { HostCommand } from "../api/entities/hostCommands.ts";
 export { hostJobs } from "../api/entities/hostJobs.ts";
+// ---- prompts (#E174) ----
+export { type Prompt, prompts } from "../api/entities/prompts.ts";
+export {
+  PROMPT_ARG_FIELDS,
+  PROMPT_ARG_STATUSES,
+  PROMPT_ARG_TYPES,
+  PROMPT_CUSTOM_TIMEOUT_SECONDS,
+  PROMPT_MAX_ARGS,
+  PROMPT_NAME_PATTERN,
+  PROMPT_PROJECT_PLACEHOLDERS,
+  PROMPT_SOURCES,
+  type PromptArgType,
+  type PromptSource,
+} from "../api/schemas/promptValues.ts";
+export {
+  type PromptArg,
+  promptArgSchema,
+} from "../api/schemas/promptArgSchema.ts";
+export {
+  type PromptResource,
+  promptResourceSchema,
+} from "../api/schemas/promptResourceSchema.ts";
+export {
+  type PromptWrite,
+  promptWriteSchema,
+} from "../api/schemas/promptWriteSchema.ts";
+export {
+  type PromptCreate,
+  promptCreateSchema,
+} from "../api/schemas/promptCreateSchema.ts";
+export {
+  promptPlaceholders,
+  renderPromptText,
+} from "../api/schemas/renderPromptText.ts";
 // ---- agent automations (#E172) ----
 export {
   type AgentAutomation,

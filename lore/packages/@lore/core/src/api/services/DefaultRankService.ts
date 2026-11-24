@@ -61,8 +61,9 @@ export class DefaultRankService {
     "requirement:write",
     "subscription:read",
     "subscription:manage",
-    // Agent automations (#Q4226): a snapshot written before them lacks it.
-    "automation:manage",
+    // Prompts (#E174, `automation:manage` before): a snapshot written before
+    // them lacks it.
+    "prompt:manage",
   ];
 
   /**

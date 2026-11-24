@@ -36,8 +36,8 @@ const ALWAYS_SHOWN = [
   "subscription",
   // Hosts are Core since #E166 (#Q4115): they work with Ship off.
   "host",
-  // Agent automations run on Agent hosts, Core like them (#Q4226).
-  "automation",
+  // Prompts run on Agent hosts, Core like them (#E174).
+  "prompt",
 ];
 
 interface Ctx {
