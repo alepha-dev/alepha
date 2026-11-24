@@ -41,7 +41,9 @@ import {
   CheckCircle2,
   CircleDot,
   FileText,
+  Globe,
   Send,
+  Server,
   ShieldCheck,
   ShieldOff,
   Trash2,
@@ -445,9 +447,18 @@ const ProjectErrors = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Attacker-controlled — plain text, escaped by React. */}
                   <span className="font-medium">{b.name}</span>
+                  {/* The shared tint Badge, as the quest priority and the
+                      feedback status (#Q4261): a tone and a glyph each. */}
                   <Badge
-                    variant={b.origin === "server" ? "default" : "outline"}
+                    variant="tint"
+                    tone={b.origin === "server" ? "blue" : "violet"}
+                    data-testid="error-origin"
                   >
+                    {b.origin === "server" ? (
+                      <Server className="size-3" />
+                    ) : (
+                      <Globe className="size-3" />
+                    )}
                     {tr(`errors.origin.${b.origin}`)}
                   </Badge>
                   {renderStatus(b.status)}
