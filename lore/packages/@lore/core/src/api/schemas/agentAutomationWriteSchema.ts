@@ -39,6 +39,12 @@ export const agentAutomationWriteSchema = agentAutomations.schema
     model: z
       .union([agentRunSchema.shape.model.unwrap(), z.literal("")])
       .optional(),
+    /**
+     * When it runs, in one word, as the CLI and MCP take it (#Q4231):
+     * `manual`, `event:<key>[,<key>]`, `hourly`, `6h` or `daily@<utc-hour>`.
+     * Sets `trigger`, `eventKeys`, `schedule` and `dailyHour` together.
+     */
+    on: z.string().max(1024).optional(),
   });
 
 export type AgentAutomationWrite = Infer<typeof agentAutomationWriteSchema>;

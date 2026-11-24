@@ -246,10 +246,11 @@ with your rights, under the same limits as the app.
 
 Who is told when something changes in a project, and your own inbox. A
 channel is added, and its URL or signing secret changed, with `lore channel`
-only, so a webhook or Discord URL never travels through a tool. Lore runs
-no schedules and no multi-step reactions: for those, use a scheduled agent
-session over MCP, or subscribe a webhook channel and react in whatever it
-calls. See [Notifications](/lore/docs/project-notifications).
+only, so a webhook or Discord URL never travels through a tool. A
+subscription only tells someone: to run a prompt on an event or a schedule,
+use an agent automation (below); for a multi-step reaction, subscribe a
+webhook channel and react in whatever it calls. See
+[Notifications](/lore/docs/project-notifications).
 
 | Tool                | What it does                                                                                                    |
 | ------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -321,6 +322,25 @@ See [Deploying an app](/lore/docs/ship-deploying),
 
 On `host_stats`, `project` or `project_name` narrows the slug to that
 project's hosts, and `home` picks between two hosts that share a slug.
+
+## Agent jobs and automations
+
+See [Agent jobs](/lore/docs/agents-jobs) and
+[Agent automations](/lore/docs/agents-automations). Reading needs `host:read`;
+creating, changing and running an automation needs `automation:manage`. Called
+with an agent job's own key, `agent_run` and `automation_run` are refused.
+
+| Tool                                            | What it does                                                                                               |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `agent_hosts`                                   | The project's Agent hosts, their last check, agent CLIs and tools.                                         |
+| `agent_run`                                     | Start an agent job: `triage`, `build` on one quest, or `text`.                                             |
+| `job_list`, `job_get`, `job_cancel`             | The project's jobs, one job with its log, and stopping one.                                                |
+| `automation_list`                               | The automations: prompt, trigger, host and agent, last run, next run and why one last skipped.             |
+| `automation_create`, `automation_update`        | Create one, or change the fields given: `on` is `manual`, `event:<key>`, `hourly`, `6h` or `daily@<hour>`. |
+| `automation_delete`                             | Delete one; its jobs stay.                                                                                 |
+| `automation_run`                                | Run one once, as you, whatever its switch, the pause or its ceilings.                                      |
+| `automation_pause_all`, `automation_resume_all` | Stop every trigger of the project, and start them again.                                                   |
+| `automation_settings`                           | Whether they are paused, and the daily build ceiling (`builds_per_day` sets it).                           |
 
 ## What has no tool
 

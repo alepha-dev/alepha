@@ -274,8 +274,8 @@ told is set like any other event, on **Settings ▸ Notifications**.
 
 ## What Lore does not do
 
-Lore tells people and systems that something happened. It does not run
-anything for you:
+Lore tells people and systems that something happened. A subscription runs
+nothing for you:
 
 - no schedule ("every Monday at nine"), apart from quest reminders;
 - no condition ("only if the release has more than ten quests");
@@ -284,6 +284,9 @@ anything for you:
 
 For any of those, react to the event where you have the tools to:
 
+- **An agent automation** runs a prompt on one of your Agent hosts on an
+  event or a schedule: a triage of each new report, a build of each new quest.
+  See [Agent automations](/lore/docs/agents-automations).
 - **A scheduled agent session** connected over MCP reads the project, decides,
   and writes back: a weekly digest, a triage pass, a folio kept up to date.
   See [Connecting an agent](/lore/docs/agents-connecting).

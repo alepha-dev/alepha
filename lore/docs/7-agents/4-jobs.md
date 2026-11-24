@@ -151,7 +151,13 @@ workspace, branches from the default branch, does the work, runs the
 project's checks, commits naming the quest, pushes, and opens a pull request
 with `gh`, which it records on the quest. It turns auto-merge on only when the
 repository's own agent instructions ask for it, and follows their branch
-naming. The merged commit naming the quest is what completes it.
+naming. A quest a [Build automation](/lore/docs/agents-automations) built
+completes when the commit naming it reaches the default branch.
+
+## Automations
+
+To run a prompt on its own, at each new feedback item or every hour, make it
+an [agent automation](/lore/docs/agents-automations).
 
 ## From the command line
 
