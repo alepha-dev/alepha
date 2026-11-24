@@ -696,6 +696,7 @@ export default {
   "chat.room.remove": "Retirer",
   "chat.room.invite": "Inviter un membre",
   "chat.room.invite.submit": "Inviter",
+  "chat.room.invite.member": "Membre",
   "chat.room.join": "Rejoindre",
   "chat.room.leave": "Quitter",
   "chat.room.notify": "Me notifier",

@@ -256,12 +256,16 @@ test.describe("Chat", () => {
       ).toBeVisible();
       await member.page.goto(`/${slug}/chat`);
 
-      // The members panel invites them, and their list shows it at once.
+      // The members panel's + opens the invite dialog (#Q4267), and their
+      // list shows the invite at once.
       await page.getByTestId("chat-room-members-toggle").click();
       const panel = page.getByTestId("chat-room-panel");
-      await panel.getByRole("combobox", { name: "Invite a member" }).click();
+      await panel.getByTestId("chat-room-invite").click();
+      const invite = page.getByTestId("chat-room-invite-form");
+      await invite.getByRole("combobox", { name: "Member" }).click();
       await page.getByRole("option").first().click();
-      await panel.getByRole("button", { name: "Invite" }).click();
+      await invite.getByRole("button", { name: "Invite" }).click();
+      await expect(invite).toHaveCount(0);
       await expect(
         panel.getByTestId("chat-room-members").locator("li"),
       ).toHaveCount(2);

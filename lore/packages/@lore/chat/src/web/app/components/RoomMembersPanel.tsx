@@ -1,14 +1,13 @@
 import { Button, UserAvatar } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
 import { displayName, type I18n, type ProjectUser } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
-import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { useState } from "react";
 
 import type { ChatRoomController } from "../../../api/controllers/ChatRoomController.ts";
 import type { ChatRoomResource } from "../../../schemas/index.ts";
-import { roomInviteFormSchema } from "../schemas/roomInviteFormSchema.ts";
+import RoomInviteDialog from "./RoomInviteDialog.tsx";
 
 export interface RoomMembersPanelProps {
   room: ChatRoomResource;
@@ -25,7 +24,8 @@ export interface RoomMembersPanelProps {
 
 /**
  * The right column of the Chat page (#E161, #Q3955): who is in the room,
- * with invite and remove on a private one. Nothing else: join, leave,
+ * with invite (a full-width `+` opening a dialog, #Q4267) and remove on a
+ * private one. Nothing else: join, leave,
  * rename and archive are the room row's "..." menu, the notify level the
  * bell in the room's header.
  */
@@ -43,6 +43,7 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
   const manages =
     props.canManage || (!!props.me && room.createdBy === props.me);
   const writable = !room.archivedAt;
+  const [inviting, setInviting] = useState(false);
 
   const invite = useAction<[userId: string], void>(
     {
@@ -61,17 +62,6 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
       invalidates,
     },
     [rooms, room.id],
-  );
-
-  const inviteForm = useForm(
-    {
-      schema: roomInviteFormSchema,
-      initialValues: { userId: undefined },
-      handler: async (values) => {
-        if (values.userId) await invite.run(values.userId);
-      },
-    },
-    [room.id, props.members.length],
   );
 
   const invitable = props.users.filter((user) => !memberIds.has(user.id));
@@ -132,22 +122,27 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
         </ul>
 
         {room.private && room.joined && writable && invitable.length > 0 && (
-          <form {...inviteForm.props} className="flex items-end gap-2">
-            <Control
-              input={inviteForm.input.userId}
-              label={tr("chat.room.invite")}
-              select
-              triggerClassName="w-full"
-              items={invitable.map((user) => ({
-                value: user.id,
-                label: displayName(user),
-              }))}
+          <>
+            <Button
+              variant="outlined"
+              size="sm"
+              className="w-full"
+              aria-label={tr("chat.room.invite")}
+              title={tr("chat.room.invite")}
+              data-testid="chat-room-invite"
               disabled={busy}
-            />
-            <Button type="submit" size="sm" disabled={busy}>
-              {tr("chat.room.invite.submit")}
+              onClick={() => setInviting(true)}
+            >
+              <Plus className="size-4" />
             </Button>
-          </form>
+            <RoomInviteDialog
+              open={inviting}
+              onOpenChange={setInviting}
+              invitable={invitable}
+              busy={busy}
+              onInvite={async (userId) => (await invite.run(userId)).ok}
+            />
+          </>
         )}
       </div>
     </aside>
