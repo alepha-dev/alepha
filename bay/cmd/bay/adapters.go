@@ -14,9 +14,10 @@ Agent adapters (#Q4219): the one place an agent CLI is named.
 
 A job's spec names an adapter by `agent`; Bay finds its binary on the jobs
 user's PATH and builds the command line from the adapter's template, so
-nothing Lore sends is ever an argument list. Bay reads nothing of what the
-agent prints: the log is its raw stdout and stderr, the status its exit code,
-and the agent reports its result to Lore itself, through Lore's MCP server.
+nothing Lore sends is ever an argument list. The log is the agent's raw
+stdout and stderr and the status its exit code; the one thing Bay reads from
+what it prints is its final reply (#Q4288), which the adapter's Result finds
+in the stream and the terminal ack carries.
 
 An adapter is:
   - the binary, and the directories under the user's home an installer puts
@@ -29,7 +30,8 @@ An adapter is:
     `Authorization: Bearer ${LORE_JOB_KEY}`. The key itself travels in the
     run's environment only, which both CLIs expand in their MCP config, so
     it is never on a command line `ps` shows nor in a file;
-  - the environment it runs with beyond the job's own.
+  - the environment it runs with beyond the job's own;
+  - how its final reply is read from its stream (Result).
 
 Adding a CLI (Codex, Copilot) is one entry here, and its test.
 */
@@ -54,6 +56,9 @@ type agentAdapter struct {
 	// Sessions says the CLI starts and resumes a named conversation
 	// (#Q4250); without it a run's session is ignored, and every turn is new.
 	Sessions bool
+	// Result reads a run's final reply from its stdout (#Q4288): a fresh
+	// reader per run. Nil for a CLI whose reply Bay cannot read.
+	Result func() resultReader
 }
 
 // agentRun is what an adapter builds a run from.
@@ -91,6 +96,7 @@ var agentAdapters = map[string]agentAdapter{
 		// Telemetry and update checks: nothing a job needs.
 		Env:      []string{"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1"},
 		Sessions: true,
+		Result:   func() resultReader { return &claudeResult{} },
 		Args: func(run agentRun) []string {
 			args := []string{"-p", run.Prompt, "--output-format", "stream-json", "--verbose",
 				"--permission-mode", "bypassPermissions"}
@@ -124,6 +130,7 @@ var agentAdapters = map[string]agentAdapter{
 		Binary:      "gemini",
 		HomeBin:     []string{".local/bin", ".npm-global/bin", "bin"},
 		VersionArgs: []string{"--version"},
+		Result:      func() resultReader { return &geminiResult{} },
 		Args: func(run agentRun) []string {
 			format := "stream-json"
 			if run.JSON {

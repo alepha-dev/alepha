@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
 )
@@ -164,6 +165,12 @@ type Ack struct {
 	// terminal ack: what a read job read, what a write job's branch started
 	// from. Optional, like ExitCode.
 	Commit string `json:"commit,omitempty"`
+	// Result is an agent job's final reply (#Q4288), read from its stream,
+	// on its terminal ack; cut to MaxAckResult, with ResultTruncated then.
+	// Absent when the agent printed no result line, or an error one.
+	// Optional, like Commit: an older Lore drops it.
+	Result          string `json:"result,omitempty"`
+	ResultTruncated bool   `json:"resultTruncated,omitempty"`
 }
 
 // The terminal statuses a `job-run` may end in beside `done` and `failed`:
@@ -175,6 +182,22 @@ const (
 
 // MaxAckWarning is what Lore's ack schema accepts of a warning.
 const MaxAckWarning = 2000
+
+// MaxAckResult is the most of an agent's reply an ack carries, in bytes.
+const MaxAckResult = 32 << 10
+
+// CutResult bounds a reply to MaxAckResult on a character boundary, and says
+// whether it was cut.
+func CutResult(s string) (string, bool) {
+	if len(s) <= MaxAckResult {
+		return s, false
+	}
+	b := []byte(s[:MaxAckResult])
+	for len(b) > 0 && !utf8.Valid(b) {
+		b = b[:len(b)-1]
+	}
+	return string(b), true
+}
 
 // CutWarning bounds a warning to what Lore accepts.
 func CutWarning(s string) string { return cut(s, MaxAckWarning) }

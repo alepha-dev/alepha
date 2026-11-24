@@ -153,11 +153,13 @@ and base domain, which replace those set with `bay stack route`.
 A job is not an app: it runs once, to an exit, under a deadline. The first kind
 is an **agent job**: an agent CLI (Claude Code or Gemini CLI) run on a prompt in
 a workspace directory, which Lore starts from its own pages. Before the agent
-starts, Bay prepares the code the job asks for (its **source**, below). Bay
-understands nothing of what the agent prints: the log is its raw output, the
-status its exit code. The agent reports its result to Lore itself, through
-Lore's MCP server; a chat agent's turn asks the CLI for one JSON result, which
-Lore writes into the room.
+starts, Bay prepares the code the job asks for (its **source**, below). The log
+is the agent's raw output and the status its exit code. The agent works in Lore
+itself, through Lore's MCP server. The one thing Bay reads from what it prints
+is its **final reply**: the line of its stream that ends the run (Claude Code's
+`result` event; for Gemini CLI, the text it wrote after its last tool call,
+closed by its `result` event), kept as the stream passes, so a log cut at its
+size limit still has it.
 
 A `job-run` carries nothing but its id. The machine pulls the job's spec over
 HTTPS by that id and checks every field before anything runs: the kind, the
@@ -174,7 +176,11 @@ MCP configuration names the variable, never the key, so it is on no command line
 The output goes back up the connection as it is printed, with Bay's own
 timestamped steps (mirror fetched, workspace ready, agent started, agent
 exited). The job's last acknowledgement carries the commit its source resolved,
-and a kept worktree's warning. If the link
+a kept worktree's warning, and the agent's final reply (up to 32 KB, marked when
+it was cut). An agent that ended on an error has no reply: its words are the
+failure's reason. A job that printed no final line simply has none. The
+machine's inventory says it returns replies, so Lore can tell a host running an
+older Bay. If the link
 drops mid-job, the job keeps running and its output waits on disk until Lore is
 back. A timeout kills the job's whole process group; so does `job-cancel`.
 

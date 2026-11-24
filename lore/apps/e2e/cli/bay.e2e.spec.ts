@@ -915,6 +915,10 @@ describe("Bay connector against a real Lore", () => {
         undefined,
       60_000,
     );
+    // And that its terminal acks carry the agent's final reply (#Q4288).
+    expect(((await readHost()) as { jobsResult?: boolean }).jobsResult).toBe(
+      true,
+    );
     const started = await ok<{ jobId?: string }>(
       call(lore, owner, "runAgent", {
         params: { projectId: homeId },

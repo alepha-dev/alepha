@@ -35,8 +35,12 @@ type Outcome struct {
 	// ExitCode is a job's exit status, kept so a re-ack says it again.
 	ExitCode *int `json:"exitCode,omitempty"`
 	// Commit is a job's source commit, kept so a re-ack says it again.
-	Commit string    `json:"commit,omitempty"`
-	At     time.Time `json:"at"`
+	Commit string `json:"commit,omitempty"`
+	// Result is an agent job's final reply (#Q4288), kept so a re-ack says
+	// it again.
+	Result          string    `json:"result,omitempty"`
+	ResultTruncated bool      `json:"resultTruncated,omitempty"`
+	At              time.Time `json:"at"`
 }
 
 // Extra is what a terminal outcome carries beside its status, a deploy's
@@ -47,6 +51,11 @@ type Extra struct {
 	Warning         string
 	ExitCode        *int
 	Commit          string
+	// Result is an agent job's final reply (#Q4288); HasResult says the run
+	// printed one, even an empty one.
+	Result          string
+	ResultTruncated bool
+	HasResult       bool
 	// Job marks a job-run's extra: its exit code and its warning (a kept
 	// worktree, #Q4247) ride every terminal ack, a failed one most of all,
 	// where a deploy's ride its `done` only.
@@ -134,7 +143,8 @@ func (o *Outcomes) Finish(id, status, step, reason string, extra Extra, at time.
 	defer o.mu.Unlock()
 	delete(o.running, id)
 	out := Outcome{ID: id, Status: status, Step: step, Reason: reason, URL: extra.URL,
-		AppSecretSource: extra.AppSecretSource, Warning: extra.Warning, ExitCode: extra.ExitCode, Commit: extra.Commit, At: at.UTC()}
+		AppSecretSource: extra.AppSecretSource, Warning: extra.Warning, ExitCode: extra.ExitCode, Commit: extra.Commit,
+		Result: extra.Result, ResultTruncated: extra.ResultTruncated, At: at.UTC()}
 	if _, known := o.done[id]; !known {
 		o.order = append(o.order, id)
 	}

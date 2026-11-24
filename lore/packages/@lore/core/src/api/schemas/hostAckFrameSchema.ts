@@ -45,6 +45,14 @@ export const hostAckFrameSchema = z.object({
     .string()
     .regex(/^[0-9a-f]{40}$/)
     .optional(),
+  /**
+   * An agent job's final reply (#Q4288), read by Bay from the agent's
+   * stream as it passed, on its terminal ack; cut to 32 KB with
+   * `resultTruncated`. Absent from an older Bay, from a job that printed no
+   * final line, and from an agent that ended on an error.
+   */
+  result: z.string().max(32_768).optional(),
+  resultTruncated: z.boolean().optional(),
 });
 
 export type HostAckFrame = Infer<typeof hostAckFrameSchema>;
