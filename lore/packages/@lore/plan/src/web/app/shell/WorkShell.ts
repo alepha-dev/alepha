@@ -30,6 +30,8 @@ import {
   SquareCheckBig,
   Wrench,
   GitPullRequest,
+  PackageCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 import { currentAreaAtom } from "../atoms/currentAreaAtom.ts";
@@ -58,6 +60,7 @@ import {
   useReportTagOptions,
 } from "../components/project/reports/useReportFilterOptions.ts";
 import ProjectSettingsRoadmapSwitch from "../components/project/settings/ProjectSettingsRoadmapSwitch.tsx";
+import { dependencyUpdatePromptDefault } from "../prompts/dependencyUpdatePrompt.ts";
 import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
@@ -65,6 +68,7 @@ import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
 import { prReviewPromptDefault } from "../prompts/prReviewPrompt.ts";
 import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
 import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
+import { securityCheckPromptDefault } from "../prompts/securityCheckPrompt.ts";
 import { weeklyStatusPromptDefault } from "../prompts/weeklyStatusPrompt.ts";
 
 /**
@@ -515,6 +519,20 @@ export class WorkShell {
       template: prReviewPromptDefault,
       icon: GitPullRequest,
       labelKey: "agentPrompts.prReview",
+    });
+    // The dependencies (#Q4252), run on an Agent host by hand or by an
+    // automation; registered so a project edits them in Settings.
+    this.prompts.register({
+      kind: "securityCheck",
+      template: securityCheckPromptDefault,
+      icon: ShieldAlert,
+      labelKey: "agentPrompts.securityCheck",
+    });
+    this.prompts.register({
+      kind: "dependencyUpdate",
+      template: dependencyUpdatePromptDefault,
+      icon: PackageCheck,
+      labelKey: "agentPrompts.dependencyUpdate",
     });
 
     this.pickers.registerTags({ useTags: useDashboardQuestTags });

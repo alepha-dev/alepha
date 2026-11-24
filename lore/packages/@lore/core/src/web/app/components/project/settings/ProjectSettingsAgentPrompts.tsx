@@ -31,6 +31,8 @@ const KINDS: AgentPromptKind[] = [
   "questLoop",
   "weeklyStatus",
   "prReview",
+  "securityCheck",
+  "dependencyUpdate",
 ];
 
 /**

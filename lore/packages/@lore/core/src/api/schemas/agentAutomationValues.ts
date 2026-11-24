@@ -14,6 +14,9 @@ export const AUTOMATION_PROMPT_KINDS = [
   "build",
   "text",
   "chat",
+  // The dependencies (#Q4252): a security check, an update.
+  "security",
+  "dependencies",
 ] as const;
 
 export type AutomationPromptKind = (typeof AUTOMATION_PROMPT_KINDS)[number];

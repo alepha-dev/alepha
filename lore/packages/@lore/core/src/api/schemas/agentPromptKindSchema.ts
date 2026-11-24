@@ -40,6 +40,10 @@ export const agentPromptKindSchema = z.enum([
   "weeklyStatus",
   // A pull request reviewed by an agent job (#Q4251).
   "prReview",
+  // The dependencies (#Q4252): a security check that reads, an update that
+  // opens a pull request. Surface-scoped.
+  "securityCheck",
+  "dependencyUpdate",
   // Plan's Requirements (#E153): rendered on the server, editable with the
   // `requirements` option alone.
   "useCaseTest",

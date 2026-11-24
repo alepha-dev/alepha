@@ -7,9 +7,16 @@ import { z } from "alepha";
  */
 export const agentRunParamsSchema = projectParamsSchema.extend({
   prompt: z
-    .enum(["triage", "build", "text", "review-pr"])
+    .enum([
+      "triage",
+      "build",
+      "text",
+      "review-pr",
+      "security-check",
+      "dependency-update",
+    ])
     .describe(
-      "What to run: `triage` (the project's Triage prompt over the feedback inbox and the open errors), `build` (the Build prompt on one accepted quest, with `quest`), `review-pr` (the Review prompt on a pull request, with `pr`), or `text` (your own words, in `text`).",
+      "What to run: `triage` (the project's Triage prompt over the feedback inbox and the open errors), `build` (the Build prompt on one accepted quest, with `quest`), `review-pr` (the Review prompt on a pull request, with `pr`), `security-check` (the dependencies audited, a quest per real vulnerability), `dependency-update` (the dependencies updated into a pull request; `text` may name the packages), or `text` (your own words, in `text`).",
     ),
   quest: z
     .integer()
@@ -34,7 +41,13 @@ export const agentRunParamsSchema = projectParamsSchema.extend({
     .describe(
       "You trust the pull request's author: the host does not check that they can write to the repository first. Never set by an automation.",
     ),
-  text: z.string().max(131_072).optional().describe("A `text` prompt's words."),
+  text: z
+    .string()
+    .max(131_072)
+    .optional()
+    .describe(
+      "A `text` prompt's words, or the packages a `dependency-update` updates.",
+    ),
   host: z
     .string()
     .max(64)

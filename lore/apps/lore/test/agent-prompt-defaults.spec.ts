@@ -148,6 +148,8 @@ describe("the default prompts", () => {
     "feedbackLoop",
     "questLoop",
     "weeklyStatus",
+    "securityCheck",
+    "dependencyUpdate",
   ];
 
   it("carries the placeholders that name its subject", () => {

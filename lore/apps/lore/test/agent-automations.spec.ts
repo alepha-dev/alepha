@@ -213,6 +213,29 @@ describe("agent automations", () => {
     expect(job.input.key).toEqual({ feedbackIds: [item.shortId] });
   });
 
+  it("runs the dependencies' security check and update as automations (#Q4252)", async ({
+    expect,
+  }) => {
+    for (const [name, kind, subject] of [
+      ["audit", "security", "security"],
+      ["deps", "dependencies", "dependencies"],
+    ] as const) {
+      const automation = await create({ name, promptKind: kind });
+      const out = await w.controller.runProjectAutomation.run(
+        { params: { projectId: w.projectId, automation: name } },
+        { user: w.owner },
+      );
+      expect(out.jobIds).toHaveLength(1);
+      const job = await w.repos.jobs.getOne({
+        where: { id: { eq: out.jobIds[0] } },
+      });
+      expect(job).toMatchObject({
+        automationId: automation.id,
+        subjectType: subject,
+      });
+    }
+  });
+
   it("goes with its project", async ({ expect }) => {
     // The host's home project refuses deletion: a project of its own.
     const project = await createTestProject(w.alepha, {

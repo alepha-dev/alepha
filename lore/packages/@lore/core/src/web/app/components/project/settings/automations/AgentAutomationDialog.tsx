@@ -144,6 +144,14 @@ const AgentAutomationDialog = (props: AgentAutomationDialogProps) => {
               { value: "triage", label: tr("automations.prompt.triage") },
               { value: "build", label: tr("automations.prompt.build") },
               { value: "text", label: tr("automations.prompt.text") },
+              {
+                value: "security",
+                label: tr("automations.prompt.security"),
+              },
+              {
+                value: "dependencies",
+                label: tr("automations.prompt.dependencies"),
+              },
               { value: "chat", label: tr("automations.prompt.chat") },
             ]}
             disabled={busy}

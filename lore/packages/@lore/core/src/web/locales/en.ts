@@ -1391,6 +1391,8 @@ export default {
   "automations.prompt.build": "Build",
   "automations.prompt.text": "Text",
   "automations.prompt.chat": "Chat agent's rounds",
+  "automations.prompt.security": "Security check",
+  "automations.prompt.dependencies": "Dependency update",
   "automations.form.chatAgent": "Chat agent",
   "automations.form.chatAgent.description":
     "Its handle, without the @: it answers in the room as if you had mentioned it.",
@@ -4047,6 +4049,14 @@ export default {
   "agentPrompts.settings.feedbackLoop.description":
     "Offered on the feedback inbox and on the errors inbox. Accepts, rejects or asks about every pending report, files a quest for each real defect among the trusted errors and resolves the noise, until nothing is left.",
   "agentPrompts.weeklyStatus": "Write the weekly status",
+  "agentPrompts.securityCheck": "Check the dependencies for vulnerabilities",
+  "agentPrompts.settings.securityCheck.title": "Dependencies: Security check",
+  "agentPrompts.settings.securityCheck.description":
+    "Run on an Agent host: audits the dependencies from the lockfile and files one quest per real vulnerability.",
+  "agentPrompts.dependencyUpdate": "Update the dependencies",
+  "agentPrompts.settings.dependencyUpdate.title": "Dependencies: Update",
+  "agentPrompts.settings.dependencyUpdate.description":
+    "Run on an Agent host: updates the dependencies, runs the checks, and opens a pull request only when they pass.",
   "agentPrompts.prReview": "Review a pull request",
   "agentPrompts.settings.prReview.title": "Quests: Review a pull request",
   "agentPrompts.settings.prReview.description":
