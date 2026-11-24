@@ -204,6 +204,18 @@ func writeRunFile(pattern string, content []byte) (string, func(), error) {
 }
 
 // jobTools are the tools beside the agent CLIs a job may need, which the
-// inventory reports (#Q4220): git and gh for work on a repository, lore for
-// a prompt that asks for the CLI. Bay runs none of them itself.
-var jobTools = []string{"git", "gh", "lore"}
+// inventory reports (#Q4220): git and gh for work on a repository, cf
+// (Cloudflare's CLI, #Q4254) for a deploy, lore for a prompt that asks for
+// the CLI. Bay runs git for a job's source (#E173) and none of the others.
+var jobTools = []string{"git", "gh", "cf", "lore"}
+
+/*
+cfIsCloudflares tells Cloudflare's `cf` from another program installed under
+the same name: Cloud Foundry's CLI is `cf` too, and prints `cf version 8.7.0`
+where Cloudflare's prints `cf · v0.15.0` under its mark. A version from the
+wrong program would read as the right tool installed.
+*/
+func cfIsCloudflares(out string) bool {
+	lower := strings.ToLower(out)
+	return strings.Contains(lower, "cloudflare") || strings.Contains(out, "cf · v")
+}

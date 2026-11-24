@@ -15,10 +15,10 @@ export interface BayAgentHostProps {
 /**
  * The host as an **Agent host** (#Q3985): the switch that makes it run agent
  * CLI jobs (it needs jobs allowed), the last capability check (available or
- * not, with the agent's message), and what the jobs user has (#Q4220): each
- * agent CLI, git, gh and lore, with its version, as the inventory reports.
- * Lore never sees a credential; the operator installs and signs in the
- * tools by hand for Bay's jobs user.
+ * not, with the agent's message), how many jobs it runs (#Q4249), and a link
+ * to the Tools section (#Q4254), which lists what the jobs user has. Lore
+ * never sees a credential; the operator installs and signs in the tools by
+ * hand for Bay's jobs user.
  */
 const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -137,36 +137,22 @@ const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
                 ],
               })}
             </span>
-            {host.jobsTools && (
-              <ul
-                className="text-muted-foreground flex flex-col gap-0.5 text-xs"
-                data-testid="bay-agent-tools"
-              >
-                {host.jobsTools.map((tool) => (
-                  <li
-                    key={tool.name}
-                    className="flex gap-2"
-                    data-testid={`bay-agent-tool-${tool.name}`}
-                  >
-                    <span className="text-foreground font-mono">
-                      {tool.name}
-                    </span>
-                    <span>
-                      {!tool.found
-                        ? tr("hosts.agent.tool.missing")
-                        : (tool.error ?? tool.version ?? "")}
-                    </span>
-                  </li>
-                ))}
-                {!host.jobsTools.some(
-                  (tool) => tool.kind === "agent" && tool.found && !tool.error,
-                ) && (
-                  <li className="text-danger">
-                    {tr("hosts.agent.tools.noAgent")}
-                  </li>
-                )}
-              </ul>
-            )}
+            {/* The tools themselves are the Tools section's (#Q4254). */}
+            {host.jobsTools &&
+              !host.jobsTools.some(
+                (tool) => tool.kind === "agent" && tool.found && !tool.error,
+              ) && (
+                <span className="text-danger text-xs">
+                  {tr("hosts.agent.tools.noAgent")}
+                </span>
+              )}
+            <a
+              href="#host-tools"
+              className="text-muted-foreground text-xs underline"
+              data-testid="bay-agent-tools-link"
+            >
+              {tr("hosts.agent.tools.link")}
+            </a>
           </div>
         )}
       </CardContent>

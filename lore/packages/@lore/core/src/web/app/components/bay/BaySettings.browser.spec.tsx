@@ -40,7 +40,10 @@ class Routes {
   });
 }
 
-const host = (can: string[]): OwnedHostResource =>
+const host = (
+  can: string[],
+  extra: Partial<OwnedHostResource> = {},
+): OwnedHostResource =>
   ({
     id: "00000000-0000-4000-8000-000000000001",
     slug: "ovh-1",
@@ -59,6 +62,7 @@ const host = (can: string[]): OwnedHostResource =>
     creator: { id: "00000000-0000-4000-8000-0000000000c1", name: "Builder" },
     can,
     projects: [],
+    ...extra,
   }) as OwnedHostResource;
 
 /**
@@ -78,7 +82,10 @@ describe("BaySettings", () => {
     alepha = undefined;
   });
 
-  const show = async (can: string[]) => {
+  const show = async (
+    can: string[],
+    extra: Partial<OwnedHostResource> = {},
+  ) => {
     cleanup();
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -91,7 +98,7 @@ describe("BaySettings", () => {
     alepha.inject(I18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentHostAtom, host(can));
+    alepha.store.set(currentHostAtom, host(can, extra));
     return render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
@@ -119,6 +126,57 @@ describe("BaySettings", () => {
     expect(screen.queryByTestId("bay-settings-rotate")).toBeNull();
     expect(screen.queryByTestId("bay-settings-delete")).toBeNull();
     expect(screen.queryByTestId("bay-settings-move")).toBeNull();
+  });
+
+  it("shows the jobs user's tools: installed with a version, not installed, or another program (#Q4254)", async ({
+    expect,
+  }) => {
+    await show(["host:read"], {
+      jobsUser: "bay-agent",
+      jobsTools: [
+        { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+        {
+          name: "gh",
+          kind: "tool",
+          found: false,
+          error: "gh is not on the jobs user's PATH",
+        },
+        {
+          name: "cf",
+          kind: "tool",
+          found: true,
+          error: "not Cloudflare's CLI: another program is installed as cf",
+        },
+      ],
+    });
+    expect(screen.getByTestId("bay-job-tools").textContent).toContain(
+      "Jobs run as bay-agent.",
+    );
+    expect(screen.getByTestId("bay-job-tool-claude").textContent).toContain(
+      "Installed, 2.1.7",
+    );
+    const gh = screen.getByTestId("bay-job-tool-gh");
+    expect(gh.textContent).toContain("Not installed");
+    expect(gh.querySelector("[title]")?.getAttribute("title")).toBe(
+      "gh is not on the jobs user's PATH",
+    );
+    expect(screen.getByTestId("bay-job-tool-cf").textContent).toContain(
+      "not Cloudflare's CLI",
+    );
+  });
+
+  it("tells a host with no jobs user from one that never reported (#Q4254)", async ({
+    expect,
+  }) => {
+    await show(["host:read"], { jobsUser: "" });
+    expect(screen.getByTestId("bay-job-tools-no-user").textContent).toContain(
+      "bay config jobs --user <name>",
+    );
+    expect(screen.queryByTestId("bay-job-tools-never")).toBeNull();
+
+    await show(["host:read"]);
+    expect(screen.getByTestId("bay-job-tools-never")).toBeTruthy();
+    expect(screen.queryByTestId("bay-job-tools-no-user")).toBeNull();
   });
 
   it("offers the switches and rotate under host:update, delete and move under host:delete", async ({

@@ -227,6 +227,12 @@ export const hosts = $entity({
      */
     jobsSources: z.boolean().optional(),
     /**
+     * The Unix user its jobs run as, from its inventory (#Q4254): empty when
+     * the machine reported and named none (no `bay config jobs --user`),
+     * absent when it never reported. The Tools section tells those apart.
+     */
+    jobsUser: z.string().max(64).optional(),
+    /**
      * How many jobs the machine runs at once (`--max-jobs`, #Q4249), and how
      * many it said it runs in its last inventory: the dispatcher hands it up
      * to `jobsMaxJobs` queued jobs, and the Agent card shows both.

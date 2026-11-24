@@ -82,15 +82,20 @@ export class HostInventoryService {
     const running = frame.jobs
       ? (frame.jobs.running ?? "").split(",").filter(Boolean).length
       : null;
+    // Its jobs user (#Q4254): empty when it reported none, so the page
+    // tells "no jobs user" from "never reported".
+    const user = frame.jobs?.user ?? "";
     if (
       (host.jobsSources ?? false) !== sources ||
       (host.jobsMaxJobs ?? null) !== maxJobs ||
-      (host.jobsRunning ?? null) !== running
+      (host.jobsRunning ?? null) !== running ||
+      host.jobsUser !== user
     ) {
       await this.hosts.updateById(host.id, {
         jobsSources: sources,
         jobsMaxJobs: maxJobs,
         jobsRunning: running,
+        jobsUser: user,
       });
     }
 
