@@ -634,6 +634,8 @@ const ChatPage = () => {
         canManage={canManage}
         users={users}
         members={memberPage?.items ?? []}
+        agents={memberPage?.agents ?? []}
+        agentLabels={agentLabels}
         onClose={() => setPanelOpen(false)}
       />
     ) : undefined;

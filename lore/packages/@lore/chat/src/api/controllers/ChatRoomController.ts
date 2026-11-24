@@ -2,6 +2,7 @@ import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
+import { chatRoomAgentResourceSchema } from "../schemas/chatRoomAgentResourceSchema.ts";
 import { chatRoomMemberResourceSchema } from "../schemas/chatRoomMemberResourceSchema.ts";
 import { chatRoomNameSchema } from "../schemas/chatRoomNameSchema.ts";
 import { chatRoomResourceSchema } from "../schemas/chatRoomResourceSchema.ts";
@@ -183,18 +184,25 @@ export class ChatRoomController {
     method: "GET",
     path: "/projects/:projectId/chat/rooms/:roomId/members",
     use: [this.ownsProject("chat:read")],
-    description: "The members of a room the caller can see.",
+    description:
+      "The members of a room the caller can see, and the agents that answered in it.",
     schema: {
       params: this.roomParams,
-      response: z.object({ items: z.array(chatRoomMemberResourceSchema) }),
+      response: z.object({
+        items: z.array(chatRoomMemberResourceSchema),
+        /**
+         * The agents that have answered in the room (#Q4268).
+         */
+        agents: z.array(chatRoomAgentResourceSchema),
+      }),
     },
-    handler: async ({ params, user }) => ({
-      items: await this.service.membersOf(
-        params.projectId,
-        params.roomId,
-        user!.id,
-      ),
-    }),
+    handler: async ({ params, user }) => {
+      const [items, agents] = await Promise.all([
+        this.service.membersOf(params.projectId, params.roomId, user!.id),
+        this.service.agentsOf(params.projectId, params.roomId, user!.id),
+      ]);
+      return { items, agents };
+    },
   });
 
   inviteChatRoomMember = $action({

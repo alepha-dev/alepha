@@ -290,6 +290,16 @@ describe("chat agents", () => {
       agentName: "J.A.R.V.I.S.",
     });
 
+    // The room's members panel lists it beside the people, once, by the
+    // same name (#Q4268).
+    const panel = await rooms.listChatRoomMembers.fetch(
+      { params: { projectId: kit.projectId, roomId: general.id } },
+      { user: kit.member },
+    );
+    expect(panel.data.agents).toEqual([
+      { handle: "jarvis", agentId: jarvis.id, name: "J.A.R.V.I.S." },
+    ]);
+
     // Another project's agent is plain text here.
     const elsewhere = await kit.projects.createProject.fetch(
       { body: { title: "Other", capabilities: [{ key: "chat" }] } },
