@@ -471,6 +471,13 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	}
 	cmd.Stdout = log.writer("stdout")
 	cmd.Stderr = log.writer("stderr")
+	// The reply is read from the stream as it passes, before the log's cap
+	// (#Q4288): an agent job's only, a check's answer is its exit.
+	var scanner *resultScanner
+	if spec.Kind == jobKindAgent && adapter.Result != nil {
+		scanner = newResultScanner(adapter.Result())
+		cmd.Stdout = teeWriter{log.writer("stdout"), scanner}
+	}
 	if spec.Kind == jobKindCheck {
 		// The check is the version first, then the one-line prompt.
 		version, err := r.agentVersion(ctx, u, adapter)
@@ -484,14 +491,26 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	if code != nil {
 		log.Step(fmt.Sprintf("agent exited with status %d", *code))
 	}
+	if scanner != nil {
+		if reply, isError, ok := scanner.Final(); ok && !isError {
+			out.Result, out.HasResult = reply, true
+		} else if ok && isError && strings.TrimSpace(reply) != "" {
+			// An error result is no reply: its words go to the failure.
+			out.ErrorResult = reply
+		}
+	}
 	return code, out, err
 }
 
 // jobOutcome is what a run says beside its exit: the commit its source
-// resolved, and a warning (a write worktree kept with unpushed work).
+// resolved, a warning (a write worktree kept with unpushed work), and the
+// agent's final reply when its stream ended on one (#Q4288).
 type jobOutcome struct {
-	Commit  string
-	Warning string
+	Commit      string
+	Warning     string
+	Result      string
+	HasResult   bool
+	ErrorResult string
 }
 
 // wait starts cmd and waits for its exit, killing its process group when
@@ -722,7 +741,7 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	}
 	// Sources says this bay prepares a job's source (#Q4245): Lore sends a
 	// read or write job to no bay that does not say so.
-	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true,
+	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true, Result: true,
 		MaxJobs: cfg.jobsLimit()}
 	// What the jobs user has, read again when older than ten minutes: a
 	// version command per tool is cheap, but not on every inventory.
@@ -799,6 +818,10 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 
 	exit, outcome, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
 	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning, Commit: outcome.Commit}
+	if outcome.HasResult {
+		extra.Result, extra.ResultTruncated = connector.CutResult(outcome.Result)
+		extra.HasResult = true
+	}
 	cause := context.Cause(runCtx)
 	switch {
 	case errors.Is(cause, errJobCancelled):
@@ -816,7 +839,9 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	default:
 		status = "failed"
 		reason = fmt.Sprintf("the agent exited with status %d", *exit)
-		if tail := strings.TrimSpace(log.stderrTail(400)); tail != "" {
+		if outcome.ErrorResult != "" {
+			reason += ": " + cut(strings.TrimSpace(outcome.ErrorResult), 400)
+		} else if tail := strings.TrimSpace(log.stderrTail(400)); tail != "" {
 			reason += ": " + tail
 		}
 	}

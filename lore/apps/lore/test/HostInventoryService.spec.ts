@@ -212,6 +212,17 @@ describe("HostInventoryService", () => {
       jobsMaxJobs: 3,
       jobsRunning: 2,
     });
+    expect(slots.jobsResult).toBe(false);
+
+    // A Bay whose terminal acks carry the agent's reply says so (#Q4288).
+    await ctx.service.record(slots, {
+      ...frame([]),
+      jobs: { user: "bay-agent", tools, sources: true, result: true },
+    });
+    const replies = await ctx.repos.hosts.getOne({
+      where: { id: { eq: host.id } },
+    });
+    expect(replies.jobsResult).toBe(true);
   });
 
   it("answers nothing for a machine that has never reported", async ({

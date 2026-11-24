@@ -51,6 +51,11 @@ export const hostInventoryJobsSchema = z.object({
    * dispatches up to that many. Absent counts as one.
    */
   maxJobs: z.integer().min(1).max(64).optional(),
+  /**
+   * The machine's terminal ack of a job carries the agent's final reply
+   * (#Q4288): a host that does not say so leaves its jobs without one.
+   */
+  result: z.boolean().optional(),
 });
 
 export type HostInventoryJobs = Infer<typeof hostInventoryJobsSchema>;

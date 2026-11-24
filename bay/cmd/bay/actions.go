@@ -222,6 +222,7 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		ack := connector.NewAck(cmd.ID, prior.Status, prior.Step, prior.Reason)
 		ack.ExitCode = prior.ExitCode
 		ack.Commit = prior.Commit
+		ack.Result, ack.ResultTruncated = prior.Result, prior.ResultTruncated
 		ack.URL = prior.URL
 		ack.AppSecretSource = prior.AppSecretSource
 		ack.Warning = connector.CutWarning(prior.Warning)
@@ -379,6 +380,7 @@ func (a *actions) finish(id, status, step, reason string, send func(connector.Ac
 		if h.Job {
 			extra.Warning = h.Warning
 			extra.Commit = h.Commit
+			extra.Result, extra.ResultTruncated, extra.HasResult = h.Result, h.ResultTruncated, h.HasResult
 		}
 	}
 	out, err := a.outcomes.Finish(id, status, step, reason, extra, time.Now())
@@ -391,6 +393,7 @@ func (a *actions) finish(id, status, step, reason string, send func(connector.Ac
 	ack.Warning = connector.CutWarning(out.Warning)
 	ack.ExitCode = out.ExitCode
 	ack.Commit = out.Commit
+	ack.Result, ack.ResultTruncated = out.Result, out.ResultTruncated
 	if err := send(ack); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)

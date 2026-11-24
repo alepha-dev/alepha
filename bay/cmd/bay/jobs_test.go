@@ -717,7 +717,7 @@ func TestJobsInventory(t *testing.T) {
 	// Cloudflare's cf prints its mark before its version (#Q4254).
 	w.stub(t, "cf", "#!/bin/sh\necho '\xf0\x9f\x8d\x8a\xe2\x98\x81\xef\xb8\x8f  cf \xc2\xb7 v0.15.0'\n")
 	inv, _ := w.acts.Inventory(context.Background())
-	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources || inv.Jobs.MaxJobs != 1 {
+	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources || !inv.Jobs.Result || inv.Jobs.MaxJobs != 1 {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
 	}
 	// Every adapter's CLI, then git, gh and lore, in that order (#Q4220).

@@ -77,6 +77,8 @@ export class HostInventoryService {
     // Whether its Bay prepares a job's source (#E173), which the gate on
     // read and write jobs reads.
     const sources = frame.jobs?.sources === true;
+    // Whether its terminal acks carry an agent's reply (#Q4288).
+    const result = frame.jobs?.result === true;
     // How many jobs it runs at once, and runs now (#Q4249).
     const maxJobs = frame.jobs?.maxJobs ?? null;
     const running = frame.jobs
@@ -87,12 +89,14 @@ export class HostInventoryService {
     const user = frame.jobs?.user ?? "";
     if (
       (host.jobsSources ?? false) !== sources ||
+      (host.jobsResult ?? false) !== result ||
       (host.jobsMaxJobs ?? null) !== maxJobs ||
       (host.jobsRunning ?? null) !== running ||
       host.jobsUser !== user
     ) {
       await this.hosts.updateById(host.id, {
         jobsSources: sources,
+        jobsResult: result,
         jobsMaxJobs: maxJobs,
         jobsRunning: running,
         jobsUser: user,

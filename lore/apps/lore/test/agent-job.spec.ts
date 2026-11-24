@@ -429,6 +429,36 @@ describe("the agent job", () => {
         warning: "kept acme/job-1, 1 unpushed commit(s)",
       });
     });
+
+    it("hands on the agent's final reply from the terminal ack, and accepts an ack without one (#Q4288)", async ({
+      expect,
+    }) => {
+      await makeAgentHost(w);
+      const seen: Array<{ result?: string; resultTruncated?: boolean }> = [];
+      w.alepha.events.on("host:command:progressed", (it) => {
+        if (it.command.kind === "job-run") seen.push(it);
+      });
+      for (const ack of [
+        { result: "Triaged 2 items.", resultTruncated: true },
+        {},
+      ]) {
+        const job = await triage(w);
+        const row = await w.repos.jobs.getOne({
+          where: { id: { eq: job.id } },
+        });
+        await w.commands.ack(w.host.id, {
+          id: row.commandId as string,
+          status: "done",
+          exitCode: 0,
+          ...ack,
+        });
+      }
+      expect(seen.at(-2)).toMatchObject({
+        result: "Triaged 2 items.",
+        resultTruncated: true,
+      });
+      expect(seen.at(-1)).not.toHaveProperty("result");
+    });
   });
 
   it("succeeds or fails by its exit code, and reads nothing of what the agent printed", async ({

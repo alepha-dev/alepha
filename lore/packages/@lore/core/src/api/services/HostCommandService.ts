@@ -42,6 +42,12 @@ declare module "alepha" {
       exitCode?: number;
       /** The commit a job's source resolved (#E173). */
       commit?: string;
+      /**
+       * An agent job's final reply, from its terminal ack (#Q4288), and
+       * whether Bay cut it.
+       */
+      result?: string;
+      resultTruncated?: boolean;
     };
   }
 }
@@ -62,6 +68,8 @@ export interface HostCommandAck {
   warning?: string;
   exitCode?: number;
   commit?: string;
+  result?: string;
+  resultTruncated?: boolean;
 }
 
 /**
@@ -419,6 +427,14 @@ export class HostCommandService {
         : {}),
       ...(ack.exitCode === undefined ? {} : { exitCode: ack.exitCode }),
       ...(ack.commit ? { commit: ack.commit } : {}),
+      ...(command.kind === "job-run" &&
+      ack.status !== "running" &&
+      ack.result !== undefined
+        ? {
+            result: ack.result,
+            ...(ack.resultTruncated ? { resultTruncated: true } : {}),
+          }
+        : {}),
     });
     return updated;
   }

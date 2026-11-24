@@ -227,6 +227,12 @@ export const hosts = $entity({
      */
     jobsSources: z.boolean().optional(),
     /**
+     * Whether the machine's Bay returns an agent job's final reply in its
+     * terminal ack (#Q4288), from its inventory. Without it a job ends with
+     * no reply, and its page says to upgrade Bay on that host.
+     */
+    jobsResult: z.boolean().optional(),
+    /**
      * The Unix user its jobs run as, from its inventory (#Q4254): empty when
      * the machine reported and named none (no `bay config jobs --user`),
      * absent when it never reported. The Tools section tells those apart.
