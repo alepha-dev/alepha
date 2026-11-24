@@ -637,6 +637,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Chat agents",
+    section: "What an agent can read",
+    url: "https://alepha.dev/lore/docs/project-chat-agents#what-an-agent-can-read",
+    text: "An agent runs as the member who mentioned it, so it is offered only what that\nmember's rank reads in this project:\n\n- **Plan and Remember**: quests, epics, releases, feedback, folios, the\n  dashboards and search, and Lore's own guides.\n- **How the apps run**, with the **Ship** capability on: uptime monitors, the\n  errors inbox, Agent host jobs and their logs, deploys, and stacks. Monitors,\n  deploys and stacks need **See the deployed copies**, errors **Read the crash\n  inbox**, and jobs the permission to see the project's hosts.\n- **Errors a member trusted, and only those.** Error text comes from the\n  apps that report it, so an agent never reads a group nobody on the team has\n  trusted on the Errors page; it is told how many wait.\n\nIt writes only through a card you approve: a quest, a comment, a folio, a\ndashboard card or a feedback item. It never resolves an error, deploys or\nrolls back.",
+  },
+  {
+    guide: "Chat agents",
     section: "Editing and deleting",
     url: "https://alepha.dev/lore/docs/project-chat-agents#editing-and-deleting",
     text: "The pencil on an agent's row edits it; a new name or avatar shows on its past\nanswers too. The bin deletes it after asking: its past answers keep showing\nwith its name and avatar, and its handle is free for another agent.",

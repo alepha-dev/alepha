@@ -2,6 +2,7 @@ import {
   ResourceRegistry,
   $ownsProject,
   JobKeyService,
+  McpProjectScope,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { $inject, z } from "alepha";
@@ -63,6 +64,7 @@ export class ProjectErrorController {
   protected resources = $inject(ResourceRegistry);
   protected ruleService = $inject(ProjectErrorRuleService);
   protected jobKeys = $inject(JobKeyService);
+  protected scope = $inject(McpProjectScope);
   protected users = $repository(users);
   protected dateTime = $inject(DateTimeProvider);
 
@@ -92,9 +94,9 @@ export class ProjectErrorController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      // An agent's job key reads trusted groups only (#Q4233): their text
-      // comes from an ingest open to anyone.
-      const agent = Boolean(await this.jobKeys.scopeOf(user));
+      // An agent reads trusted groups only (#Q4233): their text comes from
+      // an ingest open to anyone.
+      const agent = await this.isAgent(user);
       const every = (
         await this.currentProjectErrors.findMany({
           where: { projectId: { eq: params.projectId } },
@@ -612,7 +614,20 @@ export class ProjectErrorController {
   }
 
   /**
-   * A job key acts on a trusted group only (#Q4233): forwarding copies the
+   * Whether a model is reading (#Q4233, #Q4235): an agent job's key, or a
+   * run pinned to one project, which is what a chat agent answering in a
+   * room runs under (`McpProjectScope.pinned`). A member's own MCP client
+   * is neither, and reads the inbox as the page does.
+   */
+  protected async isAgent(
+    user: UserAccountToken | undefined,
+  ): Promise<boolean> {
+    if (this.scope.pinnedProject() !== undefined) return true;
+    return Boolean(await this.jobKeys.scopeOf(user));
+  }
+
+  /**
+   * An agent acts on a trusted group only (#Q4233): forwarding copies the
    * group's text into a quest, and resolving needs it read.
    */
   protected async assertAgentMayRead(
@@ -620,7 +635,7 @@ export class ProjectErrorController {
     user: UserAccountToken | undefined,
   ): Promise<void> {
     if (row.trustedAt) return;
-    if (await this.jobKeys.scopeOf(user)) {
+    if (await this.isAgent(user)) {
       throw new ForbiddenError(
         `Error ${row.id} is not trusted yet: a member reads and trusts it before an agent acts on it`,
       );
