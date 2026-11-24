@@ -23,10 +23,17 @@ import {
   formatReference,
   AgentPromptsMenu,
   StackTraceViewer,
+  TriageRunRegistry,
   useAgentPromptSubject,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
-import { useAction, useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -159,6 +166,11 @@ const ProjectErrors = () => {
     },
     [projectErrorApi, project, toaster, tr],
   );
+
+  // The one triage run over the feedback and the trusted errors (#Q4240):
+  // Plan's, registered on core, so the Errors page offers the same entries
+  // as the Feedback page.
+  const triageRunActions = useInject(TriageRunRegistry).use();
 
   const forwardAction = useAction<
     [projectError: ProjectErrorResource, refresh: () => void],
@@ -372,12 +384,15 @@ const ProjectErrors = () => {
               appsEnabled
                 ? [
                     {
-                      kind: "errorTriage" as const,
+                      // The one triage prompt, feedback and errors together
+                      // (#Q4240), as the Feedback page offers it.
+                      kind: "feedbackLoop" as const,
                       subject: () => promptSubject.forPage("projectErrors"),
                     },
                   ]
                 : []
             }
+            actions={appsEnabled ? triageRunActions : []}
           />
         }
         fetch={fetchProjectErrors}

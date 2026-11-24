@@ -25,16 +25,15 @@ your coding agent. The agent needs access to the project to act on it: see
 
 ## The prompts
 
-| Prompt                      | Where                                                              | Offered when                                                                     |
-| --------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| **Review Epic**             | an epic's row menu, and the epic page                              | nobody has started the epic: it is a draft or ready                              |
-| **Work on it** (epic)       | the same two places                                                | the epic is ready or in progress, or a draft that you may mark ready             |
-| **Work on it** (quest)      | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is ready or in progress |
-| **Work on it** (feedback)   | the feedback detail panel                                          | the report is pending or accepted                                                |
-| **Triage the inbox**        | the feedback detail panel                                          | always, with Plan's **Feedback** option on                                       |
-| **Triage the errors**       | the errors inbox toolbar                                           | always, with the **Ship** capability on                                          |
-| **Work the loose quests**   | the Quests page toolbar                                            | always                                                                           |
-| **Write the weekly status** | the Reports **Summary** tab                                        | always                                                                           |
+| Prompt                         | Where                                                              | Offered when                                                                     |
+| ------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| **Review Epic**                | an epic's row menu, and the epic page                              | nobody has started the epic: it is a draft or ready                              |
+| **Work on it** (epic)          | the same two places                                                | the epic is ready or in progress, or a draft that you may mark ready             |
+| **Work on it** (quest)         | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is ready or in progress |
+| **Work on it** (feedback)      | the feedback detail panel                                          | the report is pending or accepted                                                |
+| **Triage feedback and errors** | the feedback detail panel, and the errors inbox toolbar            | always, with Plan's **Feedback** option on (feedback) or **Ship** on (errors)    |
+| **Work the loose quests**      | the Quests page toolbar                                            | always                                                                           |
+| **Write the weekly status**    | the Reports **Summary** tab                                        | always                                                                           |
 
 ### On an epic
 
@@ -73,12 +72,14 @@ the reporter what shipped.
 
 ### On a whole page
 
-The last four are about a page, not one item. Three of them are loops that
+The last three are about a page, not one item. Two of them are loops that
 read their list again every round, because they change the list they read.
 
-**Triage the inbox** accepts, rejects or asks about every pending report until
-none is left. **Triage the errors** files a quest for each real defect and
-resolves the noise.
+**Triage feedback and errors** accepts, rejects or asks about every pending
+report, and, when the project tracks errors, files a quest for each real
+defect among the trusted errors (or adds it to the quest of the report it
+explains) and resolves the noise, until nothing is left. It is the same
+prompt from the feedback inbox and from the errors inbox.
 
 **Work the loose quests** hands over every to-do quest that belongs to no epic,
 one at a time, under the same rules as an epic's **Work on it**: one branch and

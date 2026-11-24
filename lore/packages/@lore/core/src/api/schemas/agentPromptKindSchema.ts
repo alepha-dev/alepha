@@ -3,9 +3,9 @@ import { type Infer, z } from "alepha";
 /**
  * The prompts a project can hand to an agent, one per surface and verb:
  * Review and Activate on an epic, Work on it on a quest, Work on it on a
- * feedback item, Triage the inbox on the feedback inbox, Triage the errors
- * on the errors inbox, Work the loose quests on the Quests page, and Write
- * the weekly status on the Reports Summary tab.
+ * feedback item, Triage feedback and errors on the feedback and the errors
+ * inboxes, Work the loose quests on the Quests page, and Write the weekly
+ * status on the Reports Summary tab.
  *
  * ⚠️ **Two shapes, not one.** The first four name ONE item and take an
  * `AgentPromptItemSubject`; `feedbackLoop`, `errorTriage`, `questLoop` and
@@ -32,6 +32,9 @@ export const agentPromptKindSchema = z.enum([
   "questWork",
   "feedbackWork",
   "feedbackLoop",
+  // ⚠️ Retired (#Q4240): folded into `feedbackLoop`, and neither registered
+  // nor offered. Kept because `project_prompts.kind` is a Postgres enum, so
+  // a stored row of it must still parse.
   "errorTriage",
   "questLoop",
   "weeklyStatus",

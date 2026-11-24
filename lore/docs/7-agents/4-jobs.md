@@ -116,9 +116,10 @@ A job never starts another agent job.
 
 **Triage with an agent**, in the robot menu of a pending feedback item, runs
 the project's Triage prompt (see [Agent prompts](/lore/docs/agents-prompts))
-on that one item. **Triage all feedback and errors with an agent**, in the
-same menu, runs it over the whole inbox, and over the project's open errors
-when it tracks them (Ship ▸ Track). Both run the same prompt: the agent reads
+on that one item. **Triage feedback and errors with an agent**, in the same
+menu and in the robot menu of the errors inbox, runs it over the whole inbox,
+and over the project's trusted open errors when it tracks them (Ship ▸
+Track). Both run the same prompt: the agent reads
 everything first, then groups what belongs together:
 
 - one quest per real problem, however many reports describe it. The quest

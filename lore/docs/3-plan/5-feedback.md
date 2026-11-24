@@ -190,7 +190,8 @@ feedback** on **Settings ▸ Notifications**: see
 [Notifications](/lore/docs/project-notifications).
 
 [Agent prompts](/lore/docs/agents-prompts) offers two prompts on an open
-report: **Triage the inbox**, and **Work on it** unless the report is rejected.
+report: **Triage feedback and errors**, and **Work on it** unless the report is
+rejected.
 
 ## From the command line
 

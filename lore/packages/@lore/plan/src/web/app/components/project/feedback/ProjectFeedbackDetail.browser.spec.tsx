@@ -426,7 +426,7 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
       return found;
     });
     const labels = items.map((it) => it.textContent ?? "").join(" ");
-    expect(labels).toContain("Triage the inbox");
+    expect(labels).toContain("Triage feedback and errors");
     expect(labels).not.toContain("Work on it");
   });
 
