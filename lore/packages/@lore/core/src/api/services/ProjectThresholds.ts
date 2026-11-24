@@ -11,11 +11,11 @@ import type { ProjectEvents } from "./ProjectEvents.ts";
 
 /**
  * A project's alert thresholds (#Q3894), the table and how an alert fires:
- * the coverage one is Build's and the open-errors one Ship's, so the row is
- * core's and each pillar checks its own (#E162).
+ * the coverage one is core's Quality (#Q4217) and the open-errors one Ship's,
+ * so the row is core's and each side checks its own.
  *
- * - **Coverage** when a push on `main` arrives (`CoverageThreshold`, in
- *   `@lore/build`): under the threshold records `coverage.dropped`.
+ * - **Coverage** when a push on `main` arrives (`CoverageThreshold`): under
+ *   the threshold records `coverage.dropped`.
  * - **Open errors** by the hourly job (`ErrorThreshold`, in `@lore/ship`):
  *   over it records `errors.threshold_crossed`. The error ingest path is not
  *   touched.

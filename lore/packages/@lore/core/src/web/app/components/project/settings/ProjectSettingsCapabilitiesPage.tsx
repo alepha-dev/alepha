@@ -17,8 +17,8 @@ import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection
  *
  * Ship is the exception (#Q3702): its own Features page holds no switch
  * any more, so every Ship option is listed here, Monitor apps included,
- * rather than the same rows twice. Build has no settings page of its own,
- * so its two options, Repositories and Quality, are listed here too (#Q4005).
+ * rather than the same rows twice. Reports has no settings page of its own,
+ * so its one option, Quality (#Q4217), is listed here too.
  *
  * The page opens with Activity, Chat and Reports (#Q4007), three switches
  * in one card above the pillars, with no heading of its own (#Q4046): the
@@ -39,7 +39,8 @@ const ProjectSettingsCapabilitiesPage = () => {
           <ProjectSettingsCapabilitySection
             key={key}
             capability={key}
-            options={shell.navOptions(key)}
+            // Reports lists its Quality option, which adds no sidebar entry.
+            options={key === "reports" ? undefined : shell.navOptions(key)}
             bare
           />
         ))}
@@ -48,13 +49,9 @@ const ProjectSettingsCapabilitiesPage = () => {
         <ProjectSettingsCapabilitySection
           key={key}
           capability={key}
-          // Ship and Build list every option, in the registry's order
-          // (#Q4006): omitted means all of them, as declared.
-          options={
-            key === "ship" || key === "build"
-              ? undefined
-              : shell.navOptions(key)
-          }
+          // Ship lists every option, in the registry's order (#Q4006):
+          // omitted means all of them, as declared.
+          options={key === "ship" ? undefined : shell.navOptions(key)}
         />
       ))}
     </div>

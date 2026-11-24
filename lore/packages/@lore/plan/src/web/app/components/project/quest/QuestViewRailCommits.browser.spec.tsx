@@ -1,10 +1,5 @@
 import { projectFixture } from "@lore/core/testing";
-import {
-  CommitLinkRegistry,
-  currentProjectAtom,
-  I18n,
-  ResourceRailRegistry,
-} from "@lore/core/web";
+import { currentProjectAtom, I18n, ResourceRailRegistry } from "@lore/core/web";
 import { render } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -102,15 +97,6 @@ describe("QuestViewRail commits", () => {
     alepha.inject(I18n);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
-    // Build's part (#Q4136): a commit links into the project's own
-    // repository, which a hook Build registers decides.
-    if (linked) {
-      alepha
-        .inject(CommitLinkRegistry)
-        .register(
-          (sha, repo) => `/alepha/code/${repo ?? "alepha"}/commit/${sha}`,
-        );
-    }
     await alepha.start();
 
     // The atom validates against `projectResourceSchema`, so the fixture has
@@ -126,6 +112,8 @@ describe("QuestViewRail commits", () => {
         slug: "alepha",
         capabilities: [],
       }),
+      // A commit links to the project's repository on its forge (#Q4217).
+      repositoryUrl: linked ? "https://github.com/acme/api" : undefined,
     });
 
     const quest = alepha.inject(Links).quest(commits);
@@ -170,7 +158,7 @@ describe("QuestViewRail commits", () => {
     expect(trigger?.textContent).toContain("7a8ac2d");
   });
 
-  it("links the sha into the Lore repository the trail names (#Q4136)", async ({
+  it("links the sha to the commit on the project's repository (#Q4217)", async ({
     expect,
   }) => {
     const view = await mount(
@@ -179,7 +167,7 @@ describe("QuestViewRail commits", () => {
     );
 
     const link = view.container.querySelector<HTMLAnchorElement>(
-      `a[href="/alepha/code/api/commit/${SHA}"]`,
+      `a[href="https://github.com/acme/api/commit/${SHA}"]`,
     );
     expect(link).not.toBeNull();
     expect(link?.textContent).toBe("7a8ac2d");

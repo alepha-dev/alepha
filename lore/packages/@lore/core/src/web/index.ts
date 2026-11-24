@@ -7,6 +7,8 @@ import { AlephaReactUi } from "alepha/react/ui";
 import { createElement } from "react";
 
 import { CoreDashboardMetrics } from "../api/schemas/CoreDashboardMetrics.ts";
+import { QualityDashboardMetrics } from "../api/schemas/QualityDashboardMetrics.ts";
+import { QualityNumericCatalog } from "../api/schemas/QualityNumericCatalog.ts";
 import { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
@@ -17,9 +19,9 @@ import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { HostRouter } from "./app/HostRouter.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
+import { QualityRouter } from "./app/QualityRouter.ts";
 import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
 import { CapabilityRowRegistry } from "./app/registries/CapabilityRowRegistry.ts";
-import { CommitLinkRegistry } from "./app/registries/CommitLinkRegistry.ts";
 import { HostConsoleRegistry } from "./app/registries/HostConsoleRegistry.ts";
 import { HostRoleRegistry } from "./app/registries/HostRoleRegistry.ts";
 import { HostTypeUiRegistry } from "./app/registries/HostTypeUiRegistry.ts";
@@ -29,6 +31,7 @@ import { I18n } from "./app/services/I18n.ts";
 import { StackTraceParser } from "./app/services/StackTraceParser.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
 import { HostShell } from "./app/shell/HostShell.ts";
+import { QualityShell } from "./app/shell/QualityShell.ts";
 
 /**
  * The browser-safe half of `@lore/core`, the glue: projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, the dashboard, reports, agent prompts and the web shell: its pages, atoms and
@@ -78,9 +81,6 @@ export const LoreCoreWeb = $module({
     // Read by General > Capabilities (#Q4184), whether or not a module
     // registers a row on it.
     alepha.inject(CapabilityRowRegistry);
-    // Read by every `CommitLink` (#Q4136), whether or not Build registers
-    // where a commit links.
-    alepha.inject(CommitLinkRegistry);
     // Read by `HostCapabilityBadges` (#E166), whose page may render before
     // any module registers a role on it.
     alepha.inject(HostRoleRegistry);
@@ -98,6 +98,12 @@ export const LoreCoreWeb = $module({
     // The host console, jobs and Settings > Hosts (#E166).
     alepha.with(HostRouter);
     alepha.inject(HostShell);
+    // Quality, a part of Reports since Build went (#Q4217): its tab, its
+    // settings page and its tiles.
+    alepha.with(QualityRouter);
+    alepha.inject(QualityShell);
+    alepha.inject(QualityDashboardMetrics);
+    alepha.inject(QualityNumericCatalog);
     // The account dialog and Lore's sections of it (#E140): no route, the
     // dialog is drawn by the layout's `DialogProvider`.
     alepha.with(AccountDialog);
@@ -126,6 +132,8 @@ export const LoreCoreWeb = $module({
 export { $pageProject, $pageProjectSettings } from "./app/$pageProject.ts";
 export { CoreRouter } from "./app/CoreRouter.ts";
 export { HostRouter } from "./app/HostRouter.ts";
+export { QualityRouter } from "./app/QualityRouter.ts";
+export { QualityShell } from "./app/shell/QualityShell.ts";
 export { HostShell } from "./app/shell/HostShell.ts";
 export { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 export { spotlightOpenAtom } from "./app/atoms/spotlightOpenAtom.ts";
@@ -157,7 +165,6 @@ export {
 } from "./app/components/project/capabilityNav.ts";
 export {
   ROUTES_APP,
-  ROUTES_CODE,
   ROUTES_HOST,
   ROUTES_FULL_WIDTH,
   SECTION_HREF_ROUTES,
@@ -339,10 +346,6 @@ export {
   type ProjectCreateDialogProps,
   ProjectShellRegistry,
 } from "./app/registries/ProjectShellRegistry.ts";
-export {
-  type CommitHrefHook,
-  CommitLinkRegistry,
-} from "./app/registries/CommitLinkRegistry.ts";
 export { visibleSettingsTabs } from "./app/components/project/settings/projectSettingsSections.ts";
 export {
   type ReportsFilter,
@@ -416,6 +419,7 @@ declare module "alepha/react/router" {
     loreCore: CoreRouter;
     loreCoreProject: ProjectRouter;
     loreCoreHosts: HostRouter;
+    loreCoreQuality: QualityRouter;
   }
 }
 

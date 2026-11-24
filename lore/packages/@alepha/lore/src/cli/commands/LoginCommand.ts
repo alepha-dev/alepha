@@ -1,9 +1,7 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 
-import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreDeviceLogin } from "../services/LoreDeviceLogin.ts";
-import { LoreGitCredentials } from "../services/LoreGitCredentials.ts";
 
 /**
  * `lore login` and `lore logout` - the OAuth 2.0 device flow
@@ -26,7 +24,7 @@ import { LoreGitCredentials } from "../services/LoreGitCredentials.ts";
  * and then fails for a reason its log does not explain. Two things prevent it,
  * and neither is a convention:
  *
- * - {@link LoreClientService.authorization} never STARTS a flow. A missing
+ * - `LoreClientService.authorization` never STARTS a flow. A missing
  *   credential is an error naming both fixes, not a login prompt.
  * - `login` refuses to run in CI outright. It is only reachable by someone
  *   typing it, and in CI nobody is typing.
@@ -38,17 +36,12 @@ import { LoreGitCredentials } from "../services/LoreGitCredentials.ts";
  */
 export class LoginCommand {
   protected readonly device = $inject(LoreDeviceLogin);
-  protected readonly client = $inject(LoreClientService);
-  protected readonly credentials = $inject(LoreGitCredentials);
 
   public readonly login = $command({
     name: "login",
     description: "Sign in to a Lore instance from this machine",
     handler: async () => {
       await this.device.login();
-      // So `git clone` and `git push` on this host need no token by hand
-      // (#Q3934): the helper answers with this login, refreshed.
-      await this.credentials.install(this.client.hostname());
     },
   });
 

@@ -79,20 +79,23 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 
 A host is core's: identity, enrolment and token, the socket, lending and the home project, events, the command and job queues, inventory, upgrades, stats and the offline alerts (the **monitor** role), Agent hosts (the **agent** role), the Hosts and Jobs pages and the console (`HostRouter`, `HostShell`). No capability gates any of it. A module adds a role through the registries: `HostUsageRegistry` (what deploys to a host, the copies its inventory expects), `HostTypeRegistry` (a type's credential behaviour), `HostCommandHandlerRegistry` (command kinds core does not answer), and on the web `HostRoleRegistry` (pills), `HostConsoleRegistry` (console tabs, Overview sections) and `HostTypeUiRegistry` (create fields, drawer section). Ship fills them for the **deploy** role; Build will add **ci**. `createTestHost` is `@lore/core/testing/hosts`, its own subpath, because browser specs load `./testing`.
 
+## Quality (#Q3070, core's since #Q4217)
+
+Coverage and test totals CI pushes (`lore quality push`, `QualityController`), the `quality_runs` table, Reports' Quality tab and General > Quality (`QualityRouter`, `QualityShell`), the tiles (`QualityDashboardMetrics`, `QualityNumericCatalog`), the event `coverage.dropped` and the coverage threshold (`CoverageThreshold`). Ship's, then Build's (#E162), and core's since Build went: gated by Reports' `quality` option, off by default. **A push is never gated**: `pushQualityRun` answers whatever the switches say (`capability-gate.spec.ts`).
+
 ## Capabilities: what a project DOES
 
 Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is
-a container that composes four **capabilities**, Lore's pillars since #E143
-(Build joined with #E162),
+a container that composes **capabilities**, Lore's three pillars since #E143
+(Build, the code, came with #E162 and went with #Q4217: GitHub hosts code),
 picked in the creation wizard and switched in Settings ▸ General ▸ Capabilities:
 
-| capability                    | what it brings                                                                                                                                                         |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback`                  |
-| `remember`                    | folios, their directories and attachments - no option since #Q3704                                                                                                     |
-| `build`                       | git repositories (`code:*`) and Quality - options `repositories` / `quality` (#Q4005)                                                                                  |
-| `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `uptime` / `deploy` / `stacks` (#Q4006)                                                        |
-| `chat`, `activity`, `reports` | the General group (#Q4007): Chat's rooms; the Activity page and Reports, each a switch on by default that hides its page (404) and sidebar entry and owns nothing else |
+| capability                    | what it brings                                                                                                                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback`                                           |
+| `remember`                    | folios, their directories and attachments - no option since #Q3704                                                                                                                              |
+| `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `uptime` / `deploy` / `stacks` (#Q4006)                                                                                 |
+| `chat`, `activity`, `reports` | the General group (#Q4007): Chat's rooms; the Activity page and Reports, each a switch on by default that hides its page (404) and sidebar entry; Reports' option `quality` (#Q4217) is Quality |
 
 A pillar is not a thing: an app is still an app and a deploy is still a deploy.
 The keys were `work`, `knowledge`, `apps` and `support` until #E143, which

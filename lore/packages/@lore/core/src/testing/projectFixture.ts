@@ -47,7 +47,7 @@ export interface ProjectFixtureOptions {
   slug?: string;
   createdBy?: string;
   /**
-   * Which capabilities the project has. Defaults to all four.
+   * Which capabilities the project has. Defaults to all of them.
    */
   capabilities?: CapabilityKey[];
   /**
@@ -57,7 +57,7 @@ export interface ProjectFixtureOptions {
   /**
    * The viewer's EFFECTIVE permission set in this project, as
    * `getProjectBySlug` computes it. Defaults to `["*"]` - the owner's answer -
-   * for the same reason the capabilities default to all four: a fixture that
+   * for the same reason the capabilities default to all of them: a fixture that
    * withheld a permission would make an unrelated spec fail for a reason that
    * has nothing to do with permissions.
    *

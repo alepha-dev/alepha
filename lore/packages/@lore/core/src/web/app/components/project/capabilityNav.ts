@@ -35,14 +35,7 @@ export interface CapabilityNavEntry {
   /**
    * Which of the sidebar's bands this sits in.
    */
-  group:
-    | "activity"
-    | "work"
-    | "requirements"
-    | "record"
-    | "build"
-    | "ops"
-    | "config";
+  group: "activity" | "work" | "requirements" | "record" | "ops" | "config";
   /**
    * Position within the band, ascending.
    *
@@ -113,10 +106,6 @@ export const NAV_BANDS: CapabilityNavEntry["group"][] = [
   // without Plan's Requirements option, and an empty group is dropped.
   "requirements",
   "record",
-  // Build's own band (#Q4133, review #130 item 2), in the pillars' order:
-  // Plan, Remember, Build, Ship. Code and Quality now; CI and Pull requests
-  // join it with their epics, by `order`.
-  "build",
   "ops",
   "config",
 ];
@@ -196,10 +185,8 @@ export const CORE_NAV: CapabilityNavEntry[] = [
     icon: BarChart3,
     group: "record",
     order: 30,
-    // Not on Quality's tab: Build's band has its own Quality entry, which
-    // opens it (#Q4133), and two lit entries for one page say neither.
-    activeOn: (name) =>
-      name === "projectReports" ||
-      (name.startsWith("reports") && name !== "reportsQuality"),
+    // Every tab, Quality's included since it lost its own entry with Build
+    // (#Q4217).
+    activeOn: (name) => name === "projectReports" || name.startsWith("reports"),
   },
 ];

@@ -29,8 +29,6 @@ export class LoreActivityPermissions {
     app: "app:read",
     sigil: "app:read",
     monitor: "app:read",
-    // A push (#Q3945): who may clone may see that someone pushed.
-    code: "code:read",
     host: "host:read",
     persona: "persona:read",
     usecase: "usecase:read",

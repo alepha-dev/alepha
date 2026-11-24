@@ -62,24 +62,6 @@ export const ROUTES_HOST = [
   "baySettings",
 ];
 
-/**
- * The code browser's pages (#E167): every one reads "Code" in the crumb,
- * and a repository's climbs back to the list.
- */
-export const ROUTES_CODE = [
-  "projectCode",
-  "projectCodeRepo",
-  "codeRepoHome",
-  "codeRepoTree",
-  "codeRepoBlob",
-  "codeRepoCommits",
-  "codeRepoCommit",
-  "codeRepoBranches",
-  "codeRepoTags",
-  "codeRepoCompare",
-  "codeRepoBlame",
-];
-
 const ROUTES_SETTINGS = [
   "projectSettings",
   "projectSettingsBanner",
@@ -186,9 +168,6 @@ export const ROUTES_FULL_WIDTH = new Set([
   // it is given.
   "projectChat",
   "projectChatRoom",
-  // Build's code browser (#E167): the repository list and a repository's
-  // plate over its tabs, laid out from the width they are given.
-  ...ROUTES_CODE,
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);
@@ -227,7 +206,6 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectRequirements"
   | "projectUseCases"
   | "projectPersonas"
-  | "projectCode"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
@@ -264,12 +242,6 @@ export const SECTION_HREF_ROUTES: Record<
   appSettings: "projectApps",
   ...Object.fromEntries(
     ROUTES_HOST.map((route) => [route, "projectSettingsHosts" as const]),
-  ),
-  ...Object.fromEntries(
-    ROUTES_CODE.filter((route) => route !== "projectCode").map((route) => [
-      route,
-      "projectCode" as const,
-    ]),
   ),
 };
 
@@ -353,8 +325,5 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   ),
   ...Object.fromEntries(
     ROUTES_HOST.map((route) => [route, "hosts.project.title"]),
-  ),
-  ...Object.fromEntries(
-    ROUTES_CODE.map((route) => [route, "project.menu.code"]),
   ),
 };

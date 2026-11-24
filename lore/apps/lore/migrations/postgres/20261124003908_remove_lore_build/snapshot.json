@@ -1,0 +1,437 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a0c8dd65-5ae6-4099-9f29-c1052f7b5835",
+  "prevIds": ["845642a5-ecb8-41be-a625-223709effb5f"],
+  "footprints": [
+    {
+      "statementType": "drop_fk",
+      "statementTarget": ["table", "public", "code_commit_parents"],
+      "writes": [
+        "s|fk|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_commit_parents.code_commit_parents_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_parents",
+        "n|sch|public",
+        "e|col|public.code_commit_parents.repository_id"
+      ]
+    },
+    {
+      "statementType": "drop_fk",
+      "statementTarget": ["table", "public", "code_commit_paths"],
+      "writes": [
+        "s|fk|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_commit_paths.code_commit_paths_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_commit_paths",
+        "n|sch|public",
+        "e|col|public.code_commit_paths.repository_id"
+      ]
+    },
+    {
+      "statementType": "drop_fk",
+      "statementTarget": ["table", "public", "code_commits"],
+      "writes": [
+        "s|fk|public.code_commits.code_commits_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_commits.code_commits_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_commits.code_commits_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_commits.code_commits_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_commits",
+        "n|sch|public",
+        "e|col|public.code_commits.repository_id"
+      ]
+    },
+    {
+      "statementType": "drop_fk",
+      "statementTarget": ["table", "public", "code_blame_cache"],
+      "writes": [
+        "s|fk|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey",
+        "n|fk|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey",
+        "e|fk|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey",
+        "n|con|public.code_blame_cache.code_blame_cache_repository_id_code_repositories_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.code_blame_cache",
+        "n|sch|public",
+        "e|col|public.code_blame_cache.repository_id"
+      ]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "code_repositories"],
+      "writes": [
+        "s|tbl|public.code_repositories",
+        "n|tbl|public.code_repositories",
+        "e|tbl|public.code_repositories",
+        "n|rel|public.code_repositories",
+        "n|type|public.code_repositories"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "code_commit_parents"],
+      "writes": [
+        "s|tbl|public.code_commit_parents",
+        "n|tbl|public.code_commit_parents",
+        "e|tbl|public.code_commit_parents",
+        "n|rel|public.code_commit_parents",
+        "n|type|public.code_commit_parents"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "code_commit_paths"],
+      "writes": [
+        "s|tbl|public.code_commit_paths",
+        "n|tbl|public.code_commit_paths",
+        "e|tbl|public.code_commit_paths",
+        "n|rel|public.code_commit_paths",
+        "n|type|public.code_commit_paths"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "code_commits"],
+      "writes": [
+        "s|tbl|public.code_commits",
+        "n|tbl|public.code_commits",
+        "e|tbl|public.code_commits",
+        "n|rel|public.code_commits",
+        "n|type|public.code_commits"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "code_blame_cache"],
+      "writes": [
+        "s|tbl|public.code_blame_cache",
+        "n|tbl|public.code_blame_cache",
+        "e|tbl|public.code_blame_cache",
+        "n|rel|public.code_blame_cache",
+        "n|type|public.code_blame_cache"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "projects", "repository_url"],
+      "writes": [
+        "s|col|public.projects.repository_url",
+        "n|col|public.projects.repository_url",
+        "e|col|public.projects.repository_url"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "repository_url",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"code_repositories\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"code_commit_parents\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"code_commit_paths\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"code_commits\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"code_blame_cache\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"slug\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"default_branch\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"backend_ref\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"created_by\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_repositories\",\"archived_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_parents\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_parents\",\"repository_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_parents\",\"sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_parents\",\"parent_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_parents\",\"position\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"repository_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"commit_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"path\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"old_path\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"kind\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"old_blob_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commit_paths\",\"new_blob_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"repository_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"first_parent\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"parents\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"tree_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"author_name\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"author_email\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"authored_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"committer_name\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"committer_email\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"committed_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"subject\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_commits\",\"body\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"repository_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"commit_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"path\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"status\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"ranges\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"stopped_at_sha\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"steps\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"code_blame_cache\",\"state\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_repositories_project_id_slug_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_commit_parents_repository_id_sha_parent_sha_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_commit_parents_repository_id_parent_sha_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_commit_paths_repository_id_commit_sha_path_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_commit_paths_repository_id_path_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_commits_repository_id_sha_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_commits_repository_id_committed_at_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"code_blame_cache_repository_id_commit_sha_path_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"code_repositories\",\"code_repositories_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"code_repositories\",\"code_repositories_created_by_users_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"code_commit_parents\",\"code_commit_parents_repository_id_code_repositories_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"code_commit_paths\",\"code_commit_paths_repository_id_code_repositories_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"code_commits\",\"code_commits_repository_id_code_repositories_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"code_blame_cache\",\"code_blame_cache_repository_id_code_repositories_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"code_repositories\",\"code_repositories_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"code_commit_parents\",\"code_commit_parents_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"code_commit_paths\",\"code_commit_paths_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"code_commits\",\"code_commits_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"code_blame_cache\",\"code_blame_cache_pkey\"]"
+    }
+  ]
+}

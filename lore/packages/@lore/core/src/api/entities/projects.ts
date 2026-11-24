@@ -52,6 +52,23 @@ export const projects = $entity({
      */
     preferredLanguage: z.string().optional(),
     /**
+     * The repository this project's commits live in, as a full URL
+     * (`https://github.com/alepha-dev/alepha`), on its forge (#Q4217). Set
+     * it and a quest's commit shas and an agent job's prompt point at it;
+     * leave it and the shas render as plain text.
+     *
+     * ⚠️ Deliberately permissive here and constrained on the way in, the same
+     * split `title` uses: `projectRepositoryUrlSchema` is what refuses a bare
+     * `owner/repo`, a query string or a trailing slash, and it runs on write
+     * only. A stored value must always load.
+     *
+     * One URL rather than a slug and a provider, because one project is one
+     * repository (2026-08-29); the forge is read from the host
+     * (`repositoryForge.ts`). `quests.commits[].repo` stays stored and
+     * accepted, but the link is built from this alone.
+     */
+    repositoryUrl: z.string().max(200).optional(),
+    /**
      * Errors retention window, in days. A daily purge cron deletes `open`
      * errors whose `lastSeenAt` is older than this many days (resolved and
      * `quest:`-forwarded errors are kept as audit trail). `null`/absent

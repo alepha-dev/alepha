@@ -12,7 +12,6 @@ import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
 import { ChatCommand } from "./commands/ChatCommand.ts";
-import { CodeCommand } from "./commands/CodeCommand.ts";
 import { DashboardCommand } from "./commands/DashboardCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
@@ -42,8 +41,6 @@ import { ThresholdCommand } from "./commands/ThresholdCommand.ts";
 import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
-import { LoreCodeImport } from "./services/LoreCodeImport.ts";
-import { LoreGitCredentials } from "./services/LoreGitCredentials.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
 import { LoreReferences } from "./services/LoreReferences.ts";
 import { LoreRefusals } from "./services/LoreRefusals.ts";
@@ -146,10 +143,6 @@ export const AlephaLoreCli = $module({
     // A project's dashboards and their cards (#Q4206).
     DashboardCommand,
     QualityCommand,
-    // Git repositories, `lore clone` and the credential helper (#Q3934).
-    LoreGitCredentials,
-    LoreCodeImport,
-    CodeCommand,
     AppInstanceCommand,
     DeployCommand,
     AppsCommand,

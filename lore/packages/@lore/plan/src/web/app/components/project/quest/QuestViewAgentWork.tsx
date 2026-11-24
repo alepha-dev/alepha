@@ -23,7 +23,7 @@ export interface QuestViewAgentWorkProps {
 /**
  * **Work it with an agent** (#Q3989): an accepted quest worked by an agent
  * job on one of the project's Agent hosts. Shown on an accepted, open quest
- * only, with an available Agent host and `code:write`: one button with one
+ * only, with an available Agent host and `quest:update`: one button with one
  * host and agent to pick, one per choice otherwise, the member's last pick
  * first (#Q4223). An untrusted quest (born of feedback written outside the
  * team) first needs a member to confirm its text, recorded with who and
@@ -39,7 +39,7 @@ const QuestViewAgentWork = ({ quest, onChanged }: QuestViewAgentWorkProps) => {
   const open = Boolean(quest.acceptedAt) && !quest.completedAt;
   const readiness = useQuery(
     {
-      enabled: open && can("code:write") && !!project?.id,
+      enabled: open && can("quest:update") && !!project?.id,
       handler: () =>
         api.getQuestAgentWork({
           params: { projectId: project?.id as number },
@@ -100,7 +100,7 @@ const QuestViewAgentWork = ({ quest, onChanged }: QuestViewAgentWorkProps) => {
       </span>
     );
   }
-  if (!can("code:write")) return null;
+  if (!can("quest:update")) return null;
   const choices = orderAgentChoices(project.id, readiness.data.choices);
   const many = choices.length > 1;
   return (

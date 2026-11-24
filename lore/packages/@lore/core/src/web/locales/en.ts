@@ -221,9 +221,6 @@ export default {
   "home.pillar.remember.title": "Remember",
   "home.pillar.remember.description":
     "A wiki of linked notes that keeps the decisions and the reasons behind them.",
-  "home.pillar.build.title": "Build",
-  "home.pillar.build.description":
-    "Host your git repositories, and follow what your tests report on the code.",
   "home.pillar.ship.title": "Ship",
   "home.pillar.ship.description":
     "Deploy your apps, then follow their errors, vitals and uptime.",
@@ -1081,6 +1078,9 @@ export default {
   "project.create.name.firstChar": "Start with a letter or a digit.",
   "project.create.name.badChar":
     "The character $1 is not allowed. Use letters, digits, spaces, - and _.",
+  "project.update.repositoryUrl.label": "Repository",
+  "project.update.repositoryUrl.helper":
+    "The repository this project's commits live in, on GitHub. Set it and a quest's commits link to it, and agent jobs are told where the code is.",
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
     "Language AI agents should use for generated content (quests, folios).",
@@ -1291,14 +1291,8 @@ export default {
   "project.capability.remember.label": "Remember",
   "project.capability.remember.description":
     "Wiki linked folios, files, revisions.",
-  "project.capability.build.label": "Build",
-  "project.capability.build.description":
-    "Git repositories, and the quality of their code.",
-  "project.capability.build.option.repositories.label": "Repositories",
-  "project.capability.build.option.repositories.description":
-    "Git hosting: clone and push over HTTPS, from the lore CLI or any git client.",
-  "project.capability.build.option.quality.label": "Quality",
-  "project.capability.build.option.quality.description":
+  "project.capability.reports.option.quality.label": "Quality",
+  "project.capability.reports.option.quality.description":
     "Coverage and test totals pushed by CI, in Reports.",
   "project.capability.activity.label": "Activity",
   "project.capability.activity.description":
@@ -4440,7 +4434,7 @@ export default {
   "dashboard.preset.delivery.description":
     "Where the next releases stand, and the epics and quests in flight.",
   "dashboard.preset.needs.ship": "Turn on Ship to use it",
-  "dashboard.preset.needs.build": "Turn on Build to use it",
+  "dashboard.preset.needs.quality": "Turn on Quality in Reports to use it",
   "dashboard.preset.needs.plan": "Turn on Plan to use it",
   "dashboard.preset.needs.plan.requirements":
     "Turn on Plan's Requirements option to use it",
@@ -4692,10 +4686,6 @@ export default {
   "permission.group.area": "Areas",
   "permission.area.read": "Read areas",
   "permission.area.manage": "Rename, merge and delete areas",
-  "permission.group.code": "Code",
-  "permission.code.read": "Clone and fetch repositories",
-  "permission.code.write": "Push to repositories",
-  "permission.code.admin": "Create and delete repositories",
   "permission.group.folio": "Folios",
   "permission.folio.read": "Read folios",
   "permission.folio.write": "Write folios, directories and attachments",
@@ -5158,79 +5148,4 @@ export default {
   "assistant.confirm.folio_create": "Write this folio?",
   "assistant.confirm.project": "In",
   "assistant.confirm.elsewhere": "(not the project you are looking at)",
-  // Build's code browser (#E167)
-  "project.menu.code": "Code",
-  "code.clone.lore": "Lore",
-  "code.clone.url": "HTTPS",
-  "code.clone.copy": "Copy",
-  "code.clone.copied": "Copied",
-  "code.repos.empty.title": "No repository yet",
-  "code.repos.empty.admin": "Create one from a shell, then push to it.",
-  "code.repos.empty.member": "A project Admin creates one from a shell.",
-  "code.repo.empty.title": "Nothing pushed yet",
-  "code.repo.empty.description":
-    "Clone it, or add it as a remote of a repository you have, and push.",
-  "code.repo.defaultBranch": "Default branch $1",
-  "code.repo.indexing": "Indexing history…",
-  "code.tab.files": "Files",
-  "code.revision.pick": "Switch branch or tag",
-  "code.revision.branches": "Branches",
-  "code.revision.tags": "Tags",
-  "code.file.rendered": "Preview",
-  "code.file.source": "Source",
-  "code.file.permalink": "Permalink",
-  "code.file.raw": "Raw",
-  "code.file.size": "$1 bytes",
-  "code.file.binary": "A binary file: download it to open it.",
-  "code.file.tooLarge":
-    "Too large to show here: download it, or clone the repository.",
-  "code.diff.files": "$1 changed files",
-  "code.diff.partial":
-    "(only the first ones: the diff is too large to list whole)",
-  "code.diff.added": "Added",
-  "code.diff.modified": "Modified",
-  "code.diff.deleted": "Deleted",
-  "code.diff.renamed": "Renamed",
-  "code.diff.collapse": "Collapse the file",
-  "code.diff.expand": "Expand the file",
-  "code.diff.loading": "Loading the diff…",
-  "code.diff.binary": "A binary file changed.",
-  "code.diff.tooLarge": "Too large to show here.",
-  "code.diff.submodule": "Submodule $1",
-  "code.diff.noChange": "The content did not change.",
-  "code.diff.more": "Show $1 hidden lines",
-  "code.diff.previous": "Previous",
-  "code.diff.next": "Next",
-  "code.diff.page": "Page $1 of $2",
-  "code.tab.commits": "Commits",
-  "code.file.history": "History",
-  "code.commits.none": "No commit touched this path.",
-  "code.commit.authored": "$1 authored",
-  "code.commit.committed": "$1 committed",
-  "code.commit.browse": "Browse files",
-  "code.commit.root": "The first commit: diffed from nothing.",
-  "code.commit.parent": "Parent",
-  "code.commit.parents": "Parents",
-  "code.commit.mergeDiff": "A merge: the diff is against $1, its first parent.",
-  "code.tab.branches": "Branches",
-  "code.tab.tags": "Tags",
-  "code.branches.default": "Default",
-  "code.branches.counts": "$1 ahead, $2 behind",
-  "code.branches.compare": "Compare with the default branch",
-  "code.branches.delete.label": "Delete $1",
-  "code.branches.delete.title": "Delete the branch $1?",
-  "code.branches.delete.description":
-    "Its commits stay reachable only if another branch or tag holds them.",
-  "code.branches.delete.confirm": "Delete",
-  "code.tags.none": "No tag yet.",
-  "code.compare.counts": "$1 commits ahead, $2 behind",
-  "code.compare.capped": "The merge base is too far back to find here.",
-  "code.compare.unrelated": "These two revisions share no history.",
-  "code.file.blame": "Blame",
-  "code.blame.pending": "Finding the older lines…",
-  "code.blame.tooLarge":
-    "Too large to blame here: over 256 KiB or 5,000 lines.",
-  "code.blame.partial": "The walk stopped at $1: the lines left are older.",
-  "code.blame.older": "Older than $1",
-  "code.blame.before": "Blame before this commit",
 };

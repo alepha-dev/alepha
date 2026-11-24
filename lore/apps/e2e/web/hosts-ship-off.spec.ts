@@ -10,7 +10,7 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Hosts with Ship off (#E166, #Q4058): a project with Plan and Build only
+ * Hosts with Ship off (#E166, #Q4058): a project with Plan and Remember only
  * finds Hosts under Settings > General, is offered both kinds, adds a Bay
  * host that connects and reports its stats, reads it offline once it
  * leaves, names it its default Agent host and opens the job that check
@@ -88,7 +88,7 @@ const reportStats = (baseURL: string, secret: string): Promise<void> =>
   });
 
 test.describe("Hosts with Ship off", () => {
-  test("a Plan and Build project adds, connects, monitors and runs agent jobs on a host", async ({
+  test("a Plan and Remember project adds, connects, monitors and runs agent jobs on a host", async ({
     page,
     baseURL,
   }) => {
@@ -98,10 +98,8 @@ test.describe("Hosts with Ship off", () => {
       `hosts-ship-off-${Date.now()}@example.com`,
       "GoodPassw0rd",
     );
-    // The wizard's defaults (Plan, Remember) and Build: no Ship.
-    const project = await createProjectViaWizard(page, "Hosts Ship Off", {
-      capabilities: ["build"],
-    });
+    // The wizard's defaults (Plan, Remember): no Ship.
+    const project = await createProjectViaWizard(page, "Hosts Ship Off");
 
     // Settings > General > Hosts, and both kinds offered.
     await page.goto(`/${project.slug}/settings/hosts`);

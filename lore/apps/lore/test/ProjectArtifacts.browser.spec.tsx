@@ -1,6 +1,6 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
-import { CommitLinkRegistry, currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { currentReleasesAtom, WorkShell } from "@lore/plan/web";
 import type { AppInstanceResource } from "@lore/ship/schemas";
 import { ProjectArtifacts } from "@lore/ship/testing";
@@ -142,20 +142,15 @@ describe("ProjectArtifacts", () => {
     // Work registers the `release` kind the tag column links through
     // (#E75, #Q2624).
     alepha.inject(WorkShell);
-    // Build's part (#Q4136): where a commit links.
-    if (linked) {
-      alepha
-        .inject(CommitLinkRegistry)
-        .register((sha) => `/alepha/code/alepha/commit/${sha}`);
-    }
     await alepha.start();
 
     // Without the project the query stays disabled and every case below
     // would pass by not running the code it is about.
-    alepha.store.set(
-      currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }),
-    );
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ title: "Alepha", slug: "alepha" }),
+      // Where a commit links (#Q4217).
+      repositoryUrl: linked ? "https://github.com/acme/api" : undefined,
+    });
     alepha.store.set(currentReleasesAtom, releases as never);
     alepha.store.set(currentInstancesAtom, options.instances ?? []);
 
@@ -183,9 +178,9 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
-   * The Commit cell links to its page in the Lore repository the way the
-   * quest rail does (feedback #P2201, #Q2336, #Q4136), and stays text
-   * without one.
+   * The Commit cell links to the commit on the project's repository the
+   * way the quest rail does (feedback #P2201, #Q2336, #Q4217), and stays
+   * text without one.
    */
   it("links the commit to its page in the project's repository", async ({
     expect,
@@ -194,7 +189,7 @@ describe("ProjectArtifacts", () => {
 
     const link = (await findByText("abcdef1")).closest("a");
     expect(link?.getAttribute("href")).toBe(
-      "/alepha/code/alepha/commit/abcdef1234567890",
+      "https://github.com/acme/api/commit/abcdef1234567890",
     );
   });
 

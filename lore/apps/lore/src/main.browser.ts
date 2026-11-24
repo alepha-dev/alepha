@@ -1,6 +1,5 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
-import { LoreBuildWeb } from "@lore/build/web";
 import { LoreChatWeb } from "@lore/chat/web";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
@@ -35,7 +34,6 @@ alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
 alepha.with(LoreCoreWeb);
 alepha.with(LorePlanWeb);
 alepha.with(LoreRememberWeb);
-alepha.with(LoreBuildWeb);
 alepha.with(LoreShipWeb);
 // Plan's Requirements (#E153), after Plan's web module it extends.
 alepha.with(LorePlanRequirementsWeb);

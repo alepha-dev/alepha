@@ -82,7 +82,14 @@ describe("the Capabilities settings page", () => {
     const names = view
       .getAllByRole("switch")
       .map((it) => it.getAttribute("aria-label"));
-    expect(names.slice(0, 4)).toEqual(["Activity", "Chat", "Reports", "Plan"]);
+    // Reports' Quality option sits under its switch (#Q4217).
+    expect(names.slice(0, 5)).toEqual([
+      "Activity",
+      "Chat",
+      "Reports",
+      "Quality",
+      "Plan",
+    ]);
     expect(
       view.getByRole("switch", { name: "Chat" }).getAttribute("aria-checked"),
     ).toBe("false");
@@ -105,22 +112,13 @@ describe("the Capabilities settings page", () => {
     expect(fake.calls[0]?.body.enabled).toBe(false);
   });
 
-  it("lists Build's Repositories and Quality switches, each on its own (#Q4005)", async ({
+  it("lists Reports' Quality switch under Reports (#Q4217)", async ({
     expect,
   }) => {
-    const { view } = await mount(["build"], {
-      build: { repositories: true, quality: false },
-    });
+    const { view } = await mount(["reports"], { reports: { quality: false } });
 
-    const repositories = await view.findByRole("switch", {
-      name: "Repositories",
-    });
-    expect(repositories.getAttribute("aria-checked")).toBe("true");
-    expect(
-      view
-        .getByRole("switch", { name: "Quality" })
-        .getAttribute("aria-checked"),
-    ).toBe("false");
+    const quality = await view.findByRole("switch", { name: "Quality" });
+    expect(quality.getAttribute("aria-checked")).toBe("false");
   });
 
   it("lists Ship's options in the order of dependence (#Q4006)", async ({
@@ -142,25 +140,5 @@ describe("the Capabilities settings page", () => {
       "Deploy apps",
       "Deploy stacks",
     ]);
-  });
-
-  it("turns Build on with both options, as the wizard preselects them", async ({
-    expect,
-  }) => {
-    const { fake, view } = await mount(["plan"]);
-
-    fireEvent.click(await view.findByRole("switch", { name: "Build" }));
-
-    await waitFor(() =>
-      expect(fake.calls).toEqual([
-        {
-          params: { projectId: 1, key: "build" },
-          body: {
-            enabled: true,
-            options: { repositories: true, quality: true },
-          },
-        },
-      ]),
-    );
   });
 });

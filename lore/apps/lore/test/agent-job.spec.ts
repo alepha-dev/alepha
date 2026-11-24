@@ -175,9 +175,7 @@ describe("the agent job", () => {
     );
   });
 
-  it("runs on a project with Plan and Build and Ship off (#E166)", async ({
-    expect,
-  }) => {
+  it("runs on a project with Ship off (#E166)", async ({ expect }) => {
     // The agent role is core's: no part of naming, checking or using an
     // Agent host needs Ship.
     await w.alepha.inject(ProjectCapabilityController).setCapability(
@@ -191,7 +189,7 @@ describe("the agent job", () => {
       .inject(ProjectSecurityService)
       .capabilitiesOf(w.host.projectId);
     expect(Object.keys(capabilities)).toEqual(
-      expect.arrayContaining(["plan", "build"]),
+      expect.arrayContaining(["plan", "remember"]),
     );
     expect(capabilities).not.toHaveProperty("ship");
 

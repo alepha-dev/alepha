@@ -85,7 +85,7 @@ import { UptimeMetric } from "./services/UptimeMetric.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 
 /**
- * The server half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts. Quality is `@lore/build`'s since #E162.
+ * The server half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts. Quality is core's since #Q4217.
  *
  * It depends on `@lore/core` only: a feature that spans two modules goes through a core registry or a core link, never through an import of another feature module (`check:conventions`).
  *

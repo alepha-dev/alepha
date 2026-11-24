@@ -1,4 +1,3 @@
-import { buildCapabilityOptionsSchema } from "@lore/build/schemas";
 import { chatCapabilityOptionsSchema } from "@lore/chat/schemas";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { planCapabilityOptionsSchema } from "@lore/plan/schemas";
@@ -19,12 +18,12 @@ describe("capability options schemas", () => {
   const owned = {
     plan: planCapabilityOptionsSchema,
     remember: rememberCapabilityOptionsSchema,
-    build: buildCapabilityOptionsSchema,
     ship: shipCapabilityOptionsSchema,
     chat: chatCapabilityOptionsSchema,
-    // Core's own switches (#Q4007), with no option and no module.
+    // Core's own switches (#Q4007), with no module. Reports holds Quality
+    // since Build went (#Q4217).
     activity: z.object({}),
-    reports: z.object({}),
+    reports: z.object({ quality: z.boolean().default(false) }),
   };
 
   it("has a module schema for every capability", ({ expect }) => {

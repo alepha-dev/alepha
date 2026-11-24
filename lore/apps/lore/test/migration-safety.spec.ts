@@ -145,6 +145,22 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
     "automation_variables",
     "automations",
   ],
+  // Lore Build is removed (#Q4217): the five code tables reference only each
+  // other, with restrict, and no other table references them.
+  "20261124003838_remove_lore_build": [
+    "code_blame_cache",
+    "code_commit_parents",
+    "code_commit_paths",
+    "code_commits",
+    "code_repositories",
+  ],
+  "20261124003908_remove_lore_build": [
+    "code_blame_cache",
+    "code_commit_parents",
+    "code_commit_paths",
+    "code_commits",
+    "code_repositories",
+  ],
 };
 
 /**

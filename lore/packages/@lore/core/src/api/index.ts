@@ -44,6 +44,8 @@ import { ProjectPromptController } from "./controllers/ProjectPromptController.t
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportController } from "./controllers/ProjectReportController.ts";
 import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
+import { QualityController } from "./controllers/QualityController.ts";
+import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
@@ -61,6 +63,7 @@ import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { HourlyJobs } from "./jobs/HourlyJobs.ts";
 import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
+import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
@@ -73,6 +76,8 @@ import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPoli
 import { LorePrimaryD1Provider } from "./providers/LorePrimaryD1Provider.ts";
 import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
 import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
+import { QualityDashboardMetrics } from "./schemas/QualityDashboardMetrics.ts";
+import { QualityNumericCatalog } from "./schemas/QualityNumericCatalog.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
@@ -88,6 +93,7 @@ import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
+import { CoverageThreshold } from "./services/CoverageThreshold.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
@@ -135,11 +141,18 @@ import { ProjectEventReader } from "./services/ProjectEventReader.ts";
 import { ProjectEvents } from "./services/ProjectEvents.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { ProjectRecipients } from "./services/ProjectRecipients.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
+import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
+import { QualityProjectEvents } from "./services/QualityProjectEvents.ts";
+import { QualityProjectMerge } from "./services/QualityProjectMerge.ts";
+import { QualityReportsSummary } from "./services/QualityReportsSummary.ts";
+import { QualityService } from "./services/QualityService.ts";
+import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
@@ -393,6 +406,23 @@ export const LoreCoreApi = $module({
     ProjectLimits,
     ProjectAnalyticsController,
     ProjectReportController,
+    // Quality (#Q3070), a part of Reports since Build went (#Q4217): the
+    // runs CI pushes, their tab, tiles, event, merge step and summary line.
+    // The event, summary and merge step register themselves; nothing
+    // injects them.
+    QualityProjectEvents,
+    QualityReportsSummary,
+    QualityProjectMerge,
+    QualityDashboardMetrics,
+    QualityTrendMetric,
+    QualityNumericCatalog,
+    QualityNumericMetrics,
+    QualityJobs,
+    QualityService,
+    CoverageThreshold,
+    ProjectQualityReportService,
+    QualityController,
+    QualityReportsController,
     ProjectReportRegistry,
     ReportStatistics,
     ReportsSummaryController,
@@ -614,10 +644,7 @@ export {
 export { AgentJobService } from "./services/AgentJobService.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
 export type { AgentJobRequest } from "./services/AgentJobs.ts";
-export {
-  AgentRunPreamble,
-  type ProjectRepositoryLookup,
-} from "./services/AgentRunPreamble.ts";
+export { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {
   type EpicMembership,
@@ -814,3 +841,10 @@ export {
 export { HostProjectMerge } from "./services/HostProjectMerge.ts";
 export { HostProjectDeletion } from "./services/HostProjectDeletion.ts";
 export { HostCommandPullController } from "./controllers/HostCommandPullController.ts";
+
+// ---- Quality (#Q3070), core's since #Q4217 ----
+export { QualityController } from "./controllers/QualityController.ts";
+export { QualityReportsController } from "./controllers/QualityReportsController.ts";
+export { QualityJobs } from "./jobs/QualityJobs.ts";
+export { CoverageThreshold } from "./services/CoverageThreshold.ts";
+export { QualityService } from "./services/QualityService.ts";

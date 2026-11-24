@@ -25,14 +25,11 @@ import type { OAuthScope } from "alepha/api/oauth";
  *   They stay two entries because the device approval page must name the
  *   terminal rather than Claude.
  * - **`openid` reaches nothing.** It says who you are.
- * - **`code` is reached in part by `mcp`** (#E162 decision 7): an agent's
- *   connection may clone and push (`code:read`, `code:write`), never create
- *   or delete a repository (`code:admin`).
- * - **`cli` reaches all of `code`** (#Q3965, the owner on 2026-11-19): a
- *   repository is created from a terminal with a `lore login`, with no API
- *   key minted in the browser first. The login still acts within its user's
- *   roles, so only a project Admin creates or deletes one. `cli` may do more
- *   than `mcp`, never the reverse.
+ * - **Partial groups and `cli`-only permissions are empty** since Lore's git
+ *   hosting went (#Q4217): `code` was the one group an agent's connection
+ *   reached in part, and `code:admin` the one permission only a `lore login`
+ *   held. The mechanism stays for the next such case: `cli` may do more than
+ *   `mcp`, never the reverse.
  *
  * ## Left out on purpose
  *
@@ -93,11 +90,7 @@ export class LoreOAuthScopes {
    * permissions of it a token may hold. Every other permission of the group
    * is refused to a token.
    */
-  public static readonly PARTIAL_GROUPS: Record<string, string[]> = {
-    // Clone and push; only `cli` creates or deletes a repository
-    // (CLI_ONLY_PERMISSIONS).
-    code: ["code:read", "code:write"],
-  };
+  public static readonly PARTIAL_GROUPS: Record<string, string[]> = {};
 
   /**
    * Groups a connected app never reaches although they are not `admin:`.
@@ -115,7 +108,7 @@ export class LoreOAuthScopes {
    * Permissions `cli` holds on top of the member ones, and `mcp` does not.
    * Each must belong to a group in {@link PARTIAL_GROUPS}.
    */
-  public static readonly CLI_ONLY_PERMISSIONS: string[] = ["code:admin"];
+  public static readonly CLI_ONLY_PERMISSIONS: string[] = [];
 
   /**
    * The member groups as the patterns a scope declaration takes.
@@ -149,7 +142,7 @@ export class LoreOAuthScopes {
     cli: {
       label: "Your account, from the terminal",
       description:
-        "What the lore command does as you: push builds and reports, deploy your apps, create and push git repositories, and read or manage the projects you are a member of.",
+        "What the lore command does as you: push builds and reports, deploy your apps, and read or manage the projects you are a member of.",
       permissions: [
         ...LoreOAuthScopes.MEMBER_PERMISSIONS,
         ...LoreOAuthScopes.CLI_ONLY_PERMISSIONS,

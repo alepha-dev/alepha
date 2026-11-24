@@ -152,9 +152,10 @@ describe("Lore's rank resource", () => {
     const everything = ctx.presets.presetsFor([
       "plan",
       "remember",
-      "build",
       "ship",
       "chat",
+      // Quality's permissions are Reports' since Build went (#Q4217).
+      "reports",
     ]);
     // Two presets since #Q3661: Member, a built-in, covers Contributor.
     expect(everything.map((it) => it.key)).toEqual(["admin", "viewer"]);
@@ -191,21 +192,6 @@ describe("Lore's rank resource", () => {
     expect(admin.permissions).toContain("member:manage");
     expect(admin.permissions).toContain("rank:manage");
     expect(admin.permissions).toContain("capability:manage");
-    // Build (#E162): a Member pushes, an Admin manages repositories, a
-    // Viewer clones.
-    expect(LorePermissions.MEMBER_DEFAULT).toEqual(
-      expect.arrayContaining(["code:read", "code:write"]),
-    );
-    expect(LorePermissions.MEMBER_DEFAULT).not.toContain("code:admin");
-    expect(admin.permissions).toEqual(
-      expect.arrayContaining(["code:read", "code:write", "code:admin"]),
-    );
-    expect(everything.find((it) => it.key === "viewer")!.permissions).toContain(
-      "code:read",
-    );
-    expect(
-      everything.find((it) => it.key === "viewer")!.permissions,
-    ).not.toContain("code:write");
     expect([...admin.permissions].sort()).toEqual(
       [...LorePermissions.MEMBER_DEFAULT, ...LorePermissions.OWNER_TODAY]
         .filter((it) => it !== "project:delete")

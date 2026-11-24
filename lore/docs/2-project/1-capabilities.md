@@ -1,11 +1,12 @@
 # Capabilities
 
 A project is a container: a name, an address, its members, and the parts of
-Lore it uses. Those parts are its **capabilities**: the four pillars, **Plan**,
-**Remember**, **Build** and **Ship**, and three general ones, **Activity**,
-**Chat** and **Reports**. A team that only wants a wiki turns on Remember
-alone; a team that plans, documents, codes, operates and talks about a product
-turns on everything.
+Lore it uses. Those parts are its **capabilities**: the three pillars, **Plan**,
+**Remember** and **Ship**, and three general ones, **Activity**, **Chat** and
+**Reports**. A team that only wants a wiki turns on Remember alone; a team that
+plans, documents, operates and talks about a product turns on everything. The
+code itself lives on GitHub: a project names its repository in **Settings ▸
+General**, and its commits link there.
 
 ## The general capabilities
 
@@ -15,13 +16,12 @@ turns on everything.
 | **Chat**     | Chat          | The talk: project rooms, mentions, and Lore's assistant.       |
 | **Reports**  | Reports       | Figures over a period, one tab per pillar. On by default.      |
 
-## The four pillars
+## The three pillars
 
 | Capability   | Sidebar entries                   | What it is for                                                 |
 | ------------ | --------------------------------- | -------------------------------------------------------------- |
 | **Plan**     | Quests, Epics, Releases, Feedback | The work: what is planned, in progress, shipped and asked for. |
 | **Remember** | Folios                            | The memory: linked notes, files and their history.             |
-| **Build**    | Reports ▸ Quality                 | The code: git repositories, and what the tests report.         |
 | **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |
 
 A capability is the pillar; the things inside it keep their own names. A quest
@@ -55,12 +55,11 @@ A list of quests and a board are always there when Plan is on. See
 
 **Remember** has no option: everything it adds comes with the capability.
 
-**Build**
+**Reports**
 
-| Option           | What it adds                                                                                       |
-| ---------------- | -------------------------------------------------------------------------------------------------- |
-| **Repositories** | Git repositories, cloned and pushed over HTTPS. See [Repositories](/lore/docs/build-repositories). |
-| **Quality**      | Coverage and test counts pushed by CI, in Reports. See [Quality](/lore/docs/build-quality).        |
+| Option      | What it adds                                                                                        |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| **Quality** | Coverage and test counts pushed by CI, a tab of Reports. See [Quality](/lore/docs/project-quality). |
 
 **Ship**
 
@@ -74,9 +73,9 @@ A list of quests and a board are always there when Plan is on. See
 ## Turning one on or off
 
 Open **Settings ▸ General ▸ Capabilities**. The page opens with **General**:
-Activity, Chat and Reports. Each pillar follows, a switch with the options
-that add a sidebar entry beneath it; Build and Ship list all their options
-there. Plan's other options are on **Settings ▸ Quests**.
+Activity, Chat and Reports, with Reports' Quality option. Each pillar follows,
+a switch with the options that add a sidebar entry beneath it; Ship lists all
+its options there. Plan's other options are on **Settings ▸ Quests**.
 
 ![The Capabilities tab of a project's settings](/screenshots/lore/capabilities-light.png)
 

@@ -1,9 +1,12 @@
-import { qualityRuns } from "@lore/build/schemas";
 import {
   DashboardMetricRegistry,
   ProjectDashboardController,
 } from "@lore/core/api";
-import type { DashboardCardValue, Project } from "@lore/core/schemas";
+import {
+  type DashboardCardValue,
+  type Project,
+  qualityRuns,
+} from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
 import {
   appInstances,
