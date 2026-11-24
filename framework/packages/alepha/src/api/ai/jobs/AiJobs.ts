@@ -28,7 +28,7 @@ export class AiJobs {
     cron: "17 3 * * *",
     timeout: [60, "seconds"],
     handler: async ({ now }) => {
-      const days = this.settings.current.retentionDays;
+      const days = (await this.settings.load()).retentionDays;
       if (!days) {
         return;
       }

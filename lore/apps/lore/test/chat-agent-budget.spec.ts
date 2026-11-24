@@ -10,14 +10,29 @@ import {
   createTestMemberByProjectId,
   createTestProject,
 } from "@lore/core/testing";
-import { aiMessageEntity } from "alepha/api/ai";
+import { AiSettings, aiMessageEntity } from "alepha/api/ai";
 import { RankService } from "alepha/api/organizations";
+import { ParameterProvider } from "alepha/api/parameters";
 import { $repository } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { LoreAiBudget } from "@/assistant/index.ts";
 
 import { bootAssistant } from "./fixtures/bootAssistant.ts";
+
+/**
+ * A provider that can drop what it cached, as a Worker isolate that never
+ * loaded `api.ai` has nothing cached: the saved value is in the database
+ * only (#Q4244).
+ */
+class ForgetfulParameterProvider extends ParameterProvider {
+  public forget(): void {
+    this.cachedCurrent.clear();
+    this.cachedNext.clear();
+    this.loaded.clear();
+    this.loadedAt.clear();
+  }
+}
 
 class Repos {
   charges = $repository(chatAgentCharges);
@@ -35,6 +50,10 @@ describe("a project's AI budget for its chat agents", () => {
     const ctx = await bootAssistant({
       enabled: "1",
       extra: (alepha) => {
+        alepha.with({
+          provide: ParameterProvider,
+          use: ForgetfulParameterProvider,
+        });
         alepha.inject(Repos);
       },
     });
@@ -223,6 +242,25 @@ describe("a project's AI budget for its chat agents", () => {
     expect(said).toContain("Your AI budget is spent: 200000 of 200000 tokens");
     expect(said).toContain("Enough frees up at");
     expect(said).not.toContain("project");
+  });
+
+  it("answers under the member budget an operator saved, not the compiled 200k, in an isolate that never loaded it", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const settings = ctx.alepha.inject(AiSettings);
+    await settings.parameter.set({
+      ...settings.current,
+      budgetTokens: 2_000_000,
+    });
+    ctx.alepha.inject(ForgetfulParameterProvider).forget();
+    await ctx.spendOwn();
+    ctx.ai.script([{ type: "text", text: "Still here." }]);
+
+    await ctx.send("@lore check");
+    await ctx.runner.settled();
+
+    expect((await ctx.answers())[0]?.body).toBe("Still here.");
   });
 
   it("is set by a rank with chat:agent only, and removed with null", async ({

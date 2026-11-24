@@ -1,4 +1,4 @@
-import { z } from "alepha";
+import { createMiddleware, type Middleware, z } from "alepha";
 import { $parameter } from "alepha/api/parameters";
 
 /**
@@ -7,6 +7,10 @@ import { $parameter } from "alepha/api/parameters";
  *
  * Its own service, as `NotificationSettings` is, because the budget guard,
  * the turn limiter and the retention job all read it.
+ *
+ * Read it with {@link AiSettings.load}. On serverless runtimes nothing loads
+ * parameters at start, so {@link AiSettings.current} alone is the compiled
+ * default in an isolate that never loaded it, whatever an operator saved.
  */
 export class AiSettings {
   public readonly parameter = $parameter({
@@ -44,7 +48,38 @@ export class AiSettings {
     },
   });
 
+  /**
+   * The value as this instance last loaded it, or the compiled default when
+   * it never did. Synchronous, for a reader that cannot await, such as a
+   * rate limiter's `limit`: something on the same path must call
+   * {@link AiSettings.load} first.
+   */
   public get current() {
     return this.parameter.cachedCurrentContent;
+  }
+
+  /**
+   * The value an operator saved: loaded from the database on first use, and
+   * revalidated on serverless runtimes, where another isolate may have
+   * changed it.
+   */
+  public load() {
+    return this.parameter.get();
+  }
+
+  /**
+   * {@link AiSettings.load} as a `use` middleware, for a chain whose later
+   * middlewares read {@link AiSettings.current}.
+   */
+  public middleware(): Middleware {
+    return createMiddleware({
+      name: "aiSettings",
+      handler: ({ next }) => {
+        return async (...args: any[]) => {
+          await this.load();
+          return next(...args);
+        };
+      },
+    });
   }
 }

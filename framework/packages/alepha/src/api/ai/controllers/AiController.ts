@@ -44,7 +44,8 @@ export class AiController {
   protected readonly budget = $inject(AiBudgetService);
 
   /**
-   * Turns per minute per user, from the `api.ai` parameter.
+   * Turns per minute per user, from the `api.ai` parameter. `limit` cannot
+   * await, so the streams load the parameter first (`settings.middleware()`).
    */
   protected readonly turns = $rateLimit({
     name: "api:ai:turns",
@@ -59,6 +60,7 @@ export class AiController {
       "Send a message to the assistant and stream its turn, in a new conversation or an existing one",
     use: [
       this.guard("chat"),
+      this.settings.middleware(),
       this.perUser(),
       this.budget.middleware(),
       this.chatGate(),
@@ -82,6 +84,7 @@ export class AiController {
       "Answer the call a conversation waits on (approve, deny, or a client tool's result) and stream the rest of the turn",
     use: [
       this.guard("resume"),
+      this.settings.middleware(),
       this.perUser(),
       this.budget.middleware(),
       this.resumeGate(),
