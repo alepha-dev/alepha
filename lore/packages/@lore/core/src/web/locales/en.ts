@@ -1238,6 +1238,12 @@ export default {
   "chat.agents.form.name": "Name",
   "chat.agents.form.avatar": "Avatar",
   "chat.agents.form.model": "Model",
+  "chat.agents.form.engine": "AI provider",
+  "chat.agents.form.engineHint":
+    "api is the instance's model; host is an agent CLI on one of the project's Agent hosts, reading the code.",
+  "chat.agents.form.engineHost": "Agent host",
+  "chat.agents.form.engineAgent": "Agent CLI",
+  "chat.agents.form.engineModel": "CLI model",
   "chat.agents.form.modelHint":
     "Empty runs on the instance default. The AI budget counts tokens whatever the model.",
   "chat.agents.form.modelPlaceholder": "Instance default",

@@ -45,11 +45,27 @@ type jobSpec struct {
 	Key string `json:"key,omitempty"`
 	// MCPURL is Lore's MCP endpoint, given to the agent with the key.
 	MCPURL string `json:"mcpUrl,omitempty"`
+	// Output is `json` for a job whose answer is read when it ends (a chat
+	// agent's turn, #Q4250): the CLI prints one JSON result instead of its
+	// stream. Empty is the stream.
+	Output string `json:"output,omitempty"`
+	// Session is the conversation the run starts or resumes (#Q4250), for
+	// an adapter that keeps sessions; others ignore it.
+	Session *jobSession `json:"session,omitempty"`
 	// Prompt is the rendered prompt of an agent job. A check takes none: Bay
 	// asks its own fixed question.
 	Prompt         string `json:"prompt,omitempty"`
 	TimeoutSeconds int    `json:"timeoutSeconds"`
 }
+
+// jobSession is a run's conversation: a uuid Lore minted, new until a job that
+// used it ended done.
+type jobSession struct {
+	ID     string `json:"id"`
+	Resume bool   `json:"resume,omitempty"`
+}
+
+var sessionPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 const (
 	jobKindAgent = "agent"
@@ -138,10 +154,16 @@ func (spec jobSpec) validate(sink string) error {
 		if err := spec.Source.validate(); err != nil {
 			return fmt.Errorf("the source: %w", err)
 		}
+		if spec.Output != "" && spec.Output != "json" {
+			return fmt.Errorf("unknown output %q: this bay prints json or the stream", spec.Output)
+		}
+		if spec.Session != nil && !sessionPattern.MatchString(spec.Session.ID) {
+			return errors.New("a session id is a lowercase uuid")
+		}
 	case jobKindCheck:
 		// A check asks its fixed question with nothing in reach: no
 		// workspace, no key, no MCP server, no prompt of Lore's.
-		if spec.Project != "" || spec.Workspace != "" || spec.Key != "" || spec.MCPURL != "" || spec.Prompt != "" || spec.Source != nil {
+		if spec.Project != "" || spec.Workspace != "" || spec.Key != "" || spec.MCPURL != "" || spec.Prompt != "" || spec.Source != nil || spec.Output != "" || spec.Session != nil {
 			return errors.New("a check carries no workspace, source, key, MCP URL or prompt")
 		}
 		if spec.TimeoutSeconds < minJobTimeoutSeconds || spec.TimeoutSeconds > maxCheckTimeout {
@@ -174,5 +196,9 @@ func agentRunOf(spec jobSpec) agentRun {
 	if spec.Kind == jobKindCheck {
 		return agentRun{Prompt: checkPrompt, Model: spec.Model}
 	}
-	return agentRun{Prompt: spec.Prompt, Model: spec.Model, MCPURL: spec.MCPURL}
+	run := agentRun{Prompt: spec.Prompt, Model: spec.Model, MCPURL: spec.MCPURL, JSON: spec.Output == "json"}
+	if a, err := adapterFor(spec.Agent); err == nil && a.Sessions && spec.Session != nil {
+		run.SessionID, run.Resume = spec.Session.ID, spec.Session.Resume
+	}
+	return run
 }

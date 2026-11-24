@@ -15,6 +15,7 @@ import {
 } from "../entities/chatRoomMembers.ts";
 import type { ChatRoom } from "../entities/chatRooms.ts";
 import { ChatAudience } from "./ChatAudience.ts";
+import { ChatHostTurns } from "./ChatHostTurns.ts";
 import { ChatLive } from "./ChatLive.ts";
 import { ChatMessageService } from "./ChatMessageService.ts";
 import {
@@ -76,6 +77,7 @@ export class ChatAgentRunner {
   protected readonly scope = $inject(McpProjectScope);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly hostTurns = $inject(ChatHostTurns);
 
   /**
    * Answer `trigger`, a member's message naming `handle`.
@@ -115,6 +117,19 @@ export class ChatAgentRunner {
     await this.publish(room, answer, "message.created");
 
     const history = await this.history(room, trigger);
+    if (match.host) {
+      // From an Agent host (#Q4250): a job answers, when it ends.
+      await this.hostTurns.start({
+        room,
+        answer,
+        user,
+        match,
+        prompt: trigger.body,
+        history,
+        key,
+      });
+      return;
+    }
     const membership = await this.rooms.membershipOf(room.id, user.id);
     const conversationId = this.conversationOf(membership, key);
     const persona = ChatAgentRunner.personaOf(match);
@@ -167,6 +182,23 @@ export class ChatAgentRunner {
       agentRun: { status: "running", mentionerId: user.id },
     });
     const history = await this.history(room, answer);
+    const unaskedPrompt = [
+      prompt.trim(),
+      `Nobody mentioned you: this run was started on a schedule or an event, for the member who set it up. If there is nothing worth telling the room, answer exactly "${ChatAgentRunner.NOTHING}" and nothing else, and nothing is posted.`,
+    ].join("\n\n");
+    if (match.host) {
+      await this.hostTurns.start({
+        room,
+        answer,
+        user,
+        match,
+        prompt: unaskedPrompt,
+        history,
+        key,
+        unasked: true,
+      });
+      return undefined;
+    }
     const membership = await this.rooms.membershipOf(room.id, user.id);
     const conversationId = this.conversationOf(membership, key);
     const persona = ChatAgentRunner.personaOf(match);

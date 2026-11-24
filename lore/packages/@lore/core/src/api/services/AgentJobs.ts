@@ -40,6 +40,12 @@ export interface AgentJobRequest {
    * project with no GitHub repository, where today's runs work from Lore.
    */
   defaultSource?: "read" | "write";
+  /**
+   * A chat agent's turn (#Q4250): the CLI's JSON result, and the
+   * conversation it starts or resumes.
+   */
+  output?: "json";
+  session?: { id: string; resume?: boolean };
   /** The job's time, clamped by `AgentJobService.timeoutOf`. */
   timeoutSeconds?: number;
   questNumber?: number;

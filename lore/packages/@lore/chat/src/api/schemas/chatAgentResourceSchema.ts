@@ -18,6 +18,14 @@ export const chatAgentResourceSchema = z.object({
    * Its model id; none means the instance default.
    */
   model: z.text().optional(),
+  /**
+   * Its AI provider (#Q4250): `api`, or `host` with the Agent host, agent
+   * CLI and model it runs on. The built-in `lore`'s is the project's.
+   */
+  engine: z.enum(["api", "host"]).optional(),
+  engineHost: z.text().optional(),
+  engineAgent: z.text().optional(),
+  engineModel: z.text().optional(),
   createdBy: z.uuid().optional(),
   createdAt: z.datetime().optional(),
   deletedAt: z.datetime().optional(),
@@ -44,6 +52,15 @@ export const chatAgentBodySchema = z.object({
    * the agent runs.
    */
   model: z.text({ maxLength: 120 }).nullable().optional(),
+  /**
+   * Its AI provider (#Q4250): `api` (the instance's model) or `host` (an
+   * agent CLI on an Agent host, reading the code). `null` on a host field
+   * goes back to the project's only one, or the CLI's default model.
+   */
+  engine: z.enum(["api", "host"]).optional(),
+  engineHost: z.text({ maxLength: 64 }).nullable().optional(),
+  engineAgent: z.text({ maxLength: 32 }).nullable().optional(),
+  engineModel: z.text({ maxLength: 80 }).nullable().optional(),
   /**
    * Markdown: the persona and its playbook.
    */

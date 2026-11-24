@@ -69,6 +69,15 @@ export interface HostJobInput {
    * checkout, or a worktree to change. Absent is `none`.
    */
   source?: HostJobSource;
+  /**
+   * `json` for a job whose answer is read when it ends (#Q4250): the CLI
+   * prints one JSON result instead of its stream.
+   */
+  output?: "json";
+  /**
+   * The conversation the run starts, or resumes (#Q4250).
+   */
+  session?: { id: string; resume?: boolean };
   timeoutSeconds: number;
   /**
    * What the job's key is pinned to, minted at pull time. Absent for a job
@@ -136,6 +145,11 @@ export interface HostJobKeyIssuer {
 export interface HostJobQueue {
   start(request: HostJobRequest): Promise<HostJobSummary>;
   get(jobId: string): Promise<HostJobSummary | undefined>;
+  /**
+   * One stream of a job's log, whole (#Q4250): what a chat agent's answer
+   * is read from once its job ended. Nothing else reads an agent's output.
+   */
+  text(jobId: string, stream: "stdout" | "stderr"): Promise<string>;
   /** The project's job on a subject that is still queued or running. */
   active(
     projectId: number,
@@ -284,6 +298,16 @@ export class HostJobs {
 
   public async start(request: HostJobRequest): Promise<HostJobSummary> {
     return this.need().start(request);
+  }
+
+  /**
+   * One stream of a job's log, whole: empty without Ship.
+   */
+  public async text(
+    jobId: string,
+    stream: "stdout" | "stderr",
+  ): Promise<string> {
+    return (await this.queue?.text(jobId, stream)) ?? "";
   }
 
   public async get(jobId: string): Promise<HostJobSummary | undefined> {

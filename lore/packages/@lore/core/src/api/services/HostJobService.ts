@@ -72,6 +72,7 @@ export class HostJobService {
   constructor() {
     this.port.registerQueue({
       start: (request) => this.start(request),
+      text: (id, stream) => this.text(id, stream),
       get: async (id) => {
         const job = await this.jobs.findOne({ where: { id: { eq: id } } });
         return job ? this.summary(job) : undefined;
@@ -311,6 +312,8 @@ export class HostJobService {
       project: await this.projectDirName(job.projectId),
       workspace: input.workspace ?? HostJobService.DEFAULT_WORKSPACE,
       ...(source ? { source } : {}),
+      ...(input.output ? { output: input.output } : {}),
+      ...(input.session ? { session: input.session } : {}),
       ...(key ? { key } : {}),
       mcpUrl: `${origin}/mcp`,
       prompt: input.prompt ?? "",
