@@ -105,6 +105,16 @@ export const hostJobs = $entity({
      */
     result: z.string().max(32_768).optional(),
     resultTruncated: z.boolean().optional(),
+    /**
+     * What the run cost, as its agent CLI said at its end and Bay sent with
+     * the job's end (#Q4293): turns, tokens in (the cache's included) and
+     * out, dollars. Null for an older Bay, a run with no final line, and
+     * every job before them.
+     */
+    turns: z.integer().optional(),
+    inputTokens: z.integer().optional(),
+    outputTokens: z.integer().optional(),
+    costUsd: z.number().optional(),
   }),
   indexes: [
     // The dispatcher: the oldest queued job of a host, and its running one.

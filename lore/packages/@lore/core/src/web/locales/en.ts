@@ -3144,6 +3144,7 @@ export default {
   "jobs.col.prompt": "Prompt",
   "jobs.col.cause": "Cause",
   "jobs.col.duration": "Duration",
+  "jobs.col.cost": "Cost",
   "jobs.filter.all": "All",
   "jobs.cause.hand": "By hand",
   "jobs.cause.handBy": "By hand, by $1",

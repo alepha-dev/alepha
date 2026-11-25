@@ -53,6 +53,15 @@ export const hostJobResourceSchema = z.object({
    * read once the job has ended, never by a list.
    */
   model: z.string().optional(),
+  /**
+   * What the run cost, as its agent CLI said at its end (#Q4293): stored
+   * from Bay's terminal ack. Absent for an older Bay and older jobs, whose
+   * page reads them from the log instead.
+   */
+  turns: z.integer().optional(),
+  inputTokens: z.integer().optional(),
+  outputTokens: z.integer().optional(),
+  costUsd: z.number().optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

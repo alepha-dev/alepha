@@ -498,6 +498,11 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 			// An error result is no reply: its words go to the failure.
 			out.ErrorResult = reply
 		}
+		// What the run cost, from the same final line, whether it ended
+		// well or not: the tokens were spent either way (#Q4293).
+		if totals, ok := scanner.Totals(); ok {
+			out.Totals = &totals
+		}
 	}
 	return code, out, err
 }
@@ -511,6 +516,9 @@ type jobOutcome struct {
 	Result      string
 	HasResult   bool
 	ErrorResult string
+	// Totals is the run's turns, tokens and cost (#Q4293), when its agent
+	// CLI said them.
+	Totals *connector.JobTotals
 }
 
 // wait starts cmd and waits for its exit, killing its process group when
@@ -817,7 +825,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	}()
 
 	exit, outcome, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
-	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning, Commit: outcome.Commit}
+	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning, Commit: outcome.Commit, Totals: outcome.Totals}
 	if outcome.HasResult {
 		extra.Result, extra.ResultTruncated = connector.CutResult(outcome.Result)
 		extra.HasResult = true

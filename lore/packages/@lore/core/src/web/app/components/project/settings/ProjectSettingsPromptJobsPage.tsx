@@ -201,6 +201,13 @@ const ProjectSettingsPromptJobsPage = () => {
           },
           duration: {
             label: tr("jobs.col.duration"),
+            // Sorted on the time it ran (#Q4293); a job still running or
+            // never started sorts as none.
+            sortable: true,
+            sortValue: (job) =>
+              job.startedAt && job.endedAt
+                ? Date.parse(job.endedAt) - Date.parse(job.startedAt)
+                : undefined,
             cell: (job) => (
               <span className="text-muted-foreground text-xs tabular-nums">
                 {job.startedAt && job.endedAt
@@ -209,6 +216,21 @@ const ProjectSettingsPromptJobsPage = () => {
                         1000,
                     )
                   : ""}
+              </span>
+            ),
+          },
+          costUsd: {
+            label: tr("jobs.col.cost"),
+            // What the run cost, as its agent CLI said and Bay sent with
+            // its end (#Q4293); blank for an older Bay.
+            sortable: true,
+            align: "right",
+            cell: (job) => (
+              <span
+                className="text-muted-foreground text-xs tabular-nums"
+                data-testid="job-cost"
+              >
+                {job.costUsd === undefined ? "" : `$${job.costUsd.toFixed(2)}`}
               </span>
             ),
           },

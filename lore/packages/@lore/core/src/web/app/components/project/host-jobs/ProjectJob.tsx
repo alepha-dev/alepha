@@ -8,7 +8,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
 import type { PromptController } from "../../../../../api/controllers/PromptController.ts";
-import { AgentTranscript } from "../../../../../api/schemas/AgentTranscript.ts";
+import {
+  AgentTranscript,
+  type AgentTranscriptTotals,
+} from "../../../../../api/schemas/AgentTranscript.ts";
+import type { HostJobResource } from "../../../../../api/schemas/hostJobResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { type I18n } from "../../../services/I18n.ts";
 import { usePromptActions } from "../prompts/run/usePromptActions.ts";
@@ -231,7 +235,9 @@ const ProjectJob = (props: ProjectJobProps) => {
               job={row}
               projectSlug={slug}
               promptTitle={prompt?.title}
-              totals={transcript.totals}
+              // What Bay sent with the job's end (#Q4293), else what the
+              // log says: an older Bay sends none.
+              totals={ProjectJob.totalsOf(row) ?? transcript.totals}
               sessionModel={transcript.entries
                 .map((entry) =>
                   entry.kind === "session" ? entry.model : undefined,
@@ -272,5 +278,28 @@ const ProjectJob = (props: ProjectJobProps) => {
     </div>
   );
 };
+
+/**
+ * A job's turns, tokens and cost as stored from Bay's terminal ack
+ * (#Q4293), or nothing when its Bay sent none.
+ */
+ProjectJob.totalsOf = (
+  job: HostJobResource,
+): AgentTranscriptTotals | undefined =>
+  job.turns === undefined &&
+  job.inputTokens === undefined &&
+  job.outputTokens === undefined &&
+  job.costUsd === undefined
+    ? undefined
+    : {
+        ...(job.turns === undefined ? {} : { turns: job.turns }),
+        ...(job.inputTokens === undefined
+          ? {}
+          : { inputTokens: job.inputTokens }),
+        ...(job.outputTokens === undefined
+          ? {}
+          : { outputTokens: job.outputTokens }),
+        ...(job.costUsd === undefined ? {} : { costUsd: job.costUsd }),
+      };
 
 export default ProjectJob;

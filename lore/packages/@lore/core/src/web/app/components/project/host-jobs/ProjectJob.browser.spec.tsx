@@ -292,6 +292,41 @@ describe("ProjectJob", () => {
     );
   });
 
+  it("reads the turns, tokens and cost Bay sent with the job's end before the log's (#Q4293)", async ({
+    expect,
+  }) => {
+    world.jobs = [
+      job({
+        id: DONE,
+        status: "succeeded",
+        exitCode: 0,
+        input: { agent: "claude", prompt: "Triage" } as never,
+        turns: 7,
+        inputTokens: 48_120,
+        outputTokens: 2_100,
+        costUsd: 0.4213,
+      }),
+    ];
+    world.logs = {
+      // A log whose own result line says otherwise: the job's columns win.
+      [DONE]: {
+        stdout: JSON.stringify({
+          type: "result",
+          num_turns: 1,
+          total_cost_usd: 9.99,
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        stderr: "",
+        live: false,
+      },
+    };
+    await show(DONE);
+    const page = screen.getByTestId("project-job");
+    await waitFor(() => expect(page.textContent).toContain("$0.42"));
+    expect(page.textContent).toContain("48,120");
+    expect(page.textContent).not.toContain("$9.99");
+  });
+
   it("puts a failed job's reason first", async ({ expect }) => {
     world.jobs = [
       job({ status: "failed", reason: "The agent exited with status 1" }),

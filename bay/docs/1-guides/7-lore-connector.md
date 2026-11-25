@@ -159,7 +159,10 @@ itself, through Lore's MCP server. The one thing Bay reads from what it prints
 is its **final reply**: the line of its stream that ends the run (Claude Code's
 `result` event; for Gemini CLI, the text it wrote after its last tool call,
 closed by its `result` event), kept as the stream passes, so a log cut at its
-size limit still has it.
+size limit still has it. Claude Code's `result` event also says what the run
+cost: its turns, its tokens in (the cache's reads and writes counted) and out,
+and its cost in dollars. Bay sends them with the job's end, a failed run's
+too, and Lore shows them on the job's page and its list of jobs.
 
 A `job-run` carries nothing but its id. The machine pulls the job's spec over
 HTTPS by that id and checks every field before anything runs: the kind, the
