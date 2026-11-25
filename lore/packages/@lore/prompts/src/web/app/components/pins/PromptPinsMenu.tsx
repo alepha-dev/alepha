@@ -23,8 +23,8 @@ import { usePromptPins } from "./usePromptPins.tsx";
  * The robot button of a pinnable page (#Q4284): one entry per prompt the
  * project pinned on it, each with Copy and, with a ready Agent host and the
  * prompt's permission, Run; for a member who manages prompts, a last entry
- * to Settings > Prompts. Absent when it has nothing to offer: a new project
- * pins nothing, so it shows no button until someone pins.
+ * to Settings > Prompts. Absent when it has nothing to offer: a page no
+ * built-in is pinned to by default (#Q4339), until someone pins one there.
  *
  * It also publishes the page and its item for the spotlight, which mounts
  * outside the page.

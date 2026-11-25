@@ -100,7 +100,8 @@ export const prompts = $entity({
      */
     argValues: z.record(z.string().max(32), z.string().max(120)).optional(),
     /**
-     * The pages it is pinned to (#Q4284), by key: none by default.
+     * The pages it is pinned to (#Q4284), by key. Absent, a built-in's own
+     * (#Q4339) or none; `[]` is a project's unpin from every page, kept.
      */
     pins: z.array(z.string().max(32)).max(16).optional(),
     /**

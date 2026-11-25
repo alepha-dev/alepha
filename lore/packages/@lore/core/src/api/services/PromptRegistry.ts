@@ -171,6 +171,12 @@ export interface BuiltinPrompt {
    */
   timeoutSeconds: number;
   /**
+   * The pages it is pinned to until a project sets its own (#Q4339), by
+   * page key: a view whose item fills its arg, or a list for a prompt that
+   * takes none. A project that unpins it from every page keeps none.
+   */
+  pins?: string[];
+  /**
    * The capability and option a project needs to use it: a built-in the
    * project cannot use is absent from its list and refused by render.
    */
