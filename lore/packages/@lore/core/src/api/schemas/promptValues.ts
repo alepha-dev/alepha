@@ -123,9 +123,11 @@ export const PROMPT_CUSTOM_TIMEOUT_SECONDS = 30 * 60;
 /**
  * The least and the most run time an agent job gets, whatever it asks:
  * the bounds of a prompt's own time (#Q4344) and of every job's clamp.
+ * The most is 4 h, the ceiling of the Bay the agent hosts run today; 12 h
+ * waits on their upgrade (#Q4328).
  */
 export const AGENT_JOB_MIN_TIMEOUT_SECONDS = 60;
-export const AGENT_JOB_MAX_TIMEOUT_SECONDS = 2 * 3600;
+export const AGENT_JOB_MAX_TIMEOUT_SECONDS = 4 * 3600;
 
 /**
  * A prompt's schedule (#Q4277), from a fixed list, on the hour of the hourly

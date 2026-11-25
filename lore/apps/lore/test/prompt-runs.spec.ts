@@ -239,7 +239,7 @@ describe("prompt runs", () => {
     );
     expect(work.input).toMatchObject({
       key: { epicId: ready.number },
-      timeoutSeconds: 7200,
+      timeoutSeconds: 14_400,
     });
     const feedback = await job(
       (await run("work-feedback", { args: { feedback: String(item.shortId) } }))
@@ -270,7 +270,7 @@ describe("prompt runs", () => {
       "Only review-pr takes fix and trust",
     );
     const loose = await job((await run("work-loose-quests")).jobId);
-    expect(loose.input.timeoutSeconds).toBe(7200);
+    expect(loose.input.timeoutSeconds).toBe(14_400);
   });
 
   it("keeps the agent's final reply on the job, from the terminal ack", async ({
