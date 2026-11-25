@@ -46,6 +46,8 @@ export const usePromptActions = (
         host?: string;
         fix?: boolean;
         trust?: boolean;
+        // A job that ended unfinished, continued (#Q4340).
+        continue?: string;
       },
     ],
     boolean

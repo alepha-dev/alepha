@@ -217,6 +217,11 @@ export class AgentJobService {
           ? { branch: request.source.branch }
           : {}),
         ...(request.source.trust ? { trust: request.source.trust } : {}),
+        ...(request.source.resume &&
+        request.source.mode === "write" &&
+        request.source.branch
+          ? { resume: true }
+          : {}),
       };
     }
     if (!hasRepository) return { mode: "none" };

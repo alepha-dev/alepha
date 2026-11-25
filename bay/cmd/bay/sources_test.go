@@ -112,6 +112,7 @@ func TestJobSourceValidation(t *testing.T) {
 		"read at a PR head":    {"mode": "read", "repository": "https://github.com/acme/app.js", "ref": "pull/42/head", "trust": "pr-author-writes"},
 		"write on a branch":    {"mode": "write", "repository": repo, "branch": "lore/q12"},
 		"write from a ref":     {"mode": "write", "repository": repo, "branch": "lore/job-0b3c", "ref": "main"},
+		"write that resumes":   {"mode": "write", "repository": repo, "branch": "lore/job-0b3c", "resume": true},
 	}
 	for name, source := range accepted {
 		if err := parse(base(source)); err != nil {
@@ -133,6 +134,7 @@ func TestJobSourceValidation(t *testing.T) {
 		"a ref with a space":        {"mode": "read", "repository": repo, "ref": "my branch"},
 		"a reflog ref":              {"mode": "read", "repository": repo, "ref": "main@{1}"},
 		"read with a branch":        {"mode": "read", "repository": repo, "branch": "lore/q1"},
+		"a read that resumes":       {"mode": "read", "repository": repo, "resume": true},
 		"write with no branch":      {"mode": "write", "repository": repo},
 		"write on a pull ref":       {"mode": "write", "repository": repo, "branch": "pull/1/head"},
 		"a branch that is a flag":   {"mode": "write", "repository": repo, "branch": "-f"},
@@ -664,6 +666,76 @@ exit 1
 		}
 		if _, err := os.Stat(filepath.Join(w.work, "acme", "q4")); !os.IsNotExist(err) {
 			t.Fatal("a clean worktree was kept after a failed run")
+		}
+	})
+
+	t.Run("a resumed job runs in the worktree a timed-out one kept, its uncommitted changes there", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		// The first job leaves a draft and is killed at its deadline.
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\necho draft > draft.txt\nsleep 30\n")
+		first := w.agentSpec(map[string]any{"workspace": "job-1", "timeoutSeconds": 20,
+			"source": map[string]any{"mode": "write", "repository": origin, "branch": "lore/job-1"}})
+		last := w.run("job-1", first).last()
+		if last.Status != connector.AckTimedOut || last.Warning != "kept acme/job-1, 1 uncommitted change(s)" {
+			t.Fatalf("ack = %+v", last)
+		}
+		// A fresh job on that workspace is still refused.
+		if next := w.run("job-2", writeSpec(w, origin, "job-1", "lore/job-1")).last(); next.Status != "failed" || !strings.Contains(next.Reason, "kept with work not pushed") {
+			t.Fatalf("ack = %+v", next)
+		}
+		// The rerun resumes it: it finds the draft, commits and pushes it.
+		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
+set -e
+cat draft.txt > "`+w.bin+`/found"
+git add -A
+`+agentGit+` commit -q -m "finished"
+git push -q -u origin lore/job-1 2>"`+w.bin+`/push.err"
+`)
+		resumed := w.agentSpec(map[string]any{"workspace": "job-1",
+			"source": map[string]any{"mode": "write", "repository": origin, "branch": "lore/job-1", "resume": true}})
+		if last := w.run("job-3", resumed).last(); last.Status != "done" || last.Warning != "" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if b, _ := os.ReadFile(filepath.Join(w.bin, "found")); strings.TrimSpace(string(b)) != "draft" {
+			t.Fatalf("the rerun found %q, want the kept draft", b)
+		}
+		if got := gitT(t, origin, "log", "-1", "--format=%s", "lore/job-1"); got != "finished" {
+			t.Fatalf("origin's lore/job-1 is at %q", got)
+		}
+		if log := w.frames.textOf("job-3", "stderr"); !strings.Contains(log, "resumed as the last job kept it") || !strings.Contains(log, "1 uncommitted change(s) found") {
+			t.Fatalf("the log: %q", log)
+		}
+		if _, err := os.Stat(filepath.Join(w.work, "acme", "job-1")); !os.IsNotExist(err) {
+			t.Fatal("the resumed worktree, its work pushed, was kept")
+		}
+	})
+
+	t.Run("a resume with nothing kept prepares the worktree as any job", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ngit log -1 --format=%s > \""+w.bin+"/last\"\n")
+		spec := w.agentSpec(map[string]any{"workspace": "job-9",
+			"source": map[string]any{"mode": "write", "repository": origin, "branch": "lore/job-9", "resume": true}})
+		if last := w.run("job-1", spec).last(); last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+		if l, _ := os.ReadFile(filepath.Join(w.bin, "last")); strings.TrimSpace(string(l)) != "first" {
+			t.Fatalf("started at %q", l)
+		}
+	})
+
+	t.Run("a resume never runs over a clone from before sources", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\ntrue\n")
+		old := filepath.Join(w.work, "acme", "q6")
+		gitT(t, filepath.Dir(origin), "clone", "--quiet", origin, old)
+		spec := w.agentSpec(map[string]any{"workspace": "q6",
+			"source": map[string]any{"mode": "write", "repository": origin, "branch": "lore/q6", "resume": true}})
+		if last := w.run("job-1", spec).last(); last.Status != "failed" || !strings.Contains(last.Reason, "from before job sources") {
+			t.Fatalf("ack = %+v", last)
 		}
 	})
 

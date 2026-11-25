@@ -55,6 +55,11 @@ export class AgentRunPreamble {
         : source.mode === "write"
           ? [
               `- **You are already in a git worktree of ${repository}**, on branch \`${source.branch}\`, made from ${ref} or continuing the branch the remote already has. Do not make another worktree or branch, and do not rename this one. The repository's procedure may ask for a worktree of your own or a branch cut from the latest main: this run has both already, so skip those steps.`,
+              ...(source.resume
+                ? [
+                    "- **This run continues an earlier one that ended unfinished** (a timeout, an error or a cancel): the worktree is as that run left it, uncommitted changes and unpushed commits included. Read `git status`, `git log` and the branch's open pull request first, and carry on from there rather than starting over.",
+                  ]
+                : []),
               "- **Push before you finish**: unpushed work is kept on the host, not delivered.",
             ]
           : [

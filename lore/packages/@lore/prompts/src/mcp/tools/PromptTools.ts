@@ -221,12 +221,15 @@ export class PromptTools {
       return this.controller.runPrompt({
         params: { projectId: await this.project(params), name: params.name },
         body: {
-          args: PromptTools.setOf(params.set),
+          ...(params.set || !params.continue
+            ? { args: PromptTools.setOf(params.set) }
+            : {}),
           ...(params.host ? { host: params.host } : {}),
           ...(params.agent ? { agent: params.agent } : {}),
           ...(params.model ? { model: params.model } : {}),
           ...(params.fix ? { fix: true } : {}),
           ...(params.trust ? { trust: true } : {}),
+          ...(params.continue ? { continue: params.continue } : {}),
         },
       });
     },

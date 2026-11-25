@@ -334,17 +334,17 @@ job's own key, every prompt write and `prompt_run` are refused. The `prompt_*`
 tools and `agent_hosts` need the `prompts` capability, and are refused while
 the project has it off; `job_list`, `job_get` and `job_cancel` do not.
 
-| Tool                                    | What it does                                                                                                                                                         |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prompt_list`, `prompt_get`             | The project's prompts, built-in then its own, with args, source, trigger, pins and last run; one prompt with its words.                                              |
-| `prompt_create`                         | A custom prompt: `name`, `text`, `args` (`name:type[:status\|status]`), `source`, `ref`.                                                                             |
-| `prompt_update`                         | Any prompt in one call: a custom one's words and args; any prompt's source, ref, host, agent, model, `enabled`, trigger (`on`, `check`, `set`, ceilings) and `pins`. |
-| `prompt_duplicate`, `prompt_delete`     | Copy any prompt into a custom one under `new_name`; delete a custom one, its jobs staying.                                                                           |
-| `prompt_render`                         | A prompt's words with its args filled (`set`: `arg=reference`), as Copy gives them.                                                                                  |
-| `prompt_run`                            | Run a prompt on an Agent host, its args in `set`; `host`, `agent`, `model`, and `fix` and `trust` for `review-pr`. No source: it is the prompt's.                    |
-| `prompt_pause_all`, `prompt_resume_all` | Stop every prompt trigger of the project, and start them again.                                                                                                      |
-| `agent_hosts`                           | The project's Agent hosts, their last check, agent CLIs and tools.                                                                                                   |
-| `job_list`, `job_get`, `job_cancel`     | The project's jobs, one job with its prompt, args, cause, reply and log, and stopping one.                                                                           |
+| Tool                                    | What it does                                                                                                                                                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prompt_list`, `prompt_get`             | The project's prompts, built-in then its own, with args, source, trigger, pins and last run; one prompt with its words.                                                                                                       |
+| `prompt_create`                         | A custom prompt: `name`, `text`, `args` (`name:type[:status\|status]`), `source`, `ref`.                                                                                                                                      |
+| `prompt_update`                         | Any prompt in one call: a custom one's words and args; any prompt's source, ref, host, agent, model, `enabled`, trigger (`on`, `check`, `set`, ceilings) and `pins`.                                                          |
+| `prompt_duplicate`, `prompt_delete`     | Copy any prompt into a custom one under `new_name`; delete a custom one, its jobs staying.                                                                                                                                    |
+| `prompt_render`                         | A prompt's words with its args filled (`set`: `arg=reference`), as Copy gives them.                                                                                                                                           |
+| `prompt_run`                            | Run a prompt on an Agent host, its args in `set`; `host`, `agent`, `model`, and `fix` and `trust` for `review-pr`; `continue` a job that ended unfinished, in its workspace and on its branch. No source: it is the prompt's. |
+| `prompt_pause_all`, `prompt_resume_all` | Stop every prompt trigger of the project, and start them again.                                                                                                                                                               |
+| `agent_hosts`                           | The project's Agent hosts, their last check, agent CLIs and tools.                                                                                                                                                            |
+| `job_list`, `job_get`, `job_cancel`     | The project's jobs, one job with its prompt, args, cause, reply and log, and stopping one.                                                                                                                                    |
 
 ## What has no tool
 

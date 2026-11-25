@@ -9,7 +9,7 @@ import {
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
 import { eventSubscriptions, projectEvents } from "@lore/core/api";
-import { hostCommands, hostJobs, hosts } from "@lore/core/schemas";
+import { hostCommands, hostJobLogs, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackController } from "@lore/plan/api";
 import { feedback, quests } from "@lore/plan/schemas";
@@ -66,6 +66,7 @@ class HeldQueue extends JobQueueProvider {
 export class AutomationRepos {
   executions = $repository(jobExecutionEntity);
   jobs = $repository(hostJobs);
+  logs = $repository(hostJobLogs);
   hosts = $repository(hosts);
   prompts = $repository(prompts);
   events = $repository(projectEvents);
