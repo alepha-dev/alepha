@@ -314,10 +314,33 @@ describe("prompts", () => {
       "or tagged `needs-answer`, stays in `todo` and does not count",
     );
     expect(loose).toContain(
-      "A quest tagged `needs-answer` is read every round, never skipped on its tag",
+      "A quest tagged `needs-answer` is never skipped on its tag alone",
     );
     // One an earlier run left accepted is found too.
     expect(loose).toContain('status "in_progress" and that tag');
+  });
+
+  it("has a run of loose quests take its list once, at most 10, accepted before the first commit (#Q4406)", async ({
+    expect,
+  }) => {
+    const byName = Object.fromEntries(
+      (await list()).map((it) => [it.name, it]),
+    );
+    const loose = byName["work-loose-quests"]!.text;
+    expect(loose).toContain("at most 10, one at a time");
+    expect(loose).toContain("It is read once and never again");
+    expect(loose).toContain(
+      "keep the first 10. The rest wait for the next run.",
+    );
+    expect(loose).toContain(
+      "`quest_accept` every quest on the list now, before the first commit",
+    );
+    expect(loose).toContain("A quest filed while you work");
+    // The unbounded loop is gone.
+    expect(loose).not.toContain("Re-read the list each round");
+    expect(loose).not.toContain("Read the list one last time");
+    expect(loose).not.toContain("Repeat until no loose quest");
+    expect(loose).not.toContain("`quest_accept` it before its first commit");
   });
 
   it("has every work prompt review its pull request with a sub-agent before it may merge, and lets a blocked quest not hold a run back (#Q4332)", async ({
@@ -337,7 +360,7 @@ describe("prompts", () => {
     // The review comes before ready, and before auto-merge.
     const loose = byName["work-loose-quests"]!.text;
     expect(loose).toContain(
-      "this run left with a comment and those tagged `needs-answer`, review the pull request (below), then mark it ready",
+      "left with a comment, or tagged `needs-answer`, the run ends: read no new list. Review the pull request (below), then mark it ready",
     );
     expect(loose).not.toContain("If it is empty, mark the pull request ready");
     expect(byName["work-epic"]!.text).toContain(
