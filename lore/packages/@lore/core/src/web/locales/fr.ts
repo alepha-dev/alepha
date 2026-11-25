@@ -5249,7 +5249,6 @@ export default {
   "prompts.skipped": "Ignorée : $1",
   "prompts.never": "Jamais lancée",
   "prompts.needsHost": "Lancer demande un hôte Agent prêt :",
-  "prompts.docs": "Comment fonctionnent les invites",
   "prompts.pin": "Épingler",
   "prompts.table.pins": "Épinglée sur",
   "prompts.pins.none": "Nulle part",
