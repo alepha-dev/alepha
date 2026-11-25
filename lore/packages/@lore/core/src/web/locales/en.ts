@@ -5226,7 +5226,6 @@ export default {
   "prompts.delete.description": "Its past jobs stay. A trigger it had stops.",
   "prompts.trigger": "Trigger",
   "prompts.new": "New prompt",
-  "prompts.pause": "Pause all triggers",
   "prompts.resume": "Resume triggers",
   "prompts.paused": "Triggers paused",
   "prompts.title": "Prompts",

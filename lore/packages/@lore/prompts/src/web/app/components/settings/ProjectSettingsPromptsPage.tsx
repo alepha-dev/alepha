@@ -6,6 +6,7 @@ import {
   useDialog,
 } from "@alepha/ui";
 import {
+  type BulkAction,
   DataTable,
   type DataTableFilterFields,
   type RowActionContext,
@@ -42,7 +43,6 @@ import {
   FileCode,
   ListChecks,
   Pin,
-  Pause,
   Power,
   PowerOff,
   Pencil,
@@ -230,6 +230,33 @@ const ProjectSettingsPromptsPage = () => {
     });
   };
   const busy = copy.loading;
+
+  /**
+   * The selected prompts a bulk switch applies to: those with a trigger, in
+   * the other state. A manual prompt has nothing to turn on or off.
+   */
+  const switchable = (rows: PromptResource[], enabled: boolean) =>
+    rows.filter((row) => row.on !== "manual" && row.enabled !== enabled);
+  // Enable and Disable trigger on the checked rows (#Q4358), each row
+  // written as its own menu's switch is: drawn at once, put back on a
+  // refusal.
+  const bulkActions: BulkAction<PromptResource>[] = manage
+    ? ([true, false] as const).map((enabled) => ({
+        icon: enabled ? Power : PowerOff,
+        label: tr(
+          enabled ? "prompts.trigger.enable" : "prompts.trigger.disable",
+        ),
+        visible: (rows: PromptResource[]) =>
+          switchable(rows, enabled).length > 0,
+        count: (rows: PromptResource[]) => switchable(rows, enabled).length,
+        onClick: (rows: PromptResource[], ctx) => {
+          for (const row of switchable(rows, enabled)) {
+            patch(row, { enabled }, { enabled });
+          }
+          ctx.clearSelection();
+        },
+      }))
+    : [];
 
   const startCopy = (prompt: PromptResource) => {
     if (prompt.args.every((arg) => arg.type === "member")) {
@@ -442,15 +469,9 @@ const ProjectSettingsPromptsPage = () => {
           data={list.data.items}
           rowKey={(row) => row.name}
           defaultSize={100}
-          // The toolbar draws its actions in this order: Pause / Resume
-          // first, left of the primary New prompt (#Q4292).
+          // The project-wide pause left the toolbar for the rows' own
+          // checkboxes (#Q4358); the note under the table still resumes it.
           actions={[
-            {
-              icon: pausedAt ? Play : Pause,
-              label: pausedAt ? tr("prompts.resume") : tr("prompts.pause"),
-              disabled: !manage || busy,
-              onClick: () => pause(!pausedAt),
-            },
             {
               icon: Plus,
               label: tr("prompts.new"),
@@ -460,6 +481,7 @@ const ProjectSettingsPromptsPage = () => {
             },
           ]}
           rowActions={rowActions}
+          bulkActions={bulkActions}
           filters={{ fields: filterFields }}
           filter={(row, values) => {
             const triggered = row.on !== "manual";
@@ -657,6 +679,22 @@ const ProjectSettingsPromptsPage = () => {
           {pausedAt && (
             <span data-testid="prompts-paused">
               {tr("prompts.paused")} <TimeAgo value={pausedAt} />
+              {/* The way back from a pause set by the CLI or MCP, now that
+                  the page has no pause button (#Q4358). */}
+              {manage && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className={textLinkUnderlineClassName}
+                    disabled={busy}
+                    onClick={() => pause(false)}
+                    data-testid="prompts-resume"
+                  >
+                    {tr("prompts.resume")}
+                  </button>
+                </>
+              )}
             </span>
           )}
         </p>

@@ -289,8 +289,13 @@ A triggered prompt runs unattended, so it stops by itself:
   off says **off** in the **Trigger** column; **Enable trigger** in the row's
   menu turns it back on, and **Disable trigger** turns one off by hand.
 - **A host that cannot take a run** skips it without counting a failure.
-- **Pause all triggers**, above the table, stops every trigger of the project
-  until **Resume triggers**. A run by hand still works.
+- **Several at once**: tick the prompts' checkboxes, then **Enable trigger** or
+  **Disable trigger** in the bar that appears. A prompt run by hand is left
+  alone.
+- **Pausing every trigger** of the project at once is for the command line
+  and agents (`lore prompt pause-all`, `prompt_pause_all`). While a project is
+  paused, the note under the table says so, with **Resume triggers**. A run by
+  hand still works.
 
 To hear about a run that ended, subscribe to **Agent job succeeded** or
 **Agent job failed** in **Settings ▸ Notifications**. Nobody is told without
