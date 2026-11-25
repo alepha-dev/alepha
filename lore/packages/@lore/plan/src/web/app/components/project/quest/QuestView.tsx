@@ -49,6 +49,7 @@ import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
 import { QuestDueDate } from "./questDueDate.ts";
+import QuestHoldDialog from "./QuestHoldDialog.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewFeedbackBadge from "./QuestViewFeedbackBadge.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
@@ -100,6 +101,7 @@ const QuestView = (props: QuestViewProps) => {
   const dt = useInject(DateTimeProvider);
   const [showDialog, setShowDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [quest, setQuest] = useState<QuestResource>(props.quest);
 
   // Mirror the prop into local state, which the inline editors then mutate.
@@ -148,7 +150,8 @@ const QuestView = (props: QuestViewProps) => {
   // tab-return read sends anything, and a read already in flight is held
   // back until the edit closes, so nothing being typed is replaced.
   const [drafting, setDrafting] = useState(false);
-  const editing = showDialog || showCompleteDialog || drafting;
+  const editing =
+    showDialog || showCompleteDialog || showHoldDialog || drafting;
   const queries = useQueryClient();
   const refresh = liveRefresh(quest.metadata.status === "in_progress");
   const latest = useQuery(
@@ -412,33 +415,21 @@ const QuestView = (props: QuestViewProps) => {
     [questMutations, quest.id, props.onQuestChange],
   );
 
-  const holdAction = useAction<[], void>(
+  // A dialog of its own rather than `dialog.prompt` since #Q4408: besides
+  // the reason it takes the day the hold lifts on its own. The reason is
+  // still one sentence posted to the discussion, and `MentionNotifier`
+  // matches `@name` out of it as it does out of any comment.
+  const holdAction = useAction<
+    [reason: string, until: string | undefined],
+    void
+  >(
     {
-      handler: async () => {
-        // A prompt rather than the markdown composer the discussion uses. The
-        // reason IS a comment, so the composer would be the consistent
-        // choice, but a hold reason is one sentence and `validate` is what
-        // makes the requirement visible before the request rather than as a
-        // 400 after it. Mentions are unaffected: nothing in Lore
-        // autocompletes a handle anywhere, the composer included -
-        // `MentionNotifier` matches `@name` out of whatever text it is given.
-        const reason = await dialog.prompt({
-          title: tr("quest.view.hold.title"),
-          description: tr("quest.view.hold.description"),
-          placeholder: tr("quest.view.hold.placeholder"),
-          confirmLabel: tr("quest.view.hold.submit"),
-          cancelLabel: tr("common.cancel"),
-          validate: (value) =>
-            value.trim() ? null : tr("quest.view.hold.reasonRequired"),
-        });
-        // `null` is cancel; the validator has already refused empty text, so
-        // this cannot be an accidental hold with no reason.
-        if (!reason?.trim()) return;
-
-        applyLifecycle(await questMutations.hold(quest.id, reason.trim()));
+      handler: async (_ctx, reason, until) => {
+        applyLifecycle(await questMutations.hold(quest.id, reason, until));
+        setShowHoldDialog(false);
       },
     },
-    [questMutations, quest.id, dialog, tr, props.onQuestChange],
+    [questMutations, quest.id, props.onQuestChange],
   );
 
   const unholdAction = useAction<[], void>(
@@ -535,7 +526,7 @@ const QuestView = (props: QuestViewProps) => {
   };
   const holdQuest = {
     disabled: busy || !questApi.holdQuest.can(),
-    onClick: () => void holdAction.run(),
+    onClick: () => setShowHoldDialog(true),
   };
   const unholdQuest = {
     disabled: busy || !questApi.unholdQuest.can(),
@@ -639,6 +630,20 @@ const QuestView = (props: QuestViewProps) => {
               <CircleDot className="size-3" />
               {statusLabel}
             </Badge>
+
+            {/* A dated hold (#Q4408) says when it lifts, beside On hold. */}
+            {quest.heldAt && quest.heldUntil && (
+              <Badge
+                variant="tint"
+                tone={statusTone}
+                data-testid="quest-held-until"
+              >
+                <CalendarClock className="size-3" />
+                {tr("quest.view.heldUntil", {
+                  args: [l(quest.heldUntil, { date: "ll" })],
+                })}
+              </Badge>
+            )}
 
             {quest.feedbackId != null && (
               <QuestViewFeedbackBadge feedbackId={quest.feedbackId} />
@@ -1024,6 +1029,14 @@ const QuestView = (props: QuestViewProps) => {
           {railNode}
         </aside>
       )}
+      <QuestHoldDialog
+        open={showHoldDialog}
+        onOpenChange={(open) => {
+          if (!holdAction.loading) setShowHoldDialog(open);
+        }}
+        submitting={holdAction.loading}
+        onConfirm={(reason, until) => void holdAction.run(reason, until)}
+      />
       <QuestCompletionDialog
         open={showCompleteDialog}
         onOpenChange={(open) => {

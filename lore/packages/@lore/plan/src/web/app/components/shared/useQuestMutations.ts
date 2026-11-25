@@ -176,8 +176,11 @@ export const useQuestMutations = (): QuestMutations => {
     // count, and that is the point rather than an omission: a hold suspends
     // work without unassigning it, and `OpenQuestScope` counts a quest that is
     // neither completed nor shelved - which a held one still is not.
-    hold: async (id, reason) => {
-      return await questApi.holdQuest({ params: { id }, body: { reason } });
+    hold: async (id, reason, until) => {
+      return await questApi.holdQuest({
+        params: { id },
+        body: { reason, ...(until ? { until } : {}) },
+      });
     },
     unhold: async (id) => {
       return await questApi.unholdQuest({ params: { id } });
@@ -263,7 +266,7 @@ export interface QuestMutations {
    * server, and it is posted as a comment on the quest rather than stored on
    * a field, so an `@handle` in it reaches that person's inbox.
    */
-  hold: (id: number, reason: string) => Promise<QuestResource>;
+  hold: (id: number, reason: string, until?: string) => Promise<QuestResource>;
   unhold: (id: number) => Promise<QuestResource>;
   remove: (id: number) => Promise<void>;
   /**

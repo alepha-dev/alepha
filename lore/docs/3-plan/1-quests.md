@@ -134,6 +134,7 @@ flowchart LR
   todo -->|hold| on_hold
   in_progress -->|hold| on_hold
   on_hold -->|lift hold| back[previous status]
+  on_hold -->|until date passes| todo
 ```
 
 - **Accept** assigns the quest to you and moves it to In progress. It is
@@ -147,7 +148,11 @@ flowchart LR
 - **Put on hold** needs a reason, posted to the Discussion. Mention whoever you
   are waiting on with `@` and it lands in their inbox. **Lift hold** restores
   the previous status and assignee. While on hold, a quest can be neither
-  accepted nor completed.
+  accepted nor completed. The dialog also takes an optional **Until** date,
+  with quick picks for one and two weeks: the date shows beside On hold, and
+  within the hour after it the hold lifts on its own and the quest goes back to
+  **To do**, unassigned whatever it was before, with a line in the Discussion.
+  Nobody is notified.
 - **Shelve** works on any quest not completed. An accepted quest is unassigned
   in the same step, its timer stopped and its reminders cleared, and a hold is
   lifted; the history shows each move. Prefer it to deleting when the idea is

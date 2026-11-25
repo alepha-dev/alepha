@@ -1,0 +1,76 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "8a17cca0-819c-4e48-b464-752046d2051f",
+  "prevIds": ["3b24fbb6-0cee-4c79-86dd-1ef3110150b8"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "held_until"],
+      "writes": [
+        "s|col|public.quests.held_until",
+        "n|col|public.quests.held_until",
+        "e|col|public.quests.held_until"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": ["index", "public", "quests", "quests_holds_due_idx"],
+      "writes": [
+        "s|idx|public.quests_holds_due_idx",
+        "n|idx|public.quests_holds_due_idx",
+        "e|idx|public.quests_holds_due_idx",
+        "n|rel|public.quests_holds_due_idx"
+      ],
+      "reads": [
+        "n|tbl|public.quests",
+        "n|sch|public",
+        "n|col|public.quests.held_until"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "held_until",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "quests_holds_due_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "held_until",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": "(((\"deleted_at\" is null)) and ((\"held_at\" is not null)) and ((\"held_until\" is not null)))",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

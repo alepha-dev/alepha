@@ -1,0 +1,2 @@
+ALTER TABLE `quests` ADD `held_until` integer;--> statement-breakpoint
+CREATE INDEX `quests_holds_due_idx` ON `quests` (`held_until`) WHERE ((("quests"."deleted_at" is null)) and (("quests"."held_at" is not null)) and (("quests"."held_until" is not null)));

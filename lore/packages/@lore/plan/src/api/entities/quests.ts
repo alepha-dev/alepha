@@ -156,6 +156,17 @@ export const quests = $entity({
       onDelete: "set null",
     }),
     /**
+     * When a dated hold lifts on its own (#Q4408): the hourly sweep
+     * (`QuestHoldLifts`) finds every hold whose date has passed, lifts it,
+     * puts the quest back in To do and says so in the discussion. Absent on a
+     * hold with no date, which waits for somebody to lift it, as before.
+     * Set by `holdQuest`, cleared wherever `heldAt` is.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`, for the reason `heldAt` gives.
+     */
+    heldUntil: z.datetime().optional(),
+    /**
      * Free-form summary set when the quest closes — what was actually
      * done. Editable post-completion via `updateQuest` (project memory
      * is meant to be curated). Surfaced to humans in the quest view +
@@ -476,6 +487,17 @@ export const quests = $entity({
         acceptedAt: { isNotNull: true },
         acceptedBy: { isNotNull: true },
         reminderInterval: { isNotNull: true },
+      },
+    },
+    {
+      // Dated holds (#Q4408): the hourly sweep reads the holds that are due,
+      // across all projects, so the index leads with `heldUntil`.
+      name: "quests_holds_due_idx",
+      columns: ["heldUntil"],
+      where: {
+        deletedAt: { isNull: true },
+        heldAt: { isNotNull: true },
+        heldUntil: { isNotNull: true },
       },
     },
     {

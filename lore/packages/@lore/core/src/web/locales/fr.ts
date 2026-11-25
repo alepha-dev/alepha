@@ -2168,6 +2168,14 @@ export default {
     "En attente de... (markdown accepté, @mention pour notifier)",
   "quest.view.hold.submit": "Mettre en attente",
   "quest.view.hold.reasonRequired": "Une mise en attente exige une raison.",
+  "quest.view.hold.until": "Jusqu'au (facultatif)",
+  "quest.view.hold.untilHint":
+    "Ce jour-là, la mise en attente se lève d'elle-même et la quête revient dans À faire, sans assignation. Personne n'est notifié.",
+  "quest.view.hold.untilPast": "Choisissez un jour après aujourd'hui.",
+  "quest.view.hold.oneWeek": "1 semaine",
+  "quest.view.hold.twoWeeks": "2 semaines",
+  "quest.view.hold.noDate": "Sans date",
+  "quest.view.heldUntil": "Jusqu'au $1",
   "quest.view.unhold.title": "Lever l'attente",
   "quest.view.unhold.confirm":
     "La quête revient à son état d'avant l'attente, toujours assignée à la même personne. La raison reste dans la discussion.",

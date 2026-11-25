@@ -583,6 +583,12 @@ export const questHoldParamsSchema = entityRefSchema.extend({
     .describe(
       "Why this quest is blocked, and ideally what would unblock it. REQUIRED: a hold with no reason is indistinguishable from an abandoned quest. This is posted as a comment on the quest's discussion, not stored on a field, so `@handle` reaches that project member's inbox exactly as it does in `quest_comment_add` — mention whoever you are waiting on.",
     ),
+  until: z
+    .datetime()
+    .describe(
+      "When the hold lifts on its own, as an ISO 8601 datetime in the future. Within the hour after it, the quest goes back to `todo` (unassigned, whatever it was before) and a line in its discussion says so; nobody is notified. Omit it for a hold that waits for somebody to lift it.",
+    )
+    .optional(),
 });
 
 export const questHoldResultSchema = z.object({
@@ -590,6 +596,10 @@ export const questHoldResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   heldAt: z.datetime(),
+  /**
+   * When the hold lifts on its own, if it was given a date.
+   */
+  heldUntil: z.datetime().optional(),
   status: questStatusSchema,
 });
 

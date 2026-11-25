@@ -2170,6 +2170,14 @@ export default {
     "Waiting on... (markdown supported, @mention to notify)",
   "quest.view.hold.submit": "Put on hold",
   "quest.view.hold.reasonRequired": "A hold needs a reason.",
+  "quest.view.hold.until": "Until (optional)",
+  "quest.view.hold.untilHint":
+    "On that day the hold lifts on its own and the quest goes back to To do, unassigned. Nobody is notified.",
+  "quest.view.hold.untilPast": "Pick a day after today.",
+  "quest.view.hold.oneWeek": "1 week",
+  "quest.view.hold.twoWeeks": "2 weeks",
+  "quest.view.hold.noDate": "No date",
+  "quest.view.heldUntil": "Until $1",
   "quest.view.unhold.title": "Lift this hold",
   "quest.view.unhold.confirm":
     "The quest goes back to what it was before the hold, still assigned to whoever had it. The reason stays in the discussion.",

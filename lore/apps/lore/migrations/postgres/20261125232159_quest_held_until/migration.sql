@@ -1,0 +1,2 @@
+ALTER TABLE "quests" ADD COLUMN "held_until" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "quests_holds_due_idx" ON "quests" ("held_until") WHERE ((("deleted_at" is null)) and (("held_at" is not null)) and (("held_until" is not null)));

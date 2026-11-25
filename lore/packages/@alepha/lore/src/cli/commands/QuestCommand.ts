@@ -1077,13 +1077,22 @@ export class QuestCommand {
         description:
           "What it is waiting on, posted to its discussion. Mention who you are waiting on with @handle.",
       }),
+      until: z
+        .datetime()
+        .describe(
+          "When the hold lifts on its own, as an ISO 8601 datetime: the quest then goes back to To do",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
       await this.transition(args, flags, print, "Held", (id) =>
         this.questApi.holdQuest({
           params: { id },
-          body: { reason: flags.reason },
+          body: {
+            reason: flags.reason,
+            ...(flags.until ? { until: flags.until } : {}),
+          },
         }),
       );
     },

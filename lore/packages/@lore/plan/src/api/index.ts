@@ -62,6 +62,7 @@ import { QuestEditAccess } from "./services/QuestEditAccess.ts";
 import { QuestEventSources } from "./services/QuestEventSources.ts";
 import { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
 import { QuestFlowService } from "./services/QuestFlowService.ts";
+import { QuestHoldLifts } from "./services/QuestHoldLifts.ts";
 import { QuestHoldTime } from "./services/QuestHoldTime.ts";
 import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
 import { QuestReminders } from "./services/QuestReminders.ts";
@@ -186,6 +187,9 @@ export const LorePlanApi = $module({
     // notifications they send; listed because nothing injects them.
     QuestReminders,
     QuestReminderNotifications,
+    // Dated holds lifted by core's hourly job (#Q4408); listed because
+    // nothing injects it.
+    QuestHoldLifts,
     // Comments on the quests an agent job left open when it ends
     // unfinished (#Q4341); listed because nothing injects it.
     UnfinishedJobQuests,
@@ -278,6 +282,7 @@ export { QuestAuthorshipController } from "./controllers/QuestAuthorshipControll
 export { QuestCommentController } from "./controllers/QuestCommentController.ts";
 export { QuestController } from "./controllers/QuestController.ts";
 export { QuestReminders } from "./services/QuestReminders.ts";
+export { QuestHoldLifts } from "./services/QuestHoldLifts.ts";
 export { ReleaseController } from "./controllers/ReleaseController.ts";
 export { AreaService } from "./services/AreaService.ts";
 export { BoardRank } from "./services/BoardRank.ts";
