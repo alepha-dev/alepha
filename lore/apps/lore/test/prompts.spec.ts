@@ -479,6 +479,61 @@ describe("prompts", () => {
     expect((await list()).map((it) => it.name)).not.toContain("crash");
   });
 
+  it("takes a choice arg: two slugs at least, rendered as {{bump.value}}, listed in its select, a value outside the list refused (#Q4415)", async ({
+    expect,
+  }) => {
+    const create = (args: unknown) =>
+      controller.createPrompt.run(
+        {
+          params: { projectId: project.id },
+          body: {
+            name: "release",
+            text: "Release with a {{bump.value}} bump in {{project}}.",
+            args,
+          } as never,
+        },
+        { user: owner },
+      );
+    await expect(
+      create([{ name: "bump", type: "choice", accepts: ["minor"] }]),
+    ).rejects.toThrow("at least two options");
+    await expect(create([{ name: "bump", type: "choice" }])).rejects.toThrow(
+      "at least two options",
+    );
+    await expect(
+      create([{ name: "bump", type: "choice", accepts: ["minor", "Patch"] }]),
+    ).rejects.toThrow("'Patch' is not a slug");
+    await expect(
+      create([{ name: "bump", type: "choice", accepts: ["minor", "minor"] }]),
+    ).rejects.toThrow("an option twice");
+
+    const created = await create([
+      { name: "bump", type: "choice", accepts: ["minor", "patch", "major"] },
+    ]);
+    expect(created.args).toEqual([
+      { name: "bump", type: "choice", accepts: ["minor", "patch", "major"] },
+    ]);
+
+    const rendered = await render("release", { bump: "patch" });
+    expect(rendered.text).toBe("Release with a patch bump in Acme.");
+    await expect(render("release", { bump: "huge" })).rejects.toThrow(
+      "is one of minor, patch, major, not 'huge'",
+    );
+    await expect(render("release", {})).rejects.toThrow(
+      "The arg 'bump' (choice) is missing",
+    );
+
+    const options = await controller.listPromptArgOptions.run(
+      { params: { projectId: project.id, name: "release", arg: "bump" } },
+      { user: owner },
+    );
+    expect(options.items.map((it) => it.value)).toEqual([
+      "minor",
+      "patch",
+      "major",
+    ]);
+  });
+
   it("duplicates a built-in into a custom prompt with the same text, args, accepted statuses and source", async ({
     expect,
   }) => {

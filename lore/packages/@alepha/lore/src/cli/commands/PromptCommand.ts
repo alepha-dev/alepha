@@ -104,7 +104,7 @@ export class PromptCommand {
     arg: z
       .array(z.text())
       .describe(
-        "An arg, name:type or name:type:status|status (the statuses it accepts); repeat it. Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio.",
+        "An arg, name:type or name:type:status|status (the statuses it accepts); repeat it. Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio, choice. A choice lists its options instead, name:choice:a|b, read as {{name.value}}; a triggered run takes the first.",
       )
       .optional(),
     source: z
@@ -166,14 +166,14 @@ export class PromptCommand {
   }
 
   /**
-   * `name:type` or `name:type:status|status`.
+   * `name:type`, `name:type:status|status`, or `name:choice:a|b`.
    */
   protected argsOf(values: string[]) {
     return values.map((value) => {
       const [name, type, accepts] = value.split(":");
       if (!name || !type) {
         throw new UsageError(
-          `--arg ${value}: write name:type or name:type:status|status`,
+          `--arg ${value}: write name:type, name:type:status|status or name:choice:a|b`,
         );
       }
       return {

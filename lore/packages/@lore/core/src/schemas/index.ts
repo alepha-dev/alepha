@@ -173,6 +173,7 @@ export { hostJobs } from "../api/entities/hostJobs.ts";
 export {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_STATUSES,
+  PROMPT_CHOICE_OPTION,
   PROMPT_ARG_TYPES,
   PROMPT_CHECKS,
   PROMPT_NEEDS_HUMAN_TAG,

@@ -5237,6 +5237,7 @@ export default {
   "prompts.arg.persona": "Persona",
   "prompts.arg.requirement": "Exigence",
   "prompts.arg.folio": "Folio",
+  "prompts.arg.choice": "Choix",
   "prompts.args.none": "Aucun",
   "prompts.accepts": "accepte $1",
   "prompts.cancel": "Annuler",

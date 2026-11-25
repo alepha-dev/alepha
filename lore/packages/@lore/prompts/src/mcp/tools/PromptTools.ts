@@ -58,14 +58,14 @@ export class PromptTools {
   }
 
   /**
-   * `name:type` or `name:type:status|status`.
+   * `name:type`, `name:type:status|status`, or `name:choice:a|b`.
    */
   public static argsOf(values: string[]): PromptArg[] {
     return values.map((value) => {
       const [argName, type, accepts] = value.split(":");
       if (!argName || !PROMPT_ARG_TYPES.includes(type as PromptArgType)) {
         throw new BadRequestError(
-          `'${value}' is no arg: write name:type or name:type:status|status, a type among ${PROMPT_ARG_TYPES.join(", ")}`,
+          `'${value}' is no arg: write name:type, name:type:status|status or name:choice:a|b, a type among ${PROMPT_ARG_TYPES.join(", ")}`,
         );
       }
       return {

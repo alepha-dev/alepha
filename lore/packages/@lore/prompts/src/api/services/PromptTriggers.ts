@@ -315,13 +315,24 @@ export class PromptTriggers {
         );
       }
     }
-    for (const name of Object.keys(argValues)) {
-      if (!prompt.args.some((arg) => arg.name === name)) {
+    for (const [name, value] of Object.entries(argValues)) {
+      const arg = prompt.args.find((it) => it.name === name);
+      if (!arg) {
         throw new BadRequestError(`The prompt has no arg '${name}'`);
+      }
+      // A choice's stored value is one of its options (#Q4415), refused
+      // here rather than at the first triggered run.
+      if (arg.type === "choice" && !(arg.accepts ?? []).includes(value)) {
+        throw new BadRequestError(
+          `The arg '${name}' is one of ${(arg.accepts ?? []).join(", ")}, not '${value}'`,
+        );
       }
     }
     if (trigger.eventKeys?.length || trigger.schedule) {
-      const stored = (arg: { name: string }) => !!argValues[arg.name];
+      // A choice needs no stored value: a triggered run takes its first
+      // option (#Q4415).
+      const stored = (arg: { name: string; type: string }) =>
+        !!argValues[arg.name] || arg.type === "choice";
       if (trigger.schedule) {
         const empty = prompt.args.find((arg) => !stored(arg));
         if (empty) {
@@ -585,11 +596,18 @@ export class PromptTriggers {
       if (refusal) return { skipped: refusal };
     }
     const owner: UserAccountToken = { id: row.createdBy, roles: ["user"] };
+    // An event or a schedule cannot pick a choice: a choice with no stored
+    // value takes its first option (#Q4415).
+    const defaults = Object.fromEntries(
+      prompt.args
+        .filter((arg) => arg.type === "choice" && arg.accepts?.[0])
+        .map((arg) => [arg.name, arg.accepts![0]!]),
+    );
     const out = await this.runs.run(
       row.projectId,
       owner,
       row.name,
-      { args: { ...row.argValues, ...filled } },
+      { args: { ...defaults, ...row.argValues, ...filled } },
       cause,
       startedByJobId,
     );

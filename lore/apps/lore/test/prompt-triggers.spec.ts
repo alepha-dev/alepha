@@ -198,6 +198,74 @@ describe("prompt triggers", () => {
     expect((await row("work-epic")).nextRunAt! > due).toBe(true);
   });
 
+  it("runs a choice arg on its first option from a schedule, which stores no value for it (#Q4415)", async ({
+    expect,
+  }) => {
+    await w.controller.createPrompt.run(
+      {
+        params: { projectId: w.projectId },
+        body: {
+          name: "release",
+          text: "Release with a {{bump.value}} bump.",
+          args: [
+            {
+              name: "bump",
+              type: "choice",
+              accepts: ["minor", "patch", "major"],
+            },
+          ],
+        } as never,
+      },
+      { user: w.owner },
+    );
+    await set("release", { on: "daily@7" });
+    const due = (await row("release")).nextRunAt!;
+    expect(await w.alepha.inject(PromptTriggers).tick(due)).toBe(1);
+    const [job] = await agentJobs();
+    expect(job).toMatchObject({
+      prompt: "release",
+      cause: { kind: "schedule" },
+      args: [expect.objectContaining({ name: "bump", value: "minor" })],
+    });
+
+    // A stored value outside the options is refused when the trigger is set.
+    await expect(
+      set("release", { on: "daily@7", argValues: { bump: "huge" } }),
+    ).rejects.toThrow("is one of minor, patch, major, not 'huge'");
+  });
+
+  it("runs a choice arg on its first option from an event, beside the item the event fills (#Q4415)", async ({
+    expect,
+  }) => {
+    await w.controller.createPrompt.run(
+      {
+        params: { projectId: w.projectId },
+        body: {
+          name: "size-feedback",
+          text: "Size {{feedback.reference}} as {{size.value}}.",
+          args: [
+            { name: "feedback", type: "feedback" },
+            { name: "size", type: "choice", accepts: ["small", "large"] },
+          ],
+        } as never,
+      },
+      { user: w.owner },
+    );
+    await set("size-feedback", { on: "event:feedback.created" });
+    await w.submit("One");
+    await w.drain();
+    const [job] = await agentJobs();
+    expect(job).toMatchObject({
+      prompt: "size-feedback",
+      cause: { kind: "event", event: "feedback.created" },
+    });
+    expect(job?.args).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "size", value: "small" }),
+      ]),
+    );
+  });
+
   it("checks for work first, and skips while paused, recording why", async ({
     expect,
   }) => {
