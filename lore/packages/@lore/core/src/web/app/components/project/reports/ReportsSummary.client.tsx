@@ -61,6 +61,7 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
     remember: tr("project.capability.remember.label"),
     ship: tr("project.capability.ship.label"),
     chat: tr("project.capability.chat.label"),
+    prompts: tr("project.capability.prompts.label"),
     activity: tr("project.capability.activity.label"),
     reports: tr("project.capability.reports.label"),
   };

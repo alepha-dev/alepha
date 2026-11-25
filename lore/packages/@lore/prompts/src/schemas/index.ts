@@ -17,3 +17,7 @@ export {
   type PromptWrite,
   promptWriteSchema,
 } from "../api/schemas/promptWriteSchema.ts";
+export {
+  type PromptsCapabilityOptions,
+  promptsCapabilityOptionsSchema,
+} from "../api/schemas/promptsCapabilityOptionsSchema.ts";

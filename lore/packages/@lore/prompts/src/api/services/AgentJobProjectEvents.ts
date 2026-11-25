@@ -26,7 +26,8 @@ import { prompts } from "../entities/prompts.ts";
  * - `starter_id` is still a field of the event, the member who started a
  *   run by hand, for a channel's message or a later "jobs I started" filter.
  *
- * Core, like the hosts, read with `host:read`.
+ * Read with `host:read`, like the hosts, and offered only while the project
+ * has the `prompts` capability (#E175): off, no agent job runs.
  */
 export class AgentJobProjectEvents {
   protected static readonly DEFINITIONS = [
@@ -67,6 +68,7 @@ export class AgentJobProjectEvents {
           starter_id: "member",
         },
         permission: "host:read",
+        needs: { capability: "prompts" },
         message: (it) => this.message(it, definition.outcome),
       });
   }

@@ -114,6 +114,7 @@ const Spotlight = (): ReactElement => {
     sources: useInject(SpotlightSourceRegistry).all(),
     query,
     wanted: sourcesWanted,
+    project,
   });
   const [hits, setHits] = useState<SpotlightHit[]>([]);
 

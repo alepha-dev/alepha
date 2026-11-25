@@ -73,7 +73,7 @@ describe("the Capabilities settings page", () => {
     return { fake: alepha.inject(FakeLinkProvider), view };
   };
 
-  it("opens with General: Activity, Chat and Reports, above the pillars (#Q4007)", async ({
+  it("opens with General: Activity, Chat, Prompts and Reports, above the pillars (#Q4007)", async ({
     expect,
   }) => {
     const { view } = await mount(["plan", "activity", "reports"]);
@@ -83,15 +83,22 @@ describe("the Capabilities settings page", () => {
       .getAllByRole("switch")
       .map((it) => it.getAttribute("aria-label"));
     // Reports' Quality option sits under its switch (#Q4217).
-    expect(names.slice(0, 5)).toEqual([
+    expect(names.slice(0, 6)).toEqual([
       "Activity",
       "Chat",
+      "Prompts",
       "Reports",
       "Quality",
       "Plan",
     ]);
     expect(
       view.getByRole("switch", { name: "Chat" }).getAttribute("aria-checked"),
+    ).toBe("false");
+    // Prompts is off by default, like Chat (#E175).
+    expect(
+      view
+        .getByRole("switch", { name: "Prompts" })
+        .getAttribute("aria-checked"),
     ).toBe("false");
     expect(
       view
