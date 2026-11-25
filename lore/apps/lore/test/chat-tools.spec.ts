@@ -99,6 +99,29 @@ describe("chat tools", () => {
     ).rejects.toThrow(/No room named "secret"/);
   });
 
+  it("reads back a message longer than 255 characters (#Q4334)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const long = `${"A long agent answer. ".repeat(30)}End.`;
+
+    await ctx.call(ctx.member.id, () =>
+      ctx.tools.chat_message_send.execute({
+        project: ctx.project.id,
+        room: "#general",
+        body: long,
+      }),
+    );
+    const page = await ctx.call(ctx.owner.id, () =>
+      ctx.tools.chat_message_list.execute({
+        project: ctx.project.id,
+        room: "general",
+      }),
+    );
+    expect(long.length).toBeGreaterThan(255);
+    expect(page.messages[0]?.body).toBe(long);
+  });
+
   it("creates, reads, edits and deletes an agent, as chat:agent only", async ({
     expect,
   }) => {
