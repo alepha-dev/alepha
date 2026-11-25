@@ -180,19 +180,15 @@ stored, because every member of the project can read it.
 ## Getting help with triage
 
 The bell above the inbox's status filter notifies you of new reports. It opens
-a dialog: the channels, **Inbox** and **By email**, and **From whom**:
-**Feedback I submit** and **Feedback from project members**. Untick the second
-to hear only of outside reporters. Clicked again, the same dialog changes these
-or stops it after a confirmation.
+a dialog with two selects. **How** picks the channels: **Inbox** and **By
+email**, and, for a member who manages the project's notifications, every
+channel of the project, such as a Discord or a webhook. **From whom** is **All
+feedback**, **All except mine** or **All except project members'**, the last
+to hear only of outside reporters. Clicked again, the same dialog changes
+these or stops it after a confirmation.
 
-To have someone else told, or a Discord or webhook channel, add **New
-feedback** on **Settings ▸ Notifications**: see
-[Notifications](/lore/docs/project-notifications).
-
-Two built-in [prompts](/lore/docs/agents-prompts) are about feedback:
-**Triage feedback and errors**, over the whole inbox, and **Work on
-feedback**, on one pending or accepted report. Pin them to the Feedback list
-or the Feedback view to have them on the page.
+To have someone else told, add **New feedback** on **Settings ▸
+Notifications**: see [Notifications](/lore/docs/project-notifications).
 
 ## From the command line
 

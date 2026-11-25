@@ -970,7 +970,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Getting help with triage",
     url: "https://alepha.dev/lore/docs/plan-feedback#getting-help-with-triage",
     capability: "plan",
-    text: "The bell above the inbox's status filter notifies you of new reports. It opens\na dialog: the channels, **Inbox** and **By email**, and **From whom**:\n**Feedback I submit** and **Feedback from project members**. Untick the second\nto hear only of outside reporters. Clicked again, the same dialog changes these\nor stops it after a confirmation.\n\nTo have someone else told, or a Discord or webhook channel, add **New\nfeedback** on **Settings ▸ Notifications**: see\n[Notifications](/lore/docs/project-notifications).\n\nTwo built-in [prompts](/lore/docs/agents-prompts) are about feedback:\n**Triage feedback and errors**, over the whole inbox, and **Work on\nfeedback**, on one pending or accepted report. Pin them to the Feedback list\nor the Feedback view to have them on the page.",
+    text: "The bell above the inbox's status filter notifies you of new reports. It opens\na dialog with two selects. **How** picks the channels: **Inbox** and **By\nemail**, and, for a member who manages the project's notifications, every\nchannel of the project, such as a Discord or a webhook. **From whom** is **All\nfeedback**, **All except mine** or **All except project members'**, the last\nto hear only of outside reporters. Clicked again, the same dialog changes\nthese or stops it after a confirmation.\n\nTo have someone else told, add **New feedback** on **Settings ▸\nNotifications**: see [Notifications](/lore/docs/project-notifications).",
   },
   {
     guide: "Feedback",

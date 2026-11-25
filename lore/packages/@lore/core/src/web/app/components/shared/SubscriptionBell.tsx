@@ -1,13 +1,10 @@
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  Label,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -19,12 +16,18 @@ import { useI18n } from "alepha/react/i18n";
 import { Bell, BellRing } from "lucide-react";
 import { useState } from "react";
 
+import type { ProjectChannelController } from "../../../../api/controllers/ProjectChannelController.ts";
 import type { ProjectEventController } from "../../../../api/controllers/ProjectEventController.ts";
 import type { SubscriptionController } from "../../../../api/controllers/SubscriptionController.ts";
 import type { SubscriptionChannel } from "../../../../api/schemas/subscriptionChannelSchema.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { NotificationLabels } from "../project/settings/notifications/NotificationLabels.ts";
+import SubscriptionBellForm, {
+  type SubscriptionBellAuthors,
+  type SubscriptionBellPick,
+} from "./SubscriptionBellForm.tsx";
+import { useRank } from "./useRank.ts";
 
 export interface SubscriptionBellProps {
   /**
@@ -44,16 +47,21 @@ export interface SubscriptionBellProps {
   /** The confirmation's sentence on what turning it off stops. */
   offDescription: string;
   /**
-   * Who caused the event, as two choices in the dialog (#Q4055): the
-   * feedback bell's "feedback I submit" and "feedback from project
-   * members". Given, the bell opens its dialog on the first click too,
-   * since the choice is the point; off, an event is told whoever caused it.
+   * Who caused the event, as a From whom select in the dialog (#Q4055,
+   * #Q4290): All, All except from me, All except from project members.
+   * Given, the bell opens its dialog on the first click too, since the
+   * choice is the point; off, an event is told whoever caused it.
    */
-  authors?: { mineLabel: string; membersLabel: string };
+  authors?: SubscriptionBellAuthors;
   testId?: string;
 }
 
 const CHANNELS: SubscriptionChannel[] = ["inapp", "email"];
+
+/**
+ * A project channel in the Channels select: `channel:<id>`.
+ */
+const CHANNEL_PREFIX = "channel:";
 
 /**
  * A bell that notifies its viewer of a page's events (#Q3892): one
@@ -73,12 +81,19 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   const dialog = useDialog();
   const auth = useAuth();
   const [project] = useStore(currentProjectAtom);
+  const channelApi = useClient<ProjectChannelController>();
+  const { can } = useRank();
   const [open, setOpen] = useState(false);
-  const [channels, setChannels] = useState<SubscriptionChannel[]>(["inapp"]);
-  const [events, setEvents] = useState<string[]>(props.events);
-  const [includeMine, setIncludeMine] = useState(true);
-  const [includeMembers, setIncludeMembers] = useState(true);
+  const [initial, setInitial] = useState<SubscriptionBellPick>({
+    channels: ["inapp"],
+    events: props.events,
+    from: "all",
+  });
   const projectId = project?.id ?? 0;
+  // A member who manages the project's notifications may route the bell to
+  // its channels too (#Q4290); the server refuses anyone else, this only
+  // hides what it would refuse.
+  const manage = can("subscription:manage");
   const me = auth.user?.id;
   const key = ["subscriptions", projectId];
   const rows = useQuery(
@@ -106,6 +121,29 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
     },
     [projectId],
   );
+  const projectChannels = useQuery(
+    {
+      key: ["project-channels", projectId],
+      enabled: !!project && manage && open,
+      handler: ({ signal }) =>
+        channelApi.listProjectChannels(
+          { params: { projectId } },
+          { request: { signal } },
+        ),
+      onError: () => {},
+    },
+    [projectId, manage, open],
+  );
+  const routable = (projectChannels.data?.items ?? []).filter(
+    (it) => !it.builtIn,
+  );
+  // The project channels' rows for this bell's events and resource.
+  const channelRows = (rows.data?.items ?? []).filter(
+    (row) =>
+      !!row.channelId &&
+      props.events.includes(row.event) &&
+      (row.filter ?? "") === (props.filter ?? ""),
+  );
   const mine = (rows.data?.items ?? []).filter(
     (row) =>
       row.memberId === me &&
@@ -118,43 +156,59 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   );
   const partial = !subscribed && live.length > 0;
 
-  const save = useAction<
-    [
-      on: boolean,
-      picked?: {
-        channels: SubscriptionChannel[];
-        events: string[];
-        notMine?: boolean;
-        notMembers?: boolean;
-      },
-    ],
-    void
-  >(
+  const save = useAction<[on: boolean, picked?: SubscriptionBellPick], void>(
     {
       handler: async (_ctx, on, picked) => {
         const wanted = picked ?? {
-          channels,
-          events,
-          notMine: props.authors ? !includeMine : undefined,
-          notMembers: props.authors ? !includeMembers : undefined,
+          channels: ["inapp"],
+          events: [...props.events],
+          from: "all" as const,
         };
+        const personal = CHANNELS.filter((it) => wanted.channels.includes(it));
+        const filter = props.filter ? { filter: props.filter } : {};
         for (const event of props.events) {
+          const keep = on && wanted.events.includes(event);
           const row = mine.find((it) => it.event === event);
-          if (on && wanted.events.includes(event))
+          if (keep && personal.length > 0)
             await api.setSubscription({
               params: { projectId },
               body: {
                 event,
-                ...(props.filter ? { filter: props.filter } : {}),
-                channels: wanted.channels,
-                ...(wanted.notMine ? { notMine: true } : {}),
-                ...(wanted.notMembers ? { notMembers: true } : {}),
+                ...filter,
+                channels: personal,
+                ...(wanted.from === "notMine" ? { notMine: true } : {}),
+                ...(wanted.from === "notMembers" ? { notMembers: true } : {}),
               },
             });
           else if (row)
             await api.deleteSubscription({
               params: { projectId, id: row.id },
             });
+          // One row per project channel picked; a channel is no member, so
+          // it never takes `notMine`, which the server refuses.
+          if (!manage) continue;
+          for (const channel of routable) {
+            const picked = wanted.channels.includes(
+              `${CHANNEL_PREFIX}${channel.id}`,
+            );
+            const held = channelRows.find(
+              (it) => it.event === event && it.channelId === channel.id,
+            );
+            if (keep && picked)
+              await api.setSubscription({
+                params: { projectId },
+                body: {
+                  event,
+                  ...filter,
+                  channelId: channel.id,
+                  ...(wanted.from === "notMembers" ? { notMembers: true } : {}),
+                },
+              });
+            else if (held)
+              await api.deleteSubscription({
+                params: { projectId, id: held.id },
+              });
+          }
         }
         setOpen(false);
       },
@@ -165,12 +219,10 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
       projectId,
       props.events,
       props.filter,
-      props.authors,
-      channels,
-      events,
-      includeMine,
-      includeMembers,
       mine,
+      channelRows,
+      routable,
+      manage,
     ],
   );
   if (!project || !me) return null;
@@ -185,14 +237,33 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   const toggle = () => {
     // With author choices the first click opens the dialog too (#Q4055).
     if (!subscribed && !partial && !props.authors) {
-      void save.run(true, { channels: ["inapp"], events: [...props.events] });
+      void save.run(true, {
+        channels: ["inapp"],
+        events: [...props.events],
+        from: "all",
+      });
       return;
     }
     const current = live[0]?.channels ?? [];
-    setChannels(current.length ? current : ["inapp"]);
-    setEvents(live.length ? live.map((row) => row.event) : [...props.events]);
-    setIncludeMine(!live[0]?.notMine);
-    setIncludeMembers(!live[0]?.notMembers);
+    const routed = manage
+      ? [
+          ...new Set(
+            channelRows.map((row) => `${CHANNEL_PREFIX}${row.channelId}`),
+          ),
+        ]
+      : [];
+    setInitial({
+      channels: [
+        ...(current.length || routed.length ? current : ["inapp"]),
+        ...routed,
+      ],
+      events: live.length ? live.map((row) => row.event) : [...props.events],
+      from: live[0]?.notMine
+        ? "notMine"
+        : live[0]?.notMembers
+          ? "notMembers"
+          : "all",
+    });
     setOpen(true);
   };
   const off = async () => {
@@ -246,125 +317,36 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
             <DialogTitle>{props.label}</DialogTitle>
             <DialogDescription>{props.description}</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-1.5">
-            <span
-              id="subscription-bell-channel"
-              className="text-sm font-medium"
-            >
-              {tr("notifications.bell.channel")}
-            </span>
-            <div
-              role="group"
-              aria-labelledby="subscription-bell-channel"
-              className="flex flex-wrap gap-4"
-            >
-              {CHANNELS.map((value) => (
-                <Label key={value} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={channels.includes(value)}
-                    onCheckedChange={(checked) =>
-                      setChannels((current) =>
-                        CHANNELS.filter((it) =>
-                          it === value ? checked : current.includes(it),
-                        ),
-                      )
-                    }
-                  />
-                  {tr(`notifications.channel.${value}`)}
-                </Label>
-              ))}
-            </div>
-          </div>
-          {props.events.length > 1 && (
-            <div className="flex flex-col gap-1.5">
-              <span
-                id="subscription-bell-events"
-                className="text-sm font-medium"
-              >
-                {tr("notifications.bell.events")}
-              </span>
-              <div
-                role="group"
-                aria-labelledby="subscription-bell-events"
-                className="flex flex-col gap-2"
-              >
-                {props.events.map((event) => (
-                  <Label key={event} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={events.includes(event)}
-                      onCheckedChange={(checked) =>
-                        setEvents((current) =>
-                          props.events.filter((it) =>
-                            it === event ? checked : current.includes(it),
-                          ),
-                        )
-                      }
-                    />
-                    {title(event)}
-                  </Label>
-                ))}
-              </div>
-            </div>
+          {open && (
+            <SubscriptionBellForm
+              // Remounted once the project's channels arrive, so the select
+              // offers them and reads their rows back as picked.
+              key={routable.map((it) => it.id).join(",")}
+              initial={initial}
+              channels={[
+                ...CHANNELS.map((value) => ({
+                  value,
+                  label: tr(`notifications.channel.${value}`),
+                })),
+                ...(manage
+                  ? routable.map((channel) => ({
+                      value: `${CHANNEL_PREFIX}${channel.id}`,
+                      label: channel.name,
+                    }))
+                  : []),
+              ]}
+              events={props.events.map((event) => ({
+                value: event,
+                label: title(event),
+              }))}
+              {...(props.authors ? { authors: props.authors } : {})}
+              on={subscribed || partial}
+              busy={save.loading}
+              onSave={(pick) => void save.run(true, pick)}
+              onOff={() => void off()}
+              onCancel={() => setOpen(false)}
+            />
           )}
-          {props.authors && (
-            <div className="flex flex-col gap-1.5">
-              <span
-                id="subscription-bell-authors"
-                className="text-sm font-medium"
-              >
-                {tr("notifications.bell.authors")}
-              </span>
-              <div
-                role="group"
-                aria-labelledby="subscription-bell-authors"
-                className="flex flex-col gap-2"
-              >
-                <Label className="flex items-center gap-2">
-                  <Checkbox
-                    checked={includeMine}
-                    onCheckedChange={(checked) => setIncludeMine(checked)}
-                    data-testid="subscription-bell-mine"
-                  />
-                  {props.authors.mineLabel}
-                </Label>
-                <Label className="flex items-center gap-2">
-                  <Checkbox
-                    checked={includeMembers}
-                    onCheckedChange={(checked) => setIncludeMembers(checked)}
-                    data-testid="subscription-bell-members"
-                  />
-                  {props.authors.membersLabel}
-                </Label>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            {subscribed || partial ? (
-              <Button
-                variant="outlined"
-                intent="danger"
-                disabled={save.loading}
-                onClick={() => void off()}
-              >
-                {tr("notifications.bell.offConfirm")}
-              </Button>
-            ) : (
-              <Button variant="outlined" onClick={() => setOpen(false)}>
-                {tr("notifications.form.cancel")}
-              </Button>
-            )}
-            <Button
-              onClick={() => void save.run(true)}
-              disabled={
-                save.loading || channels.length === 0 || events.length === 0
-              }
-              data-testid="subscription-bell-confirm"
-            >
-              {subscribed || partial
-                ? tr("notifications.form.save")
-                : tr("notifications.bell.confirm")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

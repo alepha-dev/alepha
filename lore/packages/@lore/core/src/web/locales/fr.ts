@@ -3322,8 +3322,9 @@ export default {
   "feedback.subscription.label": "Me notifier des nouveaux retours",
   "feedback.subscription.description":
     "Vous serez notifié dans l'application de chaque nouveau retour dans ce projet.",
-  "feedback.subscription.mine": "Les retours que je soumets",
-  "feedback.subscription.members": "Les retours des membres du projet",
+  "feedback.subscription.all": "Tous les retours",
+  "feedback.subscription.notMine": "Tous sauf les miens",
+  "feedback.subscription.notMembers": "Tous sauf ceux des membres du projet",
   "feedback.subscription.offDescription":
     "Vous ne serez plus notifié des nouveaux retours dans ce projet.",
   "feedback.filter.label": "Statut",
