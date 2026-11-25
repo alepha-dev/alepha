@@ -202,20 +202,19 @@ See [Quests](/lore/docs/plan-quests) for the statuses and rules behind these.
 
 ## Epics
 
-| Command                            | What it does                                                                                                    | Flags                                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `lore epic list`                   | Every epic, whatever its status.                                                                                |                                                                                         |
-| `lore epic get <ref>`              | One epic: status, progress, plan, pull requests, folios, open review blockers and questions, and log.           |                                                                                         |
-| `lore epic create`                 | Create an epic, as a draft: its quests stay out of the backlog until it is ready.                               | `--title` (required), `--description`, `--depends-on`                                   |
-| `lore epic update <ref>`           | Change an epic's title, plan or predecessor.                                                                    | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
-| `lore epic set status <ref>`       | Set an epic to draft or ready. The other statuses follow from its quests.                                       | `--status draft` or `--status ready` (required)                                         |
-| `lore epic shelve <ref>`           | Set an epic and its open quests aside.                                                                          |                                                                                         |
-| `lore epic unshelve <ref>`         | Bring a shelved epic back with the quests its shelving took: in progress if started, else a draft.              |                                                                                         |
-| `lore epic delete <ref>`           | Delete a draft, ready or shelved epic **and every quest in it**, for good.                                      | `--yes` (required)                                                                      |
-| `lore epic review create <ref>`    | File a review of a draft or ready epic: its blockers, questions, decisions and changes.                         | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
-| `lore epic review answer <ref>`    | Record the owner's answer to one review item.                                                                   | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
-| `lore epic review <ref>`           | Review with an agent: the project's Review prompt as a job on one of its Agent hosts, on a draft or ready epic. | `--project`, `--host`, `--agent`, `--model`                                             |
-| `lore epic pull-request add <ref>` | Record a pull request on an epic, in any status. Its quests with none of their own show it.                     | `--url` (required), `--pr-number`, `--repo`, `--title`                                  |
+| Command                            | What it does                                                                                          | Flags                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `lore epic list`                   | Every epic, whatever its status.                                                                      |                                                                                         |
+| `lore epic get <ref>`              | One epic: status, progress, plan, pull requests, folios, open review blockers and questions, and log. |                                                                                         |
+| `lore epic create`                 | Create an epic, as a draft: its quests stay out of the backlog until it is ready.                     | `--title` (required), `--description`, `--depends-on`                                   |
+| `lore epic update <ref>`           | Change an epic's title, plan or predecessor.                                                          | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
+| `lore epic set status <ref>`       | Set an epic to draft or ready. The other statuses follow from its quests.                             | `--status draft` or `--status ready` (required)                                         |
+| `lore epic shelve <ref>`           | Set an epic and its open quests aside.                                                                |                                                                                         |
+| `lore epic unshelve <ref>`         | Bring a shelved epic back with the quests its shelving took: in progress if started, else a draft.    |                                                                                         |
+| `lore epic delete <ref>`           | Delete a draft, ready or shelved epic **and every quest in it**, for good.                            | `--yes` (required)                                                                      |
+| `lore epic review create <ref>`    | File a review of a draft or ready epic: its blockers, questions, decisions and changes.               | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
+| `lore epic review answer <ref>`    | Record the owner's answer to one review item.                                                         | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
+| `lore epic pull-request add <ref>` | Record a pull request on an epic, in any status. Its quests with none of their own show it.           | `--url` (required), `--pr-number`, `--repo`, `--title`                                  |
 
 See [Epics](/lore/docs/plan-epics), and
 [Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic) for what a review
@@ -328,17 +327,16 @@ name it stored. To read a file back, use `lore quest attachment get` or
 
 ## Feedback
 
-| Command                              | What it does                                                                                   | Flags                                                                                     |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `lore feedback list`                 | Feedback, newest first: the pending inbox unless `--status` says otherwise.                    | `--status`, `--limit` (1 to 50, default 50), `--offset`                                   |
-| `lore feedback get <ref>`            | One item: its report, where it was made from, its files, quests and discussion.                |                                                                                           |
-| `lore feedback attachment get <ref>` | Read a file of an item or of one of its comments. Text is printed.                             | `--attachment <id>` (required, as `lore feedback get` lists it), `--out`                  |
-| `lore feedback comment add <ref>`    | Comment on an item. The reporter is told, and can answer.                                      | `--body` (required), `--as <name>` (marks it as written by an agent)                      |
-| `lore feedback accept <ref>`         | Accept a pending item: the request is valid.                                                   |                                                                                           |
-| `lore feedback reject <ref>`         | Reject a pending item. The item stays, for the record.                                         |                                                                                           |
-| `lore feedback triage <ref>`         | Triage with an agent: a job on one of the project's Agent hosts files quests, asks or rejects. | `--all` (the whole inbox and the open errors, in one run), `--host`, `--agent`, `--model` |
-| `lore feedback targets`              | The projects you belong to that accept feedback: where `submit` can file.                      |                                                                                           |
-| `lore feedback submit`               | File a feedback item, pending in the project's inbox.                                          | `--title`, `--description` (both required), `--type`, `--tags a,b`, `--as <name>`         |
+| Command                              | What it does                                                                    | Flags                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `lore feedback list`                 | Feedback, newest first: the pending inbox unless `--status` says otherwise.     | `--status`, `--limit` (1 to 50, default 50), `--offset`                           |
+| `lore feedback get <ref>`            | One item: its report, where it was made from, its files, quests and discussion. |                                                                                   |
+| `lore feedback attachment get <ref>` | Read a file of an item or of one of its comments. Text is printed.              | `--attachment <id>` (required, as `lore feedback get` lists it), `--out`          |
+| `lore feedback comment add <ref>`    | Comment on an item. The reporter is told, and can answer.                       | `--body` (required), `--as <name>` (marks it as written by an agent)              |
+| `lore feedback accept <ref>`         | Accept a pending item: the request is valid.                                    |                                                                                   |
+| `lore feedback reject <ref>`         | Reject a pending item. The item stays, for the record.                          |                                                                                   |
+| `lore feedback targets`              | The projects you belong to that accept feedback: where `submit` can file.       |                                                                                   |
+| `lore feedback submit`               | File a feedback item, pending in the project's inbox.                           | `--title`, `--description` (both required), `--type`, `--tags a,b`, `--as <name>` |
 
 `--status` is `pending`, `accepted`, `rejected` or `all`. Accepting creates no
 quest: file one with `lore quest create --feedback <ref>`.
@@ -653,57 +651,58 @@ two share the slug.
 
 See [Hosts](/lore/docs/project-hosts).
 
+## Prompts
+
+A prompt is what Lore hands a coding agent: copied, or run on one of the
+project's Agent hosts. See [Prompts](/lore/docs/agents-prompts).
+
+| Command                        | What it does                                                                                     | Flags                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `lore prompt list`             | The project's prompts: built-in then its own, with args, source, trigger, pins and last run.     |                                                                                                                               |
+| `lore prompt get <name>`       | One prompt, its words included.                                                                  |                                                                                                                               |
+| `lore prompt create <name>`    | A custom prompt.                                                                                 | `--text` (required, `@file` or `@-`), `--title`, `--description`, `--arg name:type[:status\|status]`, `--source`, `--ref`     |
+| `lore prompt update <name>`    | Change the flags given: a custom prompt's words and args, any prompt's source and where it runs. | the same, `--host`, `--agent`, `--model`, `--enabled`, `--on`, `--check`, `--set`, `--max-per-hour`, `--max-per-day`, `--pin` |
+| `lore prompt duplicate <name>` | Copy any prompt into a custom one.                                                               | `--new-name` (required), `--title`                                                                                            |
+| `lore prompt delete <name>`    | Delete a custom prompt; its jobs stay.                                                           |                                                                                                                               |
+| `lore prompt render <name>`    | Print its words with its args filled.                                                            | `--epic`, `--quest`, `--feedback`, `--pr`, `--member`, `--set arg=reference`                                                  |
+| `lore prompt run <name>`       | Run it on an Agent host; prints the job and its page.                                            | the same, `--host`, `--agent`, `--model`, `--fix`, `--trust`, `--wait`                                                        |
+| `lore prompt trigger <name>`   | When it runs on its own.                                                                         | `--on`, `--check`, `--set`, `--max-per-hour`, `--max-per-day`                                                                 |
+| `lore prompt pin <name>`       | Pin it to pages.                                                                                 | `--on` (required: quests, quest, epics, epic, feedback, feedback-item, errors)                                                |
+| `lore prompt unpin <name>`     | Unpin it from pages, or from every page.                                                         | `--on`                                                                                                                        |
+| `lore prompt enable <name>`    | Turn its trigger on.                                                                             |                                                                                                                               |
+| `lore prompt disable <name>`   | Turn its trigger off; a run by hand still works.                                                 |                                                                                                                               |
+| `lore prompt pause-all`        | Stop every trigger of the project.                                                               |                                                                                                                               |
+| `lore prompt resume-all`       | Start them again.                                                                                |                                                                                                                               |
+
+`--on` is `manual`, `event:<key>[,<key>]` (the keys of `lore event catalog`),
+`hourly`, `6h`, `daily@<hour>` or `weekly@<day>@<hour>`, hours in UTC, or an
+event part and a schedule part joined by a comma. A run takes no source: it is
+set on the prompt. `--wait` follows the job's log and exits with `1` when it
+does not succeed.
+
 ## Agent jobs
 
-An agent job is an agent CLI run on a prompt, on one of the project's Agent
-hosts.
+An agent job is a prompt run on one of the project's Agent hosts.
 
-| Command                   | What it does                                                                                                                                                                        | Flags                                                                                                                                                                                                                                                   |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lore agent run <prompt>` | Start an agent job: `triage` (the inbox and the open errors), `build` (one quest), `review-pr` (a pull request), `security-check`, `dependency-update`, or `text` (your own words). | `--quest` (build, review-pr), `--pr`, `--fix` and `--trust` (review-pr), `--text` (text, or the packages of a dependency-update), `--source none\|read\|write`, `--ref`, `--host`, `--agent`, `--model`, `--workspace` and `--timeout` (text), `--wait` |
-| `lore agent hosts`        | The project's Agent hosts: each one's last check, its agent CLIs and the tools its jobs user has.                                                                                   |                                                                                                                                                                                                                                                         |
-| `lore job list`           | The project's jobs, newest first.                                                                                                                                                   | `--status`, `--limit`                                                                                                                                                                                                                                   |
-| `lore job get <id>`       | One job: what it ran (agent, model, workspace, source, ref, branch, commit), its status, exit code, reason and warning.                                                             | `--log`                                                                                                                                                                                                                                                 |
-| `lore job logs <id>`      | A job's output.                                                                                                                                                                     | `--follow`                                                                                                                                                                                                                                              |
-| `lore job cancel <id>`    | Stop a job.                                                                                                                                                                         |                                                                                                                                                                                                                                                         |
-
-`--host` is needed when the project has several Agent hosts, `--agent` when
-the host reports several agent CLIs. Without `--model`, the agent's own default
-applies. `--wait` follows the job's log and exits with `1` when it does not
-succeed.
+| Command                | What it does                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `lore agent hosts`     | The project's Agent hosts: each one's last check, its agent CLIs and the tools its jobs user has.                                    |
+| `lore job list`        | The project's jobs, newest first.                                                                                                    |
+| `lore job get <id>`    | One job: its prompt, args and cause, what it ran (agent, model, workspace, source, ref, branch, commit), how it ended and its reply. |
+| `lore job logs <id>`   | A job's output.                                                                                                                      |
+| `lore job cancel <id>` | Stop a job.                                                                                                                          |
 
 See [Agent jobs](/lore/docs/agents-jobs).
 
-## Agent automations
-
-A prompt run on an Agent host by hand, on project events or on a schedule.
-
-| Command                          | What it does                                                                                    | Flags                                                                                                                                                                                                                                         |
-| -------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lore automation list`           | The project's automations: prompt, trigger, where they run, last run and why they last skipped. |                                                                                                                                                                                                                                               |
-| `lore automation create <name>`  | Create one.                                                                                     | `--prompt triage\|build\|security\|dependencies` or `--text`, `--on`, `--host`, `--agent`, `--model`, `--source`, `--ref`, `--only-if-work`, `--auto-merge`, `--concurrency`, `--settle-seconds`, `--max-runs-per-hour`, `--max-runs-per-day` |
-| `lore automation update <name>`  | Change the flags given.                                                                         | the same, `--new-name`, `--enabled`                                                                                                                                                                                                           |
-| `lore automation enable <name>`  | Turn its trigger on.                                                                            |                                                                                                                                                                                                                                               |
-| `lore automation disable <name>` | Turn its trigger off.                                                                           |                                                                                                                                                                                                                                               |
-| `lore automation delete <name>`  | Delete it; its jobs stay.                                                                       |                                                                                                                                                                                                                                               |
-| `lore automation run <name>`     | Run it once, as you.                                                                            | `--wait`                                                                                                                                                                                                                                      |
-| `lore automation pause-all`      | Stop every trigger of the project; a run by hand still works.                                   |                                                                                                                                                                                                                                               |
-| `lore automation resume-all`     | Start them again.                                                                               |                                                                                                                                                                                                                                               |
-| `lore automation settings`       | Whether they are paused, and the daily build ceiling.                                           | `--builds-per-day`                                                                                                                                                                                                                            |
-
-`--on` is `manual`, `event:<key>[,<key>]` (the keys of `lore event catalog`),
-`hourly`, `6h` or `daily@<hour>`, an hour in UTC. See [Agent
-automations](/lore/docs/agents-automations).
-
 ## Commits
 
-| Command             | What it does                                                                                                                                                          | Flags                                       |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `lore commits push` | Record the quests the current commit's history names, with no artifact. On the default branch, a quest an agent automation built that the history names is completed. | `--branch`, `--default-branch`, `--project` |
+| Command             | What it does                                                            | Flags                                       |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------------------------- |
+| `lore commits push` | Record the quests the current commit's history names, with no artifact. | `--branch`, `--default-branch`, `--project` |
 
 A project that does not deploy through Lore runs it on every push of its
-default branch, so a quest built into a pull request completes once that pull
-request merges. In GitHub Actions, after a checkout with its history
+default branch, so each quest shows the commits that reached it. In GitHub
+Actions, after a checkout with its history
 (`fetch-depth: 0`) and with `LORE_API_KEY` set:
 
 ```yaml

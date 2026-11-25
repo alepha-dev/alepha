@@ -157,9 +157,9 @@ the last 30 days. See [The lore CLI](/lore/docs/reference-cli).
 ## From an agent
 
 The `project_report` tool answers the same sections for the last N days. It
-needs the same `stats:read` permission as the page. The **Write the weekly
-status** prompt on the Summary tab builds on it: see
-[Agent prompts](/lore/docs/agents-prompts), and
+needs the same `stats:read` permission as the page. The **Weekly status**
+prompt builds on it, and can mail its answer every Monday: see
+[Prompts](/lore/docs/agents-prompts), and
 [MCP tools](/lore/docs/reference-mcp-tools) for the full list.
 
 ## Next

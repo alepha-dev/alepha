@@ -160,7 +160,7 @@ The epic's folios are kept: they are unfiled from it, never deleted.
 
 A plan is usually reviewed before anyone works it, often by an agent you hand
 the epic's **Review Epic** prompt to (see
-[Agent prompts](/lore/docs/agents-prompts)). Each review is kept on the epic's
+[Prompts](/lore/docs/agents-prompts)). Each review is kept on the epic's
 **Review** tab, as numbered items of four kinds:
 
 - **Blockers**: problems that stop the plan as written, such as a premise the
@@ -264,15 +264,16 @@ epic's id as `epic` to read one epic's quests whatever its status, or
 `includeDrafts: true` to see everything. The full list is in
 [MCP tools](/lore/docs/reference-mcp-tools).
 
-Going the other way, an epic can hand itself to an agent from the browser. With
-the **Prompts** option on, its **Agent Prompts** menu offers **Review
-Epic** while the plan is still open (draft or ready), and **Work on it**, which
-hands the whole epic over, quest by quest. On a draft epic, Work on it marks
-the epic ready as it copies, so a finished plan is handed over in one click.
+Going the other way, an epic can hand itself to an agent from the browser:
+pin **Review Epic** and **Work on epic** to the Epic view, and its robot
+button copies or runs them with the epic filled in. **Review Epic** shows
+while the plan is still open (draft or ready), and **Work on epic**, which
+hands the whole epic over, quest by quest, once the epic is ready or in
+progress: mark a finished draft ready first.
 
 ## Next
 
 - [Quests](/lore/docs/plan-quests): the work inside an epic.
 - [Releases](/lore/docs/plan-releases): where an epic ships.
-- [Agent prompts](/lore/docs/agents-prompts): hand an epic to a coding agent.
+- [Prompts](/lore/docs/agents-prompts): hand an epic to a coding agent.
 - [Reports](/lore/docs/project-reports): how the work is flowing.

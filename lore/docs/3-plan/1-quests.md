@@ -282,8 +282,7 @@ pull request it opened with `quest_pull_request_add`, or with
 `live`, the copies running the quest's commits, as the rail shows them.
 
 The full list is in [MCP tools](/lore/docs/reference-mcp-tools). To hand a
-quest to an agent from the browser, see
-[Agent prompts](/lore/docs/agents-prompts).
+quest to an agent from the browser, see [Prompts](/lore/docs/agents-prompts).
 
 ## Next
 

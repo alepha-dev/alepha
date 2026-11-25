@@ -1,129 +1,198 @@
-# Agent prompts
+# Prompts
 
-An agent prompt is a ready-made instruction for a coding agent: "review this
-epic", "work on this quest", "triage the inbox". Lore offers one wherever a
-piece of work is named, and a click copies it to your clipboard, for you to
-paste into your agent or anything else that reads a paste.
+A prompt is a ready-made instruction for a coding agent: "review this epic",
+"work on this quest", "triage the inbox". You can **copy** it, filled in for
+the item you picked, and paste it into your agent. When the project has an
+[Agent host](/lore/docs/agents-jobs), you can also **run** it there: Lore
+starts the agent on the host and you read what it did on the job's page.
 
-Nothing is sent anywhere. The prompt is put together in your browser and copied.
-Lore does not transmit it and keeps no copy of what you pasted.
+Every prompt lives in **Settings ▸ Prompts**, in two tabs:
 
-**It starts off.** Turn on the **Prompts** option in **Settings ▸ Plan
-▸ Quests**, once per project. Until then the menus are not shown. See
-[Capabilities](/lore/docs/project-capabilities).
+- **Prompts**: every prompt of the project, built-in or your own, what it
+  takes, where its code comes from, when it runs on its own, and its last run;
+- **Jobs**: every run, newest first, filtered by prompt, status and host.
+
+![Settings, Prompts: the built-in prompts, their args, source and trigger](/screenshots/lore/prompts-light.png)
+
+Every member can read and copy a prompt. Changing one, setting its trigger
+and pinning it needs **Manage the project's prompts**, which the Admin rank
+holds. Running one needs to see the project's hosts, and the permission the
+prompt itself asks for (working a quest needs to update quests).
+
+## The built-in prompts
+
+| Prompt                         | Takes                                | Code       | What it does                                                                  |
+| ------------------------------ | ------------------------------------ | ---------- | ----------------------------------------------------------------------------- |
+| **Review Epic**                | an epic, draft or ready              | read-only  | sharpens a plan before anyone works it, and files one review on the epic      |
+| **Work on epic**               | an epic, ready or in progress        | read-write | works the epic quest by quest, in one pull request                            |
+| **Work on quest**              | a quest, to do or in progress        | read-write | one quest, one branch, one pull request, one commit                           |
+| **Work on feedback**           | a feedback item, pending or accepted | read-write | accepts the report, files the quest, does the work, tells the reporter        |
+| **Triage feedback and errors** | nothing                              | read-only  | accepts, rejects or asks about every pending report, and files real defects   |
+| **Work the loose quests**      | nothing                              | read-write | every to-do quest in no epic, one at a time, in one pull request              |
+| **Weekly status**              | a member (you, unless you pick one)  | none       | reads the week's report and answers with what shipped, moved and needs you    |
+| **Review PR**                  | a pull request                       | read-only  | reviews the diff with `gh pr review`, and sums it up on the quest             |
+| **Security check**             | nothing                              | read-only  | runs each package manager's audit, and files one quest per real vulnerability |
+| **Dependency update**          | nothing                              | read-write | updates what is a minor or a patch behind, and opens a pull request if green  |
+
+A prompt that works a quest, an epic or a feedback item never leaves the quest
+half done: it completes it, or, when it stops on a question for you, it says
+why in a comment and tags the quest **`needs-answer`**.
+
+A built-in's words cannot be edited. Lore improves them over time, and a
+project that keeps its own copy would stop following. To change the words,
+duplicate the prompt and edit the copy.
+
+The prompts are written in English on purpose: their words are the names of
+the tools an agent calls. The menus around them follow your language.
 
 ## Copying a prompt
 
-With the option on, an **Agent Prompts** menu appears in two forms: a robot
-button on a page (an epic, a quest, a feedback item, the Quests page, the
-errors inbox, the Reports summary), and an **Agent Prompts** entry in the row
-menu of the epic and quest lists.
+**Copy**, in a prompt's row, asks one question per arg it takes, each a list
+of the items it accepts (the epics that are draft or ready for **Review
+Epic**), then puts the text on your clipboard. A prompt that takes nothing,
+or only a member, copies at once.
 
-Pick an entry. Lore confirms that the prompt was copied, and you paste it into
-your coding agent. The agent needs access to the project to act on it: see
-[Connecting an agent](/lore/docs/agents-connecting).
+Paste it into your agent. The agent needs access to the project to act on it:
+see [Connecting an agent](/lore/docs/agents-connecting).
 
-## The prompts
+A copy reads each item with your own permissions, and a prompt never reads
+text written outside the team that no member trusted: a report from outside
+is named, never quoted, until a member trusts it.
 
-| Prompt                         | Where                                                              | Offered when                                                                     |
-| ------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| **Review Epic**                | an epic's row menu, and the epic page                              | nobody has started the epic: it is a draft or ready                              |
-| **Work on it** (epic)          | the same two places                                                | the epic is ready or in progress, or a draft that you may mark ready             |
-| **Work on it** (quest)         | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is ready or in progress |
-| **Work on it** (feedback)      | the feedback detail panel                                          | the report is pending or accepted                                                |
-| **Triage feedback and errors** | the feedback detail panel, and the errors inbox toolbar            | always, with Plan's **Feedback** option on (feedback) or **Ship** on (errors)    |
-| **Work the loose quests**      | the Quests page toolbar                                            | always                                                                           |
-| **Write the weekly status**    | the Reports **Summary** tab                                        | always                                                                           |
+## Pinning a prompt to a page
 
-Three more run on an [Agent host](/lore/docs/agents-jobs) rather than being
-copied: **Review a pull request** (under a quest's pull requests),
-**Security check** and **Dependency update** (from the command line, or as an
-automation). You edit their text here like the others.
+A prompt shows on a page only where the project pinned it. **Pin**, in a
+prompt's row, lists the pages it can go on, and **Pinned on** shows where it
+is:
 
-### On an epic
+| Page          | Fills                  |
+| ------------- | ---------------------- |
+| Quest list    | nothing                |
+| Quest view    | the quest              |
+| Epic list     | nothing                |
+| Epic view     | the epic               |
+| Feedback list | nothing                |
+| Feedback view | the open feedback item |
+| Error list    | nothing                |
 
-**Review Epic** asks an agent to sharpen a plan before anyone works it: take
-the decisions the spec left open, tighten the vague quests, and say plainly
-what it cannot answer alone. It files what it found as one review on the epic,
-with numbered questions, decisions and changes, and lists the questions in its
-reply by those numbers, so you can answer on the epic's Review tab or in the
-chat ("answer 3: B"). It reads the earlier reviews' decisions first, and does
-not ask again what is already answered. See
-[Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic).
+A page with something pinned shows a robot button: each pinned prompt opens on
+**Copy** and, with an Agent host ready, **Run**. On a view, the page's item
+fills the prompt's arg of that type, so **Work on quest** pinned on the Quest
+view copies in one click. A prompt whose arg does not accept the item's status
+is not offered on it: **Work on quest** does not show on a completed quest.
+A row of a list offers, in its menu, what is pinned on its item's view, the
+row's item filled in. A new project pins nothing, so no robot button shows
+until someone pins.
 
-**Work on it** hands the whole epic over, quest by quest: accept, work, verify,
-commit and complete each quest in turn, all in one pull request. It treats the
-epic's decisions as settled, and stops on a review question still open instead
-of answering it for you.
+Every prompt, pinned or not, is also in the search palette (⌘K): type "Copy
+prompt" or "Run prompt" and its title. On a view, the page's item is filled in
+there too.
 
-The prompt sets no status itself. The first quest the agent accepts is what
-moves a ready epic to in progress, and the last one it closes is what completes
-it. A draft epic is the exception, because its quests refuse to be accepted:
-there the entry is offered only if you may mark the epic ready, and clicking it
-does both. It copies the prompt and marks the epic ready, so handing a finished
-spec over is one click. Whether
-the spec is done stays your call, never the agent's. Copying the prompt from a
-ready or started epic changes nothing about the epic.
+## Running a prompt
 
-### On a quest or a feedback item
+**Run** is offered when the project has an Agent host that is ready. It asks
+the args, then the host when there are several, and nothing else: the code
+the run finds is the prompt's own setting, and the run takes the first agent
+CLI the host reports, with its default model.
 
-**Work on it** on a quest is the narrow version: one quest, one branch, one
-pull request, one commit, and anything discovered beyond it is a comment, not
-extra scope.
+The run opens its job's page, where its progress shows. The agent's final
+reply is the first thing on it, once the job ends. See
+[Agent jobs](/lore/docs/agents-jobs).
 
-**Work on it** on a feedback item starts before there is a quest: it accepts
-the report, creates the quest linked to it, does the work, and ends by telling
-the reporter what shipped.
+A prompt that takes a **member** emails its final reply to that member when
+the run succeeds: **Weekly status** run every Monday lands in your mailbox.
+The member is you unless you pick another.
 
-### On a whole page
+### The code a run finds
 
-The last three are about a page, not one item. Two of them are loops that
-read their list again every round, because they change the list they read.
+Each prompt says where its code comes from, set on the prompt, never at a run:
 
-**Triage feedback and errors** accepts, rejects or asks about every pending
-report, and, when the project tracks errors, files a quest for each real
-defect among the trusted errors (or adds it to the quest of the report it
-explains) and resolves the noise, until nothing is left. It is the same
-prompt from the feedback inbox and from the errors inbox.
+- **No repository**: the run works from Lore alone.
+- **Read-only**: the repository at its default branch (or the branch, tag or
+  commit the prompt names), already checked out, never cloned by the agent.
+- **Read-write**: a worktree on a branch Lore names, from which the agent
+  pushes and opens its pull request.
 
-**Work the loose quests** hands over every to-do quest that belongs to no epic,
-one at a time, under the same rules as an epic's **Work on it**: one branch and
-one pull request for the whole run, one commit per quest, each quest accepted
-before its commit and named in it. A quest filed during the run is picked up,
-not missed.
+A built-in comes with its own; you may change it on the prompt (**Source**
+in its row). Your own prompts set it in their editor.
 
-**Write the weekly status** changes nothing: the agent reads the week's report,
-opens the section behind each figure that moved, and answers with what shipped,
-what moved and what needs a decision. See
-[Reports](/lore/docs/project-reports).
+## Writing your own
 
-### On an Agent host
+**New prompt** opens the editor: a name, a title, a description, up to four
+args, the source and the words. **Duplicate** starts from any prompt, a
+built-in included; the copy no longer follows the built-in.
 
-**Review a pull request** reads the diff against its base, the quest the pull
-request is recorded on and the repository's agent instructions, posts its
-review with `gh pr review`, and sums it up on the quest. The host first checks
-that the pull request's author can write to the repository, unless a member
-trusts the author.
+An arg has a name, a type (epic, quest, feedback item, pull request or
+member) and, for the first three, the statuses it accepts. The words read it
+through placeholders, which the editor lists:
 
-**Security check** runs each package manager's own audit on the lockfiles,
-keeps what the code really reaches, and files one quest per real
-vulnerability, or comments on the open quest that covers it. With nothing real,
-it files nothing.
+| Placeholder           | What it renders                                        |
+| --------------------- | ------------------------------------------------------ |
+| `{{project}}`         | the project's **title**                                |
+| `{{slug}}`            | the project's URL **slug**                             |
+| `{{projectUrl}}`      | a link to the project                                  |
+| `{{quest.reference}}` | an arg's reference, `#Q12` (and `.title`, `.url`, ...) |
 
-**Dependency update** updates the packages its run names, or the ones a minor
-or patch version behind, runs the project's checks, and opens a pull request
-only when they pass, naming what changed and what it left behind.
+⚠️ **`{{project}}` and `{{slug}}` are not interchangeable.** An agent's tools
+find the project by its **title**, never by its slug. Use `{{project}}`
+wherever you name the project to a tool, and `{{slug}}` only where you build a
+URL by hand.
 
-### How the work lands
+A placeholder Lore does not know is left as you wrote it, so a typo shows in
+what you paste.
+
+## Triggers: runs that start on their own
+
+**Trigger**, in a prompt's row, runs it without anyone clicking:
+
+- **On project events** (`event:<key>`), the events of **Settings ▸
+  Notifications**: `quest.created`, `feedback.created`, `epic.ready`,
+  `pull_request.added` and the others. An event about a quest fills the
+  prompt's quest arg, one about a feedback item its feedback arg, one about an
+  epic its epic arg, one about a pull request its pull request arg: one run
+  per item. A prompt that takes nothing gathers the events that arrive
+  together into one run, after a short wait (60 seconds by default).
+- **On a schedule**: `hourly`, `6h` (00:00, 06:00, 12:00 and 18:00 UTC),
+  `daily@<hour>` or `weekly@<day>@<hour>`, hours in UTC. A schedule fills no
+  arg, so each arg gets a stored value: the member **Weekly status** mails,
+  the epic a nightly **Work on epic** works.
+- **Both**, joined by a comma: `event:feedback.created,hourly`.
+
+**Only when there is something to do** checks first, so an idle project
+spends nothing: pending feedback, errors, loose quests or epics to work.
+
+A triggered run is its owner's, the member who set the trigger last, whoever
+caused the event. It skips, saying why in the **Last run** column, an item its
+arg does not accept, a quest tagged **`needs-human`**, and the events its own
+jobs raised: a run's work starts at most one more run, never a loop.
+
+### When something goes wrong
+
+A triggered prompt runs unattended, so it stops by itself:
+
+- **Ceilings**: 6 runs an hour and 48 a day by default, set on the trigger. A
+  run past one is skipped, and the event **Prompt ceiling reached** says so
+  once.
+- **Three failed runs in a row** turn the trigger off, and the event **Prompt
+  disabled** says why. A successful run resets the count.
+- **A host that cannot take a run** skips it without counting a failure.
+- **Pause all triggers**, above the table, stops every trigger of the project
+  until **Resume triggers**. A run by hand still works.
+
+To hear about a run that failed, subscribe to **Agent job failed** in
+**Settings ▸ Notifications**. A run you started by hand tells you in your
+inbox, with no subscription.
+
+## How the work lands
 
 Every prompt that changes code lands it through a pull request, and how many
 quests one pull request holds depends on how the work was handed over:
 
 | Handed over as            | Pull requests          |
 | ------------------------- | ---------------------- |
-| an epic's **Work on it**  | one for the whole epic |
+| **Work on epic**          | one for the whole epic |
 | **Work the loose quests** | one for the whole run  |
-| any other **Work on it**  | one per quest          |
+| any other work prompt     | one per quest          |
 
 Whatever the shape, one quest is one commit, and the pull request is merged by
 rebase, so main receives every quest's commit as it is and a bad quest can be
@@ -158,95 +227,45 @@ An agent never stops with a quest it accepted still open, unless it stopped
 on a question for you. A pull request still waiting for review when it stops
 is named in its reply, with its link.
 
-## Writing your own
+## From the command line
 
-Each prompt has a built-in default. **Settings ▸ Plan ▸ Prompts** is
-where you replace it: a legend of the placeholders, then one editor per prompt,
-each with **Save** and **Reset to default**.
-
-![The agent prompts settings page, with one editor per prompt](/screenshots/lore/agent-prompts-light.png)
-
-**Reset to default** discards your version instead of copying today's text into
-the box, so a prompt you have reset keeps following the built-in one as it
-improves.
-
-The prompts are written in English on purpose. Their words are the names of the
-tools an agent calls, so translating them would break them. The menus and
-messages around them follow your language; the text that is copied does not.
-
-Every project's verify commands and branch rules are different, and that is the
-edit worth making.
-
-### Placeholders
-
-| Placeholder     | What it renders                                      |
-| --------------- | ---------------------------------------------------- |
-| `{{project}}`   | the project's **title**                              |
-| `{{slug}}`      | the project's URL **slug**                           |
-| `{{number}}`    | the number you recognise: `41` for epic `#E41`       |
-| `{{id}}`        | the global id, which a quest list filters an epic by |
-| `{{reference}}` | the typed reference: `#E41`, `#Q1798`, `#P2087`      |
-| `{{title}}`     | the subject's own title                              |
-| `{{url}}`       | a link to it                                         |
-
-⚠️ **`{{project}}` and `{{slug}}` are not interchangeable.** An agent's tools
-find the project by its **title** (`project_name`), never by its slug. A
-project titled `Kanban v2` has the slug `kanban-v2`, and a prompt that hands
-the slug to `project_name` is answered "not found". Use `{{project}}` wherever
-you name the project to a tool, and `{{slug}}` only where you build a URL by
-hand.
-
-The four prompts about a whole page have no item to name, so `{{number}}`,
-`{{id}}`, `{{reference}}` and `{{title}}` are not filled in there.
-
-A placeholder Lore does not know is left in the text exactly as you wrote it,
-so a typo shows up in what you paste instead of blanking a line. A placeholder
-that happens to appear inside a value is never expanded: a quest titled
-`Fix {{url}} handling` keeps its own title.
-
-### A worked example
-
-An epic **Work on it** prompt for a project that verifies with one command and
-reviews every quest on its own, one pull request per quest, rather than the
-whole epic at once:
-
-```
-Work epic {{reference}} "{{title}}" of the Lore project "{{project}}" to
-completion, quest by quest.
-
-The epic: {{url}}
-
-Read it with `epic_get` (project_name "{{project}}", number {{number}}) and
-its quests with `quest_list` (`epic: {{id}}`, `detail: "full"`).
-
-Work in a git worktree. Never on main.
-
-For each quest: cut a branch from the latest main, `quest_accept`, do the
-work, tick each objective with `quest_objective_set`, then run `make verify`
-and fix everything red. One commit, naming the quest. Push the branch and open
-a pull request into main for that quest alone. Do NOT merge it: a reviewer
-merges each one. Start the next quest only once it has merged, and complete
-each quest with `quest_complete` once its pull request has merged.
-
-When the last one has merged, file an outcome folio under the epic with
-`folio_create` and `epic_number` {{number}}.
+```bash
+lore prompt list
 ```
 
-That is the shape most edits take: the same skeleton, with the project's own
-commands in it and its own rule about how a change lands and who merges it.
+```bash
+lore prompt render work-quest --quest Q12
+```
 
-## Who can change them
+```bash
+lore prompt run triage --wait
+```
 
-Any member of the project can read the prompts. Changing one needs the
-`project:update` permission, which the owner holds. See
-[Members](/lore/docs/project-members).
+```bash
+lore prompt trigger weekly-status --on weekly@mon@7 --set member=<your id>
+```
 
-The prompts are stored per project, not per member: one project, one set.
+```bash
+lore prompt pin work-quest --on quest
+```
+
+`lore prompt create`, `update`, `duplicate` and `delete` manage your own
+prompts; `enable`, `disable`, `pause-all` and `resume-all` the triggers. The
+full list is in the [CLI reference](/lore/docs/reference-cli).
+
+## From an agent
+
+`prompt_list`, `prompt_get`, `prompt_create`, `prompt_update` (its words, its
+source, its trigger and its pins in one call), `prompt_duplicate`,
+`prompt_delete`, `prompt_render`, `prompt_run`, `prompt_pause_all` and
+`prompt_resume_all` are the twins of `lore prompt`. Called with an agent job's
+own key, every write and `prompt_run` are refused: a job never starts a job.
 
 ## Next
 
+- [Agent jobs](/lore/docs/agents-jobs): the hosts a prompt runs on, and a
+  job's page.
 - [Connecting an agent](/lore/docs/agents-connecting): what an agent needs
   before a pasted prompt can do anything.
 - [Epics](/lore/docs/plan-epics): drafts, reviews and marking an epic ready.
-- [Assistant](/lore/docs/agents-assistant): the chat inside Lore.
 - [MCP tools](/lore/docs/reference-mcp-tools): the tools the prompts name.
