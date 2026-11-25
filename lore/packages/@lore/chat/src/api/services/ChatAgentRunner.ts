@@ -293,6 +293,10 @@ export class ChatAgentRunner {
     // Whether the model said anything after its last tool call: a turn that
     // ends on a failed tool and no word since stopped without finishing.
     let spokeSinceTool = true;
+    // The last failed call's error, and how the turn ended (#Q4302).
+    let toolError: string | undefined;
+    let declined = false;
+    let endReason: "stop" | "length" | "paused" | undefined;
     try {
       for await (const event of events) {
         if (event.type === "conversation") {
@@ -313,8 +317,14 @@ export class ChatAgentRunner {
           } else {
             tools.push({ name: event.name, state: event.state });
           }
+          if (event.state === "failed") {
+            toolError = event.declined ? undefined : event.error;
+            declined = event.declined === true;
+          }
           spokeSinceTool = false;
           await progress();
+        } else if (event.type === "end") {
+          endReason = event.reason;
         } else if (event.type === "text") {
           text += event.text;
           if (event.text.trim()) spokeSinceTool = true;
@@ -347,6 +357,9 @@ export class ChatAgentRunner {
           return;
         }
       }
+      // An answer never ends silent (#Q4302): on a failed or declined call
+      // with no word after it, or on a reply cut before it said anything,
+      // the room is told what happened, as a failed run is.
       const failed = tools.at(-1);
       if (!spokeSinceTool && failed?.state === "failed") {
         this.report(
@@ -355,6 +368,15 @@ export class ChatAgentRunner {
           "tool",
           `${failed.name} failed and the answer ended there`,
         );
+        text = this.joined(
+          text,
+          declined
+            ? `${name} stopped: you declined ${failed.name}.`
+            : `${name} stopped after ${failed.name} failed${toolError ? `: ${toolError}` : "."}`,
+        );
+      } else if (endReason === "length" && !text.trim()) {
+        this.report(room, name, "length", "the answer ran out of room");
+        text = this.joined(text, `${name} ran out of room before answering.`);
       }
       await finish({ status: "done", mentionerId }, text);
     } catch (error) {
@@ -418,7 +440,7 @@ export class ChatAgentRunner {
   protected report(
     room: ChatRoom,
     agent: string,
-    cause: "budget" | "timeout" | "provider" | "tool",
+    cause: "budget" | "timeout" | "provider" | "tool" | "length",
     detail: string,
   ): void {
     this.log.error(

@@ -212,10 +212,30 @@ export interface ChatAgentDecision {
 export type ChatAgentEvent =
   | { type: "conversation"; conversationId: string }
   | { type: "text"; text: string }
-  | { type: "tool"; name: string; state: "running" | "done" | "failed" }
+  | {
+      type: "tool";
+      name: string;
+      state: "running" | "done" | "failed";
+      /**
+       * A failed call's error, short (#Q4302): what the runner says when the
+       * answer ends on it.
+       */
+      error?: string;
+      /**
+       * The call failed because the mentioner declined it on its card.
+       */
+      declined?: boolean;
+    }
   | { type: "confirm"; callId: string; name: string; input: unknown }
   | { type: "error"; message: string }
-  | { type: "end" };
+  | {
+      type: "end";
+      /**
+       * Why the turn ended (#Q4302): `length` is a reply cut by its token or
+       * step bound, which may have said nothing.
+       */
+      reason?: "stop" | "length" | "paused";
+    };
 
 export interface ChatResponder {
   /**

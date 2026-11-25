@@ -10,12 +10,28 @@ import {
   createTestMemberByProjectId,
   createTestProject,
 } from "@lore/core/testing";
-import { AiConversationService } from "alepha/api/ai";
+import { AI_CALL_DENIED } from "alepha/ai";
+import { AiConversationService, type AiStreamEvent } from "alepha/api/ai";
 import { RankService } from "alepha/api/organizations";
 import { HttpError } from "alepha/server";
 import { describe, it } from "vitest";
 
+import { LoreChatResponder } from "../src/assistant/LoreChatResponder.ts";
 import { bootAssistant } from "./fixtures/bootAssistant.ts";
+
+/**
+ * `LoreChatResponder.mapped`, reached from a spec.
+ */
+class Mapping extends LoreChatResponder {
+  public map = (events: AiStreamEvent[]) =>
+    Array.fromAsync(
+      this.mapped(
+        (async function* () {
+          yield* events;
+        })(),
+      ),
+    );
+}
 
 /**
  * `@lore` in a chat room, server side (#E161, #Q3930): a run as the member
@@ -31,6 +47,8 @@ describe("@lore in a chat room", () => {
       // A second agent that always fails: the room's side of a run that
       // stops, whatever the reason.
       extra: (alepha) => {
+        // The real responder, with its `mapped` in reach.
+        alepha.with({ provide: LoreChatResponder, use: Mapping });
         alepha.inject(ChatResponderRegistry).register({
           name: "broken",
           label: "Broken",
@@ -45,7 +63,55 @@ describe("@lore in a chat room", () => {
           label: "Silent",
           respond: async function* () {
             yield { type: "tool", name: "quest_create", state: "running" };
-            yield { type: "tool", name: "quest_create", state: "failed" };
+            yield {
+              type: "tool",
+              name: "quest_create",
+              state: "failed",
+              error: "title is required",
+            };
+          },
+          resume: async function* () {},
+        });
+        // #Q4302: a write the mentioner declined, then nothing said.
+        alepha.inject(ChatResponderRegistry).register({
+          name: "declined",
+          label: "Declined",
+          respond: async function* () {
+            yield { type: "tool", name: "quest_delete", state: "running" };
+            yield {
+              type: "tool",
+              name: "quest_delete",
+              state: "failed",
+              error: "Denied by the user.",
+              declined: true,
+            };
+            yield { type: "end", reason: "stop" };
+          },
+          resume: async function* () {},
+        });
+        // A reply cut by its bound before it said anything.
+        alepha.inject(ChatResponderRegistry).register({
+          name: "cut",
+          label: "Cut",
+          respond: async function* () {
+            yield { type: "end", reason: "length" };
+          },
+          resume: async function* () {},
+        });
+        // A failed tool the model then answers about: nothing to add.
+        alepha.inject(ChatResponderRegistry).register({
+          name: "recovers",
+          label: "Recovers",
+          respond: async function* () {
+            yield { type: "tool", name: "quest_create", state: "running" };
+            yield {
+              type: "tool",
+              name: "quest_create",
+              state: "failed",
+              error: "title is required",
+            };
+            yield { type: "text", text: "It needs a title: which one?" };
+            yield { type: "end", reason: "stop" };
           },
           resume: async function* () {},
         });
@@ -330,6 +396,83 @@ describe("@lore in a chat room", () => {
 
     expect(errors).toEqual([
       "Chat agent Silent could not finish (tool) in room general: quest_create failed and the answer ended there",
+    ]);
+  });
+
+  it("never ends an answer silent: a failed tool, a declined write and a cut reply each say so, and a recovered one adds nothing (#Q4302)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const answerTo = async (mention: string) => {
+      await ctx.send(ctx.owner.user, mention);
+      await ctx.runner.settled();
+      const [answer] = await ctx.answers();
+      return answer!;
+    };
+
+    const failed = await answerTo("@silent file it");
+    expect(failed.agentRun?.status).toBe("done");
+    expect(failed.body).toBe(
+      "_Silent stopped after quest_create failed: title is required_",
+    );
+
+    const declined = await answerTo("@declined drop it");
+    expect(declined.body).toBe(
+      "_Declined stopped: you declined quest_delete._",
+    );
+
+    const cut = await answerTo("@cut tell me everything");
+    expect(cut.body).toBe("_Cut ran out of room before answering._");
+
+    const recovered = await answerTo("@recovers file it");
+    expect(recovered.body).toBe("It needs a title: which one?");
+
+    expect(errors).toEqual([
+      "Chat agent Silent could not finish (tool) in room general: quest_create failed and the answer ended there",
+      "Chat agent Declined could not finish (tool) in room general: quest_delete failed and the answer ended there",
+      "Chat agent Cut could not finish (length) in room general: the answer ran out of room",
+    ]);
+  });
+
+  it("hands the runner a failed call's error, a declined call as declined, and the turn's end reason (#Q4302)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const mapping = ctx.alepha.inject(LoreChatResponder) as Mapping;
+
+    expect(
+      await mapping.map([
+        {
+          type: "tool_result",
+          name: "quest_create",
+          isError: true,
+          message: "title is required",
+        },
+        {
+          type: "tool_result",
+          name: "quest_delete",
+          isError: true,
+          message: AI_CALL_DENIED,
+        },
+        { type: "tool_result", name: "quest_get", isError: false },
+        { type: "end", reason: "length" },
+      ]),
+    ).toEqual([
+      {
+        type: "tool",
+        name: "quest_create",
+        state: "failed",
+        error: "title is required",
+      },
+      {
+        type: "tool",
+        name: "quest_delete",
+        state: "failed",
+        error: AI_CALL_DENIED,
+        declined: true,
+      },
+      { type: "tool", name: "quest_get", state: "done" },
+      { type: "end", reason: "length" },
     ]);
   });
 

@@ -5,7 +5,8 @@ import { type Infer, z } from "alepha";
  *
  * - `conversation`: first, the id of the conversation the turn belongs to.
  * - `text`: a delta of the assistant's reply.
- * - `tool_call` / `tool_result`: an automatic call starting and finishing.
+ * - `tool_call` / `tool_result`: an automatic call starting and finishing;
+ *   a failed result carries its error, cut to 200 characters, as `message`.
  * - `confirm` / `client_tool`: the turn paused on this call (`input` is the
  *   stored one, for the confirmation card).
  * - `error`: the turn failed after the stream opened; `name` is the error's.
