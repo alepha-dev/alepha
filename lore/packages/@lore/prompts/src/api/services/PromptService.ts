@@ -10,6 +10,7 @@ import {
 import {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_STATUSES,
+  PROMPT_CHOICE_OPTION,
   PROMPT_CUSTOM_TIMEOUT_SECONDS,
   type Project,
   type PromptArg,
@@ -119,6 +120,10 @@ export class PromptService {
     const prompt = await this.get(projectId, name);
     const arg = prompt.args.find((it) => it.name === argName);
     if (!arg) throw new NotFoundError(`The prompt has no arg '${argName}'`);
+    // A choice lists its own options, and reads nothing (#Q4415).
+    if (arg.type === "choice") {
+      return (arg.accepts ?? []).map((it) => ({ value: it, label: it }));
+    }
     const resolver = this.registry.arg(arg.type);
     if (
       !resolver ||
@@ -371,6 +376,18 @@ export class PromptService {
           `The arg '${arg.name}' (${arg.type}) is missing`,
         );
       }
+      // A choice is one of its options (#Q4415): no resolver, no permission.
+      if (arg.type === "choice") {
+        const options = arg.accepts ?? [];
+        if (!options.includes(value)) {
+          throw new BadRequestError(
+            `The arg '${arg.name}' is one of ${options.join(", ")}, not '${value}'`,
+          );
+        }
+        values[`${arg.name}.value`] = value;
+        items.push({ arg, value, item: { fields: { value } } });
+        continue;
+      }
       const resolver = this.registry.arg(arg.type);
       if (!resolver) {
         throw new BadRequestError(
@@ -480,7 +497,8 @@ export class PromptService {
   }
 
   /**
-   * Arg names unique, and each accepted list made of its type's statuses.
+   * Arg names unique, and each accepted list made of its type's statuses,
+   * or, for a choice, its options.
    */
   protected assertArgs(args: PromptArg[]): void {
     const seen = new Set<string>();
@@ -489,6 +507,10 @@ export class PromptService {
         throw new BadRequestError(`Two args are named '${arg.name}'`);
       }
       seen.add(arg.name);
+      if (arg.type === "choice") {
+        this.assertChoice(arg);
+        continue;
+      }
       const statuses = PROMPT_ARG_STATUSES[arg.type];
       for (const status of arg.accepts ?? []) {
         if (!statuses.includes(status)) {
@@ -499,6 +521,31 @@ export class PromptService {
           );
         }
       }
+    }
+  }
+
+  /**
+   * A choice's list is its options (#Q4415): at least two, each a slug,
+   * each once.
+   */
+  protected assertChoice(arg: PromptArg): void {
+    const options = arg.accepts ?? [];
+    if (options.length < 2) {
+      throw new BadRequestError(
+        `The arg '${arg.name}' (choice) lists at least two options, as ${arg.name}:choice:a|b`,
+      );
+    }
+    for (const option of options) {
+      if (!PROMPT_CHOICE_OPTION.test(option)) {
+        throw new BadRequestError(
+          `The arg '${arg.name}' (choice): the option '${option}' is not a slug (a-z, 0-9 and -)`,
+        );
+      }
+    }
+    if (new Set(options).size !== options.length) {
+      throw new BadRequestError(
+        `The arg '${arg.name}' (choice) lists an option twice`,
+      );
     }
   }
 

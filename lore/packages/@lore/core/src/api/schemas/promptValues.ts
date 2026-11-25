@@ -7,7 +7,9 @@
  * The item types a prompt's arg takes (#Q4274). A `member` arg also means
  * "email the run's final reply to this member" (#Q4278). Requirements'
  * use case, persona and requirement, and Remember's folio, came with
- * Requirements' built-ins (#Q4343).
+ * Requirements' built-ins (#Q4343). A `choice` (#Q4415) is no item: one of
+ * the options its `accepts` lists, `bump:choice:minor|patch|major`, read
+ * as `{{bump.value}}`; a triggered run takes the first.
  */
 export const PROMPT_ARG_TYPES = [
   "epic",
@@ -19,6 +21,7 @@ export const PROMPT_ARG_TYPES = [
   "persona",
   "requirement",
   "folio",
+  "choice",
 ] as const;
 
 export type PromptArgType = (typeof PROMPT_ARG_TYPES)[number];
@@ -39,7 +42,14 @@ export const PROMPT_ARG_STATUSES: Record<PromptArgType, readonly string[]> = {
   // Computed on read from the runs, never stored: an arg takes any.
   requirement: [],
   folio: [],
+  // A choice's list is its options, not statuses: see `PROMPT_CHOICE_OPTION`.
+  choice: [],
 };
+
+/**
+ * What one option of a `choice` arg is (#Q4415): a slug.
+ */
+export const PROMPT_CHOICE_OPTION = /^[a-z0-9][a-z0-9-]*$/;
 
 /**
  * The fields an arg's placeholders read, `{{<arg>.<field>}}`, per type.
@@ -84,6 +94,7 @@ export const PROMPT_ARG_FIELDS: Record<PromptArgType, readonly string[]> = {
     "verifiedBy",
   ],
   folio: ["reference", "title", "url", "number", "id"],
+  choice: ["value"],
 };
 
 /**

@@ -248,9 +248,16 @@ args, the source, what **A second run** does while one is going, and the
 words. **Duplicate** starts from any prompt, a
 built-in included; the copy no longer follows the built-in.
 
-An arg has a name, a type (epic, quest, feedback item, pull request or
-member) and, for the first three, the statuses it accepts. The words read it
-through placeholders, which the editor lists:
+An arg has a name, a type (epic, quest, feedback item, pull request,
+member, use case, persona, requirement, folio or choice) and, for an epic, a
+quest, a feedback item or a use case, the statuses it accepts. A **choice**
+takes no item: its list is its options instead, at least two, each lowercase
+letters, digits and dashes (`minor, patch, major`, or
+`--arg bump:choice:minor|patch|major` from the command line). **Copy** and
+**Run** offer them in a list, and the words read the one picked as
+`{{bump.value}}`. An event or a schedule cannot pick one, so a triggered run
+takes the first option, unless the trigger stores a value for it. The words
+read an arg through placeholders, which the editor lists:
 
 | Placeholder           | What it renders                                        |
 | --------------------- | ------------------------------------------------------ |
