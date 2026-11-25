@@ -129,7 +129,7 @@ export class PlanPrompts {
     });
     this.registry.register({
       name: "work-loose-quests",
-      title: "Work the loose quests",
+      title: "Work on loose quests",
       description:
         "Work every quest under no epic, one pull request for the run.",
       args: [],

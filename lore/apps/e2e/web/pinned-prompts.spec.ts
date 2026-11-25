@@ -168,9 +168,9 @@ test.describe("Pinned prompts", () => {
       await page
         .getByRole("combobox")
         .last()
-        .fill("Copy prompt: Work the loose");
+        .fill("Copy prompt: Work on loose");
       await page
-        .getByRole("option", { name: "Copy prompt: Work the loose quests" })
+        .getByRole("option", { name: "Copy prompt: Work on loose quests" })
         .click();
       await expect.poll(clipboard, { timeout: 15_000 }).toContain(project.slug);
     });
