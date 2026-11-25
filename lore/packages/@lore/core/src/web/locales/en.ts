@@ -4165,6 +4165,7 @@ export default {
   "dashboard.group.flow": "Flow",
   "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Project",
+  "dashboard.empty.noJobs": "No agent job is running.",
   "dashboard.empty.noAccess": "You cannot read this project's reports.",
   "dashboard.metric.requirementCoverage": "Requirement coverage",
   "dashboard.metric.requirementCoverage.hint":
@@ -4287,6 +4288,11 @@ export default {
   "dashboard.metric.hosts": "Hosts",
   "dashboard.metric.hosts.hint":
     "the project's hosts, its own and lent ones, online or offline",
+  "dashboard.metric.runningJobs": "Running jobs",
+  "dashboard.metric.runningJobs.hint":
+    "the agent jobs queued or running now, their host and since when",
+  "dashboard.badge.queued": "queued",
+  "dashboard.badge.running": "running",
   "dashboard.metric.uptime": "Uptime",
   "dashboard.metric.uptime.hint":
     "each monitor, up or down, and its last 24 hours",

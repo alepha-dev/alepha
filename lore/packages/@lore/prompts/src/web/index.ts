@@ -1,6 +1,7 @@
 import { LoreCoreWeb } from "@lore/core/web";
 import { $module } from "alepha";
 
+import { PromptsDashboardMetrics } from "../api/services/PromptsDashboardMetrics.ts";
 import { PromptsRouter } from "./app/PromptsRouter.ts";
 import { PromptsShell } from "./app/shell/PromptsShell.ts";
 
@@ -25,6 +26,8 @@ export const LorePromptsWeb = $module({
     // listed service is tagged with this module.
     alepha.with(PromptsRouter);
     alepha.inject(PromptsShell);
+    // The Running jobs card in the Add card panel (#Q4342).
+    alepha.inject(PromptsDashboardMetrics);
   },
 });
 
