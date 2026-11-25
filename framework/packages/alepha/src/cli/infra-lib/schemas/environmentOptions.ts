@@ -6,6 +6,22 @@ import { type Infer, z } from "alepha";
  */
 export const environmentOptionsSchema = z.object({
   /**
+   * The name this environment's resources take, in place of the
+   * `<project>-<env>` prefix: `cloudflare({ name: "shop" })` deploys the
+   * Worker `shop` (`shop.<subdomain>.workers.dev`), with its D1, R2, KV,
+   * queues and Hyperdrive named `shop` too. Slugified, at most 63
+   * characters; the jurisdiction suffix of a KV namespace or a queue is
+   * kept. Two environments of one app that resolve to the same name are
+   * refused.
+   *
+   * A Bay host keys an app by its name and environment already, so this
+   * changes nothing there.
+   *
+   * Setting it on an environment already deployed creates new resources
+   * under the new name: the old ones are not renamed, and keep their data.
+   */
+  name: z.text().optional(),
+  /**
    * Custom domain for the deployed app (e.g. "api.example.com").
    *
    * On Cloudflare this is attached as a Custom Domain; on Bay it is

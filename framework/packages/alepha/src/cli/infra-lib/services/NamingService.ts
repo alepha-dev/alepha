@@ -4,15 +4,30 @@
  * Pattern: `<project>-<env>`, where `project` is the prefix
  * `InfraInspector` resolves: the app name, behind `infra({ project })`
  * when one is set, so `<app>-<env>` or `<project>-<app>-<env>`. All segments
- * are slugified (lowercase, alphanumeric + dashes, max 63 chars). One app per
+ * are slugified (lowercase, alphanumeric + dashes, max 63 chars). An
+ * environment's `name` option replaces the whole prefix. One app per
  * workspace, see `alepha infra`.
  */
 export class NamingService {
-  public forContext(project: string, env: string): NamingContext {
-    const prefix = [project, env]
-      .map((segment) => this.slugify(segment))
-      .join("-");
-    return new NamingContext(prefix);
+  /**
+   * The naming of one environment. `name`, an environment's own `name`
+   * option, replaces the whole `<project>-<env>` prefix.
+   */
+  public forContext(
+    project: string,
+    env: string,
+    name?: string,
+  ): NamingContext {
+    return new NamingContext(this.prefixOf(project, env, name));
+  }
+
+  /**
+   * The prefix every resource of an environment is named after.
+   */
+  public prefixOf(project: string, env: string, name?: string): string {
+    const own = name ? this.slugify(name) : "";
+    if (own) return own;
+    return [project, env].map((segment) => this.slugify(segment)).join("-");
   }
 
   public slugify(name: string): string {

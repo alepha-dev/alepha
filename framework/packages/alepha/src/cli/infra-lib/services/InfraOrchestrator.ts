@@ -102,9 +102,37 @@ export class InfraOrchestrator {
       root: parts.root,
       entry: parts.entry,
       resources: parts.resources,
-      naming: this.naming.forContext(target.config.project, target.env),
+      naming: this.namingFor(target.config, target.env),
       prebuilt: parts.prebuilt,
     };
+  }
+
+  /**
+   * The naming of `env`: `<project>-<env>`, or the environment's own `name`
+   * option. Refused when another environment of the app resolves to the
+   * same prefix, since both would then deploy over the same resources.
+   */
+  public namingFor(config: ResolvedInfraConfig, env: string): NamingContext {
+    const prefixOf = (name: string) =>
+      this.naming.prefixOf(
+        config.project,
+        name,
+        this.inspector.nameOf(config.environments[name]),
+      );
+    const prefix = prefixOf(env);
+    const clash = Object.keys(config.environments).find(
+      (other) => other !== env && prefixOf(other) === prefix,
+    );
+    if (clash) {
+      throw new AlephaError(
+        `Environments "${env}" and "${clash}" both name their resources "${prefix}", so they would deploy over each other. Give one of them another \`name\` in alepha.config.ts.`,
+      );
+    }
+    return this.naming.forContext(
+      config.project,
+      env,
+      this.inspector.nameOf(config.environments[env]),
+    );
   }
 
   protected validateOptions(
@@ -298,7 +326,7 @@ export class InfraOrchestrator {
   }> {
     const { root, env, resources } = options;
     const config = await this.inspector.resolveConfig(root);
-    const namingCtx = this.naming.forContext(config.project, env);
+    const namingCtx = this.namingFor(config, env);
     return { config, naming: namingCtx, resources };
   }
 
