@@ -95,10 +95,15 @@ export class SigilServerErrors {
         : `log:${entry.module}`;
       const error = this.errorOf(entry.data);
       if (!error) {
+        const message = String(entry.message ?? "").slice(0, 2000);
         await this.ingest({
           name: "Error",
-          message: String(entry.message ?? "").slice(0, 2000),
-          stack: "",
+          message,
+          // No stack to fingerprint on: the message stands in for the throw
+          // site, so two different messages are two errors, and a message
+          // logged again bumps its own count (#Q4329). An empty stack put
+          // every message-only log in one group.
+          stack: message,
           sourceUrl: sigilScrubUrl(sourceUrl),
           origin: "server" as const,
         });

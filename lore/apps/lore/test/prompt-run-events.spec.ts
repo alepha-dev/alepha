@@ -37,7 +37,7 @@ describe("prompt run events", () => {
     w.drain(["project-events.deliver", "system.notifications.send"]);
   const end = async (
     jobId: string,
-    status: "done" | "failed",
+    status: "done" | "failed" | "timed_out" | "cancelled",
     extra: Record<string, unknown> = {},
   ) => {
     const row = await w.repos.jobs.getOne({ where: { id: { eq: jobId } } });
@@ -112,6 +112,49 @@ describe("prompt run events", () => {
     expect(
       await w.repos.inbox.findMany({ where: { userId: { eq: w.owner.id } } }),
     ).toHaveLength(0);
+  });
+
+  it("logs a failed or timed-out job at error level, one stable message per prompt and kind, and nothing for a success or a cancel (#Q4329)", async ({
+    expect,
+  }) => {
+    // Every entry logged at error level: what the app's sigil files in
+    // Errors (`SigilServerErrors`).
+    const logged: { message: string; data: unknown }[] = [];
+    w.alepha.events.on("log:entry", ({ entry }) => {
+      if (entry.level === "ERROR")
+        logged.push({ message: String(entry.message), data: entry.data });
+    });
+    const runs = w.alepha.inject(PromptRunService);
+    const outcomes = [
+      ["done", { exitCode: 0 }],
+      ["cancelled", {}],
+      ["failed", { exitCode: 1, reason: "exit code 1" }],
+      ["timed_out", { reason: "the job ran past its 7200 s timeout" }],
+      ["timed_out", {}],
+    ] as const;
+    const jobIds: string[] = [];
+    for (const [status, extra] of outcomes) {
+      const { jobId } = await runs.run(
+        w.projectId,
+        w.owner,
+        "weekly-status",
+        {},
+      );
+      jobIds.push(jobId);
+      await end(jobId, status, extra);
+    }
+
+    expect(logged.map((it) => it.message)).toEqual([
+      "Agent job weekly-status failed",
+      "Agent job weekly-status timed out",
+      "Agent job weekly-status timed out",
+    ]);
+    expect(logged[1]?.data).toMatchObject({
+      jobId: jobIds[3],
+      prompt: "weekly-status",
+      status: "timed_out",
+      reason: "the job ran past its 7200 s timeout",
+    });
   });
 
   it("raises epic.created, epic.ready, and pull_request.added once per pull request", async ({
