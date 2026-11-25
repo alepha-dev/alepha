@@ -77,7 +77,13 @@ const AssistantWriteCard = (props: AssistantWriteCardProps) => {
           {tr(`assistant.confirm.${props.tool}`)}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2 text-sm">
+      {/* Capped and scrolling on its own (#Q4303): a long quest drawn at
+          full height filled the room and pushed the conversation away. The
+          footer sits outside it, so Approve and Deny never scroll away. */}
+      <CardContent
+        className="flex max-h-80 flex-col gap-2 overflow-y-auto text-sm"
+        data-testid="assistant-confirm-body"
+      >
         <div data-testid="assistant-confirm-project">
           <span className="text-muted-foreground">
             {tr("assistant.confirm.project")}

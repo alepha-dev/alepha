@@ -109,6 +109,37 @@ describe("the assistant's confirmation cards", () => {
     expect(answered).toEqual(["approve", "deny"]);
   });
 
+  it("caps a long quest's fields and scrolls them inside, with Approve and Deny outside the scroll (#Q4303)", async ({
+    expect,
+  }) => {
+    const view = await mount(
+      "quest_create",
+      {
+        project: 7,
+        title: "A long one",
+        description: Array.from(
+          { length: 80 },
+          (_, i) => `Paragraph ${i} of a long quest description.`,
+        ).join("\n\n"),
+        area: "lore/chat",
+        priority: "low",
+        tags: ["ui"],
+        objectives: ["One", "Two", "Three"],
+      },
+      { approve: () => {}, deny: () => {} },
+    );
+
+    // jsdom lays nothing out: the classes are what cap and scroll it.
+    const body = view.getByTestId("assistant-confirm-body");
+    expect(body.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["max-h-80", "overflow-y-auto"]),
+    );
+    expect(body.textContent).toContain("Paragraph 79");
+    for (const name of ["Approve", "Deny"]) {
+      expect(body.contains(view.getByRole("button", { name }))).toBe(false);
+    }
+  });
+
   it("warns when the call names another project than the one on screen", async ({
     expect,
   }) => {

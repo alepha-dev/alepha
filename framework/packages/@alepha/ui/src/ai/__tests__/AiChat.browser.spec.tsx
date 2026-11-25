@@ -385,6 +385,14 @@ describe("AiChat", () => {
     expect(fields.textContent).toContain("amount");
     expect(fields.textContent).toContain("120");
     expect(fields.textContent).not.toContain("body");
+    // A long input scrolls inside the card, and the answers stay outside the
+    // scroll, always on screen.
+    const body = view.getByTestId("ai-chat-confirm-body");
+    expect(body.className).toContain("max-h-80");
+    expect(body.className).toContain("overflow-y-auto");
+    expect(body.contains(view.getByRole("button", { name: "Approve" }))).toBe(
+      false,
+    );
 
     fireEvent.click(view.getByRole("button", { name: "Approve" }));
     await view.findByText("Created.");
