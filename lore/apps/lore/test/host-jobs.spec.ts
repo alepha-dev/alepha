@@ -312,6 +312,69 @@ describe("HostJobService", () => {
     expect((await w.service.readLog(job.id)).stdout).toBe("one\ntwo\nthree\n");
   });
 
+  it("keeps a frame that lands after the one following it, so a long line is never cut (#Q4296)", async ({
+    expect,
+  }) => {
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    const frame = (offset: number, data: string) => ({
+      type: "log" as const,
+      id: command.id,
+      stream: "stdout" as const,
+      offset,
+      data,
+    });
+    // Bay sends a burst of frames and they are kept concurrently: the
+    // second may be stored before the first.
+    await w.service.appendLog(w.host, frame(5, "BBBBB"));
+    await w.service.appendLog(w.host, frame(0, "AAAAA"));
+    await w.service.appendLog(w.host, frame(10, "C\n"));
+    // A replay of the first, after a reconnect: held already.
+    await w.service.appendLog(w.host, frame(0, "AAAAA"));
+    expect((await w.service.readLog(job.id)).stdout).toBe("AAAAABBBBBC\n");
+    expect(
+      await w.repos.logs.findMany({ where: { jobId: { eq: job.id } } }),
+    ).toHaveLength(3);
+
+    await w.commands.ack(w.host.id, { id: command.id, status: "done" });
+    expect((await w.service.readLog(job.id)).stdout).toBe("AAAAABBBBBC\n");
+  });
+
+  it("logs each kind of line the transcript cannot read once, at the job's end, with a short sample (#Q4296)", async ({
+    expect,
+  }) => {
+    const logged: { message: string; data: any }[] = [];
+    w.alepha.events.on("log:entry", ({ entry }) => {
+      if (entry.level === "ERROR")
+        logged.push({ message: String(entry.message), data: entry.data });
+    });
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    const odd = (n: number) => JSON.stringify({ type: "odd_event", n });
+    await w.service.appendLog(w.host, {
+      type: "log",
+      id: command.id,
+      stream: "stdout",
+      offset: 0,
+      data: `${odd(1)}\n${odd(2)}\n${"x".repeat(500)}\n`,
+    });
+    await w.commands.ack(w.host.id, { id: command.id, status: "running" });
+    expect(logged).toEqual([]);
+    await w.commands.ack(w.host.id, { id: command.id, status: "done" });
+
+    expect(logged.map((it) => it.message)).toEqual([
+      "Agent transcript row not supported: odd_event",
+      "Agent transcript row not supported: unparsable",
+    ]);
+    expect(logged[0]?.data).toMatchObject({
+      jobId: job.id,
+      kind: "odd_event",
+      count: 2,
+      sample: odd(1),
+    });
+    expect(String(logged[1]?.data.sample)).toHaveLength(200);
+  });
+
   it("names the model a run took by default once it ended, from its agent CLI's init line (#Q4304)", async ({
     expect,
   }) => {

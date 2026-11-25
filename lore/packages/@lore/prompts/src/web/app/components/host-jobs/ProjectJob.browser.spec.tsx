@@ -326,11 +326,16 @@ describe("ProjectJob", () => {
     expect(page.textContent).not.toContain("$9.99");
   });
 
-  it("cuts a long line it cannot read at 500 characters, with a button for the rest (#Q4323)", async ({
+  it("cuts a long line of an agent CLI with no parser at 500 characters, with a button for the rest (#Q4323)", async ({
     expect,
   }) => {
     const blob = "iVBORw0KGgo".repeat(200);
-    world.jobs = [job({ status: "succeeded" })];
+    world.jobs = [
+      job({
+        status: "succeeded",
+        input: { profile: "read", agent: "gemini" } as never,
+      }),
+    ];
     world.logs = {
       [RUNNING]: { stdout: `${blob}\n`, stderr: "", live: false },
     };
@@ -342,6 +347,30 @@ describe("ProjectJob", () => {
     );
     expect(screen.getByTestId("job-raw-line").textContent).toBe(blob);
     expect(screen.getByText("Show less")).toBeTruthy();
+  });
+
+  it("never draws a Claude Code line it cannot read (#Q4296)", async ({
+    expect,
+  }) => {
+    world.jobs = [job({ status: "succeeded" })];
+    world.logs = {
+      [RUNNING]: {
+        stdout: `${JSON.stringify({ type: "odd_event" })}\nnot json at all\n${JSON.stringify(
+          {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "All green." }] },
+          },
+        )}\n`,
+        stderr: "",
+        live: false,
+      },
+    };
+    await show(RUNNING);
+    const events = await screen.findByTestId("job-events");
+    await waitFor(() => expect(events.textContent).toContain("All green."));
+    expect(screen.queryByTestId("job-raw-line")).toBeNull();
+    expect(events.textContent).not.toContain("odd_event");
+    expect(events.textContent).not.toContain("not json");
   });
 
   it("puts a failed job's reason first", async ({ expect }) => {

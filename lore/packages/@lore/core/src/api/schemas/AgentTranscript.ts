@@ -48,6 +48,14 @@ export interface AgentTranscriptResult {
    * Whether the agent CLI has a parser: without one, every line is raw.
    */
   parsed: boolean;
+  /**
+   * The lines a parser could not read (#Q4296), one entry per kind: an
+   * event `type` it does not know, `unparsable` for a line that is not
+   * JSON, `not-an-object` for JSON that is not an event. Never drawn: the
+   * server logs them once, at the job's end. `sample` is the first line's
+   * start, never the whole line.
+   */
+  unknown?: Array<{ kind: string; count: number; sample: string }>;
 }
 
 /**
@@ -58,11 +66,12 @@ export interface AgentTranscriptResult {
  *
  * - **Hidden**: bookkeeping events, from {@link HIDDEN}, counted. A rate
  *   limit that stopped the run is shown.
- * - **Never dropped**: a line that is not JSON, or an event type the parser
- *   does not know, comes back as a raw line. The one exception is the
- *   log's last line while it has no newline: a running job's log is read by
- *   byte offsets, so that line is an event still arriving, and printed raw
- *   it was a wall of base64 from a tool result's image (#Q4323).
+ * - **Never raw JSON** (#Q4296): a line that is not JSON, or an event type
+ *   the parser does not know, is left out of the view and counted in
+ *   `unknown`, which the server logs as an error at the job's end. The
+ *   log's last line, while it has no newline, is an event still arriving
+ *   on a running job (its log is read by byte offsets): it is neither shown
+ *   nor counted until it ends (#Q4323).
  * - **Never binary**: an image or any other non-text block in a tool
  *   result reads as `[image]`, never as its base64.
  */
@@ -75,6 +84,9 @@ export class AgentTranscript {
     "thinking_tokens",
     "stream_event",
     "keep_alive",
+    // A long tool call's heartbeat, every 30 s: the call already shows as
+    // running (#Q4296).
+    "tool_progress",
   ]);
 
   public static parse(log: string, agent?: string): AgentTranscriptResult {
@@ -130,6 +142,18 @@ export class AgentTranscript {
     const byId = new Map<string, AgentTranscriptTool>();
     let hidden = 0;
     let totals: AgentTranscriptTotals | undefined;
+    const unknown = new Map<
+      string,
+      { kind: string; count: number; sample: string }
+    >();
+    const miss = (kind: string, line: string) => {
+      const seen = unknown.get(kind);
+      if (seen) {
+        seen.count++;
+        return;
+      }
+      unknown.set(kind, { kind, count: 1, sample: line.slice(0, 200) });
+    };
     const tools = (): AgentTranscriptTool[] => {
       const last = entries.at(-1);
       if (last?.kind === "tools") return last.tools;
@@ -147,11 +171,11 @@ export class AgentTranscript {
       } catch {
         // The last line, cut where the read stopped: the next read ends it.
         if (arriving && index === lines.length - 1) continue;
-        entries.push({ kind: "raw", line });
+        miss("unparsable", line);
         continue;
       }
       if (!event || typeof event !== "object" || Array.isArray(event)) {
-        entries.push({ kind: "raw", line });
+        miss("not-an-object", line);
         continue;
       }
       const type = String(event.type ?? "");
@@ -244,13 +268,14 @@ export class AgentTranscript {
         };
         continue;
       }
-      entries.push({ kind: "raw", line });
+      miss(type || "untyped", line);
     }
     return {
       entries,
       hidden,
       ...(totals ? { totals } : {}),
       parsed: true,
+      ...(unknown.size ? { unknown: [...unknown.values()] } : {}),
     };
   }
 
