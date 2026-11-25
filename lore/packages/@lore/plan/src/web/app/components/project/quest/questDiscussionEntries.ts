@@ -81,6 +81,7 @@ export type QuestEventAction =
   | "updated"
   | "assigned"
   | "unassigned"
+  | "job_ended"
   | "completed"
   | "objective_completed"
   | "objective_waived"
@@ -128,7 +129,11 @@ export const buildQuestDiscussionEntries = (
       key: `history-${index}`,
       at: event.at,
       by: event.by,
-      action: event.action as QuestEventAction,
+      // An `unassigned` the hand back wrote names its job (#Q4350).
+      action:
+        event.action === "unassigned" && event.jobId
+          ? "job_ended"
+          : (event.action as QuestEventAction),
       subject:
         event.objectiveId != null
           ? quest.objectives.find((o) => o.id === event.objectiveId)?.title

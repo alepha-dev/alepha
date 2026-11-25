@@ -88,6 +88,7 @@ export class QuestShelvingService {
     if (quest.acceptedAt) {
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
+      quest.agentJobId = undefined;
       quest.kanbanColumn = undefined;
       // Reminders are tied to the assignee, as in `unassignQuest`.
       quest.reminderInterval = undefined;

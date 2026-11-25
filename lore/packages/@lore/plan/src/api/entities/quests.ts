@@ -229,6 +229,14 @@ export const quests = $entity({
     acceptedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * The agent job working the quest (#Q4350): stamped when a job's key
+     * accepts it, cleared by unassign, complete and shelve, and by the hand
+     * back when the job ends, so a stamp says a job is on it now. A liveness
+     * signal, not a resume handle. No foreign key: jobs are core's, and an
+     * ended job's id is cleared rather than joined.
+     */
+    agentJobId: z.uuid().optional(),
     completedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
@@ -303,6 +311,12 @@ export const quests = $entity({
            * written before this existed must still decode.
            */
           column: z.string().optional(),
+          /**
+           * For an `unassigned` entry the hand back wrote when the quest's
+           * agent job ended (#Q4350): that job's id. Optional, like every
+           * key here, so older rows decode and older code ignores it.
+           */
+          jobId: z.string().optional(),
           /**
            * For `updated` entries — which fields moved, so the feed can say
            * what happened instead of "updated the quest" for every edit

@@ -76,6 +76,7 @@ import {
   Trash,
   UserPlus,
   Milestone,
+  Bot,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -96,6 +97,7 @@ import {
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
+import QuestAgentJobLink from "../shared/QuestAgentJobLink.tsx";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { questPromptItem } from "./prompts/questPromptItem.ts";
 import {
@@ -698,6 +700,13 @@ const ProjectQuestsTable = () => {
       items: [{ value: "not", label: tr("board.filter.live.not") }],
       hidden: !liveEnabled,
     },
+    // The quests an agent job is building now (#Q4350).
+    job: {
+      schema: z.enum(["running"]),
+      label: tr("quest.agentJob.column"),
+      icon: Bot,
+      items: [{ value: "running", label: tr("quest.agentJob.filter") }],
+    },
     // Epic ids as strings, plus the sentinel, as for `release`. Offered with
     // no epic yet too: "None" is then every quest, which is true, and the
     // entry does not come and go with the first epic.
@@ -937,6 +946,7 @@ const ProjectQuestsTable = () => {
               staleDays: f?.stale ? Number(f.stale) : undefined,
               completedDays: f?.completed ? Number(f.completed) : undefined,
               live: f?.live,
+              agentJob: f?.job,
               withLive: liveEnabled || undefined,
             },
           });
@@ -1188,6 +1198,15 @@ const ProjectQuestsTable = () => {
                 },
               }
             : {}),
+          // The agent job working the quest now (#Q4350), animated while it
+          // runs. Hidden by default: the reader adds it from the picker.
+          job: {
+            label: tr("quest.agentJob.column"),
+            defaultHidden: true,
+            cell: (quest: QuestResource) => (
+              <QuestAgentJobLink jobId={quest.agentJobId} />
+            ),
+          },
           linked: {
             label: tr("board.table.linked"),
             // Niche column — starts hidden; users opt in via the column picker.

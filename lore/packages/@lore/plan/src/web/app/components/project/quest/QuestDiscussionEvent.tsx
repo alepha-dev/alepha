@@ -271,6 +271,7 @@ const ICONS: Record<string, LucideIcon> = {
   created: Sunrise,
   assigned: Signature,
   unassigned: UserMinus,
+  job_ended: UserMinus,
   completed: CircleCheck,
   objective_completed: CheckSquare,
   reminder_sent: BellRing,
@@ -286,6 +287,7 @@ const PREDICATE_KEYS: Record<
   | "quest.event.created"
   | "quest.event.assigned"
   | "quest.event.unassigned"
+  | "quest.event.jobEnded"
   | "quest.event.completed"
   | "quest.event.objectiveCompletedBare"
   | "quest.event.reminderSent"
@@ -298,6 +300,8 @@ const PREDICATE_KEYS: Record<
   created: "quest.event.created",
   assigned: "quest.event.assigned",
   unassigned: "quest.event.unassigned",
+  // Handed back to To do when its agent job ended (#Q4350).
+  job_ended: "quest.event.jobEnded",
   completed: "quest.event.completed",
   objective_completed: "quest.event.objectiveCompletedBare",
   reminder_sent: "quest.event.reminderSent",

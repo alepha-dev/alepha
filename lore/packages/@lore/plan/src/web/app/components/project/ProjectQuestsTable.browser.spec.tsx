@@ -584,6 +584,63 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   });
 
   /**
+   * The Job column (#Q4350): hidden by default, the quest's running agent
+   * job linked and animated when shown, and a filter for the quests a job
+   * is building.
+   */
+  describe("the Job column", () => {
+    const headerText = (view: Awaited<ReturnType<typeof mount>>["view"]) =>
+      [...view.container.querySelectorAll("thead th")]
+        .map((th) => th.textContent?.trim())
+        .filter(Boolean);
+    const jobId = "0b3c6a2e-1d4f-4a8b-9c7d-2e5f6a7b8c9d";
+    const building = () =>
+      ({
+        ...questOf(1, "Built by a job"),
+        acceptedAt: "2026-09-02T10:30:00.000Z",
+        agentJobId: jobId,
+      }) as QuestResource;
+
+    it("is hidden until the reader adds it", async () => {
+      const { view } = await mount([building()]);
+      await waitFor(() => expect(headerText(view).length).toBeGreaterThan(1));
+      expect(headerText(view)).not.toContain("Job");
+    });
+
+    it("links the quest's running job with an animated icon, still under reduced motion", async () => {
+      window.localStorage.setItem(
+        "lor.board.1.columns",
+        JSON.stringify(["title", "job"]),
+      );
+      const { view } = await mount([building(), questOf(2, "By hand")]);
+      await waitFor(() => expect(headerText(view)).toContain("Job"));
+      const links = view.getAllByTestId("quest-agent-job");
+      expect(links).toHaveLength(1);
+      expect(links[0]?.getAttribute("href")).toContain(`/jobs/${jobId}`);
+      const icon = view.getByTestId("quest-agent-job-icon");
+      expect(icon.getAttribute("class")).toContain("animate-pulse");
+      expect(icon.getAttribute("class")).toContain(
+        "motion-reduce:animate-none",
+      );
+    });
+
+    it("filters on the quests a job is building", async () => {
+      const { view, links } = await mount([building()]);
+      fireEvent.keyDown(
+        await view.findByRole("button", { name: "Add filters" }),
+        { key: "ArrowDown" },
+      );
+      fireEvent.click(await view.findByRole("menuitem", { name: /Job/ }));
+      fireEvent.click(
+        await view.findByRole("option", { name: /Being built by a job/ }),
+      );
+      await waitFor(() =>
+        expect(links.queries.at(-1)?.agentJob).toBe("running"),
+      );
+    });
+  });
+
+  /**
    * The Epic column (feedback #2088). It starts hidden, so these seed the
    * persisted column set rather than driving the picker's popover: the
    * question here is what the cell renders, and the picker has its own

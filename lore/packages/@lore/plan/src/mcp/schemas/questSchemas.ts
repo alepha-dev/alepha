@@ -180,6 +180,12 @@ export const questListResultSchema = z.object({
         )
         .optional(),
       acceptedAt: z.datetime().optional(),
+      agentJobId: z
+        .uuid()
+        .describe(
+          "The agent job working this quest right now (#Q4350): set when a job's key accepted it, cleared when it is unassigned, completed or shelved, and when the job ends, which hands the quest back to `todo`. Absent: a person holds it, or nobody. `job_get` reads the job.",
+        )
+        .optional(),
       completedAt: z.datetime().optional(),
       shelvedAt: z.datetime().optional(),
       heldAt: z
@@ -366,6 +372,12 @@ export const questGetResultSchema = z.object({
   createdAt: z.datetime(),
   updatedAt: z.datetime(),
   acceptedAt: z.datetime().optional(),
+  agentJobId: z
+    .uuid()
+    .describe(
+      "The agent job working this quest right now (#Q4350): set when a job's key accepted it, cleared when it is unassigned, completed or shelved, and when the job ends, which hands the quest back to `todo`. Absent: a person holds it, or nobody. `job_get` reads the job.",
+    )
+    .optional(),
   completedAt: z.datetime().optional(),
   shelvedAt: z.datetime().optional(),
   heldAt: z.datetime().optional(),
