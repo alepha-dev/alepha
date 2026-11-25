@@ -30,18 +30,14 @@ const sent: { pins?: string[] }[] = [];
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return virtualClientFake({
-      updatePrompt: async (input: { body: { pins?: string[] } }) => {
-        sent.push(input.body);
-        return {};
-      },
-    });
+    return virtualClientFake({});
   }
 }
 
 /**
  * The Pin dialog (#Q4300): one multi select over the pinnable pages, where
- * it was a column of switches.
+ * it was a column of switches. It hands the pins to the page, which writes
+ * them optimistically (#Q4301).
  */
 describe("PromptPinsDialog", () => {
   beforeAll(() => {
@@ -74,10 +70,9 @@ describe("PromptPinsDialog", () => {
         <PromptPinsDialog
           open
           onOpenChange={(next) => closed.push(next)}
-          projectId={1}
           prompt={{ name: "work-quest", title: "Work quest", pins } as never}
           pages={PAGES}
-          invalidates={["project-prompts", 1]}
+          onSave={(next) => sent.push({ pins: next })}
         />
       </AlephaContext.Provider>,
     );

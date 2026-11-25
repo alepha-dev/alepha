@@ -33,7 +33,13 @@ export interface PromptEditorDialogProps {
    */
   mode: "create" | "duplicate" | "edit" | "source";
   prompt?: PromptResource;
-  invalidates: unknown[];
+  /**
+   * The row the server answered, which the page draws in place or inserts
+   * (#Q4301): the server checks a prompt's name, args and words before
+   * taking them, so the dialog waits for its answer and keeps a refused
+   * value on its field.
+   */
+  onSaved: (row: PromptResource) => void;
 }
 
 const SLOTS = Array.from({ length: PROMPT_MAX_ARGS }, (_, index) => index);
@@ -90,10 +96,12 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
             : undefined;
         };
         if (source && props.prompt) {
-          await api.updatePrompt({
-            params: { projectId: props.projectId, name: props.prompt.name },
-            body: { source: values.source as PromptResource["source"] },
-          });
+          props.onSaved(
+            await api.updatePrompt({
+              params: { projectId: props.projectId, name: props.prompt.name },
+              body: { source: values.source as PromptResource["source"] },
+            }),
+          );
           props.onOpenChange(false);
           return;
         }
@@ -115,20 +123,19 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
           args,
           source: values.source as PromptResource["source"],
         };
-        if (edit && props.prompt) {
-          await api.updatePrompt({
-            params: { projectId: props.projectId, name: props.prompt.name },
-            body,
-          });
-        } else {
-          await api.createPrompt({
-            params: { projectId: props.projectId },
-            body: { ...body, name: text("name") ?? "" },
-          });
-        }
+        props.onSaved(
+          edit && props.prompt
+            ? await api.updatePrompt({
+                params: { projectId: props.projectId, name: props.prompt.name },
+                body,
+              })
+            : await api.createPrompt({
+                params: { projectId: props.projectId },
+                body: { ...body, name: text("name") ?? "" },
+              }),
+        );
         props.onOpenChange(false);
       },
-      invalidates: [props.invalidates],
     },
     [api, props.projectId, props.prompt?.name, props.mode],
   );

@@ -9,24 +9,27 @@ import {
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
-import { useAction, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
-import type { PromptController } from "../../../../../../api/controllers/PromptController.ts";
 import type { PromptResource } from "../../../../../../api/schemas/promptResourceSchema.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 
 export interface PromptPinsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: number;
   prompt: PromptResource;
   /**
    * The pinnable pages, as the server lists them.
    */
   pages: Array<{ key: string; label: string }>;
-  invalidates: unknown[];
+  /**
+   * The pins picked, in the server's page order. The dialog closes at once
+   * and the page writes them optimistically (#Q4301): a set of known page
+   * keys is nothing the server refuses for its shape, so there is no field
+   * error to wait for.
+   */
+  onSave: (pins: string[]) => void;
 }
 
 /**
@@ -37,28 +40,8 @@ export interface PromptPinsDialogProps {
  */
 const PromptPinsDialog = (props: PromptPinsDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const api = useClient<PromptController>();
   const keys = new Set(props.pages.map((page) => page.key));
 
-  const save = useAction<[pins: string[]], void>(
-    {
-      handler: async (_ctx, pins) => {
-        await api.updatePrompt({
-          params: { projectId: props.projectId, name: props.prompt.name },
-          // In the server's page order, whatever order they were picked in,
-          // and never a key the server no longer lists.
-          body: {
-            pins: props.pages
-              .filter((page) => pins.includes(page.key))
-              .map((page) => page.key),
-          },
-        });
-        props.onOpenChange(false);
-      },
-      invalidates: [props.invalidates],
-    },
-    [api, props.projectId, props.prompt.name],
-  );
   const form = useForm(
     {
       schema: z.object({ pins: z.array(z.text({ maxLength: 32 })).optional() }),
@@ -66,7 +49,13 @@ const PromptPinsDialog = (props: PromptPinsDialogProps) => {
         pins: props.prompt.pins.filter((key) => keys.has(key)),
       },
       handler: async (values) => {
-        await save.run(values.pins ?? []);
+        const pins = values.pins ?? [];
+        props.onSave(
+          props.pages
+            .filter((page) => pins.includes(page.key))
+            .map((page) => page.key),
+        );
+        props.onOpenChange(false);
       },
     },
     [props.open, props.prompt.name],
@@ -98,7 +87,6 @@ const PromptPinsDialog = (props: PromptPinsDialogProps) => {
             countLabel={(count) =>
               tr("prompts.pins.count", { args: [String(count)] })
             }
-            disabled={save.loading}
             inputProps={{ "data-testid": "prompt-pins-pages" }}
           />
           <DialogFooter>
@@ -106,15 +94,10 @@ const PromptPinsDialog = (props: PromptPinsDialogProps) => {
               type="button"
               variant="outlined"
               onClick={() => props.onOpenChange(false)}
-              disabled={save.loading}
             >
               {tr("prompts.cancel")}
             </Button>
-            <Button
-              type="submit"
-              disabled={save.loading}
-              data-testid="prompt-pins-save"
-            >
+            <Button type="submit" data-testid="prompt-pins-save">
               {tr("prompts.save")}
             </Button>
           </DialogFooter>

@@ -5,8 +5,19 @@ import {
   TimeAgo,
   useDialog,
 } from "@alepha/ui";
-import { DataTable, type RowActionEntry } from "@alepha/ui/table";
-import { useAction, useClient, useQuery, useStore } from "alepha/react";
+import {
+  DataTable,
+  type RowActionContext,
+  type RowActionEntry,
+} from "@alepha/ui/table";
+import { DateTimeProvider } from "alepha/datetime";
+import {
+  useClient,
+  useInject,
+  useQuery,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -30,6 +41,7 @@ import type { PromptController } from "../../../../../api/controllers/PromptCont
 import type { PromptResource } from "../../../../../api/schemas/promptResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { type I18n } from "../../../services/I18n.ts";
+import { useOptimisticWrite } from "../../shared/useOptimisticWrite.ts";
 import { useRank } from "../../shared/useRank.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 import PromptEditorDialog from "../prompts/run/PromptEditorDialog.tsx";
@@ -56,6 +68,13 @@ type Open =
  * the project's custom prompts. Every member reads and copies; `prompt:
  * manage` writes, sets triggers and pauses them; Run is offered with a ready
  * Agent host only, and needs the prompt's own permission (the server says).
+ *
+ * A write changes its row in place (#Q4301), as on Quests and Epics, and
+ * never refetches the list, which blanked the table. The switch, the pins,
+ * a pause and a delete are optimistic: the screen changes in the click's
+ * frame, the request leaves, and a refusal puts it back. A trigger or an
+ * editor save waits for the server, which checks it and answers the row
+ * drawn in its place; its dialog stays open on a refusal, on the field.
  */
 const ProjectSettingsPromptsPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -79,6 +98,9 @@ const ProjectSettingsPromptsPage = () => {
       key,
       handler: () =>
         api.listPrompts({ params: { projectId: projectId as number } }),
+      // Anything that still invalidates the list (a copy, a run, another
+      // tab's write) refetches under the rows on screen, never a blank.
+      keepPreviousData: true,
     },
     [api, projectId],
   );
@@ -110,45 +132,95 @@ const ProjectSettingsPromptsPage = () => {
   );
   const ready = (hosts.data?.hosts ?? []).length > 0;
 
-  const write = useAction<[name: string, body: { enabled?: boolean }], void>(
-    {
-      handler: async (_ctx, name, body) => {
-        if (projectId === undefined) return;
-        await api.updatePrompt({ params: { projectId, name }, body });
+  const queries = useQueryClient();
+  const optimistic = useOptimisticWrite();
+  const dateTime = useInject(DateTimeProvider);
+  type List = NonNullable<typeof list.data>;
+  const edit = (change: (list: List) => List) =>
+    queries.setData<List | undefined>(key, (previous) =>
+      previous ? change(previous) : previous,
+    );
+  /**
+   * Draw a row as the server answered it, or append it when it is new
+   * (a duplicate, a new prompt).
+   */
+  const put = (row: PromptResource) =>
+    edit((it) => ({
+      ...it,
+      items: it.items.some((item) => item.name === row.name)
+        ? it.items.map((item) => (item.name === row.name ? row : item))
+        : [...it.items, row],
+    }));
+  /**
+   * An optimistic change to one row: drawn now, sent at once, put back as
+   * it was when the server refuses it, and replaced by the server's row
+   * when it agrees.
+   */
+  const patch = (
+    row: PromptResource,
+    change: Partial<PromptResource>,
+    body: { enabled?: boolean; pins?: string[] },
+  ) => {
+    if (projectId === undefined) return;
+    void optimistic.run({
+      apply: () => {
+        put({ ...row, ...change });
+        return () => put(row);
       },
-      invalidates: [key],
-    },
-    [api, projectId],
-  );
-  const remove = useAction<[prompt: PromptResource], void>(
-    {
-      handler: async (_ctx, prompt) => {
-        if (projectId === undefined) return;
-        const sure = await dialog.confirm({
-          title: tr("prompts.delete.title", { args: [prompt.title] }),
-          description: tr("prompts.delete.description"),
-          destructive: true,
-        });
-        if (!sure) return;
-        await api.deletePrompt({
-          params: { projectId, name: prompt.name },
-        });
+      commit: async () =>
+        put(
+          await api.updatePrompt({
+            params: { projectId, name: row.name },
+            body,
+          }),
+        ),
+    });
+  };
+  const remove = async (
+    row: PromptResource,
+    ctx: RowActionContext<PromptResource>,
+  ) => {
+    if (projectId === undefined) return;
+    const sure = await dialog.confirm({
+      title: tr("prompts.delete.title", { args: [row.title] }),
+      description: tr("prompts.delete.description"),
+      destructive: true,
+    });
+    if (!sure) return;
+    void optimistic.run({
+      // The row plays its exit at once; it leaves the list once the server
+      // agreed, and comes back when it refuses.
+      apply: () => ctx.optimistic.remove(row),
+      commit: () => api.deletePrompt({ params: { projectId, name: row.name } }),
+      onCommitted: () =>
+        edit((it) => ({
+          ...it,
+          items: it.items.filter((item) => item.name !== row.name),
+        })),
+    });
+  };
+  const pause = (paused: boolean) => {
+    if (projectId === undefined) return;
+    const before = list.data?.pausedAt;
+    const setPausedAt = (pausedAt: string | undefined) =>
+      edit((it) => ({ ...it, pausedAt }));
+    void optimistic.run({
+      apply: () => {
+        setPausedAt(paused ? dateTime.nowISOString() : undefined);
+        return () => setPausedAt(before);
       },
-      invalidates: [key],
-    },
-    [api, projectId, dialog],
-  );
-  const pause = useAction<[paused: boolean], void>(
-    {
-      handler: async (_ctx, paused) => {
-        if (projectId === undefined) return;
-        await api.setPromptsPaused({ params: { projectId }, body: { paused } });
-      },
-      invalidates: [key],
-    },
-    [api, projectId],
-  );
-  const busy = write.loading || remove.loading || pause.loading || copy.loading;
+      commit: async () =>
+        setPausedAt(
+          (
+            await api.setPromptsPaused({
+              params: { projectId },
+              body: { paused },
+            })
+          ).pausedAt,
+        ),
+    });
+  };
+  const busy = copy.loading;
 
   const startCopy = (prompt: PromptResource) => {
     if (prompt.args.every((arg) => arg.type === "member")) {
@@ -234,7 +306,8 @@ const ProjectSettingsPromptsPage = () => {
                   icon: Trash2,
                   label: tr("prompts.delete"),
                   disabled: () => busy,
-                  onClick: () => void remove.run(row),
+                  onClick: (_item: PromptResource, ctx: RowActionContext) =>
+                    void remove(row, ctx as RowActionContext<PromptResource>),
                 },
               ]),
         ]
@@ -260,7 +333,7 @@ const ProjectSettingsPromptsPage = () => {
               icon: pausedAt ? Play : Pause,
               label: pausedAt ? tr("prompts.resume") : tr("prompts.pause"),
               disabled: !manage || busy,
-              onClick: () => void pause.run(!pausedAt),
+              onClick: () => pause(!pausedAt),
             },
             {
               icon: Plus,
@@ -379,9 +452,7 @@ const ProjectSettingsPromptsPage = () => {
                     enabled={row.enabled}
                     disabled={!manage || busy}
                     label={tr("prompts.table.enabled")}
-                    onChange={(enabled) =>
-                      void write.run(row.name, { enabled })
-                    }
+                    onChange={(enabled) => patch(row, { enabled }, { enabled })}
                   />
                 ),
             },
@@ -438,14 +509,13 @@ const ProjectSettingsPromptsPage = () => {
           prompt={open.prompt}
         />
       )}
-      {projectId !== undefined && open?.kind === "pins" && (
+      {open?.kind === "pins" && (
         <PromptPinsDialog
           open
           onOpenChange={(next) => !next && setOpen(undefined)}
-          projectId={projectId}
           prompt={open.prompt}
           pages={pages}
-          invalidates={key}
+          onSave={(pins) => patch(open.prompt, { pins }, { pins })}
         />
       )}
       {projectId !== undefined && open?.kind === "trigger" && (
@@ -454,7 +524,7 @@ const ProjectSettingsPromptsPage = () => {
           onOpenChange={(next) => !next && setOpen(undefined)}
           projectId={projectId}
           prompt={open.prompt}
-          invalidates={key}
+          onSaved={put}
         />
       )}
       {projectId !== undefined && open?.kind === "editor" && (
@@ -464,7 +534,7 @@ const ProjectSettingsPromptsPage = () => {
           projectId={projectId}
           mode={open.mode}
           prompt={open.prompt}
-          invalidates={key}
+          onSaved={put}
         />
       )}
     </div>
