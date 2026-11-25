@@ -667,6 +667,7 @@ export {
   type BuiltinPrompt,
   type PromptArgContext,
   type PromptArgItem,
+  type PromptArgOptions,
   type PromptArgResolver,
   PromptRegistry,
   type PromptRunContext,

@@ -261,6 +261,11 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        // Settings > Prompts (#Q4280): an arg's type, a check's source and
+        // the editor's title, by value.
+        "prompts.arg.",
+        "prompts.check.",
+        "prompts.editor.",
         "notifications.channels.kind.",
         "notifications.event.",
         "notifications.resource.",

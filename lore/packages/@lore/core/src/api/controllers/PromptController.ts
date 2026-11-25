@@ -7,6 +7,7 @@ import { promptResourceSchema } from "../schemas/promptResourceSchema.ts";
 import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
 import { promptWriteSchema } from "../schemas/promptWriteSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { AgentJobs } from "../services/AgentJobs.ts";
 import { PromptRunService } from "../services/PromptRunService.ts";
 import { PromptService } from "../services/PromptService.ts";
 import { PromptTriggers } from "../services/PromptTriggers.ts";
@@ -21,6 +22,7 @@ export class PromptController {
   protected readonly service = $inject(PromptService);
   protected readonly runs = $inject(PromptRunService);
   protected readonly triggers = $inject(PromptTriggers);
+  protected readonly agents = $inject(AgentJobs);
 
   protected readonly nameParams = z.object({
     projectId: z.integer(),
@@ -129,6 +131,55 @@ export class PromptController {
     },
     handler: ({ params, body, user }) =>
       this.service.duplicate(params.projectId, user, params.name, body),
+  });
+
+  /**
+   * What one arg's select lists (#Q4280): the project's items of its type
+   * whose status it accepts.
+   */
+  listPromptArgOptions = $action({
+    use: [$ownsProject({ param: "projectId", requires: "project:read" })],
+    method: "GET",
+    path: "/projects/:projectId/prompts/:name/args/:arg",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        name: z.text({ maxLength: 64 }),
+        arg: z.text({ maxLength: 32 }),
+      }),
+      response: z.object({
+        items: z.array(z.object({ value: z.string(), label: z.string() })),
+      }),
+    },
+    handler: async ({ params, user }) => ({
+      items: await this.service.argOptions(
+        params.projectId,
+        user,
+        params.name,
+        params.arg,
+      ),
+    }),
+  });
+
+  /**
+   * The Agent hosts a run may pick (#Q4280): each one available. Empty, no
+   * Run is offered.
+   */
+  listPromptHosts = $action({
+    use: [$ownsProject({ param: "projectId", requires: "host:read" })],
+    method: "GET",
+    path: "/projects/:projectId/prompt-hosts",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ hosts: z.array(z.string()) }),
+    },
+    handler: async ({ params }) => ({
+      hosts: [
+        ...new Set(
+          (await this.agents.choices(params.projectId)).map((it) => it.host),
+        ),
+      ],
+    }),
   });
 
   /**

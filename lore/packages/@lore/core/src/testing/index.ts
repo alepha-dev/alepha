@@ -22,7 +22,6 @@ export { virtualClientFake } from "./virtualClientFake.ts";
 // graph (#Q2425, #E75). Nothing at runtime imports `./testing`.
 export { default as en } from "../web/locales/en.ts";
 export { default as fr } from "../web/locales/fr.ts";
-export { default as ProjectSettingsAgentPrompts } from "../web/app/components/project/settings/ProjectSettingsAgentPrompts.tsx";
 export { default as ProjectSettingsCapabilitiesPage } from "../web/app/components/project/settings/ProjectSettingsCapabilitiesPage.tsx";
 export { default as ProjectSettingsRanksPage } from "../web/app/components/project/settings/ProjectSettingsRanksPage.tsx";
 

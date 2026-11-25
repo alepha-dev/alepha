@@ -23,6 +23,7 @@ const DOCS_ROOT = "https://alepha.dev/lore/docs";
  */
 const GUIDES = [
   "agents-assistant",
+  "agents-prompts",
   "ship-artifacts",
   "ship-cloudflare-token",
   "project-dashboard",

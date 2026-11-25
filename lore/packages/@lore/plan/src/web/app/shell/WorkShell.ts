@@ -222,13 +222,6 @@ export class WorkShell {
           visible: (project) => (project?.roadmapVisibility ?? "off") !== "off",
         },
         {
-          route: "projectSettingsPrompts",
-          labelKey: "project.settings.tab.prompts",
-          // Requirements' six kinds are edited here too, with `agentPrompts`
-          // off (#E153, answer 74).
-          options: ["agentPrompts", "requirements"],
-        },
-        {
           // What Requirements adds to Plan (#Q4259), out of the Quests tab.
           route: "projectSettingsRequirements",
           labelKey: "project.settings.tab.requirements",

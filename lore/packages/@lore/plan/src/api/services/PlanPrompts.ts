@@ -237,6 +237,20 @@ export class PlanPrompts {
       },
     });
 
+    // What an arg's select lists (#Q4280), among the statuses it accepts.
+    this.registry.registerOptions("epic", (projectId, accepts) =>
+      this.epicOptions(projectId, accepts),
+    );
+    this.registry.registerOptions("quest", (projectId, accepts) =>
+      this.questOptions(projectId, accepts),
+    );
+    this.registry.registerOptions("feedback", (projectId, accepts) =>
+      this.feedbackOptions(projectId, accepts),
+    );
+    this.registry.registerOptions("pullRequest", (projectId) =>
+      this.pullRequestOptions(projectId),
+    );
+
     // What a triggered run's `check` asks (#Q4277): Plan's three sources.
     this.registry.registerCheck("feedback", (projectId) =>
       this.pendingFeedback(projectId),
@@ -247,6 +261,99 @@ export class PlanPrompts {
     this.registry.registerCheck("epics", (projectId) =>
       this.workableEpics(projectId),
     );
+  }
+
+  /**
+   * The newest epics an arg may take.
+   */
+  protected async epicOptions(projectId: number, accepts?: string[]) {
+    const rows = await this.epics.findMany({
+      where: { projectId: { eq: projectId } },
+      orderBy: [{ column: "number", direction: "desc" }],
+      limit: 200,
+    });
+    return rows
+      .filter(
+        (it) =>
+          !it.deletedAt && (!accepts?.length || accepts.includes(it.status)),
+      )
+      .map((it) => ({
+        value: String(it.number),
+        label: `${formatReference("epic", it.number)} ${it.title}`,
+      }));
+  }
+
+  /**
+   * The newest quests an arg may take, never a shelved one.
+   */
+  protected async questOptions(projectId: number, accepts?: string[]) {
+    const rows = await this.quests.findMany({
+      where: { projectId: { eq: projectId }, shelvedAt: { isNull: true } },
+      orderBy: [{ column: "shortId", direction: "desc" }],
+      limit: 300,
+    });
+    return rows
+      .filter((it) => {
+        const status = this.mapper.questStatus(it);
+        return !accepts?.length || accepts.includes(status);
+      })
+      .slice(0, 200)
+      .map((it) => ({
+        value: String(it.shortId),
+        label: `${formatReference("quest", it.shortId)} ${it.title}`,
+      }));
+  }
+
+  /**
+   * The newest feedback items an arg may take.
+   */
+  protected async feedbackOptions(projectId: number, accepts?: string[]) {
+    const rows = await this.feedback.findMany({
+      where: { projectId: { eq: projectId } },
+      orderBy: [{ column: "shortId", direction: "desc" }],
+      limit: 200,
+    });
+    return rows
+      .filter((it) => !accepts?.length || accepts.includes(it.status))
+      .map((it) => ({
+        value: String(it.shortId),
+        label: `${formatReference("feedback", it.shortId)} ${it.title}`,
+      }));
+  }
+
+  /**
+   * The pull requests recorded on the project's quests and epics, newest
+   * number first.
+   */
+  protected async pullRequestOptions(projectId: number) {
+    const [quests, epics] = await Promise.all([
+      this.quests.findMany({
+        where: {
+          projectId: { eq: projectId },
+          pullRequests: { isNotNull: true },
+        },
+        limit: 500,
+      }),
+      this.epics.findMany({
+        where: {
+          projectId: { eq: projectId },
+          pullRequests: { isNotNull: true },
+        },
+        limit: 200,
+      }),
+    ]);
+    const seen = new Map<number, string>();
+    for (const row of [...quests, ...epics]) {
+      for (const pr of row.pullRequests ?? []) {
+        const number = Number(/\/pull\/(\d+)/.exec(pr.url)?.[1] ?? 0);
+        if (number && !seen.has(number)) {
+          seen.set(number, `#${number} ${pr.title ?? row.title}`);
+        }
+      }
+    }
+    return [...seen.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([number, label]) => ({ value: String(number), label }));
   }
 
   /**
