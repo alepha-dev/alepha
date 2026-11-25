@@ -134,6 +134,17 @@ export class CoreWebBoot {
         type: "image/png",
         media: "(prefers-color-scheme: light)",
       },
+      // What a favicon lookup that takes the largest icon finds, such as an
+      // MCP client drawing Lore's connector (#Q4405): the og logo on Lore's dark
+      // background, so it reads on a light list too. `/favicon.ico` and
+      // `/apple-touch-icon.png` are the same image.
+      {
+        rel: "icon",
+        href: "/icon-512x512.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ];
 
     head.meta = [
