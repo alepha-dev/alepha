@@ -156,7 +156,12 @@ export class ChatCommand {
       "Post a message as you. @name notifies a member; @lore or an agent's handle asks that agent, with your rights",
     args: z.tuple([
       z.text({ title: "room", description: "The room's name: general." }),
-      z.text({ title: "text", description: "The message, in Markdown." }),
+      // A message, not a label: a bare `z.text()` caps at 255 (#Q4334).
+      z.text({
+        title: "text",
+        description: "The message, in Markdown.",
+        size: "rich",
+      }),
     ]),
     flags: z.object({ ...ChatCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
     handler: async ({ args, flags, print }) => {

@@ -104,7 +104,8 @@ export class ChatTools {
           z.object({
             id: z.text(),
             author: z.text(),
-            body: z.text(),
+            // A message, not a label: `z.text()` caps at 255 (#Q4334).
+            body: z.text({ size: "rich" }),
             createdAt: z.text(),
             edited: z.boolean(),
             deleted: z.boolean(),
