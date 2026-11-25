@@ -16,11 +16,14 @@ import { PromptRegistry } from "./PromptRegistry.ts";
  * started by a member, an event or the schedule. A job a member cancelled
  * raises neither.
  *
- * - **The member who started a run by hand is told in-app**, with no
- *   subscription to set up (`notifies: starter_id`), once even when also
- *   subscribed, and a click opens the job's page.
- * - Everyone else, and every triggered run, through a subscription: nobody
- *   is subscribed by default, so an hourly triage rings nobody unasked.
+ * - **Nobody is told without a subscription**, not even the member who
+ *   started the run (#Q4307, at the owner's request): a subscription to
+ *   **Agent job succeeded** or **Agent job failed** is what tells a member,
+ *   once, and a click opens the job's page. Until then a run by hand told
+ *   its starter in-app by itself (`notifies: starter_id`), which rang for
+ *   runs nobody asked to hear about.
+ * - `starter_id` is still a field of the event, the member who started a
+ *   run by hand, for a channel's message or a later "jobs I started" filter.
  *
  * Core, like the hosts, read with `host:read`.
  */
@@ -63,7 +66,6 @@ export class AgentJobProjectEvents {
           starter_id: "member",
         },
         permission: "host:read",
-        notifies: "starter_id",
         message: (it) => this.message(it, definition.outcome),
       });
   }
@@ -132,7 +134,7 @@ export class AgentJobProjectEvents {
       ? (Date.parse(job.endedAt) - Date.parse(started)) / 1000
       : 0;
     // A run by hand, or a job a member started with no prompt (a text run):
-    // told to its starter.
+    // its starter, as a field, never an implicit recipient (#Q4307).
     const byHand = !job.cause || job.cause.kind === "hand";
     const reply = (job.result ?? "")
       .split("\n")

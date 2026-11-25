@@ -179,9 +179,9 @@ A triggered prompt runs unattended, so it stops by itself:
 - **Pause all triggers**, above the table, stops every trigger of the project
   until **Resume triggers**. A run by hand still works.
 
-To hear about a run that failed, subscribe to **Agent job failed** in
-**Settings ▸ Notifications**. A run you started by hand tells you in your
-inbox, with no subscription.
+To hear about a run that ended, subscribe to **Agent job succeeded** or
+**Agent job failed** in **Settings ▸ Notifications**. Nobody is told without
+a subscription, not even for a run you started by hand.
 
 ## How the work lands
 
