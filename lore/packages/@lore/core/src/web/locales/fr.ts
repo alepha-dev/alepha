@@ -939,6 +939,12 @@ export default {
   "quest.agent.label": "$1, job $2, au travail pour $3",
   "quest.agent.unknown": "Un agent",
   "quest.agent.member.none": "personne",
+  "quest.agent.card.job": "Job $1",
+  "quest.agent.card.for": "Au travail pour $1",
+  "quest.agent.card.running": "En cours",
+  "quest.agent.card.ended": "Terminé",
+  "quest.agent.card.endedNotice":
+    "Ce job est terminé. L'agent reste sur la quête jusqu'à son retour dans À faire ; c'est normal.",
   "quest.agent.cli.claude": "Claude Code",
   "quest.agent.cli.gemini": "Gemini CLI",
   "board.filter.assignee.agent": "Un agent",

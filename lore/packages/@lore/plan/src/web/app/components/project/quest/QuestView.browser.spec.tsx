@@ -384,6 +384,12 @@ describe("QuestView", () => {
         "Claude Code, job 0b3c6a2e, working for ada",
       ),
     );
+    // A hover card names it, not a title tooltip, and it does not pulse
+    // (#Q4410).
+    expect(agent.getAttribute("title")).toBeNull();
+    expect(
+      within(agent).getByTestId("agent-avatar").getAttribute("class"),
+    ).not.toContain("animate-pulse");
     // The member's picker stays beside it, outside the link.
     const pair = screen.getByTestId("quest-assignee");
     expect(within(pair).getByTestId("quest-assignee-picker")).toBeTruthy();

@@ -166,8 +166,10 @@ When an [agent job](/lore/docs/agents-jobs) accepts a quest, the quest records
 the job as a second assignee: wherever the quest shows who holds it (its
 page, the quest list, the board's cards), the icon of the job's agent (Claude
 Code, Gemini CLI, a robot for any other) stands in front of the member it
-works for, moving for as long as the job runs. It links to the job's page,
-and hovering it names the agent, the job and the member. When the job ends, finished or not,
+works for. It links to the job's page, and hovering it opens a card naming
+the agent, the job, the member and whether the job is still running. Once the
+job has ended the icon turns grey and the card says so: the agent stays on the
+quest until it goes back to To do, which is expected. When the job ends, finished or not,
 every quest it still holds goes back to **To do**, with a line in its
 Discussion saying its job ended. Its comments, commits and pull request stay,
 so the next run, or you, can pick it up. Unassigning, completing or shelving

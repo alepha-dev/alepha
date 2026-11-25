@@ -673,6 +673,12 @@ export default {
   "quest.agent.label": "$1, job $2, working for $3",
   "quest.agent.unknown": "An agent",
   "quest.agent.member.none": "nobody",
+  "quest.agent.card.job": "Job $1",
+  "quest.agent.card.for": "Working for $1",
+  "quest.agent.card.running": "Running",
+  "quest.agent.card.ended": "Ended",
+  "quest.agent.card.endedNotice":
+    "This job has ended. The agent stays on the quest until it goes back to To do; this is expected.",
   "quest.agent.cli.claude": "Claude Code",
   "quest.agent.cli.gemini": "Gemini CLI",
   "board.filter.assignee.agent": "An agent",
