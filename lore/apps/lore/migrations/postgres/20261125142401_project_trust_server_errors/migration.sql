@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "trust_server_errors" boolean;

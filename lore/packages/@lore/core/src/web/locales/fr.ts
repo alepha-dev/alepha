@@ -2811,6 +2811,10 @@ export default {
   "errors.deleteConfirm": "Supprimer définitivement ce fléau ?",
   "errors.deleteSelectedConfirm":
     "Supprimer définitivement les $1 fléaux sélectionnés ?",
+  "errors.trustServer.title":
+    "Faire confiance aux erreurs serveur dès leur arrivée",
+  "errors.trustServer.description":
+    "Activé, une erreur signalée par le serveur de votre app est approuvée tout de suite, et les agents la lisent. Désactivé, elle attend l'approbation d'un membre, comme une erreur venue d'un navigateur. Les groupes déjà approuvés le restent.",
   "errors.rules.title": "Règles d'exclusion",
   "errors.rules.description":
     "Ignorer les crashs entrants dont le message contient l'une de ces sous-chaînes (insensible à la casse). Les règles ne s'appliquent qu'aux nouveaux envois ; les fléaux existants restent jusqu'à leur suppression.",

@@ -1151,6 +1151,8 @@ export class ProjectController {
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
         // The coverage line on the Delivery tab. `null` clears it.
         coverageTarget: z.integer().min(0).max(100).nullable().optional(),
+        // Server errors trusted on arrival (#Q4257). `null` clears it → on.
+        trustServerErrors: z.boolean().nullable().optional(),
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
@@ -1200,6 +1202,10 @@ export class ProjectController {
 
       if ("coverageTarget" in body) {
         project.coverageTarget = body.coverageTarget ?? undefined;
+      }
+
+      if ("trustServerErrors" in body) {
+        project.trustServerErrors = body.trustServerErrors ?? undefined;
       }
 
       if ("roadmapVisibility" in body) {

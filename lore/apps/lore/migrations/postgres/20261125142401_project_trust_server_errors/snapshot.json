@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "492f88c8-0629-4c5b-a985-cec2240de2fb",
+  "prevIds": ["267edf3f-9ced-4ee0-9a42-ac557cff542e"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "projects",
+        "trust_server_errors"
+      ],
+      "writes": [
+        "s|col|public.projects.trust_server_errors",
+        "n|col|public.projects.trust_server_errors",
+        "e|col|public.projects.trust_server_errors"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "trust_server_errors",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

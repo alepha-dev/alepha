@@ -285,7 +285,10 @@ agent reads it until a member trusts it.**
   everything a browser reports as a browser error, and a refusal such as a
   400 or a 404 is never reported, so the usual echoes of a visitor's input
   do not arrive. A browser error and an uptime outage start untrusted. A group
-  reported again keeps its trust.
+  reported again keeps its trust. To have a member decide on server errors
+  too, turn off **Trust server errors on arrival** in **Settings ▸ Plan ▸
+  Errors**: new server groups then wait like browser ones, and the groups
+  already trusted stay trusted.
 - **Withdraw trust** puts a trusted group back out of an agent's reach, for
   a server error whose message carries outside text (a driver message
   quoting a value, a third party's response). It stays withdrawn when the

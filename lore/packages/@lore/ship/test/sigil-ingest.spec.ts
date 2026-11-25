@@ -856,6 +856,47 @@ describe("sigil ingest", () => {
     expect(inbox[0].status).toBe("open");
   });
 
+  it("trusts a server group on arrival unless the project turned it off, and never a browser one (#Q4257)", async () => {
+    const { probe, project, post } = await setup();
+    const trusted = async (fingerprintOf: string) => {
+      const rows = await probe.projectErrors.findMany({
+        where: { projectId: { eq: project.id } },
+      });
+      return rows.find((row) => row.message === fingerprintOf)?.trustedAt;
+    };
+
+    await post({
+      errors: [
+        anError({
+          origin: "server",
+          message: "on, server",
+          stack: "at a (s.ts:1)",
+        }),
+        anError({
+          origin: "client",
+          message: "on, client",
+          stack: "at b (c.ts:1)",
+        }),
+      ],
+    });
+    expect(await trusted("on, server")).toBeDefined();
+    expect(await trusted("on, client")).toBeUndefined();
+
+    await probe.projects.updateById(project.id, { trustServerErrors: false });
+    await post({
+      errors: [
+        anError({
+          origin: "server",
+          message: "off, server",
+          stack: "at c (s.ts:2)",
+        }),
+      ],
+    });
+    expect(await trusted("off, server")).toBeUndefined();
+    // Decides new groups only: the one trusted before stays trusted.
+    expect(await trusted("on, server")).toBeDefined();
+  });
+
   /**
    * The third write, and the one neither upsert can stand in for.
    *
