@@ -105,7 +105,6 @@ interface QuestListQuery {
   priority?: string;
   staleDays?: number;
   completedDays?: number;
-  agentJob?: string;
 }
 
 export class QuestController {
@@ -1440,10 +1439,9 @@ export class QuestController {
       groups.push({ acceptedBy: { eq: userId } });
     } else if (query.assignee === "none") {
       groups.push({ acceptedBy: { isNull: true } });
-    }
-    // The quests an agent job is building now (#Q4350): the job's end
-    // clears the stamp, so a stamp is a running job.
-    if (query.agentJob === "running") {
+    } else if (query.assignee === "agent") {
+      // The quests an agent job is working now (#Q4350, #Q4353): the job's
+      // end clears the stamp, so a stamp is a running job.
       groups.push({ agentJobId: { isNotNull: true } });
     }
     const knownPriorities: string[] = z.schema.enumOptions(prioritySchema);
@@ -2126,6 +2124,7 @@ export class QuestController {
       quest.acceptedBy = undefined;
       // Nobody works it now, a job no more than a person (#Q4350).
       quest.agentJobId = undefined;
+      quest.agentName = undefined;
       quest.kanbanColumn = undefined;
       // Reminders are tied to the assignee — clear when the quest is
       // unassigned so the sweep doesn't keep emailing an absent owner.
@@ -2468,7 +2467,9 @@ export class QuestController {
       quest.acceptedBy = user.id;
       // The agent job whose key accepts it, if one does (#Q4350): a
       // member's accept stamps nothing.
-      quest.agentJobId = await this.jobStamp.callerJob();
+      const stamp = await this.jobStamp.callerAgent();
+      quest.agentJobId = stamp.jobId;
+      quest.agentName = stamp.agent;
       // Accepting is a stronger signal than shelving: pick up a shelved
       // quest and it simply comes back off the shelf, rather than erroring
       // out and demanding an explicit unshelve first.
@@ -2603,7 +2604,9 @@ export class QuestController {
       quest.acceptedAt = quest.acceptedAt ?? this.dt.nowISOString();
       // Handed to someone: the job that held it, if any, no longer does,
       // unless a job's key is the one assigning (#Q4350).
-      quest.agentJobId = await this.jobStamp.callerJob();
+      const stamp = await this.jobStamp.callerAgent();
+      quest.agentJobId = stamp.jobId;
+      quest.agentName = stamp.agent;
       // Coming off the shelf, for the same reason accepting does it.
       if (quest.shelvedAt) {
         quest.shelvedAt = undefined;
@@ -2972,6 +2975,7 @@ export class QuestController {
       quest.completedAt = now;
       quest.completedBy = user.id;
       quest.agentJobId = undefined;
+      quest.agentName = undefined;
       quest.kanbanColumn = undefined;
       // Reminders auto-stop when the quest is done (see Lore #42).
       quest.reminderInterval = undefined;

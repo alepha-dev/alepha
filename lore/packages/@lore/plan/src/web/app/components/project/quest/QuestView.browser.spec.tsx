@@ -338,6 +338,60 @@ describe("QuestView", () => {
     await waitFor(() => expect(fake.unassignCalls).toBe(1));
   });
 
+  it("draws the agent job working the quest in front of its member on the rail, linked to the job (#Q4353)", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with(AlephaFake)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    alepha.inject(WorkShell);
+    alepha.inject(ResourceRailRegistry);
+    alepha.inject(PinnedPromptsSlot);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    const fake = alepha.inject(FakeLinkProvider);
+    const ada = "00000000-0000-4000-8000-0000000000a1";
+    const jobId = "0b3c6a2e-1d4f-4a8b-9c7d-2e5f6a7b8c9d";
+    fake.users = [{ id: ada, username: "ada" }];
+    const quest = {
+      ...fake.quest(),
+      acceptedBy: ada,
+      agentJobId: jobId,
+      agentName: "claude",
+    };
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <QuestView quest={quest} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const agent = await screen.findByTestId("quest-agent-job");
+    expect(agent.getAttribute("href")).toContain(`/jobs/${jobId}`);
+    expect(
+      within(agent).getByTestId("agent-avatar").getAttribute("data-agent"),
+    ).toBe("claude");
+    await waitFor(() =>
+      expect(agent.getAttribute("aria-label")).toBe(
+        "Claude Code, job 0b3c6a2e, working for ada",
+      ),
+    );
+    // The member's picker stays beside it, outside the link.
+    const pair = screen.getByTestId("quest-assignee");
+    expect(within(pair).getByTestId("quest-assignee-picker")).toBeTruthy();
+    expect(agent.contains(screen.getByTestId("quest-assignee-picker"))).toBe(
+      false,
+    );
+  });
+
   it("offers Answer in the composer only on a quest tagged needs-answer (#Q4348)", async () => {
     const mount = async (tags: string[]) => {
       alepha = Alepha.create()

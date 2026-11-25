@@ -123,7 +123,8 @@ export type QuestPresets = Infer<typeof questPresetsSchema>;
  */
 export const questFilterExtrasShape = {
   /**
-   * `me` for the reader's own quests, `none` for the ones nobody took.
+   * `me` for the reader's own quests, `none` for the ones nobody took,
+   * `agent` for the ones an agent job is working right now (#Q4353).
    * Anything else filters nothing.
    */
   assignee: z.string().optional(),
@@ -139,9 +140,4 @@ export const questFilterExtrasShape = {
    * Completed within this many days.
    */
   completedDays: z.integer().min(1).max(365).optional(),
-  /**
-   * `running` for the quests an agent job is working right now (#Q4350).
-   * Anything else filters nothing.
-   */
-  agentJob: z.string().optional(),
 };

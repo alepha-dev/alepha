@@ -3,6 +3,7 @@ import { displayName, formatReference, type ProjectUser } from "@lore/core/web";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 import { QUEST_PRIORITY_ICONS } from "../project/quest/questChips.ts";
+import QuestAssignee from "../shared/QuestAssignee.tsx";
 import KanbanCardSignals from "./KanbanCardSignals.tsx";
 
 export interface KanbanCardCompactProps {
@@ -45,11 +46,21 @@ const KanbanCardCompact = (props: KanbanCardCompactProps) => {
           {quest.title}
         </span>
         {quest.acceptedBy && (
-          <UserAvatar
-            public
-            fileId={props.assignee?.picture}
-            className="size-4 shrink-0"
-            alt={String(displayName(props.assignee, quest.acceptedBy))}
+          // The agent job working it for them in front (#Q4353), not a
+          // link: the card is a button.
+          <QuestAssignee
+            quest={quest}
+            link={false}
+            size="size-4 shrink-0"
+            memberName={String(displayName(props.assignee, quest.acceptedBy))}
+            member={
+              <UserAvatar
+                public
+                fileId={props.assignee?.picture}
+                className="size-4 shrink-0"
+                alt={String(displayName(props.assignee, quest.acceptedBy))}
+              />
+            }
           />
         )}
       </div>

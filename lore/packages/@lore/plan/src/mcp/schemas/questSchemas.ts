@@ -186,6 +186,12 @@ export const questListResultSchema = z.object({
           "The agent job working this quest right now (#Q4350): set when a job's key accepted it, cleared when it is unassigned, completed or shelved, and when the job ends, which hands the quest back to `todo`. Absent: a person holds it, or nobody. `job_get` reads the job.",
         )
         .optional(),
+      agentName: z
+        .string()
+        .describe(
+          "The agent CLI the job in `agentJobId` runs (`claude`, `gemini`, #Q4353), drawn as its icon over the assignee's avatar in Lore. Present only beside `agentJobId`, and absent there when the job named no agent and its host chose its only one.",
+        )
+        .optional(),
       completedAt: z.datetime().optional(),
       shelvedAt: z.datetime().optional(),
       heldAt: z
@@ -376,6 +382,12 @@ export const questGetResultSchema = z.object({
     .uuid()
     .describe(
       "The agent job working this quest right now (#Q4350): set when a job's key accepted it, cleared when it is unassigned, completed or shelved, and when the job ends, which hands the quest back to `todo`. Absent: a person holds it, or nobody. `job_get` reads the job.",
+    )
+    .optional(),
+  agentName: z
+    .string()
+    .describe(
+      "The agent CLI the job in `agentJobId` runs (`claude`, `gemini`, #Q4353), drawn as its icon over the assignee's avatar in Lore. Present only beside `agentJobId`, and absent there when the job named no agent and its host chose its only one.",
     )
     .optional(),
   completedAt: z.datetime().optional(),

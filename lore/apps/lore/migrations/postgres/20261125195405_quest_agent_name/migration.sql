@@ -1,0 +1,1 @@
+ALTER TABLE "quests" ADD COLUMN "agent_name" text;

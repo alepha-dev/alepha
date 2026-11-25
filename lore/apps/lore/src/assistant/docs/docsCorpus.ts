@@ -683,7 +683,7 @@ export const docsCorpus: DocsSection[] = [
     section: "The quest list",
     url: "https://alepha.dev/lore/docs/plan-quests#the-quest-list",
     capability: "plan",
-    text: "**Quests** in the sidebar lists the project's quests. Click a row to open the\nquest.\n\nThe bar above the table searches, and filters by **Status**, **Area**, **Tag**,\n**Release**, **Epic** and **Job**. Two kinds of quests are left out until you ask for\nthem: shelved quests, which appear when the Status filter names **Shelved**, and\nthe quests of a draft [epic](/lore/docs/plan-epics), which appear when the Epic\nfilter names that epic. The Release and Epic filters both start with **None**,\nfor the quests that belong to no release or no epic.\n\nA row's menu accepts, edits, shelves or deletes the quest, sets its release and\ncopies its ID. Tick several rows to shelve, unshelve, delete them or add them to\na release in one go.",
+    text: "**Quests** in the sidebar lists the project's quests. Click a row to open the\nquest.\n\nThe bar above the table searches, and filters by **Status**, **Area**, **Tag**,\n**Release**, **Epic** and **Assignee**. Two kinds of quests are left out until you ask for\nthem: shelved quests, which appear when the Status filter names **Shelved**, and\nthe quests of a draft [epic](/lore/docs/plan-epics), which appear when the Epic\nfilter names that epic. The Release and Epic filters both start with **None**,\nfor the quests that belong to no release or no epic.\n\nA row's menu accepts, edits, shelves or deletes the quest, sets its release and\ncopies its ID. Tick several rows to shelve, unshelve, delete them or add them to\na release in one go.",
   },
   {
     guide: "Quests",

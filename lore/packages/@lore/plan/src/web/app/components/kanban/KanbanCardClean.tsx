@@ -4,6 +4,7 @@ import { displayName, type ProjectUser } from "@lore/core/web";
 import { ListChecks } from "lucide-react";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
+import QuestAssignee from "../shared/QuestAssignee.tsx";
 import KanbanCardSignals from "./KanbanCardSignals.tsx";
 import KanbanCardTags from "./KanbanCardTags.tsx";
 
@@ -78,11 +79,21 @@ const KanbanCardClean = (props: KanbanCardCleanProps) => {
           </span>
         )}
         {quest.acceptedBy && (
-          <UserAvatar
-            public
-            fileId={props.assignee?.picture}
-            className="size-5 shrink-0"
-            alt={String(displayName(props.assignee, quest.acceptedBy))}
+          // The agent job working it for them in front (#Q4353), not a
+          // link: the card is a button.
+          <QuestAssignee
+            quest={quest}
+            link={false}
+            size="size-5 shrink-0"
+            memberName={String(displayName(props.assignee, quest.acceptedBy))}
+            member={
+              <UserAvatar
+                public
+                fileId={props.assignee?.picture}
+                className="size-5 shrink-0"
+                alt={String(displayName(props.assignee, quest.acceptedBy))}
+              />
+            }
           />
         )}
       </div>

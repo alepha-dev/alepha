@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "98e9dd32-4291-4fe6-b3c1-7f0d8049a5c4",
+  "prevIds": ["a38ebd11-77c6-4286-8e55-f9042e1cd424"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "agent_name"],
+      "writes": [
+        "s|col|public.quests.agent_name",
+        "n|col|public.quests.agent_name",
+        "e|col|public.quests.agent_name"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "agent_name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

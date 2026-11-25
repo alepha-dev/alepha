@@ -237,6 +237,13 @@ export const quests = $entity({
      * ended job's id is cleared rather than joined.
      */
     agentJobId: z.uuid().optional(),
+    /**
+     * The agent CLI that job runs (`claude`, `gemini`), copied from the job
+     * with the stamp (#Q4353), so a list draws its icon with no read of
+     * core's jobs per row. Set and cleared with `agentJobId`; absent when
+     * the job named none and its host chose its only agent.
+     */
+    agentName: z.string().max(32).optional(),
     completedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),

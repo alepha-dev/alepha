@@ -289,6 +289,10 @@ export {
   useOptimisticWrite,
 } from "./app/components/shared/useOptimisticWrite.ts";
 export {
+  AgentAvatar,
+  type AgentAvatarProps,
+} from "./app/components/shared/AgentAvatar.tsx";
+export {
   ProjectUserChip,
   type ProjectUserChipProps,
 } from "./app/components/shared/ProjectUserChip.tsx";
