@@ -132,7 +132,8 @@ is:
 | Error list    | nothing                |
 
 A page with something pinned shows a robot button: each pinned prompt opens on
-**Copy** and, with an Agent host ready, **Run**. On a view, the page's item
+**Copy** and **Run**, which stays greyed out, saying no Agent host is ready,
+until the project has one. On a view, the page's item
 fills the prompt's arg of that type, so **Work on quest** pinned on the Quest
 view copies in one click. A prompt whose arg does not accept the item's status
 is not offered on it: **Work on quest** does not show on a completed quest.

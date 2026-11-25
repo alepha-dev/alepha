@@ -42,10 +42,15 @@ const WORK_EPIC = {
 } as unknown as PromptResource;
 
 class FakeLinks extends LinkProvider {
+  /**
+   * The project's ready Agent hosts, set per test.
+   */
+  public static hosts: string[] = ["desktop"];
+
   override client(): any {
     const answers: Record<string, () => unknown> = {
       listPrompts: () => ({ items: [WORK_EPIC], pages: [] }),
-      listPromptHosts: () => ({ hosts: ["desktop"] }),
+      listPromptHosts: () => ({ hosts: FakeLinks.hosts }),
     };
     return new Proxy(
       {},
@@ -102,11 +107,10 @@ describe("usePromptPins rowGroup", () => {
     cleanup();
     await alepha?.stop();
     alepha = undefined;
+    FakeLinks.hosts = ["desktop"];
   });
 
-  it("offers each pinned prompt as its own submenu under Agent prompts, and its Run opens the run dialog", async ({
-    expect,
-  }) => {
+  const mount = async () => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -128,14 +132,21 @@ describe("usePromptPins rowGroup", () => {
         </DialogProvider>
       </AlephaContext.Provider>,
     );
-    const menuItem = (name: string) =>
-      waitFor(() => {
-        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
-          (it) => (it.textContent ?? "").trim() === name,
-        );
-        if (!found) throw new Error(`no menu item "${name}"`);
-        return found as HTMLElement;
-      });
+  };
+
+  const menuItem = (name: string | RegExp) =>
+    waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (it) => {
+          const text = (it.textContent ?? "").trim();
+          return typeof name === "string" ? text === name : name.test(text);
+        },
+      );
+      if (!found) throw new Error(`no menu item "${name}"`);
+      return found as HTMLElement;
+    });
+
+  const openSubmenu = async () => {
     await screen.findByText("Ready epic");
     await waitFor(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Open row actions" }));
@@ -144,11 +155,33 @@ describe("usePromptPins rowGroup", () => {
     fireEvent.click(await menuItem("Agent prompts"));
     fireEvent.click(await menuItem("Work on epic"));
     await menuItem("Copy");
-    fireEvent.click(await menuItem("Run"));
+  };
+
+  it("offers each pinned prompt as its own submenu under Agent prompts, and its Run opens the run dialog", async ({
+    expect,
+  }) => {
+    await mount();
+    await openSubmenu();
+    const run = await menuItem("Run");
+    expect(run.hasAttribute("data-disabled")).toBe(false);
+    fireEvent.click(run);
 
     const dialog = await screen.findByTestId("prompt-run-dialog");
     expect(within(dialog).getByTestId("prompt-run-submit").textContent).toBe(
       "Run",
     );
+  });
+
+  it("lists Run disabled, with its reason, when no Agent host is ready (#Q4351)", async ({
+    expect,
+  }) => {
+    FakeLinks.hosts = [];
+    await mount();
+    await openSubmenu();
+    const run = await menuItem(/^Run/);
+    expect(run.textContent).toContain("No Agent host ready");
+    expect(run.hasAttribute("data-disabled")).toBe(true);
+    fireEvent.click(run);
+    expect(screen.queryByTestId("prompt-run-dialog")).toBeNull();
   });
 });

@@ -32,7 +32,9 @@ export interface UsePromptPinsOptions {
  *   spotlight it is, and the dialog asks for the item instead.
  * - Copy with nothing left to ask copies at once; otherwise the dialog asks
  *   each missing arg in a select. A member arg left out is the caller.
- * - Run is offered with a ready Agent host and the prompt's permission.
+ * - Run is offered with the prompt's permission, and is disabled, with its
+ *   reason, while the project has no ready Agent host (#Q4351): a submenu
+ *   holding a lone Copy read as broken.
  *
  * The read shares the Prompts tab's key, so a pin set there shows here.
  * The caller renders `dialog`.
@@ -103,7 +105,18 @@ export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
   const pinned = (page: string, item?: PinnedPromptItem) =>
     prompts.filter((it) => it.pins.includes(page) && fits(it, item));
 
-  const canRun = (prompt: PromptResource) => ready && can(prompt.permission);
+  /**
+   * Whether the member may run the prompt at all: a permission, so a Run
+   * they may not use is not listed. A missing host is not that: Run is
+   * listed, and `runDisabled` says it cannot start yet.
+   */
+  const mayRun = (prompt: PromptResource) => can(prompt.permission);
+  const canRun = (prompt: PromptResource) => ready && mayRun(prompt);
+  /**
+   * Why Run cannot start, for a listed Run: undefined when it can.
+   */
+  const runBlocked = (): string | undefined =>
+    ready ? undefined : tr("prompts.pinned.noHost");
 
   const start = (
     prompt: PromptResource,
@@ -144,11 +157,13 @@ export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
               label: tr("prompts.pinned.copy"),
               onClick: () => start(prompt, "copy", item),
             },
-            ...(canRun(prompt)
+            ...(mayRun(prompt)
               ? [
                   {
                     icon: Play,
                     label: tr("prompts.pinned.run"),
+                    disabled: () => !ready,
+                    hint: runBlocked,
                     onClick: () => start(prompt, "run", item),
                   },
                 ]
@@ -184,6 +199,8 @@ export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
     prompts,
     pinned,
     canRun,
+    mayRun,
+    runBlocked,
     start,
     rowGroup,
     dialog,

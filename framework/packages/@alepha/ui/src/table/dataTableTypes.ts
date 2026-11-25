@@ -119,6 +119,13 @@ export interface RowAction<T> {
   destructive?: boolean;
   disabled?: (item: T) => boolean;
   /**
+   * A short muted note drawn after the label, most often why a `disabled`
+   * entry cannot be picked ("No Agent host ready"). A disabled menu item
+   * takes no pointer events, so a `title` tooltip on it would never show:
+   * the reason has to be on the entry itself.
+   */
+  hint?: (item: T) => string | undefined;
+  /**
    * Whether this entry is the row's current value, for a group that picks
    * one of several - which release the row ships in, which area it sits in.
    * Declaring it renders the entry as a checkbox item, so the check mark and

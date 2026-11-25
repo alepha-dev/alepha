@@ -83,12 +83,18 @@ const PromptPinsMenu = (props: PinnedPromptsButtonProps) => {
                   <Copy />
                   {tr("prompts.copy")}
                 </DropdownMenuItem>
-                {pins.canRun(prompt) && (
+                {pins.mayRun(prompt) && (
                   <DropdownMenuItem
+                    disabled={!pins.canRun(prompt)}
                     onClick={() => pins.start(prompt, "run", props.item)}
                   >
                     <Play />
                     {tr("prompts.run")}
+                    {pins.runBlocked() && (
+                      <span className="text-muted-foreground ms-auto ps-3 text-xs">
+                        {pins.runBlocked()}
+                      </span>
+                    )}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuSubContent>
