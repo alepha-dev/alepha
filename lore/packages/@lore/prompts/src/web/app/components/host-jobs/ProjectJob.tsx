@@ -15,7 +15,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import { usePromptActions } from "../run/usePromptActions.ts";
-import JobLogViewer from "./JobLogViewer.tsx";
 import { jobInFlight } from "./jobStatusIcon.ts";
 import ProjectJobAside from "./ProjectJobAside.tsx";
 import ProjectJobTranscript from "./ProjectJobTranscript.tsx";
@@ -24,13 +23,14 @@ export interface ProjectJobProps {
   jobId: string;
 }
 
-type TabKey = "transcript" | "log" | "prompt";
+type TabKey = "transcript" | "prompt";
 
 /**
  * One job (#Q4286), on the detail shell every detail page shares: the job
- * titled by its prompt and args in the aside, and three tabs, kept in the
- * URL: Transcript (the reply, then what the agent said and did), Raw log,
- * and the Prompt it received. The toolbar downloads the log, copies the
+ * titled by its prompt and args in the aside, and two tabs, kept in the
+ * URL: Transcript (the reply, then what the agent said and did) and the
+ * Prompt it received; the raw log is the toolbar's download since #Q4403,
+ * and the transcript is parsed from it. The toolbar downloads the log, copies the
  * prompt, and runs it again or cancels it. No rail of other jobs: the list
  * is the Jobs tab of Settings > Prompts, which the crumb leads back to.
  *
@@ -48,7 +48,10 @@ const ProjectJob = (props: ProjectJobProps) => {
   const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
   const slug = project?.slug ?? String(project?.id ?? "");
-  const [tab, setTab] = useDetailTab<TabKey>("transcript");
+  const [asked, setTab] = useDetailTab<TabKey>("transcript");
+  // A stale `?tab=log`, from when the page had a Raw log tab (#Q4403), opens
+  // the transcript.
+  const tab: TabKey = asked === "prompt" ? "prompt" : "transcript";
   const { run } = usePromptActions(project?.id, slug);
   // Keyed by the job it holds, so moving to another job starts it empty.
   const [held, setLog] = useState({ jobId, stdout: "", stderr: "" });
@@ -135,7 +138,6 @@ const ProjectJob = (props: ProjectJobProps) => {
       label: tr("jobs.tab.transcript"),
       count: transcript.entries.length || undefined,
     },
-    { value: "log", label: tr("jobs.tab.log") },
     { value: "prompt", label: tr("jobs.tab.prompt") },
   ];
 
@@ -277,14 +279,6 @@ const ProjectJob = (props: ProjectJobProps) => {
             job={row}
             transcript={transcript}
             live={live && inFlight}
-          />
-        )}
-        {row && tab === "log" && (
-          <JobLogViewer
-            stdout={log.stdout}
-            stderr={log.stderr}
-            live={live && inFlight}
-            truncated={row.logTruncated}
           />
         )}
         {row && tab === "prompt" && (

@@ -239,14 +239,15 @@ A job belongs to the project, not to a host: no host page lists them.
 A job's page names it by its prompt and its items, with its facts on the
 side: who or what started it, the host, the agent CLI and its model, the
 source and the commit, when it was queued, started and ended, its exit code,
-and the turns, tokens and cost the agent CLI reports at its end. Three tabs:
+and the turns, tokens and cost the agent CLI reports at its end. Two tabs:
 
 - **Transcript**, first: on a failed job, why it failed; then the agent's
   final reply; then what the agent said and did, each tool call on one line
   that opens on its input and its result. Bookkeeping lines are hidden, with
   their count, and a line Lore cannot read is shown as it is.
-- **Raw log**: the log line by line, stderr marked.
 - **Prompt**: the words the agent received.
+
+**Download log**, in the toolbar, saves the whole log, stderr included.
 
 **Run again** runs the same prompt on the same items; **Cancel** stops a
 running job. The page follows a running job as it goes.
