@@ -9,6 +9,8 @@ import {
   JobKeyService,
 } from "@lore/core/api";
 import {
+  AGENT_JOB_MAX_TIMEOUT_SECONDS,
+  AGENT_JOB_MIN_TIMEOUT_SECONDS,
   type HostJobSource,
   jobRepositoryOf,
   projects,
@@ -54,12 +56,12 @@ export class AgentJobService {
   /**
    * The most time a request gets, whatever it asks.
    */
-  public static readonly MAX_TIMEOUT_SECONDS = 2 * 3600;
+  public static readonly MAX_TIMEOUT_SECONDS = AGENT_JOB_MAX_TIMEOUT_SECONDS;
 
   /**
    * The least, so a cold CLI has time to start.
    */
-  public static readonly MIN_TIMEOUT_SECONDS = 60;
+  public static readonly MIN_TIMEOUT_SECONDS = AGENT_JOB_MIN_TIMEOUT_SECONDS;
 
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);

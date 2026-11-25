@@ -1,0 +1,1 @@
+ALTER TABLE "prompts" ADD COLUMN "timeout_seconds" integer;

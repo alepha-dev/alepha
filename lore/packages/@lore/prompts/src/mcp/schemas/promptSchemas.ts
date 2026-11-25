@@ -1,4 +1,6 @@
 import {
+  AGENT_JOB_MAX_TIMEOUT_SECONDS,
+  AGENT_JOB_MIN_TIMEOUT_SECONDS,
   PROMPT_CHECKS,
   PROMPT_SOURCES,
   projectParamsSchema,
@@ -52,6 +54,14 @@ export const promptCreateParamsSchema = projectParamsSchema.extend({
   ref: z
     .text({ maxLength: 200 })
     .describe("The branch, tag or commit its code is at.")
+    .optional(),
+  timeout_seconds: z
+    .integer()
+    .min(0)
+    .max(AGENT_JOB_MAX_TIMEOUT_SECONDS)
+    .describe(
+      `A run's time in seconds, ${AGENT_JOB_MIN_TIMEOUT_SECONDS} to ${AGENT_JOB_MAX_TIMEOUT_SECONDS}; on prompt_update, 0 returns to the default (the built-in's, or 30 minutes for a custom prompt).`,
+    )
     .optional(),
 });
 

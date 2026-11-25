@@ -164,6 +164,42 @@ describe("prompt runs", () => {
     expect(row.prompt).toBe("crash");
   });
 
+  it("runs for the time the project set on a prompt, custom or built-in, and back to the default once cleared", async ({
+    expect,
+  }) => {
+    const update = (name: string, body: Record<string, unknown>) =>
+      prompts.updatePrompt.run(
+        { params: { projectId: w.projectId, name }, body: body as never },
+        { user: w.owner },
+      );
+    const created = await prompts.createPrompt.run(
+      {
+        params: { projectId: w.projectId },
+        body: { name: "npm-update", text: "Bump.", timeoutSeconds: 5400 },
+      },
+      { user: w.owner },
+    );
+    expect(created.timeoutSeconds).toBe(5400);
+    const first = await job((await run("npm-update")).jobId);
+    expect(first.input.timeoutSeconds).toBe(5400);
+    await w.repos.jobs.updateById(first.id, { status: "succeeded" });
+
+    // Triage plans its own time; a time the project set wins over it.
+    expect(
+      (await update("triage", { timeoutSeconds: 7200 })).timeoutSeconds,
+    ).toBe(7200);
+    const triage = await job((await run("triage")).jobId);
+    expect(triage.input.timeoutSeconds).toBe(7200);
+
+    expect(
+      (await update("npm-update", { timeoutSeconds: null })).timeoutSeconds,
+    ).toBe(1800);
+    expect((await run("npm-update")).jobId).toBeDefined();
+    await expect(
+      update("npm-update", { timeoutSeconds: 30 * 3600 }),
+    ).rejects.toThrow();
+  });
+
   it("takes the host's first agent when it reports several and the run names none", async ({
     expect,
   }) => {

@@ -116,6 +116,13 @@ export class PromptCommand {
     ref: z
       .text({ description: "The branch, tag or commit its code is at." })
       .optional(),
+    timeoutSeconds: z
+      .integer()
+      .min(0)
+      .describe(
+        "A run's time in seconds, at least 60 and at most every agent job's ceiling; 0 returns to the default (the built-in's, or 30 minutes).",
+      )
+      .optional(),
   };
 
   protected static readonly TRIGGER_FLAGS = {
@@ -347,6 +354,9 @@ export class PromptCommand {
             ...(flags.arg ? { args: this.argsOf(flags.arg) } : {}),
             ...(flags.source ? { source: flags.source } : {}),
             ...(flags.ref ? { ref: flags.ref } : {}),
+            ...(flags.timeoutSeconds
+              ? { timeoutSeconds: flags.timeoutSeconds }
+              : {}),
           },
         });
         this.render.written(print, flags.output, it, `Created ${it.name}`);
@@ -419,6 +429,9 @@ export class PromptCommand {
             ...(flags.maxPerHour ? { maxRunsPerHour: flags.maxPerHour } : {}),
             ...(flags.maxPerDay ? { maxRunsPerDay: flags.maxPerDay } : {}),
             ...(flags.pin ? { pins: flags.pin } : {}),
+            ...(flags.timeoutSeconds === undefined
+              ? {}
+              : { timeoutSeconds: flags.timeoutSeconds || null }),
           },
         });
         this.render.written(print, flags.output, it, `Updated ${it.name}`);

@@ -103,6 +103,11 @@ export const prompts = $entity({
      * The pages it is pinned to (#Q4284), by key: none by default.
      */
     pins: z.array(z.string().max(32)).max(16).optional(),
+    /**
+     * A run's time, set by `prompt_update` (#Q4344): absent, the built-in's
+     * own, or 30 minutes for a custom prompt. Clamped again at the run.
+     */
+    timeoutSeconds: z.integer().min(60).max(86_400).optional(),
     maxRunsPerHour: db.default(z.integer().min(1).max(60), 6),
     maxRunsPerDay: db.default(z.integer().min(1).max(1000), 48),
     consecutiveFailures: db.default(z.integer().min(0), 0),

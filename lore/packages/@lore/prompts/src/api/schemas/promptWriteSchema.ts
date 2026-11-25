@@ -1,4 +1,6 @@
 import {
+  AGENT_JOB_MAX_TIMEOUT_SECONDS,
+  AGENT_JOB_MIN_TIMEOUT_SECONDS,
   PROMPT_CHECKS,
   PROMPT_MAX_ARGS,
   agentRunSchema,
@@ -40,6 +42,16 @@ export const promptWriteSchema = z.object({
   maxRunsPerHour: z.integer().min(1).max(60).optional(),
   maxRunsPerDay: z.integer().min(1).max(1000).optional(),
   settleSeconds: z.integer().min(0).max(3600).optional(),
+  /**
+   * A run's time in seconds (#Q4344), on any prompt, built-in included,
+   * within the ceiling every agent job has; `null` returns to the default.
+   */
+  timeoutSeconds: z
+    .integer()
+    .min(AGENT_JOB_MIN_TIMEOUT_SECONDS)
+    .max(AGENT_JOB_MAX_TIMEOUT_SECONDS)
+    .nullable()
+    .optional(),
   /**
    * The pages it is pinned to (#Q4284), by key; writable on a built-in.
    */

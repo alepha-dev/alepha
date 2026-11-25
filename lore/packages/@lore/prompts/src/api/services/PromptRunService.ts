@@ -144,6 +144,7 @@ export class PromptRunService {
     const host = previous?.hostId ?? body.host ?? prompt.host;
     const agent = body.agent ?? previous?.input.agent ?? prompt.agent;
     const model = body.model ?? prompt.model;
+    const timeoutSet = await this.prompts.timeoutSet(projectId, name);
     const resumed = previous
       ? await this.resumeOf(previous, changes.source ?? source)
       : undefined;
@@ -163,6 +164,8 @@ export class PromptRunService {
       subjectType: "prompt",
       subjectId: name,
       ...changes,
+      // A time the project set wins over the one a built-in plans (#Q4344).
+      ...(timeoutSet === undefined ? {} : { timeoutSeconds: timeoutSet }),
       ...resumed,
       record: { prompt: name, args, cause },
     });
