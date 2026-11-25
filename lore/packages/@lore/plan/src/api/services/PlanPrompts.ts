@@ -74,8 +74,9 @@ export class PlanPrompts {
       args: [{ name: "epic", type: "epic", accepts: ["ready", "in_progress"] }],
       source: "write",
       permission: "quest:update",
-      // 4 h, the most nfo1's Bay accepts until it runs the 12 h one (#Q4328).
-      timeoutSeconds: 4 * 60 * 60,
+      // 12 h, the most a job gets (#Q4328): an epic worked end to end can
+      // take ten.
+      timeoutSeconds: 12 * 60 * 60,
       pins: ["epic"],
       needs: epicsOption,
       text: workEpicPromptText,
@@ -143,8 +144,8 @@ export class PlanPrompts {
       args: [],
       source: "write",
       permission: "quest:update",
-      // 4 h, the most nfo1's Bay accepts until it runs the 12 h one (#Q4328).
-      timeoutSeconds: 4 * 60 * 60,
+      // 12 h, the most a job gets (#Q4328): a long backlog is worked in one run.
+      timeoutSeconds: 12 * 60 * 60,
       // Each run reads every loose quest: one asked for meanwhile waits.
       concurrency: "queue",
       pins: ["quests"],

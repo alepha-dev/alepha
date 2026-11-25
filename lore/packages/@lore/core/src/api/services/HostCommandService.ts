@@ -157,9 +157,9 @@ export class HostCommandService {
       // gives the new Bay 60 s to say it is ready.
       upgrade: 300,
       // A job's own deadline is in its spec and enforced by the machine, up
-      // to Bay's ceiling of four hours; this is that ceiling plus the clone
+      // to Bay's ceiling of twelve hours; this is that ceiling plus the clone
       // and a margin, so the sweep never fails a job Bay is still timing.
-      "job-run": 4 * 3600 + 600,
+      "job-run": 12 * 3600 + 600,
       // A kill of a process group.
       "job-cancel": 60,
       // An `rm -rf` of a clone or two.
