@@ -92,6 +92,10 @@ describe("DashboardTileBody", () => {
       expect(empty.dataset.reason).toBe("noBeacon");
       expect(empty.textContent).toContain("page views");
       expect(screen.queryByTestId("dashboard-sparkline-end")).toBeNull();
+      // The tile's body column aligns its children to the start, so the
+      // empty block stretches across it to be centred in the tile, not on
+      // its own content (#Q4407).
+      expect(empty.className).toContain("self-stretch");
     });
   });
 
