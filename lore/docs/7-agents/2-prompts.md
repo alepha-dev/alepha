@@ -128,8 +128,23 @@ fills the prompt's arg of that type, so **Work on quest** pinned on the Quest
 view copies in one click. A prompt whose arg does not accept the item's status
 is not offered on it: **Work on quest** does not show on a completed quest.
 A row of a list offers, in its menu, what is pinned on its item's view, the
-row's item filled in. A new project pins nothing, so no robot button shows
-until someone pins.
+row's item filled in.
+
+The built-ins come pinned to their pages, until you change where they show:
+
+| Built-in                          | Pinned on     |
+| --------------------------------- | ------------- |
+| Review Epic, Work on epic         | Epic view     |
+| Work on quest                     | Quest view    |
+| Work on feedback                  | Feedback view |
+| Triage feedback and errors        | Feedback list |
+| Work on loose quests              | Quest list    |
+| Weekly status, Review PR          | nowhere       |
+| Security check, Dependency update | nowhere       |
+
+Unpin one from every page and it stays unpinned. A prompt of your own starts
+pinned nowhere. **Pinned on**, `lore prompt list` and `prompt_list` show where
+each one is, defaults included.
 
 Every prompt, pinned or not, is also in the search palette (⌘K): type "Copy
 prompt" or "Run prompt" and its title. On a view, the page's item is filled in

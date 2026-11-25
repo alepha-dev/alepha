@@ -583,7 +583,9 @@ export class PromptService {
         ? { lastSkippedReason: row.lastSkippedReason }
         : {}),
       consecutiveFailures: row?.consecutiveFailures ?? 0,
-      pins: row?.pins ?? [],
+      // A row that never set its pins takes the built-in's (#Q4339); a
+      // stored `[]` is a project's unpin, kept.
+      pins: row?.pins ?? builtin?.pins ?? [],
     };
   }
 }

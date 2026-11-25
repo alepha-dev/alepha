@@ -75,7 +75,7 @@ describe("prompts", () => {
       { user },
     );
 
-  it("pins a prompt to the registered pages only: none by default, a built-in's row created, an unknown page refused (#Q4284)", async ({
+  it("pins a prompt to the registered pages only: a built-in's row created, an unknown page refused (#Q4284)", async ({
     expect,
   }) => {
     const answer = await controller.listPrompts.run(
@@ -92,8 +92,6 @@ describe("prompts", () => {
       "errors",
     ]);
     expect(answer.pages.find((it) => it.key === "quest")?.gives).toBe("quest");
-    expect(answer.items.every((it) => it.pins.length === 0)).toBe(true);
-
     const pinned = await controller.updatePrompt.run(
       {
         params: { projectId: project.id, name: "work-quest" },
@@ -119,6 +117,78 @@ describe("prompts", () => {
         { user: owner },
       ),
     ).rejects.toThrow("No page 'dashboard' to pin a prompt to");
+  });
+
+  it("pins each built-in to its pages until the project sets its own, and keeps an unpin from every page (#Q4339)", async ({
+    expect,
+  }) => {
+    const answer = await controller.listPrompts.run(
+      { params: { projectId: project.id } },
+      { user: owner },
+    );
+    const pinsOf = (items: typeof answer.items) =>
+      Object.fromEntries(items.map((it) => [it.name, it.pins]));
+    expect(pinsOf(answer.items)).toMatchObject({
+      "review-epic": ["epic"],
+      "work-epic": ["epic"],
+      "work-quest": ["quest"],
+      "work-feedback": ["feedback-item"],
+      triage: ["feedback"],
+      "work-loose-quests": ["quests"],
+      "weekly-status": [],
+      "review-pr": [],
+      "security-check": [],
+      "dependency-update": [],
+    });
+    // Each default is a registered page, and a view's item fills the arg.
+    const pages = new Map(answer.pages.map((it) => [it.key, it]));
+    for (const builtin of registry.all()) {
+      for (const pin of builtin.pins ?? []) {
+        const page = pages.get(pin);
+        expect(page, `${builtin.name} on ${pin}`).toBeDefined();
+        if (page?.gives) {
+          expect(builtin.args.map((it) => it.type)).toContain(page.gives);
+        } else {
+          expect(builtin.args).toEqual([]);
+        }
+      }
+    }
+
+    // A row written for something else still takes the default pins.
+    await controller.updatePrompt.run(
+      {
+        params: { projectId: project.id, name: "work-quest" },
+        body: { enabled: false },
+      },
+      { user: owner },
+    );
+    expect((await list()).find((it) => it.name === "work-quest")?.pins).toEqual(
+      ["quest"],
+    );
+
+    // Unpinned from every page: the stored [] wins, read after read.
+    const unpinned = await controller.updatePrompt.run(
+      {
+        params: { projectId: project.id, name: "work-quest" },
+        body: { pins: [] },
+      },
+      { user: owner },
+    );
+    expect(unpinned.pins).toEqual([]);
+    expect((await list()).find((it) => it.name === "work-quest")?.pins).toEqual(
+      [],
+    );
+    // A custom prompt starts pinned nowhere.
+    await controller.createPrompt.run(
+      {
+        params: { projectId: project.id },
+        body: { name: "nightly", text: "List the open quests." },
+      },
+      { user: owner },
+    );
+    expect((await list()).find((it) => it.name === "nightly")?.pins).toEqual(
+      [],
+    );
   });
 
   it("lists the ten built-ins with their args and accepted statuses, and leaves out one the project cannot use", async ({

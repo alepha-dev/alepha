@@ -66,15 +66,15 @@ test.describe("Pinned prompts", () => {
     const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
     const robot = () => page.getByTestId("pinned-prompts");
 
-    await test.step("a new project has no robot button", async () => {
+    await test.step("a new project has Work on quest pinned on the Quest view (#Q4339)", async () => {
       await page.goto(`/${project.slug}/quests/${open.shortId}`);
       await expect(page.getByText(`Fix the cart ${t}`).first()).toBeVisible({
         timeout: 15_000,
       });
-      await expect(robot()).toHaveCount(0);
+      await expect(robot()).toHaveCount(1);
     });
 
-    await test.step("Work on quest is pinned on the Quest view from Settings", async () => {
+    await test.step("Work on quest is unpinned, then pinned again, from Settings", async () => {
       await page.goto(`/${project.slug}/settings/prompts`);
       const row = page.locator("tbody tr", {
         has: page.getByTestId("prompt-title").getByText("Work on quest", {
@@ -82,24 +82,34 @@ test.describe("Pinned prompts", () => {
         }),
       });
       await expect(row).toBeVisible({ timeout: 15_000 });
-      await row.getByRole("button", { name: /actions/i }).click();
-      await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
-      const dialog = page.getByTestId("prompt-pins");
-      // One multi select over the pages (#Q4300): pick, close the list,
-      // save.
-      await dialog.getByTestId("prompt-pins-pages").click();
-      await page.getByRole("option", { name: "Quest view" }).click();
-      await page.keyboard.press("Escape");
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByTestId("prompt-pins-pages")).toContainText(
-        "Quest view",
-      );
-      await dialog.getByTestId("prompt-pins-save").click();
-      await expect(dialog).toBeHidden({ timeout: 15_000 });
-      await releasePointerEvents(page);
       await expect(row.getByTestId("prompt-pins-cell")).toHaveText(
         "Quest view",
       );
+      // One multi select over the pages (#Q4300): toggle, close the list,
+      // save.
+      const toggle = async (expected: string) => {
+        await row.getByRole("button", { name: /actions/i }).click();
+        await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
+        const dialog = page.getByTestId("prompt-pins");
+        await dialog.getByTestId("prompt-pins-pages").click();
+        await page.getByRole("option", { name: "Quest view" }).click();
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByTestId("prompt-pins-pages")).toContainText(
+          expected,
+        );
+        await dialog.getByTestId("prompt-pins-save").click();
+        await expect(dialog).toBeHidden({ timeout: 15_000 });
+        await releasePointerEvents(page);
+        await expect(row.getByTestId("prompt-pins-cell")).toHaveText(expected);
+      };
+      await toggle("Nowhere");
+      // The unpin is kept, not replaced by the default, after a reload.
+      await page.reload();
+      await expect(row.getByTestId("prompt-pins-cell")).toHaveText("Nowhere", {
+        timeout: 15_000,
+      });
+      await toggle("Quest view");
     });
 
     await test.step("it copies in one click from the view, with the quest filled in", async () => {
@@ -162,7 +172,7 @@ test.describe("Pinned prompts", () => {
         .toContain(`#E${epic.number}`);
     });
 
-    await test.step("the spotlight copies a prompt pinned nowhere", async () => {
+    await test.step("the spotlight copies a prompt from any page", async () => {
       await page.evaluate(() => navigator.clipboard.writeText(""));
       await page.keyboard.press("ControlOrMeta+k");
       await page
