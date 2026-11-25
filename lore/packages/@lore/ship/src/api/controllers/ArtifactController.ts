@@ -7,6 +7,7 @@ import type { UserAccountToken } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
+import { artifactDeclaresOf } from "../schemas/artifactDeclaresSchema.ts";
 import { artifactDetailSchema } from "../schemas/artifactDetailSchema.ts";
 import { artifactListSchema } from "../schemas/artifactListSchema.ts";
 import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
@@ -391,6 +392,14 @@ export class ArtifactController {
          * never a second page.
          */
         limit: z.integer().min(1).max(500).optional(),
+        /**
+         * Also answer what each build declares, by name (#Q4265): its
+         * variables, secrets, resources and crons, read from the stored
+         * manifest. The artifact page's Builds tab asks, to say what changed
+         * between two builds; nothing else does, and the manifest itself
+         * stays out of every listing.
+         */
+        declares: z.boolean().optional(),
       }),
       response: artifactListSchema,
     },
@@ -408,7 +417,17 @@ export class ArtifactController {
           tag: group.tag,
           pushedAt: group.pushedAt,
           commitSha: group.commitSha,
-          variants: group.variants.map((variant) => this.resource(variant)),
+          variants: group.variants.map((variant) => ({
+            ...this.resource(variant),
+            ...(query.declares
+              ? {
+                  declares: artifactDeclaresOf(
+                    variant.format,
+                    this.manifestOf(variant),
+                  ),
+                }
+              : {}),
+          })),
         })),
         truncated: listing.truncated,
       };

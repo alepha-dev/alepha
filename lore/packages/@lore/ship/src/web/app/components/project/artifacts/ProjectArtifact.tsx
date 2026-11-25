@@ -78,12 +78,14 @@ const ProjectArtifact = () => {
   const { data: builds } = useQuery(
     {
       enabled: Boolean(project),
-      key: ["project-artifacts", project?.id, app],
+      // Its own entry under the listing's prefix, which a delete invalidates:
+      // this read also asks what each build declares (#Q4265).
+      key: ["project-artifacts", project?.id, app, "declares"],
       handler: async () => {
         if (!project) return undefined;
         return await artifactApi.listArtifacts({
           params: { projectId: project.id },
-          query: { app },
+          query: { app, declares: true },
         });
       },
       onError: () => {},

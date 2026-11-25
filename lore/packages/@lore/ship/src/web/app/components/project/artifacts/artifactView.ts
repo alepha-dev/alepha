@@ -1,3 +1,7 @@
+import {
+  type ArtifactDeclares,
+  artifactResourceName,
+} from "../../../../../api/schemas/artifactDeclaresSchema.ts";
 import type { ArtifactDetail } from "../../../../../api/schemas/artifactDetailSchema.ts";
 import type { ArtifactGroup } from "../../../../../api/schemas/artifactGroupSchema.ts";
 import type { ArtifactResource } from "../../../../../api/schemas/artifactResourceSchema.ts";
@@ -26,6 +30,41 @@ export interface ArtifactBuildRow {
    */
   delta?: number;
   pushedAt: string;
+  /**
+   * The commit this build was made from, when its pusher said.
+   */
+  commitSha?: string;
+  /**
+   * What the build declares. Absent is unknown: an image, a build with no
+   * stored manifest, or a listing that did not ask.
+   */
+  declares?: ArtifactDeclares;
+  /**
+   * What it declares against the next older build of the same runtime and
+   * format. Absent for the oldest, and whenever either side is unknown: a
+   * build of unknown content has changed nothing anyone can name.
+   */
+  changes?: ArtifactBuildChanges;
+}
+
+/**
+ * The names one build has that the one before it lacked, and the reverse.
+ */
+export interface ArtifactNameChange {
+  added: string[];
+  removed: string[];
+}
+
+export interface ArtifactBuildChanges {
+  variables: ArtifactNameChange;
+  secrets: ArtifactNameChange;
+  resources: ArtifactNameChange;
+  crons: ArtifactNameChange;
+  /**
+   * The runtime slices now carried, only when they differ from the older
+   * build's.
+   */
+  runtimes?: string[];
 }
 
 export interface ArtifactManifestSlice {
@@ -104,24 +143,75 @@ export const artifactBuildRows = (
   groups: ArtifactGroup[],
   variant: ArtifactResource,
 ): ArtifactBuildRow[] => {
-  const rows = groups
+  const builds = groups
     .flatMap((group) => {
       const match = group.variants.find(
         (it) => it.runtime === variant.runtime && it.format === variant.format,
       );
-      return match
-        ? [{ tag: group.tag, size: match.size, pushedAt: match.updatedAt }]
-        : [];
+      return match ? [{ tag: group.tag, variant: match }] : [];
     })
-    .sort((a, b) => b.pushedAt.localeCompare(a.pushedAt));
+    .sort((a, b) => b.variant.updatedAt.localeCompare(a.variant.updatedAt));
 
-  return rows.map((row, index) => {
-    const older = rows[index + 1]?.size;
-    return row.size === undefined || older === undefined
-      ? row
-      : { ...row, delta: row.size - older };
+  return builds.map((build, index) => {
+    const { variant: mine } = build;
+    const older = builds[index + 1]?.variant;
+    return {
+      tag: build.tag,
+      size: mine.size,
+      pushedAt: mine.updatedAt,
+      commitSha: mine.commitSha,
+      declares: mine.declares,
+      ...(mine.size === undefined || older?.size === undefined
+        ? {}
+        : { delta: mine.size - older.size }),
+      ...(mine.declares && older?.declares
+        ? {
+            changes: {
+              variables: nameChange(
+                mine.declares.variables,
+                older.declares.variables,
+              ),
+              secrets: nameChange(
+                mine.declares.secrets,
+                older.declares.secrets,
+              ),
+              resources: nameChange(
+                mine.declares.resources,
+                older.declares.resources,
+              ),
+              crons: nameChange(mine.declares.crons, older.declares.crons),
+              ...(mine.runtimes.join() === older.runtimes.join()
+                ? {}
+                : { runtimes: mine.runtimes }),
+            },
+          }
+        : {}),
+    };
   });
 };
+
+const nameChange = (mine: string[], older: string[]): ArtifactNameChange => ({
+  added: mine.filter((it) => !older.includes(it)),
+  removed: older.filter((it) => !mine.includes(it)),
+});
+
+/**
+ * A count's move from the older build, signed: `+2`, `-1`, and nothing when
+ * as many came as went.
+ */
+export const artifactSignedCount = (change: ArtifactNameChange): string => {
+  const net = change.added.length - change.removed.length;
+  return net === 0 ? "" : net > 0 ? `+${net}` : `${net}`;
+};
+
+/**
+ * The names behind a change, for a tooltip: `+A, +B, -C`.
+ */
+export const artifactChangeNames = (change: ArtifactNameChange): string =>
+  [
+    ...change.added.map((it) => `+${it}`),
+    ...change.removed.map((it) => `-${it}`),
+  ].join(", ");
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((it) => typeof it === "string") : [];
@@ -130,16 +220,6 @@ const names = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.flatMap((it) => (typeof it?.name === "string" ? [it.name] : []))
     : [];
-
-/**
- * `hasDatabase` reads `database`, `hasKV` reads `kv`: the document's own keys
- * rather than a list here, so a resource a newer build declares still shows.
- */
-const resourceName = (key: string): string =>
-  key
-    .replace(/^has/, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .toLowerCase();
 
 export const artifactManifestSummary = (
   manifest: Record<string, any>,
@@ -158,7 +238,9 @@ export const artifactManifestSummary = (
       )
     : [],
   resources: Object.entries(manifest.resources ?? {}).flatMap(([key, value]) =>
-    typeof value === "boolean" ? [{ name: resourceName(key), on: value }] : [],
+    typeof value === "boolean"
+      ? [{ name: artifactResourceName(key), on: value }]
+      : [],
   ),
   crons: strings(manifest.crons),
   secrets: names(manifest.secrets),
