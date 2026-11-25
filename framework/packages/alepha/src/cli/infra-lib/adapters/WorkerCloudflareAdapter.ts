@@ -1392,6 +1392,9 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     "exports",
     // Read by `sourceMaps`: absent or `true` uploads them, `false` opts out.
     "upload_source_maps",
+    // Only `false`, which is what every deploy sets already: see
+    // `refuseUnsupported` (#Q4338).
+    "preview_urls",
   ]);
 
   /**
@@ -1410,6 +1413,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     if (unknown.length > 0) {
       throw new AlephaError(
         `The deploy config carries ${unknown.map((key) => `\`${key}\``).join(", ")}, which the Cloudflare API upload does not send. Remove ${unknown.length === 1 ? "it" : "them"} from \`build.cloudflare.config\` rather than deploy a Worker without ${unknown.length === 1 ? "it" : "them"}.`,
+      );
+    }
+    // ⚠️ `CloudflareDeployClient.putSubdomain` turns preview URLs off on every
+    // deploy (`previews_enabled: false`), so `false` asks for what happens
+    // anyway and `true` for what this upload never does.
+    if (config.preview_urls !== undefined && config.preview_urls !== false) {
+      throw new AlephaError(
+        "The deploy config sets `preview_urls`, but the Cloudflare API upload turns preview URLs off on every deploy. Remove the key from `build.cloudflare.config`, or set it to `false`, which is what the deploy does already.",
       );
     }
     const routes = config.routes ?? [];
@@ -1697,6 +1708,10 @@ interface WranglerConfig extends DurableObjectLifecycleConfig {
   compatibility_date?: string;
   compatibility_flags?: string[];
   workers_dev?: boolean;
+  /**
+   * Accepted as `false` only: the deploy turns preview URLs off itself.
+   */
+  preview_urls?: boolean;
   vars?: Record<string, unknown>;
   triggers?: { crons?: string[] };
   routes?: Array<{ pattern?: string; custom_domain?: boolean }>;

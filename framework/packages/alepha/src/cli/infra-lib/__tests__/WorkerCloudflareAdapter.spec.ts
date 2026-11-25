@@ -1478,6 +1478,33 @@ describe("the worker-side Cloudflare adapter", () => {
       expect(calls).toHaveLength(0);
     });
 
+    it("accepts preview_urls: false, which every deploy sets already (#Q4338)", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, { preview_urls: false });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls).toHaveLength(1);
+    });
+
+    it("refuses preview_urls: true, saying previews are turned off by the deploy", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, { preview_urls: true });
+      const calls = recordingDeployer(adapter);
+
+      await expect(adapter.deploy(context(naming), run)).rejects.toThrow(
+        /turns preview URLs off on every deploy/,
+      );
+      expect(calls).toHaveLength(0);
+    });
+
     it("refuses a zone route, which only wrangler could attach", async ({
       expect,
     }) => {
