@@ -1,5 +1,5 @@
 import { AlephaError } from "alepha";
-import { Gauge, type LucideIcon, Settings, Terminal } from "lucide-react";
+import { Bot, Gauge, type LucideIcon, Settings, Terminal } from "lucide-react";
 import type { ComponentType } from "react";
 
 import type { HostInventoryResource } from "../../../api/schemas/hostInventoryResourceSchema.ts";
@@ -7,8 +7,8 @@ import type { ProjectResource } from "../../../api/schemas/projectResourceSchema
 
 /**
  * What a host's console shows beyond what every host has (#E166, folio
- * #F1537). Core owns the console and its Overview, Commands and Settings
- * tabs; a module adds tabs (Ship's Processes, the apps on the machine) and
+ * #F1537). Core owns the console and its Overview, Commands, Agent and
+ * Settings tabs; a module adds tabs (Ship's Processes, the apps on the machine) and
  * sections of the Overview (Ship's stacks), each shown only while its
  * `visible` says so, which is how a project with Ship off sees core's tabs
  * alone.
@@ -30,6 +30,14 @@ export class HostConsoleRegistry {
       icon: Terminal,
       order: 30,
     },
+    // The jobs user's tools and the Agent host switch (#Q4414), out of
+    // Settings.
+    {
+      route: "bayAgent",
+      labelKey: "bay.nav.agent",
+      icon: Bot,
+      order: 35,
+    },
     {
       route: "baySettings",
       labelKey: "bay.nav.settings",
@@ -38,7 +46,7 @@ export class HostConsoleRegistry {
     },
   ];
   protected readonly sectionEntries: HostOverviewSection[] = [];
-  protected readonly settingsPanelEntries: HostSettingsPanel[] = [];
+  protected readonly agentPanelEntries: HostAgentPanel[] = [];
   protected frozen = false;
 
   public registerTab(tab: HostConsoleTab): void {
@@ -52,20 +60,20 @@ export class HostConsoleRegistry {
   }
 
   /**
-   * A panel of the host's Settings tab (#E175): `@lore/prompts`'s Agent
-   * host switch, which core's `BaySettings` no longer names.
+   * A panel of the host's Agent tab (#E175, #Q4414): `@lore/prompts`'s
+   * Agent host switch, drawn under core's tools of the jobs user.
    */
-  public registerSettingsPanel(panel: HostSettingsPanel): void {
+  public registerAgentPanel(panel: HostAgentPanel): void {
     this.assertOpen(panel.key);
-    this.settingsPanelEntries.push(panel);
+    this.agentPanelEntries.push(panel);
   }
 
   /**
-   * The panels of the host's Settings tab, in order.
+   * The panels of the host's Agent tab, in order.
    */
-  public settingsPanels(): readonly HostSettingsPanel[] {
+  public agentPanels(): readonly HostAgentPanel[] {
     this.frozen = true;
-    return [...this.settingsPanelEntries].sort((a, b) => a.order - b.order);
+    return [...this.agentPanelEntries].sort((a, b) => a.order - b.order);
   }
 
   /**
@@ -132,7 +140,7 @@ export interface HostOverviewSection {
   visible?: (project: HostConsoleProject) => boolean;
 }
 
-export interface HostSettingsPanel {
+export interface HostAgentPanel {
   key: string;
   order: number;
   /**

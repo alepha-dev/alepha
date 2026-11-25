@@ -58,7 +58,7 @@ export class PromptsShell {
       capability: "prompts",
       useGroup: usePromptSpotlightGroup,
     });
-    this.hostConsole.registerSettingsPanel({
+    this.hostConsole.registerAgentPanel({
       key: "agent-host",
       order: 10,
       Component: BayAgentHost,

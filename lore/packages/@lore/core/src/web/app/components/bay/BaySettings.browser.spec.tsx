@@ -14,6 +14,7 @@ import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourc
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import { HostConsoleRegistry } from "../../registries/HostConsoleRegistry.ts";
 import { I18n } from "../../services/I18n.ts";
+import BayAgent from "./BayAgent.tsx";
 import BaySettings from "./BaySettings.tsx";
 
 class QuietLinks extends LinkProvider {
@@ -86,6 +87,8 @@ describe("BaySettings", () => {
   const show = async (
     can: string[],
     extra: Partial<OwnedHostResource> = {},
+    Page: () => React.ReactNode = BaySettings,
+    panels: (registry: HostConsoleRegistry) => void = () => {},
   ) => {
     cleanup();
     alepha = Alepha.create()
@@ -98,14 +101,14 @@ describe("BaySettings", () => {
     alepha.inject(Routes);
     alepha.inject(I18n);
     // Read by the page for a module's panels (#E175), before the lock.
-    alepha.inject(HostConsoleRegistry);
+    panels(alepha.inject(HostConsoleRegistry));
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentHostAtom, host(can, extra));
     return render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <BaySettings />
+          <Page />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -134,30 +137,34 @@ describe("BaySettings", () => {
   it("shows the jobs user's tools: installed with a version, not installed, or another program (#Q4254)", async ({
     expect,
   }) => {
-    await show(["host:read"], {
-      jobsUser: "bay-agent",
-      jobsTools: [
-        { name: "claude", kind: "agent", found: true, version: "2.1.7" },
-        {
-          name: "gh",
-          kind: "tool",
-          found: false,
-          error: "gh is not on the jobs user's PATH",
-        },
-        {
-          name: "cf",
-          kind: "tool",
-          found: true,
-          error: "not Cloudflare's CLI: another program is installed as cf",
-        },
-        {
-          name: "playwright-cli",
-          kind: "tool",
-          found: false,
-          error: "playwright-cli is not on the jobs user's PATH",
-        },
-      ],
-    });
+    await show(
+      ["host:read"],
+      {
+        jobsUser: "bay-agent",
+        jobsTools: [
+          { name: "claude", kind: "agent", found: true, version: "2.1.7" },
+          {
+            name: "gh",
+            kind: "tool",
+            found: false,
+            error: "gh is not on the jobs user's PATH",
+          },
+          {
+            name: "cf",
+            kind: "tool",
+            found: true,
+            error: "not Cloudflare's CLI: another program is installed as cf",
+          },
+          {
+            name: "playwright-cli",
+            kind: "tool",
+            found: false,
+            error: "playwright-cli is not on the jobs user's PATH",
+          },
+        ],
+      },
+      BayAgent,
+    );
     expect(screen.getByTestId("bay-job-tools").textContent).toContain(
       "Jobs run as bay-agent.",
     );
@@ -183,35 +190,39 @@ describe("BaySettings", () => {
   it("shows each tool's sign-in, the command for a signed-out one, and warns on a signed-in lore (#Q4256)", async ({
     expect,
   }) => {
-    await show(["host:read"], {
-      jobsUser: "bay-agent",
-      jobsTools: [
-        {
-          name: "claude",
-          kind: "agent",
-          found: true,
-          version: "2.1.7",
-          signedIn: true,
-          account: "ops@example.com",
-        },
-        { name: "gemini", kind: "agent", found: true, version: "0.9.0" },
-        { name: "git", kind: "tool", found: true, version: "2.43.0" },
-        {
-          name: "gh",
-          kind: "tool",
-          found: true,
-          version: "2.40.1",
-          signedIn: false,
-        },
-        {
-          name: "lore",
-          kind: "tool",
-          found: true,
-          version: "0.38.0",
-          signedIn: true,
-        },
-      ],
-    });
+    await show(
+      ["host:read"],
+      {
+        jobsUser: "bay-agent",
+        jobsTools: [
+          {
+            name: "claude",
+            kind: "agent",
+            found: true,
+            version: "2.1.7",
+            signedIn: true,
+            account: "ops@example.com",
+          },
+          { name: "gemini", kind: "agent", found: true, version: "0.9.0" },
+          { name: "git", kind: "tool", found: true, version: "2.43.0" },
+          {
+            name: "gh",
+            kind: "tool",
+            found: true,
+            version: "2.40.1",
+            signedIn: false,
+          },
+          {
+            name: "lore",
+            kind: "tool",
+            found: true,
+            version: "0.38.0",
+            signedIn: true,
+          },
+        ],
+      },
+      BayAgent,
+    );
     expect(screen.getByTestId("bay-job-tool-claude").textContent).toContain(
       "signed in as ops@example.com",
     );
@@ -232,13 +243,13 @@ describe("BaySettings", () => {
   it("tells a host with no jobs user from one that never reported (#Q4254)", async ({
     expect,
   }) => {
-    await show(["host:read"], { jobsUser: "" });
+    await show(["host:read"], { jobsUser: "" }, BayAgent);
     expect(screen.getByTestId("bay-job-tools-no-user").textContent).toContain(
       "bay config jobs --user <name>",
     );
     expect(screen.queryByTestId("bay-job-tools-never")).toBeNull();
 
-    await show(["host:read"]);
+    await show(["host:read"], {}, BayAgent);
     expect(screen.getByTestId("bay-job-tools-never")).toBeTruthy();
     expect(screen.queryByTestId("bay-job-tools-no-user")).toBeNull();
   });
@@ -256,5 +267,45 @@ describe("BaySettings", () => {
     await show(["host:read", "host:update", "host:delete"]);
     expect(screen.getByTestId("bay-settings-delete")).toBeTruthy();
     expect(screen.getByTestId("bay-settings-move")).toBeTruthy();
+  });
+
+  it("draws the jobs user's tools and the registered agent panels on the Agent tab, and neither on Settings (#Q4414)", async ({
+    expect,
+  }) => {
+    const panel = (registry: HostConsoleRegistry) =>
+      registry.registerAgentPanel({
+        key: "agent-host",
+        order: 10,
+        Component: (props: { canUpdate: boolean }) => (
+          <div data-testid="spec-agent-panel">
+            {props.canUpdate ? "can update" : "read only"}
+          </div>
+        ),
+      });
+    await show(["host:read", "host:update"], {}, BayAgent, panel);
+    expect(screen.getByTestId("bay-job-tools")).toBeTruthy();
+    expect(screen.getByTestId("spec-agent-panel").textContent).toBe(
+      "can update",
+    );
+
+    await show(["host:read", "host:update"], {}, BaySettings, panel);
+    expect(screen.queryByTestId("bay-job-tools")).toBeNull();
+    expect(screen.queryByTestId("spec-agent-panel")).toBeNull();
+    expect(screen.getByTestId("bay-settings-deploys")).toBeTruthy();
+  });
+
+  it("lists the Agent tab between Commands and Settings (#Q4414)", ({
+    expect,
+  }) => {
+    const tabs = new HostConsoleRegistry().tabs(undefined);
+    expect(tabs.map((it) => it.route)).toEqual([
+      "bayOverview",
+      "bayCommands",
+      "bayAgent",
+      "baySettings",
+    ]);
+    expect(tabs.find((it) => it.route === "bayAgent")?.labelKey).toBe(
+      "bay.nav.agent",
+    );
   });
 });

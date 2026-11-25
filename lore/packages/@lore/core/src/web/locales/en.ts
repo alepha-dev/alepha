@@ -2882,6 +2882,7 @@ export default {
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Processes",
   "bay.nav.commands": "Commands",
+  "bay.nav.agent": "Agent",
   "bay.nav.settings": "Settings",
   "bay.chart.title": "Last 30 days",
   "bay.chart.cpu": "CPU %",
