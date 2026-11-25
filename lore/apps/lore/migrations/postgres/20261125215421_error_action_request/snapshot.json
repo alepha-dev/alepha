@@ -1,0 +1,89 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3b24fbb6-0cee-4c79-86dd-1ef3110150b8",
+  "prevIds": ["054c40e9-8e26-4d35-99bd-819db752c914"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_errors", "action"],
+      "writes": [
+        "s|col|public.project_errors.action",
+        "n|col|public.project_errors.action",
+        "e|col|public.project_errors.action"
+      ],
+      "reads": ["n|tbl|public.project_errors", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_errors", "route"],
+      "writes": [
+        "s|col|public.project_errors.route",
+        "n|col|public.project_errors.route",
+        "e|col|public.project_errors.route"
+      ],
+      "reads": ["n|tbl|public.project_errors", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_errors", "request_id"],
+      "writes": [
+        "s|col|public.project_errors.request_id",
+        "n|col|public.project_errors.request_id",
+        "e|col|public.project_errors.request_id"
+      ],
+      "reads": ["n|tbl|public.project_errors", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_errors",
+        "name": "action",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_errors",
+        "name": "route",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_errors",
+        "name": "request_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

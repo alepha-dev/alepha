@@ -191,18 +191,26 @@ describe("SigilServerErrors — batched actions", () => {
     await alepha.start();
 
     try {
-      await fetch(`${alepha.inject(ServerProvider).hostname}/api/_batch`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify([{ action: "boom" }]),
-      });
+      const response = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_batch`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify([{ action: "boom" }]),
+        },
+      );
+      const [entry] = (await response.json()) as Array<{ requestId: string }>;
 
       const sink = alepha.inject(SigilSinkProvider) as FakeSink;
       expect(sink.ingested).toHaveLength(1);
+      // The request id the browser was handed, so its report of the same
+      // failure is tied to this one (#Q4404).
+      expect(entry.requestId).toBeTruthy();
       expect(sink.ingested[0].errors[0]).toMatchObject({
         sourceUrl: "/api/boom",
         origin: "server",
         message: "db down",
+        requestId: entry.requestId,
       });
     } finally {
       await alepha.stop();

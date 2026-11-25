@@ -61,6 +61,26 @@ export interface HttpErrorInstance<
 > extends DeclaredError {
   readonly data: T;
   readonly status: number;
+  /**
+   * The `$client` action whose call failed, set by the client on the error it
+   * throws for a failed call (a single request or a batch entry). Absent on
+   * the server that raised the error, and on an error no action call made.
+   *
+   * What a crash report names: the response alone says only its status, and
+   * a page that runs several actions at once fails each of them the same way.
+   */
+  action?: HttpErrorAction;
+}
+
+/**
+ * Which `$client` action a failed call was: its name, and the method and
+ * path (the route pattern, prefix included, never the concrete URL) a direct
+ * call to it requests.
+ */
+export interface HttpErrorAction {
+  name: string;
+  method: string;
+  path: string;
 }
 
 declare module "alepha" {

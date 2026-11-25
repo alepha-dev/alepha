@@ -328,6 +328,13 @@ export class SigilQueue {
   }
 
   /**
+   * The pending errors' full shape, for the browser provider's tests.
+   */
+  public pendingErrorRecords(): ErrEvt[] {
+    return this.errors.map((e) => ({ ...e }));
+  }
+
+  /**
    * The referrer attached to each pending view, `undefined` where none was.
    *
    * Separate from {@link pendingViews} rather than folded into it: that one

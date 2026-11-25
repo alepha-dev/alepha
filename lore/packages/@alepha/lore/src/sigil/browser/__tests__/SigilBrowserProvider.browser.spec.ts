@@ -250,6 +250,34 @@ describe("SigilBrowserProvider", () => {
       expect(provider.debugPendingErrors()).toEqual(["Internal Server Error"]);
     });
 
+    /**
+     * #Q4404. A failed `$client` call said only "Internal Server Error":
+     * the report now names the action the client stamped on the error, its
+     * route, and the response's request id.
+     */
+    it("names the failed action and carries the response's request id", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        type: "query",
+        error: Object.assign(new Error("Internal Server Error"), {
+          name: "INTERNAL_SERVER_ERROR",
+          status: 500,
+          stack: "",
+          data: { status: 500, requestId: "req-42" },
+          action: { name: "listPrompts", method: "GET", path: "/api/prompts" },
+        }),
+      });
+      expect(provider.debugPendingErrorRecords()).toEqual([
+        expect.objectContaining({
+          name: "INTERNAL_SERVER_ERROR",
+          message: "listPrompts: Internal Server Error",
+          action: "listPrompts",
+          route: "GET /api/prompts",
+          requestId: "req-42",
+        }),
+      ]);
+    });
+
     it("keeps an error with no status at all", async () => {
       // A missing status means the error never became a response, which is
       // the definition of a crash - and is what keeps a plain render

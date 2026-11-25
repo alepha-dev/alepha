@@ -33,6 +33,9 @@ interface AggregatedError {
   sourceUrl: string;
   origin?: "client" | "server";
   count: number;
+  action?: string;
+  route?: string;
+  requestId?: string;
 }
 
 /**
@@ -468,10 +471,14 @@ export class SigilSinkProvider {
     batch: PendingBatch,
     error: NonNullable<SigilEnvelope["errors"]>[number],
   ) {
-    const key = sigilFingerprintSource(error.name, error.stack);
+    const key = sigilFingerprintSource(error.name, error.stack, error.action);
     const existing = batch.errors.get(key);
     if (existing) {
       existing.count += error.count ?? 1;
+      // The newest request, unlike the sample: it is what ties this group to
+      // the other side's report of the same request, and the other side keeps
+      // its newest too (#Q4404).
+      if (error.requestId) existing.requestId = error.requestId;
       return;
     }
     batch.errors.set(key, {
@@ -481,6 +488,9 @@ export class SigilSinkProvider {
       sourceUrl: error.sourceUrl,
       origin: error.origin,
       count: error.count ?? 1,
+      action: error.action,
+      route: error.route,
+      requestId: error.requestId,
     });
   }
 

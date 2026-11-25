@@ -136,6 +136,38 @@ describe("SigilSinkProvider", () => {
     expect(JSON.parse(ingests(http).at(-1)!.body).errors).toHaveLength(2);
   });
 
+  it("keeps two failed actions apart, and the newest request of each (#Q4404)", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(SigilSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    const failed = (action: string, requestId: string) => ({
+      name: "INTERNAL_SERVER_ERROR",
+      message: `${action}: Internal Server Error`,
+      stack: "",
+      sourceUrl: "https://app/",
+      action,
+      route: `GET /api/${action}`,
+      requestId,
+    });
+    await sink.ingest({ errors: [failed("listPrompts", "r1")] });
+    await sink.ingest({ errors: [failed("getEpics", "r2")] });
+    await sink.ingest({ errors: [failed("listPrompts", "r3")] });
+    await sink.flush();
+
+    const sent = JSON.parse(ingests(http).at(-1)!.body);
+    expect(sent.errors).toEqual([
+      expect.objectContaining({
+        action: "listPrompts",
+        route: "GET /api/listPrompts",
+        requestId: "r3",
+        count: 2,
+      }),
+      expect.objectContaining({ action: "getEpics", requestId: "r2" }),
+    ]);
+  });
+
   it("presents the key as a bearer, and never in the body", async () => {
     const alepha = withSink();
     const sink = alepha.inject(SigilSinkProvider);

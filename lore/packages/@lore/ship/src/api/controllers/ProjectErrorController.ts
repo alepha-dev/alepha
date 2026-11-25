@@ -129,9 +129,13 @@ export class ProjectErrorController {
         (b) => b.status === "open" && !b.trustedAt,
       ).length;
       const trusters = await this.trusters(items);
+      const linked = this.linkedErrors(all);
 
       return {
-        items: items.map((b) => this.toResource(b, trusters)),
+        items: items.map((b) => ({
+          ...this.toResource(b, trusters),
+          ...(linked.get(b.id) ? { linkedError: linked.get(b.id) } : {}),
+        })),
         openCount,
         awaitingTrust,
         sigils: sigilOptions,
@@ -705,6 +709,56 @@ export class ProjectErrorController {
     );
   }
 
+  /**
+   * Each group tied to the group on the other side of the same request
+   * (#Q4404): a browser error and a server error carrying one `requestId`.
+   * Read over every group the caller may see, resolved ones included, so a
+   * browser error still names the server error that caused it once that one
+   * is resolved.
+   */
+  protected linkedErrors(
+    rows: ProjectError[],
+  ): Map<number, { id: number; origin: ProjectError["origin"] }> {
+    const byRequest = new Map<string, ProjectError[]>();
+    for (const row of rows) {
+      if (!row.requestId) continue;
+      const group = byRequest.get(row.requestId) ?? [];
+      group.push(row);
+      byRequest.set(row.requestId, group);
+    }
+    const linked = new Map<
+      number,
+      { id: number; origin: ProjectError["origin"] }
+    >();
+    for (const group of byRequest.values()) {
+      for (const row of group) {
+        const across = group.filter(
+          (it) =>
+            it.id !== row.id &&
+            (it.origin === "server") !== (row.origin === "server"),
+        );
+        // One batch is one request: two actions failing in it give two groups
+        // on each side under one id. The route then says which pairs with
+        // which; with a single group across, it is that one.
+        const other =
+          across.length === 1
+            ? across[0]
+            : across.find((it) => this.routePath(it) === this.routePath(row));
+        if (other) linked.set(row.id, { id: other.id, origin: other.origin });
+      }
+    }
+    return linked;
+  }
+
+  /**
+   * The path a group failed on: a browser group's route without its method
+   * (`GET /api/prompts`), a server group's `sourceUrl` (`/api/prompts`).
+   */
+  protected routePath(row: ProjectError): string | undefined {
+    if (row.route) return row.route.split(" ").at(-1);
+    return row.origin === "server" ? row.sourceUrl || undefined : undefined;
+  }
+
   protected toResource(
     b: ProjectError,
     trusters: Map<string, string> = new Map(),
@@ -727,6 +781,9 @@ export class ProjectErrorController {
       ...(b.trustedBy && trusters.get(b.trustedBy)
         ? { trustedByName: trusters.get(b.trustedBy) }
         : {}),
+      ...(b.action ? { action: b.action } : {}),
+      ...(b.route ? { route: b.route } : {}),
+      ...(b.requestId ? { requestId: b.requestId } : {}),
     };
   }
 

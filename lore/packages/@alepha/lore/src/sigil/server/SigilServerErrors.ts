@@ -62,11 +62,14 @@ export class SigilServerErrors {
 
   protected readonly onError = $hook({
     on: "server:request:error",
-    handler: async ({ route, error }) => {
+    handler: async ({ route, request, error }) => {
       if (!this.isCrash(error)) return;
       if (!this.claim(error)) return;
 
-      await this.ingest(this.toError(error, route?.path ?? ""));
+      await this.ingest({
+        ...this.toError(error, route?.path ?? ""),
+        ...this.requestIdOf(request?.requestId),
+      });
     },
   });
 
@@ -93,6 +96,13 @@ export class SigilServerErrors {
       const sourceUrl = route
         ? `log:${entry.module} ${route}`
         : `log:${entry.module}`;
+      // During a request, the context id is the request id the client is
+      // handed (`ServerRequestParser.getRequestId`), so a logged failure is
+      // tied to the browser's report of the same request (#Q4404). Outside
+      // one it names no request, and is left out.
+      const requestId = this.requestIdOf(
+        route ? this.alepha.context.get<string>("context") : undefined,
+      );
       const error = this.errorOf(entry.data);
       if (!error) {
         const message = String(entry.message ?? "").slice(0, 2000);
@@ -106,15 +116,17 @@ export class SigilServerErrors {
           stack: message,
           sourceUrl: sigilScrubUrl(sourceUrl),
           origin: "server" as const,
+          ...requestId,
         });
         return;
       }
       if (!this.isCrash(error)) return;
       if (!this.claim(error)) return;
 
-      await this.ingest(
-        this.toError(error, sourceUrl, String(entry.message ?? "")),
-      );
+      await this.ingest({
+        ...this.toError(error, sourceUrl, String(entry.message ?? "")),
+        ...requestId,
+      });
     },
   });
 
@@ -160,10 +172,22 @@ export class SigilServerErrors {
   }
 
   /**
+   * `{ requestId }` when there is one to report, capped as the envelope
+   * requires, and nothing otherwise.
+   */
+  protected requestIdOf(requestId: unknown): { requestId?: string } {
+    return typeof requestId === "string" && requestId
+      ? { requestId: requestId.slice(0, 128) }
+      : {};
+  }
+
+  /**
    * Hand one error to the sink, marked so that anything logged at error level
    * while it runs (a flush that fails, say) is not reported back into it.
    */
-  protected ingest(error: ReturnType<SigilServerErrors["toError"]>) {
+  protected ingest(
+    error: ReturnType<SigilServerErrors["toError"]> & { requestId?: string },
+  ) {
     return this.alepha.context.nest(async () => {
       this.alepha.context.set(SigilServerErrors.INGESTING, true);
       await this.sink.ingest({ errors: [error] });

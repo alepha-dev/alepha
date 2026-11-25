@@ -128,6 +128,28 @@ export const sigilEnvelope = z.object({
          * project's error list threw.
          */
         count: z.integer().min(1).max(1_000_000).optional(),
+        /**
+         * The `$client` action whose call failed (`listPrompts`), set on a
+         * browser report of a failed action and on nothing else (#Q4404).
+         *
+         * What the sink fingerprints such an error on, in place of the stack:
+         * an HTTP error's stack is the client's own code, the same for every
+         * action, so every 5xx on a page used to fold into one group.
+         */
+        action: z.string().max(200).optional(),
+        /**
+         * The method and route pattern of that action (`GET /api/prompts`),
+         * never the concrete URL: a URL carries ids.
+         */
+        route: z.string().max(600).optional(),
+        /**
+         * The request the error answered, as the server gave it: the `data.requestId`
+         * of a failed call's response on a browser report, the request being
+         * served on a server one. The same request reported from both sides
+         * carries the same id, which is how a browser error is tied to the
+         * server error that caused it.
+         */
+        requestId: z.string().max(128).optional(),
       }),
     )
     .max(20)

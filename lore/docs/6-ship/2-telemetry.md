@@ -149,6 +149,15 @@ collects errors, or while an error is open.
 
 ![The Errors inbox, one row per distinct failure](/screenshots/lore/errors-light.png)
 
+When a call from the browser to the app's server fails, the browser error
+names the action that failed (`listPrompts: Internal Server Error`), and each
+action is its own row. When the server reported the same request too, the
+browser row says **Caused by server error #N** and the server row **Caused
+browser error #N**: click it to open the other one. The link follows the
+newest report of each, so it shows while the two last failed on the same
+request, and not when, say, the server's newest occurrence came from
+somewhere the browser does not report from.
+
 A row's menu holds what you can do with it:
 
 - **View stack trace** opens the error's message, page and stack.
