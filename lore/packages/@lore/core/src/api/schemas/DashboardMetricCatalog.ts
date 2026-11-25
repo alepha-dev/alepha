@@ -104,6 +104,12 @@ export interface DashboardCardTarget {
    * value that comes from `filters` instead of from a resolved row.
    */
   tag?: string;
+  /**
+   * Whether the project's Activity page exists (#Q4413): `false` when its
+   * `activity` capability is off, which makes `projectActivity` a 404, so
+   * the Activity feed and Momentum tiles link nowhere. Absent reads as on.
+   */
+  activity?: boolean;
 }
 
 /**

@@ -8,6 +8,7 @@ import type {
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
 import { ProjectMomentumService } from "./ProjectMomentumService.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * Recorded writes per day over the board's window, as bars (#Q2659): the
@@ -21,6 +22,7 @@ export class MomentumMetric implements DashboardMetricResolver {
   protected readonly dashboard = $inject(DashboardMetricRegistry);
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly momentum = $inject(ProjectMomentumService);
+  protected readonly security = $inject(ProjectSecurityService);
 
   constructor() {
     this.dashboard.register(this);
@@ -64,9 +66,19 @@ export class MomentumMetric implements DashboardMetricResolver {
         detail: {},
         link: this.catalog.get(this.metric).link(entry.card.scope, {
           projectSlug: project.slug,
+          activity: await this.activityOn(project.id),
         }),
       });
     }
     return out;
+  }
+
+  /**
+   * Whether the project's Activity page exists (#Q4413): the tile links to
+   * it only then. Memoised per request by the security service.
+   */
+  protected async activityOn(projectId: number): Promise<boolean> {
+    const set = await this.security.capabilitiesOf(projectId);
+    return this.security.hasCapability(set, "activity");
   }
 }

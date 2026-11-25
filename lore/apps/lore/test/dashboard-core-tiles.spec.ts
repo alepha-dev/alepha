@@ -177,6 +177,28 @@ describe("dashboard core tiles", () => {
     });
   });
 
+  describe("the Activity link (#Q4413)", () => {
+    for (const metric of ["activityFeed", "momentum"]) {
+      it(`links ${metric} to the Activity page only while the project's Activity switch is on`, async ({
+        expect,
+      }) => {
+        await boot();
+        const on = await projectOf({
+          capabilities: [{ key: "plan" }, { key: "activity" }],
+        });
+        const off = await projectOf({ capabilities: [{ key: "plan" }] });
+
+        expect((await resolve(on.project, on.user, metric)).link).toEqual({
+          route: "projectActivity",
+          params: { projectSlug: on.project.slug },
+        });
+        expect(
+          (await resolve(off.project, off.user, metric)).link,
+        ).toBeUndefined();
+      });
+    }
+  });
+
   describe("note", () => {
     it("is empty while blank, and offers a markdown text field", async ({
       expect,
