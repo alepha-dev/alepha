@@ -14,9 +14,9 @@ import {
 
 /**
  * Project events for runs (#E174, #Q4276): a job that ends raises
- * `agent.job.succeeded` or `agent.job.failed`, tells the member who started
- * it by hand in-app with no subscription, and nobody else unless they
- * subscribed; and `epic.created`, `epic.ready` and `pull_request.added`.
+ * `agent.job.succeeded` or `agent.job.failed`, which tell a member only
+ * through a subscription, the one who started it by hand included (#Q4307);
+ * and `epic.created`, `epic.ready` and `pull_request.added`.
  */
 describe("prompt run events", () => {
   let w: AutomationWorld;
@@ -53,7 +53,7 @@ describe("prompt run events", () => {
     });
   };
 
-  it("tells the member who started a run by hand when it ends, once, and links to the job's page", async ({
+  it("tells nobody of a run by hand without a subscription, not even its starter, and a subscriber once, linking to the job's page (#Q4307)", async ({
     expect,
   }) => {
     const { jobId } = await w.alepha
@@ -69,18 +69,17 @@ describe("prompt run events", () => {
       prompt: "weekly-status",
       cause: "hand",
       reply: "Shipped two quests.",
+      // Still a field, never an implicit recipient.
       starter_id: w.owner.id,
     });
     expect(String(event?.fields.title)).toMatch(/^Weekly status/);
     expect(String(event?.fields.url)).toMatch(new RegExp(`/jobs/${jobId}$`));
     await deliver();
-    const inbox = await w.repos.inbox.findMany({
-      where: { userId: { eq: w.owner.id } },
-    });
-    expect(inbox).toHaveLength(1);
-    expect(inbox[0]?.title ?? "").toContain("Weekly status succeeded in");
+    expect(
+      await w.repos.inbox.findMany({ where: { userId: { eq: w.owner.id } } }),
+    ).toHaveLength(0);
 
-    // Also subscribed: still told once.
+    // Subscribed: told, once.
     await w.repos.subscriptions.create({
       projectId: w.projectId,
       key: `member:${w.owner.id}:agent.job.failed`,
@@ -94,9 +93,12 @@ describe("prompt run events", () => {
     await end(second.jobId, "failed", { exitCode: 1 });
     expect(await events("agent.job.failed")).toHaveLength(1);
     await deliver();
-    expect(
-      await w.repos.inbox.findMany({ where: { userId: { eq: w.owner.id } } }),
-    ).toHaveLength(2);
+    const inbox = await w.repos.inbox.findMany({
+      where: { userId: { eq: w.owner.id } },
+    });
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]?.title ?? "").toContain("Security check failed in");
+    expect(inbox[0]?.href ?? "").toMatch(new RegExp(`/jobs/${second.jobId}$`));
   });
 
   it("tells nobody of a triggered run's end unless someone subscribed, and a cancelled job raises nothing", async ({
