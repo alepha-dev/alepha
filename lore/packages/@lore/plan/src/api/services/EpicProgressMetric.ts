@@ -95,8 +95,8 @@ export class EpicProgressMetric implements DashboardMetricResolver {
         // Zero rather than unreadable: the project genuinely has no Epics
         // surface any more, the same answer every other metric gives when
         // narrowing empties its scope.
-        // `empty` is the data gate (#Q2649): a computed board drops the
-        // tile, a customized one shows the reason in edit mode only.
+        // `empty` is the data gate (#Q2649): a computed board picks another
+        // candidate, a customized one shows the reason on the tile (#Q4402).
         out.set(entry.card.id, { empty: "noEpic", detail: { hidden: true } });
         continue;
       }

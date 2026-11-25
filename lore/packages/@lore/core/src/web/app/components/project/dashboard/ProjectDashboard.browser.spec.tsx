@@ -131,6 +131,60 @@ describe("ProjectDashboard", () => {
       screen.queryByText("The board order could not be saved (spec)"),
     ).toBeNull();
   });
+  it("keeps a tile with nothing to show on the board for a reader, with its message, and hides only noAccess (#Q4402)", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(I18n);
+    alepha.inject(DashboardMetricCatalog);
+    alepha.inject(DashboardPickerRegistry);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    const project = projectFixture();
+    const values = [
+      { cardId: 1, ok: true, value: 3, detail: {}, scopeNames: [] },
+      { cardId: 2, ok: true, empty: "noJobs", detail: {}, scopeNames: [] },
+      { cardId: 3, ok: true, empty: "noAccess", detail: {}, scopeNames: [] },
+    ];
+    const board = {
+      projectId: project.id,
+      cards: [card(1), card(2), card(3)],
+      values,
+    };
+    const links = alepha.inject(LinkProvider) as FakeLinkProvider;
+    links.answers = {
+      getProjectDashboard: { computed: false, ...board },
+      resolveProjectDashboardCards: {
+        values,
+        refreshedAt: "2026-09-14T10:00:00.000Z",
+      },
+    };
+    alepha.store.set(currentProjectAtom, project);
+    alepha.store.set(projectDashboardAtom, board as never);
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectDashboard />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("dashboard-card")).toHaveLength(2),
+    );
+    const empty = screen.getByTestId("tile-empty");
+    expect(empty.dataset.reason).toBe("noJobs");
+    expect(empty.textContent).toBe("Nothing running right now.");
+    expect(empty.querySelector("svg")).not.toBeNull();
+    // The card keeps its normal look: no dashed, dimmed slot.
+    const tile = empty.closest('[data-testid="dashboard-card"]') as HTMLElement;
+    expect(tile.className).not.toContain("border-dashed");
+  });
   it("shows a skeleton, not the empty state, until the board is read", async () => {
     alepha = Alepha.create()
       .with(AlephaLogger)

@@ -175,25 +175,28 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
   };
   /**
    * Whether the board is being curated: the card menus (on hover, the way
-   * Cloudflare's dashboards show them) and drag, and the tiles that have
-   * nothing to show (#Q2649). Turned on by Edit or adding a card, off by
+   * Cloudflare's dashboards show them) and drag, and the tiles the reader
+   * may not read (`noAccess`). Turned on by Edit or adding a card, off by
    * Save. The computed board is never in it: Edit stores it first, and edit
    * mode opens on the stored copy (#Q3675).
    */
   const editMode = editOn && canEdit && !computed;
 
   /**
-   * The cards a reader sees: every card but the ones whose metric answered
-   * `empty` (#Q2649), which only a curator sees, collapsed, with the
-   * reason. A reader never sees a permanent zero. Before the first resolve
-   * every card shows, as a skeleton.
+   * The cards a reader sees: every card, one with nothing to show included,
+   * which keeps its place and says so gently (#Q4402: a tile that vanished
+   * left a hole in the grid). The one exception is `noAccess`, a card the
+   * reader lacks the permission for, which only a curator sees. Before the
+   * first resolve every card shows, as a skeleton.
    */
   const shown = useMemo(() => {
     if (editMode || !values) return cards;
-    const empty = new Set(
-      values.filter((value) => value.empty).map((value) => value.cardId),
+    const hidden = new Set(
+      values
+        .filter((value) => value.empty === "noAccess")
+        .map((value) => value.cardId),
     );
-    return cards.filter((card) => !empty.has(card.id));
+    return cards.filter((card) => !hidden.has(card.id));
   }, [cards, values, editMode]);
 
   /**

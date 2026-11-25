@@ -1,5 +1,19 @@
 import { Skeleton } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
+import {
+  Activity,
+  BookOpen,
+  CalendarCheck,
+  Coffee,
+  Flag,
+  Layers,
+  ListChecks,
+  Lock,
+  Radio,
+  Rows3,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 
 import type { DashboardCardResource } from "../../../../../api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue as CardValue } from "../../../../../api/schemas/dashboardCardValueSchema.ts";
@@ -34,9 +48,9 @@ export interface DashboardTileBodyProps {
  *
  * - not resolved yet: a skeleton, so nothing jumps;
  * - failed (`ok: false`): a short line saying so, never a zero;
- * - empty (`empty`): the reason, muted. A computed board never shows such a
- *   tile and a customized one shows it in edit mode only, so a reader who
- *   sees this line is curating the board;
+ * - empty (`empty`): a gentle, centred line with an icon for the reason
+ *   (#Q4402). Every reader sees it: a tile is never hidden for having
+ *   nothing to show, `noAccess` aside, which only a curator sees;
  * - resolved: the renderer.
  *
  * A `note` needs no resolve: its body is the card's own filters.
@@ -92,13 +106,15 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
   }
 
   if (value.empty) {
+    const Icon = EMPTY_ICONS[value.empty] ?? Sparkles;
     return (
       <div
-        className="text-muted-foreground mt-0.5 text-[12.5px]"
+        className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1.5 py-2 text-center text-[12.5px]"
         data-testid="tile-empty"
         data-reason={value.empty}
       >
-        {tr(`dashboard.empty.${value.empty}`)}
+        <Icon className="text-muted-foreground/60 size-5" aria-hidden />
+        <span>{tr(`dashboard.empty.${value.empty}`)}</span>
       </div>
     );
   }
@@ -179,3 +195,23 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
 };
 
 export default DashboardTileBody;
+
+/**
+ * The icon an empty tile draws beside its line, per reason: something
+ * calm, never a warning, since nothing is wrong (#Q4402).
+ */
+const EMPTY_ICONS: Partial<Record<string, LucideIcon>> = {
+  noData: Sparkles,
+  noEpic: Layers,
+  noRelease: Flag,
+  noSigil: Radio,
+  noBeacon: Radio,
+  silent: Radio,
+  noRows: Rows3,
+  nothingAhead: CalendarCheck,
+  noFolio: BookOpen,
+  noActivity: Activity,
+  noQuests: ListChecks,
+  noJobs: Coffee,
+  noAccess: Lock,
+};

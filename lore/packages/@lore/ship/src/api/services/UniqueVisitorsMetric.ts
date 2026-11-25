@@ -93,7 +93,7 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
       // Deliberately not `value: 0`. "No app is reporting" and "nobody
       // visited" are different facts and only one of them is about traffic.
       // `empty` is the data gate (#Q2649): no app at all, or none with the
-      // beacon kind, and the board never shows this tile as a zero.
+      // beacon kind, and the tile says so rather than showing a zero.
       return {
         empty: apps.length === 0 ? "noSigil" : "noBeacon",
         detail: { noBeaconApp: true },
