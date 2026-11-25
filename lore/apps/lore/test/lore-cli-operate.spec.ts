@@ -176,6 +176,8 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
               },
               { key: "remember" },
               { key: "ship", options: { track: true, deploy: true } },
+              // Prompts runs every agent, the triage included (#E175).
+              { key: "prompts" },
             ],
           },
         },

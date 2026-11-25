@@ -1,10 +1,11 @@
-import { AlephaError } from "alepha";
+import { $inject, AlephaError } from "alepha";
 
 import { AgentJobsUnavailableError } from "../errors/AgentJobsUnavailableError.ts";
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import type { PromptJobArg } from "../schemas/promptJobArgSchema.ts";
 import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
 import type { AgentHostRef, HostJobSummary } from "./HostJobs.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * What a feature module asks of an agent job (#Q3988, #Q3989, light since
@@ -110,7 +111,9 @@ export interface AgentJobRunner {
  *
  * Unfilled, {@link available} is false, {@link choices} answers `[]` (so
  * every agent entry hides) and {@link start} throws
- * {@link AgentJobsUnavailableError}.
+ * {@link AgentJobsUnavailableError}. The same holds for a project with the
+ * `prompts` capability off (#Q4314): only the asking project's switch
+ * decides, never the host's, which may be lent to it.
  */
 export class AgentJobs {
   /**
@@ -120,6 +123,7 @@ export class AgentJobs {
    */
   public static readonly PREAMBLE_MARKER = "<<<LORE_AGENT_RUN_PREAMBLE>>>";
 
+  protected readonly security = $inject(ProjectSecurityService);
   protected runner?: AgentJobRunner;
 
   public register(runner: AgentJobRunner): void {
@@ -134,7 +138,7 @@ export class AgentJobs {
   }
 
   public async start(request: AgentJobRequest): Promise<HostJobSummary> {
-    return this.need().start(request);
+    return (await this.need(request.projectId)).start(request);
   }
 
   /**
@@ -145,21 +149,32 @@ export class AgentJobs {
     projectId: number,
     run: { host?: string; agent?: string; firstAgent?: boolean },
   ): Promise<{ host: AgentHostRef; agent?: string }> {
-    return this.need().resolve(projectId, run);
+    return (await this.need(projectId)).resolve(projectId, run);
   }
 
   /**
    * The hosts and agents a run of this project may pick from (#Q4223):
-   * none without a runner.
+   * none without a runner, or with Prompts off.
    */
   public async choices(
     projectId: number,
   ): Promise<Array<{ host: string; agent?: string }>> {
-    return (await this.runner?.choices(projectId)) ?? [];
+    if (!this.runner || !(await this.isOn(projectId))) return [];
+    return this.runner.choices(projectId);
   }
 
-  protected need(): AgentJobRunner {
-    if (!this.runner) {
+  /**
+   * Whether the project has the `prompts` capability on (#Q4314).
+   */
+  public async isOn(projectId: number): Promise<boolean> {
+    return this.security.hasCapability(
+      await this.security.capabilitiesOf(projectId),
+      "prompts",
+    );
+  }
+
+  protected async need(projectId: number): Promise<AgentJobRunner> {
+    if (!this.runner || !(await this.isOn(projectId))) {
       throw new AgentJobsUnavailableError();
     }
     return this.runner;

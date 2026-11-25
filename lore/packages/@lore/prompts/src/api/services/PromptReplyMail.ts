@@ -1,4 +1,5 @@
 import {
+  AgentJobs,
   type HostJobSummary,
   LoreInboxNotifications,
   NotificationHtmlEscaper,
@@ -70,6 +71,7 @@ export class PromptReplyMail {
   protected readonly markdown = $inject(ReplyMarkdownHtml);
   protected readonly recipients = $inject(ProjectRecipients);
   protected readonly registry = $inject(PromptRegistry);
+  protected readonly agents = $inject(AgentJobs);
   protected readonly users = $repository(users);
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(prompts);
@@ -123,6 +125,8 @@ export class PromptReplyMail {
       if (job.kind !== "agent" || job.status !== "succeeded") return;
       const member = job.args?.find((it) => it.type === "member");
       if (!member) return;
+      // A job that ends after Prompts was turned off mails nothing (#Q4314).
+      if (!(await this.agents.isOn(job.projectId))) return;
       await this.send(job, member.value).catch((error) =>
         this.log.warn("A run's reply could not be emailed", {
           job: job.id,

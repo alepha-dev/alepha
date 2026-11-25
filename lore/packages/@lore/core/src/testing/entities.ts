@@ -159,6 +159,9 @@ export const createTestProject = async (
     { key: "activity", options: {} },
     // Quality on, as it was under Build (#Q4217).
     { key: "reports", options: { quality: true } },
+    // Off by default in the app (#E175), on here: a spec about a run must
+    // not fail on the switch. A spec about Prompts off turns it off.
+    { key: "prompts", options: {} },
   ];
 
   for (const capability of capabilities ?? ALL_ON) {

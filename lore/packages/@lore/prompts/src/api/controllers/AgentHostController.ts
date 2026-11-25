@@ -23,7 +23,13 @@ export class AgentHostController {
    * What `lore agent hosts` and `agent_hosts` print.
    */
   listProjectAgentHosts = $action({
-    use: [$ownsProject({ param: "projectId", requires: "host:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "host:read",
+      }),
+    ],
     method: "GET",
     path: "/projects/:projectId/agent-hosts",
     schema: {

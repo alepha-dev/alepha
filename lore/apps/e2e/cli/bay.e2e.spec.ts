@@ -690,7 +690,11 @@ describe("Bay connector against a real Lore", () => {
       call(lore, owner, "createProject", {
         body: {
           title: "Bay E2E Home",
-          capabilities: [{ key: "ship", options: { deploy: true } }],
+          // Prompts runs the agent jobs below (#E175).
+          capabilities: [
+            { key: "ship", options: { deploy: true } },
+            { key: "prompts" },
+          ],
         },
       }),
     );
