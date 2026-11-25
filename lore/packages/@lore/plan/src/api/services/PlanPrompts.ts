@@ -127,6 +127,8 @@ export class PlanPrompts {
       source: "read",
       permission: "feedback:triage",
       timeoutSeconds: 60 * 60,
+      // Each run reads the whole inbox: one asked for meanwhile waits.
+      concurrency: "queue",
       pins: ["feedback"],
       needs: feedbackOption,
       text: triagePromptText,
@@ -143,6 +145,8 @@ export class PlanPrompts {
       permission: "quest:update",
       // 4 h, the most nfo1's Bay accepts until it runs the 12 h one (#Q4328).
       timeoutSeconds: 4 * 60 * 60,
+      // Each run reads every loose quest: one asked for meanwhile waits.
+      concurrency: "queue",
       pins: ["quests"],
       text: workLooseQuestsPromptText,
       oneShot: true,

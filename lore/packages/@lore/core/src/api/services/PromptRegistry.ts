@@ -8,6 +8,7 @@ import type { PromptResource } from "../schemas/promptResourceSchema.ts";
 import type {
   PromptArgType,
   PromptCheck,
+  PromptConcurrency,
   PromptSource,
 } from "../schemas/promptValues.ts";
 import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
@@ -170,6 +171,12 @@ export interface BuiltinPrompt {
    * with its quests).
    */
   timeoutSeconds: number;
+  /**
+   * What a second run of the same args does while one runs (#Q4354):
+   * absent, `unique`. A built-in that reads a whole set each run (triage,
+   * loose quests) says `queue`.
+   */
+  concurrency?: PromptConcurrency;
   /**
    * The pages it is pinned to until a project sets its own (#Q4339), by
    * page key: a view whose item fills its arg, or a list for a prompt that

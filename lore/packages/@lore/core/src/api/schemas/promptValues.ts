@@ -105,6 +105,20 @@ export const PROMPT_SOURCES = ["none", "read", "write"] as const;
 export type PromptSource = (typeof PROMPT_SOURCES)[number];
 
 /**
+ * What a second run of a prompt does while one of the same prompt and arg
+ * values is queued or running (#Q4354):
+ *
+ * - `queue`: it waits, as ONE run, and starts when the running job ends. A
+ *   third asked for meanwhile adds nothing: the next run reads the whole
+ *   set anyway (triage, loose quests).
+ * - `unique`: it is refused, a 409 by hand, a skip recorded on the prompt
+ *   from a trigger (work on an epic, a review).
+ */
+export const PROMPT_CONCURRENCIES = ["queue", "unique"] as const;
+
+export type PromptConcurrency = (typeof PROMPT_CONCURRENCIES)[number];
+
+/**
  * A prompt's name: a slug, unique in its project. The built-ins' names are
  * reserved in every project.
  */

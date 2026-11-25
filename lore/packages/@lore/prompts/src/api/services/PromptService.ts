@@ -199,6 +199,7 @@ export class PromptService {
       ...(typeof body.timeoutSeconds === "number"
         ? { timeoutSeconds: body.timeoutSeconds }
         : {}),
+      ...(body.concurrency ? { concurrency: body.concurrency } : {}),
     });
     return this.toResource(undefined, row);
   }
@@ -214,7 +215,9 @@ export class PromptService {
   ): Promise<PromptResource> {
     const { builtin, row } = await this.find(projectId, name);
     if (builtin) {
-      const frozen = (["title", "description", "text", "args"] as const)
+      const frozen = (
+        ["title", "description", "text", "args", "concurrency"] as const
+      )
         .filter((key) => body[key] !== undefined)
         .join(", ");
       if (frozen) {
@@ -253,7 +256,13 @@ export class PromptService {
       patch.createdBy = user.id;
     }
     if (!builtin) {
-      for (const key of ["title", "description", "text", "args"] as const) {
+      for (const key of [
+        "title",
+        "description",
+        "text",
+        "args",
+        "concurrency",
+      ] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
       }
     }
@@ -307,6 +316,7 @@ export class PromptService {
       source: from.source,
       ...(from.ref ? { ref: from.ref } : {}),
       timeoutSeconds: from.timeoutSeconds,
+      concurrency: from.concurrency,
     });
   }
 
@@ -574,7 +584,11 @@ export class PromptService {
       ...(row?.argValues ? { argValues: row.argValues } : {}),
       maxRunsPerHour: row?.maxRunsPerHour ?? 6,
       maxRunsPerDay: row?.maxRunsPerDay ?? 48,
-      settleSeconds: row?.settleSeconds ?? 60,
+      // A built-in's is Lore's (absent, unique); a custom prompt's queues
+      // unless it says otherwise (#Q4354).
+      concurrency: builtin
+        ? (builtin.concurrency ?? "unique")
+        : (row?.concurrency ?? "queue"),
       ...(row?.nextRunAt ? { nextRunAt: row.nextRunAt } : {}),
       ...(row?.lastRunAt ? { lastRunAt: row.lastRunAt } : {}),
       ...(row?.lastJobId ? { lastJobId: row.lastJobId } : {}),

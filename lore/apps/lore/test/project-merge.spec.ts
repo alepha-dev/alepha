@@ -67,6 +67,9 @@ const NOT_MOVED: Record<string, string> = {
   // What the source's budget paid for (#Q4237), counted against the source:
   // moved, it would spend the target's budget for runs it never paid.
   chat_agent_charges: "the source's spending, against its own budget",
+  // A run waiting behind one of the source's jobs (#Q4354): that job stays
+  // with the source, and its end starts the waiting run there.
+  prompt_queue: "the source's waiting runs, behind the source's jobs",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

@@ -37,8 +37,9 @@ import { PromptService } from "./PromptService.ts";
  *
  * - **Events**: a prompt listens to catalog events. An event that carries an
  *   item (its subject: `quest`, `feedback`, `epic`, `pull_request`) fills the
- *   arg of that type, one run per event and item; a prompt without args
- *   coalesces a burst behind its settle delay into one run.
+ *   arg of that type, one run per event and item, at once (#Q4354). A run
+ *   asked for while one of the same args runs waits behind it, as one run,
+ *   when the prompt's concurrency is `queue`, and is a skip when `unique`.
  * - **Schedule**: hourly, every 6 hours, daily or weekly at a UTC hour, run
  *   by the existing hourly job on an indexed `nextRunAt`, claimed by a
  *   conditional write.
@@ -142,17 +143,21 @@ export class PromptTriggers {
   }
 
   /**
-   * The run a burst of events asked for, after the settle delay, or at once
-   * as the follow-up of a job that was still running.
+   * The run waiting behind a job that ended (#Q4354), started after the
+   * job's end, never inside it.
    */
-  public readonly settle = $job({
-    name: "prompts.settle",
+  public readonly dequeue = $job({
+    name: "prompts.dequeue",
     description:
-      "Starts the run a prompt's events asked for, once they settled.",
-    schema: z.object({ promptId: z.uuid() }),
+      "Starts the run a prompt queued behind a job that has now ended.",
+    schema: z.object({
+      projectId: z.integer(),
+      prompt: z.string().max(64),
+      key: z.string().max(2000),
+    }),
     retention: { ok: { days: 2 }, error: { days: 14 } },
     handler: async ({ payload }) => {
-      await this.settled(payload.promptId);
+      await this.startQueued(payload.projectId, payload.prompt, payload.key);
     },
   });
 
@@ -367,9 +372,6 @@ export class PromptTriggers {
     if (body.maxRunsPerDay !== undefined) {
       patch.maxRunsPerDay = body.maxRunsPerDay;
     }
-    if (body.settleSeconds !== undefined) {
-      patch.settleSeconds = body.settleSeconds;
-    }
     // Enabled again by hand: a fresh count.
     if (body.enabled === true) patch.consecutiveFailures = 0;
     return patch;
@@ -413,88 +415,66 @@ export class PromptTriggers {
         ? prompt.args.find((it) => it.type === fills)
         : undefined;
       const cause: PromptJobCause = { kind: "event", event: event.name };
-      if (arg && event.subjectId) {
-        // One run per event and item: no coalescing.
-        await this.runTriggered(
-          row,
-          cause,
-          { [arg.name]: event.subjectId },
-          event.jobId ?? undefined,
-        );
-        continue;
-      }
-      await this.ask(row, event);
+      // At once: one run per event and item, or, with no item, a run that
+      // waits behind the running one as one (#Q4354).
+      await this.runTriggered(
+        row,
+        cause,
+        arg && event.subjectId ? { [arg.name]: event.subjectId } : {},
+        event.jobId ?? undefined,
+      );
     }
   }
 
   /**
-   * Marks the prompt pending, and pushes its settle job on a burst's first
-   * event.
+   * Starts the run waiting for these arg values, unless a job of them still
+   * runs: then that job's end starts it. Taken by one caller only. A run by
+   * hand runs as the member who asked; a triggered one goes through the
+   * trigger's gate again, as its owner.
    */
-  protected async ask(row: Prompt, event: ProjectEvent): Promise<void> {
-    const claimed = await this.rows.updateMany(
-      { id: { eq: row.id }, pending: { eq: false } },
-      {
-        pending: true,
-        ...(event.jobId ? { pendingJobId: event.jobId } : {}),
-      },
-    );
-    if (this.count(claimed) === 0) return;
-    await this.settle.push(
-      { promptId: row.id },
-      {
-        key: `${row.id}:${event.id}`,
-        ...(row.settleSeconds > 0
-          ? {
-              delay: [row.settleSeconds, "seconds"] as [number, "seconds"],
-            }
-          : {}),
-      },
-    );
-  }
-
-  /**
-   * Starts the pending run, unless one of the prompt's jobs still runs:
-   * then that job's end starts it.
-   */
-  public async settled(promptId: string): Promise<void> {
-    const row = await this.rows.findOne({ where: { id: { eq: promptId } } });
-    if (!row?.pending) return;
-    if (
-      !row.enabled ||
-      !row.eventKeys?.length ||
-      !(await this.agents.isOn(row.projectId))
-    ) {
-      await this.clear(row.id);
+  public async startQueued(
+    projectId: number,
+    name: string,
+    key: string,
+  ): Promise<void> {
+    if (await this.runs.activeJob(projectId, name, key)) return;
+    const entry = await this.runs.take(projectId, name, key);
+    if (!entry?.userId) return;
+    if (!(await this.agents.isOn(projectId))) return;
+    const body = {
+      ...(entry.args ? { args: entry.args } : {}),
+      ...(entry.host ? { host: entry.host } : {}),
+      ...(entry.agent ? { agent: entry.agent } : {}),
+      ...(entry.model ? { model: entry.model } : {}),
+    };
+    if (entry.cause.kind === "hand") {
+      await this.runs
+        .run(
+          projectId,
+          { id: entry.userId, roles: ["user"] },
+          name,
+          body,
+          entry.cause,
+          entry.startedByJobId ?? undefined,
+        )
+        .catch((error) =>
+          this.log.warn("A queued run by hand could not start", {
+            prompt: name,
+            error,
+          }),
+        );
       return;
     }
-    if (await this.active(row)) return;
-    if (!(await this.clear(row.id))) return;
+    const row = await this.rows.findOne({
+      where: { projectId: { eq: projectId }, name: { eq: name } },
+    });
+    if (!row?.enabled) return;
     await this.runTriggered(
       row,
-      { kind: "event", event: row.eventKeys[0] },
-      {},
-      row.pendingJobId ?? undefined,
+      entry.cause,
+      entry.args ?? {},
+      entry.startedByJobId ?? undefined,
     );
-  }
-
-  protected async active(row: Prompt): Promise<boolean> {
-    const running = await this.jobs.findOne({
-      where: {
-        projectId: { eq: row.projectId },
-        prompt: { eq: row.name },
-        status: { inArray: ["queued", "running"] },
-      },
-    });
-    return !!running;
-  }
-
-  protected async clear(promptId: string): Promise<boolean> {
-    const cleared = await this.rows.updateMany(
-      { id: { eq: promptId }, pending: { eq: true } },
-      { pending: false, pendingJobId: null as never },
-    );
-    return this.count(cleared) > 0;
   }
 
   // ---------------------------------------------------------------------
@@ -606,7 +586,8 @@ export class PromptTriggers {
       cause,
       startedByJobId,
     );
-    return { jobId: out.jobId };
+    // Queued behind a running job: its end starts it, nothing to record yet.
+    return out.jobId ? { jobId: out.jobId } : {};
   }
 
   /**
@@ -707,13 +688,23 @@ export class PromptTriggers {
   }
 
   // ---------------------------------------------------------------------
-  // Health and the follow-up of a burst
+  // Health, and the run waiting behind a job
   // ---------------------------------------------------------------------
 
   protected readonly onJobEnded = $hook({
     on: "host:job:ended",
     handler: async ({ job }) => {
       if (!job.prompt) return;
+      // The run waiting behind this one starts now (#Q4354), a built-in
+      // with no row included.
+      await this.dequeue.push(
+        {
+          projectId: job.projectId,
+          prompt: job.prompt,
+          key: PromptRunService.keyOf(job.args),
+        },
+        { key: `dequeue:${job.id}` },
+      );
       const row = await this.rows.findOne({
         where: {
           projectId: { eq: job.projectId },
@@ -721,13 +712,6 @@ export class PromptTriggers {
         },
       });
       if (!row) return;
-      // The run its pending events asked for starts now, as one follow-up.
-      if (row.pending) {
-        await this.settle.push(
-          { promptId: row.id },
-          { key: `${row.id}:after:${job.id}` },
-        );
-      }
       if (!job.cause || job.cause.kind === "hand") return;
       if (job.status === "succeeded") {
         if (row.consecutiveFailures > 0) {
@@ -836,6 +820,5 @@ export interface PromptTriggerWrite {
   argValues?: Record<string, string> | null;
   maxRunsPerHour?: number;
   maxRunsPerDay?: number;
-  settleSeconds?: number;
   enabled?: boolean;
 }

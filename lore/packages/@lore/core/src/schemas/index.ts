@@ -188,7 +188,9 @@ export {
   PROMPT_NAME_PATTERN,
   PROMPT_PROJECT_PLACEHOLDERS,
   PROMPT_SOURCES,
+  PROMPT_CONCURRENCIES,
   type PromptArgType,
+  type PromptConcurrency,
   type PromptSource,
 } from "../api/schemas/promptValues.ts";
 export {

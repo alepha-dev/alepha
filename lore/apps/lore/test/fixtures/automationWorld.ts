@@ -18,7 +18,7 @@ import {
   PromptController,
   PromptTriggers,
 } from "@lore/prompts/api";
-import { prompts } from "@lore/prompts/schemas";
+import { promptQueue, prompts } from "@lore/prompts/schemas";
 import { projectErrors } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
 import {
@@ -69,6 +69,7 @@ export class AutomationRepos {
   logs = $repository(hostJobLogs);
   hosts = $repository(hosts);
   prompts = $repository(prompts);
+  queue = $repository(promptQueue);
   events = $repository(projectEvents);
   commands = $repository(hostCommands);
   errors = $repository(projectErrors);
@@ -201,7 +202,11 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
      * Ends a job as its host would: the running job's command acknowledged.
      * A queued job is dispatched first.
      */
-    finish: async (jobId: string, status: "done" | "failed" = "done") => {
+    finish: async (
+      jobId: string | undefined,
+      status: "done" | "failed" = "done",
+    ) => {
+      if (!jobId) throw new AlephaError("The run started no job");
       const job = await repos.jobs.getOne({ where: { id: { eq: jobId } } });
       if (!job.commandId) {
         throw new AlephaError(`Job ${jobId} was never dispatched`);
@@ -211,10 +216,11 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
     },
     /**
      * Runs every held job of these names that is due: the event deliveries
-     * and the automations' settle jobs, until none is left.
+     * and the start of the runs queued behind a job that ended, until none
+     * is left.
      */
     drain: async (
-      names: string[] = ["project-events.deliver", "prompts.settle"],
+      names: string[] = ["project-events.deliver", "prompts.dequeue"],
     ) => {
       const jobs = alepha.inject(JobProvider);
       const now = alepha.inject(DateTimeProvider).nowISOString();
@@ -237,15 +243,9 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
       }
     },
     /**
-     * The settle jobs still waiting for their time.
+     * The runs waiting behind a running job of the same args (#Q4354).
      */
-    waiting: async () =>
-      repos.executions.findMany({
-        where: {
-          jobName: { eq: "prompts.settle" },
-          status: { eq: "scheduled" },
-        },
-      }),
+    waiting: async () => repos.queue.findMany({}),
     stop: async () => {
       await alepha.stop();
       await rm(dataDir, { recursive: true, force: true });

@@ -225,9 +225,10 @@ describe("feedback triaged by an agent job", () => {
       expect(row.agentJobId).toBe(out.jobId);
     }
 
-    // A second run while that job is queued is refused, and the untrusted
-    // item's comment is not stacked.
-    await expect(triageInbox(w)).rejects.toThrow("already running");
+    // A second run while that job is queued waits behind it (#Q4354), and
+    // the untrusted item's comment is not stacked: it is asked only when a
+    // run starts.
+    expect((await triageInbox(w)).queuedBehind).toBe(out.jobId);
     expect(
       await w.repos.comments.findMany({
         where: { feedbackId: { eq: untrusted.id } },

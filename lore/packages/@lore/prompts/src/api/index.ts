@@ -63,6 +63,7 @@ export const LorePromptsApi = $module({
 
 export { AgentHostController } from "./controllers/AgentHostController.ts";
 export { PromptController } from "./controllers/PromptController.ts";
+export { type PromptQueueEntry, promptQueue } from "./entities/promptQueue.ts";
 export { type Prompt, prompts } from "./entities/prompts.ts";
 export { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 export { AgentHostService } from "./services/AgentHostService.ts";
@@ -73,6 +74,7 @@ export { PromptMerge } from "./services/PromptMerge.ts";
 export { PromptReplyMail } from "./services/PromptReplyMail.ts";
 export {
   type PromptRunBody,
+  type PromptRunOutcome,
   PromptRunService,
 } from "./services/PromptRunService.ts";
 export { PromptsDashboardMetrics } from "./services/PromptsDashboardMetrics.ts";

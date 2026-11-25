@@ -8,6 +8,10 @@
  *
  * @module
  */
+export {
+  type PromptQueueEntry,
+  promptQueue,
+} from "../api/entities/promptQueue.ts";
 export { type Prompt, prompts } from "../api/entities/prompts.ts";
 export {
   type PromptCreate,

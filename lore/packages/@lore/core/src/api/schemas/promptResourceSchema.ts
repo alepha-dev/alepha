@@ -1,7 +1,11 @@
 import { type Infer, z } from "alepha";
 
 import { promptArgSchema } from "./promptArgSchema.ts";
-import { PROMPT_CHECKS, PROMPT_SOURCES } from "./promptValues.ts";
+import {
+  PROMPT_CHECKS,
+  PROMPT_CONCURRENCIES,
+  PROMPT_SOURCES,
+} from "./promptValues.ts";
 
 /**
  * A prompt as the API answers it (#Q4274): a built-in merged with the
@@ -38,7 +42,11 @@ export const promptResourceSchema = z.object({
   argValues: z.record(z.string(), z.string()).optional(),
   maxRunsPerHour: z.integer(),
   maxRunsPerDay: z.integer(),
-  settleSeconds: z.integer(),
+  /**
+   * A second run while one of the same args runs (#Q4354): `queue` waits for
+   * it, `unique` is refused.
+   */
+  concurrency: z.enum(PROMPT_CONCURRENCIES),
   nextRunAt: z.string().optional(),
   lastRunAt: z.string().optional(),
   lastJobId: z.uuid().optional(),

@@ -35,12 +35,15 @@ describe("prompt run events", () => {
     });
   const deliver = () =>
     w.drain(["project-events.deliver", "system.notifications.send"]);
+  // A run that starts answers its job; none here waits behind another.
   const end = async (
-    jobId: string,
+    jobId: string | undefined,
     status: "done" | "failed" | "timed_out" | "cancelled",
     extra: Record<string, unknown> = {},
   ) => {
-    const row = await w.repos.jobs.getOne({ where: { id: { eq: jobId } } });
+    const row = await w.repos.jobs.getOne({
+      where: { id: { eq: jobId as string } },
+    });
     const commands = w.alepha.inject(HostCommandService);
     await commands.ack(row.hostId, { id: row.commandId!, status: "running" });
     await commands.ack(row.hostId, {
@@ -140,7 +143,7 @@ describe("prompt run events", () => {
         "weekly-status",
         {},
       );
-      jobIds.push(jobId);
+      jobIds.push(jobId!);
       await end(jobId, status, extra);
     }
 

@@ -11,6 +11,7 @@ import { Control } from "@alepha/ui/form";
 import {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_TYPES,
+  PROMPT_CONCURRENCIES,
   PROMPT_MAX_ARGS,
   type PromptArg,
   type PromptResource,
@@ -47,7 +48,8 @@ const SLOTS = Array.from({ length: PROMPT_MAX_ARGS }, (_, index) => index);
 /**
  * A custom prompt's editor (#Q4280): its name, title, description, args
  * (name, type and the statuses each accepts), its words with a legend of
- * the placeholders its args give, and its source. A built-in opens on its
+ * the placeholders its args give, its source, and what a second run does
+ * while one runs (#Q4354). A built-in opens on its
  * source only: its text and args are Lore's.
  */
 const PromptEditorDialog = (props: PromptEditorDialogProps) => {
@@ -61,6 +63,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
     description: z.string().max(2000).optional(),
     text: z.string().max(131_072).optional(),
     source: z.enum(["none", "read", "write"]),
+    concurrency: z.enum(PROMPT_CONCURRENCIES),
   };
   for (const slot of SLOTS) {
     shape[`arg${slot}_name`] = z.string().max(32).optional();
@@ -76,6 +79,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
     description: props.prompt?.description ?? "",
     text: props.prompt?.text ?? "",
     source: props.prompt?.source ?? "read",
+    concurrency: props.prompt?.concurrency ?? "queue",
   };
   for (const slot of SLOTS) {
     const arg = props.prompt?.args[slot];
@@ -122,6 +126,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
           text: text("text") ?? "",
           args,
           source: values.source as PromptResource["source"],
+          concurrency: values.concurrency as PromptResource["concurrency"],
         };
         props.onSaved(
           edit && props.prompt
@@ -216,6 +221,25 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
             ]}
             disabled={busy}
           />
+          {!source && (
+            <Control
+              input={input.concurrency}
+              label={tr("prompts.concurrency")}
+              description={tr("prompts.concurrency.description")}
+              select
+              items={[
+                {
+                  value: "queue",
+                  label: tr("prompts.concurrency.queue"),
+                },
+                {
+                  value: "unique",
+                  label: tr("prompts.concurrency.unique"),
+                },
+              ]}
+              disabled={busy}
+            />
+          )}
           {!source &&
             SLOTS.map((slot) => (
               <div key={slot} className="grid gap-3 sm:grid-cols-3">

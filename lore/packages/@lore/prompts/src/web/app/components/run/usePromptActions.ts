@@ -10,7 +10,8 @@ import type { PromptController } from "../../../../api/controllers/PromptControl
  * Copy and Run of a prompt (#Q4280), one place for the Prompts tab, the
  * pinned button and the spotlight (#Q4284). Copy renders through the API
  * and puts the text on the clipboard; Run starts the job on a host and opens
- * the job's page, where its progress shows.
+ * the job's page, where its progress shows, or, queued behind a run of the
+ * same args, that run's page.
  */
 export const usePromptActions = (
   projectId: number | undefined,
@@ -59,9 +60,15 @@ export const usePromptActions = (
           params: { projectId, name },
           body,
         });
-        await router.push("projectJob", {
-          params: { projectSlug: slug, jobId: out.jobId },
-        });
+        // Queued behind a run of the same args (#Q4354): its page, where
+        // the run in progress shows, and a word that this one waits.
+        if (out.queuedBehind) toaster.info(tr("prompts.queued"));
+        const jobId = out.jobId ?? out.queuedBehind;
+        if (jobId) {
+          await router.push("projectJob", {
+            params: { projectSlug: slug, jobId },
+          });
+        }
         return true;
       },
       invalidates: [["project-prompts", projectId]],

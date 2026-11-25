@@ -30,12 +30,15 @@ describe("a run's reply by email", () => {
 
   const mail = () => w.alepha.inject(MemoryEmailProvider);
   const deliver = () => w.drain(["system.notifications.send"]);
+  // A run that starts answers its job; none here waits behind another.
   const end = async (
-    jobId: string,
+    jobId: string | undefined,
     status: "done" | "failed",
     extra: Record<string, unknown> = {},
   ) => {
-    const row = await w.repos.jobs.getOne({ where: { id: { eq: jobId } } });
+    const row = await w.repos.jobs.getOne({
+      where: { id: { eq: jobId as string } },
+    });
     const commands = w.alepha.inject(HostCommandService);
     await commands.ack(row.hostId, { id: row.commandId!, status: "running" });
     await commands.ack(row.hostId, {

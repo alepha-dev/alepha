@@ -37,8 +37,9 @@ describe("prompt runs", () => {
       { params: { projectId: w.projectId, name }, body: body as never },
       { user },
     );
-  const job = (id: string) =>
-    w.repos.jobs.getOne({ where: { id: { eq: id } } });
+  // A run that starts answers its job; none here waits behind another.
+  const job = (id: string | undefined) =>
+    w.repos.jobs.getOne({ where: { id: { eq: id as string } } });
 
   it("runs a built-in with its arg, recording the prompt, its args, its cause and a session of its own", async ({
     expect,
