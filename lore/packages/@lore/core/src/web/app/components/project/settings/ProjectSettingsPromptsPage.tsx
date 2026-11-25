@@ -254,19 +254,21 @@ const ProjectSettingsPromptsPage = () => {
           data={list.data.items}
           rowKey={(row) => row.name}
           defaultSize={100}
+          // The toolbar draws its actions in this order: Pause / Resume
+          // first, left of the primary New prompt (#Q4292).
           actions={[
+            {
+              icon: pausedAt ? Play : Pause,
+              label: pausedAt ? tr("prompts.resume") : tr("prompts.pause"),
+              disabled: !manage || busy,
+              onClick: () => void pause.run(!pausedAt),
+            },
             {
               icon: Plus,
               label: tr("prompts.new"),
               primary: true,
               disabled: !manage,
               onClick: () => setOpen({ kind: "editor", mode: "create" }),
-            },
-            {
-              icon: pausedAt ? Play : Pause,
-              label: pausedAt ? tr("prompts.resume") : tr("prompts.pause"),
-              disabled: !manage || busy,
-              onClick: () => void pause.run(!pausedAt),
             },
           ]}
           rowActions={rowActions}
