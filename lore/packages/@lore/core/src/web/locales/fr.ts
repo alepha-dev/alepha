@@ -4183,21 +4183,21 @@ export default {
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.card.seeAll": "Tout voir",
-  "dashboard.empty.noData": "Rien à mesurer ici pour l'instant.",
-  "dashboard.empty.noEpic": "Aucune épopée avec des quêtes dans ce projet.",
-  "dashboard.empty.noRelease": "Aucune version avec des quêtes dans ce projet.",
-  "dashboard.empty.noSigil": "Aucune application ne remonte vers ce projet.",
-  "dashboard.empty.noBeacon":
-    "Aucune application ici ne mesure les pages vues.",
+  "dashboard.empty.noData": "Rien à mesurer pour l'instant, tout est calme.",
+  "dashboard.empty.noEpic": "Aucune épopée avec des quêtes pour l'instant.",
+  "dashboard.empty.noRelease": "Aucune version avec des quêtes pour l'instant.",
+  "dashboard.empty.noSigil":
+    "Aucune application ne remonte ici pour l'instant.",
+  "dashboard.empty.noBeacon": "Aucune page vue remontée pour l'instant.",
   "dashboard.empty.silent":
-    "Aucune application n'a donné signe de vie depuis 30 jours.",
-  "dashboard.empty.noRows": "Ce tableau n'a pas encore de ligne.",
+    "Tout est calme : aucune application n'a donné signe de vie depuis 30 jours.",
+  "dashboard.empty.noRows": "Pas encore de ligne.",
   "dashboard.empty.nothingAhead":
-    "Rien à venir : aucune ligne n'est datée d'aujourd'hui ou après.",
+    "Rien à venir : aucune ligne datée d'aujourd'hui ou après.",
   "dashboard.note.read-more": "Lire la suite",
-  "dashboard.empty.noFolio": "Ce projet n'a pas encore de folio.",
-  "dashboard.empty.noActivity": "Rien ne s'est passé sur cette période.",
-  "dashboard.empty.noQuests": "Aucune quête ouverte à afficher.",
+  "dashboard.empty.noFolio": "Pas encore de folio.",
+  "dashboard.empty.noActivity": "Tout est calme sur cette période.",
+  "dashboard.empty.noQuests": "Aucune quête ouverte, tout est en ordre.",
   "dashboard.segment.done": "terminées",
   "dashboard.segment.inProgress": "en cours",
   "dashboard.segment.todo": "à faire",
@@ -4210,7 +4210,7 @@ export default {
   "dashboard.group.flow": "Flux",
   "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Projet",
-  "dashboard.empty.noJobs": "Aucun job d'agent en cours.",
+  "dashboard.empty.noJobs": "Rien ne tourne en ce moment.",
   "dashboard.empty.noAccess":
     "Vous ne pouvez pas lire les rapports de ce projet.",
   "dashboard.metric.requirementCoverage": "Couverture des exigences",

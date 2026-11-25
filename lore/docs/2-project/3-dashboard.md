@@ -35,8 +35,9 @@ Two things do follow the reader:
 A card links to the page its figure came from, so the dashboard is also a way
 into the project. Three things are worth knowing:
 
-- **A card with nothing to show stays hidden** until it has something. Someone
-  editing the dashboard sees it collapsed, with the reason.
+- **A card with nothing to show keeps its place** and says so gently, such as
+  "Nothing running right now". Only a card about something you may not read
+  stays hidden, and someone editing the dashboard sees it with the reason.
 - **The figures are read when the page opens.** Nothing refreshes by itself:
   reload the page for fresh numbers.
 - **Activity is a card.** It shows the project's last recorded writes. The full

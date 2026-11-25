@@ -243,7 +243,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Dashboard",
     section: "Reading it",
     url: "https://alepha.dev/lore/docs/project-dashboard#reading-it",
-    text: "A card links to the page its figure came from, so the dashboard is also a way\ninto the project. Three things are worth knowing:\n\n- **A card with nothing to show stays hidden** until it has something. Someone\n  editing the dashboard sees it collapsed, with the reason.\n- **The figures are read when the page opens.** Nothing refreshes by itself:\n  reload the page for fresh numbers.\n- **Activity is a card.** It shows the project's last recorded writes. The full\n  feed, with its filters, is the **Activity** page in the sidebar.\n\nAn archived project has no dashboard: the page says so and links to what the\nproject kept.",
+    text: 'A card links to the page its figure came from, so the dashboard is also a way\ninto the project. Three things are worth knowing:\n\n- **A card with nothing to show keeps its place** and says so gently, such as\n  "Nothing running right now". Only a card about something you may not read\n  stays hidden, and someone editing the dashboard sees it with the reason.\n- **The figures are read when the page opens.** Nothing refreshes by itself:\n  reload the page for fresh numbers.\n- **Activity is a card.** It shows the project\'s last recorded writes. The full\n  feed, with its filters, is the **Activity** page in the sidebar.\n\nAn archived project has no dashboard: the page says so and links to what the\nproject kept.',
   },
   {
     guide: "Dashboard",

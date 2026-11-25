@@ -201,10 +201,11 @@ const DashboardCard = (props: DashboardCardProps) => {
         !props.over && "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
         props.dragging && "opacity-45",
         props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
-        // Collapsed: a tile with nothing to show, which only edit mode
-        // renders at all (#Q2649). Dimmed and dashed, so it reads as a slot
-        // waiting for data rather than as a measurement.
-        props.value?.empty &&
+        // A tile with nothing to show keeps the card it always was (#Q4402):
+        // its body says so, gently. Only a tile the reader may not read is
+        // dimmed and dashed, a slot rather than a measurement, and only a
+        // curator sees one.
+        props.value?.empty === "noAccess" &&
           "border-border border border-dashed bg-transparent opacity-70 shadow-none hover:shadow-none",
       )}
     >
