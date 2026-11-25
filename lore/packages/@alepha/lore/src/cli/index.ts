@@ -28,6 +28,7 @@ import { LoginCommand } from "./commands/LoginCommand.ts";
 import { MonitorCommand } from "./commands/MonitorCommand.ts";
 import { PersonaCommand } from "./commands/PersonaCommand.ts";
 import { ProjectCommand } from "./commands/ProjectCommand.ts";
+import { PromptCommand } from "./commands/PromptCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
 import { RegistryCommand } from "./commands/RegistryCommand.ts";
@@ -156,8 +157,9 @@ export const AlephaLoreCli = $module({
     HostCommand,
     // A project's host jobs (#Q3984).
     JobCommand,
-    // A prompt run on an Agent host, and the hosts (#Q4225).
+    // The Agent hosts (#Q4225), and the prompts run on them (#Q4282).
     AgentCommand,
+    PromptCommand,
     // The commit push that records a quest's commits (#Q4234).
     CommitsCommand,
     RegistryCommand,

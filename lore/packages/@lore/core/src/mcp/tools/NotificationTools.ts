@@ -34,10 +34,10 @@ export class NotificationTools {
   /**
    * What every description says, because agents look for automations:
    * what a subscription is not, and where a prompt on a trigger lives
-   * (#Q4231).
+   * (#Q4231, #Q4282).
    */
   public static readonly INSTEAD =
-    "A subscription only tells someone. To run a prompt on an Agent host on a project event or a schedule, use an agent automation (automation_create); a condition or a multi-step reaction is not in Lore: subscribe a webhook channel and react in whatever it calls.";
+    "A subscription only tells someone. To run a prompt on an Agent host on a project event or a schedule, give the prompt a trigger (prompt_update with on); a condition or a multi-step reaction is not in Lore: subscribe a webhook channel and react in whatever it calls.";
 
   protected readonly alepha = $inject(Alepha);
   protected readonly projects = $inject(ProjectTools);

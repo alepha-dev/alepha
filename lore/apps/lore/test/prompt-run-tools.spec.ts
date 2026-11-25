@@ -8,10 +8,10 @@ import {
   HostCommandService,
   HostCommandTransport,
   HostJobService,
+  PromptController,
 } from "@lore/core/api";
 import { hostJobs, hosts, projects } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
-import { AgentRunController } from "@lore/plan/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -26,9 +26,10 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 /**
- * Run a prompt on an Agent host from the CLI or MCP (#Q4225): `runAgent`,
- * `listProjectAgentHosts`, and `agent_run` called with a job's own key,
- * which the chain guard refuses (#Q4222).
+ * Run a prompt on an Agent host from the CLI or MCP (#Q4282, after #Q4225):
+ * `runPrompt` on the built-ins that read or write code, a custom prompt,
+ * `listProjectAgentHosts`, and `prompt_run` called with a job's own key,
+ * which is refused (#Q4222).
  */
 class ConnectedTransport extends HostCommandTransport {
   override async push(): Promise<boolean> {
@@ -94,7 +95,7 @@ const setup = async () => {
     owner,
     projectId: host.projectId,
     baseUrl: alepha.inject(NodeHttpServerProvider).hostname,
-    runs: alepha.inject(AgentRunController),
+    prompts: alepha.inject(PromptController),
   };
 };
 
@@ -120,7 +121,13 @@ const mcp = async (w: World, token: string, name: string, args: object) => {
   };
 };
 
-describe("lore agent run, and agent_run", () => {
+const run = (w: World, name: string, body: Record<string, unknown> = {}) =>
+  w.prompts.runPrompt.run(
+    { params: { projectId: w.projectId, name }, body: body as never },
+    { user: w.owner },
+  );
+
+describe("lore prompt run, and prompt_run", () => {
   let w: World;
   beforeEach(async () => {
     w = await setup();
@@ -139,13 +146,7 @@ describe("lore agent run, and agent_run", () => {
     await w.repos.hosts.updateById((await w.repos.hosts.findMany({}))[0]!.id, {
       jobsSources: true,
     });
-    const review = await w.runs.runAgent.run(
-      {
-        params: { projectId: w.projectId },
-        body: { prompt: "review-pr", pr: 42 },
-      },
-      { user: w.owner },
-    );
+    const review = await run(w, "review-pr", { args: { pullRequest: "42" } });
     const read = await w.repos.jobs.getOne({
       where: { id: { eq: review.jobId } },
     });
@@ -173,13 +174,10 @@ describe("lore agent run, and agent_run", () => {
     expect(read.input.prompt).toContain("gh pr review 42");
 
     // A member's trust sends none: the host asks nothing of GitHub.
-    const trusted = await w.runs.runAgent.run(
-      {
-        params: { projectId: w.projectId },
-        body: { prompt: "review-pr", pr: 43, trust: true },
-      },
-      { user: w.owner },
-    );
+    const trusted = await run(w, "review-pr", {
+      args: { pullRequest: "43" },
+      trust: true,
+    });
     const trustedJob = await w.repos.jobs.getOne({
       where: { id: { eq: trusted.jobId } },
     });
@@ -189,13 +187,10 @@ describe("lore agent run, and agent_run", () => {
     });
 
     // Review and fix: a write job whose branch Bay asks GitHub for.
-    const fix = await w.runs.runAgent.run(
-      {
-        params: { projectId: w.projectId },
-        body: { prompt: "review-pr", pr: 44, fix: true },
-      },
-      { user: w.owner },
-    );
+    const fix = await run(w, "review-pr", {
+      args: { pullRequest: "44" },
+      fix: true,
+    });
     const fixJob = await w.repos.jobs.getOne({
       where: { id: { eq: fix.jobId } },
     });
@@ -205,12 +200,7 @@ describe("lore agent run, and agent_run", () => {
       trust: "pr-author-writes",
     });
 
-    await expect(
-      w.runs.runAgent.run(
-        { params: { projectId: w.projectId }, body: { prompt: "review-pr" } },
-        { user: w.owner },
-      ),
-    ).rejects.toThrow("A review-pr names its pull request");
+    await expect(run(w, "review-pr")).rejects.toThrow("pullRequest");
   });
 
   it("checks the dependencies as a read job, and updates them as a write job on a branch Lore names (#Q4252)", async ({
@@ -222,13 +212,7 @@ describe("lore agent run, and agent_run", () => {
     await w.repos.hosts.updateById((await w.repos.hosts.findMany({}))[0]!.id, {
       jobsSources: true,
     });
-    const check = await w.runs.runAgent.run(
-      {
-        params: { projectId: w.projectId },
-        body: { prompt: "security-check" },
-      },
-      { user: w.owner },
-    );
+    const check = await run(w, "security-check");
     const read = await w.repos.jobs.getOne({
       where: { id: { eq: check.jobId } },
     });
@@ -239,13 +223,7 @@ describe("lore agent run, and agent_run", () => {
     expect(read.input.prompt).toContain("Check the dependencies");
     expect(read.input.prompt).toContain("One quest per real vulnerability");
 
-    const update = await w.runs.runAgent.run(
-      {
-        params: { projectId: w.projectId },
-        body: { prompt: "dependency-update" },
-      },
-      { user: w.owner },
-    );
+    const update = await run(w, "dependency-update");
     const write = await w.repos.jobs.getOne({
       where: { id: { eq: update.jobId } },
     });
@@ -260,35 +238,26 @@ describe("lore agent run, and agent_run", () => {
     expect(write.input.prompt).toContain("open a pull request with `gh`");
   });
 
-  it("runs a text prompt under Lore's preamble, in the workspace it names", async ({
+  it("runs a custom prompt under Lore's preamble, on the model asked", async ({
     expect,
   }) => {
-    const out = await w.runs.runAgent.run(
+    await w.prompts.createPrompt.run(
       {
         params: { projectId: w.projectId },
         body: {
-          prompt: "text",
+          name: "notes",
           text: "List the open quests of area web.",
-          workspace: "notes",
-          model: "sonnet",
+          source: "none",
         },
       },
       { user: w.owner },
     );
+    const out = await run(w, "notes", { model: "sonnet" });
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
-    expect(job.input).toMatchObject({
-      agent: "claude",
-      model: "sonnet",
-      workspace: "notes",
-    });
+    expect(job.input).toMatchObject({ agent: "claude", model: "sonnet" });
     expect(job.input.prompt).toContain("## Where things are");
     expect(job.input.prompt).toContain("List the open quests of area web.");
-    await expect(
-      w.runs.runAgent.run(
-        { params: { projectId: w.projectId }, body: { prompt: "build" } },
-        { user: w.owner },
-      ),
-    ).rejects.toThrow("A build names its quest");
+    await expect(run(w, "work-quest")).rejects.toThrow("quest");
   });
 
   it("lists the project's Agent hosts with their agents and tools", async ({
@@ -309,27 +278,29 @@ describe("lore agent run, and agent_run", () => {
     expect(items[0]?.tools.map((tool) => tool.name)).toEqual(["claude", "git"]);
   });
 
-  it("refuses agent_run called with a job's own key: a job never starts a job", async ({
+  it("refuses prompt_run and every prompt write called with a job's own key: a job never starts a job", async ({
     expect,
   }) => {
-    const first = await w.runs.runAgent.run(
-      {
-        params: { projectId: w.projectId },
-        body: { prompt: "text", text: "Read the inbox." },
-      },
-      { user: w.owner },
-    );
+    const first = await run(w, "security-check");
     const row = await w.repos.jobs.getOne({
       where: { id: { eq: first.jobId } },
     });
     const spec = await w.alepha.inject(HostJobService).spec(row, w.baseUrl);
-    const answer = await mcp(w, String(spec.key), "agent_run", {
+    const answer = await mcp(w, String(spec.key), "prompt_run", {
       project: w.projectId,
-      prompt: "text",
-      text: "Start another job.",
+      name: "security-check",
     });
-    const said = JSON.stringify(answer);
-    expect(said).toContain("cannot start another agent job of its chain");
+    expect(JSON.stringify(answer)).toContain(
+      "An agent job cannot manage or run prompts",
+    );
+    const write = await mcp(w, String(spec.key), "prompt_update", {
+      project: w.projectId,
+      name: "security-check",
+      on: "hourly",
+    });
+    expect(JSON.stringify(write)).toContain(
+      "An agent job cannot manage or run prompts",
+    );
     expect(
       await w.repos.jobs.findMany({ where: { kind: { eq: "agent" } } }),
     ).toHaveLength(1);

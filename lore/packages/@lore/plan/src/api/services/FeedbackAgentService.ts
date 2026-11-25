@@ -6,16 +6,11 @@ import {
   PromptRegistry,
   PromptService,
 } from "@lore/core/api";
-import {
-  type AgentRunRequest as AgentRun,
-  projects,
-  renderPromptText,
-} from "@lore/core/schemas";
+import { projects, renderPromptText } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
-import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { type Feedback, feedback } from "../entities/feedback.ts";
 import { feedbackComments } from "../entities/feedbackComments.ts";
@@ -110,89 +105,6 @@ export class FeedbackAgentService {
     trustedAt?: string | null;
   }): boolean {
     return Boolean(item.untrusted) && !item.trustedAt;
-  }
-
-  /**
-   * Starts a triage job on one pending item. Answers the job, or why none
-   * started (an untrusted item no member trusted yet), the item then left
-   * pending with a comment saying so.
-   */
-  public async triageItem(
-    projectId: number,
-    shortId: number,
-    startedBy?: string,
-    run: AgentRun = {},
-  ): Promise<{ jobId?: string; skipped?: string }> {
-    const item = await this.rows.findOne({
-      where: { projectId: { eq: projectId }, shortId: { eq: shortId } },
-    });
-    if (!item) {
-      throw new NotFoundError(`No feedback ${shortId} in this project`);
-    }
-    if (item.status !== "pending") {
-      throw new BadRequestError(
-        `Feedback ${shortId} is ${item.status}: only a pending item is triaged`,
-      );
-    }
-    const project = await this.projects.getOne({
-      where: { id: { eq: projectId } },
-    });
-    // The host and agent, before anything is noted (#Q4223).
-    await this.agents.resolve(projectId, run);
-    if (FeedbackAgentService.awaitsTrust(item)) {
-      const skipped = FeedbackAgentService.AWAITS_TRUST;
-      await this.note(item, skipped, startedBy);
-      return { skipped };
-    }
-    const job = await this.agents.start({
-      projectId,
-      ...run,
-      prompt: await this.prompt(project, item),
-      timeoutSeconds: FeedbackAgentService.ITEM_SECONDS,
-      feedbackNumber: item.shortId,
-      startedBy,
-      subjectType: "feedback",
-      subjectId: String(item.shortId),
-      // A trusted item runs like a team-written one (#Q4216); an untrusted
-      // one never gets here, and the launcher would refuse it if it did.
-      untrusted: FeedbackAgentService.awaitsTrust(item),
-    });
-    await this.rows.updateById(item.id, {
-      agentJobId: job.id,
-      agentTriagedAt: new Date(this.dateTime.nowMillis()).toISOString(),
-    });
-    return { jobId: job.id };
-  }
-
-  /**
-   * The inbox's triage (#Q4183): one global job over every pending item an
-   * agent may read (team-written, or trusted by a member), oldest first up
-   * to {@link INBOX_CAP}, and the open errors when the project tracks them.
-   * An item whose agent job is still queued or running is left out, so a
-   * second click does not triage it twice. `skipped` holds the items no job
-   * took: untrusted ones no member trusted yet (#Q4216), which start no job
-   * and keep a comment saying a member must look at them.
-   */
-  public async triageInbox(
-    projectId: number,
-    startedBy?: string,
-    run: AgentRun = {},
-  ): Promise<{ started: string[]; skipped: number[]; global?: string }> {
-    await this.agents.resolve(projectId, run);
-    const plan = await this.inboxPlan(projectId, startedBy);
-    if (!plan.run) return { started: [], skipped: plan.skipped };
-    const job = await this.agents.start({
-      projectId,
-      ...run,
-      prompt: plan.run.prompt,
-      feedbackNumbers: plan.run.feedbackNumbers,
-      timeoutSeconds: plan.run.timeoutSeconds,
-      startedBy,
-      subjectType: FeedbackAgentService.GLOBAL_SUBJECT,
-      subjectId: String(projectId),
-    });
-    await plan.run.mark(job.id);
-    return { started: [job.id], skipped: plan.skipped, global: job.id };
   }
 
   /**
@@ -350,19 +262,6 @@ export class FeedbackAgentService {
     projectId: number,
   ): Promise<Array<{ host: string; agent?: string }>> {
     return this.agents.choices(projectId);
-  }
-
-  /**
-   * One item's triage prompt: the same template as the inbox's (#Q4224),
-   * about this one item. Its text is never in the prompt: the agent reads it
-   * with `feedback_get`, and an untrusted item no member trusted never gets
-   * here (#Q4216).
-   */
-  public async prompt(
-    project: { id: number; title: string; slug?: string | null },
-    item: Feedback,
-  ): Promise<string> {
-    return this.globalPrompt(project, [item], false);
   }
 
   /**

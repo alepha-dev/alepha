@@ -854,15 +854,16 @@ describe("Bay connector against a real Lore", () => {
         body: { enabled: true, options: { feedback: true } },
       }),
     );
-    const item = await ok<{ id: number }>(
+    const item = await ok<{ id: number; shortId: number }>(
       call(lore, owner, "submitFeedback", {
         params: { projectId: homeId },
         body: { title: "Save fails", description: "The button does nothing." },
       }),
     );
     const started = await ok<{ jobId?: string }>(
-      call(lore, owner, "triageFeedbackWithAgent", {
-        params: { projectId: homeId, feedbackId: item.id },
+      call(lore, owner, "runPrompt", {
+        params: { projectId: homeId, name: "work-feedback" },
+        body: { args: { feedback: String(item.shortId) } },
       }),
     );
     expect(started.jobId).toBeDefined();
@@ -919,10 +920,18 @@ describe("Bay connector against a real Lore", () => {
     expect(((await readHost()) as { jobsResult?: boolean }).jobsResult).toBe(
       true,
     );
-    const started = await ok<{ jobId?: string }>(
-      call(lore, owner, "runAgent", {
+    // A custom prompt that reads the code (#Q4282: `lore agent run text`
+    // went; the source is set on the prompt).
+    await ok(
+      call(lore, owner, "createPrompt", {
         params: { projectId: homeId },
-        body: { prompt: "text", text: "Read the code." },
+        body: { name: "read-code", text: "Read the code.", source: "read" },
+      }),
+    );
+    const started = await ok<{ jobId?: string }>(
+      call(lore, owner, "runPrompt", {
+        params: { projectId: homeId, name: "read-code" },
+        body: {},
       }),
     );
     const ended = await until(
@@ -953,7 +962,8 @@ describe("Bay connector against a real Lore", () => {
       "succeeded",
     );
     expect(ended.input.source).toEqual({ mode: "read" });
-    expect(ended.input.workspace).toBe("text");
+    // A read job that names no workspace of its own shares the read one.
+    expect(ended.input.workspace).toBe("triage");
     expect(ended.commit).toBe(originHead);
     // The stub's final result line is the job's reply (#Q4288, #Q4275).
     expect(ended.result).toBe("OK");

@@ -12,6 +12,7 @@ import { HostTools } from "./tools/HostTools.ts";
 import { JobTools } from "./tools/JobTools.ts";
 import { NotificationTools } from "./tools/NotificationTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
+import { PromptTools } from "./tools/PromptTools.ts";
 import { ThresholdTools } from "./tools/ThresholdTools.ts";
 
 /**
@@ -42,6 +43,7 @@ export const LoreCoreMcp = $module({
     // (#Q3047), core's since #E166.
     HostTools,
     NotificationTools,
+    PromptTools,
     // The alert thresholds (#Q3914), core's since #E162: coverage is Build's,
     // open errors Ship's.
     ThresholdTools,
@@ -68,6 +70,7 @@ export {
 export { ProjectTools } from "./tools/ProjectTools.ts";
 
 export { NotificationTools } from "./tools/NotificationTools.ts";
+export { PromptTools } from "./tools/PromptTools.ts";
 export { DashboardTools } from "./tools/DashboardTools.ts";
 export { ThresholdTools } from "./tools/ThresholdTools.ts";
 
