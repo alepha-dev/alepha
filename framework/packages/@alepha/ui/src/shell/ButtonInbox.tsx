@@ -65,6 +65,14 @@ export interface ButtonInboxProps {
    * app passes its own push.
    */
   onOpen?: (href: string) => void;
+  /**
+   * Called once the server has marked messages read from this dropdown: after
+   * "Mark all read", and after a clicked row was marked read. The bell keeps
+   * its own count, but a host showing unread counts elsewhere (per scope, in
+   * a sidebar) has no other way to learn they went stale, so it refreshes
+   * them here. Not called when a write is refused.
+   */
+  onRead?: () => void;
 }
 
 interface InboxRow {
@@ -148,6 +156,7 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
       try {
         await api.markInboxRead({ params: { id: row.id } });
         setUnread({ count: Math.max(0, unread.count - 1) });
+        props.onRead?.();
       } catch {
         // Opening the message matters more than recording that it was read.
       }
@@ -171,9 +180,10 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
         setItems((current) =>
           current.map((it) => ({ ...it, readAt: it.readAt ?? "read" })),
         );
+        props.onRead?.();
       },
     },
-    [api],
+    [api, props.onRead],
   );
 
   if (!available) {

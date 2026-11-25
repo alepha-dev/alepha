@@ -1,11 +1,12 @@
 import { useSettingsDialog } from "@alepha/ui/settings";
 import { ButtonInbox } from "@alepha/ui/shell";
-import { useStore } from "alepha/react";
+import { useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { DOCK_UNREAD_KEY } from "./useDockUnread.ts";
 
 /**
  * Lore's half of the bell: the localised labels, the destination, and a
@@ -24,6 +25,11 @@ import type { I18n } from "../../services/I18n.ts";
  * The href is this page with `?account=inbox`, which opens the same section
  * from a link made anywhere; the click opens it in place, with no
  * navigation, so the page under the dialog does not reload.
+ *
+ * **A read here clears the dock's badges too** (#Q4299): the dock counts
+ * per project under `DOCK_UNREAD_KEY`, which the bell's own count does not
+ * touch, so "Mark all read" or opening a message invalidates it, as the
+ * account Inbox does.
  */
 const ProjectInboxButton = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -33,6 +39,7 @@ const ProjectInboxButton = () => {
   const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
   const account = useSettingsDialog("account");
+  const queries = useQueryClient();
 
   if (!project?.slug) {
     return null;
@@ -55,6 +62,7 @@ const ProjectInboxButton = () => {
       onOpen={(href) =>
         href === seeAll ? account.open("inbox") : router.push(href)
       }
+      onRead={() => queries.invalidate([DOCK_UNREAD_KEY])}
     />
   );
 };
