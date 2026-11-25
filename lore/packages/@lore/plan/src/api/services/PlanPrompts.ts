@@ -74,7 +74,8 @@ export class PlanPrompts {
       args: [{ name: "epic", type: "epic", accepts: ["ready", "in_progress"] }],
       source: "write",
       permission: "quest:update",
-      timeoutSeconds: 2 * 60 * 60,
+      // 4 h, the most nfo1's Bay accepts until it runs the 12 h one (#Q4328).
+      timeoutSeconds: 4 * 60 * 60,
       pins: ["epic"],
       needs: epicsOption,
       text: workEpicPromptText,
@@ -140,7 +141,8 @@ export class PlanPrompts {
       args: [],
       source: "write",
       permission: "quest:update",
-      timeoutSeconds: 2 * 60 * 60,
+      // 4 h, the most nfo1's Bay accepts until it runs the 12 h one (#Q4328).
+      timeoutSeconds: 4 * 60 * 60,
       pins: ["quests"],
       text: workLooseQuestsPromptText,
       oneShot: true,
