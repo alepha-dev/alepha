@@ -189,9 +189,10 @@ To have someone else told, or a Discord or webhook channel, add **New
 feedback** on **Settings ▸ Notifications**: see
 [Notifications](/lore/docs/project-notifications).
 
-[Agent prompts](/lore/docs/agents-prompts) offers two prompts on an open
-report: **Triage feedback and errors**, and **Work on it** unless the report is
-rejected.
+Two built-in [prompts](/lore/docs/agents-prompts) are about feedback:
+**Triage feedback and errors**, over the whole inbox, and **Work on
+feedback**, on one pending or accepted report. Pin them to the Feedback list
+or the Feedback view to have them on the page.
 
 ## From the command line
 

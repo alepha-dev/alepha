@@ -62,15 +62,13 @@ export class LiveQuestController {
   /**
    * A bare commit push (#Q4234): the quest set of a commit, for a project
    * that does not deploy through Lore, sent by `lore commits push` from CI.
-   * Kept like an artifact push's, and on the default branch it completes
-   * the quests an automation built that the history names.
+   * Kept like an artifact push's.
    */
   pushCommitQuests = $action({
     use: [$ownsProject({ requires: "artifact:push", param: "projectId" })],
     method: "POST",
     path: "/projects/:projectId/commits",
-    description:
-      "Record the quests a commit's history references, and complete the automation-built ones it lands on the default branch.",
+    description: "Record the quests a commit's history references.",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: commitPushSchema,

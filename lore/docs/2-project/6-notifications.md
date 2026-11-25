@@ -66,7 +66,8 @@ to are still recorded, and an agent can read the recent ones (see
 | -------- | -------------------------------------------------------------------------------------- | ------------------------- |
 | Quests   | Quest created, Quest accepted or assigned, Quest put on hold, Quest completed          | Plan                      |
 | Quests   | Quest reminder due                                                                     | Plan, with **Reminders**  |
-| Epics    | Epic completed                                                                         | Plan, with **Epics**      |
+| Epics    | Epic created, Epic marked ready, Epic completed                                        | Plan, with **Epics**      |
+| Quests   | Pull request added                                                                     | Plan                      |
 | Releases | Release published                                                                      | Plan, with **Releases**   |
 | Feedback | New feedback                                                                           | Plan, with **Feedback**   |
 | Apps     | Deploy failed, Deploy succeeded                                                        | Ship, with **Deploy**     |
@@ -74,6 +75,8 @@ to are still recorded, and an agent can read the recent ones (see
 | Hosts    | Host token stopped working, Host past its time to live, Host offline, Host back online | Ship                      |
 | Quality  | Coverage under its threshold                                                           | Reports, with **Quality** |
 | Errors   | Open errors over their threshold                                                       | Ship                      |
+| Jobs     | Agent job succeeded, Agent job failed                                                  | none                      |
+| Prompts  | Prompt disabled, Prompt ceiling reached                                                | none                      |
 
 An event whose capability or option is off in the project shows as
 **Unavailable**, with the switch that turns it on. Deploy, monitor and host
@@ -284,9 +287,9 @@ nothing for you:
 
 For any of those, react to the event where you have the tools to:
 
-- **An agent automation** runs a prompt on one of your Agent hosts on an
-  event or a schedule: a triage of each new report, a build of each new quest.
-  See [Agent automations](/lore/docs/agents-automations).
+- **A prompt's trigger** runs a prompt on one of your Agent hosts on an
+  event or a schedule: a triage of each new report, the work of each new
+  quest. See [Prompts](/lore/docs/agents-prompts#triggers-runs-that-start-on-their-own).
 - **A scheduled agent session** connected over MCP reads the project, decides,
   and writes back: a weekly digest, a triage pass, a folio kept up to date.
   See [Connecting an agent](/lore/docs/agents-connecting).

@@ -109,8 +109,7 @@ administrator edits at runtime from the admin console's parameters.
 
 ## Next
 
-- [Agent prompts](/lore/docs/agents-prompts): hand work to your own coding
-  agent.
+- [Prompts](/lore/docs/agents-prompts): hand work to your own coding agent.
 - [Connecting an agent](/lore/docs/agents-connecting): give an agent the same
   access over MCP.
 - [Self-hosting](/lore/docs/start-self-hosting): running your own Lore.

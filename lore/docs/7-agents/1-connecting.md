@@ -145,8 +145,8 @@ Connecting is the easy part. What makes an agent useful is what it finds:
 
 ## Next
 
-- [Agent prompts](/lore/docs/agents-prompts): ready-made instructions, copied
-  from a quest, an epic or a feedback item.
+- [Prompts](/lore/docs/agents-prompts): ready-made instructions, copied or
+  run from a quest, an epic or a feedback item.
 - [Assistant](/lore/docs/agents-assistant): the chat built into Lore itself.
 - [MCP tools](/lore/docs/reference-mcp-tools) and
   [The lore CLI](/lore/docs/reference-cli): the full lists.

@@ -1,8 +1,9 @@
 # Agent jobs
 
 An agent job is an agent CLI, Claude Code or Gemini CLI, run by Lore on one of
-your own hosts: it triages the feedback inbox and the open errors into
-quests, reviews an epic's plan, or works a quest into a pull request. You
+your own hosts: a [prompt](/lore/docs/agents-prompts) run there, to triage the
+feedback inbox and the open errors into quests, review an epic's plan, or
+work a quest into a pull request. You
 provide the machine and install the tools; Lore says what to run, starts it,
 and shows its log. The agent does the rest itself, with the tools it finds on
 the host, and writes what it did back to Lore.
@@ -97,9 +98,9 @@ lore agent hosts
 ```
 
 A project uses its own Agent hosts and the ones lent to it. There is no
-default one: with a single host and a single agent CLI, one click runs the job
-there; with several, the menu offers one entry per host and agent, your last
-pick first.
+default one: with a single host, a run goes there; with several, **Run** asks
+which. A run takes the first agent CLI the host reports, with its default
+model.
 
 ## Sources and workspaces
 
@@ -108,12 +109,13 @@ never clones, fetches or resets. Each job has a **source**:
 
 - **read**: the project's repository at the default branch, checked out at
   `./src` and made read-only. A triage, an epic's review, a pull request's
-  review, a security check and a `text` run read. Any number of read jobs of a
-  project run at once.
+  review and a security check read. Any number of read jobs of a project run
+  at once.
 - **write**: a git worktree on a branch Lore names, `lore/q<number>` for a job
   on one quest and `lore/job-<id>` for any other. When the branch is already on
   GitHub the worktree continues it, so a follow-up on a quest (a CI fix, review
-  comments) finds its work again. A build and a dependency update write.
+  comments) finds its work again. Working a quest, an epic or a feedback item,
+  and a dependency update, write.
 - **none**: an empty workspace, for a project with no GitHub repository. Its
   jobs work from Lore alone.
 
@@ -125,22 +127,18 @@ Read and write need the project's **Repository URL** on GitHub
 one, a job that asks for read or write is refused before it is queued, and the
 others run with no code.
 
-A `text` run reads the code: one that changes code asks for it with
-`--source write`. `--ref` names a branch, a tag, a commit or `pull/<n>/head`
-instead of the default branch.
+The source is set on the prompt, never at a run: a built-in comes with its
+own, and your own prompts say theirs. A prompt's **ref** names a branch, a tag
+or a commit instead of the default branch.
 
 ```bash
-lore agent run text --text "Bump the copyright year" --source write
-```
-
-```bash
-lore agent run text --text "Explain the release script" --ref v1.4.0
+lore prompt update release-notes --source read --ref v1.4.0
 ```
 
 Each job runs in a **workspace**: a directory under the jobs user's home,
 `~/bay-jobs/<project>/<workspace>`, kept between runs, its code at `./src` for
-a read job. A triage uses the `triage` workspace, a review `review`, a `text`
-run `text`, and a quest's work `q<number>`. The repository itself is kept once
+a read job. A job on one quest uses `q<number>`, one that writes on any
+other subject `job-<id>`, and one that reads the shared read workspace. The repository itself is kept once
 per project on the host, in a mirror Bay fetches at most every 30 seconds
 (`bay config jobs --fetch-ttl`), so a burst of jobs fetches once.
 
@@ -170,107 +168,75 @@ A job never starts another agent job.
 
 ## What an agent does
 
-### Triage
+Each built-in prompt is described in [Prompts](/lore/docs/agents-prompts):
+what it reads, what it writes back, and how its work lands. A run starts from
+**Run** in Settings ▸ Prompts, from a page where the project pinned the
+prompt, from the search palette, from `lore prompt run`, or on its own, from
+the prompt's trigger.
 
-**Triage with an agent**, in the robot menu of a pending feedback item, runs
-the project's Triage prompt (see [Agent prompts](/lore/docs/agents-prompts))
-on that one item. **Triage feedback and errors with an agent**, in the same
-menu and in the robot menu of the errors inbox, runs it over the whole inbox,
-and over the project's trusted open errors when it tracks them (Ship ▸
-Track). Both run the same prompt: the agent reads
-everything first, then groups what belongs together:
+A few things only a job does:
 
-- one quest per real problem, however many reports describe it. The quest
-  names every report and error in it, and each other report gets a comment
-  pointing to the quest;
-- a report an open quest already covers joins that quest instead of filing a
-  second one;
-- an error that is the cause of a report is forwarded to the same quest. An
-  error that is noise is resolved, and one it cannot place stays open;
-- an item it is unsure about stays pending with a question, and one that is
-  not actionable is rejected.
+- **Triage** reads everything first, then groups what belongs together: one
+  quest per real problem however many reports describe it, a report an open
+  quest already covers joins that quest, an error that causes a report is
+  forwarded to the same quest, noise is resolved, and an item it is unsure
+  about stays pending with a question. Once an item is triaged, its **Agent
+  job** link opens the job.
+- **Review PR** reads a pull request's head; with **Push fixes to the pull request's branch** it works on
+  the pull request's own branch, and is refused for a fork. A pull request is
+  its author's text: before the agent starts, the host asks GitHub whether the
+  author can write to the repository, and fails the job when they cannot. A
+  member who trusts the author ticks **I trust the pull request's author** (or
+  passes `--trust`), and the host asks nothing. A triggered run never can.
+- **Work on quest**, **Work on epic** and **Work on feedback** run in a
+  worktree on the work's branch, run the project's checks, commit naming the
+  quest, push, and open a pull request with `gh`, which they record on the
+  quest.
 
-The entries show only while an Agent host passes its check. Once an item is
-triaged, its **Agent job** link opens the job and its log.
+## A job's page
 
-### An epic's review
+**Settings ▸ Prompts ▸ Jobs** lists every job of the project, newest first:
+its prompt and the items it was given, what started it (you, an event, the
+schedule), its host, status and duration. Filter by prompt, status or host.
+A job belongs to the project, not to a host: no host page lists them.
 
-**Review with an agent**, in the robot menu of a draft or ready epic, runs the
-project's Review prompt on it: the job reads the epic, its quests and the
-code, then files one review on the epic's **Review** tab, with its blockers,
-questions and decisions. It may also sharpen the epic and its quests, add the
-quests the plan is missing, and write a folio under the epic. Its key reaches
-this epic and its quests only.
+A job's page names it by its prompt and its items, with its facts on the
+side: who or what started it, the host, the agent CLI and its model, the
+source and the commit, when it was queued, started and ended, its exit code,
+and the turns, tokens and cost the agent CLI reports at its end. Three tabs:
 
-### A pull request's review
+- **Transcript**, first: on a failed job, why it failed; then the agent's
+  final reply; then what the agent said and did, each tool call on one line
+  that opens on its input and its result. Bookkeeping lines are hidden, with
+  their count, and a line Lore cannot read is shown as it is.
+- **Raw log**: the log line by line, stderr marked.
+- **Prompt**: the words the agent received.
 
-**Review #n**, under a quest's pull requests, runs the project's pull request
-Review prompt on it: the job reads the pull request's head, its diff, the
-quest and the repository's instructions, posts a review with `gh pr review`,
-and sums it up on the quest. **Review and fix #n** runs the same prompt on the
-pull request's own branch, and may push to it; it is refused for a pull
-request from a fork.
+**Run again** runs the same prompt on the same items; **Cancel** stops a
+running job. The page follows a running job as it goes.
 
-A pull request is its author's text. Before the agent starts, the host asks
-GitHub whether the author can write to the repository, and fails the job when
-they cannot. A member who trusts the author ticks **I trust its author** (or
-passes `--trust`), and the host asks nothing. An automation never can.
-
-```bash
-lore agent run review-pr --pr 118 --quest 42
-```
-
-### The dependencies
-
-**Security check** audits the dependencies from the lockfile and files one
-quest per real vulnerability, or comments on the open one that covers it.
-**Dependency update** updates the dependencies a run names, or the ones a minor
-or patch version behind, runs the project's checks, and opens a pull request
-only when they pass. Run either by hand or as an
-[automation](/lore/docs/agents-automations).
-
-```bash
-lore agent run security-check
-```
-
-```bash
-lore agent run dependency-update --text "react, vite"
-```
-
-### Build: a quest to a pull request
-
-**Work it with an agent**, on an accepted quest, runs in a worktree on the
-quest's branch, does the work, runs the project's checks, commits naming the
-quest, pushes, and opens a pull request with `gh`, which it records on the
-quest. It turns auto-merge on only when the
-repository's own agent instructions ask for it, and follows their branch
-naming. A quest a [Build automation](/lore/docs/agents-automations) built
-completes when the commit naming it reaches the default branch.
-
-## Automations
-
-To run a prompt on its own, at each new feedback item or every hour, make it
-an [agent automation](/lore/docs/agents-automations).
+A job's final reply is kept with the job, up to 32 KB. An Agent host whose
+Bay predates it returns none: upgrade Bay on that host to see replies.
 
 ## From the command line
 
-Start a job, and follow its log until it ends with `--wait`:
+Start a run, and follow its log until it ends with `--wait`:
 
 ```bash
-lore agent run triage --wait
+lore prompt run triage --wait
 ```
 
 ```bash
-lore agent run build --quest 42
+lore prompt run work-quest --quest Q42
 ```
 
 ```bash
-lore agent run text --text "List the open quests of area web" --workspace notes
+lore prompt run review-pr --pr 118
 ```
 
-`--host`, `--agent` and `--model` pick the host, the agent CLI and its model:
-`--host` when the project has several Agent hosts, `--agent` when the host has
-several agents. Without `--model`, the agent's own default applies.
+`--host`, `--agent` and `--model` pick the host, the agent CLI and its model.
+Without them, the project's only host, its first agent CLI and that CLI's own
+default model apply.
 
 ```bash
 lore job list
@@ -280,16 +246,17 @@ lore job list
 lore job logs <id> --follow
 ```
 
-`lore job get <id>` shows what a job ran (agent, model, workspace, source,
-branch and commit) and how it ended; `lore job cancel <id>` stops it. A job succeeds or fails by the agent's
-exit code: what it did is what it wrote to Lore.
+`lore job get <id>` shows what a job ran (prompt, args, agent, model,
+workspace, source, branch and commit), how it ended and its reply; `lore job
+cancel <id>` stops it. A job succeeds or fails by the agent's exit code: what
+it did is what it wrote to Lore.
 
 ## From an agent
 
-`agent_run` starts a job and `agent_hosts` lists the Agent hosts, the twins of
-`lore agent run` and `lore agent hosts`; `job_list`, `job_get` and
+`prompt_run` starts a job and `agent_hosts` lists the Agent hosts, the twins
+of `lore prompt run` and `lore agent hosts`; `job_list`, `job_get` and
 `job_cancel` read and stop jobs. Called with an agent job's own key,
-`agent_run` is refused.
+`prompt_run` is refused.
 
 ## Text from outside the team
 
@@ -319,9 +286,10 @@ agent reads it until a member trusts it.**
 - **Trust** and **Withdraw trust** take a person signed in to Lore. An API
   key, a job key and the MCP are refused: an agent that could trust text
   would undo the rule, so no MCP tool and no CLI command does it.
-- A quest filed from untrusted feedback is marked **Untrusted** too: **Work it
-  with an agent** waits until a member has clicked **Confirm its text**, and a
-  review of an epic holding such a quest is refused until then. A quest filed
+- A quest filed from untrusted feedback is marked **Untrusted** too: a run of
+  **Work on quest** on it is refused until a member has clicked **Confirm its
+  text** on the quest, and a run on an epic holding such a quest is refused
+  until then. A quest filed
   from an item a member already trusted carries that confirmation.
 
 ## What Lore never sees

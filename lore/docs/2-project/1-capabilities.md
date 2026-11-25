@@ -50,7 +50,6 @@ A list of quests and a board are always there when Plan is on. See
 | **Estimates** | A planned duration on each quest.                                                                              |
 | **Timer**     | The time a quest actually took.                                                                                |
 | **Reminders** | A nudge to whoever holds a quest that has gone quiet.                                                          |
-| **Prompts**   | A menu that copies a ready-made prompt for your coding agent. See [Agent prompts](/lore/docs/agents-prompts).  |
 | **Feedback**  | A request form for your users and an inbox to triage what they send. See [Feedback](/lore/docs/plan-feedback). |
 
 **Remember** has no option: everything it adds comes with the capability.
