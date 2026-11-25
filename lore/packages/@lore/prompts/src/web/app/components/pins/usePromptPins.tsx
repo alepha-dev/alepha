@@ -135,22 +135,26 @@ export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
       {
         icon: Bot,
         label: tr("prompts.pinned.menu"),
-        children: entries.flatMap((prompt) => [
-          {
-            icon: Copy,
-            label: tr("prompts.pinned.copy", { args: [prompt.title] }),
-            onClick: () => start(prompt, "copy", item),
-          },
-          ...(canRun(prompt)
-            ? [
-                {
-                  icon: Play,
-                  label: tr("prompts.pinned.run", { args: [prompt.title] }),
-                  onClick: () => start(prompt, "run", item),
-                },
-              ]
-            : []),
-        ]),
+        // One submenu per prompt, holding its Copy and Run (#Q4321).
+        children: entries.map((prompt) => ({
+          label: prompt.title,
+          children: [
+            {
+              icon: Copy,
+              label: tr("prompts.pinned.copy"),
+              onClick: () => start(prompt, "copy", item),
+            },
+            ...(canRun(prompt)
+              ? [
+                  {
+                    icon: Play,
+                    label: tr("prompts.pinned.run"),
+                    onClick: () => start(prompt, "run", item),
+                  },
+                ]
+              : []),
+          ],
+        })),
       },
     ];
   };
