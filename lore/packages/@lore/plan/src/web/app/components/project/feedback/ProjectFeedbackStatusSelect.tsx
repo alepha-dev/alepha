@@ -36,8 +36,11 @@ const ProjectFeedbackStatusSelect = (
   });
   return (
     <span className="w-36 shrink-0">
+      {/* No visible label (#Q4324): in the band it pushed the select down,
+          with the required asterisk `z.enum` adds. The aria-label names it. */}
       <Control
         input={form.input.status}
+        label=""
         size="sm"
         inputProps={{
           "aria-label": tr("feedback.filter.label"),
