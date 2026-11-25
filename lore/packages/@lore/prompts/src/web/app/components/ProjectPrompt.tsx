@@ -1,5 +1,5 @@
 import { Button } from "@alepha/ui";
-import { DetailLayout, type DetailTab } from "@alepha/ui/shell";
+import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import type { HostJobController } from "@lore/core/api";
 import type { PromptResource } from "@lore/core/schemas";
 import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
@@ -12,31 +12,24 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import {
-  Clock,
-  Copy,
-  FileCode,
-  ListChecks,
-  Pencil,
-  Pin,
-  Play,
-  Power,
-  PowerOff,
-  Sparkles,
-} from "lucide-react";
+import { Copy, Play, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import type { PromptController } from "../../../api/controllers/PromptController.ts";
 import ProjectPromptAside from "./ProjectPromptAside.tsx";
+import ProjectPromptSettings from "./ProjectPromptSettings.tsx";
 import PromptEditorDialog from "./run/PromptEditorDialog.tsx";
 import PromptPinsDialog from "./run/PromptPinsDialog.tsx";
 import PromptRunDialog from "./run/PromptRunDialog.tsx";
 import PromptTriggerDialog from "./run/PromptTriggerDialog.tsx";
 import { usePromptActions } from "./run/usePromptActions.ts";
+import PromptJobsTable from "./settings/PromptJobsTable.tsx";
 
 export interface ProjectPromptProps {
   name: string;
 }
+
+type TabKey = "text" | "jobs" | "settings";
 
 type Open =
   | { kind: "copy" | "run" | "trigger" | "pins" }
@@ -44,11 +37,13 @@ type Open =
 
 /**
  * One prompt on its own page (#Q4326), on the detail shell a job uses: its
- * words in the main column, its properties in the aside, and the row
- * menu's actions in the toolbar: Copy, Run, Jobs, and for `prompt:manage`
- * Duplicate, Pins, Trigger, its switch, and Edit (a custom prompt) or
- * Source (a built-in). Read from the project's prompt list, the one key
- * every prompt write refreshes.
+ * properties in the aside, and three tabs kept in the URL (#Q4355): Prompt,
+ * its words; Jobs (`host:read`), the prompt jobs table on this prompt alone;
+ * Settings (`prompt:manage`), its pins, its trigger with its switch, and
+ * Edit (a custom prompt) or Source (a built-in). The toolbar keeps the
+ * actions: Copy, Run with a ready Agent host, and Duplicate for
+ * `prompt:manage`. Read from the project's prompt list, the one key every
+ * prompt write refreshes.
  */
 const ProjectPrompt = (props: ProjectPromptProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -60,6 +55,7 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
   const queries = useQueryClient();
   const [project] = useStore(currentProjectAtom);
   const [open, setOpen] = useState<Open | undefined>();
+  const [asked, setTab] = useDetailTab<TabKey>("text");
   const projectId = project?.id;
   const slug = project?.slug ?? String(projectId ?? "");
   const manage = can("prompt:manage");
@@ -117,7 +113,6 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
   );
 
   const busy = copy.loading || run.loading || update.loading;
-  const triggered = prompt && prompt.on !== "manual";
   const startCopy = (row: PromptResource) => {
     if (row.args.every((arg) => arg.type === "member")) {
       void copy.run(row.name, {});
@@ -126,7 +121,17 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
     setOpen({ kind: "copy" });
   };
 
-  const tabs: DetailTab[] = [{ value: "text", label: tr("prompts.tab.text") }];
+  const tabs: DetailTab[] = [
+    { value: "text", label: tr("prompts.tab.text") },
+    ...(can("host:read")
+      ? [{ value: "jobs", label: tr("prompts.tab.jobs") }]
+      : []),
+    ...(manage
+      ? [{ value: "settings", label: tr("prompts.tab.settings") }]
+      : []),
+  ];
+  // A tab the member may not see, or a stale `?tab=`, opens the words.
+  const tab: TabKey = tabs.some((it) => it.value === asked) ? asked : "text";
   const action = (
     label: string,
     Icon: typeof Copy,
@@ -161,45 +166,13 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
           () => setOpen({ kind: "run" }),
           "prompt-page-run",
         )}
-      {can("host:read") &&
+      {manage &&
         action(
-          tr("prompts.jobs"),
-          ListChecks,
-          () =>
-            void router.push("projectSettingsPromptJobs", {
-              params: { projectSlug: slug },
-              query: { prompt: prompt.name },
-            }),
+          tr("prompts.duplicate"),
+          Sparkles,
+          () => setOpen({ kind: "editor", mode: "duplicate" }),
+          "prompt-page-duplicate",
         )}
-      {manage && (
-        <>
-          {action(tr("prompts.duplicate"), Sparkles, () =>
-            setOpen({ kind: "editor", mode: "duplicate" }),
-          )}
-          {action(tr("prompts.pin"), Pin, () => setOpen({ kind: "pins" }))}
-          {action(tr("prompts.trigger"), Clock, () =>
-            setOpen({ kind: "trigger" }),
-          )}
-          {triggered &&
-            action(
-              tr(
-                prompt.enabled
-                  ? "prompts.trigger.disable"
-                  : "prompts.trigger.enable",
-              ),
-              prompt.enabled ? PowerOff : Power,
-              () => void update.run({ enabled: !prompt.enabled }),
-              "prompt-page-switch",
-            )}
-          {prompt.builtin
-            ? action(tr("prompts.source"), FileCode, () =>
-                setOpen({ kind: "editor", mode: "source" }),
-              )
-            : action(tr("prompts.edit"), Pencil, () =>
-                setOpen({ kind: "editor", mode: "edit" }),
-              )}
-        </>
-      )}
     </>
   );
 
@@ -230,11 +203,25 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
           )
         }
         tabs={tabs}
-        tab="text"
-        onTabChange={() => {}}
+        tab={tab}
+        onTabChange={(next) => setTab(next as TabKey)}
         actions={actions}
       >
-        {prompt && (
+        {prompt && tab === "jobs" && (
+          <PromptJobsTable className="min-h-0 flex-1" prompt={prompt.name} />
+        )}
+        {prompt && tab === "settings" && (
+          <ProjectPromptSettings
+            prompt={prompt}
+            pages={list.data?.pages ?? []}
+            busy={busy}
+            onPins={() => setOpen({ kind: "pins" })}
+            onTrigger={() => setOpen({ kind: "trigger" })}
+            onSwitch={(enabled) => void update.run({ enabled })}
+            onEditor={(mode) => setOpen({ kind: "editor", mode })}
+          />
+        )}
+        {prompt && tab === "text" && (
           <pre
             className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs break-words whitespace-pre-wrap"
             data-testid="prompt-page-text"

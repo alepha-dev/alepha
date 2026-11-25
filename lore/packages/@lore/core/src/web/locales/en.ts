@@ -5213,6 +5213,12 @@ export default {
   "prompts.paused": "Triggers paused",
   "prompts.title": "Prompts",
   "prompts.tab.text": "Prompt",
+  "prompts.tab.jobs": "Jobs",
+  "prompts.tab.settings": "Settings",
+  "prompts.settings.text": "Words",
+  "prompts.settings.text.custom": "Its title, description, args and text.",
+  "prompts.settings.text.builtin":
+    "A built-in's words ship with Lore: read its source, or duplicate it to change them.",
   "prompts.field.name": "Name",
   "prompts.notFound": "No prompt named $1 in this project",
   "prompts.builtin": "built-in",

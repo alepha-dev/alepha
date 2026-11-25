@@ -2,7 +2,14 @@ import { DialogProvider } from "@alepha/ui";
 import type { PromptResource } from "@lore/core/schemas";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom, I18n } from "@lore/core/web";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -47,6 +54,24 @@ class FakeLinks extends LinkProvider {
         pages: [{ key: "quest", label: "Quest view" }],
       }),
       listPromptHosts: () => ({ hosts: world.hosts }),
+      listProjectJobs: () => ({
+        items: [
+          {
+            id: "j1",
+            kind: "prompt",
+            prompt: "nightly",
+            status: "succeeded",
+            queuedAt: "2026-11-25T10:00:00.000Z",
+          },
+          {
+            id: "j2",
+            kind: "prompt",
+            prompt: "triage",
+            status: "failed",
+            queuedAt: "2026-11-25T11:00:00.000Z",
+          },
+        ],
+      }),
     };
     return new Proxy(
       {},
@@ -61,9 +86,9 @@ class FakeLinks extends LinkProvider {
 }
 
 /**
- * A prompt's own page (#Q4326): its words in the main column, its
- * properties in the aside, the row menu's actions in the toolbar, and a
- * not-found state for a name the project has no prompt for.
+ * A prompt's own page (#Q4326): its properties in the aside, three tabs
+ * (Prompt, Jobs, Settings, #Q4355), Copy, Run and Duplicate in the toolbar,
+ * and a not-found state for a name the project has no prompt for.
  */
 describe("ProjectPrompt", () => {
   beforeAll(() => {
@@ -78,6 +103,8 @@ describe("ProjectPrompt", () => {
     alepha = undefined;
     world.items = [];
     world.hosts = [];
+    // The tab is kept in the address, which outlives a case under jsdom.
+    window.history.replaceState({}, "", "/");
   });
 
   const show = async (name: string) => {
@@ -105,7 +132,7 @@ describe("ProjectPrompt", () => {
     await screen.findByTestId("project-prompt");
   };
 
-  it("shows the words, the properties beside them, and the row menu's actions", async ({
+  it("shows the words, the properties beside them, three tabs, and Copy, Run and Duplicate only", async ({
     expect,
   }) => {
     world.items = [prompt()];
@@ -124,16 +151,68 @@ describe("ProjectPrompt", () => {
       "daily@3 · off",
     );
     expect(aside.textContent).toContain("Quest view");
-    for (const label of [
-      "Copy",
-      "Run",
-      "Jobs",
-      "Duplicate",
-      "Enable trigger",
-      "Edit",
-    ]) {
+    for (const label of ["Copy", "Run", "Duplicate"]) {
       expect(screen.getByRole("button", { name: label })).toBeTruthy();
     }
+    for (const label of [
+      "Jobs",
+      "Pin",
+      "Trigger",
+      "Enable trigger",
+      "Disable trigger",
+      "Edit",
+      "Source",
+    ]) {
+      expect(screen.queryByRole("button", { name: label })).toBeNull();
+    }
+    expect(
+      screen.getAllByRole("radio").map((it) => it.textContent?.trim()),
+    ).toEqual(["Prompt", "Jobs", "Settings"]);
+  });
+
+  it("lists this prompt's jobs alone on the Jobs tab, with no prompt filter", async ({
+    expect,
+  }) => {
+    world.items = [prompt()];
+    await show("nightly");
+    fireEvent.click(await screen.findByRole("radio", { name: "Jobs" }));
+    await waitFor(() =>
+      expect(
+        screen.queryAllByTestId("job-prompt").map((it) => it.textContent),
+      ).toEqual(["Nightly check"]),
+    );
+    expect(screen.queryByTestId("prompt-page-text")).toBeNull();
+    const filters = screen
+      .getAllByRole("combobox")
+      .map((it) => it.getAttribute("aria-label"));
+    expect(filters).toContain("Status");
+    expect(filters).not.toContain("Prompt");
+  });
+
+  it("holds pins, the trigger with its switch, and Edit on the Settings tab", async ({
+    expect,
+  }) => {
+    world.items = [prompt()];
+    await show("nightly");
+    fireEvent.click(await screen.findByRole("radio", { name: "Settings" }));
+    const settings = await screen.findByTestId("prompt-page-settings");
+    expect(
+      within(settings).getByTestId("prompt-settings-pins").textContent,
+    ).toBe("Quest view");
+    expect(
+      within(settings).getByTestId("prompt-settings-trigger").textContent,
+    ).toBe("daily@3");
+    expect(
+      within(settings).getByRole("switch", { name: "Enable trigger" }),
+    ).toBeTruthy();
+    for (const label of ["Pin", "Trigger", "Edit"]) {
+      expect(
+        within(settings).getByRole("button", { name: label }),
+      ).toBeTruthy();
+    }
+    expect(
+      within(settings).queryByRole("button", { name: "Source" }),
+    ).toBeNull();
   });
 
   it("offers no Run without a ready Agent host, and Source for a built-in", async ({
@@ -143,9 +222,13 @@ describe("ProjectPrompt", () => {
     await show("nightly");
     await screen.findByTestId("prompt-page-text");
     expect(screen.queryByRole("button", { name: "Run" })).toBeNull();
-    expect(screen.queryByTestId("prompt-page-switch")).toBeNull();
-    expect(screen.getByRole("button", { name: "Source" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    fireEvent.click(await screen.findByRole("radio", { name: "Settings" }));
+    const settings = await screen.findByTestId("prompt-page-settings");
+    expect(within(settings).queryByTestId("prompt-page-switch")).toBeNull();
+    expect(
+      within(settings).getByRole("button", { name: "Source" }),
+    ).toBeTruthy();
+    expect(within(settings).queryByRole("button", { name: "Edit" })).toBeNull();
   });
 
   it("says so for a name the project has no prompt for", async ({ expect }) => {

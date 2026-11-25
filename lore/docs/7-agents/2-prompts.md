@@ -34,11 +34,18 @@ Every prompt lives in **Settings ▸ Prompts**, in two tabs:
 
 ![Settings, Prompts: the built-in prompts, their args, source and trigger](/screenshots/lore/prompts-light.png)
 
-A prompt's title, or **View** in its row's menu, opens its own page: its
-words, and beside them its args, where its code comes from, its trigger,
-where it is pinned and its last run. Its toolbar holds the row's actions:
-**Copy**, **Run**, **Jobs** and, for whoever manages prompts, **Duplicate**,
-**Pin**, **Trigger**, the trigger's switch, and **Edit** or **Source**.
+A prompt's title, or **View** in its row's menu, opens its own page, with
+its args, where its code comes from, its trigger, where it is pinned and its
+last run beside three tabs:
+
+- **Prompt**: its words;
+- **Jobs**: its runs, newest first, filtered by status and host;
+- **Settings**, for whoever manages prompts: where it is pinned (**Pin**),
+  its trigger (**Trigger**) with the switch that turns it on or off, and
+  **Edit** for your own prompt or **Source** for a built-in.
+
+Its toolbar holds **Copy**, **Run** and, for whoever manages prompts,
+**Duplicate**.
 
 Every member can read and copy a prompt. Changing one, setting its trigger
 and pinning it needs **Manage the project's prompts**, which the Admin rank

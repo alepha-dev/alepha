@@ -5266,6 +5266,13 @@ export default {
   "prompts.paused": "Déclencheurs suspendus",
   "prompts.title": "Prompts",
   "prompts.tab.text": "Prompt",
+  "prompts.tab.jobs": "Tâches",
+  "prompts.tab.settings": "Paramètres",
+  "prompts.settings.text": "Texte",
+  "prompts.settings.text.custom":
+    "Son titre, sa description, ses arguments et son texte.",
+  "prompts.settings.text.builtin":
+    "Le texte d'une invite intégrée est livré avec Lore : lisez sa source, ou dupliquez-la pour le modifier.",
   "prompts.field.name": "Nom",
   "prompts.notFound": "Aucun prompt nommé $1 dans ce projet",
   "prompts.builtin": "intégrée",
