@@ -3164,7 +3164,6 @@ export default {
   "jobs.cancel": "Cancel",
   "jobs.field.host": "Host",
   "jobs.tab.transcript": "Transcript",
-  "jobs.tab.log": "Raw log",
   "jobs.tab.prompt": "Prompt",
   "jobs.downloadLog": "Download log",
   "jobs.copyPrompt": "Copy prompt",
@@ -3186,7 +3185,7 @@ export default {
   "jobs.transcript.noReply": "The agent ended with no reply.",
   "jobs.transcript.hidden": "$1 bookkeeping events hidden",
   "jobs.transcript.hiddenHint":
-    "Rate limits and token counts the agent CLI reports: the Raw log tab has them all.",
+    "Rate limits and token counts the agent CLI reports: Download log has them all.",
   "jobs.transcript.truncated":
     "The log was cut: the transcript stops where it does.",
   "jobs.field.reply": "Final reply",
@@ -3204,12 +3203,6 @@ export default {
   "jobs.source.none": "None",
   "jobs.source.read": "Read only",
   "jobs.source.write": "Write",
-  "jobs.log": "Log",
-  "jobs.log.empty": "Nothing was printed.",
-  "jobs.log.waiting": "Waiting for the first line...",
-  "jobs.log.follow": "Follow output",
-  "jobs.log.truncated":
-    "The host stopped keeping this job's output at its size cap.",
   "hosts.agent.switch": "Agent host",
   "hosts.agent.switch.description":
     "Runs Claude Code jobs for its projects, with a credential set up by hand for Bay's jobs user. Lore never sees it, and checks the host daily with a one-turn prompt.",

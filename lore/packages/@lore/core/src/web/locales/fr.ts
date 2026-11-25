@@ -3177,7 +3177,6 @@ export default {
   "jobs.cancel": "Annuler",
   "jobs.field.host": "Hôte",
   "jobs.tab.transcript": "Transcription",
-  "jobs.tab.log": "Journal brut",
   "jobs.tab.prompt": "Invite",
   "jobs.downloadLog": "Télécharger le journal",
   "jobs.copyPrompt": "Copier l'invite",
@@ -3200,7 +3199,7 @@ export default {
   "jobs.transcript.noReply": "L'agent s'est arrêté sans réponse.",
   "jobs.transcript.hidden": "$1 événements de suivi masqués",
   "jobs.transcript.hiddenHint":
-    "Limites de débit et comptes de jetons de l'outil de l'agent : l'onglet Journal brut les a tous.",
+    "Limites de débit et comptes de jetons de l'outil de l'agent : Télécharger le journal les a tous.",
   "jobs.transcript.truncated":
     "Le journal a été coupé : la transcription s'arrête là.",
   "jobs.field.reply": "Réponse finale",
@@ -3219,12 +3218,6 @@ export default {
   "jobs.source.none": "Aucune",
   "jobs.source.read": "Lecture seule",
   "jobs.source.write": "Écriture",
-  "jobs.log": "Journal",
-  "jobs.log.empty": "Rien n'a été affiché.",
-  "jobs.log.waiting": "En attente de la première ligne...",
-  "jobs.log.follow": "Suivre la sortie",
-  "jobs.log.truncated":
-    "L'hôte a cessé de garder la sortie de cette tâche à sa taille maximale.",
   "hosts.agent.switch": "Hôte d'agent",
   "hosts.agent.switch.description":
     "Exécute des tâches Claude Code pour ses projets, avec un identifiant configuré à la main pour l'utilisateur de tâches de Bay. Lore ne le voit jamais, et vérifie l'hôte chaque jour avec une requête en un tour.",

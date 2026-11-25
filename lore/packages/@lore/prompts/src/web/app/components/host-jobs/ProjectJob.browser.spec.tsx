@@ -228,10 +228,8 @@ describe("ProjectJob", () => {
     expect(pane.className).toContain("min-h-0");
     expect(pane.className).toContain("overflow-y-auto");
 
-    fireEvent.click(screen.getByText("Raw log"));
-    const log = await screen.findByTestId("job-log");
-    expect(log.className).toContain("min-h-0");
-    expect(log.className).toContain("overflow-auto");
+    // Two tabs since #Q4403: the raw log is the toolbar's download.
+    expect(screen.queryByText("Raw log")).toBeNull();
 
     fireEvent.click(screen.getByText("Prompt"));
     const prompt = await screen.findByTestId("job-prompt-text");
@@ -383,7 +381,7 @@ describe("ProjectJob", () => {
     expect(failure.textContent).toContain("The agent exited with status 1");
   });
 
-  it("animates a running job and follows its log, one numbered line per line with stderr marked", async ({
+  it("animates a running job, offers Cancel, and keeps the whole log one click away in Download log (#Q4403)", async ({
     expect,
   }) => {
     world.jobs = [job({})];
@@ -395,58 +393,25 @@ describe("ProjectJob", () => {
       },
     };
     await show(RUNNING);
-    fireEvent.click(await screen.findByText("Raw log"));
 
     const badge = await screen.findByTestId("job-status");
     expect(badge.getAttribute("data-status")).toBe("running");
     expect(badge.querySelector("svg")?.getAttribute("class")).toContain(
       "animate-spin",
     );
-
-    const log = screen.getByTestId("job-log");
-    await waitFor(() =>
-      expect(log.querySelectorAll("li[data-stream]")).toHaveLength(3),
-    );
-    const lines = [...log.querySelectorAll("li[data-stream]")];
-    expect(lines.map((line) => line.textContent)).toEqual([
-      "1cloning",
-      "2reading the inbox",
-      "3warning: slow",
-    ]);
-    expect(lines[2].getAttribute("data-stream")).toBe("stderr");
-    expect(log.getAttribute("data-following")).toBe("true");
-    expect(screen.getByTestId("job-log-cursor")).toBeTruthy();
     expect(screen.getByTestId("job-cancel")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Download log/ })).toBeTruthy();
+    expect(screen.queryByTestId("job-log")).toBeNull();
   });
 
-  it("waits with a spinner before the first line, and says nothing was printed once ended", async ({
+  it("opens the transcript for a stale ?tab=log, from when the page had a Raw log tab (#Q4403)", async ({
     expect,
   }) => {
-    world.jobs = [job({}), job({ id: DONE, status: "succeeded", exitCode: 0 })];
-    world.logs = { [RUNNING]: { stdout: "", stderr: "", live: true } };
-    await show(RUNNING);
-    fireEvent.click(await screen.findByText("Raw log"));
-    const waiting = await screen.findByTestId("job-log-empty");
-    expect(waiting.textContent).toBe("Waiting for the first line...");
-    expect(waiting.querySelector("svg")).not.toBeNull();
-
-    cleanup();
-    await alepha?.stop();
+    world.jobs = [job({ id: DONE, status: "succeeded", exitCode: 0 })];
     world.logs = { [DONE]: { stdout: "", stderr: "", live: false } };
+    window.history.replaceState({}, "", "/?tab=log");
     await show(DONE);
-    fireEvent.click(await screen.findByText("Raw log"));
-    await waitFor(() =>
-      expect(screen.getByTestId("job-log-empty").textContent).toBe(
-        "Nothing was printed.",
-      ),
-    );
-    expect(screen.queryByTestId("job-log-cursor")).toBeNull();
-    expect(screen.queryByTestId("job-cancel")).toBeNull();
-    expect(
-      screen
-        .getByTestId("job-status")
-        .querySelector("svg")
-        ?.getAttribute("class"),
-    ).not.toContain("animate-spin");
+    expect(await screen.findByTestId("job-transcript")).toBeTruthy();
+    window.history.replaceState({}, "", "/");
   });
 });
