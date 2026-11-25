@@ -10,7 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
@@ -41,9 +41,16 @@ const prompt = (over: Partial<PromptResource> = {}): PromptResource =>
     ...over,
   }) as PromptResource;
 
-const world: { items: PromptResource[]; hosts: string[] } = {
+const world: {
+  items: PromptResource[];
+  hosts: string[];
+  updates: Array<{ name: string; body: unknown }>;
+  refuse: boolean;
+} = {
   items: [],
   hosts: [],
+  updates: [],
+  refuse: false,
 };
 
 class FakeLinks extends LinkProvider {
@@ -54,6 +61,11 @@ class FakeLinks extends LinkProvider {
         pages: [{ key: "quest", label: "Quest view" }],
       }),
       listPromptHosts: () => ({ hosts: world.hosts }),
+      updatePrompt: (input: any) => {
+        world.updates.push({ name: input.params.name, body: input.body });
+        if (world.refuse) throw new AlephaError("Refused");
+        return world.items.find((it) => it.name === input.params.name);
+      },
       listProjectJobs: () => ({
         items: [
           {
@@ -103,6 +115,8 @@ describe("ProjectPrompt", () => {
     alepha = undefined;
     world.items = [];
     world.hosts = [];
+    world.updates = [];
+    world.refuse = false;
     // The tab is kept in the address, which outlives a case under jsdom.
     window.history.replaceState({}, "", "/");
   });
@@ -132,7 +146,7 @@ describe("ProjectPrompt", () => {
     await screen.findByTestId("project-prompt");
   };
 
-  it("shows the words, the properties beside them, three tabs, and Copy, Run and Duplicate only", async ({
+  it("shows the words, the properties beside them, three tabs, and Copy, Run, Duplicate and Edit only", async ({
     expect,
   }) => {
     world.items = [prompt()];
@@ -151,17 +165,16 @@ describe("ProjectPrompt", () => {
       "daily@3 · off",
     );
     expect(aside.textContent).toContain("Quest view");
-    for (const label of ["Copy", "Run", "Duplicate"]) {
+    for (const label of ["Copy", "Run", "Duplicate", "Edit"]) {
       expect(screen.getByRole("button", { name: label })).toBeTruthy();
     }
+    expect(screen.getByTestId("prompt-page-edit")).toBeTruthy();
     for (const label of [
       "Jobs",
       "Pin",
       "Trigger",
       "Enable trigger",
       "Disable trigger",
-      "Edit",
-      "Source",
     ]) {
       expect(screen.queryByRole("button", { name: label })).toBeNull();
     }
@@ -189,7 +202,7 @@ describe("ProjectPrompt", () => {
     expect(filters).not.toContain("Prompt");
   });
 
-  it("holds pins, the trigger with its switch, and Edit on the Settings tab", async ({
+  it("holds pins, the trigger with its switch, and the source select on the Settings tab (#Q4409)", async ({
     expect,
   }) => {
     world.items = [prompt()];
@@ -205,30 +218,73 @@ describe("ProjectPrompt", () => {
     expect(
       within(settings).getByRole("switch", { name: "Enable trigger" }),
     ).toBeTruthy();
-    for (const label of ["Pin", "Trigger", "Edit"]) {
+    for (const label of ["Pin", "Trigger"]) {
       expect(
         within(settings).getByRole("button", { name: label }),
       ).toBeTruthy();
     }
     expect(
-      within(settings).queryByRole("button", { name: "Source" }),
-    ).toBeNull();
+      within(settings).getByRole("combobox", { name: "Source" }).textContent,
+    ).toContain("Read-only");
+    expect(within(settings).queryByText("Words")).toBeNull();
+    expect(within(settings).queryByRole("button", { name: "Edit" })).toBeNull();
   });
 
-  it("offers no Run without a ready Agent host, and Source for a built-in", async ({
+  it("saves the source picked on the Settings tab, with no dialog", async ({
+    expect,
+  }) => {
+    world.items = [prompt({ builtin: true, on: "manual" })];
+    await show("nightly");
+    fireEvent.click(await screen.findByRole("radio", { name: "Settings" }));
+    const settings = await screen.findByTestId("prompt-page-settings");
+    const select = within(settings).getByRole("combobox", { name: "Source" });
+    fireEvent.click(select);
+    if (!screen.queryByRole("option", { name: "Read-write" })) {
+      fireEvent.keyDown(select, { key: "ArrowDown" });
+    }
+    fireEvent.click(await screen.findByRole("option", { name: "Read-write" }));
+    await waitFor(() =>
+      expect(world.updates).toEqual([
+        { name: "nightly", body: { source: "write" } },
+      ]),
+    );
+    expect(screen.queryByTestId("prompt-editor")).toBeNull();
+  });
+
+  it("puts the source back when the server refuses it", async ({ expect }) => {
+    world.items = [prompt({ builtin: true, on: "manual" })];
+    world.refuse = true;
+    await show("nightly");
+    fireEvent.click(await screen.findByRole("radio", { name: "Settings" }));
+    const settings = await screen.findByTestId("prompt-page-settings");
+    const select = within(settings).getByRole("combobox", { name: "Source" });
+    fireEvent.click(select);
+    if (!screen.queryByRole("option", { name: "Read-write" })) {
+      fireEvent.keyDown(select, { key: "ArrowDown" });
+    }
+    fireEvent.click(await screen.findByRole("option", { name: "Read-write" }));
+    await waitFor(() => expect(world.updates).toHaveLength(1));
+    await waitFor(() =>
+      expect(
+        within(settings).getByRole("combobox", { name: "Source" }).textContent,
+      ).toContain("Read-only"),
+    );
+  });
+
+  it("offers no Run and no Edit without a ready host and on a built-in, and Source on its Settings tab", async ({
     expect,
   }) => {
     world.items = [prompt({ builtin: true, on: "manual" })];
     await show("nightly");
     await screen.findByTestId("prompt-page-text");
     expect(screen.queryByRole("button", { name: "Run" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
     fireEvent.click(await screen.findByRole("radio", { name: "Settings" }));
     const settings = await screen.findByTestId("prompt-page-settings");
     expect(within(settings).queryByTestId("prompt-page-switch")).toBeNull();
     expect(
-      within(settings).getByRole("button", { name: "Source" }),
+      within(settings).getByRole("combobox", { name: "Source" }),
     ).toBeTruthy();
-    expect(within(settings).queryByRole("button", { name: "Edit" })).toBeNull();
   });
 
   it("says so for a name the project has no prompt for", async ({ expect }) => {
