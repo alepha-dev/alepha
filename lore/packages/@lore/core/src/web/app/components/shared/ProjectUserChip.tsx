@@ -1,4 +1,5 @@
 import {
+  Badge,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -35,6 +36,10 @@ export interface ProjectUserChipProps {
  * A person in a list (#Q3829): their avatar, which always exists since it
  * falls back to two generated initials, and on hover or keyboard focus a
  * card with the avatar, full name, username and rank in the project.
+ *
+ * The card reads as one identity, then a detail (#Q4316): the name in bold
+ * with the rank as a small tag beside it, the `@handle` under them, and a
+ * detail ("Assigned 4 minutes ago") smaller, muted and set apart.
  *
  * The trigger is a button, so it takes focus and opens the card from the
  * keyboard as from the pointer; its accessible name is the whole card's
@@ -89,19 +94,37 @@ export const ProjectUserChip = (props: ProjectUserChipProps) => {
       >
         <UserAvatar public user={user} alt="" className="size-10" />
         <div className="flex min-w-0 flex-col">
-          <span className="truncate font-medium">{name}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              className="truncate font-semibold"
+              data-testid="project-user-card-name"
+            >
+              {name}
+            </span>
+            {user.rank && (
+              <Badge
+                variant="tint"
+                tone="neutral"
+                className="shrink-0 px-1.5 py-0 text-[10px] leading-4 font-normal"
+                data-testid="project-user-card-rank"
+              >
+                {user.rank}
+              </Badge>
+            )}
+          </span>
           {handle && handle !== `@${name}` && (
-            <span className="text-muted-foreground truncate text-xs">
+            <span
+              className="text-muted-foreground truncate text-xs"
+              data-testid="project-user-card-handle"
+            >
               {handle}
             </span>
           )}
-          {user.rank && (
-            <span className="text-muted-foreground truncate text-xs">
-              {user.rank}
-            </span>
-          )}
           {props.detail && (
-            <span className="text-muted-foreground truncate text-xs">
+            <span
+              className="text-muted-foreground/80 mt-1 truncate text-[11px]"
+              data-testid="project-user-card-detail"
+            >
               {props.detail}
             </span>
           )}

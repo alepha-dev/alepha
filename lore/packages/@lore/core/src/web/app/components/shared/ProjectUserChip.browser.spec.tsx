@@ -67,6 +67,20 @@ describe("ProjectUserChip", () => {
     expect(card.textContent).toContain("@ada");
     expect(card.textContent).toContain("Admin");
     expect(card.textContent).toContain("Assigned 2 days ago");
+
+    // One identity, then a detail (#Q4316): the name bold with the rank as a
+    // tag on its line, the handle under it, the detail small and muted.
+    const name = screen.getByTestId("project-user-card-name");
+    const rank = screen.getByTestId("project-user-card-rank");
+    expect(name.className).toContain("font-semibold");
+    expect(rank.textContent).toBe("Admin");
+    expect(rank.parentElement).toBe(name.parentElement);
+    const handle = screen.getByTestId("project-user-card-handle");
+    expect(handle.textContent).toBe("@ada");
+    expect(handle.parentElement).not.toBe(name.parentElement);
+    const detail = screen.getByTestId("project-user-card-detail");
+    expect(detail.className).toContain("text-[11px]");
+    expect(detail.className).toContain("text-muted-foreground");
   });
 
   it("draws the fallback as text when there is nobody to show", async ({
