@@ -5327,6 +5327,7 @@ export default {
   "prompts.pinned.menu": "Invites d'agent",
   "prompts.pinned.copy": "Copier",
   "prompts.pinned.run": "Lancer",
+  "prompts.pinned.noHost": "Aucun hôte Agent prêt",
   "prompts.pinned.settings": "Gérer les invites",
   "prompts.spotlight.copy": "Copier l'invite : $1",
   "prompts.spotlight.run": "Lancer l'invite : $1",

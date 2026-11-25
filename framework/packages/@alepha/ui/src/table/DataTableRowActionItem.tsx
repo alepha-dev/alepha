@@ -21,6 +21,10 @@ export const DataTableRowActionItem = <T,>(
   const { action, item, ctx } = props;
   const Icon = action.icon;
   const disabled = action.disabled?.(item);
+  const hint = action.hint?.(item);
+  const note = hint ? (
+    <span className="text-muted-foreground ms-auto ps-3 text-xs">{hint}</span>
+  ) : null;
   if (action.checked) {
     return (
       <DropdownMenuCheckboxItem
@@ -35,6 +39,7 @@ export const DataTableRowActionItem = <T,>(
       >
         {Icon && <Icon className="me-2 size-4" />}
         {action.label}
+        {note}
       </DropdownMenuCheckboxItem>
     );
   }
@@ -46,6 +51,7 @@ export const DataTableRowActionItem = <T,>(
     >
       {Icon && <Icon className="me-2 size-4" />}
       {action.label}
+      {note}
     </DropdownMenuItem>
   );
 };

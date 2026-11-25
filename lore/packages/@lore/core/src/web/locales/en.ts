@@ -5274,6 +5274,7 @@ export default {
   "prompts.pinned.menu": "Agent prompts",
   "prompts.pinned.copy": "Copy",
   "prompts.pinned.run": "Run",
+  "prompts.pinned.noHost": "No Agent host ready",
   "prompts.pinned.settings": "Manage prompts",
   "prompts.spotlight.copy": "Copy prompt: $1",
   "prompts.spotlight.run": "Run prompt: $1",
