@@ -168,6 +168,11 @@ export const ROUTES_FULL_WIDTH = new Set([
   // it is given.
   "projectChat",
   "projectChatRoom",
+  // An agent job (#Q4295): a detail page with an aside, whose transcript,
+  // raw log and prompt each scroll inside their pane. Capped, it sat in a
+  // centred column whose outer wrapper scrolled the aside and the tabs away
+  // (feedback #P2480 and #P2482, at 1920x929).
+  "projectJob",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);

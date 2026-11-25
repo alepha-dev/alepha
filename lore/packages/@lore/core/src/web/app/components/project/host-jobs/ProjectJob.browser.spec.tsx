@@ -196,6 +196,45 @@ describe("ProjectJob", () => {
     expect(screen.queryAllByTestId("job-history-row")).toHaveLength(0);
   });
 
+  it("scrolls each tab inside its own pane, under an aside and a tab strip that stay put (#Q4295)", async ({
+    expect,
+  }) => {
+    world.jobs = [
+      job({
+        id: DONE,
+        status: "succeeded",
+        exitCode: 0,
+        input: { agent: "claude", prompt: "Work on quest #Q12" } as never,
+      }),
+    ];
+    world.logs = { [DONE]: { stdout: "one\ntwo\n", stderr: "", live: false } };
+    await show(DONE);
+
+    // jsdom lays nothing out, so the spec checks what makes the pane, and
+    // never the page, the element that scrolls: a bounded column all the way
+    // down, and the overflow on the pane itself.
+    const page = screen.getByTestId("project-job");
+    expect(page.className).toContain("h-full");
+    expect(page.className).toContain("min-h-0");
+    const pane = await screen.findByTestId("job-transcript");
+    expect(pane.className).toContain("min-h-0");
+    expect(pane.className).toContain("overflow-y-auto");
+
+    fireEvent.click(screen.getByText("Raw log"));
+    const log = await screen.findByTestId("job-log");
+    expect(log.className).toContain("min-h-0");
+    expect(log.className).toContain("overflow-auto");
+
+    fireEvent.click(screen.getByText("Prompt"));
+    const prompt = await screen.findByTestId("job-prompt-text");
+    expect(prompt.className).toContain("min-h-0");
+    expect(prompt.className).toContain("overflow-auto");
+
+    // The tab is kept in the address, which outlives this case under jsdom.
+    fireEvent.click(screen.getByText("Transcript"));
+    await screen.findByTestId("job-transcript");
+  });
+
   it("puts a failed job's reason first", async ({ expect }) => {
     world.jobs = [
       job({ status: "failed", reason: "The agent exited with status 1" }),
