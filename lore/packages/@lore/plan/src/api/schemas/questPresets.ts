@@ -1,3 +1,4 @@
+import { PROMPT_NEEDS_HUMAN_TAG } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
 /**
@@ -56,6 +57,12 @@ export const QUEST_DONE_DAYS = 7;
 export const QUEST_NEEDS_ANSWER_TAG = "needs-answer";
 
 /**
+ * The tag a quest carries while it waits on a person to build it: an agent
+ * does not take it alone. Core's string, so one place owns it.
+ */
+export const QUEST_NEEDS_HUMAN_TAG = PROMPT_NEEDS_HUMAN_TAG;
+
+/**
  * The query each preset opens. `next` needs the next release's id, which only
  * the server knows; without one it has no query.
  */
@@ -76,7 +83,12 @@ export const questPresetQuery = (
     case "done":
       return { status: "completed", completed: String(QUEST_DONE_DAYS) };
     case "asks":
-      return { tag: QUEST_NEEDS_ANSWER_TAG, status: OPEN };
+      // Any of the two (#Q4335): both wait on a person, an answer or a
+      // hand. A comma list is read as any of.
+      return {
+        tag: `${QUEST_NEEDS_ANSWER_TAG},${QUEST_NEEDS_HUMAN_TAG}`,
+        status: OPEN,
+      };
     case "stale":
       return { status: "in_progress", stale: String(QUEST_STALE_DAYS) };
     case "next":
