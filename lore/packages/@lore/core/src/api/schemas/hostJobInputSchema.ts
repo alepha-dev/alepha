@@ -75,7 +75,7 @@ export const hostJobInputSchema = z.object({
   session: z
     .object({ id: z.uuid(), resume: z.boolean().optional() })
     .optional(),
-  timeoutSeconds: z.integer().min(10).max(14_400),
+  timeoutSeconds: z.integer().min(10).max(43_200),
   key: z
     .object({
       questId: z.integer().optional(),
