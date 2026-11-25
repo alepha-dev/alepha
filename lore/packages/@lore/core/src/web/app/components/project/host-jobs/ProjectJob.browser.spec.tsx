@@ -190,8 +190,17 @@ describe("ProjectJob", () => {
     );
     const events = screen.getByTestId("job-events");
     await waitFor(() => expect(events.textContent).toContain("All green."));
-    expect(screen.getByTestId("ai-chat-tool-trace")).toBeTruthy();
-    expect(events.textContent).toContain("yarn test");
+    // The tool group starts folded (#Q4308), and opens on its line.
+    const trace = screen.getByTestId("ai-chat-tool-trace");
+    const line = trace.querySelector("button[aria-expanded]") as HTMLElement;
+    expect(line.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByTestId("ai-chat-tool-trace-steps")).toBeNull();
+    expect(events.textContent).not.toContain("yarn test");
+    fireEvent.click(line);
+    expect(line.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.getByTestId("ai-chat-tool-trace-steps").textContent,
+    ).toContain("yarn test");
     expect(events.textContent).toContain("1 bookkeeping events hidden");
     expect(screen.queryAllByTestId("job-history-row")).toHaveLength(0);
   });
