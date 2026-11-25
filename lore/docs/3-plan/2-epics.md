@@ -205,29 +205,6 @@ the blockers before the questions, and offers **Open the Review tab** as the
 way out. You can still choose **Mark as ready anyway**:
 whether the plan is done is your call, so nothing refuses.
 
-## The roadmap
-
-The roadmap is a read-only page at `/<project>/roadmap`. It lists the open
-releases and the epics inside them, then what has shipped. It shows no quests,
-no names and no backlog.
-
-![The roadmap, with upcoming releases and the epics inside them](/screenshots/lore/roadmap-light.png)
-
-Inside a release, a predecessor sits above the epic that depends on it, which
-carries an "After Epic 7" chip. Each epic is shown with its status, so an empty
-progress bar on a draft or ready epic reads as "not started" rather than
-"stalled". The roadmap draws the order only. Whether an epic is blocked right
-now is on the epic's own page.
-
-The roadmap is turned on with the **Roadmap** switch in **Settings ▸ General ▸
-Capabilities**, under Plan, after Requirements; off, its page answers nobody. Who can see it is then set on
-**Settings ▸ Plan ▸ Roadmap**: **Members only** or **Public**. The same tab
-gives the link to share. A change can take up to a minute to reach visitors.
-
-⚠️ A public roadmap shows anyone with the link your release tags, their target
-dates and the titles of the epics inside them, including epics you have not
-started yet.
-
 ## From the command line
 
 ```bash

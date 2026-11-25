@@ -1,14 +1,12 @@
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
-import { type Epic, epics } from "../entities/epics.ts";
+import { epics } from "../entities/epics.ts";
 
 /**
- * What `epics.dependsOn` is allowed to say, and what order it puts epics in.
- *
- * Both halves live here rather than in `EpicController` because the roadmap
- * needs the ordering and the controller needs the validation, and a graph
- * walk written twice is a graph walk that disagrees with itself.
+ * What `epics.dependsOn` is allowed to say: an epic of the same project,
+ * never itself, never closing a cycle. Kept apart from `EpicController` so
+ * the graph walk lives in one place.
  */
 export class EpicDependencyService {
   epics = $repository(epics);
@@ -55,10 +53,10 @@ export class EpicDependencyService {
    *
    * ⚠️ This is NOT the workflow gate the column's own comment settles - that
    * one is about when an epic may BEGIN, and lives on `EpicWorkflowService`.
-   * A cycle is a different thing entirely: `A → B → A` is a graph the roadmap
-   * cannot draw and {@link order} cannot terminate on, and a self-reference
-   * with no constraint behind it is the only place one can be created. So it
-   * is refused on write, always, whatever the workflow rules are.
+   * A cycle is a different thing entirely: `A → B → A` is an order nothing
+   * can follow, and a self-reference with no constraint behind it is the only
+   * place one can be created. So it is refused on write, always, whatever the
+   * workflow rules are.
    *
    * Walks forward from the PROPOSED predecessor. If the epic being written is
    * reachable that way, storing the link would close the loop.
@@ -102,47 +100,5 @@ export class EpicDependencyService {
       seen.add(cursor);
       cursor = predecessorOf.get(cursor);
     }
-  }
-
-  /**
-   * Epics sorted so a predecessor always comes before the epics that depend
-   * on it, falling back to `number` for anything the graph does not order.
-   *
-   * A roadmap that lists `0.2.0`'s epics in creation order while one of them
-   * says "after Epic 7" is asking the reader to do the sort themselves, which
-   * is the whole thing this column exists to stop.
-   *
-   * Deliberately total and never throwing: it is a rendering helper, and a
-   * page must not fail to draw because of a cycle. {@link resolve} refuses
-   * one on write, but D1 has no transactions, so two racing writes can each
-   * pass the check and close a cycle together. Such rows fall back to
-   * `number` order rather than looping; `seen` is what makes that a fallback
-   * and not a hang.
-   */
-  order<T extends Pick<Epic, "id" | "number" | "dependsOn">>(list: T[]): T[] {
-    const byId = new Map(list.map((epic) => [epic.id, epic]));
-    const byNumber = [...list].sort((a, b) => a.number - b.number);
-
-    const placed = new Set<number>();
-    const result: T[] = [];
-
-    const visit = (epic: T, seen: Set<number>): void => {
-      if (placed.has(epic.id) || seen.has(epic.id)) return;
-      seen.add(epic.id);
-      // A predecessor outside this list - in another release, say - orders
-      // nothing here and is simply skipped.
-      const predecessor =
-        epic.dependsOn != null ? byId.get(epic.dependsOn) : undefined;
-      if (predecessor) visit(predecessor, seen);
-      if (placed.has(epic.id)) return;
-      placed.add(epic.id);
-      result.push(epic);
-    };
-
-    for (const epic of byNumber) {
-      visit(epic, new Set());
-    }
-
-    return result;
   }
 }

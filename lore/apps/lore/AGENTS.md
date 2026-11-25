@@ -33,7 +33,7 @@ Since #E75 (2026-10-06) the product lives in four packages, and `apps/lore` is w
 | package          | is               | its `AGENTS.md`                                                                                                                                         |
 | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@lore/core`     | the glue         | [`packages/@lore/core/AGENTS.md`](../../packages/@lore/core/AGENTS.md): barrels, registries, capabilities, access, routing traps, I18n, no transactions |
-| `@lore/plan`     | Lore as Jira     | [`packages/@lore/plan/AGENTS.md`](../../packages/@lore/plan/AGENTS.md): quests, epics, releases, kanban, roadmap, feedback                              |
+| `@lore/plan`     | Lore as Jira     | [`packages/@lore/plan/AGENTS.md`](../../packages/@lore/plan/AGENTS.md): quests, epics, releases, kanban, feedback                                       |
 | `@lore/remember` | Lore as Obsidian | [`packages/@lore/remember/AGENTS.md`](../../packages/@lore/remember/AGENTS.md): folios, directories, attachments, protected folios                      |
 | `@lore/ship`     | Lore as Vercel   | [`packages/@lore/ship/AGENTS.md`](../../packages/@lore/ship/AGENTS.md): apps and instances, sigils and telemetry, deployments, hosts                    |
 

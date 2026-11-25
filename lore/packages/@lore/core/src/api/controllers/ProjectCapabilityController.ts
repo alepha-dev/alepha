@@ -127,8 +127,7 @@ export class ProjectCapabilityController {
    * So it is its own string. It was owner-only until #Q3736, when the owner
    * decided an Admin does everything but delete the project: the built-in
    * Admin holds it, and any rank may be given it. `project:update` means the
-   * project's identity: title, description, slug, icon, repository URL,
-   * roadmap visibility.
+   * project's identity: title, description, slug, icon, repository URL.
    */
   setCapability = $action({
     use: [this.ownsAsOwner("capability:manage")],

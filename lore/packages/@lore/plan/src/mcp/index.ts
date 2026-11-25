@@ -10,7 +10,7 @@ import { QuestTools } from "./tools/QuestTools.ts";
 import { ReleaseTools } from "./tools/ReleaseTools.ts";
 
 /**
- * The MCP tools and resources of `@lore/plan`, Lore as Jira: quests, epics, releases, areas, the kanban, the roadmap and feedback.
+ * The MCP tools and resources of `@lore/plan`, Lore as Jira: quests, epics, releases, areas, the kanban and feedback.
  *
  * Registered by `apps/lore/src/main.server.ts` beside `LorePlanApi`.
  *

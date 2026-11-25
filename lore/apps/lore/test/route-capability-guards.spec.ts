@@ -19,7 +19,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * rule, and the asymmetry it produces is a decision rather than an omission,
  * which is why the last case pins it. Each capability's landing route refuses
  * (`/quests` and its Board tab, `/folios`, `/apps` and its tabs, `/feedback`),
- * while `projectEpics`, releases and the roadmap have no loader guard at all:
+ * while `projectEpics` and releases have no loader guard at all:
  * those hang off options inside Work, a saved link keeps resolving, and the
  * sidebar is what stops offering them. A
  * future session will be tempted to make the set uniform in one direction or

@@ -75,7 +75,6 @@ const ROUTES_SETTINGS = [
   "projectSettingsArea",
   "projectSettingsBoard",
   "projectSettingsTagColors",
-  "projectSettingsRoadmap",
   "projectSettingsRequirements",
   "projectSettingsQuality",
   "projectSettingsPrompts",

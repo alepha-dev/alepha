@@ -58,7 +58,7 @@ export const epicListResultSchema = z.object({
       dependsOn_number: z
         .integer()
         .describe(
-          "Per-project number of the epic that has to come first, if any. A gate: no quest of this epic can be accepted, so the epic cannot start, while that epic is not 'completed'. It is also what the roadmap draws the order from - see `epics.dependsOn`.",
+          "Per-project number of the epic that has to come first, if any. A gate: no quest of this epic can be accepted, so the epic cannot start, while that epic is not 'completed'. See `epics.dependsOn`.",
         )
         .optional(),
       dependsOn_status: epicStatusSchema
@@ -140,7 +140,7 @@ export const epicGetResultSchema = z.object({
   dependsOn_number: z
     .integer()
     .describe(
-      "Per-project number of the epic that has to come first, if any. A gate: no quest of this epic can be accepted, so the epic cannot start, while that epic is not 'completed'. It is also what the roadmap draws the order from.",
+      "Per-project number of the epic that has to come first, if any. A gate: no quest of this epic can be accepted, so the epic cannot start, while that epic is not 'completed'.",
     )
     .optional(),
   dependsOn_status: epicStatusSchema

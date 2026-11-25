@@ -204,7 +204,7 @@ export class LorePermissions {
 
   /**
    * The project's **identity**: title, description, slug, icon, repository
-   * URL, roadmap visibility.
+   * URL.
    *
    * ⚠️ It used to gate `setCapability` as well. That act is
    * `capability:manage` now, a separate grant (an Admin's by default since

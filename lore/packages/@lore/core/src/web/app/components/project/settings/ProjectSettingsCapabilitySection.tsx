@@ -84,10 +84,8 @@ const ProjectSettingsCapabilitySection = (
           about is the owner's OWN 30 s read window, which they see resolve by
           reloading.
 
-          The neighbouring warnings are not the same and stay: the roadmap
-          card's is about what the PUBLIC sees, which the owner cannot check
-          for themselves, and the ranks page's draws a contrast with removal
-          taking effect at once. */}
+          The ranks page's warning is not the same and stays: it draws a
+          contrast with removal taking effect at once. */}
       {showMaster && (
         <SettingsRow
           label={tr(descriptor.labelKey)}

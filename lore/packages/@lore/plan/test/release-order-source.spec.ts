@@ -8,7 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ReleaseController, RoadmapController } from "../src/api/index.ts";
+import { ReleaseController } from "../src/api/index.ts";
 import { LorePlanApi } from "../src/api/index.ts";
 
 /**
@@ -17,11 +17,11 @@ import { LorePlanApi } from "../src/api/index.ts";
  * every list of the releases of the ui").
  *
  * `compareReleaseTags` existed already and two tables used it. Everything
- * else - the roadmap, the quests table's release filter, the bulk `Add to
+ * else - the quests table's release filter, the bulk `Add to
  * release` menu, both release controls, `QuestCreate`, the header menu - took
  * whatever order the server sent. Sorting at each of those is how the next
- * surface gets forgotten, so the order is settled in `getReleases` and in
- * `RoadmapService.roadmapOf`, and every consumer inherits it.
+ * surface gets forgotten, so the order is settled in `getReleases`, and every
+ * consumer inherits it.
  *
  * The fixture creates `0.28.0, 1.0.0, 0.29.0` **in that sequence**, which is
  * the reporter's own arrangement and the only one where text, `number` and a
@@ -44,7 +44,6 @@ interface TestContext {
   adminUserController: AdminUserController;
   projectController: ProjectController;
   releaseController: ReleaseController;
-  roadmapController: RoadmapController;
   fakeProvider: FakeProvider;
 }
 
@@ -72,7 +71,6 @@ const setup = async (): Promise<TestContext> => {
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
     releaseController: alepha.inject(ReleaseController),
-    roadmapController: alepha.inject(RoadmapController),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -99,7 +97,7 @@ describe("release lists are ordered by version at the source", () => {
     await ctx.alepha.stop();
   });
 
-  const seed = async (roadmapVisibility?: "public") => {
+  const seed = async () => {
     const owner = await createTestUser(ctx);
     const project = (
       await ctx.projectController.createProject.fetch(
@@ -111,13 +109,6 @@ describe("release lists are ordered by version at the source", () => {
     for (const tag of CREATION_ORDER) {
       await ctx.releaseController.createRelease.fetch(
         { params: { projectId: project.id }, body: { tag } },
-        { user: owner },
-      );
-    }
-
-    if (roadmapVisibility) {
-      await ctx.projectController.updateProjectById.fetch(
-        { params: { id: project.id }, body: { roadmapVisibility } },
         { user: owner },
       );
     }
@@ -141,42 +132,6 @@ describe("release lists are ordered by version at the source", () => {
     // The `$sequence` still records creation order, which is exactly why it
     // could not be the version order: it disagrees here.
     expect(releases.map((r) => r.number)).toEqual([1, 3, 2]);
-  });
-
-  it("the anonymous roadmap uses the same order", async ({ expect }) => {
-    const { project } = await seed("public");
-
-    const roadmap = (
-      await ctx.roadmapController.getPublicRoadmap.fetch({
-        params: { slug: project.slug },
-      })
-    ).data;
-
-    expect(roadmap.releases.map((r) => r.tag)).toEqual(VERSION_ORDER);
-  });
-
-  it("the member roadmap agrees with the anonymous one", async ({ expect }) => {
-    // Both actions go through `RoadmapService.roadmapOf`, and the two
-    // audiences must never see a different payload - which is why the sort
-    // lives in the service rather than in either action.
-    const { owner, project } = await seed("public");
-
-    const anonymous = (
-      await ctx.roadmapController.getPublicRoadmap.fetch({
-        params: { slug: project.slug },
-      })
-    ).data;
-    const member = (
-      await ctx.roadmapController.getMemberRoadmap.fetch(
-        { params: { slug: project.slug } },
-        { user: owner },
-      )
-    ).data;
-
-    expect(member.releases.map((r) => r.tag)).toEqual(
-      anonymous.releases.map((r) => r.tag),
-    );
-    expect(member.releases.map((r) => r.tag)).toEqual(VERSION_ORDER);
   });
 
   it("keeps a non-version tag after every version, and holds creation order as the tiebreak", async ({

@@ -1,6 +1,6 @@
 # AGENTS.md: @lore/plan
 
-**Plan**, Lore as Jira (#E75, folio #F1356; the pillar since #E143): quests, epics, releases, areas, the kanban, the roadmap and feedback. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `AGENTS.md` first, then `packages/@lore/core/AGENTS.md`: the barrels, the registries this package fills, and the conventions every package shares.
+**Plan**, Lore as Jira (#E75, folio #F1356; the pillar since #E143): quests, epics, releases, areas, the kanban and feedback. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `AGENTS.md` first, then `packages/@lore/core/AGENTS.md`: the barrels, the registries this package fills, and the conventions every package shares.
 
 ## Layout
 
@@ -38,9 +38,8 @@ Defined in `src/web/app/WorkRouter.ts`. The reporter's own feedback is not a rou
 | `/:projectSlug/quests/:shortId/graph`  | `projectQuestGraph`      | `project/quest/QuestQuestline.tsx`            | One quest's questline, drawn with the same `Questline` map as the epic's Flow tab. ⚠️ A quest that belongs to an epic never renders here - the loader redirects to `/epics/:epicNumber?tab=flow`, since that map already exists beside the epic's own chrome. The route name and the `/graph` path are kept because they are links people hold                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `/:projectSlug/settings/areas`         | `projectSettingsAreas`   | `…/ProjectSettingsAreasPage.tsx`              | Areas config                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `/:projectSlug/settings/areas/:areaId` | `projectSettingsArea`    | `…/ProjectSettingsAreaPage.tsx`               | One area: rename, merge, delete. Param is the area's `id`, not its name — a rename must not change the URL under the person doing it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `/:projectSlug/settings/work`          | `projectSettingsWork`    | `…/ProjectSettingsWorkPage.tsx`               | Plan > Features: the Plan options that change behaviour (estimate, chrono, reminder). The Roadmap on/off switch is on General > Capabilities under Plan, after Requirements, registered by `WorkShell` on core's `CapabilityRowRegistry` (#Q4184). Siblings: `/work/board` (`projectSettingsBoard`, the kanban columns, its tab listed with `plan.board`) (the prompts are core's Settings > Prompts since #E174)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `/:projectSlug/settings/work`          | `projectSettingsWork`    | `…/ProjectSettingsWorkPage.tsx`               | Plan > Features: the Plan options that change behaviour (estimate, chrono, reminder). Siblings: `/work/board` (`projectSettingsBoard`, the kanban columns, its tab listed with `plan.board`) (the prompts are core's Settings > Prompts since #E174)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `/:projectSlug/request`                | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `/:projectSlug/roadmap`                | `projectRoadmap`         | `project/roadmap/ProjectRoadmap.tsx`          | Open releases and the epics inside them, read only. Top-level and **unguarded**, for the same reason `projectFeedbackRequest` is: `/:projectSlug` carries `$secure()`, which member-gates its subtree AND puts it in CSR. This is the ONE page a crawler reaches, so it is also the one that server-renders real data - and the one with `stream: false`, so a slug nobody owns answers a real 404 instead of a soft one. Who may read it is `projects.roadmapVisibility`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## State atoms
 
@@ -100,49 +99,13 @@ When `onClose` is provided, it's used instead of router navigation. When `onQues
 
 `QuestCreate` accepts an optional `onCreated` callback. When provided, it's called instead of the default `router.push("projectQuest", ...)` after creating a quest. Used by the header while the board is open, so creating a quest does not navigate off it.
 
-## ⚠️ The roadmap is the one anonymous read path
+## Epics depend on epics
 
-`RoadmapController.getPublicRoadmap` (`GET /api/projects/by-slug/:slug/roadmap`)
-is the **only `$action` in the application without `$secure()`**. Every other
-one has it, `FeedbackController.submitFeedback` included: even the public
-"report a bug" page requires sign-in, and the unguarded `/:projectSlug/request`
-page exists to render a sign-in CTA rather than to accept anonymous writes.
-`SigilIngestController` is a `$route` with its own bearer token, not an
-exception to this.
-
-Four properties hold it in place, and each is load-bearing:
-
-- **Opt-in per project, off by default.** `projects.roadmapVisibility` is
-  `off | members | public`, absent reads as `off`
-  (`ProjectSecurityService.roadmapVisibilityOf`), and the one gate both
-  audiences share is `isRoadmapVisible(project, user?)`.
-- **Its own narrow response schema.** `roadmapResourceSchema` is built with
-  `pick`, so exclusion is the default and a column added to `releases` or
-  `epics` cannot ride along. `test/roadmap-public-endpoint.spec.ts` pins its
-  exact key set and fails when a key is added.
-- **`assertMember` is untouched.** Not widened, not bypassed, not made
-  conditional. A diff that changes it while touching the roadmap is the wrong
-  design.
-- **404, never 403**, with one message for "no such slug" and "not public" -
-  a 403 confirms the project exists.
-
-Folio #1073 is the governing note: a public page must be a separate, narrow,
-opt-in surface with its own response schema, never a relaxation of the
-membership gate.
-
-⚠️ **Turning a roadmap off is not instant, and that is disclosed rather than
-fixed.** The response is publicly cacheable for 60 seconds (`max-age=60`,
-`s-maxage=60`), and the members action reads the project row through the 30
-second `$ownsProject` window. The settings card says so
-(`project.settings.roadmap.delay`, "changes can take up to a minute to reach
-visitors"), and the cache directives are pinned to that promise by a test -
-raising either means changing that string in both locales first.
-
-**The order between epics is drawn, not described.** `epics.dependsOn` is a
-self-reference (`ON DELETE SET NULL`, optional, no column default), and the
-roadmap sorts each release's epics so a predecessor comes above what depends
-on it and renders an "After Epic N" chip. It replaced prose: "Depends on epic
-#14 landing first" in a description cannot be rendered, sorted or checked.
+**The order between epics is recorded, not described.** `epics.dependsOn` is
+a self-reference (`ON DELETE SET NULL`, optional, no column default), and the
+epic page says "After Epic N" or "Blocked by Epic N" from it. It replaced
+prose: "Depends on epic #14 landing first" in a description cannot be
+rendered or checked.
 
 ⚠️ **It is a GATE since epic #31 (2026-09-04), like `quests.dependsOn`.**
 It gates the START: the first quest of a `ready` epic is not accepted or
@@ -156,10 +119,9 @@ zero (epic #27 was worked to 9 of 9 while `planned`, by an agent told the
 status on every call), and the column comment now records both decisions.
 `EpicDependencyService.spec.ts`'s test that was written to go red when the
 gate arrived went red as designed and is its own opposite now. **Cycles ARE
-refused** on write, which was always a different question: `A → B → A` is a
-graph the roadmap cannot draw. The roadmap chip still says "After Epic N",
-because it draws order and cannot see the predecessor's status; the epic
-page says "Blocked by" off `dependsOnStatus`. MCP speaks in per-project
+refused** on write, which was always a different question: `A → B → A` is an
+order nothing can follow. The epic page says "Blocked by" off
+`dependsOnStatus`. MCP speaks in per-project
 numbers (`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
 `quest_*` makes.
 
@@ -280,13 +242,6 @@ rows. `quests.history` keeps its action names (`assigned`, `held`), which are
 events, not statuses. Labels go through `QUEST_STATUS_LABEL_KEYS`
 (`questChips.ts`), never a key built from the status string.
 
-⚠️ **Publishing a roadmap publishes the titles of epics nobody has
-announced.** Draft epics are shown on purpose: an epic that is specified and
-not started is exactly what a roadmap is for, and hiding it would make the
-page useless for the one question it exists to answer. The safeguard is the
-confirmation naming that outcome before the switch applies, not a filter in
-the endpoint - a filter there would silently contradict the members page.
-
 ## Drag & Drop
 
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `todo → in_progress → completed` (named `new → accepted → completed` until #Q2269, folio #1290). Completed quests cannot be moved back. A to-do quest must be accepted before completing.
@@ -343,7 +298,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 
 What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/AGENTS.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
 
-**Controllers (9)** - `Feedback`, `FeedbackComment`, `Kanban`, `Release`, `Roadmap`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`.
+**Controllers (8)** - `Feedback`, `FeedbackComment`, `Kanban`, `Release`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`.
 
 **Entities (5)** - `feedback`, `feedbackComments`, `releases`, `questComments`, `quests`.
 

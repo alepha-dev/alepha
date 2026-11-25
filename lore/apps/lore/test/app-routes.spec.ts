@@ -73,7 +73,6 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsWork",
   "projectSettingsBoard",
   "projectSettingsTagColors",
-  "projectSettingsRoadmap",
   "projectSettingsRequirements",
   "projectSettingsQuality",
   "projectSettingsPrompts",

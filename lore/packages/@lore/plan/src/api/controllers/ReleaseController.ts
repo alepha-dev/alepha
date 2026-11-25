@@ -279,7 +279,7 @@ export class ReleaseController {
         // The SQL above orders by `number`, which is a `$sequence` and so
         // only tracks version order while releases happen to be created in
         // it. Planning `1.0.0` before `0.29.0` breaks the proxy, and one
-        // project had already done exactly that - the roadmap read
+        // project had already done exactly that: its pickers read
         // `0.28.0, 1.0.0, 0.29.0`.
         //
         // Ascending, which is what the report asked for and the opposite of

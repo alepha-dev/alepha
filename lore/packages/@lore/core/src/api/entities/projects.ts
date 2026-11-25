@@ -4,7 +4,6 @@ import { $entity, db } from "alepha/orm";
 
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
-import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 
 export const projects = $entity({
   name: "projects",
@@ -136,18 +135,6 @@ export const projects = $entity({
      * the `projects` table rebuild that cascade-wipes children on D1.
      */
     kanbanColumnConfig: kanbanColumnConfigSchema.optional(),
-    /**
-     * Who may read this project's roadmap at `/:projectSlug/roadmap`.
-     * Absent means `off`.
-     *
-     * A dedicated column, not an option of a capability: it is a tri-state
-     * and it belongs to the project, not to one surface.
-     *
-     * NB: `z.optional` with NO `db.default(...)`, for the same reason as
-     * `retentionDays` above. The `off` fallback lives in
-     * `ProjectSecurityService.roadmapVisibilityOf`, not in the column.
-     */
-    roadmapVisibility: roadmapVisibilitySchema.optional(),
     /**
      * Colour token per quest tag, e.g. `{ "bug": "red", "chore": "slate" }`.
      * A tag with no entry renders neutral.

@@ -43,7 +43,7 @@ const columnStatusSchema = z.object({
  * one collapses to and its WIP limit.
  *
  * Split off the Work page (#Q2565), which had grown into the capability's
- * switches, the columns, the tag colours, the roadmap and the agent prompts
+ * switches, the columns, the tag colours and the agent prompts
  * on one scroll. Always listed: the board is always on with Work.
  */
 const ProjectSettingsBoardPage = () => {

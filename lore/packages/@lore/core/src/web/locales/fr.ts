@@ -240,7 +240,7 @@ export default {
     "Planifiez le travail, gardez les décisions, construisez le code, livrez les applications. Un seul endroit pour celles et ceux qui le font.",
   "home.pillar.plan.title": "Planifier",
   "home.pillar.plan.description":
-    "Le travail à venir, réparti en épopées et en versions, sur un tableau et une feuille de route.",
+    "Le travail à venir, réparti en épopées et en versions, sur un tableau.",
   "home.pillar.remember.title": "Se souvenir",
   "home.pillar.remember.description":
     "Un wiki de notes reliées, qui garde les décisions et leurs raisons.",
@@ -1292,7 +1292,6 @@ export default {
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.tagColors": "Étiquettes",
-  "project.settings.tab.roadmap": "Feuille de route",
   "project.settings.tab.quality": "Qualité",
   "project.settings.tab.prompts": "Invites",
   "project.settings.tab.jobs": "Tâches",
@@ -1909,24 +1908,6 @@ export default {
   "project.settings.kanban.columns.reorder.hint":
     "Appuyez sur Espace pour déplacer cette colonne, puis sur les flèches, et de nouveau sur Espace pour la poser.",
   "project.settings.kanban.columns.reorder": "Réordonner la colonne",
-  "project.settings.roadmap.title": "Feuille de route",
-  "project.settings.roadmap.description":
-    "Une page en lecture seule listant vos versions ouvertes et les épopées qu’elles contiennent. Ni quêtes, ni noms, ni backlog.",
-  "project.settings.roadmap.visibility.label": "Qui peut la voir",
-  "project.settings.roadmap.delay":
-    "Un changement peut mettre jusqu’à une minute à atteindre les visiteurs.",
-  "project.settings.roadmap.switch.description":
-    "Une page en lecture seule de vos versions ouvertes et des épopées qu’elles contiennent. Qui peut la voir se règle dans les réglages de Plan, onglet Feuille de route.",
-  "project.settings.roadmap.level.members": "Membres seulement",
-  "project.settings.roadmap.level.public": "Publique",
-  "project.settings.roadmap.url.label": "Lien",
-  "project.settings.roadmap.url.copy": "Copier le lien de la feuille de route",
-  "project.settings.roadmap.url.copied": "Lien copié.",
-  "project.settings.roadmap.publicConfirm.title":
-    "Publier cette feuille de route ?",
-  "project.settings.roadmap.publicConfirm.description":
-    "Toute personne disposant du lien verra vos étiquettes de version, leurs dates cibles et les titres des épopées qu’elles contiennent, y compris les épopées que vous n’avez pas encore commencées.",
-  "project.settings.roadmap.publicConfirm.confirm": "Rendre publique",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",
@@ -2063,18 +2044,6 @@ export default {
   "release.bucket.shelved": "écartées",
   "release.bucket.share": "$1 % de $2",
   "release.bucket.outside": "hors des $1",
-
-  "roadmap.subtitle": "Ce qui est en cours, et ce qui arrive ensuite.",
-  "roadmap.empty": "Rien sur la feuille de route pour l’instant.",
-  "roadmap.section.upcoming": "À venir",
-  "roadmap.section.shipped": "Livré",
-  "roadmap.release.estimated": "Estimée au $1",
-  "roadmap.release.released": "Livrée le $1",
-  "roadmap.release.noDate": "Pas encore de date estimée",
-  "roadmap.epic.ref": "Épopée $1",
-  "roadmap.epic.ratio": "$1/$2",
-  "roadmap.epic.after": "Après l’épopée $1",
-  "roadmap.poweredBy": "Feuille de route publiée avec Alepha Lore.",
 
   "release.kpi.ready.label": "Prête à livrer",
   "release.kpi.ready.remaining.one": "1 quête reste à livrer.",

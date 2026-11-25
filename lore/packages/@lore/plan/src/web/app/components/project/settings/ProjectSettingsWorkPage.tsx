@@ -5,8 +5,7 @@ import {
 import { useInject } from "alepha/react";
 
 /**
- * Plan > Quests ("Features" until #Q4258): how quests behave. Whether the
- * roadmap is on is a switch on General > Capabilities, under Plan (#Q4184).
+ * Plan > Quests ("Features" until #Q4258): how quests behave.
  *
  * The master switch and the options that add a sidebar entry (board, epics,
  * releases) are in General > Capabilities since #Q2565. The board's columns,

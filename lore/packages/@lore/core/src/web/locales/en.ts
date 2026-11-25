@@ -232,7 +232,7 @@ export default {
     "Plan the work, remember the decisions, build the code, ship the apps. One place for the people who make it.",
   "home.pillar.plan.title": "Plan",
   "home.pillar.plan.description":
-    "The work ahead, grouped into epics and releases, on a board and a roadmap.",
+    "The work ahead, grouped into epics and releases, on a board.",
   "home.pillar.remember.title": "Remember",
   "home.pillar.remember.description":
     "A wiki of linked notes that keeps the decisions and the reasons behind them.",
@@ -1300,7 +1300,6 @@ export default {
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
   "project.settings.tab.tagColors": "Tags",
-  "project.settings.tab.roadmap": "Roadmap",
   "project.settings.tab.quality": "Quality",
   "project.settings.tab.prompts": "Prompts",
   "project.settings.tab.jobs": "Jobs",
@@ -1915,23 +1914,6 @@ export default {
   "project.settings.kanban.columns.reorder.hint":
     "Press Space to move this column, then the arrow keys, and Space again to drop it.",
   "project.settings.kanban.columns.reorder": "Reorder column",
-  "project.settings.roadmap.title": "Roadmap",
-  "project.settings.roadmap.description":
-    "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
-  "project.settings.roadmap.visibility.label": "Who can see it",
-  "project.settings.roadmap.delay":
-    "Changes can take up to a minute to reach visitors.",
-  "project.settings.roadmap.switch.description":
-    "A read-only page of your open releases and the epics inside them. Who can see it is set in Plan settings, on the Roadmap tab.",
-  "project.settings.roadmap.level.members": "Members only",
-  "project.settings.roadmap.level.public": "Public",
-  "project.settings.roadmap.url.label": "Link",
-  "project.settings.roadmap.url.copy": "Copy the roadmap link",
-  "project.settings.roadmap.url.copied": "Link copied.",
-  "project.settings.roadmap.publicConfirm.title": "Publish this roadmap?",
-  "project.settings.roadmap.publicConfirm.description":
-    "Anyone with the link will see your release tags, their target dates, and the titles of the epics inside them, including epics you have not started yet.",
-  "project.settings.roadmap.publicConfirm.confirm": "Make it public",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",
@@ -2067,20 +2049,6 @@ export default {
   "release.bucket.shelved": "declined",
   "release.bucket.share": "$1% of $2",
   "release.bucket.outside": "outside the $1",
-
-  "roadmap.subtitle": "What is being worked on, and what is coming next.",
-  "roadmap.empty": "Nothing on the roadmap yet.",
-  "roadmap.section.upcoming": "Upcoming",
-  "roadmap.section.shipped": "Shipped",
-  // "Estimated", never "due". Nothing enforces a target date and no cron
-  // reads it, and this wording is what keeps it from reading as a promise.
-  "roadmap.release.estimated": "Estimated $1",
-  "roadmap.release.released": "Released $1",
-  "roadmap.release.noDate": "No estimated date yet",
-  "roadmap.epic.ref": "Epic $1",
-  "roadmap.epic.ratio": "$1/$2",
-  "roadmap.epic.after": "After Epic $1",
-  "roadmap.poweredBy": "Roadmap published with Alepha Lore.",
 
   "release.kpi.ready.label": "Ready to ship",
   "release.kpi.ready.remaining.one": "1 quest still to land.",

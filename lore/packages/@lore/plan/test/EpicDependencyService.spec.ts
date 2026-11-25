@@ -21,7 +21,7 @@ import {
 } from "../src/testing/index.ts";
 
 /**
- * `epics.dependsOn`: what it refuses, and the order it puts epics in.
+ * `epics.dependsOn`: what it refuses.
  *
  * ⚠️ Read the column's own comment in `epics.ts` before changing anything
  * here. The field is a **gate** since epic #31: an epic cannot START while
@@ -167,7 +167,7 @@ describe("EpicDependencyService", () => {
     /**
      * ⚠️ The case the quest called for by name. `quests.dependsOn` refuses a
      * self-reference and nothing longer, so a quest chain can still be
-     * looped; this column cannot be, because the roadmap draws from it.
+     * looped; this column cannot be, since an epic waits on its predecessor.
      */
     it("refuses a two-epic cycle, A to B to A", async ({ expect }) => {
       const project = await createTestProject(ctx.alepha);
@@ -341,54 +341,6 @@ describe("EpicDependencyService", () => {
       );
 
       expect(survivor.dependsOn).toBeUndefined();
-    });
-  });
-
-  describe("order", () => {
-    it("puts a predecessor before what depends on it", ({ expect }) => {
-      // Declared out of order on purpose: `number` alone would keep 9 above 7.
-      const nine = { id: 9, number: 9, dependsOn: undefined };
-      const seven = { id: 7, number: 7, dependsOn: 9 };
-
-      expect(
-        ctx.dependencies.order([seven, nine]).map((epic) => epic.number),
-      ).toEqual([9, 7]);
-    });
-
-    it("falls back to number for anything the graph does not order", ({
-      expect,
-    }) => {
-      const list = [
-        { id: 3, number: 3, dependsOn: undefined },
-        { id: 1, number: 1, dependsOn: undefined },
-        { id: 2, number: 2, dependsOn: undefined },
-      ];
-
-      expect(ctx.dependencies.order(list).map((epic) => epic.number)).toEqual([
-        1, 2, 3,
-      ]);
-    });
-
-    it("ignores a predecessor that is not in the list", ({ expect }) => {
-      // A predecessor in another release, which orders nothing on this card.
-      const list = [{ id: 2, number: 2, dependsOn: 99 }];
-      expect(ctx.dependencies.order(list).map((epic) => epic.id)).toEqual([2]);
-    });
-
-    /**
-     * ⚠️ A cycle cannot be written through `resolve`, so this is about rows
-     * that predate it or a future path that forgets to call it. A page must
-     * not fail to draw because of one, and it must not hang either.
-     */
-    it("terminates on a cycle rather than hanging", ({ expect }) => {
-      const list = [
-        { id: 1, number: 1, dependsOn: 2 },
-        { id: 2, number: 2, dependsOn: 1 },
-      ];
-
-      const ordered = ctx.dependencies.order(list);
-      expect(ordered).toHaveLength(2);
-      expect(new Set(ordered.map((epic) => epic.id))).toEqual(new Set([1, 2]));
     });
   });
 });

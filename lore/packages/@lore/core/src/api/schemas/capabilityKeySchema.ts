@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  * Plan, Remember and Ship, and Chat (#E161).
  *
  * - `plan` is the project's process: quests, epics, releases, areas, the
- *   board, the roadmap.
+ *   board.
  * - `remember` is its memory: folios, directories, links, revisions,
  *   attachments.
  * - `ship` is its software: instances, artifacts, and with the
