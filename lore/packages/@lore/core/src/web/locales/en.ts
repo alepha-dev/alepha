@@ -3299,6 +3299,7 @@ export default {
   "feedback.subscription.members": "Feedback from project members",
   "feedback.subscription.offDescription":
     "You will no longer be notified of new feedback in this project.",
+  "feedback.filter.label": "Status",
   "feedback.filter.pending": "Pending",
   "feedback.filter.accepted": "Accepted",
   "feedback.filter.rejected": "Rejected",
