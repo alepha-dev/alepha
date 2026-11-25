@@ -76,7 +76,8 @@ const (
 	maxJobPrompt = 128 << 10
 	// The bounds on a job's time. A check is a short wait.
 	minJobTimeoutSeconds = 10
-	maxJobTimeoutSeconds = 4 * 3600
+	// Twelve hours: an epic worked end to end can run most of a day (#Q4328).
+	maxJobTimeoutSeconds = 12 * 3600
 	maxCheckTimeout      = 300
 
 	// checkPrompt is the whole of what a capability check asks: one short
