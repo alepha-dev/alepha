@@ -30,7 +30,7 @@ The quest: {{quest.url}}
 9. Complete the quest now, in this run: do not wait for the CI run or the merge. \`quest_complete\` with a short note: what shipped, what was left out and why, and the pull request. Completing it says the work is done, not that it has shipped. Do not record the branch's sha: the rebase merge replaces it. A fix after that, for a red run or a review, still goes into the quest's one commit.
 10. If you are still there once it has merged, record the commit main received with \`quest_commit_add\` (find it in main's log by {{quest.reference}}). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-Never stop with the quest still accepted, unless you stop on a question below. If the pull request has not merged when you stop, say so in your reply, with its link: the quest is completed, and not on main yet.
+Never stop with the quest still accepted: complete it, or, when you stop on a question below, hand it back with \`quest_unassign\` once the question is written. If the pull request has not merged when you stop, say so in your reply, with its link: the quest is completed, and not on main yet.
 
 If the quest cannot be done as written, say so in a comment and stop. Do not guess at a decision that is the owner's to make, and put the question in your reply as well: what the quest asks, what stopped you, and the two or three ways forward with the one you would take. The comment is the record; your reply is what the person who sent you here reads.
 

@@ -30,6 +30,6 @@ The report: {{feedback.url}}
 10. Then tell the reporter in the feedback's discussion what changed, in one or two sentences: say it is on its way, never that it has shipped, since it lands when the pull request merges.
 11. If you are still there once it has merged, record the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-Never stop with the quest still accepted, unless you stop on a question (step 1). If the pull request has not merged when you stop, say so in your reply with its link: the quest is completed, and not on main yet.
+Never stop with the quest still accepted: complete it, or, when it waits on the owner's answer (below), hand it back with \`quest_unassign\` once the question is written. If the pull request has not merged when you stop, say so in your reply with its link: the quest is completed, and not on main yet.
 
 ${unfinishedQuestRule}`;

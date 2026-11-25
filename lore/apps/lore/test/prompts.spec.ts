@@ -198,6 +198,38 @@ describe("prompts", () => {
     expect(byName.triage!.text).toContain("It is not `needs-answer`");
   });
 
+  it("hands a quest left on a question back to todo, and has a run of loose quests reread the needs-answer ones (#Q4347)", async ({
+    expect,
+  }) => {
+    const byName = Object.fromEntries(
+      (await list()).map((it) => [it.name, it]),
+    );
+    for (const name of [
+      "work-quest",
+      "work-epic",
+      "work-loose-quests",
+      "work-feedback",
+    ]) {
+      const text = byName[name]!.text;
+      // The shared rule, then each prompt's own stop rule.
+      expect(text).toContain(
+        "hand it back with `quest_unassign` once the comment and the tag are written, so it reads `todo` again",
+      );
+      expect(text).not.toContain("unless you stop on");
+      expect(text).not.toContain("still open, unless");
+    }
+    const loose = byName["work-loose-quests"]!.text;
+    // A tagged quest is no longer skipped on its tag alone.
+    expect(loose).not.toContain(
+      "or tagged `needs-answer`, stays in `todo` and does not count",
+    );
+    expect(loose).toContain(
+      "A quest tagged `needs-answer` is read every round, never skipped on its tag",
+    );
+    // One an earlier run left accepted is found too.
+    expect(loose).toContain('status "in_progress" and that tag');
+  });
+
   it("has every work prompt review its pull request with a sub-agent before it may merge, and lets a blocked quest not hold a run back (#Q4332)", async ({
     expect,
   }) => {
