@@ -1,5 +1,7 @@
 import { PROMPT_NEEDS_HUMAN_TAG } from "@lore/core/schemas";
 
+import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
+import { reviewStepRule } from "./reviewStepRule.ts";
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
 
 /**
@@ -20,7 +22,7 @@ The quests: {{projectUrl}}/quests
 
 ## The loop
 
-Repeat until no loose quest is left in \`todo\`. Re-read the list each round rather than taking it once at the start: quests get filed while you work, and finishing one often reveals the next.
+Repeat until no loose quest you can work is left in \`todo\`: one you left with a comment on why it cannot be done as written, or tagged \`${QUEST_NEEDS_ANSWER_TAG}\`, stays in \`todo\` and does not count. Re-read the list each round rather than taking it once at the start: quests get filed while you work, and finishing one often reveals the next.
 
 To read it, call \`quest_list\` with status "todo" (page through it with \`limit\` and \`offset\` until you have every row) and keep the quests that carry no \`epic\` and no \`${PROMPT_NEEDS_HUMAN_TAG}\` tag: an agent does not build those alone. A quest under an epic is not part of this run: an epic is worked through its own prompt.
 
@@ -44,7 +46,7 @@ When a quest cannot be done as written, say so in a comment on it (\`quest_comme
 
 ## When none is left
 
-1. Read the list one last time. If it is empty, mark the pull request ready for review. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
+1. Read the list one last time. If nothing is left in it but the quests this run left with a comment and those tagged \`${QUEST_NEEDS_ANSWER_TAG}\`, review the pull request (below), then mark it ready for review: a blocked quest never holds back the ones that are done. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
 2. If you are still there once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
 Never stop with a quest you accepted still open, unless you left it with a comment on why it cannot be done as written. If the pull request has not merged when you stop, say so in your reply with its link: its quests are completed, but not on main yet.
@@ -55,5 +57,7 @@ Never stop with a quest you accepted still open, unless you left it with a comme
 - **Every quest you could not do as written**, numbered, one block each: what it asked, what stopped you, and the two or three ways forward with the one you would take. The decision is the owner's, and they are reading here.
 
 If nothing was blocked, say so in one line rather than padding the list.
+
+${reviewStepRule}
 
 ${unfinishedQuestRule}`;

@@ -230,11 +230,18 @@ reverted alone. The flow:
    while the next quest is worked.
 4. CI on the pull request is the gate, when the project has CI. A green local
    check is not.
-5. The agent never merges it, never pushes to main, and never merges main into
+5. Before the pull request may merge, a reviewer sub-agent reads it cold: the
+   diff, the quests and their objectives, and the repository's `AGENTS.md`
+   (or `CLAUDE.md`), never the author's reasoning. The agent fixes what holds
+   in the quest's own commit, runs the checks again and pushes, and its reply
+   says what the review found and fixed.
+6. The agent never merges it, never pushes to main, and never merges main into
    its branch: it rebases instead. If the project's `AGENTS.md` (or
    `CLAUDE.md`) lets an agent turn on auto-merge, it does, as a rebase merge.
-   Otherwise the pull request waits for your review.
-6. Every quest completes once its commit is pushed, in the same run, without
+   Otherwise the pull request waits for your review. A quest the agent left
+   with a comment, or tagged `needs-answer`, does not hold back a run's or an
+   epic's pull request: it stays open, and the rest goes ready.
+7. Every quest completes once its commit is pushed, in the same run, without
    waiting for CI or the merge: the merge often lands after the agent has
    stopped, and nothing would bring it back to close the quest. In an epic or
    a run, the quests that depend on it can then start, and the epic's last
