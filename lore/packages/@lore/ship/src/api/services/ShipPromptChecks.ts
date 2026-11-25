@@ -17,6 +17,8 @@ export class ShipPromptChecks {
   protected readonly errors = $repository(projectErrors);
 
   constructor() {
+    // The error list, a page a prompt can be pinned to (#Q4284).
+    this.registry.registerPage({ key: "errors", label: "Error list" });
     this.registry.registerCheck("errors", (projectId) =>
       this.trustedOpenErrors(projectId),
     );

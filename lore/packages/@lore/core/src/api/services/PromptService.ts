@@ -220,6 +220,7 @@ export class PromptService {
       ...this.wherePatch(body),
       ...(body.source === undefined ? {} : { source: body.source }),
       ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
+      ...(body.pins === undefined ? {} : { pins: this.pinsOf(body.pins) }),
       // Its trigger (#Q4277), checked against its args. Resolved here: the
       // triggers read this service.
       ...this.alepha
@@ -488,6 +489,20 @@ export class PromptService {
   }
 
   /**
+   * The pins as given, each once, each a registered page (#Q4284).
+   */
+  protected pinsOf(pins: string[]): string[] {
+    const known = new Set(this.registry.pages().map((it) => it.key));
+    const unknown = pins.filter((it) => !known.has(it));
+    if (unknown.length) {
+      throw new BadRequestError(
+        `No page '${unknown.join("', '")}' to pin a prompt to: ${[...known].join(", ")}`,
+      );
+    }
+    return [...new Set(pins)];
+  }
+
+  /**
    * A host or agent the project does not have is refused, as a run would.
    */
   protected async assertWhere(
@@ -548,6 +563,7 @@ export class PromptService {
         ? { lastSkippedReason: row.lastSkippedReason }
         : {}),
       consecutiveFailures: row?.consecutiveFailures ?? 0,
+      pins: row?.pins ?? [],
     };
   }
 }

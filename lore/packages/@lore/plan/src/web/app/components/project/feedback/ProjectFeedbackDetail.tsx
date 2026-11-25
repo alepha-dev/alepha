@@ -11,10 +11,9 @@ import {
 import {
   currentProjectAtom,
   type I18n,
-  capabilityOption,
   formatReference,
   useRank,
-  AgentPromptsMenu,
+  PinnedPromptsButton,
   CollapsibleBlock,
   DiscussionAttachments,
 } from "@lore/core/web";
@@ -38,7 +37,6 @@ import { Fragment, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
-import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import {
   QUEST_STATUS_ICON,
   QUEST_STATUS_LABEL_KEYS,
@@ -83,47 +81,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const [project] = useStore(currentProjectAtom);
   const [currentUser] = useStore(currentUserAtom);
   const { can } = useRank();
-  const promptSubject = useWorkPromptSubject();
-  // Stated here rather than left to the route guard. The panel is a
-  // component and a spec can mount it directly, so a gate that only exists
-  // upstream is a gate this component does not have.
-  const supportEnabled = capabilityOption(project, "plan", "feedback");
-
-  /**
-   * What the robot menu offers, in all three footers.
-   *
-   * ⚠️ **The loop is here rather than on the inbox toolbar** (feedback
-   * #P2176, reversing #Q2153). It was put on the toolbar on the reasoning
-   * that a loop is not an action on the open report and would be invisible
-   * with nothing selected - and the second half was simply wrong:
-   * `ProjectFeedback` seeds `activeId` from the first item, so a non-empty
-   * list always has one open. An inbox with nothing selected is an EMPTY
-   * inbox, which is the one state where a loop has nothing to do. What the
-   * toolbar actually produced was two robot buttons on one page.
-   *
-   * `feedbackLoop` is offered whatever the open item's status, because it is
-   * about the queue and not about that item; `feedbackWork` only where there
-   * is something to work on, which a rejected report is not.
-   */
-  const promptItems = supportEnabled
-    ? [
-        ...(feedback.status === "rejected"
-          ? []
-          : [
-              {
-                kind: "feedbackWork" as const,
-                subject: () => promptSubject.forFeedback(feedback),
-              },
-            ]),
-        {
-          // Still surface-scoped: the loop names the inbox, never the item
-          // whose footer it happens to be drawn in, so it must not carry
-          // that item's `{{reference}}`.
-          kind: "feedbackLoop" as const,
-          subject: () => promptSubject.forFeedbackInbox(),
-        },
-      ]
-    : [];
   // Triage with an agent, run on the Agent host (#Q4126): entries of the same
   // robot menu, offered only while that host's agent check passes.
   const agentActions = useFeedbackAgentTriage(feedback, props.onChanged);
@@ -562,7 +519,15 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu items={promptItems} actions={agentActions} />
+          <PinnedPromptsButton
+            page="feedback-item"
+            item={{
+              type: "feedback",
+              value: String(feedback.shortId),
+              status: feedback.status,
+            }}
+            actions={agentActions}
+          />
         </div>
       )}
 
@@ -577,7 +542,15 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu items={promptItems} actions={agentActions} />
+          <PinnedPromptsButton
+            page="feedback-item"
+            item={{
+              type: "feedback",
+              value: String(feedback.shortId),
+              status: feedback.status,
+            }}
+            actions={agentActions}
+          />
         </div>
       )}
 
@@ -593,7 +566,15 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               disappear on something unrelated to what it does. `promptItems`
               drops `feedbackWork` here on its own: there is nothing to work
               on in a rejected report. */}
-          <AgentPromptsMenu items={promptItems} actions={agentActions} />
+          <PinnedPromptsButton
+            page="feedback-item"
+            item={{
+              type: "feedback",
+              value: String(feedback.shortId),
+              status: feedback.status,
+            }}
+            actions={agentActions}
+          />
         </div>
       )}
 

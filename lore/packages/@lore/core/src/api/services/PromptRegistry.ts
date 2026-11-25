@@ -27,6 +27,7 @@ export class PromptRegistry {
   protected readonly prompts = new Map<string, BuiltinPrompt>();
   protected readonly resolvers = new Map<PromptArgType, PromptArgResolver>();
   protected readonly optionLists = new Map<PromptArgType, PromptArgOptions>();
+  protected readonly pageMap = new Map<string, PromptPage>();
   protected readonly checks = new Map<
     PromptCheck,
     (projectId: number) => Promise<boolean>
@@ -84,6 +85,25 @@ export class PromptRegistry {
   }
 
   /**
+   * A page a prompt can be pinned to (#Q4284), registered by the module
+   * that owns the page: Plan the quest, epic and feedback lists and views,
+   * Ship the error list. A pin naming no registered page is refused.
+   */
+  public registerPage(page: PromptPage): void {
+    if (this.pageMap.has(page.key)) {
+      throw new AlephaError(`Prompt page '${page.key}' is registered twice`);
+    }
+    this.pageMap.set(page.key, page);
+  }
+
+  /**
+   * The pinnable pages in registration order.
+   */
+  public pages(): PromptPage[] {
+    return [...this.pageMap.values()];
+  }
+
+  /**
    * A source a triggered run's `check` asks (#Q4277), one per module that
    * owns it: Plan's feedback, quests and epics, Ship's errors. A plain
    * query, asked before any job is queued.
@@ -103,6 +123,17 @@ export class PromptRegistry {
   ): ((projectId: number) => Promise<boolean>) | undefined {
     return this.checks.get(source);
   }
+}
+
+/**
+ * A page a prompt can be pinned to (#Q4284): its key, its label, and the
+ * type of the item it gives, which fills the prompt's arg of that type. A
+ * list page gives nothing.
+ */
+export interface PromptPage {
+  key: string;
+  label: string;
+  gives?: PromptArgType;
 }
 
 /**

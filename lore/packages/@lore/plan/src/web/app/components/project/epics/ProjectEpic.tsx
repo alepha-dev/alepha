@@ -7,7 +7,7 @@ import {
   type I18n,
   canInProject,
   LazyProjectActivityPage,
-  AgentPromptsMenu,
+  PinnedPromptsButton,
 } from "@lore/core/web";
 import {
   useAction,
@@ -39,7 +39,6 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
 import { currentEpicAtom } from "../../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
-import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicMoreMenu from "./EpicMoreMenu.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
@@ -93,7 +92,6 @@ type TabKey =
  */
 const ProjectEpic = (props: ProjectEpicProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const promptSubject = useWorkPromptSubject();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();
@@ -318,29 +316,6 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     [epicApi, epic.id, dialog, tr],
   );
 
-  /**
-   * Work on it on a DRAFT epic marks it ready as well, so handing it to an
-   * agent is one click (feedback #P2226, #Q3228). No confirm, unlike
-   * `EpicStatusControl`'s: the click already says the spec is done, and the
-   * list's Mark as ready asks nothing either. The copy has been started by
-   * then, in the click's own frame.
-   */
-  const markReadyAction = useAction<[], void>(
-    {
-      handler: async () => {
-        applyStatusChange(
-          await epicApi.setEpicStatus({
-            params: { id: epic.id },
-            body: { status: "ready" },
-          }),
-        );
-      },
-      // The quests leave the draft gate with their epic.
-      invalidates: [questsKey, ["quests", project?.id], ["epics", project?.id]],
-    },
-    [epicApi, epic.id, epic.status],
-  );
-
   // The epic's reviews (#E121): what the Review tab lists and counts. Keyed
   // on the epic, and refreshed by every answer.
   const reviewsKey = ["epic-reviews", project?.id, { epicId: epic.id }];
@@ -466,55 +441,17 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       onTabChange={(v) => setTab(v as TabKey)}
       actions={
         <>
-          {/* The same entries under the same gates as the Epics row menu's
-              group, through the same component, so the two surfaces cannot
-              come to call the actions different things. `AgentPromptsMenu`
-              renders nothing when the option is off or the list is empty,
-              which is what a completed epic produces. Review while the plan
-              is open, Work on it once the epic is ready, and on a draft one
-              for a reader who may mark it ready, which the click then does
-              (#P2226): a draft epic's quests refuse to be accepted. */}
-          <AgentPromptsMenu
+          {/* The prompts pinned on the Epic view (#Q4284), the epic filled
+              in, each shown when its arg accepts the epic's status; the run
+              buttons above them until #Q4281. */}
+          <PinnedPromptsButton
+            page="epic"
+            item={{
+              type: "epic",
+              value: String(epic.number),
+              status: epic.status,
+            }}
             actions={agentActions}
-            items={[
-              ...(epic.status === "draft" || epic.status === "ready"
-                ? [
-                    {
-                      kind: "epicReview" as const,
-                      subject: () => promptSubject.forEpic(epic),
-                    },
-                  ]
-                : []),
-              ...(epic.status === "ready" ||
-              epic.status === "in_progress" ||
-              (epic.status === "draft" && epicApi.setEpicStatus.can())
-                ? [
-                    {
-                      kind: "epicActivate" as const,
-                      subject: () => promptSubject.forEpic(epic),
-                      onSelect:
-                        epic.status === "draft"
-                          ? () => void markReadyAction.run()
-                          : undefined,
-                      // A draft epic becomes ready with the copy: said
-                      // first, not done silently (#Q3583).
-                      confirm:
-                        epic.status === "draft"
-                          ? {
-                              title: tr("epic.workOnIt.confirm.title"),
-                              description: tr(
-                                "epic.workOnIt.confirm.description",
-                                {
-                                  args: [epic.title],
-                                },
-                              ),
-                              confirmLabel: tr("epic.workOnIt.confirm.action"),
-                            }
-                          : undefined,
-                    },
-                  ]
-                : []),
-            ]}
           />
           {/* Only while the plan is still open (#Q2353): a started or
               completed epic's plan is frozen, and the page stops offering to

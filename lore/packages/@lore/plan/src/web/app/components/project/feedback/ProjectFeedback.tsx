@@ -1,5 +1,6 @@
 import { Segmented, cn } from "@alepha/ui";
 import {
+  PinnedPromptsButton,
   SubscriptionBell,
   currentProjectAtom,
   type I18n,
@@ -346,6 +347,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               size="sm"
             />
             <div className="ms-auto shrink-0" />
+            {/* The prompts pinned on the Feedback list (#Q4284). The open
+                item's panel has its own button, which tells the spotlight
+                the item; this one does not. */}
+            <PinnedPromptsButton page="feedback" publish={false} />
             <SubscriptionBell
               events={["feedback.created"]}
               label={tr("feedback.subscription.label")}

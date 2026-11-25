@@ -5,7 +5,7 @@ import {
   CollapsibleBlock,
   formatReference,
   preloadMarkdownEditor,
-  AgentPromptsMenu,
+  PinnedPromptsButton,
 } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -42,7 +42,7 @@ import {
   QUEST_AGENT_GATE_LABEL_KEYS,
   questAgentGate,
 } from "../prompts/questAgentGate.ts";
-import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
+import { questPromptItem } from "../prompts/questPromptItem.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_LABEL_KEYS, QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
@@ -198,7 +198,6 @@ const QuestView = (props: QuestViewProps) => {
   // the project was entered still read as `draft` there, and Accept stayed
   // withheld on a quest the server would accept.
   const epics = useCurrentEpicRefs();
-  const promptSubject = useWorkPromptSubject();
 
   // The epic phase gate (epic #31): a quest can be accepted only while its
   // epic is active, and this page reaches a draft epic's quest by direct
@@ -778,18 +777,12 @@ const QuestView = (props: QuestViewProps) => {
                     }}
                   />
                 )}
-                {context === "page" && (
-                  <AgentPromptsMenu
-                    items={
-                      withheldReason
-                        ? []
-                        : [
-                            {
-                              kind: "questWork" as const,
-                              subject: () => promptSubject.forQuest(quest),
-                            },
-                          ]
-                    }
+                {context === "page" && !withheldReason && (
+                  // The prompts pinned on the Quest view (#Q4284), the quest
+                  // filled in; a withheld quest offers none.
+                  <PinnedPromptsButton
+                    page="quest"
+                    item={questPromptItem(quest)}
                   />
                 )}
                 <QuestViewEditButton

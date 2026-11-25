@@ -75,6 +75,52 @@ describe("prompts", () => {
       { user },
     );
 
+  it("pins a prompt to the registered pages only: none by default, a built-in's row created, an unknown page refused (#Q4284)", async ({
+    expect,
+  }) => {
+    const answer = await controller.listPrompts.run(
+      { params: { projectId: project.id } },
+      { user: owner },
+    );
+    expect(answer.pages.map((it) => it.key)).toEqual([
+      "quests",
+      "quest",
+      "epics",
+      "epic",
+      "feedback",
+      "feedback-item",
+      "errors",
+    ]);
+    expect(answer.pages.find((it) => it.key === "quest")?.gives).toBe("quest");
+    expect(answer.items.every((it) => it.pins.length === 0)).toBe(true);
+
+    const pinned = await controller.updatePrompt.run(
+      {
+        params: { projectId: project.id, name: "work-quest" },
+        body: { pins: ["quest", "quests", "quest"] },
+      },
+      { user: owner },
+    );
+    expect(pinned.pins).toEqual(["quest", "quests"]);
+    const row = await rows.getOne({
+      where: { projectId: { eq: project.id }, name: { eq: "work-quest" } },
+    });
+    expect(row).toMatchObject({ builtin: true, pins: ["quest", "quests"] });
+    expect((await list()).find((it) => it.name === "work-quest")?.pins).toEqual(
+      ["quest", "quests"],
+    );
+
+    await expect(
+      controller.updatePrompt.run(
+        {
+          params: { projectId: project.id, name: "work-quest" },
+          body: { pins: ["dashboard"] },
+        },
+        { user: owner },
+      ),
+    ).rejects.toThrow("No page 'dashboard' to pin a prompt to");
+  });
+
   it("lists the ten built-ins with their args and accepted statuses, and leaves out one the project cannot use", async ({
     expect,
   }) => {
