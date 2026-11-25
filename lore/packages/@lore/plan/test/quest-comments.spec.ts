@@ -141,6 +141,57 @@ describe("QuestCommentController", () => {
     expect(listed.data[0].editedAt).toBeUndefined();
   });
 
+  it("removes needs-answer with an answer, records it in the history, and leaves the tag on a plain comment (#Q4348)", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const projectId = await createProject(ctx, user);
+    const quest = await createQuest(ctx, user, projectId);
+    await ctx.quests.updateQuestById.fetch(
+      { params: { id: quest.id }, body: { tags: ["bug", "needs-answer"] } },
+      { user },
+    );
+    const read = async () =>
+      (
+        await ctx.quests.getQuestById.fetch(
+          { params: { id: quest.id } },
+          { user },
+        )
+      ).data;
+
+    // A comment that is not the answer: a question back, say.
+    await ctx.comments.createQuestComment.fetch(
+      { params: { id: quest.id }, body: { body: "Which one do you mean?" } },
+      { user },
+    );
+    expect((await read()).tags).toEqual(["bug", "needs-answer"]);
+
+    await ctx.comments.createQuestComment.fetch(
+      {
+        params: { id: quest.id },
+        body: { body: "Take the second option.", answer: true },
+      },
+      { user },
+    );
+    const answered = await read();
+    expect(answered.tags).toEqual(["bug"]);
+    expect(answered.history.at(-1)).toMatchObject({
+      by: user.id,
+      action: "updated",
+      changes: [{ field: "tags", from: "needs-answer" }],
+    });
+
+    // Without the tag, an answer is a comment: no history line.
+    const lines = answered.history.length;
+    await ctx.comments.createQuestComment.fetch(
+      { params: { id: quest.id }, body: { body: "And thanks.", answer: true } },
+      { user },
+    );
+    const after = await read();
+    expect(after.tags).toEqual(["bug"]);
+    expect(after.history).toHaveLength(lines);
+  });
+
   it("stamps editedAt on an edit, so the feed can say so honestly", async ({
     expect,
   }) => {

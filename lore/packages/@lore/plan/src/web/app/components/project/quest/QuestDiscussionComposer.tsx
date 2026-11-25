@@ -8,12 +8,13 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Loader2, Paperclip } from "lucide-react";
+import { Loader2, MessageSquareReply, Paperclip } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { QuestCommentController } from "../../../../../api/controllers/QuestCommentController.ts";
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestCommentResource } from "../../../../../api/schemas/questCommentResourceSchema.ts";
+import { QUEST_NEEDS_ANSWER_TAG } from "../../../../../api/schemas/questPresets.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import DiscussionComposer from "../discussion/DiscussionComposer.tsx";
 
@@ -32,6 +33,11 @@ export interface QuestDiscussionComposerProps {
    * page holds its refresh while a comment is being typed (#Q3860).
    */
   onDraftChange?: (drafting: boolean) => void;
+  /**
+   * Called once an answer is posted: the server removed the quest's
+   * `needs-answer` tag, so the page reads the quest again.
+   */
+  onAnswered?: () => void;
 }
 
 /**
@@ -70,6 +76,10 @@ export interface QuestDiscussionComposerProps {
  * `LoreViewer` with `expandCommentReferences` in front of it, which is what
  * resolves a bare `#Q1204` and a matched `@name`. That rewrite runs on the
  * way OUT and never on the stored body.
+ *
+ * **Answer**, on a quest tagged `needs-answer` only (#Q4348): the same post
+ * with `answer: true`, which removes the tag server-side. Comment stays
+ * beside it, for a reply that is not the answer.
  *
  * Autosaving an unsent draft is deliberately out of scope.
  */
@@ -147,9 +157,9 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
   // toasted by the root `ActionErrorToaster`, where it used to be an
   // unhandled rejection. The draft stays in the editor, since it is cleared
   // inside the handler on success only.
-  const postAction = useAction<[], void>(
+  const postAction = useAction<[answer?: boolean], void>(
     {
-      handler: async () => {
+      handler: async (_ctx, answer) => {
         const trimmed = body.trim();
         if (!trimmed && pending.length === 0) return;
         const created = await commentApi.createQuestComment({
@@ -159,15 +169,26 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
             ...(pending.length > 0
               ? { attachments: pending.map((file) => file.id) }
               : {}),
+            ...(answer ? { answer: true } : {}),
           },
         });
         setBody("");
         setPending([]);
         props.onPosted(created);
+        if (answer) props.onAnswered?.();
       },
     },
-    [commentApi, body, pending, props.quest.id, props.onPosted],
+    [
+      commentApi,
+      body,
+      pending,
+      props.quest.id,
+      props.onPosted,
+      props.onAnswered,
+    ],
   );
+  const canSubmit = body.trim().length > 0 || pending.length > 0;
+  const needsAnswer = (props.quest.tags ?? []).includes(QUEST_NEEDS_ANSWER_TAG);
   const posting = postAction.loading || uploadAction.loading;
   const canAttach = questApi.uploadAttachment.can();
 
@@ -185,7 +206,7 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
       onChange={setBody}
       onSubmit={() => void postAction.run()}
       busy={posting}
-      canSubmit={body.trim().length > 0 || pending.length > 0}
+      canSubmit={canSubmit}
       members={props.members}
       // Pasted images become the comment's attachments, never inline.
       imageUpload={false}
@@ -201,37 +222,51 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
         />
       }
       actions={
-        canAttach && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              data-testid="quest-comment-file"
-              disabled={posting}
-              onChange={(event) => {
-                const files = Array.from(event.target.files ?? []);
-                event.target.value = "";
-                if (files.length > 0) void uploadAction.run(files);
-              }}
-            />
+        <>
+          {canAttach && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                data-testid="quest-comment-file"
+                disabled={posting}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  if (files.length > 0) void uploadAction.run(files);
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outlined"
+                disabled={posting}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploadAction.loading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Paperclip className="size-4" />
+                )}
+                {tr("discussion.attach")}
+              </Button>
+            </>
+          )}
+          {needsAnswer && (
             <Button
               type="button"
               size="sm"
               variant="outlined"
-              disabled={posting}
-              onClick={() => fileInputRef.current?.click()}
+              disabled={posting || !canSubmit}
+              onClick={() => void postAction.run(true)}
             >
-              {uploadAction.loading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Paperclip className="size-4" />
-              )}
-              {tr("discussion.attach")}
+              <MessageSquareReply className="size-4" />
+              {tr("quest.discussion.composer.answer")}
             </Button>
-          </>
-        )
+          )}
+        </>
       }
       placeholder={tr("quest.discussion.composer.placeholder")}
       submitLabel={tr("quest.discussion.composer.submit")}

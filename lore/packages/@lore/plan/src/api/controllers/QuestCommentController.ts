@@ -18,6 +18,7 @@ import { type QuestComment, questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
+import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { WorkFileAccess } from "../services/WorkFileAccess.ts";
 
@@ -274,6 +275,13 @@ export class QuestCommentController {
          * derived from the credential the caller authenticated with.
          */
         source: questCommentSourceSchema.optional(),
+        /**
+         * The comment answers the question the quest waits on: the
+         * `needs-answer` tag goes with it, in the same call (#Q4348). The
+         * Discussion's Answer button sends it; on a quest without the tag it
+         * changes nothing.
+         */
+        answer: z.boolean().optional(),
       }),
       response: questCommentResourceSchema,
     },
@@ -300,6 +308,24 @@ export class QuestCommentController {
         source: body.source,
         ...(attachments.length > 0 ? { attachments } : {}),
       });
+
+      if (body.answer && quest.tags?.includes(QUEST_NEEDS_ANSWER_TAG)) {
+        // After the comment, so a refused comment never clears the tag. The
+        // history line is the one an edit of the tags writes, so the feed
+        // reads "removed the tag" under the answer.
+        await this.quests.updateById(quest.id, {
+          tags: quest.tags.filter((tag) => tag !== QUEST_NEEDS_ANSWER_TAG),
+          history: [
+            ...quest.history,
+            {
+              at: this.dt.nowISOString(),
+              by: user.id,
+              action: "updated",
+              changes: [{ field: "tags", from: QUEST_NEEDS_ANSWER_TAG }],
+            },
+          ],
+        });
+      }
 
       // Filed under `quest`, not a `comment` type of its own: a reader
       // filtering the Activity page by "quest" is asking what happened to

@@ -259,6 +259,15 @@ const QuestView = (props: QuestViewProps) => {
     props.onQuestChange?.(updated);
   };
 
+  const answeredAction = useAction<[], void>(
+    {
+      handler: async () => {
+        updateQuest(await questApi.getQuestById({ params: { id: quest.id } }));
+      },
+    },
+    [questApi, quest.id],
+  );
+
   /**
    * The header arrow. The breadcrumb walks *up*; this walks *back*.
    *
@@ -969,7 +978,14 @@ const QuestView = (props: QuestViewProps) => {
 
               {/* Discussion: the quest's history events and its comments in
                   one feed. Collapsible like its siblings, open by default. */}
-              <QuestDiscussion quest={quest} onDraftChange={setDrafting} />
+              <QuestDiscussion
+                quest={quest}
+                onDraftChange={setDrafting}
+                // The answer removed the tag server-side: read the quest
+                // again, so the tag leaves the rail and its removal joins
+                // the feed.
+                onAnswered={() => void answeredAction.run()}
+              />
             </div>
 
             {/* The card mount stacks the rail under the body: a drawer is a
