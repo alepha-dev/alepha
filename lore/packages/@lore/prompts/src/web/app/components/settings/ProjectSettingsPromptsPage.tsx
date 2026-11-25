@@ -36,6 +36,8 @@ import {
   ListChecks,
   Pin,
   Pause,
+  Power,
+  PowerOff,
   Pencil,
   Play,
   Plus,
@@ -47,7 +49,6 @@ import { useState } from "react";
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 import PromptEditorDialog from "../run/PromptEditorDialog.tsx";
-import PromptEnabledCell from "../run/PromptEnabledCell.tsx";
 import PromptPinsDialog from "../run/PromptPinsDialog.tsx";
 import PromptRunDialog from "../run/PromptRunDialog.tsx";
 import PromptTriggerDialog from "../run/PromptTriggerDialog.tsx";
@@ -288,6 +289,27 @@ const ProjectSettingsPromptsPage = () => {
             label: tr("prompts.trigger"),
             onClick: () => setOpen({ kind: "trigger", prompt: row }),
           },
+          // A trigger's switch, where the Enabled column was (#Q4327): a
+          // manual prompt has nothing to turn off.
+          ...(row.on === "manual"
+            ? []
+            : [
+                {
+                  icon: row.enabled ? PowerOff : Power,
+                  label: tr(
+                    row.enabled
+                      ? "prompts.trigger.disable"
+                      : "prompts.trigger.enable",
+                  ),
+                  disabled: () => busy,
+                  onClick: () =>
+                    patch(
+                      row,
+                      { enabled: !row.enabled },
+                      { enabled: !row.enabled },
+                    ),
+                },
+              ]),
           row.builtin
             ? {
                 icon: FileCode,
@@ -386,10 +408,22 @@ const ProjectSettingsPromptsPage = () => {
             on: {
               label: tr("prompts.table.trigger"),
               cell: (row) => (
-                <span className="text-xs" data-testid="prompt-on">
+                <span
+                  className={cn(
+                    "text-xs",
+                    row.on !== "manual" &&
+                      !row.enabled &&
+                      "text-muted-foreground",
+                  )}
+                  data-testid="prompt-on"
+                  data-enabled={row.on === "manual" ? undefined : row.enabled}
+                >
                   {row.on === "manual" ? tr("prompts.trigger.manual") : row.on}
                   {row.check?.length
                     ? ` · ${tr("prompts.trigger.checks", { args: [row.check.join(", ")] })}`
+                    : ""}
+                  {row.on !== "manual" && !row.enabled
+                    ? ` · ${tr("prompts.trigger.off")}`
                     : ""}
                 </span>
               ),
@@ -444,19 +478,6 @@ const ProjectSettingsPromptsPage = () => {
                   </span>
                 );
               },
-            },
-            enabled: {
-              label: tr("prompts.table.enabled"),
-              cell: (row) =>
-                row.on === "manual" ? null : (
-                  <PromptEnabledCell
-                    key={`${row.name}:${row.enabled}`}
-                    enabled={row.enabled}
-                    disabled={!manage || busy}
-                    label={tr("prompts.table.enabled")}
-                    onChange={(enabled) => patch(row, { enabled }, { enabled })}
-                  />
-                ),
             },
           }}
         />
