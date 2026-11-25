@@ -40,7 +40,6 @@ import {
   Pin as PinIcon,
   ToggleRight,
   Eye,
-  FileCode,
   ListChecks,
   Pin,
   Power,
@@ -68,7 +67,7 @@ type Open =
     }
   | {
       kind: "editor";
-      mode: "create" | "duplicate" | "edit" | "source";
+      mode: "create" | "duplicate" | "edit";
       prompt?: PromptResource;
     };
 
@@ -347,22 +346,17 @@ const ProjectSettingsPromptsPage = () => {
                     ),
                 },
               ]),
-          row.builtin
-            ? {
-                icon: FileCode,
-                label: tr("prompts.source"),
-                onClick: () =>
-                  setOpen({ kind: "editor", mode: "source", prompt: row }),
-              }
-            : {
-                icon: Pencil,
-                label: tr("prompts.edit"),
-                onClick: () =>
-                  setOpen({ kind: "editor", mode: "edit", prompt: row }),
-              },
+          // A built-in's source is set on its page's Settings tab (#Q4409):
+          // its words are Lore's, so it has nothing else to edit.
           ...(row.builtin
             ? []
             : [
+                {
+                  icon: Pencil,
+                  label: tr("prompts.edit"),
+                  onClick: () =>
+                    setOpen({ kind: "editor", mode: "edit", prompt: row }),
+                },
                 {
                   icon: Trash2,
                   label: tr("prompts.delete"),

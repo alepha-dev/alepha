@@ -30,9 +30,9 @@ export interface PromptEditorDialogProps {
   projectId: number;
   /**
    * `create` starts empty, `duplicate` from a prompt, `edit` a custom one.
-   * On a built-in only the source is edited (`source`).
+   * A built-in's source is set on its page's Settings tab (#Q4409).
    */
-  mode: "create" | "duplicate" | "edit" | "source";
+  mode: "create" | "duplicate" | "edit";
   prompt?: PromptResource;
   /**
    * The row the server answered, which the page draws in place or inserts
@@ -49,14 +49,13 @@ const SLOTS = Array.from({ length: PROMPT_MAX_ARGS }, (_, index) => index);
  * A custom prompt's editor (#Q4280): its name, title, description, args
  * (name, type and the statuses each accepts), its words with a legend of
  * the placeholders its args give, its source, and what a second run does
- * while one runs (#Q4354). A built-in opens on its
- * source only: its text and args are Lore's.
+ * while one runs (#Q4354). A built-in is never edited here: its text and
+ * args are Lore's.
  */
 const PromptEditorDialog = (props: PromptEditorDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<PromptController>();
-  const source = props.mode === "source";
-  const edit = props.mode === "edit" || source;
+  const edit = props.mode === "edit";
   const shape: Record<string, z.ZType> = {
     name: z.string().max(64),
     title: z.string().max(120).optional(),
@@ -99,16 +98,6 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
             ? value.trim()
             : undefined;
         };
-        if (source && props.prompt) {
-          props.onSaved(
-            await api.updatePrompt({
-              params: { projectId: props.projectId, name: props.prompt.name },
-              body: { source: values.source as PromptResource["source"] },
-            }),
-          );
-          props.onOpenChange(false);
-          return;
-        }
         const args: PromptArg[] = [];
         for (const slot of SLOTS) {
           const name = text(`arg${slot}_name`);
@@ -181,34 +170,28 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
             })}
           </DialogTitle>
           <DialogDescription>
-            {source
-              ? tr("prompts.editor.source.description")
-              : tr("prompts.editor.description")}
+            {tr("prompts.editor.description")}
           </DialogDescription>
         </DialogHeader>
         <form {...form.props} className="flex flex-col gap-3">
-          {!source && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Control
-                input={input.name}
-                label={tr("prompts.editor.name")}
-                description={tr("prompts.editor.name.description")}
-                disabled={busy || edit}
-              />
-              <Control
-                input={input.title}
-                label={tr("prompts.editor.title")}
-                disabled={busy}
-              />
-            </div>
-          )}
-          {!source && (
+          <div className="grid gap-3 sm:grid-cols-2">
             <Control
-              input={input.description}
-              label={tr("prompts.editor.descriptionField")}
+              input={input.name}
+              label={tr("prompts.editor.name")}
+              description={tr("prompts.editor.name.description")}
+              disabled={busy || edit}
+            />
+            <Control
+              input={input.title}
+              label={tr("prompts.editor.title")}
               disabled={busy}
             />
-          )}
+          </div>
+          <Control
+            input={input.description}
+            label={tr("prompts.editor.descriptionField")}
+            disabled={busy}
+          />
           <Control
             input={input.source}
             label={tr("prompts.source")}
@@ -221,68 +204,61 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
             ]}
             disabled={busy}
           />
-          {!source && (
-            <Control
-              input={input.concurrency}
-              label={tr("prompts.concurrency")}
-              description={tr("prompts.concurrency.description")}
-              select
-              items={[
-                {
-                  value: "queue",
-                  label: tr("prompts.concurrency.queue"),
-                },
-                {
-                  value: "unique",
-                  label: tr("prompts.concurrency.unique"),
-                },
-              ]}
-              disabled={busy}
-            />
-          )}
-          {!source &&
-            SLOTS.map((slot) => (
-              <div key={slot} className="grid gap-3 sm:grid-cols-3">
-                <Control
-                  input={input[`arg${slot}_name`]}
-                  label={tr("prompts.editor.argName", {
-                    args: [String(slot + 1)],
-                  })}
-                  disabled={busy}
-                />
-                <Control
-                  input={input[`arg${slot}_type`]}
-                  label={tr("prompts.editor.argType")}
-                  select
-                  items={PROMPT_ARG_TYPES.map((type) => ({
-                    value: type,
-                    label: tr(`prompts.arg.${type}`),
-                  }))}
-                  disabled={busy}
-                />
-                <Control
-                  input={input[`arg${slot}_accepts`]}
-                  label={tr("prompts.editor.argAccepts")}
-                  disabled={busy}
-                />
-              </div>
-            ))}
-          {!source && (
-            <>
+          <Control
+            input={input.concurrency}
+            label={tr("prompts.concurrency")}
+            description={tr("prompts.concurrency.description")}
+            select
+            items={[
+              {
+                value: "queue",
+                label: tr("prompts.concurrency.queue"),
+              },
+              {
+                value: "unique",
+                label: tr("prompts.concurrency.unique"),
+              },
+            ]}
+            disabled={busy}
+          />
+          {SLOTS.map((slot) => (
+            <div key={slot} className="grid gap-3 sm:grid-cols-3">
               <Control
-                input={input.text}
-                label={tr("prompts.editor.text")}
-                area
+                input={input[`arg${slot}_name`]}
+                label={tr("prompts.editor.argName", {
+                  args: [String(slot + 1)],
+                })}
                 disabled={busy}
               />
-              <p
-                className="text-muted-foreground text-xs"
-                data-testid="prompt-legend"
-              >
-                {tr("prompts.editor.legend", { args: [legend.join(" ")] })}
-              </p>
-            </>
-          )}
+              <Control
+                input={input[`arg${slot}_type`]}
+                label={tr("prompts.editor.argType")}
+                select
+                items={PROMPT_ARG_TYPES.map((type) => ({
+                  value: type,
+                  label: tr(`prompts.arg.${type}`),
+                }))}
+                disabled={busy}
+              />
+              <Control
+                input={input[`arg${slot}_accepts`]}
+                label={tr("prompts.editor.argAccepts")}
+                disabled={busy}
+              />
+            </div>
+          ))}
+          <Control
+            input={input.text}
+            label={tr("prompts.editor.text")}
+            area
+            disabled={busy}
+          />
+          <p
+            className="text-muted-foreground text-xs"
+            data-testid="prompt-legend"
+          >
+            {tr("prompts.editor.legend", { args: [legend.join(" ")] })}
+          </p>
           <DialogFooter>
             <Button
               type="button"

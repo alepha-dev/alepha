@@ -179,24 +179,27 @@ test.describe("Settings > Prompts", () => {
         .toMatchObject({ builtin: false, title: "My status" });
     });
 
-    await test.step("a built-in's source is set without copying its words", async () => {
-      await act("Security check", "Source");
-      const editor = page.getByTestId("prompt-editor");
-      await expect(editor).toBeVisible();
-      await editor.getByRole("combobox").first().click();
+    await test.step("a built-in's source is set on its Settings tab, without copying its words", async () => {
+      // #Q4409: the select sits on the tab and saves on change, no dialog.
+      await act("Security check", "View");
+      await page.getByRole("radio", { name: "Settings" }).click();
+      const settings = page.getByTestId("prompt-page-settings");
+      await expect(settings).toBeVisible({ timeout: 15_000 });
+      await settings.getByRole("combobox", { name: "Source" }).click();
+      // Ships read-only: Read-write is a change the server has to take.
       await page
-        .getByRole("option", { name: "Read-only", exact: true })
+        .getByRole("option", { name: "Read-write", exact: true })
         .click();
-      await editor.getByTestId("prompt-save").click();
-      await expect(editor).toBeHidden({ timeout: 15_000 });
-      await releasePointerEvents(page);
       await expect
         .poll(
           async () =>
             (await prompts()).find((it) => it.name === "security-check")
               ?.source,
         )
-        .toBe("read");
+        .toBe("write");
+      await expect(page.getByTestId("prompt-editor")).toBeHidden();
+      await page.goto(`/${project.slug}/settings/prompts`);
+      await expect(rowOf("My status")).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step("a weekly trigger is set from its dialog", async () => {

@@ -42,10 +42,10 @@ last run beside three tabs:
 - **Jobs**: its runs, newest first, filtered by status and host;
 - **Settings**, for whoever manages prompts: where it is pinned (**Pin**),
   its trigger (**Trigger**) with the switch that turns it on or off, and
-  **Edit** for your own prompt or **Source** for a built-in.
+  its **Source**, a select saved as soon as you pick it.
 
 Its toolbar holds **Copy**, **Run** and, for whoever manages prompts,
-**Duplicate**.
+**Duplicate**, and **Edit** on your own prompt.
 
 Every member can read and copy a prompt. Changing one, setting its trigger
 and pinning it needs **Manage the project's prompts**, which the Admin rank
@@ -207,8 +207,9 @@ Each prompt says where its code comes from, set on the prompt, never at a run:
 - **Read-write**: a worktree on a branch Lore names, from which the agent
   pushes and opens its pull request.
 
-A built-in comes with its own; you may change it on the prompt (**Source**
-in its row). Your own prompts set it in their editor.
+A built-in comes with its own; you may change it on the prompt's
+**Settings** tab (**Source**), as you may your own prompt's, which its
+editor sets too.
 
 ### How long a run may take
 

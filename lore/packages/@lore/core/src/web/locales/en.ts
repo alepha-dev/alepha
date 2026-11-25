@@ -5195,10 +5195,6 @@ export default {
   "prompts.tab.text": "Prompt",
   "prompts.tab.jobs": "Jobs",
   "prompts.tab.settings": "Settings",
-  "prompts.settings.text": "Words",
-  "prompts.settings.text.custom": "Its title, description, args and text.",
-  "prompts.settings.text.builtin":
-    "A built-in's words ship with Lore: read its source, or duplicate it to change them.",
   "prompts.field.name": "Name",
   "prompts.notFound": "No prompt named $1 in this project",
   "prompts.builtin": "built-in",
@@ -5211,11 +5207,8 @@ export default {
   "prompts.editor.create": "New prompt",
   "prompts.editor.duplicate": "Duplicate $1",
   "prompts.editor.edit": "Edit $1",
-  "prompts.editor.source": "Source of $1",
   "prompts.editor.description":
     "Its own words and args. A built-in's words are Lore's: duplicate it to change them.",
-  "prompts.editor.source.description":
-    "A built-in's words are Lore's; its source is the project's.",
   "prompts.editor.name": "Name",
   "prompts.editor.name.description": "Lowercase letters, digits and dashes.",
   "prompts.editor.title": "Title",

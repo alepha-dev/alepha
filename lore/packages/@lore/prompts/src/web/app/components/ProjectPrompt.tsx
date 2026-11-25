@@ -12,7 +12,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Copy, Play, Sparkles } from "lucide-react";
+import { Copy, Pencil, Play, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import type { PromptController } from "../../../api/controllers/PromptController.ts";
@@ -33,16 +33,16 @@ type TabKey = "text" | "jobs" | "settings";
 
 type Open =
   | { kind: "copy" | "run" | "trigger" | "pins" }
-  | { kind: "editor"; mode: "duplicate" | "edit" | "source" };
+  | { kind: "editor"; mode: "duplicate" | "edit" };
 
 /**
  * One prompt on its own page (#Q4326), on the detail shell a job uses: its
  * properties in the aside, and three tabs kept in the URL (#Q4355): Prompt,
  * its words; Jobs (`host:read`), the prompt jobs table on this prompt alone;
  * Settings (`prompt:manage`), its pins, its trigger with its switch, and
- * Edit (a custom prompt) or Source (a built-in). The toolbar keeps the
- * actions: Copy, Run with a ready Agent host, and Duplicate for
- * `prompt:manage`. Read from the project's prompt list, the one key every
+ * its source, a select saved on change (#Q4409). The toolbar keeps the
+ * actions: Copy, Run with a ready Agent host, and for `prompt:manage`
+ * Duplicate, and Edit on a custom prompt. Read from the project's prompt list, the one key every
  * prompt write refreshes.
  */
 const ProjectPrompt = (props: ProjectPromptProps) => {
@@ -96,7 +96,13 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
   const ready = (hosts.data?.hosts ?? []).length > 0;
   const refresh = () => queries.invalidate(key);
   const update = useAction<
-    [body: { enabled?: boolean; pins?: string[] }],
+    [
+      body: {
+        enabled?: boolean;
+        pins?: string[];
+        source?: PromptResource["source"];
+      },
+    ],
     void
   >(
     {
@@ -173,6 +179,14 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
           () => setOpen({ kind: "editor", mode: "duplicate" }),
           "prompt-page-duplicate",
         )}
+      {manage &&
+        !prompt.builtin &&
+        action(
+          tr("prompts.edit"),
+          Pencil,
+          () => setOpen({ kind: "editor", mode: "edit" }),
+          "prompt-page-edit",
+        )}
     </>
   );
 
@@ -218,7 +232,7 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
             onPins={() => setOpen({ kind: "pins" })}
             onTrigger={() => setOpen({ kind: "trigger" })}
             onSwitch={(enabled) => void update.run({ enabled })}
-            onEditor={(mode) => setOpen({ kind: "editor", mode })}
+            onSource={async (source) => (await update.run({ source })).ok}
           />
         )}
         {prompt && tab === "text" && (

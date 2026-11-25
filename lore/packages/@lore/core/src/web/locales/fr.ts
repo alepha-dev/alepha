@@ -5250,11 +5250,6 @@ export default {
   "prompts.tab.text": "Prompt",
   "prompts.tab.jobs": "Tâches",
   "prompts.tab.settings": "Paramètres",
-  "prompts.settings.text": "Texte",
-  "prompts.settings.text.custom":
-    "Son titre, sa description, ses arguments et son texte.",
-  "prompts.settings.text.builtin":
-    "Le texte d'une invite intégrée est livré avec Lore : lisez sa source, ou dupliquez-la pour le modifier.",
   "prompts.field.name": "Nom",
   "prompts.notFound": "Aucun prompt nommé $1 dans ce projet",
   "prompts.builtin": "intégrée",
@@ -5267,11 +5262,8 @@ export default {
   "prompts.editor.create": "Nouvelle invite",
   "prompts.editor.duplicate": "Dupliquer $1",
   "prompts.editor.edit": "Modifier $1",
-  "prompts.editor.source": "Source de $1",
   "prompts.editor.description":
     "Ses propres mots et arguments. Les mots d'une invite intégrée sont ceux de Lore : dupliquez-la pour les changer.",
-  "prompts.editor.source.description":
-    "Les mots d'une invite intégrée sont ceux de Lore ; sa source est celle du projet.",
   "prompts.editor.name": "Nom",
   "prompts.editor.name.description": "Lettres minuscules, chiffres et tirets.",
   "prompts.editor.title": "Titre",
