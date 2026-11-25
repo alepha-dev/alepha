@@ -3417,6 +3417,12 @@ export default {
   "discussion.removeAttachment": "Remove attachment",
   "feedback.deleted": "Feedback deleted",
   "feedback.deleteConfirmTitle": "Delete feedback?",
+  "feedback.promoteConfirmTitle": "Promote to a quest?",
+  "feedback.promoteConfirm":
+    "Promote this report to a quest? A pending report is accepted first.",
+  "feedback.rejectConfirmTitle": "Reject feedback?",
+  "feedback.rejectConfirm":
+    "Reject this report? It leaves the inbox as Rejected.",
   "feedback.deleteConfirm": "Delete this feedback? This cannot be undone.",
   "feedback.acceptedToast": "Feedback accepted",
   "feedback.attachments": "Attachments",

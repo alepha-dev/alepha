@@ -91,6 +91,14 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
     {
       handler: async () => {
         if (!project) return;
+        // Confirmed like Delete (#Q4359): a misclick in the footer would
+        // otherwise accept the item and open the quest sheet.
+        const confirmed = await dialog.confirm({
+          title: tr("feedback.promoteConfirmTitle"),
+          description: tr("feedback.promoteConfirm"),
+          confirmLabel: tr("feedback.promote"),
+        });
+        if (!confirmed) return;
         if (feedback.status === "pending") {
           await feedbackApi.acceptFeedback({
             params: { projectId: project.id, feedbackId: feedback.id },
@@ -100,13 +108,28 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         setQuestCreateOpen(true);
       },
     },
-    [feedbackApi, project?.id, feedback.id, feedback.status, toaster, tr],
+    [
+      feedbackApi,
+      project?.id,
+      feedback.id,
+      feedback.status,
+      dialog,
+      toaster,
+      tr,
+    ],
   );
 
   const rejectAction = useAction<[], void>(
     {
       handler: async () => {
         if (!project) return;
+        const confirmed = await dialog.confirm({
+          title: tr("feedback.rejectConfirmTitle"),
+          description: tr("feedback.rejectConfirm"),
+          confirmLabel: tr("feedback.reject"),
+          destructive: true,
+        });
+        if (!confirmed) return;
         await feedbackApi.rejectFeedback({
           params: { projectId: project.id, feedbackId: feedback.id },
         });
@@ -114,7 +137,15 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         props.onChanged();
       },
     },
-    [feedbackApi, project?.id, feedback.id, props.onChanged, toaster, tr],
+    [
+      feedbackApi,
+      project?.id,
+      feedback.id,
+      dialog,
+      props.onChanged,
+      toaster,
+      tr,
+    ],
   );
 
   const deleteAction = useAction<[], void>(
@@ -503,7 +534,12 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             <Plus className="size-4" />
             {tr("feedback.promote")}
           </Button>
-          <Button variant="outlined" onClick={handleReject} disabled={busy}>
+          <Button
+            variant="outlined"
+            onClick={handleReject}
+            disabled={busy}
+            data-testid="feedback-reject-button"
+          >
             {tr("feedback.reject")}
           </Button>
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>

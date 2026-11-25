@@ -3433,6 +3433,12 @@ export default {
   "discussion.removeAttachment": "Retirer la pièce jointe",
   "feedback.deleted": "Retour supprimé",
   "feedback.deleteConfirmTitle": "Supprimer le retour ?",
+  "feedback.promoteConfirmTitle": "Promouvoir en quête ?",
+  "feedback.promoteConfirm":
+    "Promouvoir ce retour en quête ? Un retour en attente est d'abord accepté.",
+  "feedback.rejectConfirmTitle": "Refuser le retour ?",
+  "feedback.rejectConfirm":
+    "Refuser ce retour ? Il quitte la boîte de réception comme Refusé.",
   "feedback.deleteConfirm":
     "Supprimer ce retour ? Cette action est irréversible.",
   "feedback.acceptedToast": "Retour accepté",

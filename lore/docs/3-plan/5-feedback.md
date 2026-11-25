@@ -78,12 +78,12 @@ Triage needs the permission **Accept, reject and remove feedback**
 be given it in **Settings ▸ Members ▸ Ranks**.
 See [Members](/lore/docs/project-members).
 
-| Action               | Offered on | What happens                                                                                                          |
+| Action               | Offered on | What happens, after a confirmation                                                                                    |
 | -------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
 | **Promote to Quest** | Pending    | The report becomes accepted, then the quest form opens with its title and text. Close the form and it stays accepted. |
 | **New quest**        | Accepted   | Another quest from the same report. One report can spawn several.                                                     |
 | **Reject**           | Pending    | The report becomes rejected and stays in the project, as a record.                                                    |
-| **Delete**           | Any status | The report leaves the project, after a confirmation.                                                                  |
+| **Delete**           | Any status | The report leaves the project.                                                                                        |
 
 ⚠️ **Deleting a report cannot be undone.** Reject it instead when you want to
 keep the record.

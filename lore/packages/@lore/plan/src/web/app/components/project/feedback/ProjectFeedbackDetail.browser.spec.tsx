@@ -1,7 +1,13 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom, I18n, PinnedPromptsSlot } from "@lore/core/web";
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -23,6 +29,7 @@ import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
  */
 class FakeLinkProvider extends LinkProvider {
   accepted: number[] = [];
+  rejected: number[] = [];
   trusted: number[] = [];
 
   /**
@@ -38,6 +45,10 @@ class FakeLinkProvider extends LinkProvider {
       {
         acceptFeedback: async (config: { params: { feedbackId: number } }) => {
           this.accepted.push(config.params.feedbackId);
+          return { ok: true };
+        },
+        rejectFeedback: async (config: { params: { feedbackId: number } }) => {
+          this.rejected.push(config.params.feedbackId);
           return { ok: true };
         },
         trustFeedback: async (config: { params: { feedbackId: number } }) => {
@@ -137,7 +148,9 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
     alepha.inject(WorkShell);
     // Core's pins slot (#E175), read by the page's robot button.
     alepha.inject(PinnedPromptsSlot);
+    alepha.inject(I18n);
     await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
     alepha.store.set(currentProjectAtom, projectFixture() as never);
@@ -169,6 +182,11 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
 
     const accept = await view.findByTestId("feedback-accept-button");
     accept.click();
+    // Confirmed first, like Delete (#Q4359).
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirm).getByRole("button", { name: "Promote to Quest" }),
+    );
 
     // The triage is committed the moment Accept is pressed...
     await waitFor(() =>
@@ -185,6 +203,74 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
     );
 
     await waitFor(() => expect(changes).toEqual([1]));
+  });
+});
+
+/**
+ * Promote and Reject ask first, as Delete does (#Q4359): a misclick in the
+ * footer, cancelled, leaves the item as it was.
+ */
+describe("ProjectFeedbackDetail - confirmed triage", () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
+  const show = async () => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    alepha.inject(WorkShell);
+    alepha.inject(PinnedPromptsSlot);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    const changes: number[] = [];
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectFeedbackDetail
+            feedback={pendingFeedback}
+            onChanged={() => changes.push(1)}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    return { fake: alepha.inject(FakeLinkProvider), view, changes };
+  };
+
+  for (const [verb, testId] of [
+    ["Promote to Quest", "feedback-accept-button"],
+    ["Reject", "feedback-reject-button"],
+  ] as const) {
+    it(`leaves the item unchanged when ${verb}'s confirmation is cancelled`, async ({
+      expect,
+    }) => {
+      const { fake, view, changes } = await show();
+      fireEvent.click(await view.findByTestId(testId));
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(fake.accepted).toEqual([]);
+      expect(fake.rejected).toEqual([]);
+      expect(changes).toEqual([]);
+    });
+  }
+
+  it("rejects once Reject is confirmed", async ({ expect }) => {
+    const { fake, view } = await show();
+    fireEvent.click(await view.findByTestId("feedback-reject-button"));
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Reject" }));
+    await waitFor(() => expect(fake.rejected).toEqual([42]));
   });
 });
 
