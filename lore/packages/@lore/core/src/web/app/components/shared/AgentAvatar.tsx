@@ -54,19 +54,18 @@ export const AgentAvatar = (props: AgentAvatarProps) => {
 
 /**
  * Each agent CLI Bay has an adapter for, drawn as its mark: Claude Code's
- * spark, Gemini CLI's four-point star. Written out here, not fetched, so an
+ * official spark on its orange, Gemini CLI's four-point star. Written out here, not fetched, so an
  * avatar costs no request.
  */
 const AGENT_ICONS: Record<string, { box: string; icon: ReactNode }> = {
+  // The mark the owner supplied (#Q4410), traced: the white spark on
+  // Claude's orange.
   claude: {
-    box: "bg-[#f4e5dc] dark:bg-[#3a2a22]",
+    box: "bg-[#d97757]",
     icon: (
       <path
-        d="M12.0 9.8L12.0 2.5M13.1 10.1L15.8 5.5M13.9 10.9L20.2 7.2M14.2 12.0L19.5 12.0M13.9 13.1L20.2 16.8M13.1 13.9L15.8 18.5M12.0 14.2L12.0 21.5M10.9 13.9L8.3 18.5M10.1 13.1L3.8 16.8M9.8 12.0L4.5 12.0M10.1 10.9L3.8 7.2M10.9 10.1L8.2 5.5"
-        stroke="#d97757"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        fill="none"
+        d="M12.53 11.21L8.51 1.56L7.59 1.1L6.67 1.52L6.42 2.53L11.18 11.83ZM12.97 11.58L14.66 2.16L14.2 1.38L13.32 1.25L12.65 1.86L11.5 11.36ZM13.14 12.1L19.62 4.95L19.65 4.04L18.97 3.46L18.07 3.63L12.01 11.14ZM12.9 12.79L22.45 11.88L23.08 11.23L22.97 10.34L22.2 9.86L12.71 11.31ZM12.63 13.01L21.97 15.35L22.73 14.98L22.92 14.16L22.39 13.5L12.96 11.56ZM12.17 13.14L19.05 19.35L19.96 19.38L20.54 18.7L20.37 17.8L13.13 12.01ZM11.71 13.05L15.25 22.16L16.05 22.59L16.88 22.24L17.12 21.37L13.08 12.47ZM11.33 12.73L10.18 21.8L10.64 22.51L11.47 22.6L12.06 21.99L12.81 12.89ZM11.16 11.91L3.49 16.85L3.22 17.72L3.73 18.46L4.64 18.52L12.0 13.13ZM11.49 11.37L1.47 10.81L0.79 11.31L0.76 12.15L1.4 12.7L11.43 12.85ZM12.02 11.14L4.18 5.07L3.21 5.12L2.66 5.89L2.92 6.83L11.15 12.34ZM9.84 12.14a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0 -4.6 0Z"
+        fill="#fff"
       />
     ),
   },

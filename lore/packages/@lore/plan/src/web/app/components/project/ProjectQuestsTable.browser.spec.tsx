@@ -91,6 +91,11 @@ class FakeLinkProvider extends LinkProvider {
    */
   epics: string[] = [];
   attached: number[] = [];
+  /**
+   * The state `getJob` answers for an agent's job (#Q4410), set before a
+   * mount.
+   */
+  static jobStatus = "running";
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -120,6 +125,10 @@ class FakeLinkProvider extends LinkProvider {
           this.created.push(config.body.title);
           return quest;
         }),
+        getJob: action(async (config: { params: { jobId: string } }) => ({
+          id: config.params.jobId,
+          status: FakeLinkProvider.jobStatus,
+        })),
         getProjectUsers: action(async () => [
           { id: "00000000-0000-4000-8000-0000000000aa", username: "ana" },
         ]),
@@ -603,7 +612,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         agentName,
       }) as QuestResource;
 
-    it("draws the job's agent icon in front of the member, linked to the job and animated, still under reduced motion", async () => {
+    it("draws the job's agent icon in front of the member, linked to the job, without a pulse or a title (#Q4410)", async () => {
       const { view } = await mount([building("claude"), questOf(2, "By hand")]);
       const links = await view.findAllByTestId("quest-agent-job");
       expect(links).toHaveLength(1);
@@ -615,13 +624,40 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         "agent-avatar",
       );
       expect(avatar.getAttribute("data-agent")).toBe("claude");
-      expect(avatar.getAttribute("class")).toContain("animate-pulse");
-      expect(avatar.getAttribute("class")).toContain(
-        "motion-reduce:animate-none",
+      expect(avatar.getAttribute("class")).not.toContain("animate-pulse");
+      expect(links[0]?.getAttribute("title")).toBeNull();
+      // Running: in colour.
+      await waitFor(() =>
+        expect(links[0]?.getAttribute("data-ended")).toBeNull(),
       );
+      expect(avatar.getAttribute("class")).not.toContain("grayscale");
       // The member stays, behind it, in the same cell.
       const pair = view.getByTestId("quest-assignee");
       expect(pair.children).toHaveLength(2);
+    });
+
+    it("opens a hover card naming the agent, the job and its state, with a notice and a grey avatar once the job ended (#Q4410)", async () => {
+      FakeLinkProvider.jobStatus = "succeeded";
+      const { view } = await mount([building("claude")]).finally(() => {
+        FakeLinkProvider.jobStatus = "running";
+      });
+      const link = await view.findByTestId("quest-agent-job");
+      await waitFor(() => expect(link.getAttribute("data-ended")).toBe("true"));
+      expect(
+        within(link).getByTestId("agent-avatar").getAttribute("class"),
+      ).toContain("grayscale");
+      fireEvent.mouseEnter(link);
+      fireEvent.pointerEnter(link);
+      fireEvent.focus(link);
+      const card = await screen.findByTestId("quest-agent-card");
+      expect(card.textContent).toContain("Claude Code");
+      expect(card.textContent).toContain("Job 0b3c6a2e");
+      expect(
+        within(card).getByTestId("quest-agent-card-status").textContent,
+      ).toBe("Ended");
+      expect(
+        within(card).getByTestId("quest-agent-card-ended").textContent,
+      ).toContain("This job has ended");
     });
 
     it("falls back to the robot for an agent with no known icon", async () => {
