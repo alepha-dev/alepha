@@ -66,7 +66,13 @@ export class PromptController {
     handler: async ({ params }) => {
       const pausedAt = await this.triggers.pausedAt(params.projectId);
       return {
-        pages: this.registry.pages(),
+        pages: (await this.service.pages(params.projectId)).map(
+          ({ key, label, gives }) => ({
+            key,
+            label,
+            ...(gives ? { gives } : {}),
+          }),
+        ),
         items: await this.service.list(params.projectId),
         ...(pausedAt ? { pausedAt } : {}),
       };

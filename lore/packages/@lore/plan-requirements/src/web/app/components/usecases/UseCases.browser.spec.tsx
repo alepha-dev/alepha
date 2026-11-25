@@ -2,8 +2,9 @@ import { DialogProvider } from "@alepha/ui";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
 import {
   currentProjectAtom,
-  I18n,
   ElementReferenceRegistry,
+  I18n,
+  PinnedPromptsSlot,
 } from "@lore/core/web";
 import {
   act,
@@ -131,6 +132,8 @@ describe("Use cases screens", () => {
       .with(AlephaReactI18n)
       .with(I18n)
       .with(ElementReferenceRegistry)
+      // Core's pins slot (#E175), read by the pages' robot button (#Q4412).
+      .with(PinnedPromptsSlot)
       .with(StubPages);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");

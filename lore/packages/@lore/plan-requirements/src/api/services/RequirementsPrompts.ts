@@ -29,7 +29,9 @@ import { UseCaseService } from "./UseCaseService.ts";
  * run, trigger and pin them. The old `useCaseDraft` took a requirement or an
  * epic, which is two built-ins here, since an arg has one type.
  *
- * Each needs Plan's `requirements` option. The use case, persona and
+ * Each needs Plan's `requirements` option, and comes pinned to the view
+ * whose item fills its arg (#Q4412): the use case, persona and requirement
+ * views Requirements registers, the epic view Plan does. The use case, persona and
  * requirement args read their item by its number; Remember registers the
  * folio arg, Plan the epic arg.
  */
@@ -46,6 +48,18 @@ export class RequirementsPrompts {
   constructor() {
     const needs = { capability: "plan", option: "requirements" } as const;
     const playable = ["draft", "ready", "validated"];
+    // The pages Requirements' prompts are pinned to (#Q4412), each shown
+    // with its item filled in. The requirement view is the detail panel of
+    // the requirements list, as the feedback view is of the feedback list.
+    // No folio view is pinnable, so `import-specification` comes unpinned.
+    for (const page of [
+      { key: "use-cases", label: "Use case list" },
+      { key: "use-case", label: "Use case view", gives: "useCase" },
+      { key: "persona", label: "Persona view", gives: "persona" },
+      { key: "requirement", label: "Requirement view", gives: "requirement" },
+    ] as const) {
+      this.registry.registerPage({ ...page, needs });
+    }
     this.registry.register({
       name: "test-use-case",
       title: "Test a use case",
@@ -57,6 +71,7 @@ export class RequirementsPrompts {
       timeoutSeconds: 60 * 60,
       needs,
       text: testUseCasePromptText,
+      pins: ["use-case"],
       oneShot: true,
     });
     this.registry.register({
@@ -70,6 +85,7 @@ export class RequirementsPrompts {
       timeoutSeconds: 60 * 60,
       needs,
       text: writeUseCaseSpecPromptText,
+      pins: ["use-case"],
       oneShot: true,
     });
     this.registry.register({
@@ -85,6 +101,7 @@ export class RequirementsPrompts {
       timeoutSeconds: 30 * 60,
       needs,
       text: prepareUseCaseDemoPromptText,
+      pins: ["use-case"],
       oneShot: true,
     });
     this.registry.register({
@@ -98,6 +115,7 @@ export class RequirementsPrompts {
       timeoutSeconds: 45 * 60,
       needs,
       text: exploreAsPersonaPromptText,
+      pins: ["persona"],
       oneShot: true,
     });
     this.registry.register({
@@ -124,6 +142,7 @@ export class RequirementsPrompts {
       timeoutSeconds: 30 * 60,
       needs,
       text: draftUseCasesPromptText,
+      pins: ["requirement"],
       oneShot: true,
     });
     this.registry.register({
@@ -143,6 +162,7 @@ export class RequirementsPrompts {
       timeoutSeconds: 30 * 60,
       needs,
       text: draftEpicUseCasesPromptText,
+      pins: ["epic"],
       oneShot: true,
     });
 

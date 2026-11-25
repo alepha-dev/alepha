@@ -5,6 +5,7 @@ import {
   formatReference,
   type I18n,
   LoreViewer,
+  PinnedPromptsButton,
 } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -89,11 +90,18 @@ const RequirementDetail = (props: RequirementDetailProps) => {
           <span className="text-muted-foreground">§{it.paragraph}</span>
         ) : null}
         <RequirementStatusChips requirement={it} />
+        {/* The prompts pinned on the Requirement view (#Q4412), the
+            requirement filled in. */}
+        <span className="ms-auto">
+          <PinnedPromptsButton
+            page="requirement"
+            item={{ type: "requirement", value: String(it.number) }}
+          />
+        </span>
         {props.onClose ? (
           <Button
             variant="minimal"
             size="icon-sm"
-            className="ms-auto"
             aria-label={tr("common.close")}
             title={tr("common.close")}
             onClick={props.onClose}

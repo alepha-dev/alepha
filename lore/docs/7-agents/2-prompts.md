@@ -138,6 +138,15 @@ is:
 | Feedback view | the open feedback item |
 | Error list    | nothing                |
 
+With Plan's **Requirements** option on, its pages join the list:
+
+| Page             | Fills           |
+| ---------------- | --------------- |
+| Use case list    | nothing         |
+| Use case view    | the use case    |
+| Persona view     | the persona     |
+| Requirement view | the requirement |
+
 A page with something pinned shows a robot button: each pinned prompt opens on
 **Copy** and **Run**, which stays greyed out, saying no Agent host is ready,
 until the project has one. On a view, the page's item
@@ -158,6 +167,13 @@ The built-ins come pinned to their pages, until you change where they show:
 | Work on loose quests              | Quest list    |
 | Weekly status, Review PR          | nowhere       |
 | Security check, Dependency update | nowhere       |
+
+Requirements' built-ins, with that option on, come pinned the same way: **Test
+a use case**, **Write the end-to-end spec** and **Prepare a demo** on the Use
+case view, **Explore as a persona** on the Persona view, **Draft use cases** on
+the Requirement view and **Draft an epic's use cases** on the Epic view.
+**Import a specification** takes a folio, and no folio page can be pinned, so
+it starts pinned nowhere.
 
 Unpin one from every page and it stays unpinned. A prompt of your own starts
 pinned nowhere. **Pinned on**, `lore prompt list` and `prompt_list` show where

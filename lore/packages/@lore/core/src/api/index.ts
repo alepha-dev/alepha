@@ -638,6 +638,7 @@ export {
   type PromptArgItem,
   type PromptArgOptions,
   type PromptArgResolver,
+  type PromptPage,
   PromptRegistry,
   type PromptRunContext,
   type PromptRunPlan,

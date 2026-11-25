@@ -13,6 +13,7 @@ import {
   type I18n,
   LazyProjectActivityPage,
   LoreViewer,
+  PinnedPromptsButton,
 } from "@lore/core/web";
 import {
   useAction,
@@ -230,6 +231,12 @@ const PersonaPage = (props: PersonaPageProps) => {
       actions={
         <>
           <VerifyMenu subject={{ kind: "persona", number: persona.number }} />
+          {/* The prompts pinned on the Persona view (#Q4412), the persona
+              filled in. */}
+          <PinnedPromptsButton
+            page="persona"
+            item={{ type: "persona", value: String(persona.number) }}
+          />
           {copy?.state === "ready" && copy.url ? (
             <Button
               variant="outlined"

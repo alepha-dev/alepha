@@ -120,20 +120,69 @@ describe("Requirements built-in prompts", () => {
     }
   });
 
+  it("registers the use case, persona and requirement views and the use case list as pinnable pages, and pins each built-in to the view its item fills (#Q4412)", async ({
+    expect,
+  }) => {
+    const answer = await prompts.listPrompts.run(
+      { params: { projectId: ctx.projectId } },
+      { user: { id: ctx.owner, roles: ["user"] } as never },
+    );
+    const pages = new Map(answer.pages.map((it) => [it.key, it]));
+    expect(pages.get("use-cases")?.gives).toBeUndefined();
+    expect(pages.get("use-case")?.gives).toBe("useCase");
+    expect(pages.get("persona")?.gives).toBe("persona");
+    expect(pages.get("requirement")?.gives).toBe("requirement");
+    const pins = Object.fromEntries(
+      answer.items.map((it) => [it.name, it.pins]),
+    );
+    expect(pins).toMatchObject({
+      "test-use-case": ["use-case"],
+      "write-use-case-spec": ["use-case"],
+      "prepare-use-case-demo": ["use-case"],
+      "explore-as-persona": ["persona"],
+      "draft-use-cases": ["requirement"],
+      "draft-epic-use-cases": ["epic"],
+      // No folio view is pinnable.
+      "import-specification": [],
+    });
+  });
+
+  it("fills a pinned run's useCase arg from the value the Use case view gives, its number", async ({
+    expect,
+  }) => {
+    // What `PinnedPromptsButton` on the use case page passes: the number.
+    const text = await render("test-use-case", { useCase: "1" });
+    expect(text).toContain('use case #U1, "Create a promo code"');
+  });
+
   it("leaves them out of a project with Requirements off", async ({
     expect,
   }) => {
     const off = await requirementsProject({ requirements: false });
     try {
-      const names = (
-        await off.alepha
-          .inject(PromptController)
-          .listPrompts.run(
-            { params: { projectId: off.projectId } },
-            { user: { id: off.owner, roles: ["user"] } as never },
-          )
-      ).items.map((it) => it.name);
+      const answer = await off.alepha
+        .inject(PromptController)
+        .listPrompts.run(
+          { params: { projectId: off.projectId } },
+          { user: { id: off.owner, roles: ["user"] } as never },
+        );
+      const names = answer.items.map((it) => it.name);
       for (const name of NAMES) expect(names).not.toContain(name);
+      // Nor are their pages offered to pin a prompt to (#Q4412).
+      const pages = answer.pages.map((it) => it.key);
+      for (const page of ["use-cases", "use-case", "persona", "requirement"]) {
+        expect(pages).not.toContain(page);
+      }
+      // And a pin to one of them is refused.
+      await expect(
+        off.alepha.inject(PromptController).updatePrompt.run(
+          {
+            params: { projectId: off.projectId, name: "weekly-status" },
+            body: { pins: ["use-case"] },
+          },
+          { user: { id: off.owner, roles: ["user"] } as never },
+        ),
+      ).rejects.toThrow("No page 'use-case' to pin a prompt to");
     } finally {
       await off.alepha.stop();
     }

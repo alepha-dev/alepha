@@ -146,6 +146,11 @@ export interface PromptPage {
   key: string;
   label: string;
   gives?: PromptArgType;
+  /**
+   * The capability and option a project needs for the page to exist, as a
+   * built-in's `needs`: a page of an option that is off is not offered.
+   */
+  needs?: { capability: CapabilityKey; option?: string };
 }
 
 /**

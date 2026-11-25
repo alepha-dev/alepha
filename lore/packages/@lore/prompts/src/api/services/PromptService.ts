@@ -4,6 +4,7 @@ import {
   ProjectRoster,
   ProjectSecurityService,
   type PromptArgItem,
+  type PromptPage,
   PromptRegistry,
 } from "@lore/core/api";
 import {
@@ -237,7 +238,9 @@ export class PromptService {
       ...this.wherePatch(body),
       ...(body.source === undefined ? {} : { source: body.source }),
       ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
-      ...(body.pins === undefined ? {} : { pins: this.pinsOf(body.pins) }),
+      ...(body.pins === undefined
+        ? {}
+        : { pins: await this.pinsOf(projectId, body.pins) }),
       ...(body.timeoutSeconds === undefined
         ? {}
         : { timeoutSeconds: body.timeoutSeconds ?? null }),
@@ -417,19 +420,27 @@ export class PromptService {
    */
   public async usable(projectId: number): Promise<BuiltinPrompt[]> {
     const set = await this.security.capabilitiesOf(projectId);
-    return this.registry
-      .all()
-      .filter(
-        (it) =>
-          !it.needs ||
-          (it.needs.option
-            ? this.security.capabilityOption(
-                set,
-                it.needs.capability,
-                it.needs.option,
-              )
-            : this.security.hasCapability(set, it.needs.capability)),
-      );
+    return this.registry.all().filter((it) => this.meets(set, it.needs));
+  }
+
+  /**
+   * The pages this project can pin a prompt to (#Q4412): a page of an
+   * option it has off, Requirements' views without `requirements`, is left
+   * out.
+   */
+  public async pages(projectId: number): Promise<PromptPage[]> {
+    const set = await this.security.capabilitiesOf(projectId);
+    return this.registry.pages().filter((it) => this.meets(set, it.needs));
+  }
+
+  protected meets(
+    set: Awaited<ReturnType<ProjectSecurityService["capabilitiesOf"]>>,
+    needs: BuiltinPrompt["needs"],
+  ): boolean {
+    if (!needs) return true;
+    return needs.option
+      ? this.security.capabilityOption(set, needs.capability, needs.option)
+      : this.security.hasCapability(set, needs.capability);
   }
 
   /**
@@ -516,10 +527,12 @@ export class PromptService {
   }
 
   /**
-   * The pins as given, each once, each a registered page (#Q4284).
+   * The pins as given, each once, each a page of this project (#Q4284).
    */
-  protected pinsOf(pins: string[]): string[] {
-    const known = new Set(this.registry.pages().map((it) => it.key));
+  protected async pinsOf(projectId: number, pins: string[]): Promise<string[]> {
+    // The project's pages (#Q4412): Requirements' views only with that
+    // option on.
+    const known = new Set((await this.pages(projectId)).map((it) => it.key));
     const unknown = pins.filter((it) => !known.has(it));
     if (unknown.length) {
       throw new BadRequestError(
