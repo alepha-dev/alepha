@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { artifactDeclaresSchema } from "./artifactDeclaresSchema.ts";
+
 /**
  * One stored build, as every read surface sees it.
  *
@@ -80,6 +82,12 @@ export const artifactResourceSchema = z.object({
    * "declares nothing": builds pushed before the column exist.
    */
   manifest: z.record(z.text(), z.any()).optional(),
+  /**
+   * What the build declares, by name. Only `listArtifacts` asked with
+   * `declares` fills it, and only for an archive whose manifest is stored:
+   * absent means unknown.
+   */
+  declares: artifactDeclaresSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

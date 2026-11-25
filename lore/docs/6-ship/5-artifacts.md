@@ -188,6 +188,12 @@ Any other registry needs the project's credential first: see
   downloads the archive.
 - Opening a build shows what it needs, where it runs, its manifest and its
   deployments, with a **Deploy** menu when the project deploys through Lore.
+  Its **Builds** tab lists the app's builds of the same runtime and format,
+  each set against the one before it: the commit it was built from, how many
+  variables and secrets it reads and by how many that moved (hover a count
+  for the names), the resources it gained or lost, its runtimes and crons
+  when they changed, and its size. A blank cell means the build's content is
+  unknown, which is the case for an image.
 - A release shows, on its **Artifacts** tab, the builds whose tag equals the
   release's tag. Nothing links the two, so changing the release's tag changes
   what it shows.

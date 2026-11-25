@@ -160,6 +160,34 @@ describe("getArtifact", () => {
     expect(listed.data.groups[0].variants[0].manifest).toBeUndefined();
   });
 
+  it("lists what each build declares, by name, only when asked", async ({
+    expect,
+  }) => {
+    const { artifactApi, user, projectId, push } = await setup();
+    await push("1.2.3");
+
+    const listed = await artifactApi.listArtifacts.fetch(
+      { params: { projectId }, query: { app: "my-app", declares: true } },
+      { user },
+    );
+    const variant = listed.data.groups[0].variants[0];
+
+    // A resource declared off is not one the build needs.
+    expect(variant.declares).toEqual({
+      variables: [],
+      secrets: ["APP_SECRET"],
+      resources: ["database"],
+      crons: [],
+    });
+    expect(variant.manifest).toBeUndefined();
+
+    const plain = await artifactApi.listArtifacts.fetch(
+      { params: { projectId }, query: { app: "my-app" } },
+      { user },
+    );
+    expect(plain.data.groups[0].variants[0].declares).toBeUndefined();
+  });
+
   it("answers a 404 for a tag this app never built", async ({ expect }) => {
     const { push, detail } = await setup();
     await push("1.2.3");

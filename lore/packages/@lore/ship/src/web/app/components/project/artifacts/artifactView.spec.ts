@@ -4,9 +4,11 @@ import type { ArtifactGroup } from "../../../../../api/schemas/artifactGroupSche
 import type { ArtifactResource } from "../../../../../api/schemas/artifactResourceSchema.ts";
 import {
   artifactBuildRows,
+  artifactChangeNames,
   artifactCopyState,
   artifactImagePlatforms,
   artifactManifestSummary,
+  artifactSignedCount,
   artifactVariantKey,
 } from "./artifactView.ts";
 
@@ -115,6 +117,98 @@ describe("artifactBuildRows", () => {
     );
 
     expect(rows[0].delta).toBeUndefined();
+  });
+});
+
+describe("artifactBuildRows, what a build declares", () => {
+  const declares = (over: object = {}) => ({
+    variables: ["APP_URL"],
+    secrets: ["APP_SECRET"],
+    resources: ["database"],
+    crons: [],
+    ...over,
+  });
+
+  it("names what came and went since the next older build", ({ expect }) => {
+    const rows = artifactBuildRows(
+      [
+        group(
+          "2.0.0",
+          variant({
+            updatedAt: "2026-10-02T00:00:00.000Z",
+            commitSha: "c".repeat(40),
+            runtimes: ["node", "workerd"],
+            declares: declares({
+              variables: ["APP_URL", "LOG_LEVEL", "REGION"],
+              secrets: [],
+              resources: ["bucket"],
+              crons: ["0 3 * * *"],
+            }),
+          }),
+        ),
+        group("1.0.0", variant({ declares: declares() })),
+      ],
+      variant(),
+    );
+
+    expect(rows[0].commitSha).toBe("c".repeat(40));
+    expect(rows[0].changes).toEqual({
+      variables: { added: ["LOG_LEVEL", "REGION"], removed: [] },
+      secrets: { added: [], removed: ["APP_SECRET"] },
+      resources: { added: ["bucket"], removed: ["database"] },
+      crons: { added: ["0 3 * * *"], removed: [] },
+      runtimes: ["node", "workerd"],
+    });
+    expect(artifactSignedCount(rows[0].changes!.variables)).toBe("+2");
+    expect(artifactSignedCount(rows[0].changes!.secrets)).toBe("-1");
+    // As many came as went: the count did not move, the names did.
+    expect(artifactSignedCount(rows[0].changes!.resources)).toBe("");
+    expect(artifactChangeNames(rows[0].changes!.resources)).toBe(
+      "+bucket, -database",
+    );
+    // The oldest build has nothing to be set against.
+    expect(rows[1].changes).toBeUndefined();
+    expect(rows[1].declares?.variables).toEqual(["APP_URL"]);
+  });
+
+  it("leaves the runtimes out when both builds carry the same", ({
+    expect,
+  }) => {
+    const rows = artifactBuildRows(
+      [
+        group(
+          "2.0.0",
+          variant({
+            updatedAt: "2026-10-02T00:00:00.000Z",
+            declares: declares(),
+          }),
+        ),
+        group("1.0.0", variant({ declares: declares() })),
+      ],
+      variant(),
+    );
+
+    expect(rows[0].changes?.runtimes).toBeUndefined();
+    expect(artifactChangeNames(rows[0].changes!.variables)).toBe("");
+  });
+
+  it("names no change beside a build of unknown content", ({ expect }) => {
+    const rows = artifactBuildRows(
+      [
+        group(
+          "2.0.0",
+          variant({
+            updatedAt: "2026-10-02T00:00:00.000Z",
+            declares: declares(),
+          }),
+        ),
+        group("1.0.0", variant()),
+      ],
+      variant(),
+    );
+
+    expect(rows[0].changes).toBeUndefined();
+    expect(rows[1].declares).toBeUndefined();
   });
 });
 
