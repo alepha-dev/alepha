@@ -11,6 +11,8 @@ import {
   type FetchResponse,
   ForbiddenError,
   HttpClient,
+  type HttpError,
+  isHttpError,
   type RequestConfigSchema,
   ServerReply,
   type ServerRequest,
@@ -840,20 +842,60 @@ export class LinkProvider {
       this.isBatchable(config, options)
     ) {
       this.batchCollector ??= this.alepha.inject(BatchCollector);
-      return this.batchCollector.add({
-        action: name,
-        params: config.params,
-        query: config.query,
-        body: config.body,
-        signal: options.request?.signal ?? undefined,
-        directCall: () =>
-          this.followRemote(link, config, options).then((r) => r.data),
-      });
+      return this.batchCollector
+        .add({
+          action: name,
+          params: config.params,
+          query: config.query,
+          body: config.body,
+          signal: options.request?.signal ?? undefined,
+          directCall: () =>
+            this.followRemote(link, config, options).then((r) => r.data),
+        })
+        .catch((error) => this.failedAction(link, error));
     }
 
     return this.followRemote(link, config, options).then(
       (response) => response.data,
+      (error) => this.failedAction(link, error),
     );
+  }
+
+  /**
+   * Rethrow the error of a failed call, naming the action on it when it is
+   * an HTTP error (`HttpError.action`), so a crash report says which action
+   * failed rather than only its status. The path is the route
+   * pattern a direct call requests, prefix included: never the concrete
+   * URL, which carries ids.
+   *
+   * One error object can reach several callers: the deduped callers of one
+   * call share it, and so does every entry of a batch whose request itself
+   * failed (a 502 in front of the server). A caller of another action gets a
+   * copy carrying its own name, so no report is filed under a neighbour's.
+   */
+  // #Q4404: a browser 5xx report said only "Internal Server Error".
+  protected failedAction(link: HttpClientLink, error: unknown): never {
+    if (!isHttpError(error)) throw error;
+    const action = {
+      name: link.name,
+      method: (link.method ?? "GET").toUpperCase(),
+      path: `${link.prefix ?? "/api"}${!link.host && link.service ? `/${link.service}` : ""}${link.path}`,
+    };
+    const stamped = (error as HttpError).action;
+    if (!stamped) {
+      (error as HttpError).action = action;
+      throw error;
+    }
+    if (stamped.name === action.name) throw error;
+    // Own properties copied (message, stack, data, cause), prototype kept,
+    // so `instanceof` and `status` hold on the copy.
+    const copy = Object.assign(
+      Object.create(Object.getPrototypeOf(error)),
+      error,
+      { message: error.message, stack: error.stack },
+    ) as HttpError;
+    copy.action = action;
+    throw copy;
   }
 
   /**

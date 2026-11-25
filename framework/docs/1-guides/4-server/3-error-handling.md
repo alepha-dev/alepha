@@ -161,6 +161,23 @@ This rule applies to every path an error can take to a client, including batched
 
 Use the `server:request:error` hook below to ship the unsanitized error to your logger or Sentry.
 
+## Which Action Failed
+
+On the client, the error a failed `$client` call throws names the action it called, in `error.action`: its `name`, its `method` and its `path`, the route pattern a direct call requests (`/api/users/:id`, never the URL with its ids). It is set for a call sent on its own and for one sent in a batch, and absent on the server that raised the error.
+
+```ts
+try {
+  await api.listUsers();
+} catch (error) {
+  if (isHttpError(error)) {
+    // { name: "listUsers", method: "GET", path: "/api/users" }
+    console.log(error.action, error.data.requestId);
+  }
+}
+```
+
+Together with `data.requestId`, which the server also logs, it ties a failure the browser saw to the server error that caused it.
+
 ## Errors from Elsewhere
 
 An error that is not an `HttpError` but carries a numeric `status` (common in upstream libraries) is answered with that status, named after it (`502` is `BAD_GATEWAY`), under the same 5xx sanitization. That holds for the statuses Alepha has a name for: 400, 401, 403, 404, 405, 409, 410, 413, 415, 422, 429, 500, 501, 502, 503 and 504. Anything else becomes a `500 INTERNAL_SERVER_ERROR`.

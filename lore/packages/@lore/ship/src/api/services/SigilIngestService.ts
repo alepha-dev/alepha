@@ -382,6 +382,9 @@ export class SigilIngestService {
         // Unless the project asked for a member's say on every group
         // (`trustServerErrors` off, #Q4257).
         trustedAt: error.origin === "server" && trustServer ? now : undefined,
+        action: error.action,
+        route: error.route,
+        requestId: error.requestId,
       })),
       {
         target: ["projectId", "fingerprint"],
@@ -391,6 +394,10 @@ export class SigilIngestService {
             this.projectErrors.excluded("count"),
           ),
           lastSeenAt: now,
+          // The newest request that named one, so the link to the other
+          // side's group follows the newest pair (#Q4404); a report naming
+          // none keeps the one stored.
+          requestId: sql`COALESCE(${this.projectErrors.excluded("requestId")}, ${this.projectErrors.table.requestId})`,
           // Which app reported it last. Deliberately overwritten:
           // "still happening, most recently over there" is the useful fact
           // for triage, and the per-app split is kept in full by
@@ -469,13 +476,15 @@ export class SigilIngestService {
       // Hashed from the shared source string, so the group this lands in is the
       // same one the sender aggregated under.
       const fingerprint = await this.crypto.hash(
-        sigilFingerprintSource(error.name, error.stack),
+        sigilFingerprintSource(error.name, error.stack, error.action),
       );
       const seen = error.count ?? 1;
 
       const already = folded.get(fingerprint);
       if (already) {
         already.count = Math.min(already.count + seen, this.maxCount);
+        // The newest request, as the upsert keeps it (#Q4404).
+        if (error.requestId) already.requestId = error.requestId;
         continue;
       }
 
@@ -493,6 +502,9 @@ export class SigilIngestService {
         sourceUrl: sigilScrubUrl(error.sourceUrl),
         origin: error.origin ?? "client",
         count: seen,
+        action: error.action,
+        route: error.route,
+        requestId: error.requestId,
       });
     }
 
@@ -896,4 +908,7 @@ interface FoldedError {
   sourceUrl: string;
   origin: "client" | "server";
   count: number;
+  action?: string;
+  route?: string;
+  requestId?: string;
 }

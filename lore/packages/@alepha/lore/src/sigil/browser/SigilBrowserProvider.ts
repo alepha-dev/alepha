@@ -523,6 +523,14 @@ export class SigilBrowserProvider {
     return this.queue?.pendingErrorStacks() ?? [];
   }
 
+  /**
+   * The pending errors whole, for a test asking what a failed action's
+   * report carries beside its message (#Q4404).
+   */
+  public debugPendingErrorRecords() {
+    return this.queue?.pendingErrorRecords() ?? [];
+  }
+
   public debugPendingEngagements(): string[] {
     return this.queue?.pendingEngagements() ?? [];
   }
@@ -701,15 +709,46 @@ export class SigilBrowserProvider {
     return status >= 500;
   }
 
+  /**
+   * The report for one thrown value.
+   *
+   * A failed `$client` call (#Q4404) also names its action, from the
+   * `action` the client stamps on the error, and the request id of the
+   * response (`data.requestId`): the message leads with the action, the sink
+   * fingerprints on it, and the request id ties the report to the server
+   * error of the same request. Before, such a report said only
+   * `Internal Server Error`, with no stack.
+   */
   protected toError(err: unknown, sourceUrl: string) {
     // A thrown value is whatever the thrower felt like: `Partial<Error>` says
     // "read these three if they are there" without claiming they are.
-    const shape = err as Partial<Error> | undefined;
+    const shape = err as
+      | (Partial<Error> & {
+          action?: { name?: unknown; method?: unknown; path?: unknown };
+          data?: { requestId?: unknown };
+        })
+      | undefined;
+    const message = this.text(shape?.message ?? err);
+    const action =
+      typeof shape?.action?.name === "string" ? shape.action.name : undefined;
+    const requestId = shape?.data?.requestId;
     return {
       name: shape?.name ?? "Error",
-      message: this.text(shape?.message ?? err).slice(0, 2000),
+      message: (action ? `${action}: ${message}` : message).slice(0, 2000),
       stack: this.text(shape?.stack).slice(0, 4096),
       sourceUrl: sigilScrubUrl(sourceUrl),
+      ...(action
+        ? {
+            action: action.slice(0, 200),
+            route:
+              `${this.text(shape?.action?.method)} ${this.text(shape?.action?.path)}`
+                .trim()
+                .slice(0, 600),
+          }
+        : {}),
+      ...(typeof requestId === "string" && requestId
+        ? { requestId: requestId.slice(0, 128) }
+        : {}),
     };
   }
 

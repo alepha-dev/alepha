@@ -64,6 +64,27 @@ describe("sigilFingerprintSource", () => {
     expect(a).not.toBe("");
   });
 
+  it("fingerprints a failed action on its name, not its stack (#Q4404)", () => {
+    const prompts = sigilFingerprintSource(
+      "INTERNAL_SERVER_ERROR",
+      "",
+      "listPrompts",
+    );
+    const epics = sigilFingerprintSource(
+      "INTERNAL_SERVER_ERROR",
+      "",
+      "getEpics",
+    );
+    const anywhere = sigilFingerprintSource(
+      "INTERNAL_SERVER_ERROR",
+      "Error\n    at BatchCollector.flush (entry.js:1:1)",
+      "listPrompts",
+    );
+
+    expect(prompts).not.toBe(epics);
+    expect(anywhere).toBe(prompts);
+  });
+
   it("carries no app identifier, so a fingerprint survives moving sinks", () => {
     const fp = sigilFingerprintSource(
       "Error",

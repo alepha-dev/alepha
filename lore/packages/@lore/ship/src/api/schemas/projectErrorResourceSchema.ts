@@ -22,6 +22,18 @@ export const projectErrorResourceSchema = projectErrors.schema
   .extend({
     /** The name of the member who trusted the group (#Q4233). */
     trustedByName: z.string().max(200).optional(),
+    /**
+     * The group on the other side of the same request (#Q4404): for a
+     * browser error, the server error that caused it; for a server error, the
+     * browser error it caused. Matched on `requestId`, so present only when
+     * both sides named the same request.
+     */
+    linkedError: z
+      .object({
+        id: z.integer(),
+        origin: z.enum(["client", "server", "run"]).meta({ mode: "text" }),
+      })
+      .optional(),
   });
 
 export type ProjectErrorResource = Infer<typeof projectErrorResourceSchema>;

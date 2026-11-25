@@ -45,6 +45,7 @@ import type { ProjectErrorController } from "../../../../../api/controllers/Proj
 import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQuestStatus.ts";
 import type { ProjectErrorResource } from "../../../../../api/schemas/projectErrorResourceSchema.ts";
 import { currentErrorCountAtom } from "../../../atoms/currentErrorCountAtom.ts";
+import ErrorLinkedLine from "./ErrorLinkedLine.tsx";
 import ErrorSourceCell from "./ErrorSourceCell.tsx";
 import ErrorTrustIcon from "./ErrorTrustIcon.tsx";
 import { sigilNameParts } from "./sigilNameParts.ts";
@@ -82,6 +83,9 @@ const ProjectErrors = () => {
   const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
+  // Every row the last fetch returned, before the filters: a row's linked
+  // error (#Q4404) opens from it even when a filter hides it.
+  const [fetched, setFetched] = useState<ProjectErrorResource[]>([]);
 
   // One `useAction` per triage verb (#E59, #Q2329). A refusal is the server's
   // sentence, toasted by the root `ActionErrorToaster`; follow-ups (the
@@ -328,6 +332,7 @@ const ProjectErrors = () => {
     // infinite refetch loop. `store.set` updates the atom without subscribing.
     alepha.store.set(currentErrorCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
+    setFetched(res.items);
 
     const stored = filters?.sigilId;
     // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
@@ -433,6 +438,18 @@ const ProjectErrors = () => {
                 <p className="text-muted-foreground line-clamp-2 break-words">
                   {b.message}
                 </p>
+                {b.linkedError && (
+                  <ErrorLinkedLine
+                    label={tr(
+                      b.linkedError.origin === "server"
+                        ? "errors.linked.causedBy"
+                        : "errors.linked.caused",
+                      { args: [String(b.linkedError.id)] },
+                    )}
+                    linked={fetched.find((it) => it.id === b.linkedError?.id)}
+                    onOpen={setStackView}
+                  />
+                )}
               </div>
             ),
           },
@@ -582,10 +599,28 @@ const ProjectErrors = () => {
               {stackView?.name}: {stackView?.message}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-muted-foreground text-xs">
+            {tr("errors.dialog.number", {
+              args: [String(stackView?.id ?? "")],
+            })}
+            {stackView?.route && <> · {stackView.route}</>}
+          </p>
           {stackView?.sourceUrl && (
             <p className="text-muted-foreground text-xs break-all">
               {stackView.sourceUrl}
             </p>
+          )}
+          {stackView?.linkedError && (
+            <ErrorLinkedLine
+              label={tr(
+                stackView.linkedError.origin === "server"
+                  ? "errors.linked.causedBy"
+                  : "errors.linked.caused",
+                { args: [String(stackView.linkedError.id)] },
+              )}
+              linked={fetched.find((it) => it.id === stackView.linkedError?.id)}
+              onOpen={setStackView}
+            />
           )}
           {/* Read, not dumped (#Q4186): one section per error of the chain,
               frames one per line. Plain React text, as above. */}

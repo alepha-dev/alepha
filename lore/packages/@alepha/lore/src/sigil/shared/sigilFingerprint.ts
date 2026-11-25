@@ -15,9 +15,19 @@
  * sending the same crash are two groups because they are two apps, not because
  * their fingerprints differ. That also makes a fingerprint portable — the same
  * error keeps its identity when an app moves between sinks.
+ *
+ * **A failed `$client` action is fingerprinted on its name** (`action`, #Q4404),
+ * not on its stack: the stack of an HTTP error is the client's own code, the
+ * same for every action, so every 5xx a page met used to land in one group.
  */
-export const sigilFingerprintSource = (name: string, stack: string): string =>
-  `${name}:${normalizeFrame(throwSiteFrame(stack))}`;
+export const sigilFingerprintSource = (
+  name: string,
+  stack: string,
+  action?: string,
+): string =>
+  action
+    ? `${name}:action:${action}`
+    : `${name}:${normalizeFrame(throwSiteFrame(stack))}`;
 
 /**
  * The frame the error was thrown from: the first `at …` line, or failing that

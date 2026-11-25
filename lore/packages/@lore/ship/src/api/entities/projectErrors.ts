@@ -88,6 +88,21 @@ export const projectErrors = $entity({
      */
     trustedAt: z.string().optional(),
     trustedBy: z.uuid().optional(),
+    /**
+     * For a browser report of a failed `$client` action (#Q4404): the
+     * action's name, which the group is fingerprinted on, and its method and
+     * route pattern (`GET /api/prompts`).
+     */
+    action: z.string().max(200).optional(),
+    route: z.string().max(600).optional(),
+    /**
+     * The request the newest occurrence answered, when it named one. A
+     * browser group and the server group of the same request carry the same
+     * id, which is how the Errors page links one to the other, both ways.
+     * Overwritten by each report that names one, so the link follows the
+     * newest pair.
+     */
+    requestId: z.string().max(128).optional(),
   }),
   indexes: [
     { columns: ["projectId", "fingerprint"], unique: true },
