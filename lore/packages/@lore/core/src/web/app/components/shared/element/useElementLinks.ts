@@ -24,6 +24,11 @@ export interface ElementLinks {
    * copy rather than a transform.
    */
   rendered: string;
+  /**
+   * The element's attachments every kind resolved, for the hover card of a
+   * link to one (#Q4349).
+   */
+  attachments: AttachmentRef[];
 }
 
 /**
@@ -99,5 +104,9 @@ export const useElementLinks = (
     [content, element.projectSlug, kinds, merged],
   );
 
-  return { suggestions: merged.suggestions, rendered };
+  return {
+    suggestions: merged.suggestions,
+    rendered,
+    attachments: merged.attachments,
+  };
 };

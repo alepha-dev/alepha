@@ -264,6 +264,8 @@ export default defineConfig({
       dynamicPrefixes: [
         // A quest's agent assignee (#Q4353): its CLI's name, by adapter.
         "quest.agent.cli.",
+        // A reference's hover card names its kind (#Q4349).
+        "folios.wikilink.kind.",
         // Settings > Prompts (#Q4280): an arg's type, a check's source and
         // the editor's title, by value.
         "prompts.arg.",

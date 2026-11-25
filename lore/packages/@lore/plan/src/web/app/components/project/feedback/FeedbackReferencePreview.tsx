@@ -1,9 +1,11 @@
 import {
+  type I18n,
   type WikiLinkPreviewProps,
   formatReference,
   WikiLinkPreviewState,
 } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 
@@ -11,6 +13,7 @@ import type { FeedbackController } from "../../../../../api/controllers/Feedback
  * A feedback item's hover card: its reference, title and status.
  */
 const FeedbackReferencePreview = (props: WikiLinkPreviewProps) => {
+  const { tr } = useI18n<I18n, "en">();
   const feedbackApi = useClient<FeedbackController>();
   const { projectId, id } = props;
 
@@ -44,7 +47,9 @@ const FeedbackReferencePreview = (props: WikiLinkPreviewProps) => {
         </span>
         <span className="text-sm font-semibold">{item.title}</span>
       </div>
-      <div className="text-muted-foreground text-xs">{item.status}</div>
+      <div className="text-muted-foreground text-xs">
+        {tr(`feedback.status.${item.status}`, { default: item.status })}
+      </div>
     </div>
   );
 };

@@ -101,6 +101,13 @@ The number is the per-project one shown beside each item. Nothing else between
 link. **Copy wiki-link** in a folio's right-click menu puts its reference on
 your clipboard.
 
+Rest the pointer on a reference, or reach it with the keyboard, and a card
+opens with what it names: its kind, title and status, and for a quest its
+priority, area and objectives done, for an epic its progress, for a release
+its tag and whether it is out. The card is the same in a folio, a quest or
+epic description, a comment and a chat message. On a touch screen a tap
+follows the link.
+
 In a [table](/lore/docs/remember-tables), a reference cell is a link too, and
 the item it names lists the table among its backlinks.
 
