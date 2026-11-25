@@ -646,7 +646,7 @@ export default {
   "quest.presets.done.hint": "Completed in the last 7 days",
   "quest.presets.asks": "Asks",
   "quest.presets.asks.hint":
-    "Tagged need-answer: someone is waiting on a reply",
+    "Tagged needs-answer: someone is waiting on a reply",
   "quest.presets.stale": "Stale",
   "quest.presets.stale.hint": "In progress for more than 14 days",
   "quest.presets.next": "Next",

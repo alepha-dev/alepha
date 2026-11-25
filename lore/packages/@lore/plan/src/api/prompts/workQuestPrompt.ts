@@ -1,3 +1,5 @@
+import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+
 /**
  * `work-quest` (#E174): one quest, one branch, one pull request, one
  * commit. Its arg accepts a quest to do or in progress.
@@ -29,4 +31,6 @@ The quest: {{quest.url}}
 
 Never stop with the quest still accepted, unless you stop on a question below. If the pull request has not merged when you stop, say so in your reply, with its link: the quest is completed, and not on main yet.
 
-If the quest cannot be done as written, say so in a comment and stop. Do not guess at a decision that is the owner's to make, and put the question in your reply as well: what the quest asks, what stopped you, and the two or three ways forward with the one you would take. The comment is the record; your reply is what the person who sent you here reads.`;
+If the quest cannot be done as written, say so in a comment and stop. Do not guess at a decision that is the owner's to make, and put the question in your reply as well: what the quest asks, what stopped you, and the two or three ways forward with the one you would take. The comment is the record; your reply is what the person who sent you here reads.
+
+${unfinishedQuestRule}`;

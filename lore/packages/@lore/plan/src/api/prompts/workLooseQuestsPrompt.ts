@@ -1,3 +1,7 @@
+import { PROMPT_NEEDS_HUMAN_TAG } from "@lore/core/schemas";
+
+import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+
 /**
  * `work-loose-quests` (#E174): every quest under no epic, one pull
  * request for the run.
@@ -5,7 +9,7 @@
  * ⚠️ English, never localized: its words name the tools it calls. No
  * secret ever goes in: it leaves Lore on a clipboard or in a job.
  */
-export const workLooseQuestsPromptText = `Work every loose quest of the Lore project "{{project}}", one at a time, in one run and one pull request: every quest in \`todo\` that belongs to no epic.
+export const workLooseQuestsPromptText = `Work every loose quest of the Lore project "{{project}}", one at a time, in one run and one pull request: every quest in \`todo\` that belongs to no epic and is not tagged \`${PROMPT_NEEDS_HUMAN_TAG}\`.
 
 The quests: {{projectUrl}}/quests
 
@@ -18,7 +22,7 @@ The quests: {{projectUrl}}/quests
 
 Repeat until no loose quest is left in \`todo\`. Re-read the list each round rather than taking it once at the start: quests get filed while you work, and finishing one often reveals the next.
 
-To read it, call \`quest_list\` with status "todo" (page through it with \`limit\` and \`offset\` until you have every row) and keep the quests that carry no \`epic\`. A quest under an epic is not part of this run: an epic is worked through its own prompt.
+To read it, call \`quest_list\` with status "todo" (page through it with \`limit\` and \`offset\` until you have every row) and keep the quests that carry no \`epic\` and no \`${PROMPT_NEEDS_HUMAN_TAG}\` tag: an agent does not build those alone. A quest under an epic is not part of this run: an epic is worked through its own prompt.
 
 Take the next one by priority, then by what the others depend on.
 
@@ -50,4 +54,6 @@ Never stop with a quest you accepted still open, unless you left it with a comme
 - **What shipped**, in a few lines: the quests completed, the pull request, and whether it has merged.
 - **Every quest you could not do as written**, numbered, one block each: what it asked, what stopped you, and the two or three ways forward with the one you would take. The decision is the owner's, and they are reading here.
 
-If nothing was blocked, say so in one line rather than padding the list.`;
+If nothing was blocked, say so in one line rather than padding the list.
+
+${unfinishedQuestRule}`;

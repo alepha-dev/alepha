@@ -96,7 +96,7 @@ export class WorkRouter {
       /**
        * The quests table's filters, seeded from the URL on arrival — the
        * drill-through target for a dashboard card, and for any link that
-       * wants to open one slice of the backlog. `?status=todo&tag=need-answer`
+       * wants to open one slice of the backlog. `?status=todo&tag=needs-answer`
        * opens the list already narrowed, and the toolbar's Share item is what
        * produces such a link.
        *

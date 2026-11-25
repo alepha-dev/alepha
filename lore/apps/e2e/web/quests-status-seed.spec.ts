@@ -143,7 +143,7 @@ test.describe("Quests — the URL seeds the filters", () => {
     await test.step("a link carries more than one filter", async () => {
       // `?status=` was hand-mapped for its own sake once. Every key of the
       // table's filter schema is read now, which is what makes a link like
-      // `?status=todo&tag=need-answer` mean something.
+      // `?status=todo&tag=needs-answer` mean something.
       await page.goto(`/${slug}/quests?status=todo&search=${newTitle}`);
       await page.waitForLoadState("networkidle");
       await expect(table.getByText(newTitle)).toHaveCount(1, {

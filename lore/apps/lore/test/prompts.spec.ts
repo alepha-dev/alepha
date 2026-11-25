@@ -128,6 +128,29 @@ describe("prompts", () => {
     ).rejects.toThrow("needs a capability");
   });
 
+  it("tells every work prompt to comment on a quest not fully done and tag it needs-answer when it asks (#Q4279)", async ({
+    expect,
+  }) => {
+    const byName = Object.fromEntries(
+      (await list()).map((it) => [it.name, it]),
+    );
+    for (const name of [
+      "work-quest",
+      "work-epic",
+      "work-loose-quests",
+      "work-feedback",
+    ]) {
+      expect(byName[name]!.text).toContain("## A quest not fully done");
+      expect(byName[name]!.text).toContain("`needs-answer`");
+    }
+    expect(byName["work-loose-quests"]!.text).toContain(
+      "not tagged `needs-human`",
+    );
+    expect(byName["work-epic"]!.text).toContain("whatever its tags");
+    expect(byName.triage!.text).not.toContain("Build automation");
+    expect(byName.triage!.text).toContain("It is not `needs-answer`");
+  });
+
   it("freezes a built-in's words, while its source is the project's to change, on a row of its own", async ({
     expect,
   }) => {
