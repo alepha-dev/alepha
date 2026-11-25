@@ -19,6 +19,7 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
+import { feedbackListWidthAtom } from "../../../atoms/feedbackListWidthAtom.ts";
 import { WorkShell } from "../../../shell/WorkShell.ts";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedback from "./ProjectFeedback.tsx";
@@ -380,6 +381,31 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     );
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     expect(alepha.inject(FakeLinkProvider).listCalls).toEqual([]);
+  });
+
+  it("resizes the list by its right edge, keeps the width in its atom, and resets on a double click (#Q4325)", async ({
+    expect,
+  }) => {
+    const alepha = await mount();
+    const rendered = view(alepha);
+    const pane = await rendered.findByTestId("feedback-list-pane");
+    const width = () => pane.style.getPropertyValue("--feedback-list-width");
+    expect(width()).toBe("380px");
+
+    const handle = rendered.getByRole("separator");
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    await waitFor(() => expect(width()).toBe("396px"));
+    expect(alepha.store.get(feedbackListWidthAtom)).toEqual({ width: 396 });
+
+    fireEvent.doubleClick(handle);
+    await waitFor(() => expect(width()).toBe("380px"));
+    // Held to its bounds: a step past the minimum stops at it.
+    for (let i = 0; i < 5; i++) {
+      await act(async () => {
+        fireEvent.keyDown(handle, { key: "ArrowLeft" });
+      });
+    }
+    expect(width()).toBe("320px");
   });
 
   it("shows the status filter with no visible label, named by its aria-label (#Q4324)", async ({
