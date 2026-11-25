@@ -1,5 +1,5 @@
 import type { HostJobSummary } from "@lore/core/api";
-import { jobKeys } from "@lore/core/schemas";
+import { hostJobs, hosts, jobKeys } from "@lore/core/schemas";
 import { createTestProject } from "@lore/core/testing";
 import { QuestTools } from "@lore/plan/mcp";
 import { questComments, quests } from "@lore/plan/schemas";
@@ -19,6 +19,8 @@ import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 class Repos {
   keys = $repository(jobKeys);
+  hosts = $repository(hosts);
+  jobs = $repository(hostJobs);
   quests = $repository(quests);
   comments = $repository(questComments);
 }
@@ -125,6 +127,52 @@ describe("a quest and the agent job working it", () => {
     expect(
       list.quests.find((it) => it.shortId === byHand.shortId)?.agentJobId,
     ).toBeUndefined();
+  });
+
+  it("copies the job's agent CLI with the stamp, shows it beside agentJobId, and clears both together (#Q4353)", async ({
+    expect,
+  }) => {
+    const host = await repos.hosts.create({
+      projectId: project.id,
+      ownerUserId: ownerId,
+      type: "bay",
+      slug: "nfo1",
+    });
+    await repos.jobs.create({
+      id: jobId,
+      projectId: project.id,
+      hostId: host.id,
+      kind: "agent",
+      status: "running",
+      input: { agent: "claude", timeoutSeconds: 600 },
+      queuedAt: new Date().toISOString(),
+    });
+    const quest = await createTestQuest(alepha, project);
+    await accept(quest.shortId);
+    expect(await row(quest.id)).toMatchObject({
+      agentJobId: jobId,
+      agentName: "claude",
+    });
+    const got = (await as(false, () =>
+      tools.quest_get.execute({ project: project.id, shortId: quest.shortId }),
+    )) as { agentName?: string };
+    expect(got.agentName).toBe("claude");
+    const list = (await as(false, () =>
+      tools.quest_list.execute({ project: project.id }),
+    )) as { quests: Array<{ shortId: number; agentName?: string }> };
+    expect(
+      list.quests.find((it) => it.shortId === quest.shortId)?.agentName,
+    ).toBe("claude");
+
+    await as(false, () =>
+      tools.quest_unassign.execute({
+        project: project.id,
+        shortId: quest.shortId,
+      }),
+    );
+    const after = await row(quest.id);
+    expect(after.agentJobId).toBeUndefined();
+    expect(after.agentName).toBeUndefined();
   });
 
   it("clears the stamp on unassign and on complete", async ({ expect }) => {

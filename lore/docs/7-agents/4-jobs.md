@@ -224,6 +224,11 @@ A few things only a job does:
   screen when the host has `playwright-cli`, commit naming the quest, push, and open a pull request with `gh`, which they record on the
   quest.
 
+A quest a job accepts shows the job as a second assignee, the agent CLI's
+icon in front of the member it works for, linked to the job, until the job
+ends and hands the quest back to **To do**. The quest list's **Assignee**
+filter keeps those quests with **An agent**.
+
 ## A job's page
 
 **Settings ▸ Prompts ▸ Jobs** lists every job of the project, newest first:

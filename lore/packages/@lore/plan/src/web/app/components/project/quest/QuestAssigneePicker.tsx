@@ -13,6 +13,7 @@ import { ChevronDown, UserMinus } from "lucide-react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import QuestAssignee from "../../shared/QuestAssignee.tsx";
 
 export interface QuestAssigneePickerProps {
   quest: QuestResource;
@@ -94,65 +95,78 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
     // people picker scannable, or giving `ControlSelect` a per-item render
     // escape hatch. That second one is a real design question about the whole
     // component and does not belong inside a rail row's quest.
-    <DropdownMenu>
-      {/* `-my-0.5` cancels the `py-0.5` hover pad, as `-mx-1` cancels the
+    //
+    // The agent job working it for the member stands in front, linked to
+    // the job, outside the trigger: a link inside a button is invalid
+    // (#Q4353).
+    <QuestAssignee
+      quest={quest}
+      size="size-4"
+      memberName={String(label)}
+      member={
+        <DropdownMenu>
+          {/* `-my-0.5` cancels the `py-0.5` hover pad, as `-mx-1` cancels the
           `px-1`, and `align-top` drops the baseline gap an inline-flex box
           leaves under itself: together they took the row from 34px to the
           rail's 28 (#Q2424). */}
-      <DropdownMenuTrigger
-        disabled={
-          pending || candidates.length === 0 || !questApi.assignQuest.can()
-        }
-        data-testid="quest-assignee-picker"
-        className="hover:bg-hover -mx-1 -my-0.5 inline-flex items-center gap-1.5 rounded px-1 py-0.5 align-top disabled:opacity-60"
-      >
-        {quest.acceptedBy ? (
-          <UserAvatar
-            public
-            fileId={assignee?.picture}
-            className="size-4"
-            alt="user avatar"
-          />
-        ) : (
-          <UserMinus className="text-muted-foreground size-4" />
-        )}
-        <span className="truncate">{String(label)}</span>
-        <ChevronDown className="text-muted-foreground size-3 shrink-0" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-48">
-        {quest.acceptedBy && props.onUnassign && (
-          <>
-            <DropdownMenuItem
-              data-testid="quest-assignee-unassign"
-              disabled={props.unassignDisabled}
-              onClick={() => props.onUnassign?.()}
-            >
-              <UserMinus className="text-muted-foreground size-4" />
-              <span className="truncate">
-                {tr("quest.rail.assign.unassigned")}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        {candidates.map((member) => (
-          <DropdownMenuItem
-            key={member.id}
-            data-testid="quest-assignee-option"
-            data-user-id={member.id}
-            onClick={() => void assignAction.run(member.id)}
+          <DropdownMenuTrigger
+            disabled={
+              pending || candidates.length === 0 || !questApi.assignQuest.can()
+            }
+            data-testid="quest-assignee-picker"
+            className="hover:bg-hover -mx-1 -my-0.5 inline-flex items-center gap-1.5 rounded px-1 py-0.5 align-top disabled:opacity-60"
           >
-            <UserAvatar
-              public
-              fileId={member.picture}
-              className="size-4"
-              alt="user avatar"
-            />
-            <span className="truncate">{displayName(member, member.id)}</span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {quest.acceptedBy ? (
+              <UserAvatar
+                public
+                fileId={assignee?.picture}
+                className="size-4"
+                alt="user avatar"
+              />
+            ) : (
+              <UserMinus className="text-muted-foreground size-4" />
+            )}
+            <span className="truncate">{String(label)}</span>
+            <ChevronDown className="text-muted-foreground size-3 shrink-0" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-48">
+            {quest.acceptedBy && props.onUnassign && (
+              <>
+                <DropdownMenuItem
+                  data-testid="quest-assignee-unassign"
+                  disabled={props.unassignDisabled}
+                  onClick={() => props.onUnassign?.()}
+                >
+                  <UserMinus className="text-muted-foreground size-4" />
+                  <span className="truncate">
+                    {tr("quest.rail.assign.unassigned")}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {candidates.map((member) => (
+              <DropdownMenuItem
+                key={member.id}
+                data-testid="quest-assignee-option"
+                data-user-id={member.id}
+                onClick={() => void assignAction.run(member.id)}
+              >
+                <UserAvatar
+                  public
+                  fileId={member.picture}
+                  className="size-4"
+                  alt="user avatar"
+                />
+                <span className="truncate">
+                  {displayName(member, member.id)}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    />
   );
 };
 

@@ -33,7 +33,6 @@ import type { EpicController } from "../../../../../api/controllers/EpicControll
 import type { PullRequest } from "../../../../../api/schemas/pullRequestSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import PullRequestLinks from "../../shared/PullRequestLinks.tsx";
-import QuestAgentJobLink from "../../shared/QuestAgentJobLink.tsx";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import { formatEstimate } from "./questEstimate.ts";
@@ -138,11 +137,8 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 
       <div className="divide-border/60 flex flex-col divide-y">
         <QuestViewRailRow icon={CircleDot} label={tr("board.table.status")}>
-          <span className="inline-flex items-center gap-2">
-            {statusLabel}
-            {/* The agent job working it, while it runs (#Q4350). */}
-            <QuestAgentJobLink jobId={quest.agentJobId} />
-          </span>
+          {/* The agent job working it is drawn with its assignee (#Q4353). */}
+          {statusLabel}
         </QuestViewRailRow>
 
         {/* The third editable row, after tags and the reminder. Handing

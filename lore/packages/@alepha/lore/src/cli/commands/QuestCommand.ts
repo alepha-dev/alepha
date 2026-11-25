@@ -223,7 +223,11 @@ export class QuestCommand {
               quest.area,
               // The agent job working it (#Q4350).
               ...(quest.agentJobId
-                ? [`job ${quest.agentJobId.slice(0, 8)}`]
+                ? [
+                    [quest.agentName, `job ${quest.agentJobId.slice(0, 8)}`]
+                      .filter(Boolean)
+                      .join(" "),
+                  ]
                 : []),
             ],
           })),
@@ -310,6 +314,7 @@ export class QuestCommand {
             ["Tags", quest.tags.join(", ")],
             ["Accepted", quest.acceptedAt],
             ["Agent job", quest.agentJobId],
+            ["Agent", quest.agentJobId ? quest.agentName : undefined],
             ["Completed", quest.completedAt],
             [
               "Objectives",

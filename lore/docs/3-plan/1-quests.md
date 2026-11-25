@@ -16,7 +16,7 @@ quest.
 ![The Quests page, listing the project's quests](/screenshots/lore/quests-light.png)
 
 The bar above the table searches, and filters by **Status**, **Area**, **Tag**,
-**Release**, **Epic** and **Job**. Two kinds of quests are left out until you ask for
+**Release**, **Epic** and **Assignee**. Two kinds of quests are left out until you ask for
 them: shelved quests, which appear when the Status filter names **Shelved**, and
 the quests of a draft [epic](/lore/docs/plan-epics), which appear when the Epic
 filter names that epic. The Release and Epic filters both start with **None**,
@@ -158,17 +158,19 @@ flowchart LR
 ### A quest an agent job is working
 
 When an [agent job](/lore/docs/agents-jobs) accepts a quest, the quest records
-the job. Its page shows a moving robot beside **In progress**, linked to the
-job's page, for as long as the job runs. When the job ends, finished or not,
+the job as a second assignee: wherever the quest shows who holds it (its
+page, the quest list, the board's cards), the icon of the job's agent (Claude
+Code, Gemini CLI, a robot for any other) stands in front of the member it
+works for, moving for as long as the job runs. It links to the job's page,
+and hovering it names the agent, the job and the member. When the job ends, finished or not,
 every quest it still holds goes back to **To do**, with a line in its
 Discussion saying its job ended. Its comments, commits and pull request stay,
 so the next run, or you, can pick it up. Unassigning, completing or shelving
 the quest frees it from the job at once. A quest you accept yourself records
 no job.
 
-In the quest list, the **Job** column shows which quests a job is building
-right now. It is hidden until you add it from the column picker, and the
-**Job** filter keeps only those quests.
+In the quest list, the **Assignee** filter's **An agent** keeps only the
+quests a job is working right now.
 
 A quest waiting on _another quest_ is not on hold: set **Depends on** instead,
 which also draws the link between the two.

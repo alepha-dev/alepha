@@ -584,59 +584,81 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   });
 
   /**
-   * The Job column (#Q4350): hidden by default, the quest's running agent
-   * job linked and animated when shown, and a filter for the quests a job
-   * is building.
+   * A quest's agent job (#Q4350) is a second assignee (#Q4353): its agent
+   * drawn in front of the member, linked and animated, no Job column, and
+   * the assignee filter's "An agent" for the quests a job is working.
    */
-  describe("the Job column", () => {
+  describe("the agent assignee", () => {
     const headerText = (view: Awaited<ReturnType<typeof mount>>["view"]) =>
       [...view.container.querySelectorAll("thead th")]
         .map((th) => th.textContent?.trim())
         .filter(Boolean);
     const jobId = "0b3c6a2e-1d4f-4a8b-9c7d-2e5f6a7b8c9d";
-    const building = () =>
+    const building = (agentName?: string, id = 1) =>
       ({
-        ...questOf(1, "Built by a job"),
+        ...questOf(id, `Built by a job ${id}`),
         acceptedAt: "2026-09-02T10:30:00.000Z",
+        acceptedBy: "5a1d2c3b-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         agentJobId: jobId,
+        agentName,
       }) as QuestResource;
 
-    it("is hidden until the reader adds it", async () => {
-      const { view } = await mount([building()]);
-      await waitFor(() => expect(headerText(view).length).toBeGreaterThan(1));
+    it("draws the job's agent icon in front of the member, linked to the job and animated, still under reduced motion", async () => {
+      const { view } = await mount([building("claude"), questOf(2, "By hand")]);
+      const links = await view.findAllByTestId("quest-agent-job");
+      expect(links).toHaveLength(1);
+      expect(links[0]?.getAttribute("href")).toContain(`/jobs/${jobId}`);
+      expect(links[0]?.getAttribute("aria-label")).toMatch(
+        /^Claude Code, job 0b3c6a2e, working for /,
+      );
+      const avatar = within(links[0] as HTMLElement).getByTestId(
+        "agent-avatar",
+      );
+      expect(avatar.getAttribute("data-agent")).toBe("claude");
+      expect(avatar.getAttribute("class")).toContain("animate-pulse");
+      expect(avatar.getAttribute("class")).toContain(
+        "motion-reduce:animate-none",
+      );
+      // The member stays, behind it, in the same cell.
+      const pair = view.getByTestId("quest-assignee");
+      expect(pair.children).toHaveLength(2);
+    });
+
+    it("falls back to the robot for an agent with no known icon", async () => {
+      const { view } = await mount([building("aider"), building(undefined, 2)]);
+      const links = await view.findAllByTestId("quest-agent-job");
+      expect(links).toHaveLength(2);
+      for (const link of links) {
+        expect(within(link).getByTestId("agent-avatar-robot")).toBeTruthy();
+      }
+      expect(links.map((it) => it.getAttribute("aria-label"))).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/^aider, job /),
+          expect.stringMatching(/^An agent, job /),
+        ]),
+      );
+    });
+
+    it("has no Job column, even in a saved view that names it", async () => {
+      window.localStorage.setItem(
+        "lor.board.1.columns",
+        JSON.stringify(["title", "job", "assignedTo"]),
+      );
+      const { view } = await mount([building("claude")]);
+      await view.findByTestId("quest-agent-job");
       expect(headerText(view)).not.toContain("Job");
     });
 
-    it("links the quest's running job with an animated icon, still under reduced motion", async () => {
-      window.localStorage.setItem(
-        "lor.board.1.columns",
-        JSON.stringify(["title", "job"]),
-      );
-      const { view } = await mount([building(), questOf(2, "By hand")]);
-      await waitFor(() => expect(headerText(view)).toContain("Job"));
-      const links = view.getAllByTestId("quest-agent-job");
-      expect(links).toHaveLength(1);
-      expect(links[0]?.getAttribute("href")).toContain(`/jobs/${jobId}`);
-      const icon = view.getByTestId("quest-agent-job-icon");
-      expect(icon.getAttribute("class")).toContain("animate-pulse");
-      expect(icon.getAttribute("class")).toContain(
-        "motion-reduce:animate-none",
-      );
-    });
-
-    it("filters on the quests a job is building", async () => {
-      const { view, links } = await mount([building()]);
+    it("filters on the quests an agent works, from the assignee filter", async () => {
+      const { view, links } = await mount([building("claude")]);
       fireEvent.keyDown(
         await view.findByRole("button", { name: "Add filters" }),
         { key: "ArrowDown" },
       );
-      fireEvent.click(await view.findByRole("menuitem", { name: /Job/ }));
-      fireEvent.click(
-        await view.findByRole("option", { name: /Being built by a job/ }),
-      );
-      await waitFor(() =>
-        expect(links.queries.at(-1)?.agentJob).toBe("running"),
-      );
+      expect(view.queryByRole("menuitem", { name: /^Job/ })).toBeNull();
+      fireEvent.click(await view.findByRole("menuitem", { name: /Assignee/ }));
+      fireEvent.click(await view.findByRole("option", { name: /An agent/ }));
+      await waitFor(() => expect(links.queries.at(-1)?.assignee).toBe("agent"));
     });
   });
 

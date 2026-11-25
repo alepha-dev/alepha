@@ -262,6 +262,8 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        // A quest's agent assignee (#Q4353): its CLI's name, by adapter.
+        "quest.agent.cli.",
         // Settings > Prompts (#Q4280): an arg's type, a check's source and
         // the editor's title, by value.
         "prompts.arg.",

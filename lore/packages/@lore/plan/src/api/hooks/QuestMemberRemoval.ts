@@ -28,7 +28,12 @@ export class QuestMemberRemoval {
           acceptedBy: { eq: userId },
           completedAt: { isNull: true },
         },
-        { acceptedAt: null, acceptedBy: null, agentJobId: null },
+        {
+          acceptedAt: null,
+          acceptedBy: null,
+          agentJobId: null,
+          agentName: null,
+        },
       );
     },
   });

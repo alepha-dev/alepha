@@ -1,6 +1,9 @@
 import { FileImage, cn } from "@alepha/ui";
-import { projectInitials, projectMonogramColor } from "@lore/core/web";
-import { Bot } from "lucide-react";
+import {
+  AgentAvatar,
+  projectInitials,
+  projectMonogramColor,
+} from "@lore/core/web";
 
 export interface ChatAgentAvatarProps {
   /**
@@ -24,7 +27,7 @@ export interface ChatAgentAvatarProps {
 /**
  * A chat agent's picture (#E170, #Q4198): its uploaded avatar, or its
  * initials on a colour of its own when it has none or it fails to load, and
- * the bot for `@lore`. Served from the authenticated file route: an agent's
+ * core's agent avatar, the bot, for `@lore`. Served from the authenticated file route: an agent's
  * picture is read with `chat:read`.
  */
 const ChatAgentAvatar = (props: ChatAgentAvatarProps) => {
@@ -33,12 +36,11 @@ const ChatAgentAvatar = (props: ChatAgentAvatarProps) => {
     props.className ?? "size-[30px]",
   );
   if (props.builtin || !props.name) {
+    // Core's agent avatar, the robot every agent with no icon of its own is
+    // drawn as, a quest's agent assignee included (#Q4353).
     return (
-      <span
-        className={cn(box, "bg-primary/10 text-primary")}
-        data-testid="chat-agent-avatar"
-      >
-        <Bot className="size-[55%]" aria-hidden="true" />
+      <span className="contents" data-testid="chat-agent-avatar">
+        <AgentAvatar className={props.className ?? "size-[30px]"} />
       </span>
     );
   }

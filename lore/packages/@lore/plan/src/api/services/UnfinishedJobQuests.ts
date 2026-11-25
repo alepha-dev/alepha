@@ -97,7 +97,10 @@ export class UnfinishedJobQuests {
       const status = this.mapper.questStatus(quest);
       if (status !== "in_progress" && status !== "on_hold") {
         if (quest.agentJobId === job.id) {
-          await this.quests.updateById(quest.id, { agentJobId: null } as never);
+          await this.quests.updateById(quest.id, {
+            agentJobId: null,
+            agentName: null,
+          } as never);
         }
         continue;
       }
@@ -131,6 +134,7 @@ export class UnfinishedJobQuests {
       acceptedAt: null,
       acceptedBy: null,
       agentJobId: null,
+      agentName: null,
       kanbanColumn: null,
       reminderInterval: null,
       reminderNextAt: null,
