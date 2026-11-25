@@ -27,7 +27,12 @@ export interface PromptTriggerDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: number;
   prompt: PromptResource;
-  invalidates: unknown[];
+  /**
+   * The row the server answered, which the page draws in place (#Q4301):
+   * the server checks a trigger before taking it, so the dialog waits for
+   * its answer and keeps a refused value on its field.
+   */
+  onSaved: (row: PromptResource) => void;
 }
 
 /**
@@ -61,7 +66,7 @@ const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
   const save = useAction<[values: Record<string, unknown>], void>(
     {
       handler: async (_ctx, values) => {
-        await api.updatePrompt({
+        const row = await api.updatePrompt({
           params: { projectId: props.projectId, name: props.prompt.name },
           body: {
             on:
@@ -82,9 +87,9 @@ const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
             maxRunsPerDay: Number(values.maxRunsPerDay),
           },
         });
+        props.onSaved(row);
         props.onOpenChange(false);
       },
-      invalidates: [props.invalidates],
     },
     [api, props.projectId, props.prompt.name],
   );
