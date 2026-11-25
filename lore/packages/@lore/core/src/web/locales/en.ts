@@ -55,6 +55,7 @@ export default {
     "Nobody is notified this way any more. You can add it again at any time.",
   "notifications.remove.confirm": "Stop",
   "notifications.remove.titleMany": "Stop these $1 notifications?",
+  "notifications.table.filter": "Only for",
   "notifications.table.event": "Event",
   "notifications.table.recipient": "Member",
   "notifications.table.how": "Channel",

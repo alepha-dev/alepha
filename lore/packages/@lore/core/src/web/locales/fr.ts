@@ -62,6 +62,7 @@ export default {
     "Plus personne n'est notifié ainsi. Vous pouvez la rajouter à tout moment.",
   "notifications.remove.confirm": "Arrêter",
   "notifications.remove.titleMany": "Arrêter ces $1 notifications ?",
+  "notifications.table.filter": "Uniquement pour",
   "notifications.table.event": "Événement",
   "notifications.table.recipient": "Membre",
   "notifications.table.how": "Canal",
