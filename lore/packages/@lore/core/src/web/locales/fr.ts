@@ -1080,6 +1080,7 @@ export default {
   "quest.rail.due": "Échéance",
   "quest.rail.release": "Version",
   "quest.rail.release.none": "Aucune",
+  "quest.rail.tags.remove": "Retirer $1",
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",

@@ -1085,6 +1085,7 @@ export default {
   "quest.rail.due": "Due",
   "quest.rail.release": "Release",
   "quest.rail.release.none": "None",
+  "quest.rail.tags.remove": "Remove $1",
 
   "project.create.name": "Name",
   "project.create.name.helper":
