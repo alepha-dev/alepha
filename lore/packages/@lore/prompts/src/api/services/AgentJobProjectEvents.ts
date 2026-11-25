@@ -8,6 +8,7 @@ import {
 } from "@lore/core/api";
 import { type ProjectEventFields, projects } from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
+import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { prompts } from "../entities/prompts.ts";
@@ -26,6 +27,12 @@ import { prompts } from "../entities/prompts.ts";
  *   runs nobody asked to hear about.
  * - `starter_id` is still a field of the event, the member who started a
  *   run by hand, for a channel's message or a later "jobs I started" filter.
+ *
+ * A job that failed or timed out is also logged at error level (#Q4329),
+ * which the app's sigil files in Errors: nobody watches an agent job run,
+ * so its failure would otherwise be silent. The message names only the
+ * prompt and the kind (`Agent job work-epic timed out`), so repeats bump one
+ * error; the job, the host and the reason go in the log's data.
  *
  * Read with `host:read`, like the hosts, and offered only while the project
  * has the `prompts` capability (#E175): off, no agent job runs.
@@ -51,6 +58,7 @@ export class AgentJobProjectEvents {
   protected readonly agents = $inject(AgentJobs);
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(prompts);
+  protected readonly log = $logger();
 
   constructor() {
     for (const definition of AgentJobProjectEvents.DEFINITIONS)
@@ -125,12 +133,35 @@ export class AgentJobProjectEvents {
       ) {
         return;
       }
+      // Reported whatever the capability: a failure is one either way.
+      if (job.status !== "succeeded") this.report(job);
       // A job still running when Prompts was turned off finishes; its end
       // tells nobody (#Q4314).
       if (!(await this.agents.isOn(job.projectId))) return;
       await this.raise(job);
     },
   });
+
+  /**
+   * The error Errors shows for a failed or timed-out agent job (#Q4329).
+   * Stable per prompt and kind: a job id, a duration or a reason in the
+   * message would make every run its own error.
+   */
+  protected report(job: HostJobSummary): void {
+    const prompt = job.prompt ?? job.subjectType ?? "run";
+    const kind = job.status === "timed_out" ? "timed out" : "failed";
+    this.log.error(`Agent job ${prompt} ${kind}`, {
+      projectId: job.projectId,
+      jobId: job.id,
+      prompt,
+      host: job.hostId ?? "",
+      status: job.status,
+      reason: (
+        job.reason ??
+        (job.status === "timed_out" ? "It ran past its timeout" : "")
+      ).slice(0, 500),
+    });
+  }
 
   protected async raise(job: HostJobSummary): Promise<void> {
     const project = await this.projects.findOne({

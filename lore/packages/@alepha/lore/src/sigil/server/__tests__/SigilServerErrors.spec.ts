@@ -5,6 +5,7 @@ import { $action, ServerProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
 
+import { sigilFingerprintSource } from "../../shared/sigilFingerprint.ts";
 import { SigilServerErrors } from "../SigilServerErrors.ts";
 import { SigilSinkProvider } from "../SigilSinkProvider.ts";
 
@@ -225,8 +226,8 @@ describe("SigilServerErrors — error-level logs", () => {
       this.log.warn("expected condition");
     }
 
-    public plain() {
-      this.log.error("something is off");
+    public plain(message = "something is off") {
+      this.log.error(message);
     }
   }
 
@@ -271,6 +272,21 @@ describe("SigilServerErrors — error-level logs", () => {
         .map((it) => String(it.message))
         .sort((a, b) => a.localeCompare(b)),
     ).toEqual(["best-effort step failed: nested", "something is off"]);
+  });
+
+  it("groups a message-only log by its message, so two messages are two errors and a repeat is one (#Q4329)", async () => {
+    const { errors, worker } = await setup();
+
+    worker.plain("Agent job work-epic timed out");
+    worker.plain("Agent job work-epic failed");
+    worker.plain("Agent job work-epic timed out");
+
+    await expect.poll(() => errors().length).toBe(3);
+    const fingerprints = errors().map((it) =>
+      sigilFingerprintSource(String(it.name), String(it.stack)),
+    );
+    expect(fingerprints[0]).toBe(fingerprints[2]);
+    expect(fingerprints[0]).not.toBe(fingerprints[1]);
   });
 
   it("ignores warnings", async () => {
