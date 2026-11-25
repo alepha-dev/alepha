@@ -6,9 +6,8 @@ import { type Infer, z } from "alepha";
  * A quest list and its board are always there when Work is on; these
  * organize them. `epics` and `releases` are surfaces; `estimate`, `chrono`
  * and `reminder` are the three quest toggles, one methodology in three parts,
- * adopted later rather than picked at creation. `agentPrompts` is neither: it adds a menu to
- * surfaces the other options decide the existence of, and its templates are
- * edited on this same Settings page. `feedback` is the request form and the
+ * adopted later rather than picked at creation. `agentPrompts` went with
+ * #Q4281: a project pins its prompts to pages instead. `feedback` is the request form and the
  * triage inbox, a capability of its own (Support) until #E143 folded it in.
  * `requirements` is personas, use cases and requirements (#E153), whose code
  * lives in `@lore/plan-requirements` and registers under Plan.
@@ -37,7 +36,6 @@ export const planCapabilityOptionsSchema = z.object({
   estimate: z.boolean().default(false),
   chrono: z.boolean().default(false),
   reminder: z.boolean().default(false),
-  agentPrompts: z.boolean().default(false),
   feedback: z.boolean().default(false),
   requirements: z.boolean().default(false),
   /**

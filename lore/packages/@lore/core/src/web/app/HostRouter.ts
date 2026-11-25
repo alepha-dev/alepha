@@ -111,20 +111,11 @@ export class HostRouter {
   });
 
   /**
-   * The project's host jobs (#Q3984): agent jobs and Agent host checks, and
-   * one job with its live log. No capability (#E166): agent jobs run with
-   * Ship off, and the reads are gated server-side on `host:read`.
+   * One host job with its live log (#Q3984). The list is the Jobs tab of
+   * Settings > Prompts (#Q4281): a job belongs to the project, not to a
+   * host. No capability (#E166): agent jobs run with Ship off, and the
+   * reads are gated server-side on `host:read`.
    */
-  projectJobs = $pageProject({
-    name: "projectJobs",
-    path: "/jobs",
-    nav: { hidden: true, label: "Jobs" },
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Jobs`,
-    }),
-    lazy: () => import("./components/project/host-jobs/ProjectJobs.tsx"),
-  });
-
   projectJob = $pageProject({
     loading: ProjectPageSkeleton,
     name: "projectJob",

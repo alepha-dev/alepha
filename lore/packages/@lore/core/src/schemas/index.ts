@@ -49,10 +49,6 @@ export {
 export { ProjectSlugService } from "../api/schemas/ProjectSlugService.ts";
 export { type AdminProjectResource } from "../api/schemas/adminProjectResourceSchema.ts";
 export {
-  type AgentPromptKind,
-  agentPromptKindSchema,
-} from "../api/schemas/agentPromptKindSchema.ts";
-export {
   APP_NAME_MAX_LENGTH,
   APP_NAME_PATTERN,
   SIGIL_NAME_PAIR_MAX_LENGTH,
@@ -167,7 +163,6 @@ export {
   type AgentPromptSubject,
   renderPromptTemplate,
 } from "../api/schemas/renderPromptTemplate.ts";
-export { projectPrompts } from "../api/entities/projectPrompts.ts";
 export { jobKeys, type JobKey } from "../api/entities/jobKeys.ts";
 
 // ---- hosts (#E166) ----

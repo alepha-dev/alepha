@@ -300,26 +300,6 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                       },
                     ]
                   : []),
-                // ⚠️ Outside the `planEditable` branch, because this is
-                // exactly the case that had no row menu at all: on an
-                // IN-PROGRESS epic the plan is frozen, so Detach is gone,
-                // and that is precisely when its quests are being handed
-                // out one at a time.
-                //
-                // Offered wherever accepting works: a ready epic (whose
-                // first accept starts it) and one in progress. A draft
-                // epic gets Detach and no group, a ready one gets both, an
-                // in-progress one the group and no Detach, a completed one
-                // neither. The group is OMITTED rather than handed over
-                // empty, and #Q1959's effective-entry count is the backstop
-                // rather than the mechanism.
-                //
-                // ⚠️ The gate reads `props.epic.status` and NOT
-                // `questAgentGate`. The shared helper resolves a quest's
-                // epic through `currentEpicsAtom`, which this table has no
-                // other reason to read and which is `undefined` after a
-                // failed load; the epic is a PROP here, so its status is
-                // known directly. Same condition, better source.
                 // What is pinned on the Quest view (#Q4284), this row's
                 // quest filled in.
                 ...pins.rowGroup<QuestResource>(

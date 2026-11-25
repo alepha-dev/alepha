@@ -27,8 +27,7 @@ export interface SettingsTab {
    */
   option?: string;
   /**
-   * Options of which ANY is enough (#E153): Agent prompts shows while
-   * `agentPrompts` or `requirements` is on. Read instead of `option` when
+   * Options of which ANY is enough (#E153). Read instead of `option` when
    * present.
    */
   options?: string[];
@@ -180,6 +179,15 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         route: "projectSettingsPrompts",
         labelKey: "project.settings.tab.prompts",
         fullWidth: true,
+      },
+      {
+        // A job belongs to the project, not to a host (#Q4281): no host
+        // page lists jobs. Listed with the read its API asks.
+        route: "projectSettingsPromptJobs",
+        labelKey: "project.settings.tab.jobs",
+        requires: "host:read",
+        fullWidth: true,
+        alsoOn: ["projectJob"],
       },
     ],
   },

@@ -8,12 +8,13 @@ import {
 import { DataTable, type RowActionEntry } from "@alepha/ui/table";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   Clock,
   Copy,
   Eye,
   FileCode,
+  ListChecks,
   Pin,
   Pause,
   Pencil,
@@ -63,6 +64,8 @@ const ProjectSettingsPromptsPage = () => {
   const api = useClient<PromptController>();
   const jobsApi = useClient<HostJobController>();
   const dialog = useDialog();
+  // Core's own settings page; typed for it from here.
+  const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
   const [open, setOpen] = useState<Open | undefined>();
   const manage = can("prompt:manage");
@@ -180,6 +183,20 @@ const ProjectSettingsPromptsPage = () => {
       label: tr("prompts.view"),
       onClick: () => setOpen({ kind: "view", prompt: row }),
     },
+    ...(can("host:read")
+      ? [
+          {
+            // Every run of this prompt: the Jobs tab, filtered on it.
+            icon: ListChecks,
+            label: tr("prompts.jobs"),
+            onClick: () =>
+              void router.push("projectSettingsPromptJobs", {
+                params: { projectSlug: slug },
+                query: { prompt: row.name },
+              }),
+          },
+        ]
+      : []),
     ...(manage
       ? [
           {

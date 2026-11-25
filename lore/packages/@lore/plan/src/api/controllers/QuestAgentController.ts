@@ -1,54 +1,16 @@
 import { $ownsProject } from "@lore/core/api";
-import { agentRunChoiceSchema, agentRunSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
 import { QuestAgentService } from "../services/QuestAgentService.ts";
 
 /**
- * Work it with an agent (#Q3989): an accepted quest worked by an agent job,
- * and the confirmation an untrusted quest needs first. Starting the job
- * takes `quest:update` (`code:write` until Lore's git hosting went, #Q4217):
- * its key acts as the member who started it, bounded by their rank.
+ * The confirmation an untrusted quest needs before an agent works it
+ * (#Q3989). The job itself is the `work-quest` prompt's run (#Q4275); the
+ * button that started it from the quest went with #Q4281.
  */
 export class QuestAgentController {
   protected readonly service = $inject(QuestAgentService);
-
-  workQuestWithAgent = $action({
-    use: [$ownsProject({ param: "projectId", requires: "quest:update" })],
-    method: "POST",
-    path: "/projects/:projectId/quests/:shortId/agent-work",
-    schema: {
-      params: z.object({ projectId: z.integer(), shortId: z.integer() }),
-      // The host, agent and model of the run (#Q4223), each optional.
-      body: agentRunSchema.nullish(),
-      response: z.object({ jobId: z.uuid() }),
-    },
-    handler: async ({ params, body, user }) =>
-      this.service.work(params.projectId, params.shortId, user.id, body ?? {}),
-  });
-
-  /**
-   * Whether an agent can work a quest now, and on which hosts and agents
-   * (#Q4223): the quest's agent entry offers one click with one choice, a
-   * small picker with several, nothing with none.
-   */
-  getQuestAgentWork = $action({
-    use: [$ownsProject({ param: "projectId", requires: "quest:update" })],
-    method: "GET",
-    path: "/projects/:projectId/quests-agent-work",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.object({
-        ready: z.boolean(),
-        choices: z.array(agentRunChoiceSchema),
-      }),
-    },
-    handler: async ({ params }) => {
-      const choices = await this.service.agentChoices(params.projectId);
-      return { ready: choices.length > 0, choices };
-    },
-  });
 
   confirmUntrustedQuest = $action({
     use: [$ownsProject({ param: "projectId", requires: "quest:update" })],

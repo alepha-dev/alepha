@@ -304,23 +304,6 @@ describe("ProjectEpicQuests - columns", () => {
   });
 
   /**
-   * ⚠️ `projectFixture()` turns every declared option ON, so this is the
-   * only case that has to pass an override.
-   */
-  it("renders no menu on an in-progress epic when agent prompts are off", async () => {
-    await mount(
-      [questOf(12, "Ship the thing", "low")],
-      "in_progress",
-      projectFixture({ options: { plan: { agentPrompts: false } } }),
-    );
-
-    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
-    expect(screen.queryAllByRole("button", { name: /actions|menu/i })).toEqual(
-      [],
-    );
-  });
-
-  /**
    * New quest beside Attach quest (feedback #2057): the same sheet the
    * header opens, and the new quest is handed to the page through
    * `onCreated` so the page can file it under the epic and reload, rather

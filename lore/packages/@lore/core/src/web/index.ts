@@ -11,7 +11,6 @@ import { QualityDashboardMetrics } from "../api/schemas/QualityDashboardMetrics.
 import { QualityNumericCatalog } from "../api/schemas/QualityNumericCatalog.ts";
 import { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
-import { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
 import { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
@@ -52,12 +51,7 @@ export const LoreCoreWeb = $module({
   // pages need `ReactAuth`, and nothing on the page tree injects it any more
   // (the old `AppRouter` held an unused field that registered it, #E75).
   imports: [AlephaReactUi, AlephaCrypto, AlephaReactAuth],
-  atoms: [
-    currentProjectAtom,
-    currentProjectMemberAtom,
-    projectPromptsAtom,
-    userProjectsAtom,
-  ],
+  atoms: [currentProjectAtom, currentProjectMemberAtom, userProjectsAtom],
   register(alepha) {
     // Injected here rather than listed in `services`: a listed service is
     // tagged with this module, and injecting it anywhere then registers the
@@ -142,7 +136,6 @@ export {
   type ProjectNavEntry,
   projectNavAtom,
 } from "./app/atoms/projectNavAtom.ts";
-export { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
 export { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
 export { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
 export { isOAuthReturnTarget } from "./app/components/auth/oauthReturnTarget.ts";
@@ -177,18 +170,11 @@ export {
   rememberAgentChoice,
 } from "./app/services/agentChoice.ts";
 export {
-  AgentPromptsMenu,
-  type AgentPromptsMenuAction,
-} from "./app/components/project/prompts/AgentPromptsMenu.tsx";
-export {
   default as PinnedPromptsButton,
-  type PinnedPromptsAction,
   type PinnedPromptsButtonProps,
 } from "./app/components/project/prompts/pins/PinnedPromptsButton.tsx";
 export type { PinnedPromptItem } from "./app/components/project/prompts/pins/pinnedPromptItemSchema.ts";
 export { usePinnedPrompts } from "./app/components/project/prompts/pins/usePinnedPrompts.tsx";
-export { useAgentPrompt } from "./app/components/project/prompts/useAgentPrompt.ts";
-export { useAgentPromptSubject } from "./app/components/project/prompts/useAgentPromptSubject.ts";
 export {
   type ReportsKpi,
   default as ReportsKpiRow,
@@ -323,8 +309,6 @@ export {
   type ProjectBlockedAct,
   ProjectBlockerRegistry,
 } from "./app/registries/ProjectBlockerRegistry.ts";
-export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
-export { TriageRunRegistry } from "./app/registries/TriageRunRegistry.ts";
 export {
   type AssistantSuggestionEntry,
   type AssistantSuggestionKey,

@@ -4,12 +4,14 @@ import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 
 import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
+import type { PromptController } from "../../../../../api/controllers/PromptController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { type I18n } from "../../../services/I18n.ts";
 import JobHistoryRail from "./JobHistoryRail.tsx";
 import JobLogViewer from "./JobLogViewer.tsx";
 import JobStatusBadge from "./JobStatusBadge.tsx";
 import { jobInFlight } from "./jobStatusIcon.ts";
+import ProjectJobRun from "./ProjectJobRun.tsx";
 
 export interface ProjectJobProps {
   jobId: string;
@@ -27,6 +29,7 @@ export interface ProjectJobProps {
 const ProjectJob = ({ jobId }: ProjectJobProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const api = useClient<HostJobController>();
+  const promptApi = useClient<PromptController>();
   const [project] = useStore(currentProjectAtom);
   // Keyed by the job it holds, so moving to another job starts it empty.
   const [held, setLog] = useState({ jobId, stdout: "", stderr: "" });
@@ -88,6 +91,19 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
   );
 
   const row = job.data?.id === jobId ? job.data : undefined;
+  // The prompt's title, when the project still has it (#Q4281).
+  const prompts = useQuery(
+    {
+      enabled: Boolean(project) && Boolean(row?.prompt),
+      key: ["project-prompts", project?.id],
+      handler: () =>
+        promptApi.listPrompts({
+          params: { projectId: project?.id as number },
+        }),
+      onError: () => {},
+    },
+    [promptApi, project?.id, row?.prompt],
+  );
   const inFlight = row ? jobInFlight(row.status) : false;
   const slug = project?.slug ?? String(project?.id ?? "");
 
@@ -225,6 +241,15 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
               </div>
             )}
           </dl>
+        )}
+        {row && (
+          <ProjectJobRun
+            job={row}
+            projectSlug={slug}
+            promptTitle={
+              prompts.data?.items.find((it) => it.name === row.prompt)?.title
+            }
+          />
         )}
         <JobLogViewer
           stdout={log.stdout}

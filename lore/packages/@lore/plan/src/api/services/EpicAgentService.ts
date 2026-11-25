@@ -1,21 +1,9 @@
-import {
-  AgentJobs,
-  AgentRunPreamble,
-  HostJobs,
-  JobKeyService,
-} from "@lore/core/api";
-import {
-  type AgentRun,
-  projectPrompts,
-  projects,
-  renderPromptTemplate,
-} from "@lore/core/schemas";
-import { formatReference } from "@lore/core/web";
+import { AgentJobs, HostJobs, JobKeyService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $repository } from "alepha/orm";
-import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
+import { NotFoundError } from "alepha/server";
 
-import { epicReviewPromptDefault } from "../../web/app/prompts/epicReviewPrompt.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { quests } from "../entities/quests.ts";
 
@@ -36,9 +24,8 @@ import { quests } from "../entities/quests.ts";
  * review that cannot read part of its epic reviews a different plan than
  * the owner's, silently.
  *
- * The prompt is the project's `epicReview` template, else the default,
- * rendered here under a fixed preamble: nobody reads the job's chat, so the
- * filed review is the report and the final message a short summary.
+ * The run itself is the `review-epic` prompt's (#Q4275); what stays here is
+ * the epic's membership for the job key, its subject and its time.
  */
 export class EpicAgentService {
   /**
@@ -59,7 +46,6 @@ export class EpicAgentService {
   protected readonly epics = $repository(epics);
   protected readonly quests = $repository(quests);
   protected readonly projects = $repository(projects);
-  protected readonly prompts = $repository(projectPrompts);
   protected readonly agents = $inject(AgentJobs);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly keys = $inject(JobKeyService);
@@ -71,66 +57,6 @@ export class EpicAgentService {
   }
 
   /**
-   * Starts the review job on an epic whose plan is open.
-   */
-  public async review(
-    projectId: number,
-    number: number,
-    startedBy: string,
-    run: AgentRun = {},
-  ): Promise<{ jobId: string }> {
-    const epic = await this.find(projectId, number);
-    if (epic.status !== "draft" && epic.status !== "ready") {
-      throw new BadRequestError(
-        `Epic ${number} is ${epic.status}: only a draft or ready epic is reviewed`,
-      );
-    }
-    await this.agents.resolve(projectId, run);
-    const active = await this.hostJobs.active(
-      projectId,
-      EpicAgentService.SUBJECT,
-      String(number),
-    );
-    if (active) {
-      throw new BadRequestError(
-        `A review of epic ${number} is already ${active.status}`,
-      );
-    }
-    const members = await this.quests.findMany({
-      where: { projectId: { eq: projectId }, epicId: { eq: epic.id } },
-    });
-    const unconfirmed = members.filter(
-      (it) => it.untrusted && !it.untrustedConfirmedAt && !it.deletedAt,
-    );
-    if (unconfirmed.length) {
-      throw new ForbiddenError(
-        `Epic ${number} holds quests born of feedback written outside the team (${unconfirmed
-          .map((it) => formatReference("quest", it.shortId))
-          .join(", ")}): a member confirms their text first`,
-      );
-    }
-    const project = await this.projects.getOne({
-      where: { id: { eq: projectId } },
-    });
-    const t = EpicAgentService.TIME;
-    const job = await this.agents.start({
-      projectId,
-      ...run,
-      prompt: await this.prompt(project, epic),
-      timeoutSeconds: t.baseSeconds + t.secondsPerQuest * members.length,
-      epicNumber: epic.number,
-      // A review reads the code at the default branch (#E173), in a
-      // workspace of its own that no triage waits on.
-      workspace: "review",
-      startedBy,
-      subjectType: EpicAgentService.SUBJECT,
-      subjectId: String(epic.number),
-    });
-    await this.epics.updateById(epic.id, { agentReviewJobId: job.id });
-    return { jobId: job.id };
-  }
-
-  /**
    * What a run may pick now (#Q4223): each available Agent host with each
    * agent it reports. Empty, the robot menu offers no agent entry.
    */
@@ -138,44 +64,6 @@ export class EpicAgentService {
     projectId: number,
   ): Promise<Array<{ host: string; agent?: string }>> {
     return this.agents.choices(projectId);
-  }
-
-  /**
-   * The job's prompt: the fixed rules, then the project's `epicReview`.
-   */
-  public async prompt(
-    project: { id: number; title: string; slug?: string | null },
-    epic: Epic,
-  ): Promise<string> {
-    const [stored] = await this.prompts.findMany({
-      where: { projectId: { eq: project.id }, kind: { eq: "epicReview" } },
-      limit: 1,
-    });
-    const template = stored?.template ?? epicReviewPromptDefault;
-    const slug = project.slug ?? String(project.id);
-    const base = String(this.alepha.env.PUBLIC_URL ?? "");
-    const reference = formatReference("epic", epic.number);
-    const review = renderPromptTemplate(template, {
-      project: project.title,
-      slug,
-      url: `${base}/${slug}/epics/${epic.number}`,
-      number: epic.number,
-      id: epic.id,
-      reference,
-      title: epic.title,
-    });
-    return [
-      // Rendered when the job starts, once its source is settled (#E173).
-      AgentRunPreamble.MARKER,
-      "",
-      `## This run's rules, which override the procedure below where they differ`,
-      "",
-      `- Read the code to check the plan against it. Do not create branches, commit or push.`,
-      `- Your Lore key reaches ${reference} and its quests only: \`epic_*\` tools on epic ${epic.number}, \`quest_create\` and \`folio_create\` with \`epic_number\` ${epic.number}, quest writes on its own quests. You do not answer the review: the owner does.`,
-      `- Nobody reads this run's chat. The review you file with \`epic_review_create\` is the report: put every question's context, suggestions and recommendation there, not in your reply. End with a short summary naming the review's item numbers and anything you changed.`,
-      "",
-      review,
-    ].join("\n");
   }
 
   /**

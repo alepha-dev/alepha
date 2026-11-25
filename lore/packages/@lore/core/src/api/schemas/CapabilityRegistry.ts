@@ -230,17 +230,6 @@ export class CapabilityRegistry {
           preselected: false,
         },
         {
-          key: "agentPrompts",
-          labelKey: "project.capability.plan.option.agentPrompts.label",
-          descriptionKey:
-            "project.capability.plan.option.agentPrompts.description",
-          // The wizard asks what surfaces exist; this asks how you work with
-          // them. `wizard: true` here would put Agent prompts beside Board
-          // and Epics at project creation, which is not what it is.
-          wizard: false,
-          preselected: false,
-        },
-        {
           // Support until #E143: the public request form, the triage inbox
           // and feedback comments, folded into Plan as one switch. Offered in
           // the wizard, never preselected, as the capability was not.

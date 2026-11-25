@@ -1,0 +1,78 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "19041894-1554-4b6f-8f51-a7dc3e97d7cd",
+  "prevIds": ["d2fb5bd6-ef06-477a-99fd-0800bb585a25"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "project_prompts"],
+      "writes": [
+        "s|tbl|public.project_prompts",
+        "n|tbl|public.project_prompts",
+        "e|tbl|public.project_prompts",
+        "n|rel|public.project_prompts",
+        "n|type|public.project_prompts"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_enum",
+      "statementTarget": ["enum", "public", "project_prompts_kind_enum"],
+      "writes": [
+        "s|enum|public.project_prompts_kind_enum",
+        "n|enum|public.project_prompts_kind_enum",
+        "e|enum|public.project_prompts_kind_enum",
+        "n|type|public.project_prompts_kind_enum"
+      ],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"project_prompts\"]"
+    },
+    {
+      "op": "drop",
+      "key": "enums\u0000[\"public\",\"project_prompts_kind_enum\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_prompts\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_prompts\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_prompts\",\"kind\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_prompts\",\"template\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_prompts\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_prompts\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"project_prompts_project_id_kind_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"project_prompts\",\"project_prompts_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"project_prompts\",\"project_prompts_pkey\"]"
+    }
+  ]
+}

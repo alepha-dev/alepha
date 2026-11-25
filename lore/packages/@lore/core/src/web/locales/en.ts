@@ -1272,6 +1272,7 @@ export default {
   "project.settings.tab.roadmap": "Roadmap",
   "project.settings.tab.quality": "Quality",
   "project.settings.tab.prompts": "Prompts",
+  "project.settings.tab.jobs": "Jobs",
   "project.settings.tab.requirements": "Requirements",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
@@ -1303,9 +1304,6 @@ export default {
   "project.capability.plan.option.reminder.label": "Reminders",
   "project.capability.plan.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
-  "project.capability.plan.option.agentPrompts.label": "Prompts",
-  "project.capability.plan.option.agentPrompts.description":
-    "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for your coding agent; nothing is sent anywhere.",
   "project.capability.plan.option.feedback.label": "Feedback",
   "project.capability.plan.option.feedback.description":
     "A request form for any signed-in Lore account, and a triage inbox.",
@@ -3140,12 +3138,23 @@ export default {
   "jobs.empty.description":
     "Agent jobs and Agent host checks are listed here once a host runs one.",
   "jobs.col.when": "Queued",
-  "jobs.col.kind": "Job",
   "jobs.col.status": "Status",
   "jobs.col.host": "Host",
-  "jobs.col.by": "Started by",
+  "jobs.col.prompt": "Prompt",
+  "jobs.col.cause": "Cause",
+  "jobs.col.duration": "Duration",
+  "jobs.filter.all": "All",
+  "jobs.cause.hand": "By hand",
+  "jobs.cause.handBy": "By hand, by $1",
+  "jobs.cause.event": "Event $1",
+  "jobs.cause.schedule": "Schedule",
+  "prompts.jobs": "Jobs",
   "jobs.cancel": "Cancel",
   "jobs.field.host": "Host",
+  "jobs.field.args": "Args",
+  "jobs.field.reply": "Final reply",
+  "jobs.field.replyCut": "The reply was cut at 32 KB: the log has the rest.",
+  "jobs.field.renderedPrompt": "The prompt the agent received",
   "jobs.field.agent": "Agent",
   "jobs.field.model": "Model",
   "jobs.field.workspace": "Workspace",
@@ -3207,21 +3216,7 @@ export default {
   "feedback.trusted.someone": "a member",
   "feedback.awaitingTrust":
     "$1 untrusted pending item(s) wait for a member to trust them: no agent reads them before that.",
-  "feedback.agent.started":
-    "Claude is triaging this feedback on the Agent host",
-  "feedback.agent.triage": "Triage with an agent",
-  "feedback.agent.triageInbox": "Triage feedback and errors with an agent",
-  "feedback.agent.startedMany": "Started $1 triage jobs; $2 left for a member",
-  "feedback.agent.startedGlobal":
-    "Claude is triaging the feedback and errors in one run; $1 left for a member",
   "feedback.agent.job": "Agent job",
-  "quest.agent.work": "Work it with an agent",
-  "quest.agent.review": "Review #$1",
-  "quest.agent.reviewFix": "Review and fix #$1",
-  "quest.agent.review.trust": "I trust its author",
-  "quest.agent.review.started": "The review runs on the Agent host",
-  "quest.agent.started":
-    "Claude is working on this quest on the Agent host: it pushes its own branch",
   "quest.untrusted": "Untrusted",
   "quest.untrusted.confirm": "Confirm its text",
   "quest.untrusted.confirm.description":
@@ -3461,13 +3456,7 @@ export default {
   "project.menu.requirements": "Requirements",
   "project.menu.useCases": "Use cases",
   "project.menu.personas": "Personas",
-  "requirements.prompt.personaExplore": "Explore as a persona",
-  "requirements.prompt.requirementImport": "Import a specification",
-  "requirements.prompt.useCaseDraft": "Draft use cases",
   "requirements.verify.title.draft": "Draft use cases for $1",
-  "requirements.prompt.useCaseDemo": "Prepare a demo",
-  "requirements.prompt.useCaseSpec": "Write the end-to-end spec",
-  "requirements.prompt.useCaseTest": "Test a use case",
   "requirements.requirement.import": "Import a specification",
   "requirements.verify": "Verify",
   "requirements.trace.readiness": "Release $1 readiness",
@@ -3508,9 +3497,6 @@ export default {
   "requirements.trace.export.testBook": "Test book",
   "requirements.trace.testBook.title": "$1: test book",
   "requirements.trace.testBook.print": "Print or save as PDF",
-  "agentPrompts.settings.useCaseDraft.title": "Draft use cases",
-  "agentPrompts.settings.useCaseDraft.description":
-    "From a coverage gap: draft the use cases that would verify a requirement, or cover an epic.",
   "requirements.verify.mission.draft": "Draft use cases",
   "requirements.verify.allStale": "Verify all stale ($1)",
   "requirements.verify.app": "App",
@@ -3924,92 +3910,8 @@ export default {
   "epic.progress.shelved": "$1 shelved",
   "epic.action.delete": "Delete",
   "epic.action.setRelease": "Set Release",
-  "agentPrompts.menu": "Agent Prompts",
-  "agentPrompts.review": "Review Epic",
-  "agentPrompts.workOnIt": "Work on it",
-  "agentPrompts.triageInbox": "Triage feedback and errors",
-  "agentPrompts.workLooseQuests": "Work the loose quests",
-  "agentPrompts.copied":
-    "Prompt for $1 copied. Paste it into your coding agent.",
   // A surface-scoped prompt has no reference to name, so it says nothing
   // about one rather than standing the project title in its place.
-  "agentPrompts.copied.surface":
-    "Prompt copied. Paste it into your coding agent.",
-  "agentPrompts.settings.placeholder.steps":
-    "The use case's steps, one per line, with who acts each.",
-  "agentPrompts.settings.placeholder.criteria":
-    "Its acceptance criteria, one per line, with their key and method.",
-  "agentPrompts.settings.placeholder.persona":
-    "The persona played, as #A2 Léa (Shop manager).",
-  "agentPrompts.settings.placeholder.demoAccount":
-    "That persona's demo login, never a password.",
-  "agentPrompts.settings.placeholder.app":
-    "The app copy's app name, or empty for a local run.",
-  "agentPrompts.settings.placeholder.env": "The copy's environment, or local.",
-  "agentPrompts.settings.placeholder.appUrl":
-    "The copy's URL, when Lore knows it.",
-  "agentPrompts.settings.useCaseTest.title": "Test a use case",
-  "agentPrompts.settings.useCaseTest.description":
-    "Verify on a use case: play its criteria, record one run, fix nothing.",
-  "agentPrompts.settings.useCaseSpec.title": "Write the end-to-end spec",
-  "agentPrompts.settings.useCaseSpec.description":
-    "Verify on a use case: write the spec tagged @U7 so CI records its runs.",
-  "agentPrompts.settings.personaExplore.title": "Explore as a persona",
-  "agentPrompts.settings.personaExplore.description":
-    "Verify on a persona: exploratory testing in their shoes, frictions cited against requirements.",
-  "agentPrompts.settings.useCaseDemo.title": "Prepare a demo",
-  "agentPrompts.settings.useCaseDemo.description":
-    "Verify on a use case: a demo script and its data, filed as a folio.",
-  "agentPrompts.settings.requirementImport.title": "Import a specification",
-  "agentPrompts.settings.requirementImport.description":
-    "On the Requirements list: split a specification folio into requirements linked to their headings.",
-  "agentPrompts.settings.placeholder.project":
-    "The project's title, which is what an MCP call matches on.",
-  "agentPrompts.settings.placeholder.slug":
-    "The project's URL slug, which is how the address names it. Not interchangeable with the title.",
-  "agentPrompts.settings.placeholder.number":
-    "The number a reader recognises: 41 for epic #E41.",
-  "agentPrompts.settings.placeholder.id":
-    "The global id, which is what a quest list filters an epic by.",
-  "agentPrompts.settings.placeholder.reference":
-    "The typed reference: #E41, #Q1798, #P2087.",
-  "agentPrompts.settings.placeholder.title": "The subject's own title.",
-  "agentPrompts.settings.placeholder.url": "A link to it.",
-  "agentPrompts.settings.epicReview.title": "Epic: Review",
-  "agentPrompts.settings.epicReview.description":
-    "Offered on an epic nobody has started, whether a draft or ready. Asks an agent to sharpen the plan before anyone works it.",
-  "agentPrompts.settings.epicActivate.title": "Epic: Work on it",
-  "agentPrompts.settings.epicActivate.description":
-    "Offered on a draft, ready or in-progress epic, and marks a draft one ready. Hands the whole epic over, quest by quest.",
-  "agentPrompts.settings.questWork.title": "Quest: Work on it",
-  "agentPrompts.settings.questWork.description":
-    "Offered on a quest that is not finished. One quest, one branch, one commit.",
-  "agentPrompts.settings.feedbackWork.title": "Feedback: Work on it",
-  "agentPrompts.settings.feedbackWork.description":
-    "Offered on a pending or accepted report. Creates the quest, does the work, answers the reporter.",
-  "agentPrompts.settings.feedbackLoop.title": "Feedback and errors: Triage",
-  "agentPrompts.settings.feedbackLoop.description":
-    "Offered on the feedback inbox and on the errors inbox. Accepts, rejects or asks about every pending report, files a quest for each real defect among the trusted errors and resolves the noise, until nothing is left.",
-  "agentPrompts.weeklyStatus": "Write the weekly status",
-  "agentPrompts.securityCheck": "Check the dependencies for vulnerabilities",
-  "agentPrompts.settings.securityCheck.title": "Dependencies: Security check",
-  "agentPrompts.settings.securityCheck.description":
-    "Run on an Agent host: audits the dependencies from the lockfile and files one quest per real vulnerability.",
-  "agentPrompts.dependencyUpdate": "Update the dependencies",
-  "agentPrompts.settings.dependencyUpdate.title": "Dependencies: Update",
-  "agentPrompts.settings.dependencyUpdate.description":
-    "Run on an Agent host: updates the dependencies, runs the checks, and opens a pull request only when they pass.",
-  "agentPrompts.prReview": "Review a pull request",
-  "agentPrompts.settings.prReview.title": "Quests: Review a pull request",
-  "agentPrompts.settings.prReview.description":
-    "From a pull request on a quest, run on an Agent host: reads the diff and posts a review with gh.",
-  "agentPrompts.settings.weeklyStatus.title":
-    "Reports: Write the weekly status",
-  "agentPrompts.settings.weeklyStatus.description":
-    "On the Reports Summary tab: the week against the one before, and what explains it.",
-  "agentPrompts.settings.questLoop.title": "Quests: Work the loose quests",
-  "agentPrompts.settings.questLoop.description":
-    "Offered on the Quests page. Works every to-do quest that belongs to no epic, one by one, in one run.",
   "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
@@ -4095,8 +3997,6 @@ export default {
   "epic.tab.review": "Review",
   "epic.list.openQuestions": "$1 review questions open",
   "epic.list.openBlockers": "$1 review blockers open",
-  "epic.agent.review": "Review with an agent",
-  "epic.agent.started": "Review started on the Agent host",
   "epic.agent.job": "Review job",
   "epic.review.empty":
     "No review has been filed for this epic yet. Run Review Epic from the agent prompts to file one.",

@@ -3,12 +3,13 @@ import {
   AgentRunPreamble,
   HostJobs,
   ProjectSecurityService,
+  PromptRegistry,
+  PromptService,
 } from "@lore/core/api";
 import {
   type AgentRunRequest as AgentRun,
-  projectPrompts,
   projects,
-  renderPromptTemplate,
+  renderPromptText,
 } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
@@ -16,10 +17,9 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { feedbackLoopPromptDefault } from "../../web/app/prompts/feedbackLoopPrompt.ts";
-import { globalTriagePrompt } from "../../web/app/prompts/globalTriagePrompt.ts";
 import { type Feedback, feedback } from "../entities/feedback.ts";
 import { feedbackComments } from "../entities/feedbackComments.ts";
+import { globalTriagePrompt } from "../prompts/globalTriagePrompt.ts";
 
 /**
  * Feedback to quest (#Q3988): the project's Triage prompt run as an agent
@@ -94,7 +94,8 @@ export class FeedbackAgentService {
   protected readonly rows = $repository(feedback);
   protected readonly comments = $repository(feedbackComments);
   protected readonly projects = $repository(projects);
-  protected readonly prompts = $repository(projectPrompts);
+  protected readonly registry = $inject(PromptRegistry);
+  protected readonly promptService = $inject(PromptService);
   protected readonly agents = $inject(AgentJobs);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -323,24 +324,21 @@ export class FeedbackAgentService {
   }
 
   /**
-   * The project's Triage template, rendered, else the default.
+   * The built-in `triage` prompt's text, its project placeholders filled
+   * (#Q4281: no project keeps its own copy any more).
    */
   protected async procedure(project: {
     id: number;
     title: string;
     slug?: string | null;
   }): Promise<string> {
-    const [stored] = await this.prompts.findMany({
-      where: { projectId: { eq: project.id }, kind: { eq: "feedbackLoop" } },
-      limit: 1,
-    });
-    const template = stored?.template ?? feedbackLoopPromptDefault;
-    const slug = project.slug ?? String(project.id);
-    const base = String(this.alepha.env.PUBLIC_URL ?? "");
-    return renderPromptTemplate(template, {
+    return renderPromptText(this.registry.get("triage")?.text ?? "", {
       project: project.title,
-      slug,
-      url: `${base}/${slug}/feedback`,
+      slug: project.slug ?? String(project.id),
+      projectUrl: this.promptService.projectUrlOf({
+        id: project.id,
+        slug: project.slug ?? undefined,
+      }),
     });
   }
 

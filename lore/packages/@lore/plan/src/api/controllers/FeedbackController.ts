@@ -7,7 +7,6 @@ import {
   ProjectSecurityService,
 } from "@lore/core/api";
 import {
-  agentRunChoiceSchema,
   agentRunSchema,
   type Project,
   projects,
@@ -877,28 +876,6 @@ export class FeedbackController {
         user.id,
         body ?? {},
       );
-    },
-  });
-
-  /**
-   * Whether Triage with an agent can run now (#Q4126), and on which hosts
-   * and agents (#Q4223): an Agent host whose last agent check passed. The
-   * robot menu offers the triage entries only then, one per choice.
-   */
-  getFeedbackAgentTriage = $action({
-    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
-    method: "GET",
-    path: "/projects/:projectId/feedback/agent-triage",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.object({
-        ready: z.boolean(),
-        choices: z.array(agentRunChoiceSchema),
-      }),
-    },
-    handler: async ({ params }) => {
-      const choices = await this.agentTriage.agentChoices(params.projectId);
-      return { ready: choices.length > 0, choices };
     },
   });
 

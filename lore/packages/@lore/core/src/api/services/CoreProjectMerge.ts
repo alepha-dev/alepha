@@ -9,7 +9,6 @@ import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
 import { notificationChannels } from "../entities/notificationChannels.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { projectEvents } from "../entities/projectEvents.ts";
-import { projectPrompts } from "../entities/projectPrompts.ts";
 import { projects } from "../entities/projects.ts";
 import { prompts } from "../entities/prompts.ts";
 import {
@@ -57,12 +56,6 @@ export class CoreProjectMerge {
       kind: "capability",
       entity: projectCapabilities,
       keys: ["key"],
-      onCollision: "keepTarget",
-    },
-    {
-      kind: "prompt override",
-      entity: projectPrompts,
-      keys: ["kind"],
       onCollision: "keepTarget",
     },
     // A merged project keeps the source's recent events (#Q3889) and who

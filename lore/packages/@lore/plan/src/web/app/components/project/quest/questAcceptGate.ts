@@ -1,27 +1,26 @@
 import type { EpicRefResource } from "../../../../../api/schemas/epicRefResourceSchema.ts";
 
 /**
- * Why a quest cannot be handed to an agent, as a CODE.
+ * Why a quest cannot be accepted, as a CODE: its epic's phase refuses it.
  *
  * ⚠️ A code and not the reason. The reason is a `tr` call over two keys with
- * the epic's number as an argument, and a pure helper shared by two tables
- * cannot make a localized string. `QuestView` maps the code to its key and
- * keeps its tooltip; the tables only test for `undefined`.
+ * the epic's number as an argument, and a pure helper cannot make a
+ * localized string. `QuestView` maps the code to its key and keeps its
+ * tooltip. It also gated the agent prompts until #Q4281; what a prompt is
+ * offered on is its arg's accepted statuses now.
  */
-export type QuestAgentGateReason =
+export type QuestAcceptGateReason =
   | "epicDraft"
   | "epicCompleted"
   | "epicShelved";
 
 /**
- * Whether a quest's epic is in a status that would refuse the work.
+ * Whether a quest's epic is in a status that would refuse the acceptance.
  *
- * The prompt's second step is `quest_accept`, which a `draft` epic refuses
- * (it is not ready for development) and a `completed` one refuses with "File
- * this in a new epic", and a `shelved` one (#E78) refuses until the epic is
- * unshelved. A `ready` epic accepts, and that accept is what starts
- * it (#Q2223). So the gate on offering the prompt is the gate on accepting
- * the quest, and this is the one place both express it.
+ * `quest_accept` is refused under a `draft` epic (it is not ready for
+ * development), a `completed` one ("File this in a new epic") and a
+ * `shelved` one (#E78) until it is unshelved. A `ready` epic accepts, and
+ * that accept is what starts it (#Q2223).
  *
  * ⚠️ A ready epic whose predecessor is not completed also refuses, and this
  * does not see it: an epic ref carries no `dependsOn`. The server answers
@@ -42,8 +41,8 @@ export type QuestAgentGateReason =
  * (`QuestView`'s withheld Accept). A record, so a new code cannot ship
  * without its key.
  */
-export const QUEST_AGENT_GATE_LABEL_KEYS: Record<
-  QuestAgentGateReason,
+export const QUEST_ACCEPT_GATE_LABEL_KEYS: Record<
+  QuestAcceptGateReason,
   | "quest.view.accept.epicDraft"
   | "quest.view.accept.epicCompleted"
   | "quest.view.accept.epicShelved"
@@ -53,10 +52,10 @@ export const QUEST_AGENT_GATE_LABEL_KEYS: Record<
   epicShelved: "quest.view.accept.epicShelved",
 };
 
-export const questAgentGate = (
+export const questAcceptGate = (
   quest: { epicId?: number | null },
   epics: EpicRefResource[] | undefined,
-): QuestAgentGateReason | undefined => {
+): QuestAcceptGateReason | undefined => {
   if (quest.epicId == null) return undefined;
   const epic = epics?.find((it) => it.id === quest.epicId);
   if (!epic) return undefined;

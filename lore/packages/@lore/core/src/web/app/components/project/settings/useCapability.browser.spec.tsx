@@ -104,7 +104,7 @@ describe("useCapability", () => {
     expect,
   }) => {
     const { alepha, result } = await mount(() =>
-      useCapabilityOption("plan", "agentPrompts"),
+      useCapabilityOption("plan", "estimate"),
     );
 
     await act(() => result.current.toggle(false));

@@ -40,7 +40,6 @@ import { ProjectDashboardController } from "./controllers/ProjectDashboardContro
 import { ProjectEventController } from "./controllers/ProjectEventController.ts";
 import { ProjectHostController } from "./controllers/ProjectHostController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
-import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportController } from "./controllers/ProjectReportController.ts";
 import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
@@ -476,7 +475,6 @@ export const LoreCoreApi = $module({
     HomeController,
     ProjectCapabilityController,
     ProjectRankController,
-    ProjectPromptController,
     ResourceFilingController,
     InvitationController,
     AdminProjectController,
@@ -559,7 +557,6 @@ export { NotificationPreferenceController } from "./controllers/NotificationPref
 export { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 export { ProjectController } from "./controllers/ProjectController.ts";
 export { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
-export { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 export { ProjectRankController } from "./controllers/ProjectRankController.ts";
 export { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 export { SearchController } from "./controllers/SearchController.ts";

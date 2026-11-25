@@ -47,7 +47,6 @@ import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 import ProjectEpicReview from "./ProjectEpicReview.tsx";
-import { useEpicAgentReview } from "./useEpicAgentReview.ts";
 import { useEpicAiContext } from "./useEpicAiContext.ts";
 
 export interface ProjectEpicProps {
@@ -333,12 +332,6 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const reviews =
     reviewsQuery.data?.epicId === epic.id ? reviewsQuery.data.result : null;
 
-  // Review with an agent (#Q4214): the robot menu's run entry while the plan
-  // is open; the Review tab's job link follows once it starts.
-  const agentActions = useEpicAgentReview(epic, () =>
-    queries.invalidate(reviewsKey),
-  );
-
   /**
    * Answer, pick, waive or overturn one review item. The epic is read back
    * after, so its `openQuestions`, which the ready confirm reads, follows.
@@ -442,8 +435,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       actions={
         <>
           {/* The prompts pinned on the Epic view (#Q4284), the epic filled
-              in, each shown when its arg accepts the epic's status; the run
-              buttons above them until #Q4281. */}
+              in, each shown when its arg accepts the epic's status. */}
           <PinnedPromptsButton
             page="epic"
             item={{
@@ -451,7 +443,6 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               value: String(epic.number),
               status: epic.status,
             }}
-            actions={agentActions}
           />
           {/* Only while the plan is still open (#Q2353): a started or
               completed epic's plan is frozen, and the page stops offering to

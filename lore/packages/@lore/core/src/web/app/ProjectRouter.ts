@@ -13,17 +13,14 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
-import type { ProjectPromptController } from "../../api/controllers/ProjectPromptController.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
-import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import {
   ProjectLoaderRegistry,
   type ProjectLoaderSubject,
 } from "./registries/ProjectLoaderRegistry.ts";
-import { capabilityOption } from "./services/projectCapabilities.ts";
 
 /**
  * The project layout's guard. Every visitor reaches the loader, which is
@@ -55,7 +52,6 @@ export class ProjectRouter {
   protected readonly alepha = $inject(Alepha);
   protected readonly projectApi = $client<ProjectController>();
   protected readonly inboxApi = $client<NotificationInboxController>();
-  protected readonly promptApi = $client<ProjectPromptController>();
   protected readonly loaders = $inject(ProjectLoaderRegistry);
 
   project = $page({
@@ -125,7 +121,7 @@ export class ProjectRouter {
       // the full resources come from Work below.
       const { member, quests: _assignedWork, ...project } = await resolving;
 
-      const [applyModules, unreadEverywhere, prompts] = await (early &&
+      const [applyModules, unreadEverywhere] = await (early &&
       known &&
       this.loaders.same(known, project)
         ? early
@@ -135,7 +131,6 @@ export class ProjectRouter {
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(inboxUnreadAtom, { count: unreadEverywhere });
-      this.alepha.store.set(projectPromptsAtom, prompts);
 
       return {
         project,
@@ -149,7 +144,6 @@ export class ProjectRouter {
       // every project, so zeroing it on leaving one would erase a number
       // that is still true. The project-scoped atom that was cleared here
       // went with the rail's badge (feedback #P2127).
-      this.alepha.store.set(projectPromptsAtom, undefined);
     },
     errorHandler: (error) => {
       // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
@@ -187,7 +181,7 @@ export class ProjectRouter {
    * Each module's part of it is a registered contribution
    * (`ProjectLoaderRegistry`, #E75 #Q2624): this loader is core and names no
    * module's client. It answers their writes instead of making them, with
-   * the inbox count and the prompts, so the caller decides whether this
+   * the inbox count, so the caller decides whether this
    * project is the one to write.
    */
   protected shell(project: ProjectLoaderSubject) {
@@ -207,27 +201,6 @@ export class ProjectRouter {
         .countInbox({ query: {} })
         .then((r) => r.unread)
         .catch(() => 0),
-
-      // The agent prompt templates this project has customised, read here
-      // so the copy can happen inside a click: Safari's transient
-      // activation does not survive an `await` before `writeText`.
-      //
-      // Gated on the option, which is off by default, so a project that
-      // does not use the feature pays no request.
-      //
-      // ⚠️ `{}` on failure and NOT `undefined`: the built-in defaults are
-      // a complete answer, so a failed read is indistinguishable from a
-      // project that has customised nothing, and the menus keep working.
-      capabilityOption(project, "plan", "agentPrompts")
-        ? this.promptApi
-            .getProjectPrompts({ params: { projectId: project.id } })
-            .then((rows): Record<string, string> =>
-              Object.fromEntries(
-                rows.map((it) => [it.kind, it.template] as const),
-              ),
-            )
-            .catch((): Record<string, string> => ({}))
-        : Promise.resolve<Record<string, string>>({}),
     ]);
   }
 

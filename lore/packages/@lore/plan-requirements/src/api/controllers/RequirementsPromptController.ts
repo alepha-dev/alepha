@@ -12,8 +12,8 @@ import { RequirementsPromptService } from "../services/RequirementsPromptService
  * and `lore usecase prompt`. It runs nothing: it answers the prompt to paste
  * into an agent and the command line that prints it again.
  *
- * Not gated on Plan's `agentPrompts` option (decision 29): Verify is how
- * Requirements works, so `requirements` is the gate.
+ * Verify is how Requirements works, so `requirements` is the gate
+ * (decision 29).
  */
 export class RequirementsPromptController {
   protected readonly service = $inject(RequirementsPromptService);

@@ -1,5 +1,4 @@
 import {
-  AgentPromptRegistry,
   AssistantSuggestionRegistry,
   canInProject,
   capabilityOption,
@@ -9,19 +8,8 @@ import {
   ProjectShellRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import {
-  BookText,
-  ClipboardCheck,
-  Compass,
-  FileCode,
-  FileInput,
-  ListChecks,
-  PenLine,
-  Presentation,
-  UsersRound,
-} from "lucide-react";
+import { BookText, ListChecks, UsersRound } from "lucide-react";
 
-import { RequirementsPromptDefaults } from "../../../api/schemas/RequirementsPromptDefaults.ts";
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
 import { REQUIREMENTS_NAV_ROUTES } from "../components/pages/requirementsNavRoutes.ts";
@@ -40,7 +28,6 @@ import { useUseCaseReferences } from "../components/usecases/useUseCaseReference
 export class RequirementsShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
-  protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly suggestions = $inject(AssistantSuggestionRegistry);
 
   /**
@@ -133,25 +120,6 @@ export class RequirementsShell {
         () => import("../components/personas/PersonaCreateMenuSheet.tsx"),
       ),
     });
-
-    // The Verify prompt kinds, editable in Settings › Agent prompts with
-    // only `requirements` on (#E153, answer 74). Rendered on the server.
-    for (const [kind, icon, labelKey] of [
-      ["useCaseTest", ClipboardCheck, "requirements.prompt.useCaseTest"],
-      ["useCaseSpec", FileCode, "requirements.prompt.useCaseSpec"],
-      ["personaExplore", Compass, "requirements.prompt.personaExplore"],
-      ["useCaseDemo", Presentation, "requirements.prompt.useCaseDemo"],
-      ["requirementImport", FileInput, "requirements.prompt.requirementImport"],
-      ["useCaseDraft", PenLine, "requirements.prompt.useCaseDraft"],
-    ] as const) {
-      this.prompts.register({
-        kind,
-        template: RequirementsPromptDefaults[kind],
-        icon,
-        labelKey,
-        option: "requirements",
-      });
-    }
 
     // New requirement, then New use case and New persona.
     this.shell.registerCreate({

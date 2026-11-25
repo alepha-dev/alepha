@@ -169,6 +169,9 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // host_jobs.automation_id was a soft reference, dropped with its index.
   "20261124234229_prompt_triggers": ["agent_automations"],
   "20261124234246_prompt_triggers": ["agent_automations"],
+  // A project's copies of the prompts (#Q4281): a leaf, nothing reads it.
+  "20261125010314_project_prompts_dropped": ["project_prompts"],
+  "20261125010323_project_prompts_dropped": ["project_prompts"],
 };
 
 /**

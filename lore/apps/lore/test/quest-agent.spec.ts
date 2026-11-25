@@ -6,13 +6,9 @@ import {
   HostCommandTransport,
   HostCommandService,
   AgentHostService,
+  PromptRunService,
 } from "@lore/core/api";
-import {
-  projectCapabilities,
-  projectPrompts,
-  hostJobs,
-  hosts,
-} from "@lore/core/schemas";
+import { projectCapabilities, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { QuestAgentService, QuestService } from "@lore/plan/api";
 import { quests } from "@lore/plan/schemas";
@@ -42,7 +38,6 @@ class Repos {
   jobs = $repository(hostJobs);
   hosts = $repository(hosts);
   quests = $repository(quests);
-  prompts = $repository(projectPrompts);
   capabilities = $repository(projectCapabilities);
 }
 
@@ -109,6 +104,14 @@ const aQuest = async (w: World, patch: Record<string, unknown> = {}) => {
   return w.repos.quests.getOne({ where: { id: { eq: quest.id } } });
 };
 
+/**
+ * The quest's work, run as the `work-quest` prompt (#Q4275).
+ */
+const work = (w: World, shortId: number) =>
+  w.alepha.inject(PromptRunService).run(w.projectId, w.owner, "work-quest", {
+    args: { quest: String(shortId) },
+  });
+
 describe("a quest worked by an agent job", () => {
   let w: World;
   beforeEach(async () => {
@@ -123,11 +126,7 @@ describe("a quest worked by an agent job", () => {
     expect,
   }) => {
     const quest = await aQuest(w);
-    const { jobId } = await w.agentWork.work(
-      w.projectId,
-      quest.shortId,
-      w.owner.id,
-    );
+    const { jobId } = await work(w, quest.shortId);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: jobId } } });
     // Its own workspace on the host, removed when the quest completes.
     expect(job.input.workspace).toBe(`q${quest.shortId}`);
@@ -138,34 +137,27 @@ describe("a quest worked by an agent job", () => {
     // No repository on this project: no worktree, and nothing tells the
     // agent to clone or branch (#E173).
     expect(job.input.source).toEqual({ mode: "none" });
-    expect(job.input.prompt).not.toContain("branch from the default branch");
-    expect(job.input.prompt).toContain("open a pull request with `gh`");
+    expect(job.input.prompt).toContain("open a pull request into main");
     expect(job.input.prompt).toContain("quest_pull_request_add");
-    expect(job.input.prompt).toContain(`each message naming #Q`);
+    expect(job.input.prompt).toContain(`its message naming #Q`);
     expect(job.input.prompt).not.toContain("lore/q");
     expect(job.input.prompt).toContain("Work on quest #Q");
   });
 
-  it("refuses a quest nobody accepted, or one already completed", async ({
+  it("refuses a completed quest: the prompt's arg accepts a quest to do or in progress", async ({
     expect,
   }) => {
-    const open = await aQuest(w, { acceptedAt: null });
-    await expect(
-      w.agentWork.work(w.projectId, open.shortId, w.owner.id),
-    ).rejects.toThrow("not accepted and open");
     const done = await aQuest(w, { completedAt: new Date().toISOString() });
-    await expect(
-      w.agentWork.work(w.projectId, done.shortId, w.owner.id),
-    ).rejects.toThrow("not accepted and open");
+    await expect(work(w, done.shortId)).rejects.toThrow("accepts a quest");
   });
 
   it("holds an untrusted quest until a member confirms its text, recorded with who and when", async ({
     expect,
   }) => {
     const quest = await aQuest(w, { untrusted: true });
-    await expect(
-      w.agentWork.work(w.projectId, quest.shortId, w.owner.id),
-    ).rejects.toThrow("a member confirms its text");
+    await expect(work(w, quest.shortId)).rejects.toThrow(
+      "a member confirms its text",
+    );
     const confirmed = await w.agentWork.confirm(
       w.projectId,
       quest.shortId,
@@ -173,11 +165,7 @@ describe("a quest worked by an agent job", () => {
     );
     expect(confirmed.untrustedConfirmedBy).toBe(w.owner.id);
     expect(confirmed.untrustedConfirmedAt).toBeDefined();
-    const { jobId } = await w.agentWork.work(
-      w.projectId,
-      quest.shortId,
-      w.owner.id,
-    );
+    const { jobId } = await work(w, quest.shortId);
     expect(jobId).toBeDefined();
   });
 });
