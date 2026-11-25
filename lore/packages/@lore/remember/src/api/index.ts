@@ -38,6 +38,7 @@ import { KnowledgeReportsSummary } from "./services/KnowledgeReportsSummary.ts";
 import { PinnedFolioMetric } from "./services/PinnedFolioMetric.ts";
 import { ProjectKnowledgeReportService } from "./services/ProjectKnowledgeReportService.ts";
 import { RecentFoliosMetric } from "./services/RecentFoliosMetric.ts";
+import { RememberPrompts } from "./services/RememberPrompts.ts";
 
 export const LoreRememberApi = $module({
   name: "lore.remember.api",
@@ -67,6 +68,8 @@ export const LoreRememberApi = $module({
     KnowledgeFileAccess,
     // Registers its project merge step (#Q2781); nothing injects it.
     KnowledgeProjectMerge,
+    // The folio arg of the prompts registry (#Q4343); nothing injects it.
+    RememberPrompts,
     FolioController,
     FolioTableController,
     DirectoryController,

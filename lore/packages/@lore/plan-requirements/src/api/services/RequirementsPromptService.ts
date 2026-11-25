@@ -342,7 +342,7 @@ export class RequirementsPromptService {
     };
   }
 
-  protected stepsText(useCase: UseCaseResource): string {
+  public stepsText(useCase: UseCaseResource): string {
     const who = new Map(useCase.actors.map((a) => [a.personaId, a.name]));
     return [
       ...useCase.steps.map(
@@ -353,7 +353,7 @@ export class RequirementsPromptService {
     ].join("\n");
   }
 
-  protected criterionText(c: {
+  public criterionText(c: {
     text?: string;
     givenText?: string;
     whenText?: string;
@@ -371,7 +371,7 @@ export class RequirementsPromptService {
     );
   }
 
-  protected personaLine(p: {
+  public personaLine(p: {
     number: number;
     name: string;
     role?: string;
@@ -391,7 +391,7 @@ export class RequirementsPromptService {
   /**
    * A persona's use cases, or only their stale ones.
    */
-  protected async useCasesOf(
+  public async useCasesOf(
     projectId: number,
     personaId: number,
     staleOnly?: boolean,

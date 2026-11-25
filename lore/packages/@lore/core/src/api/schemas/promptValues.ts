@@ -5,7 +5,9 @@
 
 /**
  * The item types a prompt's arg takes (#Q4274). A `member` arg also means
- * "email the run's final reply to this member" (#Q4278).
+ * "email the run's final reply to this member" (#Q4278). Requirements'
+ * use case, persona and requirement, and Remember's folio, came with
+ * Requirements' built-ins (#Q4343).
  */
 export const PROMPT_ARG_TYPES = [
   "epic",
@@ -13,14 +15,18 @@ export const PROMPT_ARG_TYPES = [
   "feedback",
   "pullRequest",
   "member",
+  "useCase",
+  "persona",
+  "requirement",
+  "folio",
 ] as const;
 
 export type PromptArgType = (typeof PROMPT_ARG_TYPES)[number];
 
 /**
  * The statuses each item type answers, which an arg's accepted list is
- * checked against when it is saved. A pull request and a member have none,
- * so their args take no list.
+ * checked against when it is saved. A pull request, a member, a persona, a
+ * requirement and a folio have none, so their args take no list.
  */
 export const PROMPT_ARG_STATUSES: Record<PromptArgType, readonly string[]> = {
   epic: ["draft", "ready", "in_progress", "completed"],
@@ -28,6 +34,11 @@ export const PROMPT_ARG_STATUSES: Record<PromptArgType, readonly string[]> = {
   feedback: ["pending", "accepted", "rejected"],
   pullRequest: [],
   member: [],
+  useCase: ["draft", "ready", "validated", "deprecated"],
+  persona: [],
+  // Computed on read from the runs, never stored: an arg takes any.
+  requirement: [],
+  folio: [],
 };
 
 /**
@@ -39,6 +50,40 @@ export const PROMPT_ARG_FIELDS: Record<PromptArgType, readonly string[]> = {
   feedback: ["reference", "title", "url", "number", "id"],
   pullRequest: ["reference", "title", "url", "number", "id"],
   member: ["name", "id"],
+  useCase: [
+    "reference",
+    "title",
+    "url",
+    "number",
+    "id",
+    "steps",
+    "criteria",
+    "persona",
+    "demoAccount",
+    "environment",
+  ],
+  persona: [
+    "reference",
+    "title",
+    "url",
+    "number",
+    "id",
+    "role",
+    "useCases",
+    "criteria",
+    "demoAccount",
+    "environment",
+  ],
+  requirement: [
+    "reference",
+    "title",
+    "url",
+    "number",
+    "id",
+    "description",
+    "verifiedBy",
+  ],
+  folio: ["reference", "title", "url", "number", "id"],
 };
 
 /**

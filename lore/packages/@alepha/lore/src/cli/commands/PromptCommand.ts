@@ -72,6 +72,18 @@ export class PromptCommand {
         description: "The member arg, by id; absent, you.",
       })
       .optional(),
+    usecase: z
+      .text({ description: "The use case arg: #U3, U3 or 3." })
+      .optional(),
+    persona: z
+      .text({ description: "The persona arg: #A1, A1 or 1." })
+      .optional(),
+    requirement: z
+      .text({ description: "The requirement arg: #S5, S5 or 5." })
+      .optional(),
+    folio: z
+      .text({ description: "The folio arg: #F12, F12 or 12." })
+      .optional(),
     set: z
       .array(z.text())
       .describe("A value by the arg's name, arg=reference; repeat it.")
@@ -92,7 +104,7 @@ export class PromptCommand {
     arg: z
       .array(z.text())
       .describe(
-        "An arg, name:type or name:type:status|status (the statuses it accepts); repeat it. Types: epic, quest, feedback, pullRequest, member.",
+        "An arg, name:type or name:type:status|status (the statuses it accepts); repeat it. Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio.",
       )
       .optional(),
     source: z
@@ -185,6 +197,10 @@ export class PromptCommand {
       feedback?: string;
       pr?: string;
       member?: string;
+      usecase?: string;
+      persona?: string;
+      requirement?: string;
+      folio?: string;
       set?: string[];
     },
   ): Promise<Record<string, string>> {
@@ -194,6 +210,10 @@ export class PromptCommand {
       ["feedback", flags.feedback],
       ["pullRequest", flags.pr],
       ["member", flags.member],
+      ["useCase", flags.usecase],
+      ["persona", flags.persona],
+      ["requirement", flags.requirement],
+      ["folio", flags.folio],
     ];
     const values = this.setOf(flags.set);
     if (typed.some(([, value]) => value)) {

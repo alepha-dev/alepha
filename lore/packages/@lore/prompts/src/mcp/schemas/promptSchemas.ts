@@ -19,7 +19,7 @@ const args = z
   .array(z.text({ maxLength: 200 }))
   .max(4)
   .describe(
-    "The prompt's args, each `name:type` or `name:type:status|status` (the statuses it accepts). Types: epic, quest, feedback, pullRequest, member. Custom prompts only.",
+    "The prompt's args, each `name:type` or `name:type:status|status` (the statuses it accepts). Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio. Custom prompts only.",
   );
 
 const set = z

@@ -60,6 +60,25 @@ prompt itself asks for (working a quest needs to update quests).
 | **Security check**             | nothing                              | read-only  | runs each package manager's audit, and files one quest per real vulnerability |
 | **Dependency update**          | nothing                              | read-write | updates what is a minor or a patch behind, and opens a pull request if green  |
 
+With **Requirements** on, seven more:
+
+| Prompt                        | Takes                                 | Code       | What it does                                                           |
+| ----------------------------- | ------------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| **Test a use case**           | a use case, draft, ready or validated | read-only  | plays it as its persona, fixing nothing, and records one run           |
+| **Write the end-to-end spec** | a use case, draft, ready or validated | read-write | one test per criterion, in a pull request, recorded on the use case    |
+| **Prepare a demo**            | a use case, ready or validated        | read-only  | writes the demo script and the data it needs, filed as a folio         |
+| **Explore as a persona**      | a persona                             | read-only  | uses the app in their shoes and comments every friction on the persona |
+| **Import a specification**    | a folio                               | none       | turns every requirement the folio states into a requirement            |
+| **Draft use cases**           | a requirement                         | none       | drafts the use cases that would verify it, left in draft               |
+| **Draft an epic's use cases** | an epic, draft, ready or in progress  | none       | drafts the use cases the epic delivers, left in draft                  |
+
+Lore never holds a password, and nobody answers a run. So **Test a use case**
+and **Explore as a persona** sign in with the persona's demo account only when
+the run was given its credentials; otherwise they create a fresh account
+through the app's own sign-up, with a password they generate and never write
+down. What a new account cannot reach is recorded as not run, with the reason.
+They never play the app against production.
+
 A prompt that works a quest, an epic or a feedback item never leaves the quest
 half done: it completes it, or, when it stops on a question for you, it says
 why in a comment and tags the quest **`needs-answer`**.

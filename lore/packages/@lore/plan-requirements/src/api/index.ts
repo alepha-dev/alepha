@@ -29,6 +29,7 @@ import { RequirementsFileAccess } from "./services/RequirementsFileAccess.ts";
 import { RequirementsMetricResolvers } from "./services/RequirementsMetricResolvers.ts";
 import { RequirementSourceWatcher } from "./services/RequirementSourceWatcher.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
+import { RequirementsPrompts } from "./services/RequirementsPrompts.ts";
 import { RequirementsPromptService } from "./services/RequirementsPromptService.ts";
 import { RequirementsReleaseGuard } from "./services/RequirementsReleaseGuard.ts";
 import { RunService } from "./services/RunService.ts";
@@ -60,6 +61,9 @@ export const LorePlanRequirementsApi = $module({
     RequirementsFileAccess,
     RunService,
     RequirementsPromptService,
+    // Its built-ins and args on core's prompts registry (#Q4343); nothing
+    // injects it.
+    RequirementsPrompts,
     RequirementsCommentService,
     UseCaseService,
     PersonaInsightService,
