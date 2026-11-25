@@ -55,7 +55,7 @@ describe("AgentTranscript", () => {
     });
   });
 
-  it("marks an error result, shows a rate limit that stopped the run, and keeps a line it cannot read", ({
+  it("marks an error result, shows a rate limit that stopped the run, and counts a line it cannot read without drawing it", ({
     expect,
   }) => {
     const out = AgentTranscript.parse(
@@ -100,15 +100,23 @@ describe("AgentTranscript", () => {
       ].join("\n"),
       "claude",
     );
-    const [tools, raw, unknown, limit] = out.entries;
+    const [tools, limit] = out.entries;
     expect(tools?.kind === "tools" && tools.tools[0]).toMatchObject({
       name: "mcp__lore__quest_get",
       detail: "shortId: 12",
       state: "failed",
       result: "Quest not found",
     });
-    expect(raw).toEqual({ kind: "raw", line: "panic: something odd" });
-    expect(unknown).toMatchObject({ kind: "raw" });
+    // Never drawn raw (#Q4296): counted by kind, for the server to log.
+    expect(out.entries.map((it) => it.kind)).toEqual(["tools", "limit"]);
+    expect(out.unknown).toEqual([
+      { kind: "unparsable", count: 1, sample: "panic: something odd" },
+      {
+        kind: "brand_new_event",
+        count: 1,
+        sample: JSON.stringify({ type: "brand_new_event", data: 1 }),
+      },
+    ]);
     expect(limit).toEqual({ kind: "limit", text: "Rate limit: rejected" });
     expect(out.totals?.error).toBe("error_max_turns");
   });
@@ -169,12 +177,38 @@ describe("AgentTranscript", () => {
     expect(cut.entries.map((it) => it.kind)).toEqual(["tools"]);
     expect(JSON.stringify(cut.entries)).not.toContain("iVBORw0KGgo");
 
-    // Ended, a line that is not JSON is still kept.
+    // Ended, a line that is not JSON is counted, never drawn (#Q4296).
     const ended = AgentTranscript.parse(
       `${use}\n${result.slice(0, 5000)}\n`,
       "claude",
     );
-    expect(ended.entries.map((it) => it.kind)).toEqual(["tools", "raw"]);
+    expect(ended.entries.map((it) => it.kind)).toEqual(["tools"]);
+    expect(ended.unknown).toEqual([
+      { kind: "unparsable", count: 1, sample: result.slice(0, 200) },
+    ]);
+  });
+
+  it("drops tool_progress heartbeats silently, and counts a repeated unknown kind once, with its first line as the sample (#Q4296)", ({
+    expect,
+  }) => {
+    const heartbeat = (seconds: number) =>
+      JSON.stringify({
+        type: "tool_progress",
+        tool_name: "Bash",
+        elapsed_time_seconds: seconds,
+        heartbeat: true,
+      });
+    const odd = (n: number) => JSON.stringify({ type: "odd_event", n });
+    const out = AgentTranscript.parse(
+      [heartbeat(30), odd(1), heartbeat(60), odd(2), "[1,2]", ""].join("\n"),
+      "claude",
+    );
+    expect(out.entries).toEqual([]);
+    expect(out.hidden).toBe(2);
+    expect(out.unknown).toEqual([
+      { kind: "odd_event", count: 2, sample: odd(1) },
+      { kind: "not-an-object", count: 1, sample: "[1,2]" },
+    ]);
   });
 
   it("shows every line as text for an agent CLI with no parser", ({

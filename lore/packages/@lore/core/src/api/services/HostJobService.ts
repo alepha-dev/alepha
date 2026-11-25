@@ -2,7 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DbConflictError } from "alepha/orm";
 import { ForbiddenError, NotFoundError } from "alepha/server";
 
 import { hostJobLogs } from "../entities/hostJobLogs.ts";
@@ -412,8 +412,16 @@ export class HostJobService {
   }
 
   /**
-   * Keeps a `log` frame of a job this host runs. Bytes the job already holds
-   * for that stream are dropped, so a replay after a reconnect is harmless.
+   * Keeps a `log` frame of a job this host runs, one row per offset
+   * ({@link keepFrame}), so a replay after a reconnect is harmless; a frame
+   * overlapping another at a different offset is resolved when the log is
+   * read ({@link assemble}).
+   *
+   * ⚠️ Never "drop what ends before the last row" (#Q4296): Bay sends up to
+   * 64 frames at once and they are kept concurrently, so a frame can land
+   * after the one that follows it. That rule threw the earlier frame away,
+   * 16 KB cut out of the middle of a long line, which the transcript then
+   * printed raw.
    */
   public async appendLog(host: Host, frame: HostLogFrame): Promise<void> {
     const job = await this.jobs.findOne({
@@ -422,24 +430,7 @@ export class HostJobService {
     if (!job || HOST_JOB_TERMINAL.includes(job.status)) {
       return;
     }
-    const [last] = await this.logs.findMany({
-      where: { jobId: { eq: job.id }, stream: { eq: frame.stream } },
-      orderBy: [{ column: "offset", direction: "desc" }],
-      limit: 1,
-    });
-    const held = last ? last.offset + this.bytes(last.data) : 0;
-    const encoded = new TextEncoder().encode(frame.data);
-    const end = frame.offset + encoded.byteLength;
-    if (end > held) {
-      const skip = Math.max(held - frame.offset, 0);
-      const data = new TextDecoder().decode(encoded.subarray(skip));
-      await this.logs.create({
-        jobId: job.id,
-        stream: frame.stream,
-        offset: frame.offset + skip,
-        data,
-      });
-    }
+    await this.keepFrame(job.id, frame);
     if (frame.truncated) {
       await this.jobs.updateById(job.id, { logTruncated: true });
     }
@@ -490,28 +481,78 @@ export class HostJobService {
       where: { jobId: { eq: jobId } },
       orderBy: [{ column: "offset", direction: "asc" }],
     });
-    const pick = (stream: "stdout" | "stderr", from: number) => {
-      let text = "";
-      let next = from;
-      for (const row of rows) {
-        if (row.stream !== stream) continue;
-        const end = row.offset + this.bytes(row.data);
-        if (end <= from) continue;
-        const encoded = new TextEncoder().encode(row.data);
-        text += new TextDecoder().decode(
-          encoded.subarray(Math.max(from - row.offset, 0)),
-        );
-        next = end;
-      }
-      return { text, next };
-    };
-    const out = pick("stdout", after.stdout ?? 0);
-    const err = pick("stderr", after.stderr ?? 0);
+    const out = this.assemble(rows, "stdout", after.stdout ?? 0);
+    const err = this.assemble(rows, "stderr", after.stderr ?? 0);
     return {
       stdout: out.text,
       stderr: err.text,
       next: { stdout: out.next, stderr: err.next },
     };
+  }
+
+  /**
+   * One frame's row, keyed by its offset (unique per job and stream): kept
+   * when the offset is new, its data replaced when a replay at the same
+   * offset carries more, and nothing done when the row holds as much. A
+   * conflict is the same frame kept concurrently: read it back and retry
+   * once.
+   */
+  protected async keepFrame(
+    jobId: string,
+    frame: HostLogFrame,
+    retry = true,
+  ): Promise<void> {
+    const length = this.bytes(frame.data);
+    if (length === 0) return;
+    const held = await this.logs.findOne({
+      where: {
+        jobId: { eq: jobId },
+        stream: { eq: frame.stream },
+        offset: { eq: frame.offset },
+      },
+    });
+    if (held) {
+      if (this.bytes(held.data) < length) {
+        await this.logs.updateById(held.id, { data: frame.data });
+      }
+      return;
+    }
+    try {
+      await this.logs.create({
+        jobId,
+        stream: frame.stream,
+        offset: frame.offset,
+        data: frame.data,
+      });
+    } catch (error) {
+      if (!retry || !(error instanceof DbConflictError)) throw error;
+      await this.keepFrame(jobId, frame, false);
+    }
+  }
+
+  /**
+   * One stream of the log rows, past `from` bytes, in offset order: each
+   * byte once, whatever the rows overlap (a replay, a longer frame at the
+   * same offset), and the bytes past what the stream holds as `next`.
+   */
+  protected assemble(
+    rows: Array<{ stream: string; offset: number; data: string }>,
+    stream: "stdout" | "stderr",
+    from: number,
+  ): { text: string; next: number } {
+    let text = "";
+    let next = from;
+    for (const row of [...rows].sort((a, b) => a.offset - b.offset)) {
+      if (row.stream !== stream) continue;
+      const end = row.offset + this.bytes(row.data);
+      if (end <= next) continue;
+      const encoded = new TextEncoder().encode(row.data);
+      text += new TextDecoder().decode(
+        encoded.subarray(Math.max(next - row.offset, 0)),
+      );
+      next = end;
+    }
+    return { text, next };
   }
 
   /**
@@ -688,7 +729,7 @@ export class HostJobService {
         ? {}
         : { costUsd: outcome.totals.costUsd }),
     });
-    await this.archive(job.id);
+    await this.archive(job);
     await this.port.revokeKey(job.id);
     const ended = await this.getRow(job.id);
     await this.alepha.events.emit("host:job:ended", {
@@ -710,21 +751,17 @@ export class HostJobService {
   /**
    * Writes the whole log to the bucket and drops its rows.
    */
-  protected async archive(jobId: string): Promise<void> {
+  protected async archive(job: HostJob): Promise<void> {
+    const jobId = job.id;
     const rows = await this.logs.findMany({
       where: { jobId: { eq: jobId } },
       orderBy: [{ column: "offset", direction: "asc" }],
     });
     const whole = {
-      stdout: rows
-        .filter((row) => row.stream === "stdout")
-        .map((row) => row.data)
-        .join(""),
-      stderr: rows
-        .filter((row) => row.stream === "stderr")
-        .map((row) => row.data)
-        .join(""),
+      stdout: this.assemble(rows, "stdout", 0).text,
+      stderr: this.assemble(rows, "stderr", 0).text,
     };
+    this.reportTranscript(job, whole.stdout);
     const bytes = new TextEncoder().encode(JSON.stringify(whole));
     try {
       const stored = await this.files.uploadFile(
@@ -747,6 +784,29 @@ export class HostJobService {
       this.log.warn("A job's log could not be stored in the bucket", {
         jobId,
         error,
+      });
+    }
+  }
+
+  /**
+   * The lines of an ended agent job's log its transcript does not read
+   * (#Q4296), logged at error level so the sigil files them in Errors: the
+   * page leaves them out, and this is how a format the parser lacks gets
+   * noticed. Once per job and kind, here at its end rather than on each
+   * render or poll; the message names the kind only, so one kind is one
+   * error, and the data carries the job and a short sample, never the line.
+   */
+  protected reportTranscript(job: HostJob, stdout: string): void {
+    if (job.kind !== "agent") return;
+    const agent = (job.input as { agent?: string } | undefined)?.agent;
+    const transcript = AgentTranscript.parse(stdout, agent);
+    for (const miss of transcript.unknown ?? []) {
+      this.log.error(`Agent transcript row not supported: ${miss.kind}`, {
+        jobId: job.id,
+        agent: agent ?? "claude",
+        kind: miss.kind,
+        count: miss.count,
+        sample: miss.sample,
       });
     }
   }
