@@ -150,6 +150,7 @@ import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
 import { PromptRegistry } from "./services/PromptRegistry.ts";
+import { PromptReplyMail } from "./services/PromptReplyMail.ts";
 import { PromptRunService } from "./services/PromptRunService.ts";
 import { PromptService } from "./services/PromptService.ts";
 import { PromptTriggers } from "./services/PromptTriggers.ts";
@@ -414,6 +415,8 @@ export const LoreCoreApi = $module({
     AgentJobProjectEvents,
     // A prompt's triggers (#Q4277): events, schedule, check, ceilings.
     PromptTriggers,
+    // A member arg emails the run's reply (#Q4278).
+    PromptReplyMail,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,
@@ -671,6 +674,7 @@ export {
 } from "./services/PromptRegistry.ts";
 export { PromptService } from "./services/PromptService.ts";
 export { PromptTriggers } from "./services/PromptTriggers.ts";
+export { PromptReplyMail } from "./services/PromptReplyMail.ts";
 export {
   type PromptRunBody,
   PromptRunService,

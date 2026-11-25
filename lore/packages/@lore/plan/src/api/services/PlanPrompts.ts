@@ -143,8 +143,8 @@ export class PlanPrompts {
       name: "weekly-status",
       title: "Weekly status",
       description:
-        "Write the week's status from the project's reports, changing nothing.",
-      args: [],
+        "Write the week's status from the project's reports, changing nothing, and email it to a member.",
+      args: [{ name: "member", type: "member" }],
       source: "none",
       permission: "host:read",
       timeoutSeconds: 30 * 60,

@@ -189,8 +189,12 @@ export class AgentJobProjectEvents {
     const title = builtin?.title ?? row?.title ?? job.prompt;
     const args = (job.args ?? [])
       .map(
-        (it) => [it.reference, it.title].filter(Boolean).join(" ") || it.value,
+        // A member arg is named by its name, never by its id.
+        (it) =>
+          [it.reference, it.title].filter(Boolean).join(" ") ||
+          (it.type === "member" ? "" : it.value),
       )
+      .filter(Boolean)
       .join(", ");
     return (args ? `${title} ${args}` : title).slice(0, 300);
   }
