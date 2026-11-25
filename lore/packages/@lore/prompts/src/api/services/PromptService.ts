@@ -149,6 +149,18 @@ export class PromptService {
     return [...builtins, ...custom];
   }
 
+  /**
+   * The run time a project set on a prompt (#Q4344), or undefined when it
+   * set none: a run then takes what the built-in plans.
+   */
+  public async timeoutSet(
+    projectId: number,
+    name: string,
+  ): Promise<number | undefined> {
+    const row = await this.rowOf(projectId, name);
+    return row?.timeoutSeconds ?? undefined;
+  }
+
   public async get(projectId: number, name: string): Promise<PromptResource> {
     const { builtin, row } = await this.find(projectId, name);
     return this.toResource(builtin, row);
@@ -184,6 +196,9 @@ export class PromptService {
       source: body.source ?? "read",
       ...this.wherePatch(body),
       ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
+      ...(typeof body.timeoutSeconds === "number"
+        ? { timeoutSeconds: body.timeoutSeconds }
+        : {}),
     });
     return this.toResource(undefined, row);
   }
@@ -220,6 +235,9 @@ export class PromptService {
       ...(body.source === undefined ? {} : { source: body.source }),
       ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
       ...(body.pins === undefined ? {} : { pins: this.pinsOf(body.pins) }),
+      ...(body.timeoutSeconds === undefined
+        ? {}
+        : { timeoutSeconds: body.timeoutSeconds ?? null }),
       // Its trigger (#Q4277), checked against its args. Resolved here: the
       // triggers read this service.
       ...this.alepha
@@ -270,8 +288,8 @@ export class PromptService {
 
   /**
    * A custom prompt from any prompt, under a new name: the same text, args
-   * with their accepted statuses, and source. It no longer follows the
-   * built-in.
+   * with their accepted statuses, source and run time. It no longer follows
+   * the built-in.
    */
   public async duplicate(
     projectId: number,
@@ -288,6 +306,7 @@ export class PromptService {
       args: from.args,
       source: from.source,
       ...(from.ref ? { ref: from.ref } : {}),
+      timeoutSeconds: from.timeoutSeconds,
     });
   }
 
@@ -544,7 +563,10 @@ export class PromptService {
       ...(row?.model ? { model: row.model } : {}),
       enabled: row?.enabled ?? true,
       permission: builtin?.permission ?? "host:update",
-      timeoutSeconds: builtin?.timeoutSeconds ?? PROMPT_CUSTOM_TIMEOUT_SECONDS,
+      timeoutSeconds:
+        row?.timeoutSeconds ??
+        builtin?.timeoutSeconds ??
+        PROMPT_CUSTOM_TIMEOUT_SECONDS,
       ...(row?.createdBy ? { createdBy: row.createdBy } : {}),
       ...(row?.updatedAt ? { updatedAt: row.updatedAt } : {}),
       on: row ? this.alepha.inject(PromptTriggers).onOf(row) : "manual",

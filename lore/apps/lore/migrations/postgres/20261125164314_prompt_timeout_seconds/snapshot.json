@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3febdaad-d0b8-4e96-bb57-296486304293",
+  "prevIds": ["8f20d6e4-abf0-4218-9a6e-1cd860a3ce5a"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "timeout_seconds"],
+      "writes": [
+        "s|col|public.prompts.timeout_seconds",
+        "n|col|public.prompts.timeout_seconds",
+        "e|col|public.prompts.timeout_seconds"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "timeout_seconds",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

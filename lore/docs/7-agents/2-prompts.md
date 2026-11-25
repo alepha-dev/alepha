@@ -163,6 +163,20 @@ Each prompt says where its code comes from, set on the prompt, never at a run:
 A built-in comes with its own; you may change it on the prompt (**Source**
 in its row). Your own prompts set it in their editor.
 
+### How long a run may take
+
+A run is stopped at its time: the built-in's own (an hour for **Work on
+quest**, two for **Work on epic**), or 30 minutes for a prompt of your own.
+A run that bumps dependencies and runs every check needs more. Set a prompt's
+time from the command line or an agent, any prompt included, within the
+ceiling every agent job has:
+
+```bash
+lore prompt update npm-update --timeout-seconds 7200
+```
+
+`--timeout-seconds 0` returns to the default.
+
 ## Writing your own
 
 **New prompt** opens the editor: a name, a title, a description, up to four
@@ -313,7 +327,7 @@ prompt` command needs Prompts on in the project.
 ## From an agent
 
 `prompt_list`, `prompt_get`, `prompt_create`, `prompt_update` (its words, its
-source, its trigger and its pins in one call), `prompt_duplicate`,
+source, its trigger, its pins and its time in one call), `prompt_duplicate`,
 `prompt_delete`, `prompt_render`, `prompt_run`, `prompt_pause_all` and
 `prompt_resume_all` are the twins of `lore prompt`. Called with an agent job's
 own key, every write and `prompt_run` are refused: a job never starts a job.
