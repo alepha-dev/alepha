@@ -3,6 +3,7 @@ import { PROMPT_NEEDS_HUMAN_TAG } from "@lore/core/schemas";
 import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
 import { reviewStepRule } from "./reviewStepRule.ts";
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+import { visualCheckRule } from "./visualCheckRule.ts";
 
 /**
  * `work-loose-quests` (#E174): every quest under no epic, one pull
@@ -35,7 +36,7 @@ Take the next one by priority, then by what the others depend on.
 1. \`quest_get\` it. Its objectives and its discussion are the contract. Check its premise against the code before changing anything: if it is already done or no longer applies, complete it with those objectives waived and say why.
 2. \`quest_accept\` it before its first commit.
 3. Do the work. Tick each objective with \`quest_objective_set\` as it is met, not at the end.
-4. Run the project's local checks and fix everything red. A skipped check is a failure, not a pass.
+4. Run the project's local checks and fix everything red. A skipped check is a failure, not a pass. A change the user sees also gets a look ("A look at what the user sees", below).
 5. Commit it as one commit, naming the quest in its message. One quest is one commit: a later fix to this quest goes into its commit (a fixup, squashed into it before you push), never into another quest's.
 6. Push the branch. After the first quest, open a pull request into main for the run, as a draft: its title says it is a run of loose quests, and its description lists each quest with its link, kept up to date as the run goes. Record it on each quest with \`quest_pull_request_add\` (its URL, number and title) as you reach it, rather than posting its link as a comment.
 7. \`quest_complete\` it with a short note: what shipped, and what was left out. A quest that depends on it can then be accepted.
@@ -61,5 +62,7 @@ Never stop with a quest you accepted still in progress: complete it, or leave it
 If nothing was blocked, say so in one line rather than padding the list.
 
 ${reviewStepRule}
+
+${visualCheckRule}
 
 ${unfinishedQuestRule}`;

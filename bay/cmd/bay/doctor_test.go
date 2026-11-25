@@ -176,6 +176,7 @@ func TestDoctorToolChecks(t *testing.T) {
 			{Name: "cf", Kind: "tool", Found: true, Version: "0.15.0", SignedIn: &no},
 			{Name: "git", Kind: "tool", Found: true, Version: "2.43.0"},
 			{Name: "lore", Kind: "tool", Found: true, Version: "0.38.0", SignedIn: &yes},
+			{Name: "playwright-cli", Kind: "tool", Found: true, Version: "0.1.1"},
 		}, "bay-agent")
 		var lines []string
 		for _, c := range checks {
@@ -189,6 +190,7 @@ func TestDoctorToolChecks(t *testing.T) {
 			"cf ok=false warn=true 0.15.0, signed out: sudo -iu bay-agent cf auth login --no-browser",
 			"git ok=true warn=false 2.43.0\n",
 			"lore ok=false warn=true 0.38.0, the jobs user's lore CLI is signed in: a job would reach past its key's pins (sudo -iu bay-agent lore logout)",
+			"playwright-cli ok=true warn=false 0.1.1, for a build job's look at its screens; it needs a browser too",
 		} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("doctor said:\n%s\nwant a line %q", got, want)
@@ -196,6 +198,14 @@ func TestDoctorToolChecks(t *testing.T) {
 		}
 		if strings.Contains(got, "cannot run agent jobs") {
 			t.Fatal("a host with an agent CLI was said to have none")
+		}
+	})
+
+	t.Run("says playwright-cli is optional when it is missing", func(t *testing.T) {
+		checks := toolChecks([]connector.InventoryTool{{Name: "claude", Kind: "agent", Found: true, Version: "2"}, {Name: "playwright-cli", Kind: "tool"}}, "bay-agent")
+		last := checks[len(checks)-1]
+		if last.Name != "playwright-cli" || !last.Warn || !strings.Contains(last.Detail, "optional, build jobs make no visual check without it") {
+			t.Fatalf("checks = %+v", checks)
 		}
 	})
 

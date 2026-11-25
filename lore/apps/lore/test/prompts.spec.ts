@@ -191,6 +191,26 @@ describe("prompts", () => {
     );
   });
 
+  it("asks every build prompt for a look at a changed screen when playwright-cli is there, and to say so when not (#Q4346)", async ({
+    expect,
+  }) => {
+    for (const name of [
+      "work-quest",
+      "work-epic",
+      "work-loose-quests",
+      "work-feedback",
+    ]) {
+      const text = registry.get(name)?.text ?? "";
+      expect(text, name).toContain("## A look at what the user sees");
+      expect(text, name).toContain("`command -v playwright-cli`");
+      expect(text, name).toContain("no visual check was made");
+      expect(text, name).toContain("You cannot attach a screenshot");
+    }
+    for (const name of ["triage", "review-epic", "security-check"]) {
+      expect(registry.get(name)?.text, name).not.toContain("playwright-cli");
+    }
+  });
+
   it("lists the ten built-ins with their args and accepted statuses, and leaves out one the project cannot use", async ({
     expect,
   }) => {

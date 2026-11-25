@@ -846,6 +846,7 @@ describe("Bay connector against a real Lore", () => {
       "gh",
       "cf",
       "lore",
+      "playwright-cli",
     ]);
     expect(tools[0]).toMatchObject({ found: true, version: "9.9.9" });
   });

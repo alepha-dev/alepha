@@ -3223,6 +3223,8 @@ export default {
   "hosts.tools.noUser": "No jobs user: run $1 on the machine.",
   "hosts.tools.user": "Jobs run as $1.",
   "hosts.tools.missing": "Not installed",
+  "hosts.tools.missingVisual":
+    "Not installed: optional, build jobs then make no visual check",
   "hosts.tools.installed": "Installed, $1",
   "hosts.tools.signedIn": "signed in",
   "hosts.tools.signedInAs": "signed in as $1",

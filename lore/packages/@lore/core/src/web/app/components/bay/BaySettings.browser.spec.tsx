@@ -150,6 +150,12 @@ describe("BaySettings", () => {
           found: true,
           error: "not Cloudflare's CLI: another program is installed as cf",
         },
+        {
+          name: "playwright-cli",
+          kind: "tool",
+          found: false,
+          error: "playwright-cli is not on the jobs user's PATH",
+        },
       ],
     });
     expect(screen.getByTestId("bay-job-tools").textContent).toContain(
@@ -165,6 +171,12 @@ describe("BaySettings", () => {
     );
     expect(screen.getByTestId("bay-job-tool-cf").textContent).toContain(
       "not Cloudflare's CLI",
+    );
+    // Optional (#Q4346): its absence says what a build job then skips.
+    expect(
+      screen.getByTestId("bay-job-tool-playwright-cli").textContent,
+    ).toContain(
+      "Not installed: optional, build jobs then make no visual check",
     );
   });
 

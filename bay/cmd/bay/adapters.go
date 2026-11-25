@@ -238,8 +238,15 @@ func writeRunFile(pattern string, content []byte) (string, func(), error) {
 // jobTools are the tools beside the agent CLIs a job may need, which the
 // inventory reports (#Q4220): git and gh for work on a repository, cf
 // (Cloudflare's CLI, #Q4254) for a deploy, lore for a prompt that asks for
-// the CLI. Bay runs git for a job's source (#E173) and none of the others.
-var jobTools = []string{"git", "gh", "cf", "lore"}
+// the CLI, and playwright-cli (#Q4346) for a build job's look at the screen
+// it changed. Bay runs git for a job's source (#E173) and none of the others;
+// every one but git is optional, and its absence fails no job.
+//
+// playwright-cli has no sign-in. Whether a browser is installed for it is not
+// reported: where it finds one depends on its configuration (Playwright's own
+// download, a channel, PLAYWRIGHT_BROWSERS_PATH), so a guess would read a
+// working host as broken; the guide names the install step instead.
+var jobTools = []string{"git", "gh", "cf", "lore", "playwright-cli"}
 
 /*
 cfIsCloudflares tells Cloudflare's `cf` from another program installed under

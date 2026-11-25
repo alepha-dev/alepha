@@ -95,7 +95,7 @@ func runDoctor(root string, probeKeys bool) []check {
 
 /*
 jobChecks lists what the jobs user has (#Q4220), the same list the inventory
-reports: each agent CLI, then git, gh and lore. None of it is required of a
+reports: each agent CLI, then git, gh, cf, lore and playwright-cli. None of it is required of a
 host that only deploys, so a missing tool is a warning; no agent CLI at all
 says plainly that the host cannot run agent jobs. Nothing is printed when
 no jobs user is configured. Whether gh and lore are signed in is not
@@ -135,6 +135,10 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 				c.Detail += ", " + loreSignedInWarning(t.Account, username)
 			case t.Name == "lore":
 				c.Detail += ", not signed in, as it should be"
+			case t.Name == "playwright-cli":
+				// No sign-in (#Q4346): it drives a browser, and Bay does not
+				// check that one is installed.
+				c.Detail += ", for a build job's look at its screens; it needs a browser too"
 			case t.SignedIn != nil && *t.SignedIn && t.Account != "":
 				c.Detail += ", signed in as " + t.Account
 			case t.SignedIn != nil && *t.SignedIn:
@@ -148,6 +152,10 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 		case t.Found:
 			c.Warn = true
 			c.Detail = "found, but " + t.Error
+		case t.Name == "playwright-cli":
+			// Optional (#Q4346): build jobs then make no visual check.
+			c.Warn = true
+			c.Detail = "not installed for " + username + ": optional, build jobs make no visual check without it"
 		default:
 			c.Warn = true
 			c.Detail = "not installed for " + username

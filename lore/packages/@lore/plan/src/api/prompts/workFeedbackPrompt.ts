@@ -1,4 +1,5 @@
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+import { visualCheckRule } from "./visualCheckRule.ts";
 
 /**
  * `work-feedback` (#E174): a feedback item turned into a quest and its
@@ -21,7 +22,7 @@ The report: {{feedback.url}}
 1. Reproduce, or find the code that would produce, what the reporter describes, and decide what the change is. If the report is unclear or you disagree with it, ask in its discussion (\`feedback_comment_add\`) and stop. Put the question in your reply as well: what the report asks, what you found in the code, and what you would do about it. The comment reaches the reporter; your reply reaches the person who sent you here.
 2. Accept it if it is still pending (\`feedback_accept\`), then \`quest_create\` with \`feedback_shortId\` {{feedback.number}} and \`accept: true\`: a title, a description of what will change, an area from \`project_context\`, and the objectives.
 3. Work in a git worktree of your own, on a branch cut from the latest main and named after the quest. Never on main.
-4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
+4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass. A change the user sees also gets a look ("A look at what the user sees", below).
 5. Commit it as one commit, its message naming the quest and {{feedback.reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
 6. Push the branch and open a pull request into main. Its title names the quest and {{feedback.reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: fix and push again until it is green.
@@ -31,5 +32,7 @@ The report: {{feedback.url}}
 11. If you are still there once it has merged, record the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
 Never stop with the quest still accepted: complete it, or, when it waits on the owner's answer (below), hand it back with \`quest_unassign\` once the question is written. If the pull request has not merged when you stop, say so in your reply with its link: the quest is completed, and not on main yet.
+
+${visualCheckRule}
 
 ${unfinishedQuestRule}`;

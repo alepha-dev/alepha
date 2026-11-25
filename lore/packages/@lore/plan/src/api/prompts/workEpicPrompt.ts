@@ -1,6 +1,7 @@
 import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
 import { reviewStepRule } from "./reviewStepRule.ts";
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+import { visualCheckRule } from "./visualCheckRule.ts";
 
 /**
  * `work-epic` (#E174): an epic worked to completion, one pull request,
@@ -28,7 +29,7 @@ An epic is worked whole: every quest of the epic is worked, whatever its tags.
 
 1. \`quest_accept\` it. Its objectives and its discussion are the contract.
 2. Do the work. Tick each objective with \`quest_objective_set\` as it is met, not at the end.
-3. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red before moving on. A skipped check is a failure, not a pass.
+3. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red before moving on. A skipped check is a failure, not a pass. A change the user sees also gets a look ("A look at what the user sees", below).
 4. Commit it as one commit, its message naming the quest and {{epic.reference}}. One quest is one commit: a later fix to this quest goes into its commit (a fixup, squashed into it before you push), never into another quest's.
 5. Push the branch. After the first quest, open a pull request into main for the whole epic, as a draft: its title names {{epic.reference}}, and its description links the epic and lists its quests. Record it once on the epic with \`epic_pull_request_add\` (project_name "{{project}}", number {{epic.number}}, its URL, number and title): every quest of the epic shows the epic's pull request, so it is never posted on each quest.
 6. \`quest_complete\` it with a short note: what shipped, and anything the next quest needs to know. A quest that depends on it can then be accepted. The epic's last quest completes the same way, and completing it completes the epic: that says its work is done, not that it has shipped. Do not record the branch's shas: the rebase merge replaces them.
@@ -59,5 +60,7 @@ The outcome folio is the record; your reply is what the person who started this 
 If nothing was blocked, say so in one line rather than padding the list.
 
 ${reviewStepRule}
+
+${visualCheckRule}
 
 ${unfinishedQuestRule}`;
