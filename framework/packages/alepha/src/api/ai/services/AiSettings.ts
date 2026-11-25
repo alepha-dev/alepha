@@ -3,7 +3,7 @@ import { $parameter } from "alepha/api/parameters";
 
 /**
  * Runtime-editable settings of the assistant, the `api.ai` parameter: an
- * operator changes them without a redeploy.
+ * operator changes them without a redeploy, the model included.
  *
  * Its own service, as `NotificationSettings` is, because the budget guard,
  * the turn limiter and the retention job all read it.
@@ -15,8 +15,14 @@ import { $parameter } from "alepha/api/parameters";
 export class AiSettings {
   public readonly parameter = $parameter({
     name: "api.ai",
-    description: "AI assistant budget, rate and retention settings.",
+    description: "AI assistant model, budget, rate and retention settings.",
     schema: z.object({
+      model: z
+        .text({ maxLength: 200 })
+        .optional()
+        .describe(
+          "The model a turn runs on, ahead of the assistant's own model option and of AI_MODEL; a turn the server names a model for (a persona's) keeps it. Unset keeps the assistant's or AI_MODEL. It overrides a default model, it does not replace one: the provider still needs AI_MODEL or a model option to start.",
+        ),
       budgetTokens: z
         .integer()
         .min(1)

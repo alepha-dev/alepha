@@ -115,6 +115,31 @@ describe("LoreAssistant", () => {
       await alepha.stop();
     });
 
+    it("runs on the model saved in api.ai and names it in the panel (#Q4383)", async ({
+      expect,
+    }) => {
+      const { alepha, controller, status, signIn, read, ai } =
+        await bootAssistant({ enabled: "true" });
+      const { headers, user } = await signIn();
+      const settings = alepha.inject(AiSettings);
+      await settings.parameter.set({
+        ...(await settings.load()),
+        model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+      });
+      ai.script([{ type: "text", text: "Hello." }]);
+      await read(
+        await controller.chat.fetch({ headers, body: { message: "hi" } }),
+      );
+      expect(ai.requests.at(-1)?.model).toBe(
+        "@cf/meta/llama-4-scout-17b-16e-instruct",
+      );
+      expect(await status.aiAssistantStatus.run({}, { user })).toEqual({
+        enabled: true,
+        model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+      });
+      await alepha.stop();
+    });
+
     it("refuses a signed-out caller with a 401", async ({ expect }) => {
       const { alepha, controller, status } = await bootAssistant({
         enabled: "true",

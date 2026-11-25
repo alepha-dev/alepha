@@ -21,7 +21,7 @@ rate, and a retention sweep.
   all `$secure()` and scoped to the caller
 - `ai_conversations` and `ai_messages` entities (the app generates their
   migrations, as for every `alepha/api/*` module)
-- the `api.ai` parameter: `budgetTokens`, `budgetWindowHours`,
+- the `api.ai` parameter: `model`, `budgetTokens`, `budgetWindowHours`,
   `turnsPerMinute`, `retentionDays`, editable at runtime
 
 The assistant itself is the app's `$ai`: its prompt and its tools. With

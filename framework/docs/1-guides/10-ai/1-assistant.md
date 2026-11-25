@@ -286,16 +286,22 @@ with the app's (`alepha db migrations create`), as for every `alepha/api/*` modu
 `$ai`s in the app, a chat names the one it talks to (`assistant`), and so does the resume
 that answers its pause: a request naming none, or one nothing declares, is a 400.
 
-### Budget, rate and retention: the `api.ai` parameter
+### Model, budget, rate and retention: the `api.ai` parameter
 
 Runtime settings, editable by an operator without a redeploy (`alepha/api/parameters`):
 
 | key                 | default | meaning                                                                      |
 | ------------------- | ------- | ---------------------------------------------------------------------------- |
+| `model`             | unset   | the model a turn runs on, ahead of the `$ai`'s `model` and of `AI_MODEL`     |
 | `budgetTokens`      | unset   | tokens (input plus output) one user may spend per window; unset is no budget |
 | `budgetWindowHours` | 24      | the budget window, sliding, in hours                                         |
 | `turnsPerMinute`    | 20      | turns one user may start per minute (`$rateLimit`)                           |
 | `retentionDays`     | unset   | days a conversation is kept after its last activity; unset is keep           |
+
+A saved `model` changes the model without a redeploy. A turn the server gives its own model (a
+persona's `model` in `AiChatService.chat`'s overrides) keeps it. Unset, a turn runs on the `$ai`'s
+`model` option, else `AI_MODEL`. The parameter overrides a default model and does not replace
+one: a vendor provider still needs `AI_MODEL`, or a `model` on every `$ai`, to start.
 
 The budget is checked before a turn from the stored token counts, and the turn is handed what is
 left as its `tokenBudget`, so it wraps up with an answer and overshoots by one model call at most. Retention is a daily `$job` that reads the parameter at every tick. Page data and tool
