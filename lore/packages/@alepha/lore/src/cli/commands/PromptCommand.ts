@@ -402,7 +402,7 @@ export class PromptCommand {
       pin: z
         .array(z.text())
         .describe(
-          "The pages it is pinned to, replacing the list: quests, quest, epics, epic, feedback, feedback-item, errors; repeat it.",
+          "The pages it is pinned to, replacing the list: quests, quest, epics, epic, feedback, feedback-item, errors, and with Requirements use-cases, use-case, persona, requirement; repeat it.",
         )
         .optional(),
       ...LoreOutput.FLAGS,
@@ -690,7 +690,7 @@ export class PromptCommand {
   public readonly pin = $command({
     name: "pin",
     description:
-      "Pin a prompt to pages: quests, quest, epics, epic, feedback, feedback-item, errors",
+      "Pin a prompt to pages: quests, quest, epics, epic, feedback, feedback-item, errors, and with Requirements use-cases, use-case, persona, requirement",
     args: PromptCommand.NAME,
     flags: z.object({
       ...PromptCommand.PROJECT,

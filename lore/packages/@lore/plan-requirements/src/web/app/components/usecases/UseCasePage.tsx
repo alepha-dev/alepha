@@ -5,6 +5,7 @@ import {
   currentProjectAtom,
   type I18n,
   LazyProjectActivityPage,
+  PinnedPromptsButton,
 } from "@lore/core/web";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -171,6 +172,16 @@ const UseCasePage = (props: UseCasePageProps) => {
         actions={
           <>
             <VerifyMenu subject={{ kind: "usecase", number: useCase.number }} />
+            {/* The prompts pinned on the Use case view (#Q4412), the use
+                case filled in, each shown when its arg accepts its status. */}
+            <PinnedPromptsButton
+              page="use-case"
+              item={{
+                type: "useCase",
+                value: String(useCase.number),
+                status: useCase.status,
+              }}
+            />
             {/* One validation button, the reader's own: a validator
               validates, a writer asks for it. The other verbs are in the
               overflow menu, so the bar never crowds the tabs out. */}

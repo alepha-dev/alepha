@@ -10,6 +10,7 @@ import {
   currentProjectAtom,
   formatReference,
   type I18n,
+  PinnedPromptsButton,
 } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
@@ -262,17 +263,21 @@ const UseCasesPage = () => {
         emptyState={{ title: tr("requirements.usecase.empty") }}
         noMatchState={{ title: tr("requirements.usecase.emptyFilter") }}
         toolbar={
-          <div className="w-44">
-            <Control
-              input={grouping.input.group}
-              label=""
-              select
-              icon={Layers}
-              aria-label={tr("requirements.usecase.groupBy")}
-              items={(["epic", "persona", "status", "none"] as const).map(
-                (it) => ({ value: it, label: tr(GROUP_LABEL_KEYS[it]) }),
-              )}
-            />
+          <div className="flex items-center gap-2">
+            {/* The prompts pinned on the Use case list (#Q4412). */}
+            <PinnedPromptsButton page="use-cases" />
+            <div className="w-44">
+              <Control
+                input={grouping.input.group}
+                label=""
+                select
+                icon={Layers}
+                aria-label={tr("requirements.usecase.groupBy")}
+                items={(["epic", "persona", "status", "none"] as const).map(
+                  (it) => ({ value: it, label: tr(GROUP_LABEL_KEYS[it]) }),
+                )}
+              />
+            </div>
           </div>
         }
         actions={[

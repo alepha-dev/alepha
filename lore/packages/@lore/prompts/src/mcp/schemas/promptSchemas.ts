@@ -111,7 +111,7 @@ export const promptUpdateParamsSchema = promptCreateParamsSchema
       .array(z.text({ maxLength: 32 }))
       .max(16)
       .describe(
-        "The pages it is pinned to, replacing the list: quests, quest, epics, epic, feedback, feedback-item, errors.",
+        "The pages it is pinned to, replacing the list: quests, quest, epics, epic, feedback, feedback-item, errors, and with Requirements use-cases, use-case, persona, requirement.",
       )
       .optional(),
   });

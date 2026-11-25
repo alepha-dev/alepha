@@ -91,6 +91,8 @@ describe("prompts", () => {
       "feedback-item",
       "errors",
     ]);
+    // Requirements' views exist only with Plan's `requirements` on (#Q4412).
+    expect(registry.pages().map((it) => it.key)).toContain("use-case");
     expect(answer.pages.find((it) => it.key === "quest")?.gives).toBe("quest");
     const pinned = await controller.updatePrompt.run(
       {
@@ -141,7 +143,9 @@ describe("prompts", () => {
       "dependency-update": [],
     });
     // Each default is a registered page, and a view's item fills the arg.
-    const pages = new Map(answer.pages.map((it) => [it.key, it]));
+    // The registry's pages, not the project's: Requirements' views are left
+    // out of a project with that option off (#Q4412).
+    const pages = new Map(registry.pages().map((it) => [it.key, it]));
     for (const builtin of registry.all()) {
       for (const pin of builtin.pins ?? []) {
         const page = pages.get(pin);
