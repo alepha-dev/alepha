@@ -92,6 +92,20 @@ describe("projectViewRoutes", () => {
   });
 
   /**
+   * The job page is a detail shell with an aside whose tabs each scroll in
+   * their pane (#Q4295). In the centred column the outer wrapper scrolled
+   * instead, taking the aside and the tab strip with it.
+   */
+  it("runs an agent job full width, so its panes own their scroll (#Q4295)", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    bootLore(alepha, ["routes"]);
+    await alepha.start();
+    const names = [...alepha.primitives($page)].map((it) => it.name);
+    expect(names).toContain("projectJob");
+    expect(ROUTES_FULL_WIDTH.has("projectJob")).toBe(true);
+  });
+
+  /**
    * Activity is a leaf: `/` under the project is the whole section, so an
    * href in the map would link the page to itself. (The inbox was the other
    * example until it moved into the account dialog, #Q3564.)
