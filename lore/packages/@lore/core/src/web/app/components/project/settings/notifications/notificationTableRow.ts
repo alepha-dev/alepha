@@ -21,6 +21,7 @@ export interface NotificationTableRow {
   recipientLabel: string;
   recipientKind: "member" | "discord" | "webhook" | "channel";
   mine: boolean;
+  filterResource?: string;
   filterLabel?: string;
   how: string[];
   status: "active" | "paused";

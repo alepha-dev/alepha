@@ -139,6 +139,21 @@ describe("ProjectSettingsPromptJobsPage", () => {
     );
   });
 
+  it("names what each empty filter clears, never a bare All (#Q4356)", async ({
+    expect,
+  }) => {
+    await show();
+    await waitFor(() => expect(prompts()).toHaveLength(3));
+    const labels = screen
+      .getAllByRole("combobox")
+      .filter((el) => el.tagName === "BUTTON")
+      .map((el) => el.textContent?.trim());
+    expect(labels).toEqual(
+      expect.arrayContaining(["All prompts", "All statuses", "All hosts"]),
+    );
+    expect(labels).not.toContain("All");
+  });
+
   it("narrows to a status picked on the bar", async ({ expect }) => {
     await show();
     await waitFor(() => expect(prompts()).toHaveLength(3));

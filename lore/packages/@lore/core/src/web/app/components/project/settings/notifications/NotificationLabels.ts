@@ -31,6 +31,21 @@ export class NotificationLabels {
     });
   }
 
+  /**
+   * What a subscription's filter reads while it narrows nothing (#Q4356):
+   * "Any host", "Any app", "Any monitor", never a bare "Any", and "No filter"
+   * for an event its catalog gives no filter.
+   */
+  public static anyFilter(
+    tr: I18nProvider<any, any>["tr"],
+    resource: string | undefined,
+  ): string {
+    const none = tr("notifications.form.filter.none");
+    if (!resource) return none;
+    const key = `${resource.charAt(0).toUpperCase()}${resource.slice(1)}`;
+    return tr(`notifications.form.filter.any${key}`, { default: none });
+  }
+
   public static reason(
     tr: I18nProvider<any, any>["tr"],
     entry: Pick<ProjectEventCatalogEntry, "needs">,

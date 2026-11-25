@@ -275,7 +275,7 @@ const ProjectErrors = () => {
         { label: tr("errors.filter.resolved"), value: "resolved" },
       ],
       control: {
-        clearLabel: tr("errors.filter.all"),
+        clearLabel: tr("errors.filter.allStatuses"),
       },
     },
     /**

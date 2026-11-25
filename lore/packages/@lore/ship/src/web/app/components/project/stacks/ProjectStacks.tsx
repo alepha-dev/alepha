@@ -84,7 +84,7 @@ const ProjectStacks = () => {
       icon: Server,
       items: hostOptions,
       hidden: hostOptions.length <= 1,
-      control: { clearLabel: tr("stacks.col.host") },
+      control: { clearLabel: tr("stacks.filter.allHosts") },
     },
   } satisfies DataTableFilterFields;
 
