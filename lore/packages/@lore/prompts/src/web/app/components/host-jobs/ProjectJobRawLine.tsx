@@ -1,8 +1,7 @@
 import { Button } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
-
-import type { I18n } from "@lore/core/web";
 
 export interface ProjectJobRawLineProps {
   line: string;

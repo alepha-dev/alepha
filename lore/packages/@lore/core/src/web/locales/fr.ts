@@ -5219,6 +5219,10 @@ export default {
   "prompts.pause": "Suspendre les déclencheurs",
   "prompts.resume": "Reprendre les déclencheurs",
   "prompts.paused": "Déclencheurs suspendus",
+  "prompts.title": "Prompts",
+  "prompts.tab.text": "Prompt",
+  "prompts.field.name": "Nom",
+  "prompts.notFound": "Aucun prompt nommé $1 dans ce projet",
   "prompts.builtin": "intégrée",
   "prompts.source": "Source",
   "prompts.source.description":

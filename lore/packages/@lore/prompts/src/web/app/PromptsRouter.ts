@@ -69,6 +69,27 @@ export class PromptsRouter {
   });
 
   /**
+   * One prompt (#Q4326), on the detail shell a job uses: its words, and
+   * beside them its args, trigger, pins and last run. Opened from Settings >
+   * Prompts; every member reads it, as the list.
+   */
+  projectPrompt = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "projectPrompt",
+    path: "/prompts/:name",
+    nav: { hidden: true, label: "Prompt" },
+    schema: { params: z.object({ name: z.string() }) },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Prompt`,
+    }),
+    lazy: () => import("./components/ProjectPrompt.tsx"),
+    loader: async ({ params }) => {
+      this.gate();
+      return { name: params.name };
+    },
+  });
+
+  /**
    * What every page of Prompts requires: the project, with the capability
    * on. 404, never 403, as the other modules' pages answer.
    */
