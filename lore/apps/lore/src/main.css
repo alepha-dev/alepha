@@ -14,6 +14,7 @@
 @source "../../../packages/@lore/ship/src/web";
 @source "../../../packages/@lore/plan-requirements/src/web";
 @source "../../../packages/@lore/chat/src/web";
+@source "../../../packages/@lore/prompts/src/web";
 
 /* ────────────────────────────────────────────────────────────────────────
  * Page transitions — the classes `$page({ viewTransition })` names in

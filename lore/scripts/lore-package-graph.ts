@@ -14,6 +14,7 @@ import { dirname, join, normalize } from "node:path";
  * | `ship`      | Lore as Vercel   | `core`      |
  * | `plan-requirements` | Plan's Requirements | `core`, `plan`, `remember`, `ship` |
  * | `chat`      | Lore Chat        | `core`      |
+ * | `prompts`   | Lore Prompts     | `core`      |
  *
  * A feature module never imports another one. A feature that spans two of
  * them (an epic files folios, an error is forwarded to a quest, a release
@@ -53,6 +54,10 @@ export class LorePackageGraph {
     // Chat (#E161): core only. The agent that answers in a room is the
     // app's, registered on chat's responder registry.
     chat: ["core"],
+    // Prompts (#E175): core only, and nothing imports it. Plan, Ship and
+    // Requirements contribute prompts through core's contract
+    // (`PromptRegistry`, `AgentJobs`), which this package fills.
+    prompts: ["core"],
   };
 
   /**

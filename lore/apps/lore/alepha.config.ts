@@ -258,6 +258,7 @@ export default defineConfig({
         "../../packages/@lore/ship/src",
         "../../packages/@lore/plan-requirements/src",
         "../../packages/@lore/chat/src",
+        "../../packages/@lore/prompts/src",
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [

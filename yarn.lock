@@ -152,6 +152,7 @@ __metadata:
     "@lore/core": "*"
     "@lore/plan": "*"
     "@lore/plan-requirements": "*"
+    "@lore/prompts": "*"
     "@lore/remember": "*"
     "@lore/ship": "*"
     "@playwright/test": ">=1.42"
@@ -166,6 +167,8 @@ __metadata:
     "@lore/plan":
       optional: true
     "@lore/plan-requirements":
+      optional: true
+    "@lore/prompts":
       optional: true
     "@lore/remember":
       optional: true
@@ -2256,6 +2259,23 @@ __metadata:
     react-dom: "npm:^19.3.1"
     react-is: "npm:^19.3.1"
     recharts: "npm:^3.10.1"
+    vite: "npm:^8.3.8"
+    vitest: "npm:^5.1.1"
+  languageName: unknown
+  linkType: soft
+
+"@lore/prompts@workspace:*, @lore/prompts@workspace:lore/packages/@lore/prompts":
+  version: 0.0.0-use.local
+  resolution: "@lore/prompts@workspace:lore/packages/@lore/prompts"
+  dependencies:
+    "@alepha/ui": "workspace:*"
+    "@lore/core": "workspace:*"
+    "@types/bun": "npm:^1.4.4"
+    "@types/react": "npm:^19.3.0"
+    "@types/react-dom": "npm:^19.3.0"
+    alepha: "workspace:*"
+    react: "npm:^19.3.1"
+    react-dom: "npm:^19.3.1"
     vite: "npm:^8.3.8"
     vitest: "npm:^5.1.1"
   languageName: unknown
@@ -7414,6 +7434,7 @@ __metadata:
     "@lore/core": "workspace:*"
     "@lore/plan": "workspace:*"
     "@lore/plan-requirements": "workspace:*"
+    "@lore/prompts": "workspace:*"
     "@lore/remember": "workspace:*"
     "@lore/ship": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.5"

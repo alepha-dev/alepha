@@ -6,7 +6,7 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 
 ## Layout: packages are modules, apps are executables
 
-`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in six private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md), [`@lore/plan-requirements`](packages/@lore/plan-requirements/AGENTS.md), [`@lore/chat`](packages/@lore/chat/AGENTS.md).
+`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in seven private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md), [`@lore/plan-requirements`](packages/@lore/plan-requirements/AGENTS.md), [`@lore/chat`](packages/@lore/chat/AGENTS.md), [`@lore/prompts`](packages/@lore/prompts/AGENTS.md).
 
 | package                   | is                  | owns                                                                                                                                                                                     |
 | ------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -16,6 +16,7 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 | `@lore/ship`              | Lore as Vercel      | apps, telemetry, deployments, hosts                                                                                                                                                      |
 | `@lore/plan-requirements` | Plan's Requirements | personas, use cases, requirements and their runs (#E153): an option of Plan, in a package of its own because it reaches Ship and Remember                                                |
 | `@lore/chat`              | Lore Chat           | project rooms, their members and messages, the live socket and the Chat page (#E161): the fifth capability, `chat`                                                                       |
+| `@lore/prompts`           | Lore Prompts        | the prompt engine, its triggers and pins, agent jobs' start and their pages, agent hosts (#E175): the capability `prompts`, off by default; core keeps the contract it fills             |
 
 Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first; the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
 
@@ -27,6 +28,7 @@ core <- remember
 core <- ship
 core, plan, remember, ship <- plan-requirements
 core <- chat
+core <- prompts
 ```
 
 - A feature module never imports another, `plan-requirements` excepted: Plan's Requirements imports Plan, Remember and Ship, and none of them imports it. A feature spanning two goes through a core registry or a core link (an epic files folios, an error is forwarded to a quest, a release lists its artifacts).
