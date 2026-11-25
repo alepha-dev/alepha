@@ -23,7 +23,9 @@ import { bootAssistant } from "./fixtures/bootAssistant.ts";
  * its text mirrored into the room.
  */
 describe("@lore in a chat room", () => {
+  const errors: string[] = [];
   const boot = async (enabled = "1") => {
+    errors.length = 0;
     const ctx = await bootAssistant({
       enabled,
       // A second agent that always fails: the room's side of a run that
@@ -36,6 +38,21 @@ describe("@lore in a chat room", () => {
             yield { type: "error", message: "the model is down" };
           },
           resume: async function* () {},
+        });
+        // One whose tool fails and whose turn ends there, with no word.
+        alepha.inject(ChatResponderRegistry).register({
+          name: "silent",
+          label: "Silent",
+          respond: async function* () {
+            yield { type: "tool", name: "quest_create", state: "running" };
+            yield { type: "tool", name: "quest_create", state: "failed" };
+          },
+          resume: async function* () {},
+        });
+        // Every entry logged at error level: what the app's sigil reports
+        // as a server error, into the errors inbox (`SigilServerErrors`).
+        alepha.events.on("log:entry", ({ entry }) => {
+          if (entry.level === "ERROR") errors.push(String(entry.message));
         });
       },
     });
@@ -290,5 +307,45 @@ describe("@lore in a chat room", () => {
     const [answer] = await ctx.answers();
     expect(answer?.agentRun?.status).toBe("failed");
     expect(answer?.body).toContain("Broken could not finish");
+  });
+
+  it("reports a run that could not finish as an error, with the room, the agent and the cause (#Q4298)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    await ctx.send(ctx.owner.user, "@broken hello?");
+    await ctx.runner.settled();
+
+    expect(errors).toEqual([
+      "Chat agent Broken could not finish (provider) in room general: the model is down",
+    ]);
+  });
+
+  it("reports a turn that ended on a failed tool with nothing said after it (#Q4298)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    await ctx.send(ctx.owner.user, "@silent file it");
+    await ctx.runner.settled();
+
+    expect(errors).toEqual([
+      "Chat agent Silent could not finish (tool) in room general: quest_create failed and the answer ended there",
+    ]);
+  });
+
+  it("tells a budget, a timeout and anything else apart (#Q4298)", ({
+    expect,
+  }) => {
+    expect(
+      ChatAgentRunner.causeOf(
+        "AI budget reached: 229783 of 200000 tokens used in the current window",
+      ),
+    ).toBe("budget");
+    expect(
+      ChatAgentRunner.causeOf(
+        new DOMException("The operation timed out.", "TimeoutError"),
+      ),
+    ).toBe("timeout");
+    expect(ChatAgentRunner.causeOf(new Error("overloaded"))).toBe("provider");
   });
 });

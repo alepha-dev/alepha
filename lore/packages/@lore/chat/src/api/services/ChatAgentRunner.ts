@@ -290,6 +290,9 @@ export class ChatAgentRunner {
       await this.publish(room, stored, "message.updated");
     };
 
+    // Whether the model said anything after its last tool call: a turn that
+    // ends on a failed tool and no word since stopped without finishing.
+    let spokeSinceTool = true;
     try {
       for await (const event of events) {
         if (event.type === "conversation") {
@@ -310,9 +313,11 @@ export class ChatAgentRunner {
           } else {
             tools.push({ name: event.name, state: event.state });
           }
+          spokeSinceTool = false;
           await progress();
         } else if (event.type === "text") {
           text += event.text;
+          if (event.text.trim()) spokeSinceTool = true;
           if (this.dateTime.nowMillis() - flushed > ChatAgentRunner.FLUSH_MS) {
             await progress();
           }
@@ -329,6 +334,12 @@ export class ChatAgentRunner {
           );
           return;
         } else if (event.type === "error") {
+          this.report(
+            room,
+            name,
+            ChatAgentRunner.causeOf(event.message),
+            event.message,
+          );
           await finish(
             { status: "failed", mentionerId },
             this.joined(text, `${name} could not finish: ${event.message}`),
@@ -336,9 +347,23 @@ export class ChatAgentRunner {
           return;
         }
       }
+      const failed = tools.at(-1);
+      if (!spokeSinceTool && failed?.state === "failed") {
+        this.report(
+          room,
+          name,
+          "tool",
+          `${failed.name} failed and the answer ended there`,
+        );
+      }
       await finish({ status: "done", mentionerId }, text);
     } catch (error) {
-      this.log.warn("A chat agent run failed", { roomId: room.id, error });
+      this.report(
+        room,
+        name,
+        ChatAgentRunner.causeOf(error),
+        error instanceof Error ? error.message : "the run stopped",
+      );
       await finish(
         { status: "failed", mentionerId },
         this.joined(
@@ -347,6 +372,68 @@ export class ChatAgentRunner {
         ),
       ).catch(() => {});
     }
+  }
+
+  /**
+   * How a chat agent's turn fails to finish (#Q4298), each one reported:
+   *
+   * - `budget`: the mentioner's or the project's AI budget is spent, before
+   *   the model is asked or while it answers.
+   * - `timeout`: the run outlived {@link TIMEOUT_MS}, or a Worker's
+   *   `waitUntil` window, and was stopped.
+   * - `provider`: the model's provider refused or failed, or anything else
+   *   that stopped the run (a client-only tool, a thrown error).
+   * - `tool`: a tool call failed and the turn ended there, with no word
+   *   after it, which is a run that stopped as surely as a thrown one.
+   */
+  public static causeOf(failure: unknown): "budget" | "timeout" | "provider" {
+    const message =
+      failure instanceof Error
+        ? failure.message
+        : typeof failure === "string"
+          ? failure
+          : "";
+    const kind = failure instanceof Error ? failure.name : "";
+    if (/budget/i.test(message) || kind === "AiBudgetExceededError") {
+      return "budget";
+    }
+    if (
+      kind === "TimeoutError" ||
+      kind === "AbortError" ||
+      /timed? ?out|aborted/i.test(message)
+    ) {
+      return "timeout";
+    }
+    return "provider";
+  }
+
+  /**
+   * Tell the project a chat agent failed to finish (#Q4298): logged at error
+   * level, which the app's sigil reports as a server error, so it lands in
+   * the errors inbox with the room, the agent and the cause, rather than
+   * only as a line in a room nobody may be reading. A plain message, not the
+   * `Error`: the sigil would read the error's own message and lose which
+   * room and agent it was.
+   */
+  protected report(
+    room: ChatRoom,
+    agent: string,
+    cause: "budget" | "timeout" | "provider" | "tool",
+    detail: string,
+  ): void {
+    this.log.error(
+      `Chat agent ${agent} could not finish (${cause}) in room ${room.name}: ${detail}`.slice(
+        0,
+        1000,
+      ),
+      {
+        projectId: room.projectId,
+        roomId: room.id,
+        room: room.name,
+        agent,
+        cause,
+      },
+    );
   }
 
   protected joined(text: string, line: string): string {
