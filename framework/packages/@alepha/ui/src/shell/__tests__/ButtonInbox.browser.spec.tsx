@@ -237,6 +237,46 @@ describe("ButtonInbox", () => {
   });
 
   /**
+   * A host with unread counts of its own (a sidebar's, per scope) refreshes
+   * them from `onRead`: the bell's own count is the only one it updates.
+   */
+  it("tells the host once messages were read, by Mark all read or by a row", async () => {
+    const reads: string[] = [];
+    const { view, links } = await mount({
+      onOpen: () => {},
+      onRead: () => reads.push("read"),
+    });
+
+    fireEvent.click(view.container.querySelector("button")!);
+    await waitFor(() => expect(view.getByText("Mark all read")).toBeTruthy());
+    fireEvent.click(view.getByText("Fabrice mentioned you in #Q402"));
+    await waitFor(() => expect(links.readCalls).toEqual(["m-1"]));
+    await waitFor(() => expect(reads).toHaveLength(1));
+
+    fireEvent.click(view.container.querySelector("button")!);
+    await waitFor(() => expect(view.getByText("Mark all read")).toBeTruthy());
+    fireEvent.click(view.getByText("Mark all read"));
+    await waitFor(() => expect(links.markAllCalls).toBe(1));
+    await waitFor(() => expect(reads).toHaveLength(2));
+  });
+
+  it("does not tell the host when Mark all read is refused", async () => {
+    const reads: string[] = [];
+    const { view, links } = await mount(
+      { onRead: () => reads.push("read") },
+      (links) => {
+        links.markAllError = new Error("refused");
+      },
+    );
+
+    fireEvent.click(view.container.querySelector("button")!);
+    await waitFor(() => expect(view.getByText("Mark all read")).toBeTruthy());
+    fireEvent.click(view.getByText("Mark all read"));
+    await waitFor(() => expect(links.markAllCalls).toBe(1));
+    expect(reads).toEqual([]);
+  });
+
+  /**
    * The write is the truth: a refused "Mark all read" leaves the badge and
    * the dots as they were, and the failure reaches `react:action:error`
    * (which a mounted `ActionErrorToaster` toasts) instead of being lost.

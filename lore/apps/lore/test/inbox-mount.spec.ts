@@ -55,7 +55,9 @@ const walk = (dir: string): string[] => {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) {
       out.push(...walk(path));
-    } else if (/\.tsx?$/.test(entry)) {
+    } else if (/\.tsx?$/.test(entry) && !/\.spec\.tsx?$/.test(entry)) {
+      // A spec renders the bell to test it, which is not mounting it on a
+      // shell (`ProjectInboxButton.browser.spec.tsx`, #Q4299).
       out.push(path);
     }
   }
