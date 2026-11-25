@@ -2,19 +2,21 @@
 
 A project is a container: a name, an address, its members, and the parts of
 Lore it uses. Those parts are its **capabilities**: the three pillars, **Plan**,
-**Remember** and **Ship**, and three general ones, **Activity**, **Chat** and
-**Reports**. A team that only wants a wiki turns on Remember alone; a team that
-plans, documents, operates and talks about a product turns on everything. The
+**Remember** and **Ship**, and four general ones, **Activity**, **Chat**,
+**Prompts** and **Reports**. A team that only wants a wiki turns on Remember
+alone; a team that plans, documents, operates and talks about a product turns
+on everything. The
 code itself lives on GitHub: a project names its repository in **Settings ▸
 General**, and its commits link there.
 
 ## The general capabilities
 
-| Capability   | Sidebar entry | What it is for                                                 |
-| ------------ | ------------- | -------------------------------------------------------------- |
-| **Activity** | Activity      | Every change made in the project, newest first. On by default. |
-| **Chat**     | Chat          | The talk: project rooms, mentions, and Lore's assistant.       |
-| **Reports**  | Reports       | Figures over a period, one tab per pillar. On by default.      |
+| Capability   | Sidebar entry | What it is for                                                     |
+| ------------ | ------------- | ------------------------------------------------------------------ |
+| **Activity** | Activity      | Every change made in the project, newest first. On by default.     |
+| **Chat**     | Chat          | The talk: project rooms, mentions, and Lore's assistant.           |
+| **Prompts**  | (in Settings) | Prompts and the agent jobs they run on your hosts. Off by default. |
+| **Reports**  | Reports       | Figures over a period, one tab per pillar. On by default.          |
 
 ## The three pillars
 
@@ -72,7 +74,7 @@ A list of quests and a board are always there when Plan is on. See
 ## Turning one on or off
 
 Open **Settings ▸ General ▸ Capabilities**. The page opens with **General**:
-Activity, Chat and Reports, with Reports' Quality option. Each pillar follows,
+Activity, Chat, Prompts and Reports, with Reports' Quality option. Each pillar follows,
 a switch with the options that add a sidebar entry beneath it; Ship lists all
 its options there. Plan's other options are on **Settings ▸ Quests**.
 
@@ -85,6 +87,10 @@ Turning a capability off:
   alike, with a message that names the capability;
 - **deletes nothing**. Turn it back on and every quest, folio or app is where
   you left it.
+
+Prompts runs every agent in a project: turning it off also stops the agent
+work Plan's pages offer, such as working a quest, reviewing an epic's plan and
+triaging feedback. See [Prompts](/lore/docs/agents-prompts).
 
 The owner and the **Admin** rank can switch capabilities. Another rank can be
 given that right in the **Ranks** tab ("Turn capabilities on and off").

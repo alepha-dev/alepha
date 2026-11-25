@@ -8,6 +8,12 @@ provide the machine and install the tools; Lore says what to run, starts it,
 and shows its log. The agent does the rest itself, with the tools it finds on
 the host, and writes what it did back to Lore.
 
+A job needs [Prompts](/lore/docs/agents-prompts) on in the project that asks
+for it, whichever project the host belongs to: a host lent to your project
+runs your jobs while Prompts is on in yours. With Prompts off, no job starts
+and the pages offer none, but the jobs already run stay listed with their
+logs.
+
 Your agent's sign-in never leaves your host. Lore asks the host to run a job,
 the host pulls what to run, and the agent CLI uses the sign-in of the host's
 jobs user.
@@ -256,7 +262,8 @@ it did is what it wrote to Lore.
 `prompt_run` starts a job and `agent_hosts` lists the Agent hosts, the twins
 of `lore prompt run` and `lore agent hosts`; `job_list`, `job_get` and
 `job_cancel` read and stop jobs. Called with an agent job's own key,
-`prompt_run` is refused.
+`prompt_run` is refused. `prompt_run` and `agent_hosts` need Prompts on in the
+project; the `job_*` tools do not, so a job's history stays readable.
 
 ## Text from outside the team
 

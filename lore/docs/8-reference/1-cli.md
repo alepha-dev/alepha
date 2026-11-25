@@ -654,7 +654,9 @@ See [Hosts](/lore/docs/project-hosts).
 ## Prompts
 
 A prompt is what Lore hands a coding agent: copied, or run on one of the
-project's Agent hosts. See [Prompts](/lore/docs/agents-prompts).
+project's Agent hosts. See [Prompts](/lore/docs/agents-prompts). Every `lore
+prompt` command and `lore agent hosts` need the Prompts capability on in the
+project.
 
 | Command                        | What it does                                                                                     | Flags                                                                                                                         |
 | ------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -682,7 +684,9 @@ does not succeed.
 
 ## Agent jobs
 
-An agent job is a prompt run on one of the project's Agent hosts.
+An agent job is a prompt run on one of the project's Agent hosts. The `lore
+job` commands work whatever the capabilities: a job's history outlives the
+switch.
 
 | Command                | What it does                                                                                                                         |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

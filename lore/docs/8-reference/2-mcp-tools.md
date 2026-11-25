@@ -40,7 +40,8 @@ them.
   capability or an option the project does not have is refused, with an error
   naming it (`plan.feedback`) and how to turn it on. Reads of
   what already exists stay allowed, except `stack_logs`, which has to ask the
-  machine. See [Capabilities](/lore/docs/project-capabilities).
+  machine, and the `prompt_*` tools and `agent_hosts`, which need `prompts`
+  for reads too. See [Capabilities](/lore/docs/project-capabilities).
 - **Lists are paged** on the tools that say so. `feedback_list` answers at most
   50 rows and `hasMore`, and `quest_list` hides shelved quests and draft epics'
   quests unless asked.
@@ -329,7 +330,9 @@ See [Prompts](/lore/docs/agents-prompts) and
 [Agent jobs](/lore/docs/agents-jobs). Every member reads, copies and renders
 prompts; changing one, its trigger and its pins needs `prompt:manage`; running
 one needs `host:read` and the prompt's own permission. Called with an agent
-job's own key, every prompt write and `prompt_run` are refused.
+job's own key, every prompt write and `prompt_run` are refused. The `prompt_*`
+tools and `agent_hosts` need the `prompts` capability, and are refused while
+the project has it off; `job_list`, `job_get` and `job_cancel` do not.
 
 | Tool                                    | What it does                                                                                                                                                         |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

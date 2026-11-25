@@ -1,6 +1,6 @@
 # AGENTS.md: @lore/core
 
-**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/plan`, `@lore/remember` and `@lore/ship` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
+**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, the prompt contract (the engine is `@lore/prompts`), and the web shell every module mounts into. It imports no other `@lore` package; `@lore/plan`, `@lore/remember` and `@lore/ship` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
 
 ## Layout
 
@@ -135,6 +135,8 @@ wizard is asking a question and "none" is not an answer to it.
 
 A **prompt** is what Lore hands a coding agent: copied into a session, or run on the project's Agent host as an agent job. One table, `prompts`, holds a project's rows.
 
+Since #E175 the engine (the `prompts` entity, `PromptService`, `PromptRunService`, `PromptTriggers`, the pages) lives in `@lore/prompts`, behind the capability `prompts`, off by default; the table below says what each piece is, and "Prompts: the contract" what stays here.
+
 | piece       | where                                                                                                                                                                 |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | built-ins   | `PromptRegistry` (server): registered by the module that owns them, Plan's ten in `PlanPrompts` (texts in `@lore/plan`'s `api/prompts/`). A built-in's text is frozen |
@@ -160,10 +162,10 @@ Plan, Ship and Requirements contribute prompts and a feature package never impor
 
 - **Server**: `PromptRegistry` (built-ins, args, pages, checks, and `projectUrlOf` for a prompt's `{{projectUrl}}`) and the schemas built-ins and job rows are written in: `promptArgSchema`, `promptResourceSchema`, `promptValues`, `renderPromptTemplate`, `renderPromptText`, `agentRunSchema`, `promptJobArgSchema`, `promptJobCauseSchema`.
 - **The jobs**: `host_jobs` (an agent job is a row of kind `agent`), `host_job_logs`, `job_keys`, `HostJobs`, `HostJobService`, `HostJobController`, `JobKeyService`, `job_list`/`job_get`/`job_cancel`.
-- **`AgentJobs`**, the port a job starts through: the runner (`AgentJobService`) registers on it with `register`. Unfilled, `available` is false, `choices` answers `[]` and `start`/`resolve` throw `AgentJobsUnavailableError` (a 400). `AgentJobs.PREAMBLE_MARKER` is where a prompt wants the run's preamble.
+- **`AgentJobs`**, the port a job starts through: the runner (`AgentJobService`) registers on it with `register`. Unfilled, `available` is false, `choices` answers `[]` and `start`/`resolve` throw `AgentJobsUnavailableError` (a 400). The same holds for a project with the `prompts` capability off (#Q4314), read through `AgentJobs.isOn(projectId)`: only the asking project's switch decides, never the host's. `AgentJobs.PREAMBLE_MARKER` is where a prompt wants the run's preamble.
 - **`HostJobs.setAgentHost`**: `HostController` turns a host's Agent role on or off through it; the Agent host service registers the role with `registerAgentHostRole`. Unfilled, turning it on is refused.
 - **The merge**: prompts move in a step of their own, `PromptMerge`.
-- **Web**: `PinnedPromptsButton` and `usePinnedPrompts` draw what is registered on `PinnedPromptsSlot` (nothing while unfilled); `PinnedPromptItem` stays core. The spotlight shows the groups registered on `SpotlightSourceRegistry`, and a host's Settings tab the panels registered with `HostConsoleRegistry.registerSettingsPanel`. `PromptsWebSlots` fills the three.
+- **Web**: `PinnedPromptsButton` and `usePinnedPrompts` draw what is registered on `PinnedPromptsSlot`, nothing while it is unfilled or the project has `prompts` off; `PinnedPromptItem` stays core. The spotlight shows the groups registered on `SpotlightSourceRegistry`; a source naming a `capability` reads nothing and shows nothing while the project has it off. A host's Settings tab shows the panels registered with `HostConsoleRegistry.registerSettingsPanel`, whatever the capabilities: a host's Agent role is Core. `@lore/prompts`' `PromptsShell` fills the three.
 
 ## Routes
 
