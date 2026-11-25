@@ -22,9 +22,11 @@ The quests: {{projectUrl}}/quests
 
 ## The loop
 
-Repeat until no loose quest you can work is left in \`todo\`: one you left with a comment on why it cannot be done as written, or tagged \`${QUEST_NEEDS_ANSWER_TAG}\`, stays in \`todo\` and does not count. Re-read the list each round rather than taking it once at the start: quests get filed while you work, and finishing one often reveals the next.
+Repeat until no loose quest you can work is left in \`todo\`: one you left with a comment on why it cannot be done as written, or one tagged \`${QUEST_NEEDS_ANSWER_TAG}\` whose question is still open, stays in \`todo\` and does not count. Re-read the list each round rather than taking it once at the start: quests get filed while you work, and finishing one often reveals the next.
 
 To read it, call \`quest_list\` with status "todo" (page through it with \`limit\` and \`offset\` until you have every row) and keep the quests that carry no \`epic\` and no \`${PROMPT_NEEDS_HUMAN_TAG}\` tag: an agent does not build those alone. A quest under an epic is not part of this run: an epic is worked through its own prompt.
+
+A quest tagged \`${QUEST_NEEDS_ANSWER_TAG}\` is read every round, never skipped on its tag: \`quest_get\` it, and if its question was answered in the discussion since, remove the tag and work it with that answer. Read the quests in \`in_progress\` tagged \`${QUEST_NEEDS_ANSWER_TAG}\` the same way (\`quest_list\` with status "in_progress" and that tag, loose ones only): an earlier run may have left one accepted on its question, and once answered it is part of this run.
 
 Take the next one by priority, then by what the others depend on.
 
@@ -49,7 +51,7 @@ When a quest cannot be done as written, say so in a comment on it (\`quest_comme
 1. Read the list one last time. If nothing is left in it but the quests this run left with a comment and those tagged \`${QUEST_NEEDS_ANSWER_TAG}\`, review the pull request (below), then mark it ready for review: a blocked quest never holds back the ones that are done. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
 2. If you are still there once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-Never stop with a quest you accepted still open, unless you left it with a comment on why it cannot be done as written. If the pull request has not merged when you stop, say so in your reply with its link: its quests are completed, but not on main yet.
+Never stop with a quest you accepted still in progress: complete it, or leave it with a comment on why it cannot be done as written and hand it back with \`quest_unassign\`. If the pull request has not merged when you stop, say so in your reply with its link: its quests are completed, but not on main yet.
 
 ## Then report in your reply
 

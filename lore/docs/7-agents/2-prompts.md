@@ -81,7 +81,9 @@ They never play the app against production.
 
 A prompt that works a quest, an epic or a feedback item never leaves the quest
 half done: it completes it, or, when it stops on a question for you, it says
-why in a comment and tags the quest **`needs-answer`**.
+why in a comment, tags the quest **`needs-answer`** and hands it back, so it
+reads **To do** again. Answer in the quest's Discussion: the next run reads
+the thread of every `needs-answer` quest, and works the ones you answered.
 
 A built-in's words cannot be edited. Lore improves them over time, and a
 project that keeps its own copy would stop following. To change the words,

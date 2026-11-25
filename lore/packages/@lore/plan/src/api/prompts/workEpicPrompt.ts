@@ -45,7 +45,7 @@ The last quest is the last one you can work: a quest you left with a comment on 
 2. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{epic.number}}): what shipped, where it diverged from the plan and why, what was left. Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
 3. If you are still there once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
-There is no status to set: the epic completed on its own when its last open quest was completed or shelved. Never stop with a quest you accepted still open, unless you stop on an owner's question above. If the pull request has not merged when you stop, say so in your reply with its link: the epic is completed, and not on main yet.
+There is no status to set: the epic completed on its own when its last open quest was completed or shelved. Never stop with a quest you accepted still in progress: complete it, or, when it waits on an owner's question, hand it back with \`quest_unassign\` once the question is written. If the pull request has not merged when you stop, say so in your reply with its link: the epic is completed, and not on main yet.
 
 When a quest cannot be done as written, say so in a comment on it and move on to one that can. Do not guess at a decision that is the owner's to make.
 
