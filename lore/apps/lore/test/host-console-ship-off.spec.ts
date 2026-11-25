@@ -17,17 +17,18 @@ describe("the host console with Ship off", () => {
   const withShip = { capabilities: [{ key: "ship" as const, options: {} }] };
   const withoutShip = { capabilities: [{ key: "plan" as const, options: {} }] };
 
-  it("shows Overview, Commands and Settings only, and Processes with Ship on", ({
+  it("shows Overview, Commands, Agent and Settings only, and Processes with Ship on", ({
     expect,
   }) => {
     const consoles = boot().inject(HostConsoleRegistry);
     expect(consoles.tabs(withoutShip as never).map((tab) => tab.route)).toEqual(
-      ["bayOverview", "bayCommands", "baySettings"],
+      ["bayOverview", "bayCommands", "bayAgent", "baySettings"],
     );
     expect(consoles.tabs(withShip as never).map((tab) => tab.route)).toEqual([
       "bayOverview",
       "bayApps",
       "bayCommands",
+      "bayAgent",
       "baySettings",
     ]);
     // An instance page keeps Processes lit.

@@ -99,6 +99,17 @@ export class HostRouter {
     lazy: () => import("./components/bay/BayCommands.tsx"),
   });
 
+  bayAgent = $page({
+    parent: this.bay,
+    name: "bayAgent",
+    nav: { hidden: true, label: "Agent" },
+    path: "/agent",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Agent`,
+    }),
+    lazy: () => import("./components/bay/BayAgent.tsx"),
+  });
+
   baySettings = $page({
     parent: this.bay,
     name: "baySettings",

@@ -326,7 +326,7 @@ export {
   type HostConsoleProject,
   type HostConsoleTab,
   type HostOverviewSection,
-  type HostSettingsPanel,
+  type HostAgentPanel,
 } from "./app/registries/HostConsoleRegistry.ts";
 export {
   HostRoleRegistry,

@@ -107,10 +107,11 @@ sudo bay doctor
 ```
 
 **6. Allow jobs, and make it an Agent host.** On the host's page in Lore,
-turn on **Allow jobs**, then **Agent host**. Lore checks the host at once: the
+turn on **Allow jobs** in its **Settings** tab, then **Agent host** in its
+**Agent** tab. Lore checks the host at once: the
 agent prints its version, then answers a one-line prompt. The host shows
 **Available**, or **Unavailable** with the agent's own message. The check runs
-again once a day and on **Check now**. The host's **Tools** section lists what
+again once a day and on **Check now**. The **Agent** tab's **Tools** section lists what
 the jobs user has, installed or not, with its version and its sign-in, and the
 **Agent host** card says how many jobs run, of how many the host allows.
 

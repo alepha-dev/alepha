@@ -12,7 +12,7 @@ import {
 } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
-import { useAction, useClient, useInject, useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { FolderKanban, RefreshCw, Trash2, Unlink } from "lucide-react";
@@ -22,16 +22,15 @@ import type { HostController } from "../../../../api/controllers/HostController.
 import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
 import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
-import { HostConsoleRegistry } from "../../registries/HostConsoleRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
-import BayJobTools from "./BayJobTools.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
 
 /**
- * The switches, the lending and the credential, for one machine.
+ * The switches, the lending and the credential, for one machine. The jobs
+ * user's tools and the Agent host switch moved to the Agent tab (#Q4414).
  *
  * This is `HostDrawer`'s body for a `bay` host, on a page of its own.
  * The wording moves verbatim rather than being rewritten, because two
@@ -67,8 +66,6 @@ const BaySettings = () => {
   const [host, setHost] = useStore(currentHostAtom);
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
   const [moving, setMoving] = useState(false);
-  // A module's panels (#E175): the Agent host switch is `@lore/prompts`'s.
-  const panels = useInject(HostConsoleRegistry).settingsPanels();
 
   // One `useAction` per write, the way `HostDrawer` sends the same four
   // (#E59, #Q2329). A refusal is not caught here: the root
@@ -220,10 +217,6 @@ const BaySettings = () => {
           projectTitle={host.project?.title ?? tr("hosts.project.noHome")}
         />
       )}
-      <BayJobTools />
-      {panels.map((panel) => (
-        <panel.Component key={panel.key} canUpdate={canUpdate} />
-      ))}
       {canUpdate && (
         <Card>
           <CardContent className="flex flex-col gap-4">
