@@ -54,7 +54,7 @@ prompt itself asks for (working a quest needs to update quests).
 | **Work on quest**              | a quest, to do or in progress        | read-write | one quest, one branch, one pull request, one commit                           |
 | **Work on feedback**           | a feedback item, pending or accepted | read-write | accepts the report, files the quest, does the work, tells the reporter        |
 | **Triage feedback and errors** | nothing                              | read-only  | accepts, rejects or asks about every pending report, and files real defects   |
-| **Work on loose quests**       | nothing                              | read-write | every to-do quest in no epic, one at a time, in one pull request              |
+| **Work on loose quests**       | nothing                              | read-write | up to 10 to-do quests in no epic, taken at the start, in one pull request     |
 | **Weekly status**              | a member (you, unless you pick one)  | none       | reads the week's report and answers with what shipped, moved and needs you    |
 | **Review PR**                  | a pull request                       | read-only  | reviews the diff with `gh pr review`, and sums it up on the quest             |
 | **Security check**             | nothing                              | read-only  | runs each package manager's audit, and files one quest per real vulnerability |
@@ -298,6 +298,11 @@ quests one pull request holds depends on how the work was handed over:
 | **Work on epic**         | one for the whole epic |
 | **Work on loose quests** | one for the whole run  |
 | any other work prompt    | one per quest          |
+
+A run of **Work on loose quests** takes its list once, when it starts: at most
+10 to-do quests in no epic, by priority, all accepted before the first one is
+worked. A quest filed while it runs waits for the next run, so a run always
+ends.
 
 Whatever the shape, one quest is one commit, and the pull request is merged by
 rebase, so main receives every quest's commit as it is and a bad quest can be

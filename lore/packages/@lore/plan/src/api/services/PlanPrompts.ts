@@ -139,7 +139,7 @@ export class PlanPrompts {
       name: "work-loose-quests",
       title: "Work on loose quests",
       description:
-        "Work every quest under no epic, one pull request for the run.",
+        "Work up to 10 quests under no epic, listed once at the start, one pull request for the run.",
       args: [],
       source: "write",
       permission: "quest:update",
