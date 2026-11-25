@@ -15,14 +15,16 @@ yours alone.
 
 A host does one or more things, shown as pills in the hosts list:
 
-| Role       | What it is                                                                                  | Needs                                            |
-| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| **stats**  | The server reports its CPU, memory and disk, and Lore tells you when it goes offline.       | A Bay host. Nothing else.                        |
-| **agent**  | The server runs [agent jobs](/lore/docs/agents-jobs) for the project.                       | A Bay host with jobs allowed.                    |
-| **deploy** | Projects deploy their apps and stacks onto it (see [Deploying](/lore/docs/ship-deploying)). | The Ship capability in the project that deploys. |
+| Role       | What it is                                                                                  | Needs                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **stats**  | The server reports its CPU, memory and disk, and Lore tells you when it goes offline.       | A Bay host. Nothing else.                                                |
+| **agent**  | The server runs [agent jobs](/lore/docs/agents-jobs) for the project.                       | A Bay host with jobs allowed; Prompts on in the project that runs a job. |
+| **deploy** | Projects deploy their apps and stacks onto it (see [Deploying](/lore/docs/ship-deploying)). | The Ship capability in the project that deploys.                         |
 
 A Bay host enrolled only to watch a server's memory is a host like any other,
-in a project with no Ship at all.
+in a project with no Ship at all. In the same way, making a host an Agent
+host needs no capability: a job runs on it for a project that has
+[Prompts](/lore/docs/agents-prompts) on, its own or one it is lent to.
 
 ### A project that only stores hosts
 

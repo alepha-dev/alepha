@@ -6,6 +6,26 @@ the item you picked, and paste it into your agent. When the project has an
 [Agent host](/lore/docs/agents-jobs), you can also **run** it there: Lore
 starts the agent on the host and you read what it did on the job's page.
 
+## Turning Prompts on
+
+Prompts is a capability, **off** in a new project. Turn it on in **Settings ▸
+General ▸ Capabilities**, under **General**, or tick it when you create the
+project.
+
+Prompts is what runs every agent in a project. While it is off, no agent runs
+there: no prompt, no trigger, no pin on a page, and none of the agent work the
+other pages offer either, such as working a quest, reviewing an epic's plan
+or triaging the feedback inbox. Its pages, its commands and its tools answer
+that the project does not have Prompts.
+
+Turning it off **deletes nothing**: your prompts, their triggers and pins, and
+every job and its log stay, and turning it back on finds them where you left
+them. A job already running when you turn it off finishes, but tells nobody
+that it ended. A trigger that falls due while it is off does not run later: it
+waits for its next time.
+
+## Where prompts live
+
 Every prompt lives in **Settings ▸ Prompts**, in two tabs:
 
 - **Prompts**: every prompt of the project, built-in or your own, what it
@@ -251,7 +271,8 @@ lore prompt pin work-quest --on quest
 
 `lore prompt create`, `update`, `duplicate` and `delete` manage your own
 prompts; `enable`, `disable`, `pause-all` and `resume-all` the triggers. The
-full list is in the [CLI reference](/lore/docs/reference-cli).
+full list is in the [CLI reference](/lore/docs/reference-cli). Every `lore
+prompt` command needs Prompts on in the project.
 
 ## From an agent
 
@@ -260,6 +281,8 @@ source, its trigger and its pins in one call), `prompt_duplicate`,
 `prompt_delete`, `prompt_render`, `prompt_run`, `prompt_pause_all` and
 `prompt_resume_all` are the twins of `lore prompt`. Called with an agent job's
 own key, every write and `prompt_run` are refused: a job never starts a job.
+With Prompts off in the project, every one of them is refused, with a message
+that names the capability.
 
 ## Next
 
