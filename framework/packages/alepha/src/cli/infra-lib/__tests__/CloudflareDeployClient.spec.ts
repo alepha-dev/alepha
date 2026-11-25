@@ -118,6 +118,7 @@ describe("the Cloudflare deploy client", () => {
 
     return {
       client,
+      api,
       calls,
       of: (name: string) => calls.filter((it) => it.name === name),
     };
@@ -616,6 +617,187 @@ describe("the Cloudflare deploy client", () => {
       expect(options?.headers?.authorization).toBe("Bearer session");
     });
 
+    describe("a slow uplink (#Q4338)", () => {
+      const token = (payload: Record<string, unknown>) =>
+        `x.${btoa(JSON.stringify(payload)).replace(/=+$/, "")}.y`;
+
+      /**
+       * A client with no backoff wait and a clock the test moves, over the
+       * same fake as the rest of this file.
+       */
+      class FastRetryClient extends CloudflareDeployClient {
+        protected override async backoff(): Promise<void> {}
+      }
+      const fastClient = (api: CloudflareDeployApi, now: () => number) =>
+        new FastRetryClient({
+          apiToken: "host-token",
+          accountId: "host-account",
+          client: api,
+          now,
+        });
+
+      it("gives each batch a timeout sized to its body, never the SDK's 60 s", async ({
+        expect,
+      }) => {
+        const big = new Uint8Array(20 * 1024 * 1024);
+        const { client, of } = fake(
+          { jwt: "session", buckets: [["aaaa"], ["bbbb"]] },
+          [undefined, "completion"],
+        );
+
+        await client.uploadAssets("my-app-staging", {
+          manifest,
+          read: async (key) => (key === "/index.html" ? big : bytes("small")),
+        });
+
+        const timeouts = of("assets.upload").map(
+          (it) =>
+            (it.args[1] as { timeout?: number; maxRetries?: number }).timeout!,
+        );
+        expect(Math.min(...timeouts)).toBeGreaterThan(60_000);
+        // The 20 MiB file, 28 MB in base64, gets more time than the small one.
+        expect(Math.max(...timeouts)).toBeGreaterThan(Math.min(...timeouts));
+        // One retry ladder, this client's: the SDK's own is turned off.
+        expect(
+          (of("assets.upload")[0]!.args[1] as { maxRetries?: number })
+            .maxRetries,
+        ).toBe(0);
+      });
+
+      it("finishes an upload that takes 90 s, which the SDK's default cut", async ({
+        expect,
+      }) => {
+        // The request is modelled rather than waited for: it takes 90 s of
+        // simulated time, and answers the SDK's timeout error when the
+        // timeout it was given is shorter than that.
+        const { api } = fake({ jwt: "session", buckets: [["bbbb"]] });
+        let attempts = 0;
+        api.workers.assets.upload.create = (async (
+          _params: unknown,
+          options?: { timeout?: number },
+        ) => {
+          attempts++;
+          if ((options?.timeout ?? 60_000) < 90_000) {
+            throw new AlephaError("Request timed out.");
+          }
+          return { jwt: "completion" };
+        }) as never;
+
+        const answer = await fastClient(api, () => 0).uploadAssets(
+          "my-app-staging",
+          { manifest, read },
+        );
+
+        expect(answer).toEqual({ jwt: "completion" });
+        expect(attempts).toBe(1);
+      });
+
+      it("names the timeout when every attempt runs past it", async ({
+        expect,
+      }) => {
+        const { api } = fake({ jwt: "session", buckets: [["bbbb"]] });
+        let attempts = 0;
+        api.workers.assets.upload.create = (async () => {
+          attempts++;
+          throw new AlephaError("Request timed out.");
+        }) as never;
+
+        await expect(
+          fastClient(api, () => 0).uploadAssets("my-app-staging", {
+            manifest,
+            read,
+          }),
+        ).rejects.toThrow(/longer than its \d+ s timeout, 5 times in a row/);
+        expect(attempts).toBe(5);
+      });
+
+      it("says the session expired when a 401 comes after its deadline, and does not retry it", async ({
+        expect,
+      }) => {
+        // The session expires at second 100; the clock passes it while the
+        // first attempt is in flight, and Cloudflare answers 401.
+        let clock = 0;
+        const { api } = fake({
+          jwt: token({ exp: 100 }),
+          buckets: [["bbbb"]],
+        });
+        let attempts = 0;
+        api.workers.assets.upload.create = (async () => {
+          attempts++;
+          clock = 101_000;
+          throw Object.assign(
+            new AlephaError(
+              '401 {"code":10000,"message":"Authentication error"}',
+            ),
+            { status: 401 },
+          );
+        }) as never;
+
+        await expect(
+          fastClient(api, () => clock).uploadAssets("my-app-staging", {
+            manifest,
+            read,
+          }),
+        ).rejects.toThrow(/session expired during the upload/);
+        expect(attempts).toBe(1);
+      });
+
+      it("does not retry a 401 before the deadline either, and says what refused", async ({
+        expect,
+      }) => {
+        const { api } = fake({
+          jwt: token({ exp: 100 }),
+          buckets: [["bbbb"]],
+        });
+        let attempts = 0;
+        api.workers.assets.upload.create = (async () => {
+          attempts++;
+          throw Object.assign(new AlephaError("Authentication error"), {
+            status: 401,
+          });
+        }) as never;
+
+        await expect(
+          fastClient(api, () => 0).uploadAssets("my-app-staging", {
+            manifest,
+            read,
+          }),
+        ).rejects.toThrow(/refused the asset upload session's token \(401\)/);
+        expect(attempts).toBe(1);
+      });
+
+      it("gives a single-asset request a timeout, and stops on its 401", async ({
+        expect,
+      }) => {
+        const { client } = fake({
+          jwt: token({ wrangler_single_asset_uploads: true }),
+          buckets: [["bbbb"]],
+        });
+        const signals: unknown[] = [];
+        const original = globalThis.fetch;
+        globalThis.fetch = (async (_url: string, init: RequestInit = {}) => {
+          signals.push(init.signal);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              errors: [{ code: 10000, message: "Authentication error" }],
+            }),
+            { status: 401 },
+          );
+        }) as typeof globalThis.fetch;
+        try {
+          await expect(
+            client.uploadAssets("my-app-staging", { manifest, read }),
+          ).rejects.toThrow(/\(401\)/);
+        } finally {
+          globalThis.fetch = original;
+        }
+
+        expect(signals).toHaveLength(1);
+        expect(signals[0]).toBeInstanceOf(AbortSignal);
+      });
+    });
+
     it("uploads nothing when the set is unchanged", async ({ expect }) => {
       // A session with no buckets is Cloudflare saying it holds every hash,
       // which is what makes a redeploy or a rollback upload zero files.
@@ -889,6 +1071,17 @@ describe("the Cloudflare deploy client", () => {
       const metadata = await metadataOf(of("script.put")[0]);
       expect(metadata.assets?.jwt).toBe("completion");
       expect(metadata.assets?.keep_assets).toBeUndefined();
+    });
+
+    it("gives the script upload a timeout sized to its modules, never the SDK's 60 s (#Q4338)", async ({
+      expect,
+    }) => {
+      const { client, of } = fake();
+
+      await client.putScript(plan() as never);
+
+      const options = of("script.put")[0]!.args[1] as { timeout?: number };
+      expect(options.timeout).toBeGreaterThan(60_000);
     });
 
     it("asks to keep the assets when nothing was uploaded", async ({

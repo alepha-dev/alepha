@@ -256,6 +256,22 @@ export class CloudflareDeployClient {
    */
   protected static readonly SINGLE_UPLOAD_CONCURRENCY = 8;
 
+  /**
+   * How long one upload request may take: a floor, plus time per MiB of body.
+   *
+   * ⚠️ **Never the SDK's 60 s default** (#Q4338). An asset batch, a single
+   * asset and the script PUT carry megabytes, and they share the uplink with
+   * the requests in flight beside them: on a 2 MB/s line, a 28 MB base64 file
+   * next to two other batches needs well over a minute. Under the default
+   * each attempt was cut at 60 s, the SDK retried it twice and this client
+   * five times, and the run ended 10 to 18 minutes later on an expired
+   * session. The rate is deliberately pessimistic (128 KiB/s per request):
+   * a timeout that is too long costs a slower failure, one that is too short
+   * fails a deploy that would have worked.
+   */
+  protected static readonly REQUEST_TIMEOUT_FLOOR_MS = 2 * 60 * 1000;
+  protected static readonly REQUEST_TIMEOUT_MS_PER_MIB = 8 * 1000;
+
   protected static readonly BASE = "https://api.cloudflare.com/client/v4";
 
   protected readonly baseURL: string;
@@ -658,8 +674,18 @@ export class CloudflareDeployClient {
       rethrow();
       const hash = assets.manifest[key]?.hash;
       if (!hash) return;
-      const pending = this.withRetry(expiresAt, () =>
-        this.postSingleAsset(hash, bytes, this.manifest.contentType(key), jwt),
+      const timeout = this.timeoutFor(bytes.byteLength);
+      const pending = this.withRetry(
+        expiresAt,
+        () =>
+          this.postSingleAsset(
+            hash,
+            bytes,
+            this.manifest.contentType(key),
+            jwt,
+            timeout,
+          ),
+        timeout,
       )
         .then((answer) => {
           completion = answer.jwt ?? completion;
@@ -708,6 +734,7 @@ export class CloudflareDeployClient {
     bytes: Uint8Array,
     contentType: string,
     jwt: string | undefined,
+    timeout: number,
   ): Promise<{ jwt?: string }> {
     const path = `/accounts/${this.accountId}/workers/assets/upload/${hash}`;
     const response = await globalThis.fetch(`${this.baseURL}${path}`, {
@@ -717,7 +744,17 @@ export class CloudflareDeployClient {
         "content-type": contentType,
       },
       body: bytes as unknown as BodyInit,
+      signal: AbortSignal.timeout(timeout),
     });
+    if (response.status === 401) {
+      // Carries the status, so `withRetry` stops instead of retrying.
+      throw Object.assign(
+        new AlephaError(
+          `Cloudflare API error (POST ${path}): HTTP 401 ${(await response.text()).slice(0, 200).replace(/\s+/g, " ").trim()}`,
+        ),
+        { status: 401 },
+      );
+    }
     const text = await response.text();
     let json: {
       success?: boolean;
@@ -753,7 +790,28 @@ export class CloudflareDeployClient {
     jwt: string | undefined,
     expiresAt: number | undefined,
   ): Promise<{ jwt?: string }> {
-    return await this.withRetry(expiresAt, () => this.postAssets(body, jwt));
+    const timeout = this.timeoutFor(
+      Object.values(body).reduce((sum, file) => sum + file.size, 0),
+    );
+    return await this.withRetry(
+      expiresAt,
+      () => this.postAssets(body, jwt, timeout),
+      timeout,
+    );
+  }
+
+  /**
+   * The timeout of one request carrying `bytes` of body, in milliseconds.
+   * See {@link CloudflareDeployClient.REQUEST_TIMEOUT_FLOOR_MS}.
+   */
+  protected timeoutFor(bytes: number): number {
+    return (
+      CloudflareDeployClient.REQUEST_TIMEOUT_FLOOR_MS +
+      Math.ceil(
+        (bytes / (1024 * 1024)) *
+          CloudflareDeployClient.REQUEST_TIMEOUT_MS_PER_MIB,
+      )
+    );
   }
 
   /**
@@ -763,9 +821,10 @@ export class CloudflareDeployClient {
   protected async withRetry(
     expiresAt: number | undefined,
     request: () => Promise<{ jwt?: string }>,
+    timeout?: number,
   ): Promise<{ jwt?: string }> {
     for (let attempt = 0; ; attempt++) {
-      if (expiresAt !== undefined && (this.now?.() ?? 0) >= expiresAt) {
+      if (this.expired(expiresAt)) {
         throw new AlephaError(
           "The asset upload session expired before every file was sent. Cloudflare keeps what was already uploaded, so deploying again resumes from there rather than starting over.",
         );
@@ -773,14 +832,72 @@ export class CloudflareDeployClient {
       try {
         return await request();
       } catch (error) {
+        // ⚠️ **A 401 is never retried** (#Q4338). The credential here is the
+        // session's own token, and sending it again cannot make it valid:
+        // retrying only ran the clock until the session expired for good.
+        if (this.statusOf(error) === 401) {
+          throw new AlephaError(
+            this.expired(expiresAt)
+              ? "The asset upload session expired during the upload: Cloudflare answered 401 once its token's deadline had passed. Cloudflare keeps what was already uploaded, so deploying again resumes from there rather than starting over."
+              : `Cloudflare refused the asset upload session's token (401): ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error },
+          );
+        }
         if (attempt >= CloudflareDeployClient.MAX_UPLOAD_ATTEMPTS - 1) {
+          if (timeout !== undefined && this.isTimeout(error)) {
+            throw new AlephaError(
+              `An asset upload request took longer than its ${Math.round(timeout / 1000)} s timeout, ${CloudflareDeployClient.MAX_UPLOAD_ATTEMPTS} times in a row. The uplink is slower than the timeout allows for; Cloudflare keeps what was already uploaded, so deploying again resumes from there.`,
+              { cause: error },
+            );
+          }
           throw error;
         }
-        await new Promise((resolve) =>
-          setTimeout(resolve, 2 ** attempt * 1000),
-        );
+        await this.backoff(attempt);
       }
     }
+  }
+
+  /**
+   * The wait before attempt `attempt + 1`: wrangler's exponential ladder.
+   * Its own method so a spec can drive the retries without the wall clock.
+   */
+  protected async backoff(attempt: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
+  }
+
+  /**
+   * Whether the session's deadline has passed, by the supplied clock. No
+   * clock or no deadline answers false, as the constructor's `now` says.
+   */
+  protected expired(expiresAt: number | undefined): boolean {
+    return (
+      expiresAt !== undefined &&
+      this.now !== undefined &&
+      this.now() >= expiresAt
+    );
+  }
+
+  /**
+   * The HTTP status a failed request carries: the SDK's `APIError.status`,
+   * or the one {@link postSingleAsset} sets on its own error.
+   */
+  protected statusOf(error: unknown): number | undefined {
+    const status = (error as { status?: unknown } | null | undefined)?.status;
+    return typeof status === "number" ? status : undefined;
+  }
+
+  /**
+   * Whether a failure is a request cut by its timeout: the SDK's
+   * `APIConnectionTimeoutError` ("Request timed out."), or the
+   * `TimeoutError` an `AbortSignal.timeout` raises under `fetch`.
+   */
+  protected isTimeout(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      (error.name === "TimeoutError" ||
+        error.name === "APIConnectionTimeoutError" ||
+        /timed out/i.test(error.message))
+    );
   }
 
   /**
@@ -796,6 +913,7 @@ export class CloudflareDeployClient {
   protected async postAssets(
     body: Record<string, File>,
     jwt: string | undefined,
+    timeout: number,
   ): Promise<{ jwt?: string }> {
     return await this.client.workers.assets.upload.create(
       {
@@ -803,7 +921,13 @@ export class CloudflareDeployClient {
         base64: true,
         body,
       },
-      { headers: { authorization: `Bearer ${jwt}` } },
+      {
+        headers: { authorization: `Bearer ${jwt}` },
+        timeout,
+        // ⚠️ `withRetry` is the one retry ladder: the SDK's own two retries
+        // under it made one batch up to fifteen attempts (#Q4338).
+        maxRetries: 0,
+      },
     );
   }
 
@@ -961,6 +1085,13 @@ export class CloudflareDeployClient {
         query: { bindings_inherit: "strict" },
         body: form,
         headers: { "Content-Type": null },
+        // Sized to the modules, never the SDK's 60 s default (#Q4338).
+        timeout: this.timeoutFor(
+          plan.modules.reduce(
+            (sum, module) => sum + module.bytes.byteLength,
+            0,
+          ),
+        ),
       },
     )) as { result?: unknown } | undefined;
 
@@ -1438,10 +1569,14 @@ export interface CloudflareDeployApi {
           },
           /**
            * ⚠️ Carries the session JWT, because this endpoint does not accept
-           * the account's API token. Every other call in this interface takes
-           * no options for exactly that reason.
+           * the account's API token, and a timeout sized to the body with
+           * the SDK's own retries off (#Q4338).
            */
-          options?: { headers: Record<string, string> },
+          options?: {
+            headers: Record<string, string>;
+            timeout?: number;
+            maxRetries?: number;
+          },
         ) => Promise<{ jwt?: string }>;
       };
     };
