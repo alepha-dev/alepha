@@ -5270,7 +5270,6 @@ export default {
     "Ses tâches passées restent. Son déclencheur s'arrête.",
   "prompts.trigger": "Déclencheur",
   "prompts.new": "Nouvelle invite",
-  "prompts.pause": "Suspendre les déclencheurs",
   "prompts.resume": "Reprendre les déclencheurs",
   "prompts.paused": "Déclencheurs suspendus",
   "prompts.title": "Prompts",

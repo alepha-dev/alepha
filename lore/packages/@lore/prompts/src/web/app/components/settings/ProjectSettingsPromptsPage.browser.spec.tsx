@@ -61,6 +61,10 @@ const world = {
    */
   gate: undefined as ((ok: boolean) => void) | undefined,
   writes: [] as { name: string; body: Record<string, unknown> }[],
+  /**
+   * Every project-wide pause sent, by its `paused` value.
+   */
+  paused: [] as boolean[],
 };
 
 /**
@@ -99,6 +103,12 @@ class FakeLinkProvider extends LinkProvider {
         world.writes.push({ name: input.params.name, body: {} });
         return held(() => ({ ok: true }));
       },
+      setPromptsPaused: (input: { body: { paused: boolean } }) => {
+        world.paused.push(input.body.paused);
+        return held(() => ({
+          pausedAt: input.body.paused ? "2026-11-25T08:00:00.000Z" : undefined,
+        }));
+      },
       listPromptHosts: async () => ({ hosts: world.hosts }),
       listProjectJobs: async () => ({ items: [] }),
     });
@@ -122,6 +132,7 @@ describe("ProjectSettingsPromptsPage", () => {
     world.reads = 0;
     world.gate = undefined;
     world.writes = [];
+    world.paused = [];
     cleanup();
     await alepha?.stop();
     alepha = undefined;
@@ -152,26 +163,66 @@ describe("ProjectSettingsPromptsPage", () => {
     await screen.findAllByTestId("prompt-title");
   };
 
-  it("draws Pause left of the primary New prompt, and Resume in the same place once paused (#Q4292)", async ({
+  it("has no pause button, and a project paused from the CLI resumes from the note under the table (#Q4358)", async ({
     expect,
   }) => {
     world.items = [prompt()];
+    world.pausedAt = "2026-11-25T07:00:00.000Z";
     await show();
 
-    const labels = () =>
+    expect(
       screen
         .getAllByRole("button")
         .map((it) => it.getAttribute("aria-label"))
-        .filter((it) => it === "New prompt" || (it ?? "").endsWith("triggers"));
-    expect(labels()).toEqual(["Pause all triggers", "New prompt"]);
-
-    cleanup();
-    await alepha?.stop();
-    world.pausedAt = "2026-11-25T07:00:00.000Z";
-    await show();
+        .filter((it) => (it ?? "").endsWith("triggers")),
+    ).toEqual([]);
+    fireEvent.click(await screen.findByTestId("prompts-resume"));
+    await waitFor(() => expect(world.paused).toEqual([false]));
+    world.gate?.(true);
     await waitFor(() =>
-      expect(labels()).toEqual(["Resume triggers", "New prompt"]),
+      expect(screen.queryByTestId("prompts-paused")).toBeNull(),
     );
+  });
+
+  it("switches the checked prompts' triggers on in bulk, at once, skipping a manual one (#Q4358)", async ({
+    expect,
+  }) => {
+    world.items = [
+      prompt({ name: "hourly", title: "Hourly", on: "hourly", enabled: false }),
+      prompt({ name: "daily", title: "Daily", on: "daily@3", enabled: false }),
+      prompt({ name: "manual", title: "Manual one" }),
+    ];
+    await show();
+    const check = (title: string) =>
+      fireEvent.click(
+        within(screen.getByText(title).closest("tr") as HTMLElement).getByRole(
+          "checkbox",
+        ),
+      );
+    check("Hourly");
+    check("Daily");
+    check("Manual one");
+
+    // Offered for the two it fits, and not Disable: none is on.
+    const enable = await screen.findByRole("button", {
+      name: "Enable trigger 2",
+    });
+    expect(
+      screen.queryByRole("button", { name: /^Disable trigger/ }),
+    ).toBeNull();
+    fireEvent.click(enable);
+
+    await waitFor(() => expect(world.writes).toHaveLength(2));
+    expect(world.writes.map((it) => it.name).sort()).toEqual([
+      "daily",
+      "hourly",
+    ]);
+    expect(world.writes.every((it) => it.body.enabled === true)).toBe(true);
+    const states = () =>
+      screen
+        .getAllByTestId("prompt-on")
+        .map((it) => it.getAttribute("data-enabled"));
+    await waitFor(() => expect(states()).toEqual(["true", "true", null]));
   });
 
   it("has no guide link under the table, and a separator only between a missing host and a pause (#Q4291)", async ({
