@@ -6,6 +6,7 @@ import AttachmentLightbox, {
 } from "../AttachmentLightbox.tsx";
 import type { ElementRef } from "./elementRef.ts";
 import { useElementLinks } from "./useElementLinks.ts";
+import WikiLinkHoverProvider from "./WikiLinkHoverProvider.tsx";
 
 export interface LoreViewerProps {
   element: ElementRef;
@@ -29,12 +30,18 @@ export interface LoreViewerProps {
  * not before, and the epic description rendered raw `[[…]]` tokens as
  * literal text.
  *
+ * Hovering or focusing a reference opens its hover card, the same one a
+ * folio's reader gets (`WikiLinkHoverProvider`).
+ *
  * Renders nothing for empty content rather than an empty `MarkdownView`;
  * callers own their own "no description yet" copy, which differs per
  * surface.
  */
 const LoreViewer = (props: LoreViewerProps) => {
-  const { rendered } = useElementLinks(props.element, props.content ?? "");
+  const { rendered, attachments } = useElementLinks(
+    props.element,
+    props.content ?? "",
+  );
 
   const [zoom, setZoom] = useState<{
     items: PreviewableAttachment[];
@@ -67,7 +74,15 @@ const LoreViewer = (props: LoreViewerProps) => {
   return (
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegation for the images the markdown renders, which carry no handler of their own; the lightbox it opens takes the keyboard
     <div onClick={onClick} className="[&_img]:cursor-zoom-in">
-      <MarkdownView content={rendered} className={props.className} />
+      {/* The hover card on every `[[…]]` reference (#Q4349): chat, a
+          description, a comment, a table folio's cells. */}
+      <WikiLinkHoverProvider
+        projectId={props.element.projectId}
+        projectSlug={props.element.projectSlug}
+        attachments={attachments}
+      >
+        <MarkdownView content={rendered} className={props.className} />
+      </WikiLinkHoverProvider>
       <AttachmentLightbox
         items={zoom?.items ?? []}
         openId={zoom?.openId ?? null}

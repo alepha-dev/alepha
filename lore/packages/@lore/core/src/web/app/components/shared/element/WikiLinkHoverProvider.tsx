@@ -169,6 +169,13 @@ const brokenReasonKey = (
  */
 const HOVER_OPEN_DELAY_MS = 400;
 
+/**
+ * How long after a touch a `mouseover` is the browser's emulation of it,
+ * not a pointer: generous, since the emulated events follow the touch's
+ * end, which comes later on a slow tap.
+ */
+const TOUCH_MOUSE_WINDOW_MS = 1000;
+
 const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const { projectId, projectSlug, attachments } = props;
   const references = useInject(ElementReferenceRegistry);
@@ -186,6 +193,19 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
    */
   const pendingAnchor = useRef<HTMLElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * This provider's own wrapper. Providers nest (a `LoreViewer` brings its
+   * own, inside a folio's or a requirement's), and the innermost one around
+   * a link answers it alone, or two cards would open on one hover.
+   */
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * When the last touch began, on the events' own clock. A tap fires a
+   * `mouseover` after it: on a touch screen the tap follows the link, and
+   * the card it would have armed is not opened over the page it lands on
+   * (#Q4349).
+   */
+  const lastTouch = useRef(Number.NEGATIVE_INFINITY);
   // `handleLeave` must read the CURRENT anchor, not the one captured when the
   // callback was created: moving straight from one wiki-link to another swaps
   // `hover` before the next leave fires, and a stale closure would then test
@@ -254,6 +274,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       // attribute for a long time.
       const anchor = el?.closest("a[href]") as HTMLElement | null;
       if (!anchor) return;
+      if (anchor.closest("[data-wiki-hover]") !== wrapperRef.current) return;
       const href = anchor.getAttribute("href");
       const t = parseHref(href, projectSlug, references);
       if (!t) return;
@@ -349,8 +370,16 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     // is the anchors' own.
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
+      ref={wrapperRef}
+      data-wiki-hover=""
       className={`[&_a[href^='#lore-broken:']]:text-danger-text [&_a[href^='#lore-broken:']]:decoration-danger-text/40 relative [&_a[href^='#lore-broken:']]:cursor-help [&_a[href^='#lore-broken:']]:decoration-wavy ${props.className ?? ""}`}
-      onMouseOver={(e) => handleEnter(e.target)}
+      onTouchStart={(e) => {
+        lastTouch.current = e.timeStamp;
+      }}
+      onMouseOver={(e) => {
+        if (e.timeStamp - lastTouch.current < TOUCH_MOUSE_WINDOW_MS) return;
+        handleEnter(e.target);
+      }}
       onFocus={(e) => handleEnter(e.target)}
       onMouseOut={(e) => handleLeave(e.relatedTarget as Node | null)}
       onBlur={(e) => handleLeave(e.relatedTarget as Node | null)}
@@ -436,7 +465,18 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         </div>
       )}
       {target.kind === "ref" && (
-        <target.ref.preview projectId={projectId} id={target.id} />
+        <div className="flex flex-col gap-1">
+          {/* What the item is, above every kind's own card (#Q4349). */}
+          <span
+            className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase"
+            data-testid="wiki-link-kind"
+          >
+            {tr(`folios.wikilink.kind.${target.ref.kind}`, {
+              default: target.ref.kind,
+            })}
+          </span>
+          <target.ref.preview projectId={projectId} id={target.id} />
+        </div>
       )}
       {target.kind === "attachment" && !attachment && (
         <WikiLinkPreviewState loading={false} />
