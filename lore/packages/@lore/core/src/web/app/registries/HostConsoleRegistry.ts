@@ -38,6 +38,7 @@ export class HostConsoleRegistry {
     },
   ];
   protected readonly sectionEntries: HostOverviewSection[] = [];
+  protected readonly settingsPanelEntries: HostSettingsPanel[] = [];
   protected frozen = false;
 
   public registerTab(tab: HostConsoleTab): void {
@@ -48,6 +49,23 @@ export class HostConsoleRegistry {
   public registerSection(section: HostOverviewSection): void {
     this.assertOpen(section.key);
     this.sectionEntries.push(section);
+  }
+
+  /**
+   * A panel of the host's Settings tab (#E175): `@lore/prompts`'s Agent
+   * host switch, which core's `BaySettings` no longer names.
+   */
+  public registerSettingsPanel(panel: HostSettingsPanel): void {
+    this.assertOpen(panel.key);
+    this.settingsPanelEntries.push(panel);
+  }
+
+  /**
+   * The panels of the host's Settings tab, in order.
+   */
+  public settingsPanels(): readonly HostSettingsPanel[] {
+    this.frozen = true;
+    return [...this.settingsPanelEntries].sort((a, b) => a.order - b.order);
   }
 
   /**
@@ -112,6 +130,16 @@ export interface HostOverviewSection {
     inventory: HostInventoryResource["inventory"] | undefined;
   }>;
   visible?: (project: HostConsoleProject) => boolean;
+}
+
+export interface HostSettingsPanel {
+  key: string;
+  order: number;
+  /**
+   * Drawn under the job tools; `canUpdate` says whether the viewer may
+   * change the host.
+   */
+  Component: ComponentType<{ canUpdate: boolean }>;
 }
 
 /**

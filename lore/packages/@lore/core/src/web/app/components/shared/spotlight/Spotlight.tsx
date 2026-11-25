@@ -7,13 +7,12 @@ import {
   CommandItem,
   CommandList,
 } from "@alepha/ui/command";
-import { useAction, useClient, useStore } from "alepha/react";
+import { useAction, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   AppWindow,
   BookText,
-  Copy,
   FileText,
   Flag,
   Folder,
@@ -23,27 +22,29 @@ import {
   ListChecks,
   Lock,
   PanelsTopLeft,
-  Play,
   SquareCheckBig,
   UsersRound,
 } from "lucide-react";
-import { type ReactElement, useEffect, useState } from "react";
+import { Fragment, type ReactElement, useEffect, useState } from "react";
 
 import type { SearchController } from "../../../../../api/controllers/SearchController.ts";
-import type { PromptResource } from "../../../../../api/schemas/promptResourceSchema.ts";
 import type { SearchHit } from "../../../../../api/schemas/searchHitSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import {
   type ProjectNavEntry,
   projectNavAtom,
 } from "../../../atoms/projectNavAtom.ts";
-import { promptPageAtom } from "../../../atoms/promptPageAtom.ts";
 import { spotlightOpenAtom } from "../../../atoms/spotlightOpenAtom.ts";
 import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
+import {
+  type SpotlightActionRow,
+  type SpotlightSourceGroup,
+  SpotlightSourceRegistry,
+} from "../../../registries/SpotlightSourceRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import { usePinnedPrompts } from "../../project/prompts/pins/usePinnedPrompts.tsx";
 import { formatReference } from "../element/typedReference.ts";
 import { matchProjectNav } from "./matchProjectNav.ts";
+import { useSpotlightSources } from "./useSpotlightSources.ts";
 
 interface SpotlightHit {
   kind: SearchHit["kind"];
@@ -102,14 +103,18 @@ const Spotlight = (): ReactElement => {
   const [overview] = useStore(userProjectsAtom);
   const [projectNav] = useStore(projectNavAtom);
   const searchApi = useClient<SearchController>();
-  const [promptPage] = useStore(promptPageAtom);
-  // The prompts are read once the palette has opened in this project, not
-  // on every page load (#Q4284); kept after, for the dialog it opens.
-  const [promptsWanted, setPromptsWanted] = useState(false);
-  if (spotlight.open && !promptsWanted && project) setPromptsWanted(true);
-  const pins = usePinnedPrompts({ enabled: promptsWanted });
+  // A module's rows (#E175: the prompts to copy or run) are read once the
+  // palette has opened in this project, not on every page load (#Q4284);
+  // kept after, for the dialog a row opens.
+  const [sourcesWanted, setSourcesWanted] = useState(false);
+  if (spotlight.open && !sourcesWanted && project) setSourcesWanted(true);
 
   const [query, setQuery] = useState("");
+  const sourceGroups = useSpotlightSources({
+    sources: useInject(SpotlightSourceRegistry).all(),
+    query,
+    wanted: sourcesWanted,
+  });
   const [hits, setHits] = useState<SpotlightHit[]>([]);
 
   const projectId = project?.id;
@@ -292,26 +297,12 @@ const Spotlight = (): ReactElement => {
     return <FileText />;
   };
 
-  // Every prompt of the project, pinned or not (#Q4284): Copy, and Run under
-  // the robot button's conditions, matched on what the row says.
-  const promptRows = (): SpotlightRow[] => {
+  // A module's rows, matched on their label: a source answers rows for the
+  // query, and only a typed query shows them.
+  const sourceRows = (group: SpotlightSourceGroup): SpotlightRow[] => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return pins.prompts.flatMap((prompt) =>
-      (["copy", "run"] as const)
-        .filter((mode) => mode === "copy" || pins.canRun(prompt))
-        .map((mode) => ({
-          key: `prompt:${mode}:${prompt.name}`,
-          kind: "prompt" as const,
-          prompt,
-          mode,
-          label: tr(`prompts.spotlight.${mode}`, { args: [prompt.title] }),
-        }))
-        .filter(
-          (row) =>
-            row.label.toLowerCase().includes(q) || row.prompt.name.includes(q),
-        ),
-    );
+    return group.rows.map((row) => ({ key: row.key, kind: "action", row }));
   };
 
   const hitRows = (kind: (hit: SpotlightHit) => boolean): SpotlightRow[] =>
@@ -387,11 +378,11 @@ const Spotlight = (): ReactElement => {
             heading: tr("spotlight.group.folios"),
             items: hitRows((h) => h.kind === "folio" || h.kind === "directory"),
           },
-          {
-            key: "prompts",
-            heading: tr("spotlight.group.prompts"),
-            items: promptRows(),
-          },
+          ...sourceGroups.map((group, index) => ({
+            key: `source:${index}`,
+            heading: group.heading,
+            items: sourceRows(group),
+          })),
         ]
   ).filter((group) => group.items.length > 0);
 
@@ -425,18 +416,18 @@ const Spotlight = (): ReactElement => {
         </CommandItem>
       );
     }
-    if (item.kind === "prompt") {
+    if (item.kind === "action") {
       return (
         <CommandItem
           key={item.key}
           value={item}
           onClick={() => {
             close();
-            pins.start(item.prompt, item.mode, promptPage.item);
+            item.row.onSelect();
           }}
         >
-          {item.mode === "copy" ? <Copy /> : <Play />}
-          <span className="flex-1 truncate">{item.label}</span>
+          {item.row.icon}
+          <span className="flex-1 truncate">{item.row.label}</span>
         </CommandItem>
       );
     }
@@ -521,15 +512,19 @@ const Spotlight = (): ReactElement => {
           </CommandList>
         </Command>
       </CommandDialog>
-      {pins.dialog}
+      {sourceGroups.map((group, index) => (
+        // The registry's order never changes, so the index is the key.
+        <Fragment key={index}>{group.dialog}</Fragment>
+      ))}
     </>
   );
 };
 
 /**
  * One row of the palette: a project to switch to, a page or app the sidebar
- * offers, a search hit, or a prompt to copy or run (#Q4284), the one row that
- * acts instead of navigating. Tagged so each renders and navigates its own way.
+ * offers, a search hit, or a module's row (a prompt to copy or run, #Q4284,
+ * #E175), the one row that acts instead of navigating. Tagged so each
+ * renders and navigates its own way.
  */
 type SpotlightRow =
   | {
@@ -539,13 +534,7 @@ type SpotlightRow =
     }
   | { key: string; kind: "nav"; entry: ProjectNavEntry }
   | { key: string; kind: "hit"; hit: SpotlightHit }
-  | {
-      key: string;
-      kind: "prompt";
-      prompt: PromptResource;
-      mode: "copy" | "run";
-      label: string;
-    };
+  | { key: string; kind: "action"; row: SpotlightActionRow };
 
 interface SpotlightGroup {
   [key: string]: unknown;

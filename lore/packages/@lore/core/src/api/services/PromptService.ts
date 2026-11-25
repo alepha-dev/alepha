@@ -381,8 +381,7 @@ export class PromptService {
    * The project's pages, `<PUBLIC_URL>/<slug>`.
    */
   public projectUrlOf(project: Pick<Project, "id" | "slug">): string {
-    const base = String(this.alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
-    return `${base}/${project.slug ?? project.id}`;
+    return this.registry.projectUrlOf(project);
   }
 
   /**

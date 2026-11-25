@@ -1,7 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, PinnedPromptsSlot } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -211,6 +211,8 @@ describe("ProjectEpics - the status filter", () => {
     alepha.inject(I18n);
     // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, project as never);

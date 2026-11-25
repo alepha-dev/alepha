@@ -1,6 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, PinnedPromptsSlot } from "@lore/core/web";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -135,6 +135,8 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
       .with(AlephaReactRouter);
     // Work registers the reference and agent prompt kinds (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
@@ -212,6 +214,8 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
       .with(AlephaReactRouter);
     // Work registers the reference and agent prompt kinds (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     alepha.store.set(currentProjectAtom, projectFixture() as never);
 
@@ -314,6 +318,8 @@ describe("ProjectFeedbackDetail - linked quest status", () => {
       .with(AlephaReactRouter);
     alepha.inject(QuestRoutes);
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     alepha.store.set(currentProjectAtom, projectFixture() as never);
 
@@ -373,6 +379,8 @@ describe("ProjectFeedbackDetail - Trust", () => {
       .with(AlephaReactRouter);
     alepha.inject(I18n);
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture() as never);

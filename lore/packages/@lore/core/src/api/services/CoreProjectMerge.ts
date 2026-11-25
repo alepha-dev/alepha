@@ -10,7 +10,6 @@ import { notificationChannels } from "../entities/notificationChannels.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { projectEvents } from "../entities/projectEvents.ts";
 import { projects } from "../entities/projects.ts";
-import { prompts } from "../entities/prompts.ts";
 import {
   type ProjectMergeChange,
   type ProjectMergeConflict,
@@ -27,10 +26,9 @@ import {
  * Core's step of a project merge (#E94, #Q2782): the rows that describe the
  * project itself, its events, who is notified of them, and its channels.
  *
- * - **Capabilities and prompts**: the target keeps its own; a capability or
- *   a customised prompt it lacks comes over, so the merged project does
- *   everything both did.
- * - **Prompts** move, a custom one renamed on a clash (#Q4274).
+ * - **Capabilities**: the target keeps its own; a capability it lacks comes
+ *   over, so the merged project does everything both did.
+ * - **Prompts** are `PromptMerge`'s step (#E175).
  * - **Events, subscriptions and channels** move (#Q3889, #Q3890): a
  *   subscription the target already has joins it, a channel name it already
  *   uses gets a free one.
@@ -74,18 +72,6 @@ export class CoreProjectMerge {
       entity: notificationChannels,
       keys: ["name"],
       onCollision: "rename",
-    },
-    // Prompts (#Q4274): a custom prompt whose name the target uses is
-    // renamed `<name>-2`; of two rows configuring the same built-in, the
-    // target's stands.
-    {
-      kind: "prompt",
-      entity: prompts,
-      keys: ["name"],
-      onCollision: "rename",
-      renamed: (key, count) => `${key.slice(0, 60)}-${count}`,
-      read: ["builtin"],
-      keepTargetIf: (row) => !!row.builtin,
     },
   ];
 

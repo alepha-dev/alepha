@@ -1,9 +1,9 @@
-import { $inject } from "alepha";
+import { AlephaError } from "alepha";
 
+import { AgentJobsUnavailableError } from "../errors/AgentJobsUnavailableError.ts";
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import type { PromptJobArg } from "../schemas/promptJobArgSchema.ts";
 import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
-import { AgentJobService } from "./AgentJobService.ts";
 import type { AgentHostRef, HostJobSummary } from "./HostJobs.ts";
 
 /**
@@ -89,19 +89,52 @@ export interface AgentJobRequest {
 }
 
 /**
- * The port feature modules start an agent job through: core's own
- * {@link AgentJobService} since #Q4222, so Plan needs neither Build nor Ship
- * to ask for one.
+ * What starts an agent job: the runner `@lore/prompts` registers on
+ * {@link AgentJobs} (#E175).
+ */
+export interface AgentJobRunner {
+  start(request: AgentJobRequest): Promise<HostJobSummary>;
+  resolve(
+    projectId: number,
+    run: { host?: string; agent?: string; firstAgent?: boolean },
+  ): Promise<{ host: AgentHostRef; agent?: string }>;
+  choices(projectId: number): Promise<Array<{ host: string; agent?: string }>>;
+}
+
+/**
+ * The port feature modules start an agent job through (#Q4222), filled by
+ * registration since #E175: Plan, Ship and Requirements contribute prompts
+ * and read {@link choices}, and a feature package never imports another, so
+ * the runner (`@lore/prompts`'s `AgentJobService`) registers here, as
+ * Ship's queue registers on `HostJobs`.
+ *
+ * Unfilled, {@link available} is false, {@link choices} answers `[]` (so
+ * every agent entry hides) and {@link start} throws
+ * {@link AgentJobsUnavailableError}.
  */
 export class AgentJobs {
-  protected readonly service = $inject(AgentJobService);
+  /**
+   * Where a prompt wants the run's preamble (#Q4224): replaced when the job
+   * starts, once its source is known. Part of the contract, since Plan's
+   * prompts place it.
+   */
+  public static readonly PREAMBLE_MARKER = "<<<LORE_AGENT_RUN_PREAMBLE>>>";
+
+  protected runner?: AgentJobRunner;
+
+  public register(runner: AgentJobRunner): void {
+    if (this.runner) {
+      throw new AlephaError("An agent job runner is already registered");
+    }
+    this.runner = runner;
+  }
 
   public get available(): boolean {
-    return true;
+    return this.runner !== undefined;
   }
 
   public async start(request: AgentJobRequest): Promise<HostJobSummary> {
-    return this.service.start(request);
+    return this.need().start(request);
   }
 
   /**
@@ -112,15 +145,23 @@ export class AgentJobs {
     projectId: number,
     run: { host?: string; agent?: string; firstAgent?: boolean },
   ): Promise<{ host: AgentHostRef; agent?: string }> {
-    return this.service.resolve(projectId, run);
+    return this.need().resolve(projectId, run);
   }
 
   /**
-   * The hosts and agents a run of this project may pick from (#Q4223).
+   * The hosts and agents a run of this project may pick from (#Q4223):
+   * none without a runner.
    */
   public async choices(
     projectId: number,
   ): Promise<Array<{ host: string; agent?: string }>> {
-    return this.service.choices(projectId);
+    return (await this.runner?.choices(projectId)) ?? [];
+  }
+
+  protected need(): AgentJobRunner {
+    if (!this.runner) {
+      throw new AgentJobsUnavailableError();
+    }
+    return this.runner;
   }
 }

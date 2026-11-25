@@ -1,7 +1,12 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, ResourceTabRegistry, I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  ResourceTabRegistry,
+  I18n,
+  PinnedPromptsSlot,
+} from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -133,6 +138,8 @@ describe("ProjectEpic", () => {
     alepha.inject(ResourceTabRegistry);
     // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -205,6 +212,8 @@ describe("ProjectEpic, the Edit button", () => {
     alepha.inject(ResourceTabRegistry);
     // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());

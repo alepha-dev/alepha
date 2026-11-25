@@ -1,5 +1,5 @@
 import {
-  AgentRunPreamble,
+  AgentJobs,
   type PromptArgContext,
   PromptRegistry,
   type PromptRunContext,
@@ -474,7 +474,7 @@ export class PlanPrompts {
     const reference = formatReference("epic", number);
     return {
       prompt: [
-        AgentRunPreamble.MARKER,
+        AgentJobs.PREAMBLE_MARKER,
         "",
         `## This run's rules, which override the procedure below where they differ`,
         "",

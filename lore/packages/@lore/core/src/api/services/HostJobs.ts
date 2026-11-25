@@ -1,5 +1,7 @@
 import { AlephaError } from "alepha";
 
+import type { Host } from "../entities/hosts.ts";
+import { AgentJobsUnavailableError } from "../errors/AgentJobsUnavailableError.ts";
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import type { HostJobKind, HostJobStatus } from "../schemas/hostJobValues.ts";
 import type { PromptJobArg } from "../schemas/promptJobArgSchema.ts";
@@ -212,6 +214,15 @@ export interface AgentHostDirectory {
 }
 
 /**
+ * What turns a host's Agent role on or off (#E175): registered by the
+ * Agent host service, which checks the host when the role comes on.
+ * `HostController` sets the role through {@link HostJobs.setAgentHost}.
+ */
+export interface AgentHostRole {
+  set(host: Host, on: boolean, userId?: string): Promise<void>;
+}
+
+/**
  * The port other modules start a host job through (#Q3984): jobs live in
  * Ship, beside `hosts` and `host_commands`, and no feature module imports
  * another, so the queue registers here and the agent kind (core's
@@ -224,12 +235,37 @@ export class HostJobs {
   protected queue?: HostJobQueue;
   protected issuer?: HostJobKeyIssuer;
   protected agents?: AgentHostDirectory;
+  protected agentRole?: AgentHostRole;
 
   public registerAgentHosts(agents: AgentHostDirectory): void {
     if (this.agents) {
       throw new AlephaError("An Agent host directory is already registered");
     }
     this.agents = agents;
+  }
+
+  public registerAgentHostRole(role: AgentHostRole): void {
+    if (this.agentRole) {
+      throw new AlephaError("An Agent host role is already registered");
+    }
+    this.agentRole = role;
+  }
+
+  /**
+   * Turns a host's Agent role on or off (#E175). Without a registered role
+   * (no `@lore/prompts`), turning it on is refused and turning it off has
+   * nothing to do.
+   */
+  public async setAgentHost(
+    host: Host,
+    on: boolean,
+    userId?: string,
+  ): Promise<void> {
+    if (!this.agentRole) {
+      if (on) throw new AgentJobsUnavailableError();
+      return;
+    }
+    await this.agentRole.set(host, on, userId);
   }
 
   /**

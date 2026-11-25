@@ -9,7 +9,7 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
 import { jobRepositoryOf } from "../schemas/jobRepository.ts";
-import type { AgentJobRequest } from "./AgentJobs.ts";
+import { type AgentJobRequest, AgentJobs } from "./AgentJobs.ts";
 import { AgentRunPreamble } from "./AgentRunPreamble.ts";
 import {
   type AgentHostRef,
@@ -64,6 +64,13 @@ export class AgentJobService {
   protected readonly keys = $inject(JobKeyService);
   protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly projects = $repository(projects);
+  protected readonly agentJobs = $inject(AgentJobs);
+
+  constructor() {
+    // The runner of core's port (#E175): Plan reaches it through
+    // `AgentJobs`, never through this class.
+    this.agentJobs.register(this);
+  }
 
   /**
    * Starts an agent job on the project's Agent host.

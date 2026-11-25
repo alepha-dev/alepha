@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 
 import type { Project } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
@@ -24,6 +24,7 @@ import type { AgentJobRequest } from "./AgentJobs.ts";
  * Its name is reserved in every project.
  */
 export class PromptRegistry {
+  protected readonly alepha = $inject(Alepha);
   protected readonly prompts = new Map<string, BuiltinPrompt>();
   protected readonly resolvers = new Map<PromptArgType, PromptArgResolver>();
   protected readonly optionLists = new Map<PromptArgType, PromptArgOptions>();
@@ -32,6 +33,15 @@ export class PromptRegistry {
     PromptCheck,
     (projectId: number) => Promise<boolean>
   >();
+
+  /**
+   * The project's URL in Lore, what a prompt's `{{projectUrl}}` takes: part
+   * of the contract (#E175), since Plan renders its own prompts with it.
+   */
+  public projectUrlOf(project: Pick<Project, "id" | "slug">): string {
+    const base = String(this.alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
+    return `${base}/${project.slug ?? project.id}`;
+  }
 
   public register(prompt: BuiltinPrompt): void {
     if (!PROMPT_NAME_PATTERN.test(prompt.name)) {

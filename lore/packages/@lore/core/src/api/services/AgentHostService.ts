@@ -56,6 +56,10 @@ export class AgentHostService {
   protected readonly port = $inject(HostJobs);
 
   constructor() {
+    // `HostController` sets the role through the port (#E175).
+    this.port.registerAgentHostRole({
+      set: (host, on, userId) => this.setAgentHost(host, on, userId),
+    });
     // The agent kind finds its host through the port.
     this.port.registerAgentHosts({
       list: async (projectId) =>

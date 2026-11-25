@@ -13,7 +13,7 @@ import PromptRunDialog from "../run/PromptRunDialog.tsx";
 import { usePromptActions } from "../run/usePromptActions.ts";
 import type { PinnedPromptItem } from "./pinnedPromptItemSchema.ts";
 
-export interface UsePinnedPromptsOptions {
+export interface UsePromptPinsOptions {
   /**
    * Off: nothing is read. The spotlight reads only while it is open.
    */
@@ -34,8 +34,10 @@ export interface UsePinnedPromptsOptions {
  *
  * The read shares the Prompts tab's key, so a pin set there shows here.
  * The caller renders `dialog`.
+ *
+ * What fills core's `usePinnedPrompts` (`PinnedPromptsSlot`, #E175).
  */
-export const usePinnedPrompts = (options: UsePinnedPromptsOptions = {}) => {
+export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
   const api = useClient<PromptController>();

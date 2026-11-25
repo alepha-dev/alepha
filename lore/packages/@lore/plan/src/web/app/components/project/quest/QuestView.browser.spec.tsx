@@ -1,7 +1,12 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, I18n, ResourceRailRegistry } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  I18n,
+  ResourceRailRegistry,
+  PinnedPromptsSlot,
+} from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -154,6 +159,8 @@ describe("QuestView", () => {
     alepha.inject(WorkShell);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -197,6 +204,8 @@ describe("QuestView", () => {
     alepha.inject(WorkShell);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -249,6 +258,8 @@ describe("QuestView", () => {
     alepha.inject(WorkShell);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -295,6 +306,8 @@ describe("QuestView", () => {
     alepha.inject(WorkShell);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -339,6 +352,8 @@ describe("QuestView", () => {
     alepha.inject(WorkShell);
     // Read by the quest rail (#E154), so it must exist before the lock.
     alepha.inject(ResourceRailRegistry);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());

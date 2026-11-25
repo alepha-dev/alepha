@@ -154,6 +154,17 @@ Rules a change keeps:
 
 `project_prompts`, the web prompt copies, `AgentPromptsMenu`, `AgentPromptRegistry` and Plan's `agentPrompts` option went with #Q4281. Requirements' Verify prompts are Requirements' own (`RequirementsPromptService`), rendered from their defaults.
 
+### Prompts: the contract (#E175)
+
+Plan, Ship and Requirements contribute prompts and a feature package never imports another, so core keeps what they write to, and the engine fills it. They import nothing of prompts beyond this list:
+
+- **Server**: `PromptRegistry` (built-ins, args, pages, checks, and `projectUrlOf` for a prompt's `{{projectUrl}}`) and the schemas built-ins and job rows are written in: `promptArgSchema`, `promptResourceSchema`, `promptValues`, `renderPromptTemplate`, `renderPromptText`, `agentRunSchema`, `promptJobArgSchema`, `promptJobCauseSchema`.
+- **The jobs**: `host_jobs` (an agent job is a row of kind `agent`), `host_job_logs`, `job_keys`, `HostJobs`, `HostJobService`, `HostJobController`, `JobKeyService`, `job_list`/`job_get`/`job_cancel`.
+- **`AgentJobs`**, the port a job starts through: the runner (`AgentJobService`) registers on it with `register`. Unfilled, `available` is false, `choices` answers `[]` and `start`/`resolve` throw `AgentJobsUnavailableError` (a 400). `AgentJobs.PREAMBLE_MARKER` is where a prompt wants the run's preamble.
+- **`HostJobs.setAgentHost`**: `HostController` turns a host's Agent role on or off through it; the Agent host service registers the role with `registerAgentHostRole`. Unfilled, turning it on is refused.
+- **The merge**: prompts move in a step of their own, `PromptMerge`.
+- **Web**: `PinnedPromptsButton` and `usePinnedPrompts` draw what is registered on `PinnedPromptsSlot` (nothing while unfilled); `PinnedPromptItem` stays core. The spotlight shows the groups registered on `SpotlightSourceRegistry`, and a host's Settings tab the panels registered with `HostConsoleRegistry.registerSettingsPanel`. `PromptsWebSlots` fills the three.
+
 ## Routes
 
 Defined in `src/web/app/CoreRouter.ts`. Lore's sections of the account dialog (Projects, Invitations, Notifications) are not routes: they are `$settingsSection`s in `LoreAccountSections.ts`, opened with `useSettingsDialog("account").open("projects")` in the app or `?account=<section>` from a link made outside it. A module's project pages join `CoreRouter`'s `project` layout through `$pageProject` (`parent:`). Route names (the `$page` keys) are what `router.path(...)` / `router.push(...)` consume.
