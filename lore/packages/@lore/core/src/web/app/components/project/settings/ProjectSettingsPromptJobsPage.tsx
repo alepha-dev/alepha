@@ -1,11 +1,10 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
-import { DataTable } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
-import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
+import { CircleDot, Server, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
@@ -15,15 +14,14 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { type I18n } from "../../../services/I18n.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 
-const ALL = "";
-
 /**
  * Settings > Prompts > Jobs (#Q4281): the project's jobs, newest first, each
  * with its prompt and args, its cause, where it ran, how it ended and how
- * long it took, filtered by prompt, status and host. A job belongs to the
- * project, not to a host: no host page lists them. `?prompt=` opens it
- * filtered on one prompt, the Prompts tab's "Jobs" entry. Polled every few
- * seconds while one is in flight.
+ * long it took, filtered by prompt, status and host on the table's own
+ * filter bar (#Q4305), each offering what the loaded jobs hold. A job
+ * belongs to the project, not to a host: no host page lists them.
+ * `?prompt=` opens it filtered on one prompt, the Prompts tab's "Jobs"
+ * entry. Polled every few seconds while one is in flight.
  */
 const ProjectSettingsPromptJobsPage = () => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -33,21 +31,6 @@ const ProjectSettingsPromptJobsPage = () => {
   const [project] = useStore(currentProjectAtom);
   const [polling, setPolling] = useState(false);
   const asked = (router.query as Record<string, unknown>).prompt;
-
-  const form = useForm({
-    schema: z.object({
-      prompt: z.text({ maxLength: 64 }).optional(),
-      status: z.text({ maxLength: 16 }).optional(),
-      host: z.text({ maxLength: 64 }).optional(),
-    }),
-    initialValues: {
-      prompt: typeof asked === "string" ? asked : ALL,
-      status: ALL,
-      host: ALL,
-    },
-    handler: () => undefined,
-  });
-  const filter = useFormValues(form);
 
   const { data } = useQuery(
     {
@@ -87,21 +70,48 @@ const ProjectSettingsPromptJobsPage = () => {
     (list.data?.items ?? []).map((it) => [it.name, it.title]),
   );
   const jobs = data?.items ?? [];
-  const shown = jobs.filter(
-    (job) =>
-      (!filter.prompt || job.prompt === filter.prompt) &&
-      (!filter.status || job.status === filter.status) &&
-      (!filter.host || job.hostSlug === filter.host),
-  );
   const distinct = (values: Array<string | undefined>) =>
     [...new Set(values.filter((it): it is string => !!it))].sort((a, b) =>
       a.localeCompare(b),
     );
-  const items = (values: string[], label = (it: string) => it) => [
-    { value: ALL, label: tr("jobs.filter.all") },
-    ...values.map((it) => ({ value: it, label: label(it) })),
-  ];
-  const input = form.input;
+  const options = (values: string[], label = (it: string) => it) =>
+    values.map((it) => ({ value: it, label: label(it) }));
+  // On the bar from the start, each offering what the loaded jobs hold. The
+  // prompt asked for by `?prompt=` is offered even before a job of it loads.
+  const filterFields = {
+    prompt: {
+      schema: z.text({ maxLength: 64 }),
+      label: tr("jobs.col.prompt"),
+      icon: Sparkles,
+      mode: "default",
+      items: options(
+        distinct([
+          ...jobs.map((it) => it.prompt),
+          ...(typeof asked === "string" ? [asked] : []),
+        ]),
+        (name) => titleOf.get(name) ?? name,
+      ),
+      control: { clearLabel: tr("jobs.filter.all") },
+    },
+    status: {
+      schema: z.text({ maxLength: 16 }),
+      label: tr("jobs.col.status"),
+      icon: CircleDot,
+      mode: "default",
+      column: "status",
+      items: options(distinct(jobs.map((it) => it.status))),
+      control: { clearLabel: tr("jobs.filter.all") },
+    },
+    host: {
+      schema: z.text({ maxLength: 64 }),
+      label: tr("jobs.col.host"),
+      icon: Server,
+      mode: "default",
+      column: "hostSlug",
+      items: options(distinct(jobs.map((it) => it.hostSlug))),
+      control: { clearLabel: tr("jobs.filter.all") },
+    },
+  } satisfies DataTableFilterFields;
   // By hand (by whom), by an event (which), or by the schedule.
   const causeText = (job: HostJobResource): string => {
     if (job.cause?.kind === "event") {
@@ -115,45 +125,24 @@ const ProjectSettingsPromptJobsPage = () => {
 
   return (
     <div className="-m-4 flex min-h-0 flex-1 flex-col md:-m-6">
-      <form
-        {...form.props}
-        className="chrome border-border flex flex-wrap gap-3 border-b px-4 py-3 md:px-6"
-      >
-        <div className="w-56">
-          <Control
-            input={input.prompt}
-            label={tr("jobs.col.prompt")}
-            select
-            items={items(
-              distinct([
-                ...jobs.map((it) => it.prompt),
-                ...(typeof asked === "string" ? [asked] : []),
-              ]),
-              (name) => titleOf.get(name) ?? name,
-            )}
-          />
-        </div>
-        <div className="w-40">
-          <Control
-            input={input.status}
-            label={tr("jobs.col.status")}
-            select
-            items={items(distinct(jobs.map((it) => it.status)))}
-          />
-        </div>
-        <div className="w-48">
-          <Control
-            input={input.host}
-            label={tr("jobs.col.host")}
-            select
-            items={items(distinct(jobs.map((it) => it.hostSlug)))}
-          />
-        </div>
-      </form>
-      <DataTable<HostJobResource>
+      <DataTable<HostJobResource, typeof filterFields>
         className="min-h-0 flex-1"
         flat
-        data={shown}
+        data={jobs}
+        filters={{
+          fields: filterFields,
+          // The Prompts tab's "Jobs" entry: `?prompt=<name>`.
+          ...(typeof asked === "string"
+            ? { seedValues: { prompt: asked } }
+            : {}),
+        }}
+        // Exact, where the built-in matching takes a string as a substring:
+        // `triage` must not also list `triage-errors`.
+        filter={(job, filters) =>
+          (!filters.prompt || job.prompt === filters.prompt) &&
+          (!filters.status || job.status === filters.status) &&
+          (!filters.host || job.hostSlug === filters.host)
+        }
         emptyState={{
           title: tr("jobs.empty"),
           description: tr("jobs.empty.description"),
