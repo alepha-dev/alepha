@@ -670,6 +670,7 @@ export class QuestTools {
       "Put a quest on hold: it is blocked on something outside itself and cannot move until that resolves. Use it when work is waiting on an answer, a credential, a decision or a deploy window — for waiting on ANOTHER QUEST use `dependsOn` on `quest_update` instead, which draws the questline. " +
       "A held quest keeps everything it had (its assignee, its objectives, its kanban column) and reads as `on_hold` rather than as `todo` or `in_progress`; `quest_unhold` gives the previous status back with nothing to restore by hand. While held, `quest_accept` and `quest_complete` are both refused and say so. " +
       "`reason` is REQUIRED and is posted as a comment on the quest's discussion, so an `@handle` in it reaches that project member's inbox: mention whoever you are waiting on rather than hoping they look, the owner of the API key you are working as included. " +
+      "Pass `until` to hold it until a date: within the hour after it the hold lifts on its own and the quest goes back to `todo`, unassigned, with a line in its discussion and no notification. " +
       "Reachable from 'todo' and 'in_progress' only, and NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
     title: "Hold quest",
     annotations: {
@@ -687,7 +688,7 @@ export class QuestTools {
         params: { id },
         // Only ever reached over MCP, so an agent wrote the reason: that is
         // what lets an `@owner` in it reach the key's owner (#Q2348).
-        body: { reason: params.reason, agent: true },
+        body: { reason: params.reason, agent: true, until: params.until },
       });
 
       return {
@@ -695,6 +696,7 @@ export class QuestTools {
         shortId: quest.shortId,
         title: quest.title,
         heldAt: quest.heldAt!,
+        heldUntil: quest.heldUntil,
         status: this.getQuestStatus(quest),
       };
     },

@@ -696,7 +696,10 @@ which the callers (epic completion among them) catch.
 `HourlyJobs` runs `project-events.hourly` on `0 * * * *` and calls every check
 registered with `HourlyChecks`: Plan's quest reminders (`QuestReminders`, one
 indexed query on `reminderNextAt`, claimed in a guarded batch, `quest.reminder_due`
-recorded with it) and Ship's open-errors threshold (`ProjectThresholds`). A
+recorded with it), Plan's dated holds (`QuestHoldLifts`, #Q4408: one indexed
+query on `heldUntil`, each lift conditioned on the date it read, the quest back
+in To do with a line in its discussion) and Ship's open-errors threshold
+(`ProjectThresholds`). A
 check must be cheap when nothing is due. Thresholds are edge-triggered: an
 armed flag fires once, and rearms when the value comes back or the threshold
 changes.

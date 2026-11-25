@@ -2503,15 +2503,18 @@ test.describe("Quest hold", () => {
         .getByRole("button", { name: /^put on hold$/i })
         .last();
       await expect(submit).toBeVisible({ timeout: 10_000 });
-      // Submitting empty is refused inline by the prompt's own validator, so
-      // the dialog is still open afterwards rather than having held the quest
-      // with no reason.
+      // Submitting empty is refused inline by the dialog, so it is still open
+      // afterwards rather than having held the quest with no reason.
       await submit.click();
-      await expect(page.locator("#alepha-dialog-prompt-input")).toBeVisible();
+      await expect(page.getByText("A hold needs a reason.")).toBeVisible();
+      await expect(page.getByTestId("quest-hold-reason")).toBeVisible();
 
       await page
-        .locator("#alepha-dialog-prompt-input")
+        .getByTestId("quest-hold-reason")
         .fill("Waiting on the vendor API key");
+      // A dated hold (#Q4408): the quick pick fills the day.
+      await page.getByRole("button", { name: "1 week" }).click();
+      await expect(page.getByTestId("quest-hold-until")).not.toHaveValue("");
       await submit.click();
     });
 
@@ -2520,6 +2523,8 @@ test.describe("Quest hold", () => {
       await expect(page.getByText(/on hold/i).first()).toBeVisible({
         timeout: 10_000,
       });
+      // The day it lifts on its own shows beside it.
+      await expect(page.getByTestId("quest-held-until")).toBeVisible();
       // The lifecycle slot offers the way out instead of a button the server
       // would refuse.
       await expect(page.getByRole("button", { name: /accept/i })).toHaveCount(
@@ -2605,9 +2610,7 @@ test.describe("Quest hold", () => {
     // status the filter reads is the one a hold actually writes.
     await page.getByText(heldTitle).first().click();
     await page.getByRole("button", { name: /put on hold/i }).click();
-    await page
-      .locator("#alepha-dialog-prompt-input")
-      .fill("Waiting on a decision");
+    await page.getByTestId("quest-hold-reason").fill("Waiting on a decision");
     await page
       .getByRole("button", { name: /^put on hold$/i })
       .last()

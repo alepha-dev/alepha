@@ -2279,6 +2279,13 @@ export class QuestController {
          * hold comment still carries no `source`, for the reason given below.
          */
         agent: z.boolean().optional(),
+        /**
+         * When the hold lifts on its own (#Q4408): the hourly sweep puts the
+         * quest back in To do once this has passed, and notes it in the
+         * discussion. Must be in the future. Without it the hold waits for
+         * somebody to lift it.
+         */
+        until: z.datetime().optional(),
       }),
       response: questResourceSchema,
     },
@@ -2307,8 +2314,17 @@ export class QuestController {
       }
 
       const at = this.dt.nowISOString();
+      if (
+        body.until &&
+        new Date(body.until).getTime() <= new Date(at).getTime()
+      ) {
+        throw new BadRequestError(
+          `A hold's end date must be in the future: ${body.until} has already passed.`,
+        );
+      }
       quest.heldAt = at;
       quest.heldBy = user.id;
+      quest.heldUntil = body.until;
       quest.history.push({
         at,
         by: user.id,
@@ -2335,6 +2351,7 @@ export class QuestController {
       } catch (error) {
         quest.heldAt = undefined;
         quest.heldBy = undefined;
+        quest.heldUntil = undefined;
         quest.history.pop();
         await this.quests.save(quest);
         throw error;
@@ -2379,6 +2396,7 @@ export class QuestController {
 
       quest.heldAt = undefined;
       quest.heldBy = undefined;
+      quest.heldUntil = undefined;
       quest.history.push({
         at: this.dt.nowISOString(),
         by: user.id,

@@ -83,6 +83,7 @@ export class QuestShelvingService {
     if (quest.heldAt) {
       quest.heldAt = undefined;
       quest.heldBy = undefined;
+      quest.heldUntil = undefined;
       quest.history.push({ at, by: user.id, action: "unheld" });
     }
     if (quest.acceptedAt) {
