@@ -4,6 +4,7 @@ import {
   EpicController,
   FeedbackCommentController,
   FeedbackController,
+  QuestController,
 } from "@lore/plan/api";
 import { projectErrors } from "@lore/ship/schemas";
 import { Alepha, AlephaError, z } from "alepha";
@@ -233,6 +234,89 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     ).toContain("export failed at row 12");
   });
 
+  it("manages prompts with lore prompt: create, render, trigger, pin, duplicate, delete (#Q4282)", async () => {
+    const { owner, project, lore } = await ownProject();
+    const { data: quest } = await ctx.alepha
+      .inject(QuestController)
+      .createQuest.fetch(
+        {
+          body: {
+            projectId: project.id,
+            title: "Fix the cart",
+            description: "The cart forgets",
+            area: "general",
+            priority: "low",
+          } as never,
+        },
+        { user: owner },
+      );
+    await lore.run("prompt create", [
+      "cart-check",
+      "--text",
+      "Check {{quest.reference}} {{quest.title}} in {{project}}.",
+      "--arg",
+      "quest:quest:todo|in_progress",
+      "--source",
+      "read",
+    ]);
+    const listed = await lore.run("prompt list");
+    expect(listed).toContain("cart-check");
+    expect(listed).toContain("work-quest");
+
+    const text = await lore.run("prompt render", [
+      "cart-check",
+      "--quest",
+      `Q${quest.shortId}`,
+    ]);
+    expect(text).toContain(`#Q${quest.shortId} Fix the cart`);
+
+    expect(
+      await lore.run("prompt trigger", [
+        "cart-check",
+        "--on",
+        "event:quest.created",
+      ]),
+    ).toContain("cart-check runs event:quest.created");
+    await lore.run("prompt pin", ["cart-check", "--on", "quest,quests"]);
+    const pinned = await lore.json("prompt get", ["cart-check"]);
+    expect(pinned).toMatchObject({
+      source: "read",
+      on: "event:quest.created",
+      pins: ["quest", "quests"],
+      args: [
+        { name: "quest", type: "quest", accepts: ["todo", "in_progress"] },
+      ],
+    });
+    await lore.run("prompt unpin", ["cart-check", "--on", "quests"]);
+    expect((await lore.json("prompt get", ["cart-check"])).pins).toEqual([
+      "quest",
+    ]);
+    await lore.run("prompt disable", ["cart-check"]);
+    expect((await lore.json("prompt get", ["cart-check"])).enabled).toBe(false);
+
+    // A built-in's source is set on it, its words stay frozen.
+    await lore.run("prompt update", ["security-check", "--source", "none"]);
+    expect((await lore.json("prompt get", ["security-check"])).source).toBe(
+      "none",
+    );
+    const frozen = await lore.fail("prompt update", [
+      "security-check",
+      "--text",
+      "Other words",
+    ]);
+    expect(frozen?.message).toContain("is a built-in prompt");
+
+    await lore.run("prompt duplicate", [
+      "security-check",
+      "--new-name",
+      "my-check",
+    ]);
+    await lore.run("prompt delete", ["my-check"]);
+    expect(await lore.run("prompt list")).not.toContain("my-check");
+    expect(await lore.run("prompt pause-all")).toContain("Triggers paused");
+    expect(await lore.run("prompt resume-all")).toContain("Triggers resumed");
+  });
+
   it("triages feedback: reads it, answers it, accepts one and rejects one", async () => {
     const { owner, project, lore } = await ownProject();
     const submit = (title: string) =>
@@ -269,11 +353,14 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
       "Reproduced on Safari",
     );
 
-    // Triage with an agent needs an Agent host: the refusal says which.
-    const noHost = await lore.fail("feedback triage", [ref]);
+    // Working it with an agent needs an Agent host: the refusal says which
+    // (#Q4282, `lore prompt run` in place of `lore feedback triage`).
+    const noHost = await lore.fail("prompt run", [
+      "work-feedback",
+      "--feedback",
+      ref,
+    ]);
     expect(noHost?.message).toContain("has no Agent host");
-    const neither = await lore.fail("feedback triage");
-    expect(neither?.message).toContain("or pass --all");
 
     await lore.run("feedback accept", [ref]);
     await lore.run("feedback reject", [`P${second.shortId}`]);

@@ -49,9 +49,9 @@ const ALIASES: Record<string, string> = {
   dashboard_card_update: "dashboard update",
   dashboard_card_remove: "dashboard remove",
   dashboard_card_reorder: "dashboard reorder",
-  // One hyphenated verb each, as `lore automation pause-all` (#Q4231).
-  automation_pause_all: "automation pause-all",
-  automation_resume_all: "automation resume-all",
+  // One hyphenated verb each, as `lore prompt pause-all` (#Q4282).
+  prompt_pause_all: "prompt pause-all",
+  prompt_resume_all: "prompt resume-all",
 };
 
 const GAPS: string[] = [];
@@ -91,8 +91,6 @@ const POSITIONAL = new Set([
  * The params that have no flag, each for a reason.
  */
 const NOT_A_FLAG: Record<string, string[]> = {
-  // `lore agent run <prompt>`: the command's argument (#Q4225).
-  agent_run: ["prompt"],
   // The tool drops the caller's own events by the session's user; nothing
   // tells a CLI process who it is, so the command keeps them (#F1437).
   project_activity: ["includeOwn"],

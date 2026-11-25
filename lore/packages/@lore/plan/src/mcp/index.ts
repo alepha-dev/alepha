@@ -3,7 +3,6 @@ import { $module } from "alepha";
 
 import { EpicRefService } from "./services/EpicRefService.ts";
 import { WorkProjectContext } from "./services/WorkProjectContext.ts";
-import { AgentTools } from "./tools/AgentTools.ts";
 import { AreaTools } from "./tools/AreaTools.ts";
 import { EpicTools } from "./tools/EpicTools.ts";
 import { FeedbackTools } from "./tools/FeedbackTools.ts";
@@ -27,7 +26,6 @@ export const LorePlanMcp = $module({
     EpicTools,
     FeedbackTools,
     AreaTools,
-    AgentTools,
     EpicRefService,
     // The orientation sections each module registers on the core
     // `ProjectContextRegistry` (#E75, #Q2623); listed because nothing

@@ -17,7 +17,7 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore feedback list | get | attachment get | comment add | accept | reject | triage`.
+ * `lore feedback list | get | attachment get | comment add | accept | reject`.
  *
  * ```bash
  * lore feedback list -p alepha
@@ -386,101 +386,6 @@ export class FeedbackCommand {
     },
   });
 
-  /**
-   * Triage with an agent from a shell: the robot menu's two entries. One item,
-   * or every pending one with `--all`, each a job on the project's Agent
-   * host that files quests, asks a question or rejects.
-   */
-  public readonly triage = $command({
-    name: "triage",
-    description:
-      "Triage with an agent on one of the project's Agent hosts: one pending item, or with --all the whole inbox and the open errors in one run",
-    args: FeedbackCommand.REF_ARG.optional(),
-    flags: z.object({
-      ...FeedbackCommand.PROJECT_FLAG,
-      all: z
-        .boolean()
-        .describe(
-          "The whole pending inbox and the open errors, in one run that merges duplicates; untrusted items get a run each",
-        )
-        .optional(),
-      host: z
-        .text({
-          description:
-            "The Agent host to run on, by slug; needed when the project has several",
-        })
-        .optional(),
-      agent: z
-        .text({
-          description:
-            "The agent CLI to run (claude, gemini); needed when the host has several",
-        })
-        .optional(),
-      model: z
-        .text({
-          description:
-            "The model passed to the agent; absent, the agent's own default",
-        })
-        .optional(),
-      ...LoreOutput.FLAGS,
-    }),
-    handler: async ({ args, flags, print }) => {
-      const context: LoreRefusalContext = {};
-      await this.refusals.guard(context, async () => {
-        if (!args === !flags.all) {
-          throw new UsageError("Name one feedback item, or pass --all.");
-        }
-        if (flags.all) {
-          const { projectId } = await this.projects.named(
-            flags.project,
-            context,
-          );
-          const result = await this.feedbackApi.triageInboxWithAgent({
-            params: { projectId },
-            body: {
-              ...(flags.host ? { host: flags.host } : {}),
-              ...(flags.agent ? { agent: flags.agent } : {}),
-              ...(flags.model ? { model: flags.model } : {}),
-            },
-          });
-          const skipped = result.skipped.length
-            ? `; skipped ${result.skipped.map((id) => `P${id}`).join(", ")}, for a member to triage`
-            : "";
-          this.render.written(
-            print,
-            flags.output,
-            result,
-            result.global
-              ? `Triaging the inbox in one run: job ${result.global}${result.started.length > 1 ? `, and ${result.started.length - 1} run${result.started.length === 2 ? "" : "s"} for untrusted items` : ""}${skipped}. Follow it with lore job logs ${result.global} --follow`
-              : `Started ${result.started.length} triage job${result.started.length === 1 ? "" : "s"}${skipped}. Follow them with lore job list`,
-          );
-          return;
-        }
-        const { projectId, feedbackId, shortId } = await this.target(
-          args as string,
-          flags.project,
-          context,
-        );
-        const result = await this.feedbackApi.triageFeedbackWithAgent({
-          params: { projectId, feedbackId },
-          body: {
-            ...(flags.host ? { host: flags.host } : {}),
-            ...(flags.agent ? { agent: flags.agent } : {}),
-            ...(flags.model ? { model: flags.model } : {}),
-          },
-        });
-        this.render.written(
-          print,
-          flags.output,
-          result,
-          result.jobId
-            ? `Triaging P${shortId}: job ${result.jobId}. Follow it with lore job logs ${result.jobId} --follow`
-            : `P${shortId} was not triaged: ${result.skipped ?? "no job started"}`,
-        );
-      });
-    },
-  });
-
   public readonly targets = $command({
     name: "targets",
     description:
@@ -579,7 +484,7 @@ export class FeedbackCommand {
   public readonly feedback = $command({
     name: "feedback",
     description:
-      "A project's feedback: list, read, comment on, accept, reject or triage it with Claude, or file one",
+      "A project's feedback: list, read, comment on, accept or reject it, or file one",
     children: [
       this.list,
       this.targets,
@@ -589,7 +494,6 @@ export class FeedbackCommand {
       this.comment,
       this.accept,
       this.reject,
-      this.triage,
     ],
     handler: async ({ help }) => {
       help();

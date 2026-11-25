@@ -1,8 +1,4 @@
-import type {
-  EpicAgentController,
-  EpicController,
-  EpicReviewController,
-} from "@lore/plan/api";
+import type { EpicController, EpicReviewController } from "@lore/plan/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -59,9 +55,6 @@ export class EpicCommand {
    */
   protected readonly epicApi = $client<EpicController>(this.client.scope());
   protected readonly reviewApi = $client<EpicReviewController>(
-    this.client.scope(),
-  );
-  protected readonly agentApi = $client<EpicAgentController>(
     this.client.scope(),
   );
 
@@ -671,62 +664,16 @@ export class EpicCommand {
   });
 
   /**
-   * `lore epic review`, declared after its children. With an epic, it is
-   * Review with an agent from a shell (#Q4214): the epic page's robot menu
-   * entry, a job on the project's Agent host that files the review.
+   * `lore epic review`, declared after its children: file one, answer an
+   * item. A review by an agent is `lore prompt run review-epic --epic <n>`
+   * (#Q4282).
    */
   public readonly review = $command({
     name: "review",
-    description:
-      "An epic's reviews: file one, answer an item, or with an epic, review it with an agent on one of the project's Agent hosts",
-    args: EpicCommand.REF_ARG.optional(),
-    flags: z.object({
-      ...EpicCommand.PROJECT_FLAG,
-      host: z
-        .text({
-          description:
-            "The Agent host to run on, by slug; needed when the project has several",
-        })
-        .optional(),
-      agent: z
-        .text({
-          description:
-            "The agent CLI to run (claude, gemini); needed when the host has several",
-        })
-        .optional(),
-      model: z
-        .text({
-          description:
-            "The model passed to the agent; absent, the agent's own default",
-        })
-        .optional(),
-      ...LoreOutput.FLAGS,
-    }),
+    description: "An epic's reviews: file one, or answer an item",
     children: [this.reviewCreate, this.reviewAnswer],
-    handler: async ({ args, flags, print, help }) => {
-      if (!args) {
-        help();
-        return;
-      }
-      const context: LoreRefusalContext = {};
-      await this.refusals.guard(context, async () => {
-        const number = this.refs.epic(args);
-        const { projectId } = await this.projects.named(flags.project, context);
-        const result = await this.agentApi.reviewEpicWithAgent({
-          params: { projectId, number },
-          body: {
-            ...(flags.host ? { host: flags.host } : {}),
-            ...(flags.agent ? { agent: flags.agent } : {}),
-            ...(flags.model ? { model: flags.model } : {}),
-          },
-        });
-        this.render.written(
-          print,
-          flags.output,
-          result,
-          `Reviewing E${number}: job ${result.jobId}. Follow it with lore job logs ${result.jobId} --follow`,
-        );
-      });
+    handler: async ({ help }) => {
+      help();
     },
   });
 
