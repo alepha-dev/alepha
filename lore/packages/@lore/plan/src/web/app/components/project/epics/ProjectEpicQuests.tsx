@@ -14,18 +14,18 @@ import {
   currentProjectAtom,
   type I18n,
   formatReference,
-  useAgentPrompt,
+  usePinnedPrompts,
 } from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Bot, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
-import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
+import { questPromptItem } from "../prompts/questPromptItem.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
@@ -91,8 +91,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
-  const agentPrompt = useAgentPrompt();
-  const promptSubject = useWorkPromptSubject();
+  const pins = usePinnedPrompts();
   const quests = props.quests;
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
   // The create sheet, opened from the toolbar beside Attach (feedback #2057).
@@ -321,28 +320,12 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                 // other reason to read and which is `undefined` after a
                 // failed load; the epic is a PROP here, so its status is
                 // known directly. Same condition, better source.
-                ...(agentPrompt.enabled &&
-                !quest.completedAt &&
-                (props.epic.status === "ready" ||
-                  props.epic.status === "in_progress")
-                  ? [
-                      {
-                        icon: Bot,
-                        label: tr("agentPrompts.menu"),
-                        children: [
-                          {
-                            icon: Bot,
-                            label: tr("agentPrompts.workOnIt"),
-                            onClick: (row: QuestResource) =>
-                              agentPrompt.copy(
-                                "questWork",
-                                promptSubject.forQuest(row),
-                              ),
-                          },
-                        ],
-                      },
-                    ]
-                  : []),
+                // What is pinned on the Quest view (#Q4284), this row's
+                // quest filled in.
+                ...pins.rowGroup<QuestResource>(
+                  "quest",
+                  questPromptItem(quest),
+                ),
               ]}
             />
           )}
@@ -371,6 +354,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
           </SheetContent>
         </Sheet>
       )}
+      {pins.dialog}
     </div>
   );
 };

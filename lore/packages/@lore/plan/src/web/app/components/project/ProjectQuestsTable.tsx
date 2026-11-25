@@ -35,8 +35,8 @@ import {
   useOptimisticWrite,
   useProjectUsers,
   ProjectUserChip,
-  AgentPromptsMenu,
-  useAgentPrompt,
+  PinnedPromptsButton,
+  usePinnedPrompts,
   settleBulk,
 } from "@lore/core/web";
 import { z } from "alepha";
@@ -62,7 +62,6 @@ import {
   MessageCircleQuestion,
   Rocket,
   UserRound,
-  Bot,
   Hash,
   Layers,
   Link2,
@@ -98,8 +97,7 @@ import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
-import { questAgentGate } from "./prompts/questAgentGate.ts";
-import { useWorkPromptSubject } from "./prompts/useWorkPromptSubject.ts";
+import { questPromptItem } from "./prompts/questPromptItem.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_TONE,
@@ -119,8 +117,7 @@ const ProjectQuestsTable = () => {
   const [currentAreas] = useStore(currentAreasAtom);
   const [releases] = useStore(currentReleasesAtom);
   const [epics] = useStore(currentEpicsAtom);
-  const agentPrompt = useAgentPrompt();
-  const promptSubject = useWorkPromptSubject();
+  const pins = usePinnedPrompts();
   const questApi = useClient<QuestController>();
   const epicApi = useClient<EpicController>();
   const questMutations = useQuestMutations();
@@ -887,16 +884,10 @@ const ProjectQuestsTable = () => {
         // dropdown trigger rather than a button that acts on click. It
         // renders nothing when the project has `agentPrompts` off, and this
         // page's route is already gated on Work, which is where quests live.
-        toolbar={
-          <AgentPromptsMenu
-            items={[
-              {
-                kind: "questLoop" as const,
-                subject: () => promptSubject.forQuestList(),
-              },
-            ]}
-          />
-        }
+        // ⚠️ `toolbar`, not `actions`: the robot is a dropdown trigger. It
+        // shows the prompts pinned on the Quest list (#Q4284), nothing when
+        // none is.
+        toolbar={<PinnedPromptsButton page="quests" />}
         filters={{
           fields: filterFields,
           /**
@@ -1322,35 +1313,10 @@ const ProjectQuestsTable = () => {
               }
             },
           },
-          // Between Copy ID and Edit: the reference and a nudge are what a
-          // list is used for most, and handing the quest over sits with
-          // them rather than among the lifecycle moves below.
-          //
-          // Two gates. The `agentPrompts` option, off by default. And the
-          // epic phase, which is the same condition that decides whether
-          // Accept is withheld: the prompt's second step is `quest_accept`,
-          // and a draft or completed epic refuses it.
-          ...(agentPrompt.enabled &&
-          !quest.completedAt &&
-          questAgentGate(quest, epics) === undefined
-            ? [
-                {
-                  icon: Bot,
-                  label: tr("agentPrompts.menu"),
-                  children: [
-                    {
-                      icon: Bot,
-                      label: tr("agentPrompts.workOnIt"),
-                      onClick: (row: QuestResource) =>
-                        agentPrompt.copy(
-                          "questWork",
-                          promptSubject.forQuest(row),
-                        ),
-                    },
-                  ],
-                },
-              ]
-            : []),
+          // Between Copy ID and Edit: what is pinned on the Quest view
+          // (#Q4284), this row's quest filled in, offered when its arg
+          // accepts the quest's status.
+          ...pins.rowGroup<QuestResource>("quest", questPromptItem(quest)),
           // Where this quest ships, set from the list. The Release column is
           // hidden by default here, so the menu is often the only place the
           // field is reachable without opening the quest (#Q2098).
@@ -1511,6 +1477,7 @@ const ProjectQuestsTable = () => {
           ) : null}
         </SheetContent>
       </Sheet>
+      {pins.dialog}
     </div>
   );
 };

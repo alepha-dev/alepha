@@ -45,6 +45,10 @@ export const promptResourceSchema = z.object({
   lastSkippedAt: z.string().optional(),
   lastSkippedReason: z.string().optional(),
   consecutiveFailures: z.integer(),
+  /**
+   * The pages it is pinned to (#Q4284), by key.
+   */
+  pins: z.array(z.text({ maxLength: 32 })),
 });
 
 export type PromptResource = Infer<typeof promptResourceSchema>;

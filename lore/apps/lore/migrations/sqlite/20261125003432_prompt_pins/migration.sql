@@ -1,0 +1,1 @@
+ALTER TABLE `prompts` ADD `pins` text;

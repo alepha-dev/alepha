@@ -266,6 +266,9 @@ export default defineConfig({
         "prompts.arg.",
         "prompts.check.",
         "prompts.editor.",
+        // A pinnable page's label and a spotlight row (#Q4284), by key.
+        "prompts.page.",
+        "prompts.spotlight.",
         "notifications.channels.kind.",
         "notifications.event.",
         "notifications.resource.",

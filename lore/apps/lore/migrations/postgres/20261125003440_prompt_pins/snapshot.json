@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "d2fb5bd6-ef06-477a-99fd-0800bb585a25",
+  "prevIds": ["64675421-cc03-4748-9cdd-5399a3b5113b"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pins"],
+      "writes": [
+        "s|col|public.prompts.pins",
+        "n|col|public.prompts.pins",
+        "e|col|public.prompts.pins"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pins",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

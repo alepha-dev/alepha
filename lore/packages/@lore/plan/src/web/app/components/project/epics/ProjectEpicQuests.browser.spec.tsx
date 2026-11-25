@@ -231,11 +231,11 @@ describe("ProjectEpicQuests - columns", () => {
   });
 
   /**
-   * A ready epic is both at once (#Q2223): its plan is still open, so New,
-   * Attach and Detach stay, and its quests can be accepted, so the Agent
-   * Prompts group is there too. The first accept is what freezes it.
+   * A ready epic's plan is still open (#Q2223), so New, Attach and Detach
+   * stay. The first accept is what freezes it. A prompt pinned on the Quest
+   * view would add a group beside Detach (#Q4284): none is pinned here.
    */
-  it("keeps the plan editable on a ready epic and offers the agent group beside Detach", async () => {
+  it("keeps the plan editable on a ready epic, with Detach in the row menu", async () => {
     await mount([questOf(12, "Ship the thing", "low")], "ready");
 
     await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
@@ -250,7 +250,6 @@ describe("ProjectEpicQuests - columns", () => {
       if (found.length === 0) throw new Error("not open yet");
       return found.map((it) => it.textContent).join(" ");
     });
-    expect(items).toContain("Agent Prompts");
     expect(items).toContain("Detach");
   });
 
@@ -260,10 +259,8 @@ describe("ProjectEpicQuests - columns", () => {
    * permission instead of answering 400: no New quest, no Attach quest, and
    * no Detach.
    *
-   * ⚠️ The row menu itself no longer disappears with them on an IN-PROGRESS
-   * epic: that is exactly when its quests are handed out one at a time, so
-   * the Agent Prompts group takes the slot Detach left. On a COMPLETED epic
-   * both are gone and the table is back to no menu at all.
+   * With nothing pinned on the Quest view (#Q4284), the row menu goes
+   * with Detach, in progress and completed alike.
    */
   it("hides Create, Attach and Detach once the plan is frozen", async () => {
     for (const status of ["in_progress", "completed"] as const) {
@@ -276,25 +273,9 @@ describe("ProjectEpicQuests - columns", () => {
       expect(screen.queryByRole("button", { name: "New quest" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Attach quest" })).toBeNull();
 
-      const menus = screen.queryAllByRole("button", { name: /actions|menu/i });
-      if (status === "in_progress") {
-        // The group, and nothing else: Detach is gone with the freeze.
-        expect(menus.length).toBe(1);
-        fireEvent.click(menus[0]);
-        const items = await waitFor(() => {
-          const found = [...document.querySelectorAll('[role="menuitem"]')];
-          if (found.length === 0) throw new Error("not open yet");
-          return found;
-        });
-        expect(items.map((it) => it.textContent).join(" ")).toContain(
-          "Agent Prompts",
-        );
-        expect(items.map((it) => it.textContent).join(" ")).not.toContain(
-          "Detach",
-        );
-      } else {
-        expect(menus).toEqual([]);
-      }
+      expect(
+        screen.queryAllByRole("button", { name: /actions|menu/i }),
+      ).toEqual([]);
 
       view.unmount();
       await alepha?.stop();
@@ -339,48 +320,6 @@ describe("ProjectEpicQuests - columns", () => {
     );
   });
 
-  it("copies the quest prompt from the group", async () => {
-    const written: string[] = [];
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: async (text: string) => {
-          written.push(text);
-        },
-      },
-    });
-    await mount([questOf(12, "Ship the thing", "low")], "in_progress");
-
-    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
-    fireEvent.click(
-      screen.getAllByRole("button", { name: /actions|menu/i })[0],
-    );
-    const trigger = await waitFor(() => {
-      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
-        (it) => it.textContent?.includes("Agent Prompts"),
-      );
-      if (!found) throw new Error("not open yet");
-      return found;
-    });
-    // #Q1959's gesture: a plain click opens the submenu, and its content is
-    // portalled so the child is read off `document`.
-    fireEvent.click(trigger);
-    const child = await waitFor(() => {
-      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
-        (it) => it.textContent?.includes("Work on it"),
-      );
-      if (!found) throw new Error("submenu not open yet");
-      return found;
-    });
-    fireEvent.click(child);
-
-    await waitFor(() => expect(written).toHaveLength(1));
-    expect(written[0]).toContain("#Q12");
-    expect(written[0]).toContain("Ship the thing");
-    // `quest_get` takes the per-project shortId, never the global id.
-    expect(written[0]).toContain("shortId 12");
-    expect(written[0]).not.toContain("sg_");
-  });
   /**
    * New quest beside Attach quest (feedback #2057): the same sheet the
    * header opens, and the new quest is handed to the page through

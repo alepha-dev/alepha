@@ -14,6 +14,7 @@ import {
   Copy,
   Eye,
   FileCode,
+  Pin,
   Pause,
   Pencil,
   Play,
@@ -33,13 +34,17 @@ import { useRank } from "../../shared/useRank.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 import PromptEditorDialog from "../prompts/run/PromptEditorDialog.tsx";
 import PromptEnabledCell from "../prompts/run/PromptEnabledCell.tsx";
+import PromptPinsDialog from "../prompts/run/PromptPinsDialog.tsx";
 import PromptRunDialog from "../prompts/run/PromptRunDialog.tsx";
 import PromptTriggerDialog from "../prompts/run/PromptTriggerDialog.tsx";
 import PromptViewDialog from "../prompts/run/PromptViewDialog.tsx";
 import { usePromptActions } from "../prompts/run/usePromptActions.ts";
 
 type Open =
-  | { kind: "copy" | "run" | "view" | "trigger"; prompt: PromptResource }
+  | {
+      kind: "copy" | "run" | "view" | "trigger" | "pins";
+      prompt: PromptResource;
+    }
   | {
       kind: "editor";
       mode: "create" | "duplicate" | "edit" | "source";
@@ -184,6 +189,11 @@ const ProjectSettingsPromptsPage = () => {
               setOpen({ kind: "editor", mode: "duplicate", prompt: row }),
           },
           {
+            icon: Pin,
+            label: tr("prompts.pin"),
+            onClick: () => setOpen({ kind: "pins", prompt: row }),
+          },
+          {
             icon: Clock,
             label: tr("prompts.trigger"),
             onClick: () => setOpen({ kind: "trigger", prompt: row }),
@@ -216,6 +226,7 @@ const ProjectSettingsPromptsPage = () => {
   ];
 
   const pausedAt = list.data?.pausedAt;
+  const pages = list.data?.pages ?? [];
 
   return (
     <div className="-m-4 flex min-h-0 flex-1 flex-col gap-4 md:-m-6">
@@ -287,6 +298,23 @@ const ProjectSettingsPromptsPage = () => {
                   {row.check?.length
                     ? ` · ${tr("prompts.trigger.checks", { args: [row.check.join(", ")] })}`
                     : ""}
+                </span>
+              ),
+            },
+            pins: {
+              label: tr("prompts.table.pins"),
+              cell: (row) => (
+                <span className="text-xs" data-testid="prompt-pins-cell">
+                  {row.pins.length
+                    ? row.pins
+                        .map((key) =>
+                          tr(`prompts.page.${key}`, {
+                            default:
+                              pages.find((it) => it.key === key)?.label ?? key,
+                          }),
+                        )
+                        .join(", ")
+                    : tr("prompts.pins.none")}
                 </span>
               ),
             },
@@ -394,6 +422,16 @@ const ProjectSettingsPromptsPage = () => {
           open
           onOpenChange={(next) => !next && setOpen(undefined)}
           prompt={open.prompt}
+        />
+      )}
+      {projectId !== undefined && open?.kind === "pins" && (
+        <PromptPinsDialog
+          open
+          onOpenChange={(next) => !next && setOpen(undefined)}
+          projectId={projectId}
+          prompt={open.prompt}
+          pages={pages}
+          invalidates={key}
         />
       )}
       {projectId !== undefined && open?.kind === "trigger" && (

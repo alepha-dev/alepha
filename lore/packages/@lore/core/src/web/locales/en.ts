@@ -218,6 +218,7 @@ export default {
   "spotlight.group.releases": "Releases",
   "spotlight.group.feedback": "Feedback",
   "spotlight.group.folios": "Folios",
+  "spotlight.group.prompts": "Prompts",
   "spotlight.group.projects": "Projects",
 
   "home.nav": "Home",
@@ -4070,10 +4071,6 @@ export default {
   "epic.status.actions.backToDraft": "Back to draft",
   "epic.status.actions.shelve": "Shelve",
   "epic.status.actions.unshelve": "Unshelve",
-  "epic.workOnIt.confirm.title": "Mark this epic ready?",
-  "epic.workOnIt.confirm.description":
-    'Work on it copies the prompt and marks "$1" ready: it leaves draft, and its quests can be accepted.',
-  "epic.workOnIt.confirm.action": "Copy and mark ready",
   "epic.shelve.title": "Shelve this epic?",
   "epic.shelve.confirm":
     "Shelving $1 sets aside its $2 open quests: they are unassigned and shelved, and nothing in the epic can be worked until it is unshelved. Completed quests stay completed, and epics that depend on it stay blocked.",
@@ -5286,4 +5283,23 @@ export default {
   "prompts.never": "Never run",
   "prompts.needsHost": "Run needs an Agent host that is ready:",
   "prompts.docs": "How prompts work",
+  "prompts.pin": "Pin",
+  "prompts.table.pins": "Pinned on",
+  "prompts.pins.none": "Nowhere",
+  "prompts.pins.title": "Pin $1",
+  "prompts.pins.description":
+    "The pages whose robot button offers it. A view fills the prompt's arg with its item.",
+  "prompts.page.quests": "Quest list",
+  "prompts.page.quest": "Quest view",
+  "prompts.page.epics": "Epic list",
+  "prompts.page.epic": "Epic view",
+  "prompts.page.feedback": "Feedback list",
+  "prompts.page.feedback-item": "Feedback view",
+  "prompts.page.errors": "Error list",
+  "prompts.pinned.menu": "Agent prompts",
+  "prompts.pinned.copy": "Copy: $1",
+  "prompts.pinned.run": "Run: $1",
+  "prompts.pinned.settings": "Manage prompts",
+  "prompts.spotlight.copy": "Copy prompt: $1",
+  "prompts.spotlight.run": "Run prompt: $1",
 };

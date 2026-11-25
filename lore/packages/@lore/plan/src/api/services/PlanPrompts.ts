@@ -238,6 +238,18 @@ export class PlanPrompts {
     });
 
     // What an arg's select lists (#Q4280), among the statuses it accepts.
+    // The pages a prompt can be pinned to (#Q4284). A feedback item's view
+    // is the detail panel of the feedback list: it has no route of its own.
+    for (const page of [
+      { key: "quests", label: "Quest list" },
+      { key: "quest", label: "Quest view", gives: "quest" },
+      { key: "epics", label: "Epic list" },
+      { key: "epic", label: "Epic view", gives: "epic" },
+      { key: "feedback", label: "Feedback list" },
+      { key: "feedback-item", label: "Feedback view", gives: "feedback" },
+    ] as const) {
+      this.registry.registerPage(page);
+    }
     this.registry.registerOptions("epic", (projectId, accepts) =>
       this.epicOptions(projectId, accepts),
     );

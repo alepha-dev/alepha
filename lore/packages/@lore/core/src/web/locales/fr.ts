@@ -226,6 +226,7 @@ export default {
   "spotlight.group.releases": "Versions",
   "spotlight.group.feedback": "Retours",
   "spotlight.group.folios": "Folios",
+  "spotlight.group.prompts": "Invites",
   "spotlight.group.projects": "Projets",
 
   "home.nav": "Accueil",
@@ -4096,10 +4097,6 @@ export default {
   "epic.status.actions.backToDraft": "Repasser en brouillon",
   "epic.status.actions.shelve": "Mettre de côté",
   "epic.status.actions.unshelve": "Reprendre",
-  "epic.workOnIt.confirm.title": "Marquer cette épopée comme prête ?",
-  "epic.workOnIt.confirm.description":
-    "Y travailler copie le prompt et marque « $1 » comme prête : elle quitte le brouillon, et ses quêtes peuvent être acceptées.",
-  "epic.workOnIt.confirm.action": "Copier et marquer prête",
   "epic.shelve.title": "Mettre cette épopée de côté ?",
   "epic.shelve.confirm":
     "Mettre $1 de côté met aussi de côté ses $2 quêtes ouvertes : elles sont désassignées et mises de côté, et rien dans l'épopée ne peut avancer avant qu'elle soit reprise. Les quêtes terminées le restent, et les épopées qui en dépendent restent bloquées.",
@@ -5335,4 +5332,23 @@ export default {
   "prompts.never": "Jamais lancée",
   "prompts.needsHost": "Lancer demande un hôte Agent prêt :",
   "prompts.docs": "Comment fonctionnent les invites",
+  "prompts.pin": "Épingler",
+  "prompts.table.pins": "Épinglée sur",
+  "prompts.pins.none": "Nulle part",
+  "prompts.pins.title": "Épingler $1",
+  "prompts.pins.description":
+    "Les pages dont le bouton robot la propose. Une vue remplit l'argument de l'invite avec son élément.",
+  "prompts.page.quests": "Liste des quêtes",
+  "prompts.page.quest": "Vue d'une quête",
+  "prompts.page.epics": "Liste des épopées",
+  "prompts.page.epic": "Vue d'une épopée",
+  "prompts.page.feedback": "Liste des retours",
+  "prompts.page.feedback-item": "Vue d'un retour",
+  "prompts.page.errors": "Liste des erreurs",
+  "prompts.pinned.menu": "Invites d'agent",
+  "prompts.pinned.copy": "Copier : $1",
+  "prompts.pinned.run": "Lancer : $1",
+  "prompts.pinned.settings": "Gérer les invites",
+  "prompts.spotlight.copy": "Copier l'invite : $1",
+  "prompts.spotlight.run": "Lancer l'invite : $1",
 };

@@ -180,6 +180,13 @@ export {
   AgentPromptsMenu,
   type AgentPromptsMenuAction,
 } from "./app/components/project/prompts/AgentPromptsMenu.tsx";
+export {
+  default as PinnedPromptsButton,
+  type PinnedPromptsAction,
+  type PinnedPromptsButtonProps,
+} from "./app/components/project/prompts/pins/PinnedPromptsButton.tsx";
+export type { PinnedPromptItem } from "./app/components/project/prompts/pins/pinnedPromptItemSchema.ts";
+export { usePinnedPrompts } from "./app/components/project/prompts/pins/usePinnedPrompts.tsx";
 export { useAgentPrompt } from "./app/components/project/prompts/useAgentPrompt.ts";
 export { useAgentPromptSubject } from "./app/components/project/prompts/useAgentPromptSubject.ts";
 export {

@@ -15,7 +15,8 @@ import {
   formatReference,
   useBulkReport,
   useOptimisticWrite,
-  useAgentPrompt,
+  PinnedPromptsButton,
+  usePinnedPrompts,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
 import {
@@ -30,7 +31,6 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
-  Bot,
   CircleCheck,
   CircleDot,
   ClipboardCheck,
@@ -44,7 +44,6 @@ import {
   OctagonAlert,
   TriangleAlert,
   Undo2,
-  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -59,7 +58,6 @@ import { QUEST_RELEASE_NONE } from "../../../../../api/schemas/questReleaseFilte
 import type { ReleaseResource } from "../../../../../api/schemas/releaseResourceSchema.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { releaseRowMenu } from "../releaseRowMenu.ts";
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -125,8 +123,7 @@ const ProjectEpics = () => {
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
   const reportBulk = useBulkReport();
-  const agentPrompt = useAgentPrompt();
-  const promptSubject = useWorkPromptSubject();
+  const pins = usePinnedPrompts();
   const alepha = useAlepha();
   // The write below moves the epic's quests too (#Q2111), and a row the
   // reader did not name must not move without a word.
@@ -848,6 +845,9 @@ const ProjectEpics = () => {
             },
           })
         }
+        // The prompts pinned on the Epic list (#Q4284): a dropdown trigger,
+        // so `toolbar` rather than `actions`.
+        toolbar={<PinnedPromptsButton page="epics" />}
         actions={[
           {
             icon: Plus,
@@ -1060,96 +1060,13 @@ const ProjectEpics = () => {
           },
         }}
         rowActions={(epic) => [
-          // The submenu that hands this epic to an agent. Two entries under
-          // two different status gates, and the whole group behind the
-          // project's `agentPrompts` option, which is off by default.
-          //
-          // Review is offered while the plan is still open (draft or
-          // ready): once the epic is in progress its quest set is what is
-          // being worked, not what is being written. Work on it is offered
-          // on a ready epic, whose first accepted quest starts it, and on
-          // one in progress, because a half-worked epic can be handed over.
-          //
-          // On a draft one too, but only to a reader who may mark it ready,
-          // and the click does both: it copies the prompt, then makes the
-          // same optimistic write as the row's Mark as ready
-          // (feedback #P2226, #Q3228). A draft epic's quests refuse to be
-          // accepted, so the prompt would be useless without it, and whether
-          // the spec is done stays the owner's call: it is the owner's click.
-          // A completed epic gets neither, so the group has no children and
-          // `DataTable` renders nothing for it.
-          ...(agentPrompt.enabled
-            ? [
-                {
-                  icon: Bot,
-                  label: tr("agentPrompts.menu"),
-                  children: [
-                    ...(epic.status === "draft" || epic.status === "ready"
-                      ? [
-                          {
-                            icon: ClipboardCheck,
-                            label: tr("agentPrompts.review"),
-                            onClick: (row: EpicResource) =>
-                              agentPrompt.copy(
-                                "epicReview",
-                                promptSubject.forEpic(row),
-                              ),
-                          },
-                        ]
-                      : []),
-                    ...(epic.status === "ready" ||
-                    epic.status === "in_progress" ||
-                    (epic.status === "draft" && epicApi.setEpicStatus.can())
-                      ? [
-                          {
-                            // The verb and glyph quests and feedback use for
-                            // the same hand-over, as the detail page's menu
-                            // does through AGENT_PROMPT_MENU_META (#P2182).
-                            icon: Wrench,
-                            label: tr("agentPrompts.workOnIt"),
-                            onClick: (
-                              row: EpicResource,
-                              ctx: RowActionContext<EpicResource>,
-                            ) => {
-                              // The copy inside a click: Safari's clipboard
-                              // activation does not survive an await.
-                              const copy = () =>
-                                void agentPrompt.copy(
-                                  "epicActivate",
-                                  promptSubject.forEpic(row),
-                                );
-                              if (row.status !== "draft") {
-                                copy();
-                                return;
-                              }
-                              // A draft epic becomes ready with it: asked
-                              // first (#Q3583), and the copy runs in the
-                              // confirm button's own click.
-                              void dialog.confirm({
-                                title: tr("epic.workOnIt.confirm.title"),
-                                description: tr(
-                                  "epic.workOnIt.confirm.description",
-                                  {
-                                    args: [row.title],
-                                  },
-                                ),
-                                confirmLabel: tr(
-                                  "epic.workOnIt.confirm.action",
-                                ),
-                                cancelLabel: tr("common.cancel"),
-                                onConfirm: () => {
-                                  copy();
-                                  setStatus(row, "ready", ctx);
-                                },
-                              });
-                            },
-                          },
-                        ]
-                      : []),
-                  ],
-                },
-              ]
-            : []),
+          // What is pinned on the Epic view (#Q4284), this row's epic
+          // filled in, offered when its arg accepts the epic's status.
+          ...pins.rowGroup<EpicResource>("epic", {
+            type: "epic",
+            value: String(epic.number),
+            status: epic.status,
+          }),
           // Where this epic ships, set from the list. The Release column
           // beside it could be read and not changed, which cost a page load
           // and a trip back for a field that is one click of an already-open
@@ -1295,6 +1212,7 @@ const ProjectEpics = () => {
           setReload((n) => n + 1);
         }}
       />
+      {pins.dialog}
     </div>
   );
 };

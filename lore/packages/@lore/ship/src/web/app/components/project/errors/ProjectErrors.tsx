@@ -21,10 +21,9 @@ import {
   type I18n,
   hasCapability,
   formatReference,
-  AgentPromptsMenu,
+  PinnedPromptsButton,
   StackTraceViewer,
   TriageRunRegistry,
-  useAgentPromptSubject,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
 import {
@@ -76,7 +75,6 @@ const ProjectErrors = () => {
   // and Deploy's own program registers only Deploy's and core's routers.
   const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
-  const promptSubject = useAgentPromptSubject();
   // Errors live under Apps: there is no capability of their own, and this
   // page's route is already gated on it. Stated anyway rather than passing
   // the item unconditionally, so the menu carries its own gate wherever this
@@ -394,27 +392,13 @@ const ProjectErrors = () => {
           fields: filterFields,
           initialValues: { status: ["open"] },
         }}
-        // ⚠️ `toolbar`, not `actions`: `AgentPromptsMenu` is a dropdown
-        // trigger rather than a button that acts on click, which is the
-        // distinction `DataTable`'s own note draws between the two slots.
-        //
-        // Two switches, like the feedback inbox: the menu renders nothing
-        // when the project has `agentPrompts` off, and this passes no items
-        // when Apps is off, so both have to be on for anything to appear.
+        // ⚠️ `toolbar`, not `actions`: the robot is a dropdown trigger
+        // rather than a button that acts on click. It shows the prompts
+        // pinned on the Error list (#Q4284), and the triage run with Apps on
+        // until #Q4281.
         toolbar={
-          <AgentPromptsMenu
-            items={
-              appsEnabled
-                ? [
-                    {
-                      // The one triage prompt, feedback and errors together
-                      // (#Q4240), as the Feedback page offers it.
-                      kind: "feedbackLoop" as const,
-                      subject: () => promptSubject.forPage("projectErrors"),
-                    },
-                  ]
-                : []
-            }
+          <PinnedPromptsButton
+            page="errors"
             actions={appsEnabled ? triageRunActions : []}
           />
         }

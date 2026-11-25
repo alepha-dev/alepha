@@ -13,6 +13,7 @@ import { useRouter } from "alepha/react/router";
 import {
   AppWindow,
   BookText,
+  Copy,
   FileText,
   Flag,
   Folder,
@@ -22,21 +23,25 @@ import {
   ListChecks,
   Lock,
   PanelsTopLeft,
+  Play,
   SquareCheckBig,
   UsersRound,
 } from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
 
 import type { SearchController } from "../../../../../api/controllers/SearchController.ts";
+import type { PromptResource } from "../../../../../api/schemas/promptResourceSchema.ts";
 import type { SearchHit } from "../../../../../api/schemas/searchHitSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import {
   type ProjectNavEntry,
   projectNavAtom,
 } from "../../../atoms/projectNavAtom.ts";
+import { promptPageAtom } from "../../../atoms/promptPageAtom.ts";
 import { spotlightOpenAtom } from "../../../atoms/spotlightOpenAtom.ts";
 import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { usePinnedPrompts } from "../../project/prompts/pins/usePinnedPrompts.tsx";
 import { formatReference } from "../element/typedReference.ts";
 import { matchProjectNav } from "./matchProjectNav.ts";
 
@@ -97,6 +102,12 @@ const Spotlight = (): ReactElement => {
   const [overview] = useStore(userProjectsAtom);
   const [projectNav] = useStore(projectNavAtom);
   const searchApi = useClient<SearchController>();
+  const [promptPage] = useStore(promptPageAtom);
+  // The prompts are read once the palette has opened in this project, not
+  // on every page load (#Q4284); kept after, for the dialog it opens.
+  const [promptsWanted, setPromptsWanted] = useState(false);
+  if (spotlight.open && !promptsWanted && project) setPromptsWanted(true);
+  const pins = usePinnedPrompts({ enabled: promptsWanted });
 
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SpotlightHit[]>([]);
@@ -281,6 +292,28 @@ const Spotlight = (): ReactElement => {
     return <FileText />;
   };
 
+  // Every prompt of the project, pinned or not (#Q4284): Copy, and Run under
+  // the robot button's conditions, matched on what the row says.
+  const promptRows = (): SpotlightRow[] => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return pins.prompts.flatMap((prompt) =>
+      (["copy", "run"] as const)
+        .filter((mode) => mode === "copy" || pins.canRun(prompt))
+        .map((mode) => ({
+          key: `prompt:${mode}:${prompt.name}`,
+          kind: "prompt" as const,
+          prompt,
+          mode,
+          label: tr(`prompts.spotlight.${mode}`, { args: [prompt.title] }),
+        }))
+        .filter(
+          (row) =>
+            row.label.toLowerCase().includes(q) || row.prompt.name.includes(q),
+        ),
+    );
+  };
+
   const hitRows = (kind: (hit: SpotlightHit) => boolean): SpotlightRow[] =>
     hits
       .filter(kind)
@@ -354,6 +387,11 @@ const Spotlight = (): ReactElement => {
             heading: tr("spotlight.group.folios"),
             items: hitRows((h) => h.kind === "folio" || h.kind === "directory"),
           },
+          {
+            key: "prompts",
+            heading: tr("spotlight.group.prompts"),
+            items: promptRows(),
+          },
         ]
   ).filter((group) => group.items.length > 0);
 
@@ -387,6 +425,21 @@ const Spotlight = (): ReactElement => {
         </CommandItem>
       );
     }
+    if (item.kind === "prompt") {
+      return (
+        <CommandItem
+          key={item.key}
+          value={item}
+          onClick={() => {
+            close();
+            pins.start(item.prompt, item.mode, promptPage.item);
+          }}
+        >
+          {item.mode === "copy" ? <Copy /> : <Play />}
+          <span className="flex-1 truncate">{item.label}</span>
+        </CommandItem>
+      );
+    }
     const hit = item.hit;
     return (
       <CommandItem key={item.key} value={item} onClick={() => void go(hit)}>
@@ -410,69 +463,73 @@ const Spotlight = (): ReactElement => {
   };
 
   return (
-    <CommandDialog
-      open={spotlight.open}
-      onOpenChange={(open) => {
-        if (!open) close();
-      }}
-      /* `CommandDialog` sets position and padding but never a width, so it
+    <>
+      <CommandDialog
+        open={spotlight.open}
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+        /* `CommandDialog` sets position and padding but never a width, so it
          inherited `DialogContent`'s `sm:max-w-sm` - 384px. Widened HERE and
          not in `Command.tsx`: the width is this spotlight's, and every other
          command dialog keeps its own. */
-      className="sm:max-w-2xl"
-      title={tr("spotlight.title")}
-      description={tr(
-        projectId === undefined
-          ? "spotlight.description.projects"
-          : "spotlight.description",
-      )}
-    >
-      {/* `mode="none"` because the filtering already happened on the server,
+        className="sm:max-w-2xl"
+        title={tr("spotlight.title")}
+        description={tr(
+          projectId === undefined
+            ? "spotlight.description.projects"
+            : "spotlight.description",
+        )}
+      >
+        {/* `mode="none"` because the filtering already happened on the server,
           ranked across types. Left on `list`, the palette would rank the rows
           AGAIN against their text and could reorder or hide results the
           server put first. The query is controlled here, because typing is
           what sends the search. */}
-      <Command<SpotlightRow>
-        items={groups}
-        mode="none"
-        value={query}
-        onValueChange={onQueryChange}
-      >
-        <CommandInput
-          placeholder={tr(
-            projectId === undefined
-              ? "spotlight.placeholder.projects"
-              : "spotlight.placeholder",
-          )}
-        />
-        <CommandEmpty>
-          {tr(
-            projectId === undefined
-              ? "spotlight.empty.projects"
-              : query.trim()
-                ? "spotlight.empty"
-                : "spotlight.hint",
-          )}
-        </CommandEmpty>
-        <CommandList>
-          {(group: SpotlightGroup) => (
-            <CommandGroup
-              key={group.key}
-              items={group.items}
-              heading={group.heading}
-            >
-              {row}
-            </CommandGroup>
-          )}
-        </CommandList>
-      </Command>
-    </CommandDialog>
+        <Command<SpotlightRow>
+          items={groups}
+          mode="none"
+          value={query}
+          onValueChange={onQueryChange}
+        >
+          <CommandInput
+            placeholder={tr(
+              projectId === undefined
+                ? "spotlight.placeholder.projects"
+                : "spotlight.placeholder",
+            )}
+          />
+          <CommandEmpty>
+            {tr(
+              projectId === undefined
+                ? "spotlight.empty.projects"
+                : query.trim()
+                  ? "spotlight.empty"
+                  : "spotlight.hint",
+            )}
+          </CommandEmpty>
+          <CommandList>
+            {(group: SpotlightGroup) => (
+              <CommandGroup
+                key={group.key}
+                items={group.items}
+                heading={group.heading}
+              >
+                {row}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </CommandDialog>
+      {pins.dialog}
+    </>
   );
 };
 
 /**
  * One row of the palette: a project to switch to, a page or app the sidebar
- * offers, or a search hit. Tagged so each renders and navigates its own way.
+ * offers, a search hit, or a prompt to copy or run (#Q4284), the one row that
+ * acts instead of navigating. Tagged so each renders and navigates its own way.
  */
 type SpotlightRow =
   | {
@@ -481,7 +538,14 @@ type SpotlightRow =
       project: { id: number; slug: string; title: string };
     }
   | { key: string; kind: "nav"; entry: ProjectNavEntry }
-  | { key: string; kind: "hit"; hit: SpotlightHit };
+  | { key: string; kind: "hit"; hit: SpotlightHit }
+  | {
+      key: string;
+      kind: "prompt";
+      prompt: PromptResource;
+      mode: "copy" | "run";
+      label: string;
+    };
 
 interface SpotlightGroup {
   [key: string]: unknown;

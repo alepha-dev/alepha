@@ -4,10 +4,14 @@ import { $action, okSchema } from "alepha/server";
 import { agentRunSchema } from "../schemas/agentRunSchema.ts";
 import { promptCreateSchema } from "../schemas/promptCreateSchema.ts";
 import { promptResourceSchema } from "../schemas/promptResourceSchema.ts";
-import { PROMPT_NAME_PATTERN } from "../schemas/promptValues.ts";
+import {
+  PROMPT_ARG_TYPES,
+  PROMPT_NAME_PATTERN,
+} from "../schemas/promptValues.ts";
 import { promptWriteSchema } from "../schemas/promptWriteSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AgentJobs } from "../services/AgentJobs.ts";
+import { PromptRegistry } from "../services/PromptRegistry.ts";
 import { PromptRunService } from "../services/PromptRunService.ts";
 import { PromptService } from "../services/PromptService.ts";
 import { PromptTriggers } from "../services/PromptTriggers.ts";
@@ -23,6 +27,7 @@ export class PromptController {
   protected readonly runs = $inject(PromptRunService);
   protected readonly triggers = $inject(PromptTriggers);
   protected readonly agents = $inject(AgentJobs);
+  protected readonly registry = $inject(PromptRegistry);
 
   protected readonly nameParams = z.object({
     projectId: z.integer(),
@@ -41,11 +46,23 @@ export class PromptController {
         items: z.array(promptResourceSchema),
         /** When every prompt's trigger was paused (#Q4277). */
         pausedAt: z.string().optional(),
+        /**
+         * The pages a prompt can be pinned to (#Q4284), and the item type
+         * each gives.
+         */
+        pages: z.array(
+          z.object({
+            key: z.text({ maxLength: 32 }),
+            label: z.text({ maxLength: 64 }),
+            gives: z.enum(PROMPT_ARG_TYPES).optional(),
+          }),
+        ),
       }),
     },
     handler: async ({ params }) => {
       const pausedAt = await this.triggers.pausedAt(params.projectId);
       return {
+        pages: this.registry.pages(),
         items: await this.service.list(params.projectId),
         ...(pausedAt ? { pausedAt } : {}),
       };

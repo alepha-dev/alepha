@@ -37,6 +37,10 @@ export const promptWriteSchema = z.object({
   maxRunsPerHour: z.integer().min(1).max(60).optional(),
   maxRunsPerDay: z.integer().min(1).max(1000).optional(),
   settleSeconds: z.integer().min(0).max(3600).optional(),
+  /**
+   * The pages it is pinned to (#Q4284), by key; writable on a built-in.
+   */
+  pins: z.array(z.string().max(32)).max(16).optional(),
 });
 
 export type PromptWrite = Infer<typeof promptWriteSchema>;

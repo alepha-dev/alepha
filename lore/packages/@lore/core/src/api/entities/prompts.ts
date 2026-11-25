@@ -100,6 +100,10 @@ export const prompts = $entity({
      * weekly status, an epic.
      */
     argValues: z.record(z.string().max(32), z.string().max(120)).optional(),
+    /**
+     * The pages it is pinned to (#Q4284), by key: none by default.
+     */
+    pins: z.array(z.string().max(32)).max(16).optional(),
     maxRunsPerHour: db.default(z.integer().min(1).max(60), 6),
     maxRunsPerDay: db.default(z.integer().min(1).max(1000), 48),
     consecutiveFailures: db.default(z.integer().min(0), 0),
