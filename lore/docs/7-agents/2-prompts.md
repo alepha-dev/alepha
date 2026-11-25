@@ -277,6 +277,32 @@ caused the event. It skips, saying why in the **Last run** column, an item its
 arg does not accept, a quest tagged **`needs-human`**, and the events its own
 jobs raised: a run's work starts at most one more run, never a loop.
 
+### A project that works on its own
+
+These events let the built-ins hand work to each other:
+
+| Prompt                         | Trigger                                                   | Only when            |
+| ------------------------------ | --------------------------------------------------------- | -------------------- |
+| **Triage feedback and errors** | `event:feedback.created,feedback.commented,error.trusted` | `feedback`, `errors` |
+| **Work on loose quests**       | `event:quest.created`                                     | `quests`             |
+| **Work on epic**               | `event:epic.ready`                                        |                      |
+
+- `feedback.commented` is a new comment on a feedback item.
+- `error.trusted` is an error a member trusted, or a new server error trusted
+  on arrival: once per error, never for each time it happens again.
+- `epic.ready` is an epic marked ready. Its run works that epic: one run per
+  epic.
+- **Work on loose quests** hears `quest.created` only for a quest it would
+  take: under no epic and not tagged **`needs-human`**. Any other quest starts
+  nothing and records no skip.
+
+Feedback then starts a triage, the quest that triage files starts one run on
+loose quests, and nothing that run does starts another. To keep a quest you
+file from being worked on its own, tag it **`needs-human`** or file it under
+an epic when you create it: a run starts as soon as a loose quest is filed.
+A shelved quest is never taken either. A new project starts with every
+trigger set to **manual**.
+
 ### When something goes wrong
 
 A triggered prompt runs unattended, so it stops by itself:

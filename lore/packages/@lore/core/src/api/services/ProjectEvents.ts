@@ -87,7 +87,10 @@ export class ProjectEvents {
     }
     const now = this.database.timestamp(this.dateTime.nowISOString());
     const id = this.crypto.randomUUID();
-    const jobId = input.jobId ?? (await this.callerJob());
+    const jobId =
+      input.jobId === null
+        ? undefined
+        : (input.jobId ?? (await this.callerJob()));
     const job = await this.delivery.prepare(
       input.projectId,
       input.name,
@@ -203,9 +206,11 @@ export interface ProjectEventInput {
   actorId?: string;
   /**
    * The host job that caused it (#Q4227). Absent, the job whose key made
-   * the current request, if one did.
+   * the current request, if one did. `null`, no job: for an event the
+   * current request did not cause, such as one recorded by work deferred
+   * to its end (#Q4331).
    */
-  jobId?: string;
+  jobId?: string | null;
 }
 
 /**

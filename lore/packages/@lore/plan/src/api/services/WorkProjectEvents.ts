@@ -27,6 +27,26 @@ export class WorkProjectEvents {
         text: this.text(it.description) || "The report has no description.",
       }),
     });
+    // A comment on a feedback item (#Q4331), from a member, an agent or the
+    // reporter: what a triage trigger hears, besides a new item.
+    this.catalog.register({
+      name: "feedback.commented",
+      label: "Feedback commented",
+      resource: "feedback",
+      subject: "feedback",
+      fields: {
+        feedback_id: "number",
+        shortId: "number",
+        reference: "text",
+        author_id: "member",
+      },
+      needs: { capability: "plan", option: "feedback" },
+      permission: "feedback:read",
+      message: (it) => ({
+        title: `New comment on feedback ${this.text(it.reference)}: ${this.text(it.title)}`,
+        text: "Its discussion has a new comment.",
+      }),
+    });
     // A member trusted an item written outside the team (#Q4216, #Q4227):
     // an agent may read it from now on, so a triage automation hears it.
     this.catalog.register({

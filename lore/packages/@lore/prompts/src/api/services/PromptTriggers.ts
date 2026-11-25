@@ -48,7 +48,8 @@ import { PromptService } from "./PromptService.ts";
  * - **The gate**: the project's pause, a host offline (a skip, never a
  *   failure), runs per hour and per day (triggered runs only); three failed
  *   or timed-out triggered runs in a row disable it.
- * - **Guards**: a job's own events never trigger its prompt; the chain is
+ * - **Guards**: a job's own events never trigger its prompt; a built-in
+ *   hears only the events it accepts (`acceptsEvent`, #Q4331); the chain is
  *   one hop (AgentJobService); an event never fills a `quest` arg with a
  *   quest tagged `needs-human` or born of outside text nobody confirmed, nor
  *   a `feedback` arg with an item no member trusted.
@@ -406,6 +407,12 @@ export class PromptTriggers {
     for (const row of listening) {
       // A job's own events never trigger the prompt that started it.
       if (raisedBy?.prompt === row.name) continue;
+      // An event the built-in declines is not for it (#Q4331): no run, no
+      // skip recorded.
+      const builtin = row.builtin ? this.registry.get(row.name) : undefined;
+      if (builtin?.acceptsEvent && !(await builtin.acceptsEvent(event))) {
+        continue;
+      }
       const prompt = await this.prompts
         .get(row.projectId, row.name)
         .catch(() => undefined);

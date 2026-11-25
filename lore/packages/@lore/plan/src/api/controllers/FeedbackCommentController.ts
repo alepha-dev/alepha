@@ -12,6 +12,7 @@ import { files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $secure, type UserAccountToken } from "alepha/security";
 import {
@@ -29,6 +30,7 @@ import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
+import { WorkEventSources } from "../services/WorkEventSources.ts";
 
 /**
  * The thread on a feedback item: the owner asking the reporter a question,
@@ -68,6 +70,8 @@ export class FeedbackCommentController {
   audits = $inject(LoreAudits);
   mentions = $inject(MentionNotifier);
   reporterNotifier = $inject(FeedbackNotifier);
+  eventSources = $inject(WorkEventSources);
+  log = $logger();
   security = $inject(ProjectSecurityService);
   ranks = $inject(RankService);
   dt = $inject(DateTimeProvider);
@@ -269,6 +273,14 @@ export class FeedbackCommentController {
         // outlives the comment's own deletion.
         metadata: { commentId: created.id, source: body.source },
       });
+      // A triage trigger hears it (#Q4331). Never thrown: the comment is
+      // saved, and a failure here must not answer 500 for it, nor make a
+      // retry post it twice.
+      await this.eventSources.commentFeedback(row, user.id).catch((error) =>
+        this.log.warn("A feedback comment's event could not be recorded", {
+          error,
+        }),
+      );
 
       // ⚠️ Its own `isMember` call, never inferred from which branch of
       // `loadReadable` fired: that helper takes the reporter branch FIRST, so
