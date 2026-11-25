@@ -7,6 +7,7 @@ import {
   ChatResponderRegistry,
 } from "@lore/chat/api";
 import { $inject, AlephaError } from "alepha";
+import { AI_CALL_DENIED } from "alepha/ai";
 import {
   type AiChatBody,
   AiBudgetService,
@@ -266,8 +267,12 @@ export class LoreChatResponder {
   protected async *mapped(
     events: AsyncIterable<AiStreamEvent>,
   ): AsyncIterable<ChatAgentEvent> {
+    // The engine's own end, whose reason the runner needs (#Q4302).
+    let reason: AiStreamEvent["reason"];
     for await (const event of events) {
-      if (event.type === "text") {
+      if (event.type === "end") {
+        reason = event.reason;
+      } else if (event.type === "text") {
         yield { type: "text", text: event.text ?? "" };
       } else if (event.type === "tool_call") {
         yield { type: "tool", name: event.name ?? "", state: "running" };
@@ -276,6 +281,10 @@ export class LoreChatResponder {
           type: "tool",
           name: event.name ?? "",
           state: event.isError ? "failed" : "done",
+          ...(event.isError && event.message ? { error: event.message } : {}),
+          ...(event.isError && event.message === AI_CALL_DENIED
+            ? { declined: true }
+            : {}),
         };
       } else if (event.type === "confirm") {
         yield {
@@ -296,6 +305,6 @@ export class LoreChatResponder {
         return;
       }
     }
-    yield { type: "end" };
+    yield { type: "end", ...(reason ? { reason } : {}) };
   }
 }

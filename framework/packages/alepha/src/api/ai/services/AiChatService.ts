@@ -240,6 +240,11 @@ export class AiChatService {
               callId: event.message.callId,
               name: event.message.name,
               isError: event.message.isError ?? false,
+              // What failed, for a client that has to say so: the error the
+              // model reads, cut short. A result's own text stays out.
+              ...(event.message.isError
+                ? { message: event.message.content.slice(0, 200) }
+                : {}),
             };
           }
         } else if (event.type === "text") {
