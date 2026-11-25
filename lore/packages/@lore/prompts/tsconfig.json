@@ -1,0 +1,7 @@
+{
+  "extends": "alepha/tsconfig.base",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

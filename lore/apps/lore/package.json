@@ -31,6 +31,7 @@
     "@lore/core": "workspace:*",
     "@lore/plan": "workspace:*",
     "@lore/plan-requirements": "workspace:*",
+    "@lore/prompts": "workspace:*",
     "@lore/remember": "workspace:*",
     "@lore/ship": "workspace:*",
     "alepha": "workspace:*",

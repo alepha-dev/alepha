@@ -21,6 +21,9 @@ import { LorePlanRequirementsWeb } from "@lore/plan-requirements/web";
 import { LorePlanApi } from "@lore/plan/api";
 import { LorePlanMcp } from "@lore/plan/mcp";
 import { LorePlanWeb } from "@lore/plan/web";
+import { LorePromptsApi } from "@lore/prompts/api";
+import { LorePromptsMcp } from "@lore/prompts/mcp";
+import { LorePromptsWeb } from "@lore/prompts/web";
 import { LoreRememberApi } from "@lore/remember/api";
 import { LoreRememberMcp } from "@lore/remember/mcp";
 import { LoreRememberWeb } from "@lore/remember/web";
@@ -198,12 +201,15 @@ alepha.with(LoreShipApi);
 alepha.with(LorePlanRequirementsApi);
 // Chat (#E161): core only, so its place after the pillars is a reading order.
 alepha.with(LoreChatApi);
+// Prompts (#E175): core only, a capability off by default.
+alepha.with(LorePromptsApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LorePlanMcp);
 alepha.with(LoreRememberMcp);
 alepha.with(LoreShipMcp);
 alepha.with(LorePlanRequirementsMcp);
 alepha.with(LoreChatMcp);
+alepha.with(LorePromptsMcp);
 
 // The in-app assistant (#E120), after every module: its tools are theirs.
 // Always registered, so its tables are in every schema; `AI_ASSISTANT_ENABLED`
@@ -230,6 +236,7 @@ alepha.with(LoreRememberWeb);
 alepha.with(LoreShipWeb);
 alepha.with(LorePlanRequirementsWeb);
 alepha.with(LoreChatWeb);
+alepha.with(LorePromptsWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);

@@ -5,6 +5,7 @@ import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
 import { LorePlanRequirementsWeb } from "@lore/plan-requirements/web";
 import { LorePlanWeb } from "@lore/plan/web";
+import { LorePromptsWeb } from "@lore/prompts/web";
 import { LoreRememberWeb } from "@lore/remember/web";
 import { LoreShipWeb } from "@lore/ship/web";
 import { Alepha, run } from "alepha";
@@ -39,6 +40,8 @@ alepha.with(LoreShipWeb);
 alepha.with(LorePlanRequirementsWeb);
 // Chat (#E161).
 alepha.with(LoreChatWeb);
+// Prompts (#E175).
+alepha.with(LorePromptsWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);

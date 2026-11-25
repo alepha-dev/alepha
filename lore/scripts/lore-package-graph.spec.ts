@@ -9,6 +9,7 @@ const exports = {
   ship: ["api", "mcp", "web", "schemas"],
   "plan-requirements": ["api", "mcp", "web", "schemas", "testing"],
   chat: ["api", "mcp", "web", "schemas"],
+  prompts: ["api", "mcp", "web", "schemas"],
 };
 
 const graph = new LorePackageGraph(exports);

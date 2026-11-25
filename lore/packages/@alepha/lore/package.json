@@ -117,6 +117,7 @@
     "@lore/core": "*",
     "@lore/plan": "*",
     "@lore/plan-requirements": "*",
+    "@lore/prompts": "*",
     "@lore/remember": "*",
     "@lore/ship": "*",
     "@playwright/test": ">=1.42",
@@ -135,6 +136,9 @@
       "optional": true
     },
     "@lore/plan-requirements": {
+      "optional": true
+    },
+    "@lore/prompts": {
       "optional": true
     },
     "@lore/remember": {
