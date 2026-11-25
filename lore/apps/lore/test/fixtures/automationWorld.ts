@@ -3,19 +3,22 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AgentHostService,
-  PromptController,
-  PromptTriggers,
   HostCommandService,
   HostCommandTransport,
   HostJobService,
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
 import { eventSubscriptions, projectEvents } from "@lore/core/api";
-import { hostCommands, prompts, hostJobs, hosts } from "@lore/core/schemas";
+import { hostCommands, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackController } from "@lore/plan/api";
 import { feedback, quests } from "@lore/plan/schemas";
+import {
+  AgentHostService,
+  PromptController,
+  PromptTriggers,
+} from "@lore/prompts/api";
+import { prompts } from "@lore/prompts/schemas";
 import { projectErrors } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
 import {

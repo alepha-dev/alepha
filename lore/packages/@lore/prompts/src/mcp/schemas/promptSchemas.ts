@@ -1,11 +1,10 @@
-import { z } from "alepha";
-
-import { promptResourceSchema } from "../../api/schemas/promptResourceSchema.ts";
 import {
   PROMPT_CHECKS,
   PROMPT_SOURCES,
-} from "../../api/schemas/promptValues.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
+  projectParamsSchema,
+  promptResourceSchema,
+} from "@lore/core/schemas";
+import { z } from "alepha";
 
 /*
  * The `prompt_*` tools' params and results (#Q4282), one family: each param

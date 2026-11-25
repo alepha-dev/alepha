@@ -1,11 +1,8 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
-import { AgentHostController } from "../../api/controllers/AgentHostController.ts";
 import { HostJobController } from "../../api/controllers/HostJobController.ts";
 import {
-  agentHostsParamsSchema,
-  agentHostsResultSchema,
   jobGetParamsSchema,
   jobGetResultSchema,
   jobIdParamsSchema,
@@ -22,25 +19,6 @@ import { ProjectTools } from "./ProjectTools.ts";
 export class JobTools {
   protected readonly jobs = $inject(HostJobController);
   protected readonly projects = $inject(ProjectTools);
-  protected readonly agentHosts = $inject(AgentHostController);
-
-  agent_hosts = $tool({
-    title: "List Agent hosts",
-    description:
-      "The project's Agent hosts, its own and those lent to it: each one's last check (available or not, and why), the agent CLIs it reports (what agent_run's `agent` names), and every tool its jobs user has (agent CLIs, git, gh, lore) with a version or the error of its version command. Whether a tool is signed in is not checked. Readable by members whose rank grants host:read.",
-    annotations: { readOnlyHint: true },
-    schema: { params: agentHostsParamsSchema, result: agentHostsResultSchema },
-    handler: async ({ params }) => {
-      const projectId = await this.projects.resolveProjectId(
-        params.project,
-        params.project_name,
-      );
-      const { items } = await this.agentHosts.listProjectAgentHosts({
-        params: { projectId },
-      });
-      return { hosts: items };
-    },
-  });
 
   job_list = $tool({
     title: "List host jobs",

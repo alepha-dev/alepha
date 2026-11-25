@@ -1,12 +1,12 @@
 import {
   LorePermissions,
   ProjectMergeService,
-  PromptController,
   PromptRegistry,
 } from "@lore/core/api";
-import { prompts } from "@lore/core/schemas";
 import { createTestMember, createTestProject } from "@lore/core/testing";
 import { createTestEpic, createTestQuest } from "@lore/plan/testing";
+import { PromptController } from "@lore/prompts/api";
+import { prompts } from "@lore/prompts/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

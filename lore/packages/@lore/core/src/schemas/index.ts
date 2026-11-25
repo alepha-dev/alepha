@@ -171,7 +171,6 @@ export { hostCommands } from "../api/entities/hostCommands.ts";
 export type { HostCommand } from "../api/entities/hostCommands.ts";
 export { hostJobs } from "../api/entities/hostJobs.ts";
 // ---- prompts (#E174) ----
-export { type Prompt, prompts } from "../api/entities/prompts.ts";
 export {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_STATUSES,
@@ -198,14 +197,6 @@ export {
   type PromptResource,
   promptResourceSchema,
 } from "../api/schemas/promptResourceSchema.ts";
-export {
-  type PromptWrite,
-  promptWriteSchema,
-} from "../api/schemas/promptWriteSchema.ts";
-export {
-  type PromptCreate,
-  promptCreateSchema,
-} from "../api/schemas/promptCreateSchema.ts";
 export {
   promptPlaceholders,
   renderPromptText,
@@ -335,3 +326,21 @@ export { HostCost } from "../api/schemas/HostCost.ts";
 // ---- Quality (#Q3070), core's since #Q4217 ----
 export { qualityRuns } from "../api/entities/qualityRuns.ts";
 export type { QualityRunPush } from "../api/schemas/qualityRunPushSchema.ts";
+
+// The prompt engine's reads of core (#E175), now that it lives in
+// `@lore/prompts`.
+export {
+  type HostInventoryJobs,
+  type HostJobTool,
+  hostInventoryJobsSchema,
+  hostJobToolSchema,
+} from "../api/schemas/hostInventoryJobsSchema.ts";
+export { jobRepositoryOf } from "../api/schemas/jobRepository.ts";
+export {
+  type ProjectEventFields,
+  projectEventFieldsSchema,
+} from "../api/schemas/projectEventFieldsSchema.ts";
+export {
+  type PromptJobCause,
+  promptJobCauseSchema,
+} from "../api/schemas/promptJobCauseSchema.ts";

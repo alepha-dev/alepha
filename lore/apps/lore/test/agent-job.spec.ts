@@ -3,16 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AgentJobService,
   HostCommandTransport,
   HostCommandService,
   HostJobService,
-  AgentHostService,
   ProjectCapabilityController,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { jobKeys, projects, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { AgentJobService, AgentHostService } from "@lore/prompts/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

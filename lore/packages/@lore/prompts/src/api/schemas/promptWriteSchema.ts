@@ -1,8 +1,11 @@
+import {
+  PROMPT_CHECKS,
+  PROMPT_MAX_ARGS,
+  agentRunSchema,
+  agentRunSourceSchema,
+  promptArgSchema,
+} from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
-
-import { agentRunSchema, agentRunSourceSchema } from "./agentRunSchema.ts";
-import { promptArgSchema } from "./promptArgSchema.ts";
-import { PROMPT_CHECKS, PROMPT_MAX_ARGS } from "./promptValues.ts";
 
 /**
  * The fields of a prompt a write sets (#Q4274). On a built-in only `source`,

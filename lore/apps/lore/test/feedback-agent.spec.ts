@@ -2,17 +2,16 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  AgentRunPreamble,
-  HostCommandTransport,
-  HostCommandService,
-  AgentHostService,
-  PromptRunService,
-} from "@lore/core/api";
+import { HostCommandTransport, HostCommandService } from "@lore/core/api";
 import { hostJobs, hosts, projects } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackAgentService } from "@lore/plan/api";
 import { feedback, feedbackComments } from "@lore/plan/schemas";
+import {
+  AgentRunPreamble,
+  AgentHostService,
+  PromptRunService,
+} from "@lore/prompts/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

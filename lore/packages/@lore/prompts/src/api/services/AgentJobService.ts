@@ -1,22 +1,25 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  type AgentHostRef,
+  type AgentJobRequest,
+  AgentJobs,
+  type HostJobSummary,
+  HostJobs,
+  JobKeyService,
+} from "@lore/core/api";
+import {
+  type HostJobSource,
+  jobRepositoryOf,
+  projects,
+} from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
-import { projects } from "../entities/projects.ts";
-import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
-import { jobRepositoryOf } from "../schemas/jobRepository.ts";
-import { type AgentJobRequest, AgentJobs } from "./AgentJobs.ts";
 import { AgentRunPreamble } from "./AgentRunPreamble.ts";
-import {
-  type AgentHostRef,
-  HostJobs,
-  type HostJobSummary,
-} from "./HostJobs.ts";
-import { JobKeyService } from "./JobKeyService.ts";
 
 /**
  * The agent job (#Q3986, light since #Q4222): a prompt, an agent CLI, a model

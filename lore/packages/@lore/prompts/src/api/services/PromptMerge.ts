@@ -1,11 +1,11 @@
+import {
+  ProjectMergeService,
+  type ProjectMergeTable,
+  ProjectMergeTables,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 
 import { prompts } from "../entities/prompts.ts";
-import { ProjectMergeService } from "./ProjectMergeService.ts";
-import {
-  type ProjectMergeTable,
-  ProjectMergeTables,
-} from "./ProjectMergeTables.ts";
 
 /**
  * Prompts move with a merged project (#Q4274), as a merge step of their own

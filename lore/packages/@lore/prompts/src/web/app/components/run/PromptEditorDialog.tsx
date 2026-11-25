@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import type { PromptController } from "@lore/core/api";
 import {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_TYPES,
@@ -21,6 +20,8 @@ import { z } from "alepha";
 import { useAction, useClient } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 
 export interface PromptEditorDialogProps {
   open: boolean;

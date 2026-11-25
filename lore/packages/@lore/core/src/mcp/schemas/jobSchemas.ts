@@ -1,6 +1,5 @@
 import { z } from "alepha";
 
-import { hostJobToolSchema } from "../../api/schemas/hostInventoryJobsSchema.ts";
 import { hostJobResourceSchema } from "../../api/schemas/hostJobResourceSchema.ts";
 import { HOST_JOB_STATUSES } from "../../api/schemas/hostJobValues.ts";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
@@ -44,24 +43,4 @@ export const jobGetParamsSchema = jobIdParamsSchema.extend({
 export const jobGetResultSchema = hostJobResourceSchema.extend({
   stdout: z.string().optional(),
   stderr: z.string().optional(),
-});
-
-// -----------------------------------------------------------------------------
-// agent_hosts (#Q4225)
-// -----------------------------------------------------------------------------
-
-export const agentHostsParamsSchema = projectParamsSchema;
-
-export const agentHostsResultSchema = z.object({
-  hosts: z.array(
-    z.object({
-      id: z.uuid(),
-      slug: z.string(),
-      status: z.string().optional(),
-      checkedAt: z.string().optional(),
-      error: z.string().optional(),
-      agents: z.array(z.string()),
-      tools: z.array(hostJobToolSchema),
-    }),
-  ),
 });

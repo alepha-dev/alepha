@@ -2,7 +2,6 @@ import {
   HostCommandTransport,
   HostCommandService,
   HostJobService,
-  AgentHostService,
 } from "@lore/core/api";
 import {
   projects,
@@ -12,6 +11,7 @@ import {
   hosts,
 } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { AgentHostService, LorePromptsApi } from "@lore/prompts/api";
 import { LoreShipApi } from "@lore/ship/api";
 import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
@@ -47,6 +47,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(LoreShipApi);
+  alepha.with(LorePromptsApi);
   const entities = alepha.inject(DeployTestEntities);
   const repos = alepha.inject(Repos);
   await alepha.start();

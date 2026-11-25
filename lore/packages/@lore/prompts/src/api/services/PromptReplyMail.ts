@@ -1,19 +1,20 @@
+import {
+  type HostJobSummary,
+  LoreInboxNotifications,
+  NotificationHtmlEscaper,
+  ProjectRecipients,
+  PromptRegistry,
+  ReplyMarkdownHtml,
+} from "@lore/core/api";
+import { hostJobs, projects } from "@lore/core/schemas";
 import { $hook, $inject, Alepha } from "alepha";
 import { $notification } from "alepha/api/notifications";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
-import { hostJobs } from "../entities/hostJobs.ts";
-import { projects } from "../entities/projects.ts";
 import { prompts } from "../entities/prompts.ts";
-import { LoreInboxNotifications } from "../notifications/LoreInboxNotifications.ts";
-import { NotificationHtmlEscaper } from "../notifications/NotificationHtmlEscaper.ts";
-import { ReplyMarkdownHtml } from "../notifications/ReplyMarkdownHtml.ts";
 import { promptReplyNotificationSchema } from "../schemas/promptReplyNotificationSchema.ts";
-import type { HostJobSummary } from "./HostJobs.ts";
-import { ProjectRecipients } from "./ProjectRecipients.ts";
-import { PromptRegistry } from "./PromptRegistry.ts";
 
 /**
  * A `member` arg emails the run's final reply to that member (#E174,

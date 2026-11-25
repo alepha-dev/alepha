@@ -1,14 +1,15 @@
+import {
+  type HostJobSummary,
+  LoreDatabase,
+  ProjectEventCatalog,
+  ProjectEvents,
+  PromptRegistry,
+} from "@lore/core/api";
+import { type ProjectEventFields, projects } from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { projects } from "../entities/projects.ts";
 import { prompts } from "../entities/prompts.ts";
-import type { ProjectEventFields } from "../schemas/projectEventFieldsSchema.ts";
-import type { HostJobSummary } from "./HostJobs.ts";
-import { LoreDatabase } from "./LoreDatabase.ts";
-import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
-import { ProjectEvents } from "./ProjectEvents.ts";
-import { PromptRegistry } from "./PromptRegistry.ts";
 
 /**
  * An agent job that ends (#E174, #Q4276): `agent.job.succeeded` and

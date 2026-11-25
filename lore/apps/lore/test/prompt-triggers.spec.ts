@@ -1,6 +1,7 @@
-import { HostCommandService, PromptTriggers } from "@lore/core/api";
+import { HostCommandService } from "@lore/core/api";
 import { EpicController, QuestController } from "@lore/plan/api";
 import { createTestEpic, createTestQuest } from "@lore/plan/testing";
+import { PromptTriggers } from "@lore/prompts/api";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, it } from "vitest";
 

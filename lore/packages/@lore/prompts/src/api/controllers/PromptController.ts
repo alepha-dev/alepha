@@ -1,17 +1,15 @@
-import { $inject, z } from "alepha";
-import { $action, okSchema } from "alepha/server";
-
-import { agentRunSchema } from "../schemas/agentRunSchema.ts";
-import { promptCreateSchema } from "../schemas/promptCreateSchema.ts";
-import { promptResourceSchema } from "../schemas/promptResourceSchema.ts";
+import { $ownsProject, AgentJobs, PromptRegistry } from "@lore/core/api";
 import {
   PROMPT_ARG_TYPES,
   PROMPT_NAME_PATTERN,
-} from "../schemas/promptValues.ts";
+  agentRunSchema,
+  promptResourceSchema,
+} from "@lore/core/schemas";
+import { $inject, z } from "alepha";
+import { $action, okSchema } from "alepha/server";
+
+import { promptCreateSchema } from "../schemas/promptCreateSchema.ts";
 import { promptWriteSchema } from "../schemas/promptWriteSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
-import { AgentJobs } from "../services/AgentJobs.ts";
-import { PromptRegistry } from "../services/PromptRegistry.ts";
 import { PromptRunService } from "../services/PromptRunService.ts";
 import { PromptService } from "../services/PromptService.ts";
 import { PromptTriggers } from "../services/PromptTriggers.ts";

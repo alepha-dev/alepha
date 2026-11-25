@@ -1,8 +1,6 @@
+import { AgentJobs } from "@lore/core/api";
+import { type HostJobSource, projects } from "@lore/core/schemas";
 import { $repository } from "alepha/orm";
-
-import { projects } from "../entities/projects.ts";
-import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
-import { AgentJobs } from "./AgentJobs.ts";
 
 /**
  * The preamble Lore renders above every agent job's prompt (#Q4224), on a
