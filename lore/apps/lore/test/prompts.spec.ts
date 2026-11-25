@@ -198,6 +198,34 @@ describe("prompts", () => {
     expect(byName.triage!.text).toContain("It is not `needs-answer`");
   });
 
+  it("has every work prompt review its pull request with a sub-agent before it may merge, and lets a blocked quest not hold a run back (#Q4332)", async ({
+    expect,
+  }) => {
+    const byName = Object.fromEntries(
+      (await list()).map((it) => [it.name, it]),
+    );
+    for (const name of ["work-quest", "work-epic", "work-loose-quests"]) {
+      const text = byName[name]!.text;
+      expect(text).toContain(
+        "## The review, before the pull request may merge",
+      );
+      expect(text).toContain("Never your own reasoning");
+      expect(text).toContain("what the review found and what you fixed");
+    }
+    // The review comes before ready, and before auto-merge.
+    const loose = byName["work-loose-quests"]!.text;
+    expect(loose).toContain(
+      "this run left with a comment and those tagged `needs-answer`, review the pull request (below), then mark it ready",
+    );
+    expect(loose).not.toContain("If it is empty, mark the pull request ready");
+    expect(byName["work-epic"]!.text).toContain(
+      "does not hold the pull request back",
+    );
+    expect(byName["work-quest"]!.text).toContain(
+      "turn it on once the review's fixes are pushed",
+    );
+  });
+
   it("freezes a built-in's words, while its source is the project's to change, on a row of its own", async ({
     expect,
   }) => {

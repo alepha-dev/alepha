@@ -1,3 +1,5 @@
+import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
+import { reviewStepRule } from "./reviewStepRule.ts";
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
 
 /**
@@ -37,7 +39,9 @@ If main moves and the pull request conflicts, rebase the branch onto the latest 
 
 ## After the last quest
 
-1. Mark the pull request ready for review. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
+The last quest is the last one you can work: a quest you left with a comment on why it cannot be done as written, or tagged \`${QUEST_NEEDS_ANSWER_TAG}\`, stays open and does not hold the pull request back.
+
+1. Review the pull request (below), then mark it ready for review. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
 2. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{epic.number}}): what shipped, where it diverged from the plan and why, what was left. Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
 3. If you are still there once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
@@ -53,5 +57,7 @@ The outcome folio is the record; your reply is what the person who started this 
 - **Every quest you could not do as written**, numbered, one block each: what it asked, what stopped you, and the two or three ways forward with the one you would take. A pointer to the comment you left on that quest is not this. The decision is the owner's, and they are reading here.
 
 If nothing was blocked, say so in one line rather than padding the list.
+
+${reviewStepRule}
 
 ${unfinishedQuestRule}`;
