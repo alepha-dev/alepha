@@ -50,21 +50,23 @@ environment.
 
 ## Creating a stack
 
-1. Open **Stacks**. In the **New stack** card, type a **Name** (left empty, it
-   is the project's slug), choose the **Default host**, and click
-   **Create**.
-2. On the stack's card, type an environment name such as `production` and
-   click **Add environment**.
-3. On the same card, choose the **Compose file or bundle** and click
-   **Upload**. That is the stack's first revision.
+1. Open **Stacks** and click **New stack**. In the dialog, type a **Name**
+   (left empty, it is the project's slug), choose the **Default host**, and
+   click **Create**.
+2. In the stack's row menu, choose **Add environment**, type a name such as
+   `production` and click **Add environment**.
+3. In the same menu, choose **Upload compose**, pick the **Compose file or
+   bundle** and click **Upload**. That is the stack's first revision.
 
-Each environment on the card is a link to its own page, where the stack is
-deployed and watched.
+The stacks are a table, filtered by name or host. Each environment in a
+stack's row is a link to its own page, where the stack is deployed and
+watched.
 
 ## Uploading a revision
 
 A revision is a `compose.yml`, or a gzip or zstd tar bundle holding one with
-the files it mounts. Upload it from the stack's card on the **Stacks** page.
+the files it mounts. Upload it with **Upload compose** in the stack's row menu
+on the **Stacks** page.
 
 Lore checks the file before storing anything, against every host the stack
 deploys to, so a file the server would refuse is refused at upload. Every
@@ -228,7 +230,7 @@ instances.
 environment off the server as well, use `lore stack destroy`, below.
 
 A whole stack, with its revisions, is deleted once it has no environment left:
-**Delete stack** appears on its card on the Stacks page. Nothing on a server
+**Delete stack** appears in its row menu on the Stacks page. Nothing on a server
 changes.
 
 ## From the command line

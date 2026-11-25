@@ -4795,9 +4795,17 @@ export default {
   "uptime.bucketNote":
     "Uptime uses hourly buckets, including the current partial hour.",
   "uptime.staleAfter": "Stale after (seconds)",
+  "stacks.cancel": "Cancel",
+  "stacks.col.name": "Stack",
+  "stacks.col.environments": "Environments",
+  "stacks.noMatch": "No stack matches",
+  "stacks.noMatch.description": "Clear a filter to see every stack.",
+  "stacks.environment.add.description":
+    "An environment of $1, deployed to the stack's default host until its Settings name another.",
+  "stacks.revision.upload.title": "Upload compose",
+  "stacks.revision.upload.description":
+    "A new revision of $1: a compose file, or a tar.gz bundle holding one and the files it references.",
   "stacks.title": "Stacks",
-  "stacks.description":
-    "Apps and services deployed together from one compose.yml, one copy per environment.",
   "stacks.empty": "No stack yet",
   "stacks.empty.description":
     "A stack runs a compose file's services and this project's apps together on a host.",
@@ -4808,9 +4816,7 @@ export default {
   "stacks.create.host": "Default host",
   "stacks.create.submit": "Create",
   "stacks.created": "Stack created",
-  "stacks.col.environment": "Environment",
   "stacks.col.host": "Host",
-  "stacks.col.revision": "Revision",
   "stacks.col.members": "Apps",
   "stacks.delete": "Delete stack",
   "stacks.delete.confirm": "Delete stack $1?",
@@ -4824,8 +4830,6 @@ export default {
   "stacks.environment.name": "Environment",
   "stacks.environment.runs": "Runs revision $1",
   "stacks.host.default": "the stack's default",
-  "stacks.host.default.line":
-    "Deploys to $1 unless an environment names its own host.",
   "stacks.host.unset": "no host",
   "stacks.revision.file": "Compose file or bundle",
   "stacks.revision.latest": "revision $1",

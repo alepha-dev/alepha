@@ -1,10 +1,11 @@
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
@@ -16,15 +17,19 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { StackController } from "../../../../../api/controllers/StackController.ts";
 
-export interface StackCreateFormProps {
+export interface StackCreateDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   projectId: number;
   hosts: Array<{ id: string; slug: string; label?: string }>;
 }
 
 /**
- * A new stack: its name (the project slug when empty) and its default host.
+ * A new stack, in a centered dialog opened from the Stacks table's New
+ * stack (#Q4320): its name (the project slug when empty) and its default
+ * host. Closes on success.
  */
-const StackCreateForm = (props: StackCreateFormProps) => {
+const StackCreateDialog = (props: StackCreateDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const stackApi = useClient<StackController>();
@@ -48,28 +53,31 @@ const StackCreateForm = (props: StackCreateFormProps) => {
       queries.invalidate(["stacks", props.projectId]);
       form.reset();
       toaster.success(tr("stacks.created"));
+      props.onOpenChange(false);
     },
   });
   const { loading } = useFormState(form, ["loading"]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{tr("stacks.create")}</CardTitle>
-        <CardDescription>{tr("stacks.create.description")}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent data-testid="stack-create-dialog">
+        <DialogHeader>
+          <DialogTitle>{tr("stacks.create")}</DialogTitle>
+          <DialogDescription>
+            {tr("stacks.create.description")}
+          </DialogDescription>
+        </DialogHeader>
         <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          className="flex flex-col gap-3"
           onSubmit={(event) => {
             event.preventDefault();
             void form.submit();
           }}
         >
-          <div className="flex-1" data-testid="stack-create-name">
+          <div data-testid="stack-create-name">
             <Control input={form.input.name} label={tr("stacks.create.name")} />
           </div>
-          <div className="flex-1" data-testid="stack-create-host">
+          <div data-testid="stack-create-host">
             <Control
               select
               input={form.input.hostId}
@@ -80,17 +88,26 @@ const StackCreateForm = (props: StackCreateFormProps) => {
               }))}
             />
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            data-testid="stack-create-submit"
-          >
-            {tr("stacks.create.submit")}
-          </Button>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={() => props.onOpenChange(false)}
+            >
+              {tr("stacks.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              data-testid="stack-create-submit"
+            >
+              {tr("stacks.create.submit")}
+            </Button>
+          </DialogFooter>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default StackCreateForm;
+export default StackCreateDialog;
