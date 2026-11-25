@@ -70,8 +70,8 @@ describe("prompt run events", () => {
       cause: "hand",
       reply: "Shipped two quests.",
       starter_id: w.owner.id,
-      title: "Weekly status",
     });
+    expect(String(event?.fields.title)).toMatch(/^Weekly status/);
     expect(String(event?.fields.url)).toMatch(new RegExp(`/jobs/${jobId}$`));
     await deliver();
     const inbox = await w.repos.inbox.findMany({

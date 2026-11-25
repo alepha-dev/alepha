@@ -1,11 +1,12 @@
 /**
  * `weekly-status` (#E174): the week's status, answered in the reply;
- * nothing in the project changes.
+ * nothing in the project changes. Its `member` arg is who it is for: a run
+ * emails them the reply (#Q4278).
  *
  * ⚠️ English, never localized: its words name the tools it calls. No
  * secret ever goes in: it leaves Lore on a clipboard or in a job.
  */
-export const weeklyStatusPromptText = `Write the weekly status update of the Lore project "{{project}}".
+export const weeklyStatusPromptText = `Write the weekly status update of the Lore project "{{project}}", for {{member.name}}.
 
 The reports: {{projectUrl}}/reports
 
