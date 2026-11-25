@@ -257,6 +257,7 @@ const ProjectSettingsNotificationsPage = () => {
             : "channel"
           : "member",
         mine,
+        filterResource: entry?.filter?.resource,
         filterLabel: sub.filter
           ? (filters.data?.[entry?.filter?.resource ?? ""]?.find(
               (it) => it.value === sub.filter,
@@ -636,7 +637,7 @@ const ProjectSettingsNotificationsPage = () => {
                   <span className="truncate">{row.filterLabel}</span>
                 ) : (
                   <span className="text-muted-foreground">
-                    {tr("notifications.form.filter.any")}
+                    {NotificationLabels.anyFilter(tr, row.filterResource)}
                   </span>
                 ),
             },

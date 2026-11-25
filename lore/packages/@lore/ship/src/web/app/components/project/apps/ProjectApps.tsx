@@ -211,7 +211,7 @@ const ProjectApps = () => {
       // way #Q1816 settled: there is no clear ROW in the list, so the label
       // says what unfiltered means and the trigger's `x` is how you get back
       // to it.
-      control: { clearLabel: tr("apps.filter.app") },
+      control: { clearLabel: tr("apps.filter.allApps") },
     },
     env: {
       schema: z.string(),
@@ -219,7 +219,7 @@ const ProjectApps = () => {
       icon: Layers,
       items: envOptions,
       hidden: envOptions.length <= 1,
-      control: { clearLabel: tr("apps.filter.env") },
+      control: { clearLabel: tr("apps.filter.allEnvs") },
     },
     status: {
       schema: z.enum(["reporting", "silent", "none"]),
@@ -246,7 +246,7 @@ const ProjectApps = () => {
         { value: "silent", label: tr("apps.status.silent.short") },
         { value: "none", label: tr("apps.status.none.short") },
       ],
-      control: { clearLabel: tr("apps.filter.status") },
+      control: { clearLabel: tr("apps.filter.allStatuses") },
     },
     /**
      * The deployed tag, as a select over the values actually present.
@@ -267,7 +267,7 @@ const ProjectApps = () => {
       icon: Tag,
       items: versionOptions,
       hidden: versionOptions.length === 0,
-      control: { clearLabel: tr("apps.filter.version") },
+      control: { clearLabel: tr("apps.filter.allVersions") },
     },
   } satisfies DataTableFilterFields;
 

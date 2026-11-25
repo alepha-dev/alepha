@@ -90,7 +90,7 @@ const ProjectSettingsPromptJobsPage = () => {
         ]),
         (name) => titleOf.get(name) ?? name,
       ),
-      control: { clearLabel: tr("jobs.filter.all") },
+      control: { clearLabel: tr("jobs.filter.allPrompts") },
     },
     status: {
       schema: z.text({ maxLength: 16 }),
@@ -99,7 +99,7 @@ const ProjectSettingsPromptJobsPage = () => {
       mode: "default",
       column: "status",
       items: options(distinct(jobs.map((it) => it.status))),
-      control: { clearLabel: tr("jobs.filter.all") },
+      control: { clearLabel: tr("jobs.filter.allStatuses") },
     },
     host: {
       schema: z.text({ maxLength: 64 }),
@@ -108,7 +108,7 @@ const ProjectSettingsPromptJobsPage = () => {
       mode: "default",
       column: "hostSlug",
       items: options(distinct(jobs.map((it) => it.hostSlug))),
-      control: { clearLabel: tr("jobs.filter.all") },
+      control: { clearLabel: tr("jobs.filter.allHosts") },
     },
   } satisfies DataTableFilterFields;
   // By hand (by whom), by an event (which), or by the schedule.

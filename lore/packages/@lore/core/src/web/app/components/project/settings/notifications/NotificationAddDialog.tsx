@@ -181,7 +181,13 @@ const NotificationAddDialog = (props: NotificationAddDialogProps) => {
               )}
               select
               items={[
-                { value: "", label: tr("notifications.form.filter.any") },
+                {
+                  value: "",
+                  label: NotificationLabels.anyFilter(
+                    tr,
+                    selected.filter.resource,
+                  ),
+                },
                 ...(props.filters[selected.filter.resource] ?? []),
               ]}
               disabled={busy}
