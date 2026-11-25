@@ -19,7 +19,7 @@ import {
   PromptTriggers,
 } from "@lore/prompts/api";
 import { promptQueue, prompts } from "@lore/prompts/schemas";
-import { projectErrors } from "@lore/ship/schemas";
+import { projectErrors, sigils } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
 import {
   JobProvider,
@@ -73,6 +73,7 @@ export class AutomationRepos {
   events = $repository(projectEvents);
   commands = $repository(hostCommands);
   errors = $repository(projectErrors);
+  sigils = $repository(sigils);
   feedback = $repository(feedback);
   quests = $repository(quests);
   comments = $repository(questComments);

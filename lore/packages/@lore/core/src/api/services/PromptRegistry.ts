@@ -1,5 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 
+import type { ProjectEvent } from "../entities/projectEvents.ts";
 import type { Project } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type { PromptArg } from "../schemas/promptArgSchema.ts";
@@ -200,6 +201,13 @@ export interface BuiltinPrompt {
    * is the rendered text under Lore's preamble and nothing more.
    */
   prepare?: (context: PromptRunContext) => Promise<PromptRunPlan>;
+  /**
+   * Whether an event its trigger listens to is one for it (#Q4331), asked
+   * before anything else, so an event it declines plans no run and records
+   * no skip: `work-loose-quests` hears `quest.created` for a quest under no
+   * epic and not tagged `needs-human` only. Absent, every event is.
+   */
+  acceptsEvent?: (event: ProjectEvent) => Promise<boolean>;
   /**
    * No built-in waits for an answer in its session: a question goes where a
    * person finds it, and the run ends.

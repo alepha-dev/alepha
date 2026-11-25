@@ -1,5 +1,6 @@
 import {
   AgentJobs,
+  type ProjectEvent,
   type PromptArgContext,
   PromptRegistry,
   type PromptRunContext,
@@ -150,6 +151,8 @@ export class PlanPrompts {
       concurrency: "queue",
       pins: ["quests"],
       text: workLooseQuestsPromptText,
+      // A quest under an epic or held for a person plans no run (#Q4331).
+      acceptsEvent: (event) => this.looseQuestEvent(event),
       oneShot: true,
     });
     this.registry.register({
@@ -391,6 +394,34 @@ export class PlanPrompts {
       limit: 200,
     });
     return pending.some((item) => !FeedbackAgentService.awaitsTrust(item));
+  }
+
+  /**
+   * Whether an event is one `work-loose-quests` hears (#Q4331): an event
+   * about a quest only when that quest is one it would take, the rule of
+   * {@link looseQuests}: under no epic, still to do (not accepted, held,
+   * shelved or completed: `quest_create` with `accept` is accepted by the
+   * time its event is delivered), not tagged `needs-human`, and not outside
+   * text nobody confirmed. Any other event, yes.
+   */
+  public async looseQuestEvent(event: ProjectEvent): Promise<boolean> {
+    if (event.subjectKind !== "quest" || !event.subjectId) return true;
+    const quest = await this.quests.findOne({
+      where: {
+        projectId: { eq: event.projectId },
+        shortId: { eq: Number(event.subjectId) },
+      },
+    });
+    if (!quest) return false;
+    return (
+      !quest.epicId &&
+      !quest.acceptedAt &&
+      !quest.completedAt &&
+      !quest.shelvedAt &&
+      !quest.heldAt &&
+      !(quest.tags ?? []).includes(PROMPT_NEEDS_HUMAN_TAG) &&
+      !(quest.untrusted && !quest.untrustedConfirmedAt)
+    );
   }
 
   /**

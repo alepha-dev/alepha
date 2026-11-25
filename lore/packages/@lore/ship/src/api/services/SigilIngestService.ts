@@ -18,6 +18,7 @@ import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { projectErrors } from "../entities/projectErrors.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
+import { ErrorTrustEvents } from "./ErrorTrustEvents.ts";
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 import { ProjectErrorRuleService } from "./ProjectErrorRuleService.ts";
 
@@ -74,6 +75,7 @@ export class SigilIngestService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(ProjectErrorRuleService);
+  protected readonly trustEvents = $inject(ErrorTrustEvents);
   /**
    * The capability read behind {@link gatesFor}. Cached and memoised there,
    * so an ingest batch pays for it once.
@@ -358,6 +360,27 @@ export class SigilIngestService {
       },
     );
 
+    // The server groups this ingest creates trusted on arrival get
+    // `error.trusted` (#Q4331), once each: the ones not stored before it.
+    // Read only when the batch holds a server group the project trusts on
+    // arrival, so a browser batch reads nothing more.
+    const arriving = trustServer
+      ? folded.filter((error) => error.origin === "server")
+      : [];
+    const known = arriving.length
+      ? new Set(
+          (
+            await this.projectErrors.findMany({
+              where: {
+                projectId: { eq: sigil.projectId },
+                fingerprint: { inArray: arriving.map((it) => it.fingerprint) },
+              },
+            })
+          ).map((row) => row.fingerprint),
+        )
+      : new Set<string>();
+    const created = arriving.filter((it) => !known.has(it.fingerprint));
+
     await this.projectErrors.upsertMany(
       folded.map((error) => ({
         projectId: sigil.projectId,
@@ -406,6 +429,19 @@ export class SigilIngestService {
         },
       },
     );
+
+    if (created.length > 0) {
+      await this.trustEvents.arrived(
+        await this.projectErrors.findMany({
+          where: {
+            projectId: { eq: sigil.projectId },
+            fingerprint: { inArray: created.map((it) => it.fingerprint) },
+            trustedAt: { isNotNull: true },
+            trustedBy: { isNull: true },
+          },
+        }),
+      );
+    }
 
     // The series the two upserts above structurally cannot hold: both keep
     // one row per fingerprint with a running total, so neither can say WHEN

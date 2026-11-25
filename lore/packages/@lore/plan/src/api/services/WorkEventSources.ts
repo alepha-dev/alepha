@@ -1,4 +1,9 @@
-import { projectEvents, SourceRepository } from "@lore/core/api";
+import {
+  LoreDatabase,
+  ProjectEvents,
+  projectEvents,
+  SourceRepository,
+} from "@lore/core/api";
 import { projects, type Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -33,6 +38,8 @@ export class WorkEventSources {
   protected readonly quests = $inject(SourceRepository.of(quests));
   protected readonly epics = $inject(SourceRepository.of(epics));
   protected readonly events = $repository(projectEvents);
+  protected readonly projectEvents = $inject(ProjectEvents);
+  protected readonly database = $inject(LoreDatabase);
 
   /**
    * A new epic, with `epic.created` (#Q4276).
@@ -221,6 +228,36 @@ export class WorkEventSources {
         },
       },
     );
+  }
+  /**
+   * `feedback.commented` for a comment just written (#Q4331), so a triage
+   * trigger hears a discussion that moved. Recorded after the comment, not
+   * with it: a comment is no transition a guard could lose, and its event
+   * is a notice, not a fact a later write depends on.
+   */
+  public async commentFeedback(item: Feedback, authorId: string) {
+    const project = await this.projects.getById(item.projectId);
+    const fields = this.feedbackFields.build(
+      `/${project.slug || `project-${project.id}`}`,
+      { shortId: item.shortId, description: "" },
+    );
+    const recorded = await this.projectEvents.emit({
+      projectId: item.projectId,
+      name: "feedback.commented",
+      subjectId: item.shortId,
+      actorId: authorId,
+      fields: {
+        project: project.title,
+        title: item.title,
+        feedback_id: item.id,
+        shortId: item.shortId,
+        reference: fields.reference,
+        author_id: authorId,
+        url: fields.url,
+      },
+    });
+    await this.database.batch(recorded.statements);
+    await recorded.committed();
   }
   public async publish(
     release: Release,

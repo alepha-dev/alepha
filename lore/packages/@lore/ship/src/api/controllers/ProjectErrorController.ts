@@ -31,6 +31,7 @@ import {
   projectErrorRuleResourceSchema,
 } from "../schemas/projectErrorRuleResourceSchema.ts";
 import { projectErrorSigilSchema } from "../schemas/projectErrorSigilSchema.ts";
+import { ErrorTrustEvents } from "../services/ErrorTrustEvents.ts";
 import { ProjectErrorRuleService } from "../services/ProjectErrorRuleService.ts";
 
 /**
@@ -63,6 +64,7 @@ export class ProjectErrorController {
   protected security = $inject(ProjectSecurityService);
   protected resources = $inject(ResourceRegistry);
   protected ruleService = $inject(ProjectErrorRuleService);
+  protected trustEvents = $inject(ErrorTrustEvents);
   protected jobKeys = $inject(JobKeyService);
   protected scope = $inject(McpProjectScope);
   protected users = $repository(users);
@@ -255,11 +257,17 @@ export class ProjectErrorController {
         };
       }
       const trustedAt = this.dateTime.nowISOString();
-      await this.currentProjectErrors.updateById(projectError.id, {
+      // With `error.trusted` (#Q4331): a triage trigger hears the group an
+      // agent may read now.
+      const trusted = await this.trustEvents.trust(
+        projectError,
+        user.id,
         trustedAt,
-        trustedBy: user.id,
-      });
-      return { trustedAt, trustedBy: user.id };
+      );
+      return {
+        trustedAt: trusted.trustedAt ?? trustedAt,
+        trustedBy: trusted.trustedBy ?? undefined,
+      };
     },
   });
 

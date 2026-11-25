@@ -55,6 +55,29 @@ export class ShipProjectEvents {
         text: `Over the threshold of ${this.text(it.threshold)}.`,
       }),
     });
+    // An error group an agent may read from now on (#Q4331): a member
+    // trusted it, or a new server group was trusted on arrival (#Q4255).
+    // Once per group, never per occurrence: what a triage trigger hears.
+    this.catalog.register({
+      name: "error.trusted",
+      label: "Error trusted",
+      resource: "errors",
+      subject: "error",
+      fields: {
+        error_id: "number",
+        error_name: "text",
+        origin: "text",
+        trusted_by: "member",
+      },
+      needs: { capability: "ship", option: "track" },
+      permission: "error:read",
+      message: (it) => ({
+        title: `Error #${this.text(it.error_id)} trusted: ${this.text(it.error_name)}`,
+        text: it.trusted_by
+          ? "A member trusted it: an agent may read it now."
+          : "A new server error, trusted on arrival: an agent may read it now.",
+      }),
+    });
     for (const [name, label] of [
       ["deploy.failed", "Deploy failed"],
       ["deploy.succeeded", "Deploy succeeded"],
