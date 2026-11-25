@@ -17,24 +17,8 @@ import { useEffect } from "react";
 
 import { promptPageAtom } from "../../../../atoms/promptPageAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
-import type { PinnedPromptItem } from "./pinnedPromptItemSchema.ts";
-import { usePinnedPrompts } from "./usePinnedPrompts.tsx";
-
-export interface PinnedPromptsButtonProps {
-  /**
-   * The pinnable page's key (`quest`, `epics`, ...).
-   */
-  page: string;
-  /**
-   * The item the page gives, which fills the prompt's arg of its type.
-   */
-  item?: PinnedPromptItem;
-  /**
-   * Off: the page is not told to the spotlight, for a list whose open
-   * item's own button tells it.
-   */
-  publish?: boolean;
-}
+import type { PinnedPromptsButtonProps } from "./PinnedPromptsButton.tsx";
+import { usePromptPins } from "./usePromptPins.tsx";
 
 /**
  * The robot button of a pinnable page (#Q4284): one entry per prompt the
@@ -45,13 +29,16 @@ export interface PinnedPromptsButtonProps {
  *
  * It also publishes the page and its item for the spotlight, which mounts
  * outside the page.
+ *
+ * What fills core's pins slot (`PinnedPromptsSlot`, #E175): pages render
+ * core's `PinnedPromptsButton`, which draws this.
  */
-const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
+const PromptPinsMenu = (props: PinnedPromptsButtonProps) => {
   const { tr } = useI18n<I18n, "en">();
   // The settings page is core's; the router is not typed for it here.
   const router = useRouter<any>();
   const [, setPage] = useStore(promptPageAtom);
-  const pins = usePinnedPrompts();
+  const pins = usePromptPins();
   const entries = pins.pinned(props.page, props.item);
   const itemKey = props.item
     ? `${props.item.type}:${props.item.value}:${props.item.status ?? ""}`
@@ -130,4 +117,4 @@ const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
   );
 };
 
-export default PinnedPromptsButton;
+export default PromptPinsMenu;

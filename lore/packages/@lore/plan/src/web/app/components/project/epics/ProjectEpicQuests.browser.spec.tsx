@@ -1,6 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, PinnedPromptsSlot } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -149,6 +149,8 @@ describe("ProjectEpicQuests - columns", () => {
     alepha.inject(I18n);
     // Work registers the reference and agent prompt kinds (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     // The create sheet reads the project and the areas from the atoms the

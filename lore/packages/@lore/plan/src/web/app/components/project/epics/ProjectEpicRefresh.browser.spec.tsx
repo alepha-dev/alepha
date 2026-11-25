@@ -1,6 +1,11 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, I18n, ResourceTabRegistry } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  I18n,
+  ResourceTabRegistry,
+  PinnedPromptsSlot,
+} from "@lore/core/web";
 import {
   act,
   cleanup,
@@ -104,6 +109,8 @@ describe("ProjectEpic refresh", () => {
     alepha.inject(I18n);
     alepha.inject(ResourceTabRegistry);
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());

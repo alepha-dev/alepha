@@ -1,10 +1,8 @@
 import {
   AgentJobs,
-  AgentRunPreamble,
   HostJobs,
   ProjectSecurityService,
   PromptRegistry,
-  PromptService,
 } from "@lore/core/api";
 import { projects, renderPromptText } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
@@ -90,7 +88,6 @@ export class FeedbackAgentService {
   protected readonly comments = $repository(feedbackComments);
   protected readonly projects = $repository(projects);
   protected readonly registry = $inject(PromptRegistry);
-  protected readonly promptService = $inject(PromptService);
   protected readonly agents = $inject(AgentJobs);
   protected readonly hostJobs = $inject(HostJobs);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -221,7 +218,7 @@ export class FeedbackAgentService {
   ): Promise<string> {
     return globalTriagePrompt({
       // Rendered when the job starts, once its source is settled (#E173).
-      preamble: AgentRunPreamble.MARKER,
+      preamble: AgentJobs.PREAMBLE_MARKER,
       waiting,
       project: project.title,
       items: items.map((it) => ({
@@ -247,7 +244,7 @@ export class FeedbackAgentService {
     return renderPromptText(this.registry.get("triage")?.text ?? "", {
       project: project.title,
       slug: project.slug ?? String(project.id),
-      projectUrl: this.promptService.projectUrlOf({
+      projectUrl: this.registry.projectUrlOf({
         id: project.id,
         slug: project.slug ?? undefined,
       }),

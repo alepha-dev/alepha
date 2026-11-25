@@ -1,7 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, PinnedPromptsSlot } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -248,6 +248,8 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     alepha.inject(I18n);
     // Work registers the reference and agent prompt kinds (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     if (initial) {
       alepha.inject(FakeLinkProvider).quests = initial;

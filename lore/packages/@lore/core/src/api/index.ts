@@ -148,6 +148,7 @@ import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
+import { PromptMerge } from "./services/PromptMerge.ts";
 import { PromptRegistry } from "./services/PromptRegistry.ts";
 import { PromptReplyMail } from "./services/PromptReplyMail.ts";
 import { PromptRunService } from "./services/PromptRunService.ts";
@@ -298,6 +299,8 @@ export const LoreCoreApi = $module({
     // Registers its project deletion step; nothing injects it.
     // Registers core's project merge step (#Q2782); nothing injects it.
     CoreProjectMerge,
+    // Prompts move in a step of their own (#E175).
+    PromptMerge,
     ProjectChannelController,
     // Registers the configured channels as notification channel instances
     // (#Q3614); nothing else may inject it before an event is delivered.
@@ -682,7 +685,9 @@ export {
   ProjectEventListeners,
 } from "./services/ProjectEventListeners.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
-export type { AgentJobRequest } from "./services/AgentJobs.ts";
+export type { AgentJobRequest, AgentJobRunner } from "./services/AgentJobs.ts";
+export { AgentJobsUnavailableError } from "./errors/AgentJobsUnavailableError.ts";
+export { PromptMerge } from "./services/PromptMerge.ts";
 export { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {
@@ -693,6 +698,7 @@ export {
 } from "./services/JobKeyService.ts";
 export type {
   AgentHostDirectory,
+  AgentHostRole,
   AgentHostRef,
   HostJobInput,
   HostJobKeyIssuer,

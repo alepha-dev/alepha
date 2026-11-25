@@ -14,6 +14,7 @@ import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.t
 import { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
+import { PromptsWebSlots } from "./app/components/project/prompts/PromptsWebSlots.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { HostRouter } from "./app/HostRouter.ts";
@@ -24,8 +25,10 @@ import { CapabilityRowRegistry } from "./app/registries/CapabilityRowRegistry.ts
 import { HostConsoleRegistry } from "./app/registries/HostConsoleRegistry.ts";
 import { HostRoleRegistry } from "./app/registries/HostRoleRegistry.ts";
 import { HostTypeUiRegistry } from "./app/registries/HostTypeUiRegistry.ts";
+import { PinnedPromptsSlot } from "./app/registries/PinnedPromptsSlot.ts";
 import { ResourceRailRegistry } from "./app/registries/ResourceRailRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
+import { SpotlightSourceRegistry } from "./app/registries/SpotlightSourceRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
 import { StackTraceParser } from "./app/services/StackTraceParser.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
@@ -81,6 +84,11 @@ export const LoreCoreWeb = $module({
     // Read by the host console (#E166), whatever registers on it.
     alepha.inject(HostConsoleRegistry);
     alepha.inject(HostTypeUiRegistry);
+    // Core's web slots for Prompts (#E175), read by Plan's and Ship's pages
+    // and the spotlight whether or not anything fills them.
+    alepha.inject(PinnedPromptsSlot);
+    alepha.inject(SpotlightSourceRegistry);
+    alepha.inject(PromptsWebSlots);
     // Core's boot work (the 401 redirect, the global head, the reports tab
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
@@ -174,7 +182,22 @@ export {
   type PinnedPromptsButtonProps,
 } from "./app/components/project/prompts/pins/PinnedPromptsButton.tsx";
 export type { PinnedPromptItem } from "./app/components/project/prompts/pins/pinnedPromptItemSchema.ts";
-export { usePinnedPrompts } from "./app/components/project/prompts/pins/usePinnedPrompts.tsx";
+export {
+  type UsePinnedPromptsOptions,
+  usePinnedPrompts,
+} from "./app/components/project/prompts/pins/usePinnedPrompts.ts";
+export {
+  type PinnedPrompts,
+  type PinnedPromptsFiller,
+  PinnedPromptsSlot,
+} from "./app/registries/PinnedPromptsSlot.ts";
+export {
+  type SpotlightActionRow,
+  type SpotlightSource,
+  type SpotlightSourceContext,
+  type SpotlightSourceGroup,
+  SpotlightSourceRegistry,
+} from "./app/registries/SpotlightSourceRegistry.ts";
 export {
   type ReportsKpi,
   default as ReportsKpiRow,
@@ -298,6 +321,7 @@ export {
   type HostConsoleProject,
   type HostConsoleTab,
   type HostOverviewSection,
+  type HostSettingsPanel,
 } from "./app/registries/HostConsoleRegistry.ts";
 export {
   HostRoleRegistry,

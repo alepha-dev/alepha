@@ -12,6 +12,7 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourceSchema.ts";
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
+import { HostConsoleRegistry } from "../../registries/HostConsoleRegistry.ts";
 import { I18n } from "../../services/I18n.ts";
 import BaySettings from "./BaySettings.tsx";
 
@@ -96,6 +97,8 @@ describe("BaySettings", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // Read by the page for a module's panels (#E175), before the lock.
+    alepha.inject(HostConsoleRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentHostAtom, host(can, extra));

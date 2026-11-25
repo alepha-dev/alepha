@@ -2,6 +2,7 @@ import { $repository } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
 import type { HostJobSource } from "../schemas/hostJobInputSchema.ts";
+import { AgentJobs } from "./AgentJobs.ts";
 
 /**
  * The preamble Lore renders above every agent job's prompt (#Q4224), on a
@@ -28,7 +29,7 @@ export class AgentRunPreamble {
    * once the job's source is known; a prompt without it gets the preamble
    * above it.
    */
-  public static readonly MARKER = "<<<LORE_AGENT_RUN_PREAMBLE>>>";
+  public static readonly MARKER = AgentJobs.PREAMBLE_MARKER;
 
   protected readonly projects = $repository(projects);
 

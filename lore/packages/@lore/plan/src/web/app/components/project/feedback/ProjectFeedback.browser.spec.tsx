@@ -1,6 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom } from "@lore/core/web";
+import { currentProjectAtom, PinnedPromptsSlot } from "@lore/core/web";
 import {
   act,
   cleanup,
@@ -218,6 +218,8 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     alepha.inject(Routes);
     // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Core's pins slot (#E175), read by the page's robot button.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.

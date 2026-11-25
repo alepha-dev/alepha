@@ -31,9 +31,9 @@ import {
   ownedHostResourceSchema,
 } from "../schemas/ownedHostResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
-import { AgentHostService } from "../services/AgentHostService.ts";
 import { HostCommandTransport } from "../services/HostCommandTransport.ts";
 import { HostInventoryService } from "../services/HostInventoryService.ts";
+import { HostJobs } from "../services/HostJobs.ts";
 import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 import { HostTokenService } from "../services/HostTokenService.ts";
@@ -78,7 +78,7 @@ export class HostController {
   protected readonly tokens = $inject(HostTokenService);
   protected readonly types = $inject(HostTypeRegistry);
   protected readonly transport = $inject(HostCommandTransport);
-  protected readonly agents = $inject(AgentHostService);
+  protected readonly hostJobs = $inject(HostJobs);
   protected readonly inventories = $inject(HostInventoryService);
   protected readonly stats = $inject(HostStatsService);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -478,9 +478,9 @@ export class HostController {
       if (body.agentHost !== undefined) {
         // After the switches above, so jobs allowed in the same request
         // counts; turning jobs off turns the Agent host off with them.
-        await this.agents.setAgentHost(switched, body.agentHost, user?.id);
+        await this.hostJobs.setAgentHost(switched, body.agentHost, user?.id);
       } else if (body.jobsAllowed === false && host.agentHost) {
-        await this.agents.setAgentHost(switched, false, user?.id);
+        await this.hostJobs.setAgentHost(switched, false, user?.id);
       }
       const updated = await this.reread(host.id);
       return this.presentOne(updated, user);
