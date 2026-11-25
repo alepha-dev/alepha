@@ -12,7 +12,7 @@ import { eventSubscriptions, projectEvents } from "@lore/core/api";
 import { hostCommands, hostJobLogs, hostJobs, hosts } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackController } from "@lore/plan/api";
-import { feedback, quests } from "@lore/plan/schemas";
+import { feedback, questComments, quests } from "@lore/plan/schemas";
 import {
   AgentHostService,
   PromptController,
@@ -74,6 +74,7 @@ export class AutomationRepos {
   errors = $repository(projectErrors);
   feedback = $repository(feedback);
   quests = $repository(quests);
+  comments = $repository(questComments);
   inbox = $repository(notificationInboxEntity);
   subscriptions = $repository(eventSubscriptions);
 }

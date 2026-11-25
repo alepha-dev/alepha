@@ -79,6 +79,7 @@ import { ReleasesToPublishMetric } from "./services/ReleasesToPublishMetric.ts";
 import { RemindersDueMetric } from "./services/RemindersDueMetric.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
+import { UnfinishedJobQuests } from "./services/UnfinishedJobQuests.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
@@ -188,6 +189,9 @@ export const LorePlanApi = $module({
     // notifications they send; listed because nothing injects them.
     QuestReminders,
     QuestReminderNotifications,
+    // Comments on the quests an agent job left open when it ends
+    // unfinished (#Q4341); listed because nothing injects it.
+    UnfinishedJobQuests,
     AreaService,
     // What "open quests" means, shared by the sidebar badge, the dashboard
     // rail and the Active Quests tile — all three are visible together.

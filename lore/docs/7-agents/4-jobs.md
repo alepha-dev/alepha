@@ -229,6 +229,10 @@ one left there, and its pull request. When the agent CLI keeps its sessions
 other choice: a new workspace, a new branch and a new session, as for a job
 started from its prompt.
 
+A job that ends unfinished leaves a comment on each quest it accepted and did
+not complete, naming the job and how it ended. The quest stays in progress
+and assigned, for **Run again** to continue or for you to pick up.
+
 A job's final reply is kept with the job, up to 32 KB. An Agent host whose
 Bay predates it returns none: upgrade Bay on that host to see replies.
 
