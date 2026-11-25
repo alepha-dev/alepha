@@ -42,7 +42,13 @@ export const AiChatConfirmCard = (props: AiChatConfirmCardProps) => {
           })}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      {/* Capped and scrolling on its own: a long input drawn at full height
+          pushes the conversation away, and the buttons with it. The footer
+          sits outside, so Approve and Deny always show. */}
+      <CardContent
+        className="max-h-80 overflow-y-auto"
+        data-testid="ai-chat-confirm-body"
+      >
         <AiChatConfirmFields input={props.pending.input} />
       </CardContent>
       <CardFooter className="gap-2">
