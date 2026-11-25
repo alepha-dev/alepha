@@ -1,17 +1,18 @@
+import { JobKeyService } from "@lore/core/api";
+import { ProjectTools } from "@lore/core/mcp";
+import {
+  PROMPT_ARG_TYPES,
+  type PromptArg,
+  type PromptArgType,
+  projectParamsSchema,
+  promptResourceSchema,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, ForbiddenError, okSchema } from "alepha/server";
 
 import { PromptController } from "../../api/controllers/PromptController.ts";
-import type { PromptArg } from "../../api/schemas/promptArgSchema.ts";
-import { promptResourceSchema } from "../../api/schemas/promptResourceSchema.ts";
-import {
-  PROMPT_ARG_TYPES,
-  type PromptArgType,
-} from "../../api/schemas/promptValues.ts";
 import type { PromptWrite } from "../../api/schemas/promptWriteSchema.ts";
-import { JobKeyService } from "../../api/services/JobKeyService.ts";
-import { projectParamsSchema } from "../schemas/projectParamsSchema.ts";
 import {
   promptCreateParamsSchema,
   promptDuplicateParamsSchema,
@@ -24,7 +25,6 @@ import {
   promptRunResultSchema,
   promptUpdateParamsSchema,
 } from "../schemas/promptSchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * A project's prompts over MCP (#E174, #Q4282), each tool the twin of a

@@ -1,4 +1,4 @@
-import type { AgentHostController } from "@lore/core/api";
+import type { AgentHostController } from "@lore/prompts/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";

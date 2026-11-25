@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import type { PromptController } from "@lore/core/api";
 import type { PromptResource } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
@@ -18,6 +17,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect } from "react";
 
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import PromptArgSelect from "./PromptArgSelect.tsx";
 
 export interface PromptRunDialogProps {

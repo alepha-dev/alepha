@@ -10,7 +10,7 @@ import {
   type RowActionContext,
   type RowActionEntry,
 } from "@alepha/ui/table";
-import type { HostJobController, PromptController } from "@lore/core/api";
+import type { HostJobController } from "@lore/core/api";
 import type { PromptResource } from "@lore/core/schemas";
 import {
   type I18n,
@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 import PromptEditorDialog from "../run/PromptEditorDialog.tsx";
 import PromptEnabledCell from "../run/PromptEnabledCell.tsx";

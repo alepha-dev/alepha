@@ -1,6 +1,7 @@
-import { HostCommandService, PromptController } from "@lore/core/api";
+import { HostCommandService } from "@lore/core/api";
 import { createTestMember } from "@lore/core/testing";
 import { createTestEpic, createTestQuest } from "@lore/plan/testing";
+import { PromptController } from "@lore/prompts/api";
 import type { UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
 

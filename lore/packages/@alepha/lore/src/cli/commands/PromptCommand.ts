@@ -1,4 +1,5 @@
-import type { HostJobController, PromptController } from "@lore/core/api";
+import type { HostJobController } from "@lore/core/api";
+import type { PromptController } from "@lore/prompts/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";

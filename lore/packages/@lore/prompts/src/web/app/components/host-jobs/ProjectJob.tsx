@@ -1,6 +1,6 @@
 import { Button, useToast } from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
-import type { HostJobController, PromptController } from "@lore/core/api";
+import type { HostJobController } from "@lore/core/api";
 import {
   AgentTranscript,
   type AgentTranscriptTotals,
@@ -13,6 +13,7 @@ import { useRouter } from "alepha/react/router";
 import { Copy, Download, Play, Square } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import { usePromptActions } from "../run/usePromptActions.ts";
 import JobLogViewer from "./JobLogViewer.tsx";
 import { jobInFlight } from "./jobStatusIcon.ts";

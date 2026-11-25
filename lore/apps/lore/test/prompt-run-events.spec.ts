@@ -1,10 +1,7 @@
-import {
-  HostCommandService,
-  PromptController,
-  PromptRunService,
-} from "@lore/core/api";
+import { HostCommandService } from "@lore/core/api";
 import { EpicController, QuestController } from "@lore/plan/api";
 import { createTestQuest } from "@lore/plan/testing";
+import { PromptController, PromptRunService } from "@lore/prompts/api";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {

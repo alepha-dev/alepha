@@ -1,15 +1,16 @@
+import { HostJobService, HostJobs } from "@lore/core/api";
+import {
+  type Host,
+  type HostJobTool,
+  hostJobs,
+  hostProjects,
+  hosts,
+} from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
-
-import { hostJobs } from "../entities/hostJobs.ts";
-import { hostProjects } from "../entities/hostProjects.ts";
-import { type Host, hosts } from "../entities/hosts.ts";
-import type { HostJobTool } from "../schemas/hostInventoryJobsSchema.ts";
-import { HostJobs } from "./HostJobs.ts";
-import { HostJobService } from "./HostJobService.ts";
 
 /**
  * Agent hosts (#Q3985): hosts that run agent CLI jobs, and Lore's check that

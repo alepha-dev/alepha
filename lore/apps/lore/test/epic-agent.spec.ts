@@ -3,16 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AgentHostService,
   HostCommandService,
   HostCommandTransport,
   JobKeyService,
-  PromptRunService,
 } from "@lore/core/api";
 import { hostJobs, hosts, type JobKey } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { EpicAgentService } from "@lore/plan/api";
 import { epics, quests } from "@lore/plan/schemas";
+import { AgentHostService, PromptRunService } from "@lore/prompts/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

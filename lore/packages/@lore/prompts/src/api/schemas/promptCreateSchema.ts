@@ -1,6 +1,6 @@
+import { PROMPT_NAME_PATTERN } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
-import { PROMPT_NAME_PATTERN } from "./promptValues.ts";
 import { promptWriteSchema } from "./promptWriteSchema.ts";
 
 /**

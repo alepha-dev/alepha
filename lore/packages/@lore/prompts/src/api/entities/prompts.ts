@@ -1,16 +1,15 @@
-import { type Infer, z } from "alepha";
-import { $entity, db } from "alepha/orm";
-
-import { promptArgSchema } from "../schemas/promptArgSchema.ts";
 import {
   PROMPT_CHECKS,
   PROMPT_MAX_ARGS,
   PROMPT_NAME_PATTERN,
   PROMPT_SCHEDULES,
   PROMPT_SOURCES,
-} from "../schemas/promptValues.ts";
-import { projects } from "./projects.ts";
-import { users } from "./users.ts";
+  promptArgSchema,
+  projects,
+  users,
+} from "@lore/core/schemas";
+import { type Infer, z } from "alepha";
+import { $entity, db } from "alepha/orm";
 
 /**
  * A project's prompts (#E174, #Q4274): one table for what were project

@@ -1,5 +1,4 @@
 import type { RowActionEntry } from "@alepha/ui/table";
-import type { PromptController } from "@lore/core/api";
 import type { PromptResource } from "@lore/core/schemas";
 import {
   type I18n,
@@ -12,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Bot, Copy, Play } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import PromptRunDialog from "../run/PromptRunDialog.tsx";
 import { usePromptActions } from "../run/usePromptActions.ts";
 

@@ -21,7 +21,6 @@ import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificati
 import { AdminHostController } from "./controllers/AdminHostController.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
-import { AgentHostController } from "./controllers/AgentHostController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { HostCommandController } from "./controllers/HostCommandController.ts";
@@ -43,7 +42,6 @@ import { ProjectMergeController } from "./controllers/ProjectMergeController.ts"
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportController } from "./controllers/ProjectReportController.ts";
 import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
-import { PromptController } from "./controllers/PromptController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
@@ -54,7 +52,6 @@ import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
-import { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
 import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
@@ -83,11 +80,7 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
-import { AgentHostService } from "./services/AgentHostService.ts";
-import { AgentJobProjectEvents } from "./services/AgentJobProjectEvents.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
-import { AgentJobService } from "./services/AgentJobService.ts";
-import { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
@@ -148,12 +141,7 @@ import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
-import { PromptMerge } from "./services/PromptMerge.ts";
 import { PromptRegistry } from "./services/PromptRegistry.ts";
-import { PromptReplyMail } from "./services/PromptReplyMail.ts";
-import { PromptRunService } from "./services/PromptRunService.ts";
-import { PromptService } from "./services/PromptService.ts";
-import { PromptTriggers } from "./services/PromptTriggers.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityProjectEvents } from "./services/QualityProjectEvents.ts";
 import { QualityProjectMerge } from "./services/QualityProjectMerge.ts";
@@ -299,8 +287,6 @@ export const LoreCoreApi = $module({
     // Registers its project deletion step; nothing injects it.
     // Registers core's project merge step (#Q2782); nothing injects it.
     CoreProjectMerge,
-    // Prompts move in a step of their own (#E175).
-    PromptMerge,
     ProjectChannelController,
     // Registers the configured channels as notification channel instances
     // (#Q3614); nothing else may inject it before an event is delivered.
@@ -377,11 +363,6 @@ export const LoreCoreApi = $module({
     HostStatsService,
     HostOfflineJobs,
     HostsMetric,
-    // The agent role (#Q3985, core's since #E166): hosts that run Claude Code
-    // jobs, their daily check, and the project's default one, Ship on or off.
-    AgentHostService,
-    AgentHostController,
-    AgentHostJobs,
     // The host's HTTP, socket and pull surface (#E166, #Q4117): managing,
     // lending, enrolling and commanding a host, the machine's websocket and
     // the transport that pushes over it (substituted for
@@ -403,22 +384,12 @@ export const LoreCoreApi = $module({
     // Job keys (#Q3995): the credential a host job holds, its pins checked on
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
-    // Untrusted input in an agent's prompt (#Q3987).
-    AgentRunPreamble,
-    // The port agent jobs start through (#Q3988): Build registers it.
+    // The port agent jobs start through (#Q3988): `@lore/prompts`
+    // registers its runner (#E175).
     AgentJobs,
-    AgentJobService,
-    // Prompts (#E174): the built-ins Plan registers, the project's own.
+    // Prompts (#E174): the built-ins Plan registers. The engine is
+    // `@lore/prompts`' (#E175).
     PromptRegistry,
-    PromptService,
-    PromptRunService,
-    PromptController,
-    // A job that ends tells its starter, and its subscribers (#Q4276).
-    AgentJobProjectEvents,
-    // A prompt's triggers (#Q4277): events, schedule, check, ceilings.
-    PromptTriggers,
-    // A member arg emails the run's reply (#Q4278).
-    PromptReplyMail,
     // Commits a push names a quest in (#Q3945): Plan records, Build calls.
     ChannelRoomRegistry,
     CommitReferenceRegistry,
@@ -661,8 +632,6 @@ export {
   type CommitReferenceResult,
   CommitReferenceRegistry,
 } from "./services/CommitReferenceRegistry.ts";
-export { AgentJobService } from "./services/AgentJobService.ts";
-export { PromptController } from "./controllers/PromptController.ts";
 export {
   type BuiltinPrompt,
   type PromptArgContext,
@@ -673,13 +642,6 @@ export {
   type PromptRunContext,
   type PromptRunPlan,
 } from "./services/PromptRegistry.ts";
-export { PromptService } from "./services/PromptService.ts";
-export { PromptTriggers } from "./services/PromptTriggers.ts";
-export { PromptReplyMail } from "./services/PromptReplyMail.ts";
-export {
-  type PromptRunBody,
-  PromptRunService,
-} from "./services/PromptRunService.ts";
 export {
   type ProjectEventListener,
   ProjectEventListeners,
@@ -687,8 +649,6 @@ export {
 export { AgentJobs } from "./services/AgentJobs.ts";
 export type { AgentJobRequest, AgentJobRunner } from "./services/AgentJobs.ts";
 export { AgentJobsUnavailableError } from "./errors/AgentJobsUnavailableError.ts";
-export { PromptMerge } from "./services/PromptMerge.ts";
-export { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {
   type EpicMembership,
@@ -843,9 +803,6 @@ export { HostSocketController } from "./controllers/HostSocketController.ts";
 export { ProjectHostController } from "./controllers/ProjectHostController.ts";
 export type { LentHostResource } from "./controllers/ProjectHostController.ts";
 export { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
-export { AgentHostService } from "./services/AgentHostService.ts";
-export { AgentHostController } from "./controllers/AgentHostController.ts";
-export { AgentHostJobs } from "./jobs/AgentHostJobs.ts";
 export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 export { HostStatsService } from "./services/HostStatsService.ts";
 export { HostsMetric } from "./services/HostsMetric.ts";
@@ -895,3 +852,4 @@ export { QualityReportsController } from "./controllers/QualityReportsController
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";
+export { ReplyMarkdownHtml } from "./notifications/ReplyMarkdownHtml.ts";

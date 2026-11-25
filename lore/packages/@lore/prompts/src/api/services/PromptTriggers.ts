@@ -1,3 +1,24 @@
+import {
+  AgentJobs,
+  HostJobs,
+  HourlyChecks,
+  LoreDatabase,
+  type ProjectEvent,
+  ProjectEventCatalog,
+  ProjectEventListeners,
+  ProjectEvents,
+  PromptRegistry,
+} from "@lore/core/api";
+import {
+  PROMPT_CHECKS,
+  PROMPT_WEEKDAYS,
+  type PromptArgType,
+  type PromptCheck,
+  type PromptJobCause,
+  type PromptResource,
+  hostJobs,
+  projects,
+} from "@lore/core/schemas";
 import { $hook, $inject, Alepha, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
@@ -6,22 +27,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
-import { hostJobs } from "../entities/hostJobs.ts";
-import type { ProjectEvent } from "../entities/projectEvents.ts";
-import { projects } from "../entities/projects.ts";
 import { type Prompt, prompts } from "../entities/prompts.ts";
-import type { PromptJobCause } from "../schemas/promptJobCauseSchema.ts";
-import type { PromptResource } from "../schemas/promptResourceSchema.ts";
-import type { PromptArgType, PromptCheck } from "../schemas/promptValues.ts";
-import { PROMPT_CHECKS, PROMPT_WEEKDAYS } from "../schemas/promptValues.ts";
-import { AgentJobs } from "./AgentJobs.ts";
-import { HostJobs } from "./HostJobs.ts";
-import { HourlyChecks } from "./HourlyChecks.ts";
-import { LoreDatabase } from "./LoreDatabase.ts";
-import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
-import { ProjectEventListeners } from "./ProjectEventListeners.ts";
-import { ProjectEvents } from "./ProjectEvents.ts";
-import { PromptRegistry } from "./PromptRegistry.ts";
 import { PromptRunService } from "./PromptRunService.ts";
 import { PromptService } from "./PromptService.ts";
 

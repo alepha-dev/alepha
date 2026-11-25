@@ -1,5 +1,6 @@
-import { HostCommandService, PromptRunService } from "@lore/core/api";
+import { HostCommandService } from "@lore/core/api";
 import { createTestMember } from "@lore/core/testing";
+import { PromptRunService } from "@lore/prompts/api";
 import { MemoryEmailProvider } from "alepha/email";
 import { afterEach, beforeEach, describe, it } from "vitest";
 

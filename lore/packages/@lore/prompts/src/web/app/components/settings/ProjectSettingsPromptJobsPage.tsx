@@ -1,6 +1,6 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
-import type { HostJobController, PromptController } from "@lore/core/api";
+import type { HostJobController } from "@lore/core/api";
 import type { HostJobResource } from "@lore/core/schemas";
 import { type I18n, currentProjectAtom } from "@lore/core/web";
 import { z } from "alepha";
@@ -10,6 +10,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { CircleDot, Server, Sparkles } from "lucide-react";
 import { useState } from "react";
 
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 
 /**

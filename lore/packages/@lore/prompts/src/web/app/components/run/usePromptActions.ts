@@ -1,9 +1,10 @@
 import { useToast } from "@alepha/ui";
-import type { PromptController } from "@lore/core/api";
 import type { I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+
+import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 
 /**
  * Copy and Run of a prompt (#Q4280), one place for the Prompts tab, the

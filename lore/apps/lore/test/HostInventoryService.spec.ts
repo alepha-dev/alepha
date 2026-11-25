@@ -1,8 +1,4 @@
-import {
-  AgentHostService,
-  HostInventoryService,
-  HostController,
-} from "@lore/core/api";
+import { HostInventoryService, HostController } from "@lore/core/api";
 import {
   hostInventories,
   type Host,
@@ -11,6 +7,7 @@ import {
 } from "@lore/core/schemas";
 import { createTestProject } from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
+import { AgentHostService } from "@lore/prompts/api";
 import { LoreShipApi } from "@lore/ship/api";
 import { appInstances } from "@lore/ship/schemas";
 import { DeployTestEntities } from "@lore/ship/testing";
