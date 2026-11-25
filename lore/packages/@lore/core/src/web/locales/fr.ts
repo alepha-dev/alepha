@@ -4830,9 +4830,18 @@ export default {
   "uptime.bucketNote":
     "La disponibilité utilise des tranches horaires, dont l’heure en cours.",
   "uptime.staleAfter": "Silence maximal (secondes)",
+  "stacks.cancel": "Annuler",
+  "stacks.col.name": "Stack",
+  "stacks.col.environments": "Environnements",
+  "stacks.noMatch": "Aucune stack ne correspond",
+  "stacks.noMatch.description":
+    "Retirez un filtre pour voir toutes les stacks.",
+  "stacks.environment.add.description":
+    "Un environnement de $1, déployé sur l'hôte par défaut de la stack tant que ses réglages n'en nomment pas un autre.",
+  "stacks.revision.upload.title": "Envoyer le compose",
+  "stacks.revision.upload.description":
+    "Une nouvelle révision de $1 : un fichier compose, ou une archive tar.gz qui en contient un et les fichiers qu'il référence.",
   "stacks.title": "Stacks",
-  "stacks.description":
-    "Des applications et des services déployés ensemble depuis un compose.yml, une copie par environnement.",
   "stacks.empty": "Aucune stack",
   "stacks.empty.description":
     "Une stack exécute ensemble les services d'un fichier compose et les applications de ce projet sur un hôte.",
@@ -4843,9 +4852,7 @@ export default {
   "stacks.create.host": "Hôte par défaut",
   "stacks.create.submit": "Créer",
   "stacks.created": "Stack créée",
-  "stacks.col.environment": "Environnement",
   "stacks.col.host": "Hôte",
-  "stacks.col.revision": "Révision",
   "stacks.col.members": "Applications",
   "stacks.delete": "Supprimer la stack",
   "stacks.delete.confirm": "Supprimer la stack $1 ?",
@@ -4859,8 +4866,6 @@ export default {
   "stacks.environment.name": "Environnement",
   "stacks.environment.runs": "Exécute la révision $1",
   "stacks.host.default": "celui de la stack",
-  "stacks.host.default.line":
-    "Se déploie sur $1, sauf si un environnement nomme son propre hôte.",
   "stacks.host.unset": "aucun hôte",
   "stacks.revision.file": "Fichier compose ou archive",
   "stacks.revision.latest": "révision $1",

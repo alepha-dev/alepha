@@ -71,27 +71,43 @@ test.describe("the stack console", () => {
       options: { deploy: true, stacks: true },
     });
 
-    await test.step("the Stacks page lists nothing, then a stack created from it", async () => {
+    await test.step("the Stacks page lists nothing, then a stack created from its dialog", async () => {
       await page.goto(`/${slug}/stacks`);
       await expect(page.getByTestId("project-stacks")).toBeVisible();
       await expect(page.getByText("No stack yet")).toBeVisible();
-      await page.getByTestId("stack-create-name").locator("input").fill("shop");
-      await page.getByTestId("stack-create-submit").click();
-      await expect(page.getByTestId("stack-card-shop")).toBeVisible();
+      // A centered dialog, opened from the table (#Q4320).
+      await page.getByRole("button", { name: "New stack" }).first().click();
+      const dialog = page.getByTestId("stack-create-dialog");
+      await dialog
+        .getByTestId("stack-create-name")
+        .locator("input")
+        .fill("shop");
+      await dialog.getByTestId("stack-create-submit").click();
+      await expect(dialog).toHaveCount(0);
+      await expect(page.getByTestId("stack-row-shop")).toBeVisible();
     });
 
-    await test.step("an environment and a revision, from the stack's card", async () => {
-      const card = page.getByTestId("stack-card-shop");
-      await card
+    await test.step("an environment and a revision, from the stack's row menu", async () => {
+      const row = page.locator("tbody tr", {
+        has: page.getByTestId("stack-row-shop"),
+      });
+      await row.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: "Add environment" }).click();
+      const environment = page.getByTestId("stack-environment-dialog");
+      await environment
         .getByTestId("stack-environment-name")
         .locator("input")
         .fill("production");
-      await card.getByTestId("stack-environment-add").click();
+      await environment.getByTestId("stack-environment-add").click();
+      await expect(environment).toHaveCount(0);
       await expect(
-        card.getByTestId("stack-environment-link-production"),
+        row.getByTestId("stack-environment-link-production"),
       ).toBeVisible();
 
-      await card
+      await row.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: "Upload compose" }).click();
+      const revision = page.getByTestId("stack-revision-dialog");
+      await revision
         .getByTestId("stack-revision-file")
         .locator('input[type="file"]')
         .setInputFiles({
@@ -99,8 +115,9 @@ test.describe("the stack console", () => {
           mimeType: "application/octet-stream",
           buffer: Buffer.from(compose("7-alpine")),
         });
-      await card.getByTestId("stack-revision-upload").click();
-      await expect(card.getByText("revision 1")).toBeVisible();
+      await revision.getByTestId("stack-revision-upload").click();
+      await expect(revision).toHaveCount(0);
+      await expect(row.getByText("revision 1")).toBeVisible();
     });
 
     await test.step("the environment page says nothing is deployed yet", async () => {
