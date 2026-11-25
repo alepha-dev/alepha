@@ -544,17 +544,17 @@ export class CoreRouter {
   });
 
   /**
-   * Quests > Agent prompts: the four templates. Renders nothing while the
-   * `agentPrompts` option is off, and its tab is listed only while it is on.
+   * Settings > Prompts, its Prompts tab (#Q4280): the built-ins and the
+   * project's custom prompts, open to every member.
    */
   projectSettingsPrompts = $pageProjectSettings({
     name: "projectSettingsPrompts",
-    path: "/work/prompts",
+    path: "/prompts",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Agent prompts`,
+      title: `${previous?.title ?? ""} › Prompts`,
     }),
     lazy: () =>
-      import("./components/project/settings/ProjectSettingsAgentPrompts.tsx"),
+      import("./components/project/settings/ProjectSettingsPromptsPage.tsx"),
   });
 
   notFound = $page({

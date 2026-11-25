@@ -1,4 +1,4 @@
-import { BellRing, type LucideIcon, Settings2, Users } from "lucide-react";
+import { BellRing, Bot, type LucideIcon, Settings2, Users } from "lucide-react";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../../../api/schemas/projectResourceSchema.ts";
@@ -74,6 +74,7 @@ export interface SettingsSectionDef {
     | "project.settings.nav.general"
     | "project.settings.nav.members"
     | "project.settings.nav.notifications"
+    | "project.settings.nav.prompts"
     | "project.settings.nav.plan"
     | "project.settings.nav.remember";
   icon: LucideIcon;
@@ -162,6 +163,22 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         route: "projectSettingsNotificationChannels",
         labelKey: "project.settings.tab.notificationChannels",
         requires: "subscription:read",
+        fullWidth: true,
+      },
+    ],
+  },
+  {
+    // Core (#E174, #Q4280): agent jobs run with Plan and Ship off. Every
+    // member opens it: reading and copying a prompt needs no settings
+    // permission; `prompt:manage` gates the writes.
+    key: "prompts",
+    order: 28,
+    labelKey: "project.settings.nav.prompts",
+    icon: Bot,
+    tabs: [
+      {
+        route: "projectSettingsPrompts",
+        labelKey: "project.settings.tab.prompts",
         fullWidth: true,
       },
     ],

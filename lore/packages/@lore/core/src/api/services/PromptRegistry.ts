@@ -26,6 +26,7 @@ import type { AgentJobRequest } from "./AgentJobs.ts";
 export class PromptRegistry {
   protected readonly prompts = new Map<string, BuiltinPrompt>();
   protected readonly resolvers = new Map<PromptArgType, PromptArgResolver>();
+  protected readonly optionLists = new Map<PromptArgType, PromptArgOptions>();
   protected readonly checks = new Map<
     PromptCheck,
     (projectId: number) => Promise<boolean>
@@ -63,6 +64,23 @@ export class PromptRegistry {
 
   public arg(type: PromptArgType): PromptArgResolver | undefined {
     return this.resolvers.get(type);
+  }
+
+  /**
+   * What an arg's select lists (#Q4280): the items of its type, among the
+   * statuses it accepts. One per type, by the module that owns the items.
+   */
+  public registerOptions(type: PromptArgType, list: PromptArgOptions): void {
+    if (this.optionLists.has(type)) {
+      throw new AlephaError(
+        `Prompt arg options '${type}' are registered twice`,
+      );
+    }
+    this.optionLists.set(type, list);
+  }
+
+  public options(type: PromptArgType): PromptArgOptions | undefined {
+    return this.optionLists.get(type);
   }
 
   /**
@@ -226,3 +244,12 @@ export type PromptRunPlan = Partial<
   after?: (jobId: string) => Promise<void>;
   skipped?: number[];
 };
+
+/**
+ * An arg type's select: the project's items, newest first, among the
+ * statuses an arg accepts (absent: every one but gone).
+ */
+export type PromptArgOptions = (
+  projectId: number,
+  accepts: string[] | undefined,
+) => Promise<Array<{ value: string; label: string }>>;

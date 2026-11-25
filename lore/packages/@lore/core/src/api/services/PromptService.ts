@@ -73,6 +73,12 @@ export class PromptService {
         };
       },
     });
+    this.registry.registerOptions("member", async (projectId) =>
+      (await this.roster.of(projectId)).map((it) => ({
+        value: it.userId,
+        label: it.label,
+      })),
+    );
     // A member of the project, by id or by name.
     this.registry.registerArg({
       type: "member",
@@ -98,6 +104,31 @@ export class PromptService {
   public static numberOf(value: string): number | undefined {
     const match = /^#?[A-Za-z]?(\d{1,9})$/.exec(value.trim());
     return match ? Number(match[1]) : undefined;
+  }
+
+  /**
+   * What an arg's select lists (#Q4280), read with the caller's permission
+   * on the item type: only items whose status the arg accepts.
+   */
+  public async argOptions(
+    projectId: number,
+    user: UserAccountToken,
+    name: string,
+    argName: string,
+  ): Promise<Array<{ value: string; label: string }>> {
+    const prompt = await this.get(projectId, name);
+    const arg = prompt.args.find((it) => it.name === argName);
+    if (!arg) throw new NotFoundError(`The prompt has no arg '${argName}'`);
+    const resolver = this.registry.arg(arg.type);
+    if (
+      !resolver ||
+      !(await this.security.holds(projectId, user.id, resolver.permission))
+    ) {
+      return [];
+    }
+    return (
+      (await this.registry.options(arg.type)?.(projectId, arg.accepts)) ?? []
+    );
   }
 
   /**
