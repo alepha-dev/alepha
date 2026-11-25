@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui";
+import { cn, PaneResizer } from "@alepha/ui";
 import {
   PinnedPromptsButton,
   SubscriptionBell,
@@ -15,11 +15,18 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { Inbox, ShieldAlert } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
+import { feedbackListWidthAtom } from "../../../atoms/feedbackListWidthAtom.ts";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
@@ -46,6 +53,11 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
   const [, setFeedbackCount] = useStore(currentFeedbackCountAtom);
+  // The list's width (#Q4325): the atom's, and the drag's while one runs, so
+  // a drag repaints without writing the cookie on every pointer move.
+  const [listWidth, setListWidth] = useStore(feedbackListWidthAtom);
+  const [dragWidth, setDragWidth] = useState<number | undefined>();
+  const width = dragWidth ?? listWidth.width ?? LIST_DEFAULT_WIDTH;
   const feedbackApi = useClient<FeedbackController>();
 
   const [status, setStatus] = useState<StatusFilter>("pending");
@@ -298,11 +310,15 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
       {/* List + detail split */}
       <div className="flex min-h-0 flex-1">
         {/* Left list */}
+        {/* From `md` up the width is the variable's, and the handle draws
+            the right border; below, the list is the whole page. */}
         <aside
+          data-testid="feedback-list-pane"
           className={cn(
-            "chrome flex w-full flex-col border-r md:w-[380px] md:shrink-0",
+            "chrome relative flex w-full flex-col border-r md:w-(--feedback-list-width) md:shrink-0 md:border-r-0",
             active && "hidden md:flex",
           )}
+          style={{ "--feedback-list-width": `${width}px` } as CSSProperties}
         >
           {/* `h-14`, the detail header's own height, so the two bands line up. */}
           <div className="border-border chrome flex h-14 shrink-0 items-center gap-2 border-b px-2">
@@ -389,6 +405,19 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               </div>
             )}
           </div>
+          <div className="hidden md:block">
+            <PaneResizer
+              width={listWidth.width ?? LIST_DEFAULT_WIDTH}
+              minWidth={LIST_MIN_WIDTH}
+              maxWidth={LIST_MAX_WIDTH}
+              defaultWidth={LIST_DEFAULT_WIDTH}
+              onResize={setDragWidth}
+              onWidth={(next) => {
+                setDragWidth(undefined);
+                setListWidth({ width: next });
+              }}
+            />
+          </div>
         </aside>
 
         {/* Right detail */}
@@ -426,3 +455,12 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
 };
 
 export default ProjectFeedback;
+
+/**
+ * The list pane's width bounds and default, in pixels (#Q4325). Below 320
+ * the band's status select, pinned prompts and bell no longer fit on one
+ * line; past 640 the list takes more than the item it opens.
+ */
+const LIST_MIN_WIDTH = 320;
+const LIST_MAX_WIDTH = 640;
+const LIST_DEFAULT_WIDTH = 380;
