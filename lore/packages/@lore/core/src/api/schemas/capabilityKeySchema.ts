@@ -54,6 +54,7 @@ export const CAPABILITY_KEYS = [
   "remember",
   "ship",
   "chat",
+  "prompts",
   "activity",
   "reports",
 ] as const;
@@ -68,4 +69,9 @@ export type CapabilityKey = Infer<typeof capabilityKeySchema>;
  * The General group of the wizard and of Settings > General > Capabilities
  * (#Q4007), in the order they are drawn: above the pillars.
  */
-export const GENERAL_CAPABILITY_KEYS = ["activity", "chat", "reports"] as const;
+export const GENERAL_CAPABILITY_KEYS = [
+  "activity",
+  "chat",
+  "prompts",
+  "reports",
+] as const;

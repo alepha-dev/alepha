@@ -27,9 +27,11 @@ export class PromptsShell {
 
   constructor() {
     // Every member opens it: reading and copying a prompt needs no settings
-    // permission; `prompt:manage` gates the writes.
+    // permission; `prompt:manage` gates the writes. Listed only while the
+    // project has the capability on.
     this.shell.registerSettings({
       key: "prompts",
+      capability: "prompts",
       order: 28,
       labelKey: "project.settings.nav.prompts",
       icon: Bot,
@@ -53,6 +55,7 @@ export class PromptsShell {
     this.pins.fill({ Button: PromptPinsMenu, usePins: usePromptPins });
     this.spotlight.register({
       key: "prompts",
+      capability: "prompts",
       useGroup: usePromptSpotlightGroup,
     });
     this.hostConsole.registerSettingsPanel({

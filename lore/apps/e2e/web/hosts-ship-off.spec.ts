@@ -98,8 +98,11 @@ test.describe("Hosts with Ship off", () => {
       `hosts-ship-off-${Date.now()}@example.com`,
       "GoodPassw0rd",
     );
-    // The wizard's defaults (Plan, Remember): no Ship.
-    const project = await createProjectViaWizard(page, "Hosts Ship Off");
+    // The wizard's defaults (Plan, Remember): no Ship. Prompts on, which
+    // runs the agent jobs (#E175).
+    const project = await createProjectViaWizard(page, "Hosts Ship Off", {
+      capabilities: ["prompts"],
+    });
 
     // Settings > General > Hosts, and both kinds offered.
     await page.goto(`/${project.slug}/settings/hosts`);

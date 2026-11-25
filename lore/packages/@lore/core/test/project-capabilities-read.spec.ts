@@ -103,14 +103,15 @@ describe("CapabilityRegistry", () => {
     await ctx.alepha.stop();
   });
 
-  it("declares the six capabilities, in declaration order", ({ expect }) => {
+  it("declares the seven capabilities, in declaration order", ({ expect }) => {
     // The wizard and Settings draw the General ones (activity, chat,
-    // reports) above the pillars (#Q4007); this order is the enum's.
+    // prompts, reports) above the pillars (#Q4007); this order is the enum's.
     expect(ctx.registry.all().map((c) => c.key)).toEqual([
       "plan",
       "remember",
       "ship",
       "chat",
+      "prompts",
       "activity",
       "reports",
     ]);

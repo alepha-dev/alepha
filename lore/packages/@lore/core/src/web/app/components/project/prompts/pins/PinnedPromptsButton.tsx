@@ -1,6 +1,8 @@
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 
+import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import { PinnedPromptsSlot } from "../../../../registries/PinnedPromptsSlot.ts";
+import { hasCapability } from "../../../../services/projectCapabilities.ts";
 import type { PinnedPromptItem } from "./pinnedPromptItemSchema.ts";
 
 export interface PinnedPromptsButtonProps {
@@ -23,11 +25,12 @@ export interface PinnedPromptsButtonProps {
  * The robot button of a pinnable page (#Q4284), as core's slot (#E175):
  * Plan's and Ship's pages render it, and it draws what `@lore/prompts`
  * registered on {@link PinnedPromptsSlot}, or nothing at all while the slot
- * is unfilled.
+ * is unfilled or the project has the `prompts` capability off.
  */
 const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
   const Filled = useInject(PinnedPromptsSlot).Button;
-  if (!Filled) return null;
+  const [project] = useStore(currentProjectAtom);
+  if (!Filled || !hasCapability(project, "prompts")) return null;
   return <Filled {...props} />;
 };
 

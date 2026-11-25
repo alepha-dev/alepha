@@ -1322,6 +1322,9 @@ export default {
   "project.capability.chat.label": "Discussion",
   "project.capability.chat.description":
     "Des salons où les membres échangent entre eux et interrogent l'agent Lore.",
+  "project.capability.prompts.label": "Prompts",
+  "project.capability.prompts.description":
+    "Des prompts que les membres copient ou lancent sur un hôte Agent, à la main, selon un planning ou sur un événement. Désactivé, aucun agent ne tourne dans ce projet : ni travail sur une quête, ni revue de plan, ni tri par un agent.",
   "project.capability.ship.option.track.label": "Surveiller les applications",
   "project.capability.ship.option.track.description":
     "Analytique, Web Vitals et erreurs. Chaque application reçoit un sigil.",

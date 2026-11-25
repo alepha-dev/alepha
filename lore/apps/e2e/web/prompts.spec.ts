@@ -103,7 +103,7 @@ test.describe("Settings > Prompts", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await registerAndVerify(page, `prompts-${t}@example.com`, "GoodPassw0rd");
     const project = await createProjectViaWizard(page, "Prompts Walk", {
-      capabilities: ["plan", "ship"],
+      capabilities: ["plan", "ship", "prompts"],
     });
     const quest = await apiPost<{ shortId: number }>(page, "createQuest", {
       projectId: project.id,

@@ -1,6 +1,7 @@
 import { chatCapabilityOptionsSchema } from "@lore/chat/schemas";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { planCapabilityOptionsSchema } from "@lore/plan/schemas";
+import { promptsCapabilityOptionsSchema } from "@lore/prompts/schemas";
 import { rememberCapabilityOptionsSchema } from "@lore/remember/schemas";
 import { shipCapabilityOptionsSchema } from "@lore/ship/schemas";
 import { z } from "alepha";
@@ -20,6 +21,7 @@ describe("capability options schemas", () => {
     remember: rememberCapabilityOptionsSchema,
     ship: shipCapabilityOptionsSchema,
     chat: chatCapabilityOptionsSchema,
+    prompts: promptsCapabilityOptionsSchema,
     // Core's own switches (#Q4007), with no module. Reports holds Quality
     // since Build went (#Q4217).
     activity: z.object({}),

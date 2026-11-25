@@ -43,6 +43,7 @@ test.describe("Pinned prompts", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await registerAndVerify(page, `pins-${t}@example.com`, "GoodPassw0rd");
     const project = await createProjectViaWizard(page, "Pins Walk", {
+      capabilities: ["prompts"],
       options: { plan: ["epics"] },
     });
     const quest = async (title: string) =>

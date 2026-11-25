@@ -1335,6 +1335,9 @@ export default {
   "project.capability.chat.label": "Chat",
   "project.capability.chat.description":
     "Rooms where members talk to each other and ask the Lore agent.",
+  "project.capability.prompts.label": "Prompts",
+  "project.capability.prompts.description":
+    "Prompts your members copy or run on an Agent host, by hand, on a schedule or on an event. Off, no agent runs in this project: no quest work, plan review or triage by an agent either.",
   "project.capability.ship.option.track.label": "Track apps",
   "project.capability.ship.option.track.description":
     "Analytics, vitals and errors. Each app gets a sigil.",

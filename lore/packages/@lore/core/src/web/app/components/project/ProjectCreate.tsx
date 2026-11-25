@@ -20,6 +20,7 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
+  Bot,
   Check,
   Hammer,
   LoaderCircle,
@@ -64,6 +65,7 @@ const CAPABILITY_ICONS: Record<
   remember: BookOpen,
   ship: AppWindow,
   chat: MessagesSquare,
+  prompts: Bot,
   activity: Activity,
   reports: BarChart3,
 };

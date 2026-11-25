@@ -1,6 +1,8 @@
 import { AlephaError } from "alepha";
 import type { ReactNode } from "react";
 
+import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts";
+
 /**
  * Rows a module adds to the spotlight (#E175): a group of rows that act
  * rather than navigate, such as a prompt to copy or run, with the dialog
@@ -40,6 +42,11 @@ export class SpotlightSourceRegistry {
 
 export interface SpotlightSource {
   key: string;
+  /**
+   * The capability the source belongs to. While the project has it off,
+   * the source reads nothing and offers no row.
+   */
+  capability?: CapabilityKey;
   /**
    * A hook: what the source offers for the palette's query. `wanted` turns
    * true once the palette has opened in a project, and stays true, so a
