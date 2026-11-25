@@ -11,8 +11,10 @@ import { AgentRunPreamble } from "./services/AgentRunPreamble.ts";
 import { PromptMerge } from "./services/PromptMerge.ts";
 import { PromptReplyMail } from "./services/PromptReplyMail.ts";
 import { PromptRunService } from "./services/PromptRunService.ts";
+import { PromptsDashboardMetrics } from "./services/PromptsDashboardMetrics.ts";
 import { PromptService } from "./services/PromptService.ts";
 import { PromptTriggers } from "./services/PromptTriggers.ts";
+import { RunningJobsMetric } from "./services/RunningJobsMetric.ts";
 
 /**
  * The server half of `@lore/prompts` (#E175): the prompt engine, its
@@ -53,6 +55,9 @@ export const LorePromptsApi = $module({
     PromptReplyMail,
     // Prompts move with a merged project (#Q4274); nothing injects it.
     PromptMerge,
+    // The Running jobs dashboard card (#Q4342): its catalogue entry, its rows.
+    PromptsDashboardMetrics,
+    RunningJobsMetric,
   ],
 });
 
@@ -70,5 +75,7 @@ export {
   type PromptRunBody,
   PromptRunService,
 } from "./services/PromptRunService.ts";
+export { PromptsDashboardMetrics } from "./services/PromptsDashboardMetrics.ts";
 export { PromptService } from "./services/PromptService.ts";
 export { PromptTriggers } from "./services/PromptTriggers.ts";
+export { RunningJobsMetric } from "./services/RunningJobsMetric.ts";

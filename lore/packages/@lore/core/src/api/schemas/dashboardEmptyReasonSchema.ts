@@ -15,6 +15,7 @@ import { type Infer, z } from "alepha";
  * - `noActivity`: nothing happened in the window.
  * - `noQuests`: the reader holds no open quest, or the project has none.
  * - `noAccess`: the reader lacks the permission the metric `requires`.
+ * - `noJobs`: no agent job is queued or running (#Q4342).
  */
 export const dashboardEmptyReasonSchema = z.enum([
   "noData",
@@ -31,6 +32,7 @@ export const dashboardEmptyReasonSchema = z.enum([
   // nothing ahead.
   "noRows",
   "nothingAhead",
+  "noJobs",
 ]);
 
 export type DashboardEmptyReason = Infer<typeof dashboardEmptyReasonSchema>;

@@ -646,7 +646,8 @@ export class CapabilityRegistry {
       ],
       searchKinds: [],
       activityKinds: [],
-      dashboardCards: [],
+      // The agent jobs in flight (#Q4342).
+      dashboardCards: ["runningJobs"],
       permissionGroups: ["prompt"],
     },
     {

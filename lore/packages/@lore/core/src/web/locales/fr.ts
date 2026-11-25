@@ -4196,6 +4196,7 @@ export default {
   "dashboard.group.flow": "Flux",
   "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Projet",
+  "dashboard.empty.noJobs": "Aucun job d'agent en cours.",
   "dashboard.empty.noAccess":
     "Vous ne pouvez pas lire les rapports de ce projet.",
   "dashboard.metric.requirementCoverage": "Couverture des exigences",
@@ -4321,6 +4322,11 @@ export default {
   "dashboard.metric.hosts": "Hôtes",
   "dashboard.metric.hosts.hint":
     "les hôtes du projet, les siens et ceux prêtés, en ligne ou non",
+  "dashboard.metric.runningJobs": "Jobs en cours",
+  "dashboard.metric.runningJobs.hint":
+    "les jobs d'agent en attente ou en cours, leur hôte et depuis quand",
+  "dashboard.badge.queued": "en attente",
+  "dashboard.badge.running": "en cours",
   "dashboard.metric.uptime": "Disponibilité",
   "dashboard.metric.uptime.hint":
     "chaque moniteur, actif ou en panne, et ses dernières 24 heures",

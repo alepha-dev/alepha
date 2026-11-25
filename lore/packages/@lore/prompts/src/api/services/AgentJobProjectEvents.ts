@@ -216,9 +216,11 @@ export class AgentJobProjectEvents {
 
   /**
    * The prompt and its args as a person says them: "Work on quest #Q12
-   * Fix the cart".
+   * Fix the cart". The Running jobs card names its rows with it too.
    */
-  protected async titleOf(job: HostJobSummary): Promise<string> {
+  public async titleOf(
+    job: Pick<HostJobSummary, "projectId" | "prompt" | "args" | "subjectType">,
+  ): Promise<string> {
     if (!job.prompt)
       return job.subjectType ? `Agent job (${job.subjectType})` : "Agent job";
     const builtin = this.registry.get(job.prompt);
