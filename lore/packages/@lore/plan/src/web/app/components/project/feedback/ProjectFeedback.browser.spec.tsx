@@ -382,6 +382,18 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     expect(alepha.inject(FakeLinkProvider).listCalls).toEqual([]);
   });
 
+  it("shows the status filter with no visible label, named by its aria-label (#Q4324)", async ({
+    expect,
+  }) => {
+    const alepha = await mount();
+    const rendered = view(alepha);
+    const trigger = await rendered.findByTestId("feedback-status-filter");
+    expect(trigger.getAttribute("aria-label")).toBe("feedback.filter.label");
+    const band = trigger.closest("span")?.parentElement as HTMLElement;
+    expect(band.querySelector("label")).toBeNull();
+    expect(band.textContent ?? "").not.toMatch(/status\s*\*/i);
+  });
+
   it("a status picked while another loads supersedes it", async ({
     expect,
   }) => {
