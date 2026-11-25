@@ -1,7 +1,11 @@
 import { ChatAgentBudgetService } from "@lore/chat/api";
 import { McpProjectScope } from "@lore/core/api";
 import { $inject } from "alepha";
-import { AiBudgetService, aiMessageEntity } from "alepha/api/ai";
+import {
+  AiBudgetService,
+  AiConversationService,
+  aiMessageEntity,
+} from "alepha/api/ai";
 import { $repository } from "alepha/orm";
 
 /**
@@ -76,12 +80,10 @@ export class LoreAiBudget extends AiBudgetService {
         role: { eq: "assistant" },
         createdAt: { gte: since },
       },
-      columns: ["inputTokens", "outputTokens"],
+      columns: ["inputTokens", "outputTokens", "cachedInputTokens"],
     });
-    return rows.reduce(
-      (sum, row) => sum + (row.inputTokens ?? 0) + (row.outputTokens ?? 0),
-      0,
-    );
+    // A cache read weighs a tenth (#Q4297), as the member's own sum does.
+    return rows.reduce((sum, row) => sum + AiConversationService.weigh(row), 0);
   }
 
   protected override async usage(
@@ -117,12 +119,17 @@ export class LoreAiBudget extends AiBudgetService {
         role: { eq: "assistant" },
         createdAt: { gte: this.projects.windowStart() },
       },
-      columns: ["createdAt", "inputTokens", "outputTokens"],
+      columns: [
+        "createdAt",
+        "inputTokens",
+        "outputTokens",
+        "cachedInputTokens",
+      ],
       orderBy: [{ column: "createdAt", direction: "asc" }],
     });
     const spent = rows.map((row) => ({
       at: row.createdAt,
-      tokens: (row.inputTokens ?? 0) + (row.outputTokens ?? 0),
+      tokens: AiConversationService.weigh(row),
     }));
     const paid = await this.projects.chargedFor(userId);
     const used = Math.max(

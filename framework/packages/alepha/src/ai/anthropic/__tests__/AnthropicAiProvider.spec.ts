@@ -193,7 +193,13 @@ describe("AnthropicAiProvider", () => {
     expect(events).toEqual([
       { type: "text", text: "Hel" },
       { type: "text", text: "lo there" },
-      { type: "usage", inputTokens: 120, outputTokens: 7 },
+      {
+        type: "usage",
+        inputTokens: 120,
+        outputTokens: 7,
+        // The cache read, apart, for a budget that weighs it at a tenth.
+        cachedInputTokens: 100,
+      },
       { type: "end", reason: "stop" },
     ]);
     const { url, init } = recorded.sent[0];

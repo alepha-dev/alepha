@@ -25,7 +25,7 @@ describe("LoreAssistant", () => {
     const { alepha } = await bootAssistant();
     expect(alepha.inject(AiController)).toBeInstanceOf(LoreAiController);
     expect(alepha.inject(AiSettings).current).toEqual({
-      budgetTokens: 200_000,
+      budgetTokens: 1_000_000,
       budgetWindowHours: 24,
       turnsPerMinute: 20,
       retentionDays: 30,
@@ -125,7 +125,7 @@ describe("LoreAssistant", () => {
       await alepha.stop();
     });
 
-    it("refuses a turn once the user spent the 200k-token budget", async ({
+    it("refuses a turn once the user spent the 1M-token budget", async ({
       expect,
     }) => {
       const { alepha, controller, signIn, read, ai } = await bootAssistant({
@@ -134,7 +134,7 @@ describe("LoreAssistant", () => {
       const { headers } = await signIn();
       ai.script([
         { type: "text", text: "A long answer." },
-        { type: "usage", inputTokens: 150_000, outputTokens: 50_001 },
+        { type: "usage", inputTokens: 950_000, outputTokens: 50_001 },
       ]);
       await read(
         await controller.chat.fetch({ headers, body: { message: "first" } }),

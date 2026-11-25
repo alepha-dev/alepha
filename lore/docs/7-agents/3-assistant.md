@@ -36,9 +36,11 @@ There it reads the room's recent messages rather than the page you are on.
 - **Read** a project: its quests, epics, folios, releases and feedback, and
   Lore's search. "What is still open in the API area?", "What does this epic
   still lack?", "Summarise folio #F12."
-- **Write** the things you do most: file a quest, comment on one, update or
-  complete it, write a folio, and add or change a card on a project
-  dashboard. Removing or reordering cards stays on the board.
+- **Write** the things you do most: file a quest, comment on one, update,
+  accept, shelve, complete or delete it, create an epic, publish a release,
+  accept or reject a feedback, write or delete a folio, and add or change a
+  card on a project dashboard. Removing or reordering cards stays on the
+  board, and nothing that deploys or reaches a host is offered.
 - **File a feedback**, here or into another project you belong to that accepts
   feedback, from any page or room: "report this to Acme". The card names the
   project it goes to, since its members will read what is filed.
@@ -80,11 +82,13 @@ name with the agent badge and the client `lore-ai`.
 - Conversations in the dock are stored in your Lore, visible to you only, and
   deleted 30 days after their last message. An answer in a room is a message
   of the room, kept with the room.
-- Each user has a token budget (200,000 tokens per 24 hours by default) and a
+- Each user has a token budget (1,000,000 tokens per 24 hours by default) and a
   limit of 20 messages a minute. Past either, the assistant refuses until the
   window moves on. Every tool it runs makes the question cost more, so one
   answer stops reading at 100,000 tokens, or before your budget runs out, and
-  answers from what it has read so far.
+  answers from what it has read so far. A token the model reads back from its
+  cache, such as the list of tools sent with every question, counts as a
+  tenth of one.
 
 ## Turning it on
 

@@ -121,6 +121,9 @@ export class AiConversationService {
             model: extra.model ?? null,
             inputTokens: extra.usage?.inputTokens ?? 0,
             outputTokens: extra.usage?.outputTokens ?? 0,
+            ...(extra.usage?.cachedInputTokens
+              ? { cachedInputTokens: extra.usage.cachedInputTokens }
+              : {}),
           }
         : {}),
       ...(message.role === "tool"
@@ -175,13 +178,39 @@ export class AiConversationService {
   }
 
   /**
-   * Tokens `userId` spent since `since` (ISO), input plus output.
+   * What a token read from the vendor's prompt cache weighs against a
+   * budget: a tenth, Anthropic's price for a cache read. Without it a
+   * cached tool list cost the budget its full size on every call.
+   */
+  public static readonly CACHE_READ_WEIGHT = 0.1;
+
+  /**
+   * What one message's tokens weigh against a budget: input and output,
+   * a cache read at {@link CACHE_READ_WEIGHT}. Rounded up.
+   */
+  public static weigh(row: {
+    inputTokens?: number | null;
+    outputTokens?: number | null;
+    cachedInputTokens?: number | null;
+  }): number {
+    const cached = Math.min(row.cachedInputTokens ?? 0, row.inputTokens ?? 0);
+    return Math.ceil(
+      (row.inputTokens ?? 0) -
+        cached * (1 - AiConversationService.CACHE_READ_WEIGHT) +
+        (row.outputTokens ?? 0),
+    );
+  }
+
+  /**
+   * Tokens `userId` spent since `since` (ISO), input plus output, a cache
+   * read at a tenth ({@link weigh}).
    */
   public async tokensSince(userId: string, since: string): Promise<number> {
     const [row] = await this.messages.aggregate({
       select: {
         inputTokens: { sum: true },
         outputTokens: { sum: true },
+        cachedInputTokens: { sum: true },
       },
       where: {
         userId: { eq: userId },
@@ -189,9 +218,11 @@ export class AiConversationService {
         createdAt: { gte: since },
       },
     });
-    return (
-      Number(row?.inputTokens?.sum ?? 0) + Number(row?.outputTokens?.sum ?? 0)
-    );
+    return AiConversationService.weigh({
+      inputTokens: Number(row?.inputTokens?.sum ?? 0),
+      outputTokens: Number(row?.outputTokens?.sum ?? 0),
+      cachedInputTokens: Number(row?.cachedInputTokens?.sum ?? 0),
+    });
   }
 
   /**

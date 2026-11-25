@@ -146,7 +146,7 @@ describe("a project's AI budget for its chat agents", () => {
         seq: 1,
         role: "assistant",
         content: "earlier",
-        inputTokens: 200_000,
+        inputTokens: 1_000_000,
         outputTokens: 0,
       });
     return {
@@ -166,6 +166,30 @@ describe("a project's AI budget for its chat agents", () => {
       lore: ctx.alepha.inject(LoreAiBudget),
     };
   };
+
+  it("weighs a token read from the prompt cache at a tenth, against the member's budget and a run's charge (#Q4297)", async ({
+    expect,
+  }) => {
+    const ctx = await boot();
+    const conversationId = crypto.randomUUID();
+    await ctx.repos.messages.create({
+      conversationId,
+      userId: ctx.owner.id,
+      seq: 1,
+      role: "assistant",
+      content: "cached",
+      // 100,000 in, 90,000 of them a cache read; 1,000 out.
+      inputTokens: 100_000,
+      cachedInputTokens: 90_000,
+      outputTokens: 1_000,
+    } as never);
+
+    // 100,000 - 81,000 + 1,000.
+    expect(await ctx.lore.remaining(ctx.owner.id)).toBe(1_000_000 - 20_000);
+    expect(
+      await ctx.lore.spentSince(conversationId, "2000-01-01T00:00:00.000Z"),
+    ).toBe(20_000);
+  });
 
   it("charges a run to the project, and not to the member who asked", async ({
     expect,
@@ -190,7 +214,7 @@ describe("a project's AI budget for its chat agents", () => {
       windowHours: 24,
     });
     // The member's own budget does not count what the project paid.
-    expect(await ctx.lore.remaining(ctx.owner.id)).toBe(200_000);
+    expect(await ctx.lore.remaining(ctx.owner.id)).toBe(1_000_000);
   });
 
   it("falls back to the member's budget once the project's is spent", async ({
@@ -210,7 +234,7 @@ describe("a project's AI budget for its chat agents", () => {
     expect((await ctx.answers())[0]?.body).toBe("On you.");
     // No new charge: the member paid, and their budget shows it.
     expect(await ctx.repos.charges.findMany({})).toHaveLength(1);
-    expect(await ctx.lore.remaining(ctx.owner.id)).toBe(199_500);
+    expect(await ctx.lore.remaining(ctx.owner.id)).toBe(999_500);
     expect((await ctx.budget()).freesAt).toBeDefined();
   });
 
@@ -249,7 +273,9 @@ describe("a project's AI budget for its chat agents", () => {
     await ctx.runner.settled();
 
     const said = JSON.stringify((await ctx.answers())[0]);
-    expect(said).toContain("Your AI budget is spent: 200000 of 200000 tokens");
+    expect(said).toContain(
+      "Your AI budget is spent: 1000000 of 1000000 tokens",
+    );
     expect(said).toContain("Enough frees up at");
     expect(said).not.toContain("project");
   });
