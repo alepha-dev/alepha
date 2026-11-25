@@ -117,9 +117,11 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
           }
           if (entry.kind === "tools") {
             return (
+              // Folded on load (#Q4308): a transcript opened with every
+              // group expanded was a wall of steps. A running call still
+              // names itself, with its spinner, on the folded line.
               <AiChatToolTrace
                 key={index}
-                defaultOpen
                 tools={entry.tools.map((tool) => ({
                   name: tool.name,
                   state: tool.state,
