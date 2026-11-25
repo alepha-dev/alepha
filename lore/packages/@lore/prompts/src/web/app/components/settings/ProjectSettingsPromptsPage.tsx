@@ -52,12 +52,11 @@ import PromptEditorDialog from "../run/PromptEditorDialog.tsx";
 import PromptPinsDialog from "../run/PromptPinsDialog.tsx";
 import PromptRunDialog from "../run/PromptRunDialog.tsx";
 import PromptTriggerDialog from "../run/PromptTriggerDialog.tsx";
-import PromptViewDialog from "../run/PromptViewDialog.tsx";
 import { usePromptActions } from "../run/usePromptActions.ts";
 
 type Open =
   | {
-      kind: "copy" | "run" | "view" | "trigger" | "pins";
+      kind: "copy" | "run" | "trigger" | "pins";
       prompt: PromptResource;
     }
   | {
@@ -255,7 +254,11 @@ const ProjectSettingsPromptsPage = () => {
     {
       icon: Eye,
       label: tr("prompts.view"),
-      onClick: () => setOpen({ kind: "view", prompt: row }),
+      // Its own page (#Q4326), where the View dialog was.
+      onClick: () =>
+        void router.push("projectPrompt", {
+          params: { projectSlug: slug, name: row.name },
+        }),
     },
     ...(can("host:read")
       ? [
@@ -374,7 +377,13 @@ const ProjectSettingsPromptsPage = () => {
               cell: (row) => (
                 <span className="flex flex-col">
                   <span className="flex items-center gap-2 font-medium">
-                    <span data-testid="prompt-title">{row.title}</span>
+                    <Link
+                      href={`/${slug}/prompts/${row.name}`}
+                      className={cn(textLinkUnderlineClassName)}
+                      data-testid="prompt-title"
+                    >
+                      {row.title}
+                    </Link>
                     {row.builtin && (
                       <Badge variant="secondary">{tr("prompts.builtin")}</Badge>
                     )}
@@ -525,13 +534,6 @@ const ProjectSettingsPromptsPage = () => {
             }}
           />
         )}
-      {open?.kind === "view" && (
-        <PromptViewDialog
-          open
-          onOpenChange={(next) => !next && setOpen(undefined)}
-          prompt={open.prompt}
-        />
-      )}
       {open?.kind === "pins" && (
         <PromptPinsDialog
           open

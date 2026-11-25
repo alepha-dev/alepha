@@ -5167,6 +5167,10 @@ export default {
   "prompts.pause": "Pause all triggers",
   "prompts.resume": "Resume triggers",
   "prompts.paused": "Triggers paused",
+  "prompts.title": "Prompts",
+  "prompts.tab.text": "Prompt",
+  "prompts.field.name": "Name",
+  "prompts.notFound": "No prompt named $1 in this project",
   "prompts.builtin": "built-in",
   "prompts.source": "Source",
   "prompts.source.description":

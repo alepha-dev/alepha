@@ -173,6 +173,8 @@ export const ROUTES_FULL_WIDTH = new Set([
   // centred column whose outer wrapper scrolled the aside and the tabs away
   // (feedback #P2480 and #P2482, at 1920x929).
   "projectJob",
+  // A prompt (#Q4326): the same detail layout as a job.
+  "projectPrompt",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);
@@ -206,6 +208,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectArtifacts"
   | "projectStacks"
   | "projectSettingsPromptJobs"
+  | "projectSettingsPrompts"
   | "projectReleases"
   | "projectSettingsHosts"
   | "projectRequirements"
@@ -231,6 +234,8 @@ export const SECTION_HREF_ROUTES: Record<
   projectStackEnvironment: "projectStacks",
   // A host job's crumb climbs back to Settings > Prompts > Jobs (#Q4281).
   projectJob: "projectSettingsPromptJobs",
+  // A prompt's crumb climbs back to Settings > Prompts (#Q4326).
+  projectPrompt: "projectSettingsPrompts",
   projectApp: "projectApps",
   projectAppRedirect: "projectApps",
   app: "projectApps",
@@ -257,6 +262,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectStacks: "stacks.title",
   projectStackEnvironment: "stacks.title",
   projectJob: "jobs.title",
+  projectPrompt: "prompts.title",
   // ⚠️ A leaf and the whole section, so it is deliberately absent from
   // `SECTION_HREF_ROUTES` above: an href there would link the page to itself.
   // Same reading as `projectActivity` below.
