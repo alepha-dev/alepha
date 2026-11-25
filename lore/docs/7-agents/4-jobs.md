@@ -70,9 +70,34 @@ Install the `lore` CLI only if a prompt asks for it, and **never sign it in**
 as the jobs user: a job reaches Lore with a key held to its project and its
 subject, and a signed-in CLI would reach past that.
 
+**Install `playwright-cli` for a look at the screens a job changes.** It is
+optional. With it, a job that builds a change the user sees starts the app,
+opens the screens it changed in a browser and checks them against the quest,
+then says on the quest what it looked at. Without it, the job says no visual
+check was made. It needs a browser for the jobs user too:
+
+```bash
+sudo -iu bay-agent npm install -g @playwright/cli
+```
+
+```bash
+sudo -iu bay-agent npx playwright install chromium
+```
+
+A job cannot attach a screenshot: it describes what it saw in words.
+
+**A host that runs a project's checks needs the project's toolchain.** A job
+runs the checks the repository's agent instructions name, as the jobs user,
+on this host: its runtime and package manager (Node and Yarn, Go, ...), and
+for end-to-end suites a browser, the same `npx playwright install chromium`.
+A check the host cannot run fails the job's work, not the host.
+
+There is no sandbox: the app a job starts and the browser it opens reach
+whatever the jobs user reaches, on this machine and on the network.
+
 **5. Check what the host has.** `bay doctor` lists the jobs user's tools: each
-agent CLI, `git`, `gh`, `cf` and `lore`, with its version and whether it is
-signed in, and says plainly when no agent CLI answers or when `lore` is signed
+agent CLI, `git`, `gh`, `cf`, `lore` and `playwright-cli`, with its version
+and whether it is signed in, and says plainly when no agent CLI answers or when `lore` is signed
 in. A job fails at once, before its agent starts, when a tool it needs says it
 is signed out: its agent CLI, and `gh` for a job that reads or changes code.
 The reason names the tool and the command that signs it in.
@@ -195,8 +220,8 @@ A few things only a job does:
   member who trusts the author ticks **I trust the pull request's author** (or
   passes `--trust`), and the host asks nothing. A triggered run never can.
 - **Work on quest**, **Work on epic** and **Work on feedback** run in a
-  worktree on the work's branch, run the project's checks, commit naming the
-  quest, push, and open a pull request with `gh`, which they record on the
+  worktree on the work's branch, run the project's checks, look at a changed
+  screen when the host has `playwright-cli`, commit naming the quest, push, and open a pull request with `gh`, which they record on the
   quest.
 
 ## A job's page

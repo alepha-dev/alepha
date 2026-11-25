@@ -8,8 +8,9 @@ import BayJobToolSignIn from "./BayJobToolSignIn.tsx";
 import { useBayInventory } from "./useBayInventory.ts";
 
 /**
- * What the host's jobs user has (#Q4254): each agent CLI, then git, gh, cf
- * and lore, installed with its version or not installed, as the machine's
+ * What the host's jobs user has (#Q4254): each agent CLI, then git, gh, cf,
+ * lore and playwright-cli (#Q4346), installed with its version or not
+ * installed, optional ones said so, as the machine's
  * last inventory reports them, whether or not the host is an Agent host. The
  * owner sees what a job would find before running one.
  *
@@ -63,12 +64,14 @@ const BayJobTools = () => {
                   className="flex gap-2"
                   data-testid={`bay-job-tool-${tool.name}`}
                 >
-                  <span className="text-foreground w-14 font-mono">
+                  <span className="text-foreground min-w-14 shrink-0 font-mono">
                     {tool.name}
                   </span>
                   {!tool.found ? (
                     <span className="text-muted-foreground" title={tool.error}>
-                      {tr("hosts.tools.missing")}
+                      {tool.name === "playwright-cli"
+                        ? tr("hosts.tools.missingVisual")
+                        : tr("hosts.tools.missing")}
                     </span>
                   ) : tool.error ? (
                     <span className="text-danger">{tool.error}</span>

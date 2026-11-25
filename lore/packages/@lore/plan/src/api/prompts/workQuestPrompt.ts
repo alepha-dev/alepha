@@ -1,5 +1,6 @@
 import { reviewStepRule } from "./reviewStepRule.ts";
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+import { visualCheckRule } from "./visualCheckRule.ts";
 
 /**
  * `work-quest` (#E174): one quest, one branch, one pull request, one
@@ -22,7 +23,7 @@ The quest: {{quest.url}}
 1. Work in a git worktree of your own, on a branch cut from the latest main and named after the quest. Never on main, and never in the primary checkout: other sessions share it.
 2. \`quest_accept\` it.
 3. Do exactly what the quest and its objectives say. Tick each objective with \`quest_objective_set\` as it is met. Anything you discover beyond the quest is a comment (\`quest_comment_add\`), not extra scope.
-4. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
+4. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass. A change the user sees also gets a look ("A look at what the user sees", below).
 5. Commit it as one commit, its message naming {{quest.reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
 6. Push the branch and open a pull request into main. Its title names {{quest.reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: wait for it, or carry on with something else and read it when it lands. Fix and push again until it is green.
@@ -35,5 +36,7 @@ Never stop with the quest still accepted: complete it, or, when you stop on a qu
 If the quest cannot be done as written, say so in a comment and stop. Do not guess at a decision that is the owner's to make, and put the question in your reply as well: what the quest asks, what stopped you, and the two or three ways forward with the one you would take. The comment is the record; your reply is what the person who sent you here reads.
 
 ${reviewStepRule}
+
+${visualCheckRule}
 
 ${unfinishedQuestRule}`;

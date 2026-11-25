@@ -3238,6 +3238,8 @@ export default {
     "Aucun utilisateur des tâches : lancez $1 sur la machine.",
   "hosts.tools.user": "Les tâches tournent sous $1.",
   "hosts.tools.missing": "Non installé",
+  "hosts.tools.missingVisual":
+    "Non installé : facultatif, les jobs de build ne font alors aucune vérification visuelle",
   "hosts.tools.installed": "Installé, $1",
   "hosts.tools.signedIn": "connecté",
   "hosts.tools.signedInAs": "connecté en tant que $1",
