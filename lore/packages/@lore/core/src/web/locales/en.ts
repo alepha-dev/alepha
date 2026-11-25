@@ -5202,6 +5202,8 @@ export default {
   "prompts.pin": "Pin",
   "prompts.table.pins": "Pinned on",
   "prompts.pins.none": "Nowhere",
+  "prompts.pins.pages": "Pages",
+  "prompts.pins.count": "$1 pages",
   "prompts.pins.title": "Pin $1",
   "prompts.pins.description":
     "The pages whose robot button offers it. A view fills the prompt's arg with its item.",

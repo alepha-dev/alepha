@@ -5252,6 +5252,8 @@ export default {
   "prompts.pin": "Épingler",
   "prompts.table.pins": "Épinglée sur",
   "prompts.pins.none": "Nulle part",
+  "prompts.pins.pages": "Pages",
+  "prompts.pins.count": "$1 pages",
   "prompts.pins.title": "Épingler $1",
   "prompts.pins.description":
     "Les pages dont le bouton robot la propose. Une vue remplit l'argument de l'invite avec son élément.",
