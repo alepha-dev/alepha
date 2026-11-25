@@ -218,7 +218,14 @@ export class QuestCommand {
           page.content.map((quest) => ({
             handle: `Q${quest.shortId}`,
             title: quest.title,
-            fields: [quest.metadata.status, quest.area],
+            fields: [
+              quest.metadata.status,
+              quest.area,
+              // The agent job working it (#Q4350).
+              ...(quest.agentJobId
+                ? [`job ${quest.agentJobId.slice(0, 8)}`]
+                : []),
+            ],
           })),
           {
             offset: flags.offset,
@@ -302,6 +309,7 @@ export class QuestCommand {
             ["Area", quest.area],
             ["Tags", quest.tags.join(", ")],
             ["Accepted", quest.acceptedAt],
+            ["Agent job", quest.agentJobId],
             ["Completed", quest.completedAt],
             [
               "Objectives",

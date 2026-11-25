@@ -16,7 +16,7 @@ quest.
 ![The Quests page, listing the project's quests](/screenshots/lore/quests-light.png)
 
 The bar above the table searches, and filters by **Status**, **Area**, **Tag**,
-**Release** and **Epic**. Two kinds of quests are left out until you ask for
+**Release**, **Epic** and **Job**. Two kinds of quests are left out until you ask for
 them: shelved quests, which appear when the Status filter names **Shelved**, and
 the quests of a draft [epic](/lore/docs/plan-epics), which appear when the Epic
 filter names that epic. The Release and Epic filters both start with **None**,
@@ -154,6 +154,21 @@ flowchart LR
   worth keeping.
 - **Unassign** sends the quest back to the backlog and stops its reminders.
   Nothing written on it is lost.
+
+### A quest an agent job is working
+
+When an [agent job](/lore/docs/agents-jobs) accepts a quest, the quest records
+the job. Its page shows a moving robot beside **In progress**, linked to the
+job's page, for as long as the job runs. When the job ends, finished or not,
+every quest it still holds goes back to **To do**, with a line in its
+Discussion saying its job ended. Its comments, commits and pull request stay,
+so the next run, or you, can pick it up. Unassigning, completing or shelving
+the quest frees it from the job at once. A quest you accept yourself records
+no job.
+
+In the quest list, the **Job** column shows which quests a job is building
+right now. It is hidden until you add it from the column picker, and the
+**Job** filter keeps only those quests.
 
 A quest waiting on _another quest_ is not on hold: set **Depends on** instead,
 which also draws the link between the two.

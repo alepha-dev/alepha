@@ -1030,7 +1030,12 @@ export default {
   "quest.event.createdFromFeedback": "a créé la quête depuis un retour",
   "quest.event.createdFromFeedbackRef": "a créé la quête depuis $1",
   "quest.event.assigned": "a pris la quête",
+  "quest.agentJob.label": "Le job d'agent $1 travaille sur cette quête",
+  "quest.agentJob.column": "Job",
+  "quest.agentJob.filter": "En cours dans un job",
   "quest.event.unassigned": "s'est désassigné de la quête",
+  "quest.event.jobEnded":
+    "a remis la quête à faire : son job d'agent est terminé",
   "quest.event.completed": "a terminé la quête",
   "quest.event.objectiveCompleted": "a terminé l'objectif « $1 »",
   "quest.event.objectiveCompletedBare": "a terminé un objectif",

@@ -139,4 +139,9 @@ export const questFilterExtrasShape = {
    * Completed within this many days.
    */
   completedDays: z.integer().min(1).max(365).optional(),
+  /**
+   * `running` for the quests an agent job is working right now (#Q4350).
+   * Anything else filters nothing.
+   */
+  agentJob: z.string().optional(),
 };

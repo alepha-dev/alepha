@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "aafa16f8-140f-4170-b332-b16b7145f586",
+  "prevIds": ["3febdaad-d0b8-4e96-bb57-296486304293"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "agent_job_id"],
+      "writes": [
+        "s|col|public.quests.agent_job_id",
+        "n|col|public.quests.agent_job_id",
+        "e|col|public.quests.agent_job_id"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "agent_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

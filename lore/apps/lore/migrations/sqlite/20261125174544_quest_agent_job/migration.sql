@@ -1,0 +1,1 @@
+ALTER TABLE `quests` ADD `agent_job_id` text;
