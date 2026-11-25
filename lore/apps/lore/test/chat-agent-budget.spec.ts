@@ -47,6 +47,7 @@ class Repos {
  */
 describe("a project's AI budget for its chat agents", () => {
   const boot = async () => {
+    const errors: string[] = [];
     const ctx = await bootAssistant({
       enabled: "1",
       extra: (alepha) => {
@@ -55,6 +56,9 @@ describe("a project's AI budget for its chat agents", () => {
           use: ForgetfulParameterProvider,
         });
         alepha.inject(Repos);
+        alepha.events.on("log:entry", ({ entry }) => {
+          if (entry.level === "ERROR") errors.push(String(entry.message));
+        });
       },
     });
     const project = await createTestProject(ctx.alepha, {
@@ -147,6 +151,7 @@ describe("a project's AI budget for its chat agents", () => {
       });
     return {
       ...ctx,
+      errors,
       project,
       owner,
       talker,
@@ -227,6 +232,11 @@ describe("a project's AI budget for its chat agents", () => {
     expect(said).toContain("your own AI budget is spent too");
     expect(said).toMatch(/Enough frees up at \d{4}-\d\d-\d\d \d\d:\d\d UTC/);
     expect(ctx.ai.requests).toHaveLength(0);
+    // And the project is told, through the errors inbox (#Q4298).
+    expect(ctx.errors).toHaveLength(1);
+    expect(ctx.errors[0]).toContain(
+      "could not finish (budget) in room general",
+    );
   });
 
   it("names the member's budget alone when the project has none", async ({
