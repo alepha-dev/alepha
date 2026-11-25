@@ -33,7 +33,13 @@ export class PromptController {
   });
 
   listPrompts = $action({
-    use: [$ownsProject({ param: "projectId", requires: "project:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "project:read",
+      }),
+    ],
     method: "GET",
     path: "/projects/:projectId/prompts",
     description:
@@ -72,7 +78,13 @@ export class PromptController {
    * (#Q4277). A run by hand is never paused.
    */
   setPromptsPaused = $action({
-    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "prompt:manage",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/prompts-paused",
     schema: {
@@ -88,7 +100,13 @@ export class PromptController {
   });
 
   getPrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "project:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "project:read",
+      }),
+    ],
     method: "GET",
     path: "/projects/:projectId/prompts/:name",
     schema: { params: this.nameParams, response: promptResourceSchema },
@@ -96,7 +114,13 @@ export class PromptController {
   });
 
   createPrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "prompt:manage",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/prompts",
     schema: {
@@ -109,7 +133,13 @@ export class PromptController {
   });
 
   updatePrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "prompt:manage",
+      }),
+    ],
     method: "PATCH",
     path: "/projects/:projectId/prompts/:name",
     schema: {
@@ -122,7 +152,13 @@ export class PromptController {
   });
 
   deletePrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "prompt:manage",
+      }),
+    ],
     method: "DELETE",
     path: "/projects/:projectId/prompts/:name",
     schema: { params: this.nameParams, response: okSchema },
@@ -133,7 +169,13 @@ export class PromptController {
   });
 
   duplicatePrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "prompt:manage" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "prompt:manage",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/prompts/:name/duplicate",
     schema: {
@@ -153,7 +195,13 @@ export class PromptController {
    * whose status it accepts.
    */
   listPromptArgOptions = $action({
-    use: [$ownsProject({ param: "projectId", requires: "project:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "project:read",
+      }),
+    ],
     method: "GET",
     path: "/projects/:projectId/prompts/:name/args/:arg",
     schema: {
@@ -181,7 +229,13 @@ export class PromptController {
    * Run is offered.
    */
   listPromptHosts = $action({
-    use: [$ownsProject({ param: "projectId", requires: "host:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "host:read",
+      }),
+    ],
     method: "GET",
     path: "/projects/:projectId/prompt-hosts",
     schema: {
@@ -202,7 +256,13 @@ export class PromptController {
    * permissions: what Copy puts on the clipboard.
    */
   renderPrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "project:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "project:read",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/prompts/:name/render",
     schema: {
@@ -230,7 +290,13 @@ export class PromptController {
    * the prompt's own permission besides `host:read`.
    */
   runPrompt = $action({
-    use: [$ownsProject({ param: "projectId", requires: "host:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        capability: "prompts",
+        requires: "host:read",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/prompts/:name/run",
     schema: {

@@ -1,4 +1,5 @@
 import {
+  AgentJobs,
   type HostJobSummary,
   LoreDatabase,
   ProjectEventCatalog,
@@ -47,6 +48,7 @@ export class AgentJobProjectEvents {
   protected readonly events = $inject(ProjectEvents);
   protected readonly database = $inject(LoreDatabase);
   protected readonly registry = $inject(PromptRegistry);
+  protected readonly agents = $inject(AgentJobs);
   protected readonly projects = $repository(projects);
   protected readonly prompts = $repository(prompts);
 
@@ -123,6 +125,9 @@ export class AgentJobProjectEvents {
       ) {
         return;
       }
+      // A job still running when Prompts was turned off finishes; its end
+      // tells nobody (#Q4314).
+      if (!(await this.agents.isOn(job.projectId))) return;
       await this.raise(job);
     },
   });

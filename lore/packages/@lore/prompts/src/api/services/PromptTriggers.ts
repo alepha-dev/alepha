@@ -114,6 +114,8 @@ export class PromptTriggers {
         subject: "prompt",
         fields: { prompt: "text", job_id: "text", reason: "text" },
         permission: "host:read",
+        // Offered only while the project has Prompts on (#E175).
+        needs: { capability: "prompts" },
         message: (it) => ({
           title: `Prompt ${typeof it.prompt === "string" ? it.prompt : ""} ${definition.title}`,
           text: [
@@ -378,9 +380,12 @@ export class PromptTriggers {
   // ---------------------------------------------------------------------
 
   /**
-   * The project's enabled prompts listening to an event.
+   * The project's enabled prompts listening to an event: none while the
+   * project has Prompts off (#Q4314), read when the event fires, since the
+   * switch may flip between two events.
    */
   public async listening(projectId: number, event: string): Promise<Prompt[]> {
+    if (!(await this.agents.isOn(projectId))) return [];
     const rows = await this.rows.findMany({
       where: { projectId: { eq: projectId }, enabled: { eq: true } },
     });
@@ -455,7 +460,11 @@ export class PromptTriggers {
   public async settled(promptId: string): Promise<void> {
     const row = await this.rows.findOne({ where: { id: { eq: promptId } } });
     if (!row?.pending) return;
-    if (!row.enabled || !row.eventKeys?.length) {
+    if (
+      !row.enabled ||
+      !row.eventKeys?.length ||
+      !(await this.agents.isOn(row.projectId))
+    ) {
       await this.clear(row.id);
       return;
     }
@@ -494,6 +503,11 @@ export class PromptTriggers {
 
   /**
    * Runs every scheduled prompt due at `now`. Answers how many started.
+   *
+   * A project with Prompts off (#Q4314) has its due rows moved to their next
+   * run and nothing started: checked at fire time, since the switch can
+   * flip between two ticks, and moved on so its rows never hold the tick's
+   * limit from the projects that have it on.
    */
   public async tick(now: string): Promise<number> {
     const due = await this.rows.findMany({
@@ -511,6 +525,7 @@ export class PromptTriggers {
         },
       );
       if (this.count(claimed) === 0) continue;
+      if (!(await this.agents.isOn(row.projectId))) continue;
       const outcome = await this.runTriggered(row, { kind: "schedule" }, {});
       if (outcome.jobId) started++;
     }
@@ -602,6 +617,9 @@ export class PromptTriggers {
     const project = await this.projects.findOne({
       where: { id: { eq: row.projectId } },
     });
+    if (!(await this.agents.isOn(row.projectId))) {
+      return "Prompts is off in this project";
+    }
     if (project?.promptsPausedAt) {
       return "Prompts' triggers are paused in this project";
     }

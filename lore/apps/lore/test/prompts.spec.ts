@@ -156,6 +156,7 @@ describe("prompts", () => {
     const narrow = await createTestProject(alepha, {
       capabilities: [
         { key: "plan", options: { epics: false, feedback: false } },
+        { key: "prompts" },
       ],
     });
     await createTestMember(alepha, narrow, owner.id);

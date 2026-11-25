@@ -219,6 +219,7 @@ describe("ProjectMergeService across every module", () => {
     expect(capabilities.map((row) => row.key).sort()).toEqual([
       "activity",
       "plan",
+      "prompts",
       "remember",
       "reports",
       "ship",
