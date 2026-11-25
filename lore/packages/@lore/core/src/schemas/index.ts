@@ -295,6 +295,17 @@ export type { HostJobLogResource } from "../api/schemas/hostJobLogSchema.ts";
 export { hostJobResourceSchema } from "../api/schemas/hostJobResourceSchema.ts";
 export type { HostJobResource } from "../api/schemas/hostJobResourceSchema.ts";
 export {
+  type PromptJobArg,
+  promptJobArgSchema,
+} from "../api/schemas/promptJobArgSchema.ts";
+export {
+  AgentTranscript,
+  type AgentTranscriptEntry,
+  type AgentTranscriptResult,
+  type AgentTranscriptTool,
+  type AgentTranscriptTotals,
+} from "../api/schemas/AgentTranscript.ts";
+export {
   HOST_COMMAND_KINDS,
   HOST_COMMAND_STATUSES,
 } from "../api/schemas/hostCommandValues.ts";

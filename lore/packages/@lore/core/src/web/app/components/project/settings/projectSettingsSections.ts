@@ -1,4 +1,4 @@
-import { BellRing, Bot, type LucideIcon, Settings2, Users } from "lucide-react";
+import { BellRing, type LucideIcon, Settings2, Users } from "lucide-react";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../../../api/schemas/projectResourceSchema.ts";
@@ -163,31 +163,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         labelKey: "project.settings.tab.notificationChannels",
         requires: "subscription:read",
         fullWidth: true,
-      },
-    ],
-  },
-  {
-    // Core (#E174, #Q4280): agent jobs run with Plan and Ship off. Every
-    // member opens it: reading and copying a prompt needs no settings
-    // permission; `prompt:manage` gates the writes.
-    key: "prompts",
-    order: 28,
-    labelKey: "project.settings.nav.prompts",
-    icon: Bot,
-    tabs: [
-      {
-        route: "projectSettingsPrompts",
-        labelKey: "project.settings.tab.prompts",
-        fullWidth: true,
-      },
-      {
-        // A job belongs to the project, not to a host (#Q4281): no host
-        // page lists jobs. Listed with the read its API asks.
-        route: "projectSettingsPromptJobs",
-        labelKey: "project.settings.tab.jobs",
-        requires: "host:read",
-        fullWidth: true,
-        alsoOn: ["projectJob"],
       },
     ],
   },

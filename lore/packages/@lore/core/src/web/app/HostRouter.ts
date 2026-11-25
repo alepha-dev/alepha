@@ -110,27 +110,6 @@ export class HostRouter {
     lazy: () => import("./components/bay/BaySettings.tsx"),
   });
 
-  /**
-   * One host job with its live log (#Q3984). The list is the Jobs tab of
-   * Settings > Prompts (#Q4281): a job belongs to the project, not to a
-   * host. No capability (#E166): agent jobs run with Ship off, and the
-   * reads are gated server-side on `host:read`.
-   */
-  projectJob = $pageProject({
-    loading: ProjectPageSkeleton,
-    name: "projectJob",
-    path: "/jobs/:jobId",
-    nav: { hidden: true, label: "Job" },
-    schema: { params: z.object({ jobId: z.string() }) },
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Job`,
-    }),
-    lazy: () => import("./components/project/host-jobs/ProjectJob.tsx"),
-    loader: async ({ params }) => {
-      return { jobId: params.jobId };
-    },
-  });
-
   projectSettingsHosts = $pageProjectSettings({
     name: "projectSettingsHosts",
     path: "/hosts",

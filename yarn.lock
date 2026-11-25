@@ -2270,10 +2270,13 @@ __metadata:
   dependencies:
     "@alepha/ui": "workspace:*"
     "@lore/core": "workspace:*"
+    "@testing-library/dom": "npm:^10.4.2"
+    "@testing-library/react": "npm:^16.3.3"
     "@types/bun": "npm:^1.4.4"
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
     alepha: "workspace:*"
+    lucide-react: "npm:^1.73.0"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
     vite: "npm:^8.3.8"
