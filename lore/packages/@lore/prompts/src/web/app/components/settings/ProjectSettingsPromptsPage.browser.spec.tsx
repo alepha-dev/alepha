@@ -210,26 +210,60 @@ describe("ProjectSettingsPromptsPage", () => {
   describe("a write changes its row in place (#Q4301)", () => {
     const scheduled = () =>
       prompt({ name: "weekly", title: "Weekly", on: "0 9 * * 1" });
-    const enabledSwitch = () =>
-      within(screen.getByTestId("prompt-enabled")).getByRole("switch");
+    // The trigger's state, as its cell says it (#Q4327: no Enabled column).
+    const enabled = () =>
+      screen.getByTestId("prompt-on").getAttribute("data-enabled");
     const openRowMenu = async (action: string) => {
       fireEvent.click(screen.getByRole("button", { name: "Open row actions" }));
       fireEvent.click(await screen.findByRole("menuitem", { name: action }));
     };
 
-    it("turns a trigger off at once, keeps it off once the server agrees, and never reads the list again", async ({
+    it("has no Enabled column: a manual prompt's menu has no switch, and a triggered one's says it is off in its Trigger cell (#Q4327)", async ({
+      expect,
+    }) => {
+      world.items = [
+        prompt(),
+        prompt({
+          name: "nightly",
+          title: "Nightly",
+          on: "0 3 * * *",
+          enabled: false,
+        }),
+      ];
+      await show();
+      await screen.findByText("Nightly");
+      expect(
+        screen.queryByRole("columnheader", { name: "Enabled" }),
+      ).toBeNull();
+      const cells = screen.getAllByTestId("prompt-on");
+      expect(cells[1]?.textContent).toContain("off");
+      expect(cells[1]?.className).toContain("text-muted-foreground");
+      expect(cells[0]?.textContent).not.toContain("off");
+
+      const [manualMenu] = screen.getAllByRole("button", {
+        name: "Open row actions",
+      });
+      fireEvent.click(manualMenu!);
+      await screen.findByRole("menuitem", { name: "Trigger" });
+      expect(
+        screen.queryByRole("menuitem", { name: "Disable trigger" }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("menuitem", { name: "Enable trigger" }),
+      ).toBeNull();
+    });
+
+    it("turns a trigger off from its row menu at once, keeps it off once the server agrees, and never reads the list again", async ({
       expect,
     }) => {
       world.items = [scheduled()];
       await show();
       await screen.findByText("Weekly");
-      expect(enabledSwitch().getAttribute("aria-checked")).toBe("true");
+      expect(enabled()).toBe("true");
 
-      fireEvent.click(enabledSwitch());
+      await openRowMenu("Disable trigger");
       // Before the server answers.
-      await waitFor(() =>
-        expect(enabledSwitch().getAttribute("aria-checked")).toBe("false"),
-      );
+      await waitFor(() => expect(enabled()).toBe("false"));
       expect(world.writes).toEqual([
         { name: "weekly", body: { enabled: false } },
       ]);
@@ -237,23 +271,21 @@ describe("ProjectSettingsPromptsPage", () => {
       world.gate?.(true);
       // Let the answer land, then check nothing moved.
       await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(enabledSwitch().getAttribute("aria-checked")).toBe("false");
+      expect(enabled()).toBe("false");
       expect(world.reads).toBe(1);
     });
 
-    it("puts the switch back when the server refuses", async ({ expect }) => {
+    it("puts the trigger back on when the server refuses", async ({
+      expect,
+    }) => {
       world.items = [scheduled()];
       await show();
       await screen.findByText("Weekly");
 
-      fireEvent.click(enabledSwitch());
-      await waitFor(() =>
-        expect(enabledSwitch().getAttribute("aria-checked")).toBe("false"),
-      );
+      await openRowMenu("Disable trigger");
+      await waitFor(() => expect(enabled()).toBe("false"));
       world.gate?.(false);
-      await waitFor(() =>
-        expect(enabledSwitch().getAttribute("aria-checked")).toBe("true"),
-      );
+      await waitFor(() => expect(enabled()).toBe("true"));
       expect(world.reads).toBe(1);
     });
 

@@ -194,7 +194,9 @@ A triggered prompt runs unattended, so it stops by itself:
   run past one is skipped, and the event **Prompt ceiling reached** says so
   once.
 - **Three failed runs in a row** turn the trigger off, and the event **Prompt
-  disabled** says why. A successful run resets the count.
+  disabled** says why. A successful run resets the count. A trigger that is
+  off says **off** in the **Trigger** column; **Enable trigger** in the row's
+  menu turns it back on, and **Disable trigger** turns one off by hand.
 - **A host that cannot take a run** skips it without counting a failure.
 - **Pause all triggers**, above the table, stops every trigger of the project
   until **Resume triggers**. A run by hand still works.
