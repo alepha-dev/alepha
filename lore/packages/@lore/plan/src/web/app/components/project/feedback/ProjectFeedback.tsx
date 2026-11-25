@@ -343,10 +343,11 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               label={tr("feedback.subscription.label")}
               description={tr("feedback.subscription.description")}
               offDescription={tr("feedback.subscription.offDescription")}
-              // Opens a dialog: channels, and whose feedback (#Q4055).
+              // Opens a dialog: channels, and whose feedback (#Q4055, #Q4290).
               authors={{
-                mineLabel: tr("feedback.subscription.mine"),
-                membersLabel: tr("feedback.subscription.members"),
+                allLabel: tr("feedback.subscription.all"),
+                notMineLabel: tr("feedback.subscription.notMine"),
+                notMembersLabel: tr("feedback.subscription.notMembers"),
               }}
               testId="feedback-subscription-bell"
             />

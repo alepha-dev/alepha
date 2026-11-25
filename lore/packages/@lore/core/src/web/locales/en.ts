@@ -3305,8 +3305,9 @@ export default {
   "feedback.subscription.label": "Notify me of new feedback",
   "feedback.subscription.description":
     "You will be notified in the app of every new feedback in this project.",
-  "feedback.subscription.mine": "Feedback I submit",
-  "feedback.subscription.members": "Feedback from project members",
+  "feedback.subscription.all": "All feedback",
+  "feedback.subscription.notMine": "All except mine",
+  "feedback.subscription.notMembers": "All except project members'",
   "feedback.subscription.offDescription":
     "You will no longer be notified of new feedback in this project.",
   "feedback.filter.label": "Status",
