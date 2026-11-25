@@ -116,6 +116,12 @@ export class PromptCommand {
     ref: z
       .text({ description: "The branch, tag or commit its code is at." })
       .optional(),
+    concurrency: z
+      .enum(["queue", "unique"])
+      .describe(
+        "A second run while one with the same args runs: queue (it waits, as one run, and starts when the running one ends; the default) or unique (it is refused). Custom prompts only.",
+      )
+      .optional(),
     timeoutSeconds: z
       .integer()
       .min(0)
@@ -357,6 +363,7 @@ export class PromptCommand {
             ...(flags.timeoutSeconds
               ? { timeoutSeconds: flags.timeoutSeconds }
               : {}),
+            ...(flags.concurrency ? { concurrency: flags.concurrency } : {}),
           },
         });
         this.render.written(print, flags.output, it, `Created ${it.name}`);
@@ -429,6 +436,7 @@ export class PromptCommand {
             ...(flags.maxPerHour ? { maxRunsPerHour: flags.maxPerHour } : {}),
             ...(flags.maxPerDay ? { maxRunsPerDay: flags.maxPerDay } : {}),
             ...(flags.pin ? { pins: flags.pin } : {}),
+            ...(flags.concurrency ? { concurrency: flags.concurrency } : {}),
             ...(flags.timeoutSeconds === undefined
               ? {}
               : { timeoutSeconds: flags.timeoutSeconds || null }),
@@ -583,6 +591,18 @@ export class PromptCommand {
         const skipped = started.skipped.length
           ? `; left out for want of a member's trust: ${started.skipped.map((n) => `P${n}`).join(", ")}`
           : "";
+        // Queued behind a run of the same args (#Q4354): its end starts it.
+        if (!started.jobId) {
+          const behind = started.queuedBehind ?? "";
+          const url = `${this.client.hostname()}/${project}/jobs/${behind}`;
+          this.render.written(
+            print,
+            flags.output,
+            { ...started, url },
+            `Queued: it starts when job ${behind} ends: ${url}`,
+          );
+          return;
+        }
         const url = `${this.client.hostname()}/${project}/jobs/${started.jobId}`;
         if (!flags.wait) {
           this.render.written(

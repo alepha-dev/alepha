@@ -1,0 +1,434 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a38ebd11-77c6-4286-8e55-f9042e1cd424",
+  "prevIds": ["aafa16f8-140f-4170-b332-b16b7145f586"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "prompt_queue"],
+      "writes": [
+        "s|tbl|public.prompt_queue",
+        "n|tbl|public.prompt_queue",
+        "e|tbl|public.prompt_queue",
+        "n|rel|public.prompt_queue",
+        "n|type|public.prompt_queue",
+        "n|rel|public.prompt_queue_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "concurrency"],
+      "writes": [
+        "s|col|public.prompts.concurrency",
+        "n|col|public.prompts.concurrency",
+        "e|col|public.prompts.concurrency"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "prompts", "settle_seconds"],
+      "writes": [
+        "s|col|public.prompts.settle_seconds",
+        "n|col|public.prompts.settle_seconds",
+        "e|col|public.prompts.settle_seconds"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "prompts", "pending"],
+      "writes": [
+        "s|col|public.prompts.pending",
+        "n|col|public.prompts.pending",
+        "e|col|public.prompts.pending"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "prompts", "pending_job_id"],
+      "writes": [
+        "s|col|public.prompts.pending_job_id",
+        "n|col|public.prompts.pending_job_id",
+        "e|col|public.prompts.pending_job_id"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "prompt_queue",
+        "prompt_queue_project_id_prompt_key_idx"
+      ],
+      "writes": [
+        "s|idx|public.prompt_queue_project_id_prompt_key_idx",
+        "n|idx|public.prompt_queue_project_id_prompt_key_idx",
+        "e|idx|public.prompt_queue_project_id_prompt_key_idx",
+        "n|rel|public.prompt_queue_project_id_prompt_key_idx"
+      ],
+      "reads": [
+        "n|tbl|public.prompt_queue",
+        "n|sch|public",
+        "n|col|public.prompt_queue.project_id",
+        "n|col|public.prompt_queue.prompt",
+        "n|col|public.prompt_queue.key"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "prompt_queue"],
+      "writes": [
+        "s|fk|public.prompt_queue.prompt_queue_project_id_projects_id_fkey",
+        "n|fk|public.prompt_queue.prompt_queue_project_id_projects_id_fkey",
+        "e|fk|public.prompt_queue.prompt_queue_project_id_projects_id_fkey",
+        "n|con|public.prompt_queue.prompt_queue_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.prompt_queue",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.prompt_queue.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "prompt_queue"],
+      "writes": [
+        "s|fk|public.prompt_queue.prompt_queue_user_id_users_id_fkey",
+        "n|fk|public.prompt_queue.prompt_queue_user_id_users_id_fkey",
+        "e|fk|public.prompt_queue.prompt_queue_user_id_users_id_fkey",
+        "n|con|public.prompt_queue.prompt_queue_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.prompt_queue",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.prompt_queue.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "prompt_queue",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "prompt",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "args",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "host",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "agent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "cause",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "started_by_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "concurrency",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "prompt_queue_project_id_prompt_key_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "prompt",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "prompt_queue_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "prompt_queue_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["user_id"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompt_queue",
+        "name": "prompt_queue_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"prompts\",\"settle_seconds\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"prompts\",\"pending\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"prompts\",\"pending_job_id\"]"
+    }
+  ]
+}

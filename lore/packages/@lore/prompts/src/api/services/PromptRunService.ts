@@ -18,6 +18,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
+import { type PromptQueueEntry, promptQueue } from "../entities/promptQueue.ts";
 import { AgentJobService } from "./AgentJobService.ts";
 import { AgentRunPreamble } from "./AgentRunPreamble.ts";
 import { PromptService } from "./PromptService.ts";
@@ -40,8 +41,10 @@ import { PromptService } from "./PromptService.ts";
  *   job's host, in its workspace and on its branch, Bay reusing the worktree
  *   the job kept, and resumes its agent session when the job's agent got as
  *   far as reporting one.
- * - **One run at a time per prompt and per arg value**: a second is refused
- *   with the running job's id.
+ * - **One run at a time per prompt and per arg value** (#Q4354): a second
+ *   waits as ONE queued run when the prompt's concurrency is `queue`
+ *   (started by the running job's end), and is refused with the running
+ *   job's id when it is `unique`. A continued run is always `unique`.
  * - What only the server knows is the built-in's `prepare`: its key's pin,
  *   its workspace, the items a triage is given.
  *
@@ -55,6 +58,7 @@ export class PromptRunService {
   protected readonly jobService = $inject(AgentJobService);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly jobs = $repository(hostJobs);
+  protected readonly queue = $repository(promptQueue);
   protected readonly hostJobs = $inject(HostJobService);
 
   /**
@@ -69,7 +73,7 @@ export class PromptRunService {
     body: PromptRunBody,
     cause: PromptJobCause = { kind: "hand" },
     startedByJobId?: string,
-  ): Promise<{ jobId: string; skipped: number[] }> {
+  ): Promise<PromptRunOutcome> {
     const prompt = await this.prompts.get(projectId, name);
     for (const permission of ["host:read", prompt.permission]) {
       if (!(await this.security.holds(projectId, user.id, permission))) {
@@ -114,7 +118,35 @@ export class PromptRunService {
           }
         : {}),
     }));
-    await this.assertSingleFlight(projectId, name, args);
+    const key = PromptRunService.keyOf(args);
+    const active = await this.activeJob(projectId, name, key);
+    if (active) {
+      if (prompt.concurrency === "unique" || previous) {
+        throw new ConflictError(
+          `A run of ${name}${args.length ? ` for ${args.map((it) => it.reference ?? it.value).join(", ")}` : ""} is already ${active.status}: job ${active.id}`,
+        );
+      }
+      await this.enqueue(
+        projectId,
+        user,
+        name,
+        body,
+        key,
+        cause,
+        startedByJobId,
+      );
+      // The job may have ended between the two reads, its end finding
+      // nothing to start: then this run starts now, as the waiting one.
+      if (await this.activeJob(projectId, name, key)) {
+        return { queuedBehind: active.id, skipped: [] };
+      }
+    }
+    // A run that starts is the one that waited for these args, if any.
+    await this.queue.deleteMany({
+      projectId: { eq: projectId },
+      prompt: { eq: name },
+      key: { eq: key },
+    });
 
     const text = renderPromptText(prompt.text, values);
     const repository = await this.jobService.repositoryOf(projectId);
@@ -233,20 +265,26 @@ export class PromptRunService {
   }
 
   /**
-   * One run at a time per prompt and per arg value.
+   * The arg values as two runs are compared: sorted `name=value` pairs.
+   * Static, since a job's end compares its own args the same way.
    */
-  protected async assertSingleFlight(
+  public static keyOf(list: PromptJobArg[] | undefined | null): string {
+    return JSON.stringify(
+      (list ?? [])
+        .map((it) => `${it.name}=${it.value}`)
+        .sort((a, b) => a.localeCompare(b)),
+    );
+  }
+
+  /**
+   * The project's queued or running job of this prompt with these arg
+   * values, if any.
+   */
+  public async activeJob(
     projectId: number,
     name: string,
-    args: PromptJobArg[],
-  ): Promise<void> {
-    const keyOf = (list: PromptJobArg[] | undefined | null) =>
-      JSON.stringify(
-        (list ?? [])
-          .map((it) => `${it.name}=${it.value}`)
-          .sort((a, b) => a.localeCompare(b)),
-      );
-    const key = keyOf(args);
+    key: string,
+  ): Promise<HostJob | undefined> {
     const running = await this.jobs.findMany({
       where: {
         projectId: { eq: projectId },
@@ -254,15 +292,68 @@ export class PromptRunService {
         status: { inArray: ["queued", "running"] },
       },
     });
-    const same = running.find((job) => keyOf(job.args) === key);
-    if (same) {
-      throw new ConflictError(
-        `A run of ${name}${args.length ? ` for ${args.map((it) => it.reference ?? it.value).join(", ")}` : ""} is already ${same.status}: job ${same.id}`,
-      );
+    return running.find((job) => PromptRunService.keyOf(job.args) === key);
+  }
+
+  /**
+   * The run that waits behind the active one: one per prompt and arg values,
+   * so a run asked for while one already waits adds nothing.
+   */
+  protected async enqueue(
+    projectId: number,
+    user: UserAccountToken,
+    name: string,
+    body: PromptRunBody,
+    key: string,
+    cause: PromptJobCause,
+    startedByJobId: string | undefined,
+  ): Promise<void> {
+    const where = {
+      projectId: { eq: projectId },
+      prompt: { eq: name },
+      key: { eq: key },
+    };
+    if (await this.queue.findOne({ where })) return;
+    try {
+      await this.queue.create({
+        projectId,
+        prompt: name,
+        key,
+        ...(body.args ? { args: body.args } : {}),
+        ...(body.host ? { host: body.host } : {}),
+        ...(body.agent ? { agent: body.agent } : {}),
+        ...(body.model ? { model: body.model } : {}),
+        userId: user.id,
+        cause,
+        ...(startedByJobId ? { startedByJobId } : {}),
+      });
+    } catch (error) {
+      // Two asked at once: the unique index kept the first, which is enough.
+      if (!(await this.queue.findOne({ where }))) throw error;
     }
   }
-}
 
+  /**
+   * Takes the run waiting for these arg values, if one does: whoever gets
+   * it starts it. Answers nothing when another caller took it first.
+   */
+  public async take(
+    projectId: number,
+    name: string,
+    key: string,
+  ): Promise<PromptQueueEntry | undefined> {
+    const entry = await this.queue.findOne({
+      where: {
+        projectId: { eq: projectId },
+        prompt: { eq: name },
+        key: { eq: key },
+      },
+    });
+    if (!entry) return undefined;
+    const taken = await this.queue.deleteMany({ id: { eq: entry.id } });
+    return taken.length ? entry : undefined;
+  }
+}
 /**
  * A run's request: a value per arg, and where it runs. No source and no
  * ref: those are the prompt's.
@@ -283,4 +374,14 @@ export interface PromptRunBody {
    * failed, timed out or was cancelled. Its args stand when none are given.
    */
   continue?: string;
+}
+
+/**
+ * What a run answers: the job it started, or, for a prompt whose concurrency
+ * is `queue`, the running job it waits behind.
+ */
+export interface PromptRunOutcome {
+  jobId?: string;
+  queuedBehind?: string;
+  skipped: number[];
 }

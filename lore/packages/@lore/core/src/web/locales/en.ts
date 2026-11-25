@@ -5151,6 +5151,12 @@ export default {
   "assistant.confirm.elsewhere": "(not the project you are looking at)",
   "project.settings.nav.prompts": "Prompts",
   "prompts.copied": "Prompt copied",
+  "prompts.queued": "Queued: it starts when this run ends",
+  "prompts.concurrency": "A second run",
+  "prompts.concurrency.description":
+    "What a run asked for while one with the same args is going does.",
+  "prompts.concurrency.queue": "Waits, and starts when the running one ends",
+  "prompts.concurrency.unique": "Is refused",
   "prompts.copy.title": "Copy $1",
   "prompts.copy.description":
     "Pick the items it is about: the copied text names them.",

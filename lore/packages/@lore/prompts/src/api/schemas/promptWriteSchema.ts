@@ -2,6 +2,7 @@ import {
   AGENT_JOB_MAX_TIMEOUT_SECONDS,
   AGENT_JOB_MIN_TIMEOUT_SECONDS,
   PROMPT_CHECKS,
+  PROMPT_CONCURRENCIES,
   PROMPT_MAX_ARGS,
   agentRunSchema,
   agentRunSourceSchema,
@@ -12,7 +13,7 @@ import { type Infer, z } from "alepha";
 /**
  * The fields of a prompt a write sets (#Q4274). On a built-in only `source`,
  * `ref`, `host`, `agent`, `model` and `enabled` are writable; its title,
- * description, text and args are refused. `null` clears an optional field.
+ * description, text, args and concurrency are refused. `null` clears an optional field.
  */
 export const promptWriteSchema = z.object({
   title: z.string().min(1).max(120).optional(),
@@ -41,7 +42,12 @@ export const promptWriteSchema = z.object({
     .optional(),
   maxRunsPerHour: z.integer().min(1).max(60).optional(),
   maxRunsPerDay: z.integer().min(1).max(1000).optional(),
-  settleSeconds: z.integer().min(0).max(3600).optional(),
+  /**
+   * A custom prompt's answer to a second run while one of the same args
+   * runs (#Q4354): `queue` waits for it, `unique` refuses it. A built-in's
+   * is Lore's.
+   */
+  concurrency: z.enum(PROMPT_CONCURRENCIES).optional(),
   /**
    * A run's time in seconds (#Q4344), on any prompt, built-in included,
    * within the ceiling every agent job has; `null` returns to the default.

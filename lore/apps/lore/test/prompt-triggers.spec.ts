@@ -12,7 +12,8 @@ import {
 
 /**
  * Triggers on a prompt (#E174, #Q4277), E172's automations moved onto the
- * prompt: events that fill an arg (one run per item) or settle into one run,
+ * prompt: events that fill an arg (one run per item) or start one at once,
+ * queued behind a running one (#Q4354),
  * a schedule, `check`, the pause and the ceilings, self-disable, and the
  * guards (its own job's events, needs-human, outside text, accepted
  * statuses).
@@ -148,28 +149,30 @@ describe("prompt triggers", () => {
     );
   });
 
-  it("coalesces a burst for a prompt without args, and runs one follow-up when its job ends", async ({
+  it("starts a prompt without args at once, and queues a burst during its run as one follow-up", async ({
     expect,
   }) => {
-    await set("triage", { on: "event:feedback.created", settleSeconds: 60 });
-    for (const title of ["One", "Two", "Three"]) await w.submit(title);
-    await w.drain();
-    expect(await w.waiting()).toHaveLength(1);
-    expect(await agentJobs()).toHaveLength(0);
-    await time.travel(61, "seconds");
+    await set("triage", { on: "event:feedback.created" });
+    await w.submit("One");
     await w.drain();
     const [first] = await agentJobs();
-    expect(first?.input.key?.feedbackIds).toHaveLength(3);
+    expect(first?.input.key?.feedbackIds).toHaveLength(1);
     expect(first?.cause).toEqual({ kind: "event", event: "feedback.created" });
 
-    await w.submit("Four");
-    await w.drain();
-    await time.travel(61, "seconds");
+    for (const title of ["Two", "Three", "Four"]) await w.submit(title);
     await w.drain();
     expect(await agentJobs()).toHaveLength(1);
+    expect(await w.waiting()).toHaveLength(1);
+
     await endJob(first!.id, "done");
     await w.drain();
-    expect(await agentJobs()).toHaveLength(2);
+    const jobs = await agentJobs();
+    expect(jobs).toHaveLength(2);
+    expect(jobs.find((it) => it.id !== first!.id)?.cause).toEqual({
+      kind: "event",
+      event: "feedback.created",
+    });
+    expect(await w.waiting()).toHaveLength(0);
   });
 
   it("runs on its schedule from the hourly check, with its stored arg, claimed once", async ({

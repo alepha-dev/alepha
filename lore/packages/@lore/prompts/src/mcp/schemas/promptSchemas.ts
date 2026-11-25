@@ -2,6 +2,7 @@ import {
   AGENT_JOB_MAX_TIMEOUT_SECONDS,
   AGENT_JOB_MIN_TIMEOUT_SECONDS,
   PROMPT_CHECKS,
+  PROMPT_CONCURRENCIES,
   PROMPT_SOURCES,
   projectParamsSchema,
   promptResourceSchema,
@@ -54,6 +55,12 @@ export const promptCreateParamsSchema = projectParamsSchema.extend({
   ref: z
     .text({ maxLength: 200 })
     .describe("The branch, tag or commit its code is at.")
+    .optional(),
+  concurrency: z
+    .enum(PROMPT_CONCURRENCIES)
+    .describe(
+      "A second run while one with the same args runs: queue (it waits, as one run, and starts when the running one ends; the default) or unique (it is refused). Custom prompts only.",
+    )
     .optional(),
   timeout_seconds: z
     .integer()
@@ -159,7 +166,8 @@ export const promptListResultSchema = z.object({
 export const promptRenderResultSchema = z.object({ text: z.string() });
 
 export const promptRunResultSchema = z.object({
-  jobId: z.uuid(),
+  jobId: z.uuid().optional(),
+  queuedBehind: z.uuid().optional(),
   skipped: z.array(z.integer()),
 });
 

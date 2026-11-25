@@ -1,5 +1,6 @@
 import {
   PROMPT_CHECKS,
+  PROMPT_CONCURRENCIES,
   PROMPT_MAX_ARGS,
   PROMPT_NAME_PATTERN,
   PROMPT_SCHEDULES,
@@ -72,16 +73,10 @@ export const prompts = $entity({
      */
     eventKeys: z.array(z.string().max(64)).max(16).optional(),
     /**
-     * How long a run of a prompt with no args waits after a burst's first
-     * event, so the burst lands in one run. Seconds.
+     * A custom prompt's concurrency (#Q4354): absent, `queue`. A built-in's
+     * is the registry's, never stored.
      */
-    settleSeconds: db.default(z.integer().min(0).max(3600), 60),
-    /**
-     * An event arrived and its run has not started yet, and the job that
-     * raised it, when a job did (the chain guard reads it).
-     */
-    pending: db.default(z.boolean(), false),
-    pendingJobId: z.uuid().optional(),
+    concurrency: z.enum(PROMPT_CONCURRENCIES).meta({ mode: "text" }).optional(),
     schedule: z.enum(PROMPT_SCHEDULES).meta({ mode: "text" }).optional(),
     /**
      * A daily or weekly schedule's hour, and a weekly one's day

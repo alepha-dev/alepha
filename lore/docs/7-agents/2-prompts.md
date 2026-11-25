@@ -174,6 +174,21 @@ A prompt that takes a **member** emails its final reply to that member when
 the run succeeds: **Weekly status** run every Monday lands in your mailbox.
 The member is you unless you pick another.
 
+### A second run while one is going
+
+A prompt runs once at a time for the same args: **Work on quest** on #Q12 and
+on #Q13 run side by side, but a second run on #Q12 waits or is refused while
+the first one is going, depending on the prompt:
+
+- **Waits**: the run is queued, and starts when the running one ends. Ask
+  again while it waits and nothing more is added, since the next run reads
+  everything anyway. **Run** says **Queued** and opens the run in progress.
+  **Triage** and **Work on loose quests** wait, and so does a prompt of your
+  own unless its editor says otherwise.
+- **Is refused**: **Run** says which job is already running. Every other
+  built-in is refused, since a second run on the same epic, quest or pull
+  request would redo the same work.
+
 ### The code a run finds
 
 Each prompt says where its code comes from, set on the prompt, never at a run:
@@ -204,7 +219,8 @@ lore prompt update npm-update --timeout-seconds 7200
 ## Writing your own
 
 **New prompt** opens the editor: a name, a title, a description, up to four
-args, the source and the words. **Duplicate** starts from any prompt, a
+args, the source, what **A second run** does while one is going, and the
+words. **Duplicate** starts from any prompt, a
 built-in included; the copy no longer follows the built-in.
 
 An arg has a name, a type (epic, quest, feedback item, pull request or
@@ -235,8 +251,10 @@ what you paste.
   `pull_request.added` and the others. An event about a quest fills the
   prompt's quest arg, one about a feedback item its feedback arg, one about an
   epic its epic arg, one about a pull request its pull request arg: one run
-  per item. A prompt that takes nothing gathers the events that arrive
-  together into one run, after a short wait (60 seconds by default).
+  per item. A prompt that takes nothing starts at once; the events that arrive
+  while it runs start one more run when it ends, if the prompt waits (see
+  [A second run while one is going](#a-second-run-while-one-is-going)), and
+  are skipped if it is refused.
 - **On a schedule**: `hourly`, `6h` (00:00, 06:00, 12:00 and 18:00 UTC),
   `daily@<hour>` or `weekly@<day>@<hour>`, hours in UTC. A schedule fills no
   arg, so each arg gets a stored value: the member **Weekly status** mails,

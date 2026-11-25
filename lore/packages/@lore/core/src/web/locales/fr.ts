@@ -5202,6 +5202,12 @@ export default {
   "assistant.confirm.elsewhere": "(pas le projet affiché)",
   "project.settings.nav.prompts": "Invites",
   "prompts.copied": "Invite copiée",
+  "prompts.queued": "En file : elle démarre à la fin de cette exécution",
+  "prompts.concurrency": "Une deuxième exécution",
+  "prompts.concurrency.description":
+    "Ce que fait une exécution demandée pendant qu'une autre avec les mêmes arguments est en cours.",
+  "prompts.concurrency.queue": "Attend, et démarre à la fin de celle en cours",
+  "prompts.concurrency.unique": "Est refusée",
   "prompts.copy.title": "Copier $1",
   "prompts.copy.description":
     "Choisissez les éléments concernés : le texte copié les nomme.",

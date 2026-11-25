@@ -317,7 +317,15 @@ export class PromptController {
         continue: z.uuid().optional(),
       }),
       response: z.object({
-        jobId: z.uuid(),
+        /**
+         * The job it started; absent when it waits behind a running one.
+         */
+        jobId: z.uuid().optional(),
+        /**
+         * The running job of the same args it waits behind (#Q4354), whose
+         * end starts it: a prompt whose concurrency is `queue`.
+         */
+        queuedBehind: z.uuid().optional(),
         /** Feedback items a triage left out for want of a member's trust. */
         skipped: z.array(z.integer()),
       }),

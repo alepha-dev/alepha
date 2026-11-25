@@ -132,6 +132,7 @@ export class PromptTools {
           ...(params.timeout_seconds
             ? { timeoutSeconds: params.timeout_seconds }
             : {}),
+          ...(params.concurrency ? { concurrency: params.concurrency } : {}),
         },
       });
     },
@@ -162,6 +163,7 @@ export class PromptTools {
         ...(params.max_per_hour ? { maxRunsPerHour: params.max_per_hour } : {}),
         ...(params.max_per_day ? { maxRunsPerDay: params.max_per_day } : {}),
         ...(params.pins ? { pins: params.pins } : {}),
+        ...(params.concurrency ? { concurrency: params.concurrency } : {}),
         ...(params.timeout_seconds === undefined
           ? {}
           : { timeoutSeconds: params.timeout_seconds || null }),
@@ -219,7 +221,7 @@ export class PromptTools {
   });
 
   prompt_run = $tool({
-    description: `Run a prompt on the project's Agent host, its args filled: answers the job's id, which job_get follows. The source is the prompt's own (prompt_update sets it), never given to a run. Needs host:read and the prompt's permission. An agent job cannot run one. ${PromptTools.WHAT}`,
+    description: `Run a prompt on the project's Agent host, its args filled: answers the job's id, which job_get follows. While a run of the same args is going, a prompt whose concurrency is queue answers queuedBehind (the running job, whose end starts this run) and no jobId; one whose concurrency is unique refuses. The source is the prompt's own (prompt_update sets it), never given to a run. Needs host:read and the prompt's permission. An agent job cannot run one. ${PromptTools.WHAT}`,
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: { params: promptRunParamsSchema, result: promptRunResultSchema },
     handler: async ({ params }) => {

@@ -33,8 +33,9 @@ describe("prompt runs that continue a job", () => {
       { params: { projectId: w.projectId, name }, body: body as never },
       { user: w.owner },
     );
-  const job = (id: string) =>
-    w.repos.jobs.getOne({ where: { id: { eq: id } } });
+  // A run that starts answers its job; none here waits behind another.
+  const job = (id: string | undefined) =>
+    w.repos.jobs.getOne({ where: { id: { eq: id as string } } });
   const sessionStarted = (jobId: string) =>
     w.repos.logs.create({
       jobId,
