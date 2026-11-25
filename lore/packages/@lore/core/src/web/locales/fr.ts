@@ -3179,6 +3179,8 @@ export default {
   "jobs.field.tokens": "Jetons entrée / sortie",
   "jobs.field.cost": "Coût",
   "jobs.field.id": "Identifiant",
+  "jobs.transcript.rawMore": "Afficher $1 caractères de plus",
+  "jobs.transcript.rawLess": "Afficher moins",
   "jobs.transcript.title": "Ce que l'agent a fait",
   "jobs.transcript.failed": "La tâche a échoué",
   "jobs.transcript.timedOut": "La tâche a dépassé son délai",

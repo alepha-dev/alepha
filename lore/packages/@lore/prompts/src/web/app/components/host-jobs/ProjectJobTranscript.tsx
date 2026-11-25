@@ -1,4 +1,4 @@
-import { Alert, Button, cn } from "@alepha/ui";
+import { Alert, Button } from "@alepha/ui";
 import { AiChatToolTrace } from "@alepha/ui/ai";
 import { MarkdownView } from "@alepha/ui/markdown";
 import type {
@@ -8,6 +8,8 @@ import type {
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useRef, useState } from "react";
+
+import ProjectJobRawLine from "./ProjectJobRawLine.tsx";
 
 export interface ProjectJobTranscriptProps {
   job: HostJobResource;
@@ -111,7 +113,11 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
           }
           if (entry.kind === "text") {
             return (
-              <div key={index} className="text-sm">
+              // A long unbroken token wraps rather than widening the page.
+              <div
+                key={index}
+                className="min-w-0 text-sm [overflow-wrap:anywhere]"
+              >
                 <MarkdownView content={entry.text} />
               </div>
             );
@@ -140,17 +146,7 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
               </p>
             );
           }
-          return (
-            <pre
-              key={index}
-              className={cn(
-                "text-muted-foreground font-mono text-xs break-words whitespace-pre-wrap",
-              )}
-              data-testid="job-raw-line"
-            >
-              {entry.line}
-            </pre>
-          );
+          return <ProjectJobRawLine key={index} line={entry.line} />;
         })}
         {transcript.hidden > 0 && (
           <Button
