@@ -10,8 +10,10 @@ import {
 import { Control } from "@alepha/ui/form";
 import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
+import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { useEffect } from "react";
 
 import type { PromptController } from "../../../../../../api/controllers/PromptController.ts";
 import type { PromptResource } from "../../../../../../api/schemas/promptResourceSchema.ts";
@@ -51,10 +53,16 @@ export interface PromptRunDialogProps {
  * prompt's, and a run takes the host's first agent CLI and its default
  * model. `review-pr` adds its fix and trust options. Shared with the pinned
  * button and the spotlight (#Q4284).
+ *
+ * A member arg starts on the signed-in member (#Q4294), which is what the
+ * server takes for a member left out, so the default is visible and one
+ * click runs it. Only once the options say they are a member: a privileged
+ * identity outside the project keeps an empty select.
  */
 const PromptRunDialog = (props: PromptRunDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<PromptController>();
+  const me = useAuth().user?.id;
   const missing = props.prompt.args.filter((arg) => !props.given?.[arg.name]);
   const shape: Record<string, z.ZType> = {
     host: z.text({ maxLength: 64 }).optional(),
@@ -119,6 +127,22 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
     },
     [api, props.open, props.projectId, props.prompt.name],
   );
+
+  // Once the options are in, a member arg nobody picked yet starts on the
+  // signed-in member, and every other field keeps what it holds.
+  useEffect(() => {
+    if (!me || !options.data) return;
+    const values: Record<string, unknown> = { ...form.currentValues };
+    let changed = false;
+    for (const arg of missing) {
+      const key = `arg_${arg.name}`;
+      if (arg.type !== "member" || values[key]) continue;
+      if (!options.data[arg.name]?.some((it) => it.value === me)) continue;
+      values[key] = me;
+      changed = true;
+    }
+    if (changed) form.setInitialValues(values, { keepDirty: true });
+  }, [form, me, options.data]);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
