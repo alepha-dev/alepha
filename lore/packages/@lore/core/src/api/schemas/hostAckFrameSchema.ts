@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { hostJobTotalsSchema } from "./hostJobTotalsSchema.ts";
+
 /**
  * What a machine says about a command, wire format v1: `running` on pickup
  * (with a `step` for a deploy's progress), then `done` or `failed` with a
@@ -53,6 +55,13 @@ export const hostAckFrameSchema = z.object({
    */
   result: z.string().max(32_768).optional(),
   resultTruncated: z.boolean().optional(),
+  /**
+   * What an agent job's run cost, as its agent CLI said at its end
+   * (#Q4293): turns, tokens in (the cache's included) and out, dollars. On
+   * its terminal ack, a failed run's too. Absent from an older Bay and from
+   * a run that printed no final line.
+   */
+  totals: hostJobTotalsSchema.optional(),
 });
 
 export type HostAckFrame = Infer<typeof hostAckFrameSchema>;

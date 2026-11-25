@@ -36,8 +36,13 @@ const job = (id: number, over: Partial<HostJobResource>): HostJobResource =>
   }) as HostJobResource;
 
 const JOBS = [
-  job(1, { prompt: "triage", status: "succeeded" }),
-  job(2, { prompt: "triage-errors", status: "failed", hostSlug: "laptop" }),
+  job(1, { prompt: "triage", status: "succeeded", costUsd: 0.5 }),
+  job(2, {
+    prompt: "triage-errors",
+    status: "failed",
+    hostSlug: "laptop",
+    costUsd: 2.25,
+  }),
   job(3, { prompt: "work-quest", status: "succeeded" }),
 ];
 
@@ -150,5 +155,19 @@ describe("ProjectSettingsPromptJobsPage", () => {
     fireEvent.click(await screen.findByRole("option", { name: "failed" }));
 
     await waitFor(() => expect(prompts()).toEqual(["Triage errors"]));
+  });
+
+  it("shows each job's cost, and sorts by it (#Q4293)", async ({ expect }) => {
+    await show();
+    await waitFor(() => expect(prompts()).toHaveLength(3));
+    const costs = () =>
+      screen.getAllByTestId("job-cost").map((it) => it.textContent);
+    expect(costs()).toEqual(expect.arrayContaining(["$0.50", "$2.25", ""]));
+
+    const header = screen.getByRole("columnheader", { name: /Cost/ });
+    fireEvent.click(header.querySelector("button") ?? header);
+    await waitFor(() =>
+      expect(costs().filter(Boolean)).toEqual(["$0.50", "$2.25"]),
+    );
   });
 });

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
 )
@@ -129,6 +131,76 @@ exit 1
 		last := w.run("job-none", w.agentSpec(nil)).last()
 		if last.Status != "done" || last.Result != "" {
 			t.Fatalf("ack = %+v", last)
+		}
+	})
+}
+
+// What an agent run cost, read from its final result line (#Q4293).
+func TestResultTotals(t *testing.T) {
+	t.Run("claude: turns, tokens with the cache counted as input, and cost", func(t *testing.T) {
+		s := newResultScanner(&claudeResult{})
+		_, _ = s.Write([]byte(`{"type":"result","is_error":false,"result":"Done.","num_turns":7,"total_cost_usd":0.4213,"usage":{"input_tokens":120,"cache_creation_input_tokens":3000,"cache_read_input_tokens":45000,"output_tokens":2100}}` + "\n"))
+		s.Final()
+		totals, ok := s.Totals()
+		if !ok {
+			t.Fatal("no totals read from a result line that has them")
+		}
+		if totals.Turns == nil || *totals.Turns != 7 {
+			t.Fatalf("turns = %v", totals.Turns)
+		}
+		if totals.InputTokens == nil || *totals.InputTokens != 48120 {
+			t.Fatalf("input tokens = %v, want the cache's reads and writes counted", totals.InputTokens)
+		}
+		if totals.OutputTokens == nil || *totals.OutputTokens != 2100 {
+			t.Fatalf("output tokens = %v", totals.OutputTokens)
+		}
+		if totals.CostUSD == nil || *totals.CostUSD != 0.4213 {
+			t.Fatalf("cost = %v", totals.CostUSD)
+		}
+	})
+
+	t.Run("an error result still says what it cost", func(t *testing.T) {
+		s := newResultScanner(&claudeResult{})
+		_, _ = s.Write([]byte(`{"type":"result","is_error":true,"subtype":"error_max_turns","num_turns":30,"total_cost_usd":1.5}`))
+		s.Final()
+		if totals, ok := s.Totals(); !ok || *totals.Turns != 30 || *totals.CostUSD != 1.5 || totals.InputTokens != nil {
+			t.Fatalf("totals = %+v, %v", totals, ok)
+		}
+	})
+
+	t.Run("no totals from a result line without them, nor from a reader that has none", func(t *testing.T) {
+		s := newResultScanner(&claudeResult{})
+		_, _ = s.Write([]byte(`{"type":"result","is_error":false,"result":"ok"}` + "\n"))
+		s.Final()
+		if _, ok := s.Totals(); ok {
+			t.Fatal("totals read from a line that has none")
+		}
+		g := newResultScanner(&geminiResult{})
+		_, _ = g.Write([]byte(`{"type":"result","status":"success"}` + "\n"))
+		g.Final()
+		if _, ok := g.Totals(); ok {
+			t.Fatal("totals read from a reader that reads none")
+		}
+	})
+
+	t.Run("the ack carries them, and an outcome keeps them for a re-ack", func(t *testing.T) {
+		turns, cost := 3, 0.02
+		o, err := connector.OpenOutcomes(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := o.Finish("c1", "done", "", "", connector.Extra{Job: true, Totals: &connector.JobTotals{Turns: &turns, CostUSD: &cost}}, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out.Totals == nil || *out.Totals.Turns != 3 {
+			t.Fatalf("outcome totals = %+v", out.Totals)
+		}
+		ack := connector.NewAck("c1", "done", "", "")
+		ack.Totals = out.Totals
+		raw, _ := json.Marshal(ack)
+		if !strings.Contains(string(raw), `"totals":{"turns":3,"costUsd":0.02}`) {
+			t.Fatalf("ack = %s", raw)
 		}
 	})
 }

@@ -342,6 +342,41 @@ describe("HostJobService", () => {
     ).toBe("m-named");
   });
 
+  it("stores what a run cost from its terminal ack, a failed run's too, and nothing from an older Bay (#Q4293)", async ({
+    expect,
+  }) => {
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    await w.commands.ack(w.host.id, {
+      id: command.id,
+      status: "failed",
+      reason: "the agent exited with status 1",
+      totals: {
+        turns: 7,
+        inputTokens: 48_120,
+        outputTokens: 2_100,
+        costUsd: 0.4213,
+      },
+    });
+    const ended = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+    expect(ended).toMatchObject({
+      status: "failed",
+      turns: 7,
+      inputTokens: 48_120,
+      outputTokens: 2_100,
+      costUsd: 0.4213,
+    });
+
+    const older = await start(w);
+    const olderCommand = await commandOf(w, older.id);
+    await w.commands.ack(w.host.id, { id: olderCommand.id, status: "done" });
+    const plain = await w.repos.jobs.getOne({
+      where: { id: { eq: older.id } },
+    });
+    expect(plain.turns ?? null).toBe(null);
+    expect(plain.costUsd ?? null).toBe(null);
+  });
+
   it("ignores a log frame for another host's command", async ({ expect }) => {
     const job = await start(w);
     const command = await commandOf(w, job.id);

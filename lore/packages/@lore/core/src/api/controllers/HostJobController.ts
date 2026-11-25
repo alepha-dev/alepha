@@ -164,6 +164,10 @@ export class HostJobController {
       cause: row.cause ?? undefined,
       result: row.result ?? undefined,
       resultTruncated: row.resultTruncated ?? undefined,
+      turns: row.turns ?? undefined,
+      inputTokens: row.inputTokens ?? undefined,
+      outputTokens: row.outputTokens ?? undefined,
+      costUsd: row.costUsd ?? undefined,
       hostReturnsResult:
         hostList.find((host) => host.id === row.hostId)?.jobsResult ??
         undefined,

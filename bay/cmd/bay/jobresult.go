@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/alepha-dev/bay/internal/connector"
 )
 
 /*
@@ -31,6 +33,14 @@ type resultReader interface {
 	Final() (reply string, isError bool, ok bool)
 }
 
+// totalsReader is a resultReader that also reads what the run cost
+// (#Q4293), from the same final line.
+type totalsReader interface {
+	// Totals answers the run's turns, tokens and cost, and whether the
+	// stream said any of them.
+	Totals() (connector.JobTotals, bool)
+}
+
 // maxResultLine is the longest stdout line Bay holds to read a result from;
 // a longer one is skipped, as a result that size could not ride an ack.
 const maxResultLine = 4 << 20
@@ -38,12 +48,15 @@ const maxResultLine = 4 << 20
 /*
 claudeResult reads Claude Code's stream-json: its run ends on one `result`
 event, `{"type":"result","is_error":false,"result":"<the reply>"}`, which is
-also the single object `--output-format json` prints.
+also the single object `--output-format json` prints. The same event says
+what the run cost (#Q4293): `num_turns`, `usage` and `total_cost_usd`.
 */
 type claudeResult struct {
 	reply   string
 	isError bool
 	ok      bool
+	totals  connector.JobTotals
+	counted bool
 }
 
 func (r *claudeResult) Line(line []byte) {
@@ -51,17 +64,39 @@ func (r *claudeResult) Line(line []byte) {
 		return
 	}
 	var event struct {
-		Type    string `json:"type"`
-		IsError bool   `json:"is_error"`
-		Result  string `json:"result"`
+		Type     string   `json:"type"`
+		IsError  bool     `json:"is_error"`
+		Result   string   `json:"result"`
+		NumTurns *int     `json:"num_turns"`
+		CostUSD  *float64 `json:"total_cost_usd"`
+		Usage    *struct {
+			InputTokens              *int64 `json:"input_tokens"`
+			OutputTokens             *int64 `json:"output_tokens"`
+			CacheCreationInputTokens int64  `json:"cache_creation_input_tokens"`
+			CacheReadInputTokens     int64  `json:"cache_read_input_tokens"`
+		} `json:"usage"`
 	}
 	if json.Unmarshal(line, &event) != nil || event.Type != "result" {
 		return
 	}
 	r.reply, r.isError, r.ok = event.Result, event.IsError, true
+	totals := connector.JobTotals{Turns: event.NumTurns, CostUSD: event.CostUSD}
+	if event.Usage != nil {
+		if event.Usage.InputTokens != nil {
+			// The cache's reads and writes are input too, as the job page
+			// counts them.
+			in := *event.Usage.InputTokens + event.Usage.CacheCreationInputTokens + event.Usage.CacheReadInputTokens
+			totals.InputTokens = &in
+		}
+		totals.OutputTokens = event.Usage.OutputTokens
+	}
+	r.totals = totals
+	r.counted = totals.Turns != nil || totals.CostUSD != nil || totals.InputTokens != nil || totals.OutputTokens != nil
 }
 
 func (r *claudeResult) Final() (string, bool, bool) { return r.reply, r.isError, r.ok }
+
+func (r *claudeResult) Totals() (connector.JobTotals, bool) { return r.totals, r.counted }
 
 /*
 geminiResult reads Gemini CLI's stream-json, as its source prints it: the
@@ -161,6 +196,17 @@ func (s *resultScanner) Final() (string, bool, bool) {
 		s.partial = s.partial[:0]
 	}
 	return s.reader.Final()
+}
+
+// Totals answers what the run cost, when its reader reads that (#Q4293).
+// Called after Final, which reads the last line.
+func (s *resultScanner) Totals() (connector.JobTotals, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if reader, ok := s.reader.(totalsReader); ok {
+		return reader.Totals()
+	}
+	return connector.JobTotals{}, false
 }
 
 // teeWriter writes to both, always reporting the whole length: the log's

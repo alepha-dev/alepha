@@ -10,6 +10,7 @@ import type { Host } from "../entities/hosts.ts";
 import type { HostCommandFrame } from "../schemas/hostCommandFrameSchema.ts";
 import type { HostCommandPayload } from "../schemas/hostCommandPayloadSchema.ts";
 import type { HostCommandKind } from "../schemas/hostCommandValues.ts";
+import type { HostJobTotals } from "../schemas/hostJobTotalsSchema.ts";
 import { HostCommandTransport } from "./HostCommandTransport.ts";
 
 declare module "alepha" {
@@ -48,6 +49,10 @@ declare module "alepha" {
        */
       result?: string;
       resultTruncated?: boolean;
+      /**
+       * What an agent job's run cost, from its terminal ack (#Q4293).
+       */
+      totals?: HostJobTotals;
     };
   }
 }
@@ -70,6 +75,7 @@ export interface HostCommandAck {
   commit?: string;
   result?: string;
   resultTruncated?: boolean;
+  totals?: HostJobTotals;
 }
 
 /**
@@ -434,6 +440,11 @@ export class HostCommandService {
             result: ack.result,
             ...(ack.resultTruncated ? { resultTruncated: true } : {}),
           }
+        : {}),
+      // What the run cost rides any terminal ack of a job, a failed one's
+      // too: it spent the tokens either way (#Q4293).
+      ...(command.kind === "job-run" && ack.status !== "running" && ack.totals
+        ? { totals: ack.totals }
         : {}),
     });
     return updated;

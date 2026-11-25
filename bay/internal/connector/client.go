@@ -171,6 +171,22 @@ type Ack struct {
 	// Optional, like Commit: an older Lore drops it.
 	Result          string `json:"result,omitempty"`
 	ResultTruncated bool   `json:"resultTruncated,omitempty"`
+	// Totals is what an agent job's run cost, as its agent CLI reported it at
+	// its end (#Q4293): turns, tokens in and out, dollars. On its terminal
+	// ack, absent when the stream ended on no result line. Optional, like
+	// Result: an older Lore drops it.
+	Totals *JobTotals `json:"totals,omitempty"`
+}
+
+// JobTotals is an agent run's turns, tokens and cost, as its agent CLI's
+// final result line says them (#Q4293). Each is absent when the CLI did not
+// say it. InputTokens counts the cache's reads and writes too, as Lore's job
+// page counts them.
+type JobTotals struct {
+	Turns        *int     `json:"turns,omitempty"`
+	InputTokens  *int64   `json:"inputTokens,omitempty"`
+	OutputTokens *int64   `json:"outputTokens,omitempty"`
+	CostUSD      *float64 `json:"costUsd,omitempty"`
 }
 
 // The terminal statuses a `job-run` may end in beside `done` and `failed`:

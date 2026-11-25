@@ -3154,6 +3154,7 @@ export default {
   "jobs.col.prompt": "Invite",
   "jobs.col.cause": "Cause",
   "jobs.col.duration": "Durée",
+  "jobs.col.cost": "Coût",
   "jobs.filter.all": "Toutes",
   "jobs.cause.hand": "À la main",
   "jobs.cause.handBy": "À la main, par $1",

@@ -11,6 +11,7 @@ import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
 import { projects } from "../entities/projects.ts";
 import { AgentTranscript } from "../schemas/AgentTranscript.ts";
+import type { HostJobTotals } from "../schemas/hostJobTotalsSchema.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
@@ -596,6 +597,7 @@ export class HostJobService {
       warning,
       result,
       resultTruncated,
+      totals,
     }) => {
       if (command.kind !== "job-run") return;
       const job = await this.jobs.findOne({
@@ -634,6 +636,7 @@ export class HostJobService {
         warning,
         result,
         resultTruncated,
+        totals,
       });
     },
   });
@@ -652,6 +655,7 @@ export class HostJobService {
       warning?: string;
       result?: string;
       resultTruncated?: boolean;
+      totals?: HostJobTotals;
     },
   ): Promise<HostJob> {
     const job = await this.getRow(jobId);
@@ -669,6 +673,20 @@ export class HostJobService {
             result: outcome.result.slice(0, 32_768),
             ...(outcome.resultTruncated ? { resultTruncated: true } : {}),
           }),
+      // What the run cost, as its agent CLI said (#Q4293): null for a Bay
+      // that sends none, so the job page reads the log instead.
+      ...(outcome.totals?.turns === undefined
+        ? {}
+        : { turns: outcome.totals.turns }),
+      ...(outcome.totals?.inputTokens === undefined
+        ? {}
+        : { inputTokens: outcome.totals.inputTokens }),
+      ...(outcome.totals?.outputTokens === undefined
+        ? {}
+        : { outputTokens: outcome.totals.outputTokens }),
+      ...(outcome.totals?.costUsd === undefined
+        ? {}
+        : { costUsd: outcome.totals.costUsd }),
     });
     await this.archive(job.id);
     await this.port.revokeKey(job.id);
