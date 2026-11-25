@@ -123,4 +123,20 @@ describe("AgentTranscript", () => {
       { kind: "raw", line: "plain" },
     ]);
   });
+
+  it("reads the model the agent CLI reported at its start, for a run that named none (#Q4304)", ({
+    expect,
+  }) => {
+    const log = [
+      "warming up",
+      JSON.stringify({ type: "system", subtype: "init", model: "m-default" }),
+      JSON.stringify({ type: "assistant", message: { content: [] } }),
+    ].join("\n");
+    expect(AgentTranscript.sessionModel(log, "claude")).toBe("m-default");
+    expect(AgentTranscript.sessionModel(log)).toBe("m-default");
+    expect(AgentTranscript.sessionModel("no init here\n", "claude")).toBe(
+      undefined,
+    );
+    expect(AgentTranscript.sessionModel(log, "gemini")).toBe(undefined);
+  });
 });

@@ -232,6 +232,11 @@ const ProjectJob = (props: ProjectJobProps) => {
               projectSlug={slug}
               promptTitle={prompt?.title}
               totals={transcript.totals}
+              sessionModel={transcript.entries
+                .map((entry) =>
+                  entry.kind === "session" ? entry.model : undefined,
+                )
+                .find(Boolean)}
             />
           )
         }

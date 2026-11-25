@@ -10,6 +10,7 @@ import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
 import { projects } from "../entities/projects.ts";
+import { AgentTranscript } from "../schemas/AgentTranscript.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
@@ -446,6 +447,22 @@ export class HostJobService {
   /**
    * A job's log, or the part of one stream past `after` bytes, for its page.
    */
+  /**
+   * The model a job ran on (#Q4304): the one its input named, or, for an
+   * agent job that ended without naming one, the one its agent CLI reported
+   * at its start. An ended job's log no longer moves, so reading it once
+   * here is the cost of a page open, never of a running job's poll.
+   */
+  public async modelOf(job: HostJob): Promise<string | undefined> {
+    const input = job.input as { model?: string; agent?: string } | undefined;
+    if (input?.model) return input.model;
+    if (job.kind !== "agent" || !HOST_JOB_TERMINAL.includes(job.status)) {
+      return undefined;
+    }
+    const log = await this.readLog(job.id);
+    return AgentTranscript.sessionModel(log.stdout, input?.agent);
+  }
+
   public async readLog(
     jobId: string,
     after: { stdout?: number; stderr?: number } = {},

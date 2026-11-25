@@ -244,6 +244,54 @@ describe("ProjectJob", () => {
     await screen.findByTestId("job-transcript");
   });
 
+  it("names the model that ran when the run named none: the server's, else the transcript's (#Q4304)", async ({
+    expect,
+  }) => {
+    world.jobs = [
+      job({
+        id: DONE,
+        status: "succeeded",
+        exitCode: 0,
+        input: { agent: "claude", prompt: "Triage" } as never,
+      }),
+    ];
+    world.logs = {
+      [DONE]: {
+        stdout: JSON.stringify({
+          type: "system",
+          subtype: "init",
+          model: "m-from-the-log",
+        }),
+        stderr: "",
+        live: false,
+      },
+    };
+    await show(DONE);
+    await waitFor(() =>
+      expect(screen.getByTestId("project-job").textContent).toContain(
+        "m-from-the-log",
+      ),
+    );
+
+    cleanup();
+    await alepha?.stop();
+    world.jobs = [
+      job({
+        id: DONE,
+        status: "succeeded",
+        exitCode: 0,
+        input: { agent: "claude", prompt: "Triage" } as never,
+        model: "m-from-the-server",
+      }),
+    ];
+    await show(DONE);
+    await waitFor(() =>
+      expect(screen.getByTestId("project-job").textContent).toContain(
+        "m-from-the-server",
+      ),
+    );
+  });
+
   it("puts a failed job's reason first", async ({ expect }) => {
     world.jobs = [
       job({ status: "failed", reason: "The agent exited with status 1" }),

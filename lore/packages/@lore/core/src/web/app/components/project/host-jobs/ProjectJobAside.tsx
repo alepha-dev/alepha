@@ -18,6 +18,12 @@ export interface ProjectJobAsideProps {
    */
   promptTitle?: string;
   totals?: AgentTranscriptTotals;
+  /**
+   * The model the agent CLI reported at its start, read from the
+   * transcript (#Q4304): the Model row's last fallback, for a running job
+   * the server has not named one for yet.
+   */
+  sessionModel?: string;
 }
 
 /**
@@ -61,7 +67,13 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
     ...row(tr("jobs.col.cause"), cause),
     ...row(tr("jobs.field.host"), job.hostSlug),
     ...row(tr("jobs.field.agent"), job.input.agent),
-    ...row(tr("jobs.field.model"), job.input.model),
+    // The model that ran (#Q4304): the one the run named, else the one the
+    // agent CLI reported, as the server reads it once the job ended or the
+    // page reads it from the transcript meanwhile.
+    ...row(
+      tr("jobs.field.model"),
+      job.input.model ?? job.model ?? props.sessionModel,
+    ),
     ...row(tr("jobs.field.workspace"), job.input.workspace),
     ...row(
       tr("jobs.field.source"),

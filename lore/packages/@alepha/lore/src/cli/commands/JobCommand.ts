@@ -134,7 +134,9 @@ export class JobCommand {
             ["Status", job.status],
             ["Host", job.hostSlug],
             ["Agent", job.input.agent],
-            ["Model", job.input.model],
+            // The model that ran (#Q4304): the run's, or the one its agent
+            // CLI reported, as the job page names it.
+            ["Model", job.input.model ?? job.model],
             ["Workspace", job.input.workspace],
             // What code it found (#E173): the source, its ref or branch, and
             // the commit the host resolved.

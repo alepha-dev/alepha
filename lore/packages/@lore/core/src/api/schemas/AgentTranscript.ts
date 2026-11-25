@@ -86,6 +86,33 @@ export class AgentTranscript {
     return AgentTranscript.claude(log);
   }
 
+  /**
+   * The model the agent CLI reported at its start (#Q4304): Claude Code's
+   * `system` / `init` event. Reads lines only until it, which is the first
+   * event of a run, so a long log costs one line.
+   */
+  public static sessionModel(log: string, agent?: string): string | undefined {
+    if (agent && agent !== "claude") return undefined;
+    for (const line of AgentTranscript.lines(log)) {
+      let event: unknown;
+      try {
+        event = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (!event || typeof event !== "object" || Array.isArray(event)) {
+        continue;
+      }
+      const record = event as Record<string, unknown>;
+      if (record.type === "system" && record.subtype === "init") {
+        return typeof record.model === "string" && record.model
+          ? record.model
+          : undefined;
+      }
+    }
+    return undefined;
+  }
+
   protected static lines(log: string): string[] {
     return log.split("\n").filter((line) => line.trim() !== "");
   }
