@@ -1263,6 +1263,7 @@ export default {
   "project.settings.tab.roadmap": "Feuille de route",
   "project.settings.tab.quality": "Qualité",
   "project.settings.tab.prompts": "Invites",
+  "project.settings.tab.jobs": "Tâches",
   "project.settings.tab.requirements": "Exigences",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
@@ -1290,9 +1291,6 @@ export default {
   "project.capability.plan.option.reminder.label": "Rappels",
   "project.capability.plan.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
-  "project.capability.plan.option.agentPrompts.label": "Invites",
-  "project.capability.plan.option.agentPrompts.description":
-    "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour votre agent de code ; rien n’est envoyé nulle part.",
   "project.capability.plan.option.feedback.label": "Retours",
   "project.capability.plan.option.feedback.description":
     "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
@@ -3150,12 +3148,24 @@ export default {
   "jobs.empty.description":
     "Les tâches d'agent et les vérifications des hôtes d'agent s'affichent ici dès qu'un hôte en exécute une.",
   "jobs.col.when": "En file",
-  "jobs.col.kind": "Tâche",
   "jobs.col.status": "Statut",
   "jobs.col.host": "Hôte",
-  "jobs.col.by": "Lancée par",
+  "jobs.col.prompt": "Invite",
+  "jobs.col.cause": "Cause",
+  "jobs.col.duration": "Durée",
+  "jobs.filter.all": "Toutes",
+  "jobs.cause.hand": "À la main",
+  "jobs.cause.handBy": "À la main, par $1",
+  "jobs.cause.event": "Événement $1",
+  "jobs.cause.schedule": "Planification",
+  "prompts.jobs": "Tâches",
   "jobs.cancel": "Annuler",
   "jobs.field.host": "Hôte",
+  "jobs.field.args": "Arguments",
+  "jobs.field.reply": "Réponse finale",
+  "jobs.field.replyCut":
+    "La réponse a été coupée à 32 Ko : le journal a la suite.",
+  "jobs.field.renderedPrompt": "L'invite reçue par l'agent",
   "jobs.field.agent": "Agent",
   "jobs.field.model": "Modèle",
   "jobs.field.workspace": "Espace de travail",
@@ -3220,20 +3230,7 @@ export default {
   "feedback.trusted.someone": "un membre",
   "feedback.awaitingTrust":
     "$1 retour(s) non fiable(s) en attente qu'un membre leur fasse confiance : aucun agent ne les lit avant.",
-  "feedback.agent.triage": "Trier avec un agent",
-  "feedback.agent.triageInbox": "Trier retours et anomalies avec un agent",
-  "feedback.agent.startedMany":
-    "$1 tâches de tri lancées ; $2 laissées à un membre",
-  "feedback.agent.startedGlobal":
-    "Claude trie les retours et les erreurs en une seule passe ; $1 laissés à un membre",
   "feedback.agent.job": "Tâche d'agent",
-  "quest.agent.work": "Travailler avec un agent",
-  "quest.agent.review": "Relire #$1",
-  "quest.agent.reviewFix": "Relire et corriger #$1",
-  "quest.agent.review.trust": "Je fais confiance à son auteur",
-  "quest.agent.review.started": "La relecture tourne sur l'hôte Agent",
-  "quest.agent.started":
-    "Claude travaille sur cette quête sur l'hôte d'agent : il pousse sa propre branche",
   "quest.untrusted": "Non fiable",
   "quest.untrusted.confirm": "Confirmer son texte",
   "quest.untrusted.confirm.description":
@@ -3474,13 +3471,7 @@ export default {
   "project.menu.requirements": "Exigences",
   "project.menu.useCases": "Cas d’usage",
   "project.menu.personas": "Personas",
-  "requirements.prompt.personaExplore": "Explorer en persona",
-  "requirements.prompt.requirementImport": "Importer une spécification",
-  "requirements.prompt.useCaseDraft": "Rédiger des cas d’usage",
   "requirements.verify.title.draft": "Rédiger les cas d’usage de $1",
-  "requirements.prompt.useCaseDemo": "Préparer une démo",
-  "requirements.prompt.useCaseSpec": "Écrire le test de bout en bout",
-  "requirements.prompt.useCaseTest": "Tester un cas d’usage",
   "requirements.requirement.import": "Importer une spécification",
   "requirements.verify": "Vérifier",
   "requirements.trace.readiness": "Préparation de la version $1",
@@ -3521,9 +3512,6 @@ export default {
   "requirements.trace.export.testBook": "Cahier de recette",
   "requirements.trace.testBook.title": "$1 : cahier de recette",
   "requirements.trace.testBook.print": "Imprimer ou enregistrer en PDF",
-  "agentPrompts.settings.useCaseDraft.title": "Rédiger des cas d’usage",
-  "agentPrompts.settings.useCaseDraft.description":
-    "Depuis un trou de couverture : rédiger les cas d’usage qui vérifieraient une exigence, ou couvriraient une épopée.",
   "requirements.verify.mission.draft": "Rédiger des cas d’usage",
   "requirements.verify.allStale": "Vérifier les périmés ($1)",
   "requirements.verify.app": "Application",
@@ -3948,92 +3936,6 @@ export default {
   "epic.progress.shelved": "$1 en veille",
   "epic.action.delete": "Supprimer",
   "epic.action.setRelease": "Définir la version",
-  "agentPrompts.menu": "Invites pour agents",
-  "agentPrompts.review": "Relire l’épopée",
-  "agentPrompts.triageInbox": "Traiter retours et anomalies",
-  "agentPrompts.workLooseQuests": "Traiter les quêtes libres",
-  "agentPrompts.workOnIt": "S’en charger",
-  "agentPrompts.copied":
-    "Invite pour $1 copiée. Collez-la dans votre agent de code.",
-  "agentPrompts.copied.surface":
-    "Invite copiée. Collez-la dans votre agent de code.",
-  "agentPrompts.settings.placeholder.steps":
-    "Les étapes du cas d’usage, une par ligne, avec qui joue chacune.",
-  "agentPrompts.settings.placeholder.criteria":
-    "Ses critères d’acceptation, un par ligne, avec leur clé et leur vérification.",
-  "agentPrompts.settings.placeholder.persona":
-    "Le persona joué, comme #A2 Léa (Responsable boutique).",
-  "agentPrompts.settings.placeholder.demoAccount":
-    "L’identifiant de démo de ce persona, jamais un mot de passe.",
-  "agentPrompts.settings.placeholder.app":
-    "Le nom de l’application de la copie, vide pour un passage local.",
-  "agentPrompts.settings.placeholder.env":
-    "L’environnement de la copie, ou local.",
-  "agentPrompts.settings.placeholder.appUrl":
-    "L’URL de la copie, quand Lore la connaît.",
-  "agentPrompts.settings.useCaseTest.title": "Tester un cas d’usage",
-  "agentPrompts.settings.useCaseTest.description":
-    "Vérifier sur un cas d’usage : jouer ses critères, enregistrer un passage, ne rien corriger.",
-  "agentPrompts.settings.useCaseSpec.title": "Écrire le test de bout en bout",
-  "agentPrompts.settings.useCaseSpec.description":
-    "Vérifier sur un cas d’usage : écrire le test étiqueté @U7 pour que la CI enregistre ses passages.",
-  "agentPrompts.settings.personaExplore.title": "Explorer en persona",
-  "agentPrompts.settings.personaExplore.description":
-    "Vérifier sur un persona : test exploratoire à sa place, frictions citées face aux exigences.",
-  "agentPrompts.settings.useCaseDemo.title": "Préparer une démo",
-  "agentPrompts.settings.useCaseDemo.description":
-    "Vérifier sur un cas d’usage : un script de démo et ses données, déposés en folio.",
-  "agentPrompts.settings.requirementImport.title": "Importer une spécification",
-  "agentPrompts.settings.requirementImport.description":
-    "Sur la liste des exigences : découper un folio de spécification en exigences liées à leurs titres.",
-  "agentPrompts.settings.placeholder.project":
-    "Le titre du projet, celui qu’un appel MCP compare.",
-  "agentPrompts.settings.placeholder.slug":
-    "Le slug du projet dans l’URL. Pas interchangeable avec le titre.",
-  "agentPrompts.settings.placeholder.number":
-    "Le numéro qu’un lecteur reconnaît : 41 pour l’épopée #E41.",
-  "agentPrompts.settings.placeholder.id":
-    "L’identifiant global, celui par lequel une liste de quêtes filtre une épopée.",
-  "agentPrompts.settings.placeholder.reference":
-    "La référence typée : #E41, #Q1798, #P2087.",
-  "agentPrompts.settings.placeholder.title": "Le titre du sujet lui-même.",
-  "agentPrompts.settings.placeholder.url": "Un lien vers celui-ci.",
-  "agentPrompts.settings.epicReview.title": "Épopée : relire",
-  "agentPrompts.settings.epicReview.description":
-    "Proposée sur une épopée que personne n’a commencée, en brouillon ou prête. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
-  "agentPrompts.settings.epicActivate.title": "Épopée : s’en charger",
-  "agentPrompts.settings.epicActivate.description":
-    "Proposée sur une épopée en brouillon, prête ou en cours, et passe un brouillon à prête. Confie l’épopée entière, quête par quête.",
-  "agentPrompts.settings.questWork.title": "Quête : s’en charger",
-  "agentPrompts.settings.questWork.description":
-    "Proposée sur une quête non terminée. Une quête, une branche, un commit.",
-  "agentPrompts.settings.feedbackWork.title": "Retour : s’en charger",
-  "agentPrompts.settings.feedbackWork.description":
-    "Proposée sur un retour en attente ou accepté. Crée la quête, fait le travail, répond au rapporteur.",
-  "agentPrompts.settings.feedbackLoop.title": "Retours et anomalies : traiter",
-  "agentPrompts.settings.feedbackLoop.description":
-    "Proposée sur la boîte des retours et sur celle des anomalies. Accepte, rejette ou questionne chaque retour en attente, crée une quête pour chaque vrai défaut parmi les anomalies de confiance et résout le bruit, jusqu’à ce qu’il ne reste rien.",
-  "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
-  "agentPrompts.securityCheck": "Vérifier les vulnérabilités des dépendances",
-  "agentPrompts.settings.securityCheck.title":
-    "Dépendances : Vérification de sécurité",
-  "agentPrompts.settings.securityCheck.description":
-    "Lancé sur un hôte Agent : audite les dépendances depuis le fichier de verrouillage et crée une quête par vulnérabilité réelle.",
-  "agentPrompts.dependencyUpdate": "Mettre à jour les dépendances",
-  "agentPrompts.settings.dependencyUpdate.title": "Dépendances : Mise à jour",
-  "agentPrompts.settings.dependencyUpdate.description":
-    "Lancé sur un hôte Agent : met à jour les dépendances, lance les vérifications et n'ouvre une pull request que si elles passent.",
-  "agentPrompts.prReview": "Relire une pull request",
-  "agentPrompts.settings.prReview.title": "Quêtes : Relire une pull request",
-  "agentPrompts.settings.prReview.description":
-    "Depuis une pull request d'une quête, lancé sur un hôte Agent : lit le diff et publie une relecture avec gh.",
-  "agentPrompts.settings.weeklyStatus.title":
-    "Rapports : rédiger le point hebdomadaire",
-  "agentPrompts.settings.weeklyStatus.description":
-    "Sur l'onglet Résumé des rapports : la semaine face à la précédente, et ce qui l'explique.",
-  "agentPrompts.settings.questLoop.title": "Quêtes : traiter les quêtes libres",
-  "agentPrompts.settings.questLoop.description":
-    "Proposée sur la page Quêtes. Traite une à une chaque quête à faire qui n’appartient à aucune épopée, en une seule session.",
   "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
@@ -4122,8 +4024,6 @@ export default {
   "epic.tab.review": "Revue",
   "epic.list.openQuestions": "$1 questions de revue ouvertes",
   "epic.list.openBlockers": "$1 blocages de revue ouverts",
-  "epic.agent.review": "Revoir avec un agent",
-  "epic.agent.started": "Revue lancée sur l'hôte Agent",
   "epic.agent.job": "Tâche de revue",
   "epic.review.empty":
     "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis les prompts d’agent pour en déposer une.",

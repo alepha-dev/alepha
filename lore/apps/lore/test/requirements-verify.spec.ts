@@ -1,4 +1,3 @@
-import { ProjectPromptController } from "@lore/core/api";
 import {
   PersonaController,
   RequirementsPromptController,
@@ -14,16 +13,16 @@ import {
 
 /**
  * Verify's prompts (#E153, #Q3771): rendered on the server from the
- * project's template or the default, with the scenario's placeholders, the
- * same text over HTTP, MCP and the CLI, and with Plan's `agentPrompts` off.
+ * default (no project keeps its own copy since #Q4281), with the scenario's
+ * placeholders, the same text over HTTP, MCP and the CLI.
  */
 describe("Verify prompts", () => {
   let ctx: RequirementsProject;
   let prompts: RequirementsPromptController;
 
   beforeEach(async () => {
-    // `agentPrompts` stays off: Verify is gated on `requirements` alone.
-    ctx = await requirementsProject({ plan: { agentPrompts: false } });
+    // Verify is gated on `requirements` alone.
+    ctx = await requirementsProject();
     prompts = ctx.alepha.inject(RequirementsPromptController);
     const as = ctx.as(ctx.owner);
     await ctx.alepha.inject(PersonaController).createPersona.fetch(
@@ -94,22 +93,6 @@ describe("Verify prompts", () => {
     expect(out.prompt).toContain("shop staging");
     expect(out.command).toBe(
       "lore usecase prompt U1 --mode test --app shop --env staging -p acme",
-    );
-  });
-
-  it("uses the project's own template, edited with agentPrompts off", async ({
-    expect,
-  }) => {
-    await ctx.alepha.inject(ProjectPromptController).setProjectPrompt.fetch(
-      {
-        params: { projectId: ctx.projectId, kind: "useCaseTest" },
-        body: { template: "Play {{reference}} as {{persona}}:\n{{criteria}}" },
-      },
-      ctx.as(ctx.owner),
-    );
-    const out = await render({ kind: "useCaseTest", useCaseNumber: 1 });
-    expect(out.prompt).toBe(
-      "Play #U1 as #A1 Léa (Shop manager):\n- C1 (e2e): Given a product, when she creates a code, then it is listed",
     );
   });
 

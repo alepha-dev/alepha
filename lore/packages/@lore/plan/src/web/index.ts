@@ -84,9 +84,6 @@ export {
   ESTIMATE_PRESETS,
   formatEstimate,
 } from "./app/components/project/quest/questEstimate.ts";
-export { epicReviewPromptDefault } from "./app/prompts/epicReviewPrompt.ts";
-export { feedbackWorkPromptDefault } from "./app/prompts/feedbackWorkPrompt.ts";
-export { questLoopPromptDefault } from "./app/prompts/questLoopPrompt.ts";
 export { currentAreaAtom } from "./app/atoms/currentAreaAtom.ts";
 export { WorkShell } from "./app/shell/WorkShell.ts";
 

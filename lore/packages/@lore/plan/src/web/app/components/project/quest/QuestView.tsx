@@ -38,23 +38,23 @@ import { currentQuestAtom } from "../../../atoms/currentQuestAtom.ts";
 import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
 import { useQuestMutations } from "../../shared/useQuestMutations.ts";
 import { useCurrentEpicRefs } from "../epics/useCurrentEpicRefs.ts";
-import {
-  QUEST_AGENT_GATE_LABEL_KEYS,
-  questAgentGate,
-} from "../prompts/questAgentGate.ts";
 import { questPromptItem } from "../prompts/questPromptItem.ts";
+import {
+  QUEST_ACCEPT_GATE_LABEL_KEYS,
+  questAcceptGate,
+} from "./questAcceptGate.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_LABEL_KEYS, QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
 import { QuestDueDate } from "./questDueDate.ts";
-import QuestViewAgentWork from "./QuestViewAgentWork.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewFeedbackBadge from "./QuestViewFeedbackBadge.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewQuestline from "./QuestViewQuestline.tsx";
 import QuestViewRail from "./QuestViewRail.tsx";
+import QuestViewUntrusted from "./QuestViewUntrusted.tsx";
 import { useQuestAiContext } from "./useQuestAiContext.ts";
 
 export interface QuestViewProps {
@@ -208,14 +208,14 @@ const QuestView = (props: QuestViewProps) => {
     quest.epicId != null
       ? epics?.find((e) => e.id === quest.epicId)
       : undefined;
-  // ⚠️ The condition itself lives in `questAgentGate`, shared with the two
+  // ⚠️ The condition itself lives in `questAcceptGate`, shared with the two
   // quest tables, and it answers a CODE rather than a sentence: a pure
   // helper cannot call `tr`, and duplicating the key mapping is exactly the
   // drift the extraction prevents. The mapping stays here, once.
-  const withheldReason = questAgentGate(quest, epics);
+  const withheldReason = questAcceptGate(quest, epics);
   const acceptWithheld =
     withheldReason && questEpic
-      ? tr(QUEST_AGENT_GATE_LABEL_KEYS[withheldReason], {
+      ? tr(QUEST_ACCEPT_GATE_LABEL_KEYS[withheldReason], {
           args: [String(questEpic.number)],
         })
       : undefined;
@@ -767,8 +767,8 @@ const QuestView = (props: QuestViewProps) => {
                     epic phase has to be asserted, and `withheldReason` is
                     the shared helper's answer. The menu renders nothing on
                     an empty list, so a withheld quest shows no button. */}
-                {context === "page" && !withheldReason && (
-                  <QuestViewAgentWork
+                {context === "page" && (
+                  <QuestViewUntrusted
                     quest={quest}
                     onChanged={(patch) => {
                       const next = { ...quest, ...patch };
@@ -777,9 +777,10 @@ const QuestView = (props: QuestViewProps) => {
                     }}
                   />
                 )}
-                {context === "page" && !withheldReason && (
+                {context === "page" && (
                   // The prompts pinned on the Quest view (#Q4284), the quest
-                  // filled in; a withheld quest offers none.
+                  // filled in, each shown when its arg accepts the quest's
+                  // status.
                   <PinnedPromptsButton
                     page="quest"
                     item={questPromptItem(quest)}

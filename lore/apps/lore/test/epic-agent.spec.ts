@@ -7,6 +7,7 @@ import {
   HostCommandService,
   HostCommandTransport,
   JobKeyService,
+  PromptRunService,
 } from "@lore/core/api";
 import { hostJobs, hosts, type JobKey } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
@@ -120,6 +121,14 @@ const setup = async () => {
 
 type World = Awaited<ReturnType<typeof setup>>;
 
+/**
+ * The epic's review, run as the `review-epic` prompt (#Q4275).
+ */
+const review = (w: World) =>
+  w.alepha
+    .inject(PromptRunService)
+    .run(w.projectId, w.owner, "review-epic", { args: { epic: "3" } });
+
 describe("an epic reviewed by an agent job", () => {
   let w: World;
   beforeEach(async () => {
@@ -133,10 +142,9 @@ describe("an epic reviewed by an agent job", () => {
   it("runs the Review prompt under the job's rules, its key pinned to the epic", async ({
     expect,
   }) => {
-    const out = await w.service.review(w.projectId, 3, w.owner.id);
+    const out = await review(w);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
-    expect(job.subjectType).toBe("epic");
-    expect(job.subjectId).toBe("3");
+    expect(job.prompt).toBe("review-epic");
     expect(job.input.key).toEqual({ epicId: 3 });
     expect(job.input.prompt).toContain("Nobody reads this run's chat");
     expect(job.input.prompt).toContain('Review the plan of epic #E3 "Search"');
@@ -151,13 +159,11 @@ describe("an epic reviewed by an agent job", () => {
   it("refuses a started epic, and a second run while one is queued", async ({
     expect,
   }) => {
-    await w.service.review(w.projectId, 3, w.owner.id);
-    await expect(w.service.review(w.projectId, 3, w.owner.id)).rejects.toThrow(
-      /already (queued|running)/,
-    );
+    await review(w);
+    await expect(review(w)).rejects.toThrow(/already (queued|running)/);
     await w.repos.epics.updateById(w.epic.id, { status: "in_progress" });
-    await expect(w.service.review(w.projectId, 3, w.owner.id)).rejects.toThrow(
-      "only a draft or ready epic",
+    await expect(review(w)).rejects.toThrow(
+      "The arg 'epic' accepts a epic draft",
     );
   });
 
@@ -165,14 +171,14 @@ describe("an epic reviewed by an agent job", () => {
     expect,
   }) => {
     const quest = await w.quest(12, w.epic.id, { untrusted: true });
-    await expect(w.service.review(w.projectId, 3, w.owner.id)).rejects.toThrow(
+    await expect(review(w)).rejects.toThrow(
       /#Q12.*a member confirms their text first/,
     );
     await w.repos.quests.updateById(quest.id, {
       untrustedConfirmedAt: new Date().toISOString(),
       untrustedConfirmedBy: w.owner.id,
     });
-    const out = await w.service.review(w.projectId, 3, w.owner.id);
+    const out = await review(w);
     expect(out.jobId).toBeDefined();
   });
 

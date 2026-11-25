@@ -319,28 +319,6 @@ export default defineConfig({
         // this app has no key for, and the page falls back to the raw
         // category name rather than rendering a blank row.
         "account.notifications.category.",
-        // tr(`agentPrompts.settings.placeholder.${name}`) - the seven
-        // placeholder names, and tr(`agentPrompts.settings.${kind}.title` /
-        // `.description`) - the four prompt kinds. Both sets are iterated
-        // from a constant list, so writing them out would be the same
-        // literals twice with nothing keeping them in step.
-        "agentPrompts.settings.placeholder.",
-        "agentPrompts.settings.epicReview.",
-        "agentPrompts.settings.epicActivate.",
-        "agentPrompts.settings.questWork.",
-        "agentPrompts.settings.feedbackWork.",
-        "agentPrompts.settings.feedbackLoop.",
-        "agentPrompts.settings.questLoop.",
-        "agentPrompts.settings.weeklyStatus.",
-        "agentPrompts.settings.prReview.",
-        "agentPrompts.settings.securityCheck.",
-        "agentPrompts.settings.dependencyUpdate.",
-        "agentPrompts.settings.useCaseTest.",
-        "agentPrompts.settings.useCaseSpec.",
-        "agentPrompts.settings.personaExplore.",
-        "agentPrompts.settings.useCaseDemo.",
-        "agentPrompts.settings.requirementImport.",
-        "agentPrompts.settings.useCaseDraft.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail

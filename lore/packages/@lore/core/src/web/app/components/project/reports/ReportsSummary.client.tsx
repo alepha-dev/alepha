@@ -14,8 +14,6 @@ import type { ReportsUrl } from "../../../../../api/schemas/reportsUrlSchema.ts"
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { ReportsSummaryMarkdown } from "../../../services/ReportsSummaryMarkdown.ts";
-import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import ReportsKpiRow from "./ReportsKpiRow.tsx";
 import ReportsSection from "./ReportsSection.tsx";
 
@@ -41,7 +39,6 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
   const toast = useToast();
   const [project] = useStore(currentProjectAtom);
   const markdown = useInject(ReportsSummaryMarkdown);
-  const promptSubject = useAgentPromptSubject();
 
   const format = (line: ReportsSummaryLine, value: number) => {
     if (line.format === "percent") {
@@ -91,14 +88,6 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
   return (
     <>
       <div className="flex justify-end gap-2">
-        <AgentPromptsMenu
-          items={[
-            {
-              kind: "weeklyStatus" as const,
-              subject: () => promptSubject.forPage("reportsSummary"),
-            },
-          ]}
-        />
         <Button type="button" variant="outlined" size="sm" onClick={copy}>
           <Copy className="size-3.5" />
           {tr("reports.summary.copy")}

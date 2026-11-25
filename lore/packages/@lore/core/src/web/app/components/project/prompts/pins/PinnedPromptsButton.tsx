@@ -13,25 +13,12 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Bot, Copy, Play, Settings } from "lucide-react";
-import { type ComponentType, useEffect } from "react";
+import { useEffect } from "react";
 
 import { promptPageAtom } from "../../../../atoms/promptPageAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { PinnedPromptItem } from "./pinnedPromptItemSchema.ts";
 import { usePinnedPrompts } from "./usePinnedPrompts.tsx";
-
-/**
- * An entry that starts something rather than copying a prompt, listed
- * above the pinned prompts until the page buttons that start a job go
- * (#Q4281).
- */
-export interface PinnedPromptsAction {
-  key: string;
-  icon: ComponentType;
-  label: string;
-  onSelect: () => void;
-  disabled?: boolean;
-}
 
 export interface PinnedPromptsButtonProps {
   /**
@@ -42,7 +29,6 @@ export interface PinnedPromptsButtonProps {
    * The item the page gives, which fills the prompt's arg of its type.
    */
   item?: PinnedPromptItem;
-  actions?: PinnedPromptsAction[];
   /**
    * Off: the page is not told to the spotlight, for a list whose open
    * item's own button tells it.
@@ -67,7 +53,6 @@ const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
   const [, setPage] = useStore(promptPageAtom);
   const pins = usePinnedPrompts();
   const entries = pins.pinned(props.page, props.item);
-  const actions = props.actions ?? [];
   const itemKey = props.item
     ? `${props.item.type}:${props.item.value}:${props.item.status ?? ""}`
     : "";
@@ -83,7 +68,7 @@ const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
     // The item by its key: a new object each render is the same item.
   }, [props.page, itemKey, publish, setPage]);
 
-  if (entries.length === 0 && actions.length === 0) return pins.dialog;
+  if (entries.length === 0) return pins.dialog;
 
   return (
     <>
@@ -102,20 +87,6 @@ const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
           <Bot className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {actions.map((action) => (
-            <DropdownMenuItem
-              key={action.key}
-              disabled={action.disabled}
-              onClick={action.onSelect}
-              data-testid={`agent-action-${action.key}`}
-            >
-              <action.icon />
-              {action.label}
-            </DropdownMenuItem>
-          ))}
-          {actions.length > 0 && entries.length > 0 && (
-            <DropdownMenuSeparator />
-          )}
           {entries.map((prompt) => (
             <DropdownMenuSub key={prompt.name}>
               <DropdownMenuSubTrigger>{prompt.title}</DropdownMenuSubTrigger>
@@ -137,7 +108,7 @@ const PinnedPromptsButton = (props: PinnedPromptsButtonProps) => {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           ))}
-          {pins.manage && entries.length > 0 && (
+          {pins.manage && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem

@@ -19,20 +19,12 @@ import {
 import {
   currentProjectAtom,
   type I18n,
-  hasCapability,
   formatReference,
   PinnedPromptsButton,
   StackTraceViewer,
-  TriageRunRegistry,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
-import {
-  useAction,
-  useAlepha,
-  useClient,
-  useInject,
-  useStore,
-} from "alepha/react";
+import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -75,11 +67,6 @@ const ProjectErrors = () => {
   // and Deploy's own program registers only Deploy's and core's routers.
   const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
-  // Errors live under Apps: there is no capability of their own, and this
-  // page's route is already gated on it. Stated anyway rather than passing
-  // the item unconditionally, so the menu carries its own gate wherever this
-  // component ends up rendered.
-  const appsEnabled = hasCapability(project, "ship");
   const alepha = useAlepha();
   const projectErrorApi = useClient<ProjectErrorController>();
   const canTriage = projectErrorApi.resolveProjectError.can();
@@ -186,11 +173,6 @@ const ProjectErrors = () => {
     },
     [projectErrorApi, project, toaster, tr],
   );
-
-  // The one triage run over the feedback and the trusted errors (#Q4240):
-  // Plan's, registered on core, so the Errors page offers the same entries
-  // as the Feedback page.
-  const triageRunActions = useInject(TriageRunRegistry).use();
 
   const forwardAction = useAction<
     [projectError: ProjectErrorResource, refresh: () => void],
@@ -394,14 +376,8 @@ const ProjectErrors = () => {
         }}
         // ⚠️ `toolbar`, not `actions`: the robot is a dropdown trigger
         // rather than a button that acts on click. It shows the prompts
-        // pinned on the Error list (#Q4284), and the triage run with Apps on
-        // until #Q4281.
-        toolbar={
-          <PinnedPromptsButton
-            page="errors"
-            actions={appsEnabled ? triageRunActions : []}
-          />
-        }
+        // pinned on the Error list (#Q4284).
+        toolbar={<PinnedPromptsButton page="errors" />}
         fetch={fetchProjectErrors}
         // The bulk bar is triage too: a rank that may not resolve one error
         // may not delete twenty.

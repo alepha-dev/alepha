@@ -79,10 +79,9 @@ const KIND_OF = {
  * ⚠️ The preview is fetched when the dialog opens or an option changes
  * (`useQuery`), and Copy writes the text ALREADY loaded, inside the click,
  * with nothing awaited before it: Safari drops the clipboard permission
- * across an `await` (see "Agent prompts" in core's AGENTS.md).
+ * across an `await`.
  *
- * Shown whenever Plan's `requirements` option is on, whatever
- * `agentPrompts` says (decision 29).
+ * Shown whenever Plan's `requirements` option is on (decision 29).
  */
 const VerifyDialog = (props: VerifyDialogProps) => {
   const { tr } = useI18n<I18n, "en">();

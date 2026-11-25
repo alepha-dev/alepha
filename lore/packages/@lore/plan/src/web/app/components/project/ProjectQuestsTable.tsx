@@ -880,10 +880,6 @@ const ProjectQuestsTable = () => {
             onClick: () => setCreating(true),
           },
         ]}
-        // ⚠️ `toolbar`, not `actions`, like the errors inbox: the menu is a
-        // dropdown trigger rather than a button that acts on click. It
-        // renders nothing when the project has `agentPrompts` off, and this
-        // page's route is already gated on Work, which is where quests live.
         // ⚠️ `toolbar`, not `actions`: the robot is a dropdown trigger. It
         // shows the prompts pinned on the Quest list (#Q4284), nothing when
         // none is.

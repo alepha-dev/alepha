@@ -2,7 +2,6 @@ import { BoundParameters, ProjectSecurityService } from "@lore/core/api";
 import {
   type AgentPromptScenarioSubject,
   type Project,
-  projectPrompts,
   renderPromptTemplate,
 } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
@@ -24,14 +23,13 @@ import { UseCaseService } from "./UseCaseService.ts";
 
 /**
  * The Verify prompts, rendered on the server (#E153, decision 7): the
- * project's customised template, else the default, with its placeholders
+ * default text (no project keeps its own copy since #Q4281), with its placeholders
  * filled from the subject (a use case, a persona or a folio), the copy and
  * the persona played. One renderer for the dialog, `usecase_prompt` and
  * `lore usecase prompt`, which therefore print the same text.
  */
 export class RequirementsPromptService {
   protected readonly alepha = $inject(Alepha);
-  protected readonly prompts = $repository(projectPrompts);
   protected readonly useCases = $repository(useCases);
   protected readonly personas = $repository(personas);
   protected readonly folios = $repository(folios);
@@ -63,11 +61,7 @@ export class RequirementsPromptService {
   }> {
     const slug = input.project.slug || `project-${input.project.id}`;
     const base = String(this.alepha.env.PUBLIC_URL ?? "");
-    const [stored] = await this.prompts.findMany({
-      where: { projectId: { eq: input.project.id }, kind: { eq: input.kind } },
-      limit: 1,
-    });
-    const template = stored?.template ?? RequirementsPromptDefaults[input.kind];
+    const template = RequirementsPromptDefaults[input.kind];
     const played = input.asPersona
       ? await this.persona(input.project.id, input.asPersona)
       : undefined;

@@ -69,7 +69,6 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 | `ResourceTabRegistry`      | tabs on another module's page: Artifacts on a release, Folios on an epic                                                |
 | `ResourceRailRegistry`     | rows on another module's rail: where a quest is live (Ship on the quest page, #E154)                                    |
 | `DocumentSinkRegistry`     | where a generated document is saved (folios)                                                                            |
-| `AgentPromptRegistry`      | prompt kinds: default template, icon, label                                                                             |
 | `DashboardPickerRegistry`  | the dashboard's app, tag, epic and release pickers                                                                      |
 | `AccountDeletionRegistry`  | the lines the account deletion dialog warns with                                                                        |
 
@@ -92,7 +91,7 @@ picked in the creation wizard and switched in Settings ▸ General ▸ Capabilit
 
 | capability                    | what it brings                                                                                                                                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback`                                           |
+| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `feedback`                                                           |
 | `remember`                    | folios, their directories and attachments - no option since #Q3704                                                                                                                              |
 | `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `uptime` / `deploy` / `stacks` (#Q4006)                                                                                 |
 | `chat`, `activity`, `reports` | the General group (#Q4007): Chat's rooms; the Activity page and Reports, each a switch on by default that hides its page (404) and sidebar entry; Reports' option `quality` (#Q4217) is Quality |
@@ -132,65 +131,28 @@ included: a project with none is a legal state and the modularity test
 (`apps/e2e/web/capabilities.spec.ts`). The wizard keeps an at-least-one rule, because a
 wizard is asking a question and "none" is not an answer to it.
 
-## Agent prompts (epic #41)
+## Prompts (#E174)
 
-Every surface that names a piece of work offers the prompt that hands it to a
-coding agent. The owner writes those prompts once, in Settings.
+A **prompt** is what Lore hands a coding agent: copied into a session, or run on the project's Agent host as an agent job. One table, `prompts`, holds a project's rows.
 
-**The switch is the Plan option `agentPrompts`, and it is OFF by default with
-no backfill.** So a project shows no Agent Prompts menu until someone opens
-Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.app` included.
+| piece        | where                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| built-ins    | `PromptRegistry` (server): registered by the module that owns them, Plan's ten in `PlanPrompts` (texts in `@lore/plan`'s `api/prompts/`). A built-in's text is frozen |
+| a row        | configures a built-in (source, trigger, pins, enabled) without copying its words, or is a custom prompt with its own text and typed args                              |
+| args         | `epic`, `quest`, `feedback`, `pullRequest`, `member`, each with the statuses it accepts; a resolver per type reads the item with the caller's permissions              |
+| render, run  | `PromptService.render` (Copy), `PromptRunService.run` (an agent job recording prompt, args, cause and the agent's final reply)                                          |
+| triggers     | `PromptTriggers`: events that fill an arg, a schedule, `check`, ceilings, pause                                                                                         |
+| pins         | `prompts.pins`, page keys registered with `PromptRegistry.registerPage`; the web's `PinnedPromptsButton` and `usePinnedPrompts().rowGroup` show what is pinned        |
+| the page     | Settings > Prompts: the Prompts tab (`ProjectSettingsPromptsPage`) and the Jobs tab (`ProjectSettingsPromptJobsPage`, with `host:read`)                                |
 
-| piece          | where                                                                                                                                                                                                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the kinds      | `src/api/schemas/agentPromptKindSchema.ts` - item-scoped `epicReview`, `epicActivate`, `questWork`, `feedbackWork`; surface-scoped `feedbackLoop` (feedback and errors, both inboxes), `questLoop`, `weeklyStatus` (Reports Summary); `errorTriage` is retired (#Q4240), kept for the stored enum |
-| the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default                                                                                     |
-| the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                                                                                                                |
-| the defaults   | `src/web/app/prompts/` - one file per kind, registered by its module on `AgentPromptRegistry`                                                                                                                                                                                                     |
-| the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                                                                                                      |
-| the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                                                                                                                  |
-| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` (Plan's typed helpers: `useWorkPromptSubject`) and `questAgentGate` beside it                                                                                                                                        |
-| the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                                                                                                              |
+Rules a change keeps:
 
-**Four rules, and none of them is obvious from the code.**
+- **No page offers a prompt by itself** (#Q4281): what a page shows is what the project pinned there, and an entry shows only when the page's item has a status its arg accepts. A new project pins nothing, so no robot button shows until someone pins.
+- **The source is the prompt's, never asked at a run**: no repository, read-only or read-write.
+- **`prompt:manage` writes; every member reads and copies.** Run needs a ready Agent host and the prompt's own permission.
+- A job belongs to the project, not to a host: its list is the Jobs tab, and no host page lists jobs.
 
-- ⚠️ **The copy happens INSIDE the click, with nothing awaited before it.**
-  Safari's transient activation does not survive an `await` before
-  `navigator.clipboard.writeText`. That is why the templates are read once per
-  project into an atom instead of fetched at click time, and it is why the
-  epic-review DIALOG existed before this epic. `useAgentPrompt.copy` must
-  never grow a fetch.
-- ⚠️ **The prompts are read by the `project` route loader, not by a
-  component**, gated on `capabilityOption(project, "plan", "agentPrompts")`,
-  beside `currentEpicsAtom` and `currentAreasAtom`. It catches to `{}` and not
-  to `undefined`, unlike its neighbours: they distinguish "could not read"
-  from "none" because a badge must not say zero when it means unknown, and
-  here the built-in defaults are a complete answer either way.
-- ⚠️ **The Settings section refetches the rows unconditionally**, and that is
-  load-bearing rather than tidy. The loader writes `{}` when the option is off
-  AND when nothing is customised, so the atom cannot say whether it was ever
-  filled, and flipping the switch does not re-run the loader. Without the
-  refetch, an owner with stored templates who turns the option on and copies
-  from Epics gets the built-in defaults, silently, until the next full page
-  load. `apps/e2e/web/agent-prompts.spec.ts` catches exactly this, which is why its
-  navigation from Settings to Epics is a sidebar CLICK and never a
-  `page.goto`.
-- ⚠️ **`{{project}}` is the project's TITLE and `{{slug}}` is its slug.**
-  `ProjectTools.resolveProjectId` matches `project_name` against
-  `projects.title` lowercased FIRST, and only then against the slug it
-  derives from each title. Both spellings resolve since #Q1968; before it,
-  a project titled `Kanban v2` was not findable by `kanban-v2` at all, and
-  the prompt that shipped with this epic resolved only because this project
-  is titled `Alepha`. The slug pass **derives** rather than reading
-  `projects.slug` (a stored slug is disambiguated on collision), and refuses
-  when two titles slugify alike rather than picking one.
-
-Two smaller things worth not rediscovering. A subject is **seven named
-fields**, built by `useAgentPromptSubject` and never a resource: this text
-goes to a clipboard, and a feedback resource carries the reporter's identity,
-their `context` and their attachments. And `AgentPromptsMenu`'s `subject` is a
-**thunk**, called on click, because building one reaches for the router and an
-eager one runs on every render of every surface that might show the menu.
+`project_prompts`, the web prompt copies, `AgentPromptsMenu`, `AgentPromptRegistry` and Plan's `agentPrompts` option went with #Q4281. Requirements' Verify prompts are Requirements' own (`RequirementsPromptService`), rendered from their defaults.
 
 ## Routes
 
@@ -638,29 +600,9 @@ message, no schedule and no action on Lore data. The one thing that runs on an
 event or a schedule is an agent automation (below), by the owner's decision
 on #E172.
 
-## Agent automations (#E172)
+## Agent runs on events and schedules (#E172, #E174)
 
-An **agent automation** (`agent_automations`, `AgentAutomationService`,
-`AgentAutomationController`) is one row: a name unique in the project, its
-owner (`createdBy`, whose rank bounds every job key it starts), a prompt
-(`triage`, `build` or `text`), where it runs (host, agent, model), a trigger
-(by hand, a project event, a schedule), an "only if there is something" check,
-and a switch. Each run is a host job carrying `host_jobs.automationId`, one at
-a time per automation. Plan registers the Triage and Build kinds on
-`AgentAutomationKinds`; core runs a `text` one itself. `automation:manage`
-writes and runs them, `host:read` lists them; the name was retired with the
-earlier Automations (#Q3896) and means only this now.
-
-It must not cross these lines, each of which made the earlier Automations
-what #F1526 deleted:
-
-- no graph, no steps, no branch, no conditions language, no canvas, no outline
-  editor: a need for one is a new epic, not a column;
-- one consumer of the existing project events and one check of the existing
-  hourly job, never a scheduler or a bus of its own;
-- it starts agent jobs, nothing else: no action on Lore data, no message, no
-  webhook (subscriptions stay who is told);
-- the page is a table and a small form.
+The one thing that runs on an event or a schedule is a prompt's trigger (#Q4277, see "Prompts" above): it starts agent jobs, nothing else, with no graph, no steps, no condition language and no action on Lore data. A need for more is a new epic.
 
 ### A change and its event: `GuardedBatch` (#Q3899)
 

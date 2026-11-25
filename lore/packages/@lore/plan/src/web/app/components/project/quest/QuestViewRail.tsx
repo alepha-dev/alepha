@@ -39,7 +39,6 @@ import { formatEstimate } from "./questEstimate.ts";
 import QuestReleaseControl from "./QuestReleaseControl.tsx";
 import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
-import QuestViewPullRequestReview from "./QuestViewPullRequestReview.tsx";
 import QuestViewRailEpicLink from "./QuestViewRailEpicLink.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailSlot from "./QuestViewRailSlot.tsx";
@@ -278,10 +277,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           {pullRequests.length ? (
             <span className="flex min-w-0 flex-col items-end gap-0.5">
               <PullRequestLinks pullRequests={pullRequests} />
-              <QuestViewPullRequestReview
-                questNumber={quest.shortId}
-                pullRequests={pullRequests}
-              />
               {pullRequestsFromEpic && (
                 <span className="text-muted-foreground text-xs">
                   {tr("quest.rail.pullRequests.fromEpic")}

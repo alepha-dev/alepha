@@ -28,14 +28,11 @@ export interface VerifyMenuProps {
 }
 
 /**
- * Verify, on a detail page (#E153): the robot glyph every agent prompt in
- * Lore sits behind (`AgentPromptsMenu`), opening the missions this subject
- * offers. Picking one opens the Verify dialog on it, where the app copy and
- * the persona played are chosen before the prompt is copied.
- *
- * Not `AgentPromptsMenu` itself: that menu follows Plan's `agentPrompts`
- * option and copies on the click, while Verify is shown whenever
- * `requirements` is on (decision 29) and its prompt takes options.
+ * Verify, on a detail page (#E153): the robot glyph, opening the missions
+ * this subject offers. Picking one opens the Verify dialog on it, where the
+ * app copy and the persona played are chosen before the prompt is copied.
+ * Shown whenever `requirements` is on (decision 29). Its prompts are
+ * Requirements' own, rendered on the server, not project prompts (#Q4281).
  */
 const VerifyMenu = (props: VerifyMenuProps) => {
   const { tr } = useI18n<I18n, "en">();

@@ -43,10 +43,7 @@ import {
   QUEST_STATUS_TONE,
 } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
-import {
-  FeedbackAgentJobLink,
-  useFeedbackAgentTriage,
-} from "./FeedbackAgentTriage.tsx";
+import FeedbackAgentJobLink from "./FeedbackAgentJobLink.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 import FeedbackTrailList from "./FeedbackTrailList.tsx";
 
@@ -81,9 +78,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const [project] = useStore(currentProjectAtom);
   const [currentUser] = useStore(currentUserAtom);
   const { can } = useRank();
-  // Triage with an agent, run on the Agent host (#Q4126): entries of the same
-  // robot menu, offered only while that host's agent check passes.
-  const agentActions = useFeedbackAgentTriage(feedback, props.onChanged);
   const feedbackApi = useClient<FeedbackController>();
   const router = useRouter();
   const toaster = useToast();
@@ -498,13 +492,9 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               confirmed by a dialog. It keeps a real label so it does not
               read as the disabled sibling of the icon button beside it.
 
-              Agent Prompts is last and icon-only: the least urgent control
-              and, labelled, the widest. Two capabilities, and this reads
-              the second only to NARROW what it offers. Support decides
-              whether this panel exists at all; the prompt ends in
-              `quest_create`, which needs Work, so Work's `agentPrompts`
-              option decides whether the entry does. A capability may read
-              another's state to do less, never to do more. */}
+              The robot is last and icon-only: the least urgent control and,
+              labelled, the widest. It offers the prompts pinned on the
+              Feedback view (#Q4284). */}
           <Button
             onClick={handlePromote}
             disabled={busy}
@@ -526,7 +516,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               value: String(feedback.shortId),
               status: feedback.status,
             }}
-            actions={agentActions}
           />
         </div>
       )}
@@ -549,7 +538,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               value: String(feedback.shortId),
               status: feedback.status,
             }}
-            actions={agentActions}
           />
         </div>
       )}
@@ -573,7 +561,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               value: String(feedback.shortId),
               status: feedback.status,
             }}
-            actions={agentActions}
           />
         </div>
       )}

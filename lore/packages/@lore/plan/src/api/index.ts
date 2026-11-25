@@ -32,7 +32,6 @@ import { CompletedPerWeekMetric } from "./services/CompletedPerWeekMetric.ts";
 import { CompletedThisWeekMetric } from "./services/CompletedThisWeekMetric.ts";
 import { CycleTimeMetric } from "./services/CycleTimeMetric.ts";
 import { DashboardFlowSeries } from "./services/DashboardFlowSeries.ts";
-import { DependencyAgentService } from "./services/DependencyAgentService.ts";
 import { DraftEpicsMetric } from "./services/DraftEpicsMetric.ts";
 import { DueSoonMetric } from "./services/DueSoonMetric.ts";
 import { EpicAgentService } from "./services/EpicAgentService.ts";
@@ -123,7 +122,6 @@ export const LorePlanApi = $module({
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
     QuestAgentService,
     PullRequestAgentService,
-    DependencyAgentService,
     QuestAgentController,
     // Epics reviewed by an agent job, its key pinned to the epic (#Q4214):
     // listed so the key's quest-in-epic lookup is registered at boot.
@@ -319,4 +317,3 @@ export { QuestAgentController } from "./controllers/QuestAgentController.ts";
 export { EpicAgentService } from "./services/EpicAgentService.ts";
 export { QuestAgentService } from "./services/QuestAgentService.ts";
 export { PullRequestAgentService } from "./services/PullRequestAgentService.ts";
-export { DependencyAgentService } from "./services/DependencyAgentService.ts";

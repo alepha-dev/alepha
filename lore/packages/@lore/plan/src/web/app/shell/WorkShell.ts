@@ -2,8 +2,6 @@ import {
   formatReference,
   lazyPart,
   AccountDeletionRegistry,
-  AgentPromptRegistry,
-  TriageRunRegistry,
   DashboardPickerRegistry,
   ElementReferenceRegistry,
   ProjectShellRegistry,
@@ -17,21 +15,13 @@ import {
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import {
-  ClipboardCheck,
   Flag,
   Grid3x2,
   Inbox,
   Layers,
-  ListChecks,
-  ListTodo,
-  Newspaper,
   MessageSquarePlus,
   ScrollText,
   SquareCheckBig,
-  Wrench,
-  GitPullRequest,
-  PackageCheck,
-  ShieldAlert,
 } from "lucide-react";
 
 import { currentAreaAtom } from "../atoms/currentAreaAtom.ts";
@@ -43,7 +33,6 @@ import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import { useDashboardEpicOptions } from "../components/project/epics/useDashboardEpicOptions.ts";
 import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
 import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
-import { useTriageInboxRun } from "../components/project/feedback/useTriageInboxRun.ts";
 import ProjectQuestLogAside from "../components/project/ProjectQuestLogAside.tsx";
 import { useAuthoredQuestsDeletionLine } from "../components/project/quest/useAuthoredQuestsDeletionLine.ts";
 import { useDashboardQuestTags } from "../components/project/quest/useDashboardQuestTags.ts";
@@ -60,16 +49,6 @@ import {
   useReportTagOptions,
 } from "../components/project/reports/useReportFilterOptions.ts";
 import ProjectSettingsRoadmapSwitch from "../components/project/settings/ProjectSettingsRoadmapSwitch.tsx";
-import { dependencyUpdatePromptDefault } from "../prompts/dependencyUpdatePrompt.ts";
-import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
-import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
-import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
-import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
-import { prReviewPromptDefault } from "../prompts/prReviewPrompt.ts";
-import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
-import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
-import { securityCheckPromptDefault } from "../prompts/securityCheckPrompt.ts";
-import { weeklyStatusPromptDefault } from "../prompts/weeklyStatusPrompt.ts";
 
 /**
  * Work's part of the project shell, registered on core's
@@ -84,8 +63,6 @@ import { weeklyStatusPromptDefault } from "../prompts/weeklyStatusPrompt.ts";
 export class WorkShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
-  protected readonly prompts = $inject(AgentPromptRegistry);
-  protected readonly triageRuns = $inject(TriageRunRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
@@ -452,86 +429,6 @@ export class WorkShell {
           import("../components/project/releases/ReleaseReferencePreview.tsx"),
       ),
       useReferences: useReleaseReferences,
-    });
-
-    this.prompts.register({
-      kind: "epicReview",
-      template: epicReviewPromptDefault,
-      icon: ClipboardCheck,
-      labelKey: "agentPrompts.review",
-    });
-    // `Wrench` and "Work on it", like the two below: handing an epic over is
-    // the same verb as handing over a quest or a report, so it reads the
-    // same on all three surfaces (feedback #P2182). Only the label and the
-    // glyph: the kind stays `epicActivate`, because it is persisted in
-    // `project_prompts.kind` and a rename would orphan every stored template.
-    this.prompts.register({
-      kind: "epicActivate",
-      template: epicActivatePromptDefault,
-      icon: Wrench,
-      labelKey: "agentPrompts.workOnIt",
-    });
-    this.prompts.register({
-      kind: "questWork",
-      template: questWorkPromptDefault,
-      icon: Wrench,
-      labelKey: "agentPrompts.workOnIt",
-    });
-    this.prompts.register({
-      kind: "feedbackWork",
-      template: feedbackWorkPromptDefault,
-      icon: Wrench,
-      labelKey: "agentPrompts.workOnIt",
-    });
-    // ⚠️ Its own glyph and its own label, not `Wrench` and "Work on it". The
-    // three above share those because they are the same verb on three
-    // surfaces; this is a different verb on a surface none of them touches,
-    // and a menu where every row is a wrench says nothing.
-    this.prompts.register({
-      kind: "feedbackLoop",
-      template: feedbackLoopPromptDefault,
-      icon: ListChecks,
-      labelKey: "agentPrompts.triageInbox",
-    });
-    // The one triage run, over the feedback and the errors (#Q4240): the
-    // Errors page, in Ship, reads it from core.
-    this.triageRuns.register(useTriageInboxRun);
-    // `ListTodo`, not `Wrench`: "Work on it" hands over ONE item, and this
-    // hands over a list. A wrench here would read as working the quest the
-    // page happens to show.
-    this.prompts.register({
-      kind: "questLoop",
-      template: questLoopPromptDefault,
-      icon: ListTodo,
-      labelKey: "agentPrompts.workLooseQuests",
-    });
-    this.prompts.register({
-      kind: "weeklyStatus",
-      template: weeklyStatusPromptDefault,
-      icon: Newspaper,
-      labelKey: "agentPrompts.weeklyStatus",
-    });
-    // Run on an Agent host from the quest rail (#Q4251); registered so a
-    // project edits it in Settings like the others.
-    this.prompts.register({
-      kind: "prReview",
-      template: prReviewPromptDefault,
-      icon: GitPullRequest,
-      labelKey: "agentPrompts.prReview",
-    });
-    // The dependencies (#Q4252), run on an Agent host by hand or by an
-    // automation; registered so a project edits them in Settings.
-    this.prompts.register({
-      kind: "securityCheck",
-      template: securityCheckPromptDefault,
-      icon: ShieldAlert,
-      labelKey: "agentPrompts.securityCheck",
-    });
-    this.prompts.register({
-      kind: "dependencyUpdate",
-      template: dependencyUpdatePromptDefault,
-      icon: PackageCheck,
-      labelKey: "agentPrompts.dependencyUpdate",
     });
 
     this.pickers.registerTags({ useTags: useDashboardQuestTags });

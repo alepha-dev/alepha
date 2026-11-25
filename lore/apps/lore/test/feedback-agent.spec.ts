@@ -8,7 +8,7 @@ import {
   HostCommandService,
   AgentHostService,
 } from "@lore/core/api";
-import { projectPrompts, hostJobs, hosts, projects } from "@lore/core/schemas";
+import { hostJobs, hosts, projects } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackAgentService } from "@lore/plan/api";
 import { feedback, feedbackComments } from "@lore/plan/schemas";
@@ -41,7 +41,6 @@ class Repos {
   hosts = $repository(hosts);
   feedback = $repository(feedback);
   comments = $repository(feedbackComments);
-  prompts = $repository(projectPrompts);
   projects = $repository(projects);
 }
 
@@ -153,17 +152,14 @@ describe("feedback triaged by an agent job", () => {
     expect(row.agentJobId).toBe(out.jobId);
   });
 
-  it("renders the project's own Triage template first", async ({ expect }) => {
-    await w.repos.prompts.create({
-      projectId: w.projectId,
-      kind: "feedbackLoop",
-      template: "House rules for {{project}}: be kind.",
-    });
+  it("renders the built-in triage prompt's procedure, the project filled in (#Q4281)", async ({
+    expect,
+  }) => {
     const item = await file(w, false);
     const out = await w.triage.triageItem(w.projectId, item.shortId);
     const job = await w.repos.jobs.getOne({ where: { id: { eq: out.jobId } } });
-    expect(job.input.prompt).toContain("House rules for");
-    expect(job.input.prompt).not.toContain("Triage the whole feedback inbox");
+    expect(job.input.prompt).toContain("Triage the whole feedback inbox of");
+    expect(job.input.prompt).not.toContain("{{project}}");
   });
 
   it("starts no job on an untrusted item no member trusted, and says a member must read it (#Q4216)", async ({
