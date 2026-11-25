@@ -342,4 +342,145 @@ describe("ProjectSettingsPromptsPage", () => {
       expect(world.reads).toBe(1);
     });
   });
+
+  /**
+   * The filter bar (#Q4357): kind, trigger and source on it, trigger state,
+   * args and pins one click away, each clear label naming what it clears.
+   */
+  describe("filters", () => {
+    const three = () => [
+      prompt({
+        name: "work-epic",
+        title: "Work on epic",
+        builtin: true,
+        source: "write",
+        on: "event:epic.ready,daily@3",
+        args: [{ name: "epic", type: "epic" }],
+        pins: ["quest"],
+      }),
+      prompt({
+        name: "review",
+        title: "Review quest",
+        source: "read",
+        args: [{ name: "quest", type: "quest" }],
+      }),
+      prompt({
+        name: "nightly",
+        title: "Nightly",
+        on: "hourly",
+        enabled: false,
+      }),
+    ];
+    const titles = () =>
+      screen.queryAllByTestId("prompt-title").map((it) => it.textContent);
+    const pick = async (filter: string, option: string) => {
+      if (!screen.queryByRole("combobox", { name: filter })) {
+        fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
+          key: "ArrowDown",
+        });
+        const menu = await screen.findByRole("menu");
+        fireEvent.click(
+          within(menu).getByRole("menuitem", {
+            name: new RegExp(`^${filter}`),
+          }),
+        );
+      } else {
+        fireEvent.keyDown(screen.getByRole("combobox", { name: filter }), {
+          key: "ArrowDown",
+        });
+      }
+      fireEvent.click(await screen.findByRole("option", { name: option }));
+    };
+
+    it("puts kind, trigger and source on the bar, each naming what it clears", async ({
+      expect,
+    }) => {
+      world.items = three();
+      await show();
+      await waitFor(() => expect(titles()).toHaveLength(3));
+      const labels = screen
+        .getAllByRole("combobox")
+        .filter((el) => el.tagName === "BUTTON")
+        .map((el) => el.textContent?.trim());
+      expect(labels).toEqual(
+        expect.arrayContaining(["All kinds", "All triggers", "All sources"]),
+      );
+      expect(labels).not.toContain("All");
+    });
+
+    it("narrows by kind, by trigger and by source", async ({ expect }) => {
+      world.items = three();
+      await show();
+      await waitFor(() => expect(titles()).toHaveLength(3));
+
+      await pick("Kind", "Custom");
+      await waitFor(() =>
+        expect(titles()).toEqual(["Review quest", "Nightly"]),
+      );
+      await pick("Trigger", "On a schedule");
+      await waitFor(() => expect(titles()).toEqual(["Nightly"]));
+      await pick("Source", "Read-only");
+      await waitFor(() => expect(titles()).toEqual([]));
+    });
+
+    it("draws values as tags and an absence muted, never one run of raw text (#Q4357)", async ({
+      expect,
+    }) => {
+      world.items = three();
+      await show();
+      await waitFor(() => expect(titles()).toHaveLength(3));
+      const row = (title: string) =>
+        screen.getByText(title).closest("tr") as HTMLElement;
+
+      const epic = row("Work on epic");
+      expect(
+        within(epic)
+          .getByTestId("prompt-args-cell")
+          .querySelector('[data-slot="badge"]')?.textContent,
+      ).toBe("Epic");
+      expect(
+        within(epic)
+          .getByTestId("prompt-source-cell")
+          .getAttribute("data-slot"),
+      ).toBe("badge");
+      expect(
+        within(epic)
+          .getByTestId("prompt-pins-cell")
+          .querySelectorAll('[data-slot="badge"]'),
+      ).toHaveLength(1);
+
+      const nightly = row("Nightly");
+      expect(
+        within(nightly).getByTestId("prompt-source-cell").className,
+      ).toContain("text-muted-foreground");
+      expect(
+        within(nightly).getByTestId("prompt-pins-cell").className,
+      ).toContain("text-muted-foreground");
+    });
+
+    it("narrows by trigger state, by arg and by pins from the add menu", async ({
+      expect,
+    }) => {
+      world.items = three();
+      await show();
+      await waitFor(() => expect(titles()).toHaveLength(3));
+
+      await pick("Trigger state", "Off");
+      await waitFor(() => expect(titles()).toEqual(["Nightly"]));
+      fireEvent.click(
+        screen.getByRole("button", { name: "Clear value: Trigger state" }),
+      );
+      await waitFor(() => expect(titles()).toHaveLength(3));
+
+      await pick("Args", "Quest");
+      await waitFor(() => expect(titles()).toEqual(["Review quest"]));
+      fireEvent.click(
+        screen.getByRole("button", { name: "Clear value: Args" }),
+      );
+      await waitFor(() => expect(titles()).toHaveLength(3));
+
+      await pick("Pinned on", "Pinned");
+      await waitFor(() => expect(titles()).toEqual(["Work on epic"]));
+    });
+  });
 });

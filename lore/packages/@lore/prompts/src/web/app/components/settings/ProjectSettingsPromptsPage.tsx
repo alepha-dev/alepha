@@ -7,6 +7,7 @@ import {
 } from "@alepha/ui";
 import {
   DataTable,
+  type DataTableFilterFields,
   type RowActionContext,
   type RowActionEntry,
 } from "@alepha/ui/table";
@@ -18,6 +19,7 @@ import {
   useOptimisticWrite,
   useRank,
 } from "@lore/core/web";
+import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   useClient,
@@ -29,8 +31,13 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
+  Boxes,
   Clock,
   Copy,
+  FolderGit2,
+  Package,
+  Pin as PinIcon,
+  ToggleRight,
   Eye,
   FileCode,
   ListChecks,
@@ -343,11 +350,93 @@ const ProjectSettingsPromptsPage = () => {
 
   const pausedAt = list.data?.pausedAt;
   const pages = list.data?.pages ?? [];
+  const prompts = list.data?.items ?? [];
+  const argTypes = [
+    ...new Set(prompts.flatMap((it) => it.args.map((arg) => arg.type))),
+  ].sort((a, b) => a.localeCompare(b));
+  // What narrows the list (#Q4357), each clear label naming what it clears.
+  // Kind, trigger and source on the bar; the rest one click away.
+  const filterFields = {
+    kind: {
+      schema: z.enum(["builtin", "custom"]),
+      label: tr("prompts.filter.kind"),
+      icon: Package,
+      mode: "default",
+      items: [
+        { value: "builtin", label: tr("prompts.filter.kind.builtin") },
+        { value: "custom", label: tr("prompts.filter.kind.custom") },
+      ],
+      control: { clearLabel: tr("prompts.filter.allKinds") },
+    },
+    trigger: {
+      schema: z.enum(["manual", "event", "schedule"]),
+      label: tr("prompts.table.trigger"),
+      icon: Clock,
+      mode: "default",
+      items: [
+        { value: "manual", label: tr("prompts.trigger.manual") },
+        { value: "event", label: tr("prompts.filter.trigger.event") },
+        { value: "schedule", label: tr("prompts.filter.trigger.schedule") },
+      ],
+      control: { clearLabel: tr("prompts.filter.allTriggers") },
+    },
+    source: {
+      schema: z.enum(["none", "read", "write"]),
+      label: tr("prompts.source"),
+      icon: FolderGit2,
+      mode: "default",
+      items: (["none", "read", "write"] as const).map((value) => ({
+        value,
+        label: tr(`prompts.source.${value}`),
+      })),
+      control: { clearLabel: tr("prompts.filter.allSources") },
+    },
+    state: {
+      schema: z.enum(["on", "off"]),
+      label: tr("prompts.filter.state"),
+      icon: ToggleRight,
+      items: [
+        { value: "on", label: tr("prompts.filter.state.on") },
+        { value: "off", label: tr("prompts.filter.state.off") },
+      ],
+      control: { clearLabel: tr("prompts.filter.allStates") },
+    },
+    arg: {
+      schema: z.text({ maxLength: 32 }),
+      label: tr("prompts.table.args"),
+      icon: Boxes,
+      items: argTypes.map((value) => ({
+        value,
+        label: tr(`prompts.arg.${value}`, { default: value }),
+      })),
+      control: { clearLabel: tr("prompts.filter.allArgs") },
+    },
+    pinned: {
+      schema: z.enum(["yes", "no"]),
+      label: tr("prompts.table.pins"),
+      icon: PinIcon,
+      items: [
+        { value: "yes", label: tr("prompts.filter.pinned.yes") },
+        { value: "no", label: tr("prompts.filter.pinned.no") },
+      ],
+      control: { clearLabel: tr("prompts.filter.allPins") },
+    },
+  } satisfies DataTableFilterFields;
+  /**
+   * The kinds of trigger an `on` word holds: `manual`, or any of an
+   * `event:` part and a schedule part (`hourly`, `6h`, `daily@3`, ...).
+   */
+  const triggerKinds = (on: string): string[] =>
+    on === "manual"
+      ? ["manual"]
+      : on
+          .split(",")
+          .map((part) => (part.startsWith("event:") ? "event" : "schedule"));
 
   return (
     <div className="-m-4 flex min-h-0 flex-1 flex-col gap-4 md:-m-6">
       {list.data && (
-        <DataTable<PromptResource>
+        <DataTable<PromptResource, typeof filterFields>
           className="min-h-0 flex-1"
           flat
           data={list.data.items}
@@ -371,6 +460,22 @@ const ProjectSettingsPromptsPage = () => {
             },
           ]}
           rowActions={rowActions}
+          filters={{ fields: filterFields }}
+          filter={(row, values) => {
+            const triggered = row.on !== "manual";
+            return (
+              (!values.kind || (values.kind === "builtin") === row.builtin) &&
+              (!values.trigger ||
+                triggerKinds(row.on).includes(values.trigger)) &&
+              (!values.source || row.source === values.source) &&
+              (!values.state ||
+                (triggered && (values.state === "on") === row.enabled)) &&
+              (!values.arg ||
+                row.args.some((arg) => arg.type === values.arg)) &&
+              (!values.pinned ||
+                (values.pinned === "yes") === row.pins.length > 0)
+            );
+          }}
           columns={{
             name: {
               label: tr("prompts.table.prompt"),
@@ -388,7 +493,7 @@ const ProjectSettingsPromptsPage = () => {
                       <Badge variant="secondary">{tr("prompts.builtin")}</Badge>
                     )}
                   </span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground font-mono text-xs">
                     {row.name}
                   </span>
                 </span>
@@ -396,23 +501,45 @@ const ProjectSettingsPromptsPage = () => {
             },
             args: {
               label: tr("prompts.table.args"),
-              cell: (row) => (
-                <span className="text-xs">
-                  {row.args.length
-                    ? row.args
-                        .map((arg) => tr(`prompts.arg.${arg.type}`))
-                        .join(", ")
-                    : tr("prompts.args.none")}
-                </span>
-              ),
+              // Values as tags, an absence muted (#Q4357): the row reads at a
+              // glance, where raw text read as one grey run.
+              cell: (row) =>
+                row.args.length ? (
+                  <span
+                    className="flex flex-wrap gap-1"
+                    data-testid="prompt-args-cell"
+                  >
+                    {row.args.map((arg) => (
+                      <Badge key={arg.name} variant="outline">
+                        {tr(`prompts.arg.${arg.type}`)}
+                      </Badge>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-xs">
+                    {tr("prompts.args.none")}
+                  </span>
+                ),
             },
             source: {
               label: tr("prompts.source"),
-              cell: (row) => (
-                <span className="text-xs">
-                  {tr(`prompts.source.${row.source}`)}
-                </span>
-              ),
+              cell: (row) =>
+                row.source === "none" ? (
+                  <span
+                    className="text-muted-foreground text-xs"
+                    data-testid="prompt-source-cell"
+                  >
+                    {tr("prompts.source.none")}
+                  </span>
+                ) : (
+                  <Badge
+                    variant="tint"
+                    tone={row.source === "write" ? "amber" : "blue"}
+                    data-testid="prompt-source-cell"
+                  >
+                    {tr(`prompts.source.${row.source}`)}
+                  </Badge>
+                ),
             },
             on: {
               label: tr("prompts.table.trigger"),
@@ -420,6 +547,7 @@ const ProjectSettingsPromptsPage = () => {
                 <span
                   className={cn(
                     "text-xs",
+                    row.on === "manual" && "text-muted-foreground",
                     row.on !== "manual" &&
                       !row.enabled &&
                       "text-muted-foreground",
@@ -427,10 +555,16 @@ const ProjectSettingsPromptsPage = () => {
                   data-testid="prompt-on"
                   data-enabled={row.on === "manual" ? undefined : row.enabled}
                 >
-                  {row.on === "manual" ? tr("prompts.trigger.manual") : row.on}
-                  {row.check?.length
-                    ? ` · ${tr("prompts.trigger.checks", { args: [row.check.join(", ")] })}`
-                    : ""}
+                  {row.on === "manual" ? (
+                    tr("prompts.trigger.manual")
+                  ) : (
+                    <span className="font-mono font-medium">{row.on}</span>
+                  )}
+                  {row.check?.length ? (
+                    <span className="text-muted-foreground">
+                      {` · ${tr("prompts.trigger.checks", { args: [row.check.join(", ")] })}`}
+                    </span>
+                  ) : null}
                   {row.on !== "manual" && !row.enabled
                     ? ` · ${tr("prompts.trigger.off")}`
                     : ""}
@@ -440,16 +574,28 @@ const ProjectSettingsPromptsPage = () => {
             pins: {
               label: tr("prompts.table.pins"),
               cell: (row) => (
-                <span className="text-xs" data-testid="prompt-pins-cell">
+                <span
+                  className={cn(
+                    "text-xs",
+                    row.pins.length
+                      ? "flex flex-wrap gap-1"
+                      : "text-muted-foreground",
+                  )}
+                  data-testid="prompt-pins-cell"
+                >
                   {row.pins.length
-                    ? row.pins
-                        .map((key) =>
-                          tr(`prompts.page.${key}`, {
+                    ? row.pins.map((key, index) => (
+                        <Badge key={key} variant="secondary">
+                          {tr(`prompts.page.${key}`, {
                             default:
                               pages.find((it) => it.key === key)?.label ?? key,
-                          }),
-                        )
-                        .join(", ")
+                          })}
+                          {/* Read as a list by assistive tech and by copy. */}
+                          {index < row.pins.length - 1 && (
+                            <span className="sr-only">, </span>
+                          )}
+                        </Badge>
+                      ))
                     : tr("prompts.pins.none")}
                 </span>
               ),
