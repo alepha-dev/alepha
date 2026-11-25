@@ -30,27 +30,26 @@ export interface PromptPinsDialogProps {
 }
 
 /**
- * Where a prompt is pinned (#Q4284): one switch per pinnable page. Any
- * prompt on any page; pinning a built-in creates its row.
+ * Where a prompt is pinned (#Q4284): one multi select over the pinnable
+ * pages (#Q4300, where it was a column of switches, one per page). Any
+ * prompt on any page; pinning a built-in creates its row, and an empty
+ * selection unpins it everywhere.
  */
 const PromptPinsDialog = (props: PromptPinsDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<PromptController>();
-  const shape: Record<string, z.ZType> = {};
-  const initial: Record<string, boolean> = {};
-  for (const page of props.pages) {
-    shape[page.key] = z.boolean().optional();
-    initial[page.key] = props.prompt.pins.includes(page.key);
-  }
+  const keys = new Set(props.pages.map((page) => page.key));
 
-  const save = useAction<[values: Record<string, unknown>], void>(
+  const save = useAction<[pins: string[]], void>(
     {
-      handler: async (_ctx, values) => {
+      handler: async (_ctx, pins) => {
         await api.updatePrompt({
           params: { projectId: props.projectId, name: props.prompt.name },
+          // In the server's page order, whatever order they were picked in,
+          // and never a key the server no longer lists.
           body: {
             pins: props.pages
-              .filter((page) => values[page.key] === true)
+              .filter((page) => pins.includes(page.key))
               .map((page) => page.key),
           },
         });
@@ -62,15 +61,16 @@ const PromptPinsDialog = (props: PromptPinsDialogProps) => {
   );
   const form = useForm(
     {
-      schema: z.object(shape) as never,
-      initialValues: initial as never,
-      handler: async (values: Record<string, unknown>) => {
-        await save.run(values);
+      schema: z.object({ pins: z.array(z.text({ maxLength: 32 })).optional() }),
+      initialValues: {
+        pins: props.prompt.pins.filter((key) => keys.has(key)),
+      },
+      handler: async (values) => {
+        await save.run(values.pins ?? []);
       },
     },
     [props.open, props.prompt.name],
   );
-  const input = form.input as Record<string, never>;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -83,16 +83,24 @@ const PromptPinsDialog = (props: PromptPinsDialogProps) => {
             {tr("prompts.pins.description")}
           </DialogDescription>
         </DialogHeader>
-        <form {...form.props} className="flex flex-col gap-2">
-          {props.pages.map((page) => (
-            <Control
-              key={page.key}
-              input={input[page.key]}
-              label={tr(`prompts.page.${page.key}`, { default: page.label })}
-              switch
-              disabled={save.loading}
-            />
-          ))}
+        <form {...form.props} className="flex flex-col gap-4">
+          <Control
+            input={form.input.pins}
+            label={tr("prompts.pins.pages")}
+            items={props.pages.map((page) => ({
+              value: page.key,
+              label: tr(`prompts.page.${page.key}`, { default: page.label }),
+            }))}
+            clearLabel={tr("prompts.pins.none")}
+            // A dialog has the width to name the pages, which is what a
+            // member checks here; past that, how many.
+            maxTriggerLength={60}
+            countLabel={(count) =>
+              tr("prompts.pins.count", { args: [String(count)] })
+            }
+            disabled={save.loading}
+            inputProps={{ "data-testid": "prompt-pins-pages" }}
+          />
           <DialogFooter>
             <Button
               type="button"
