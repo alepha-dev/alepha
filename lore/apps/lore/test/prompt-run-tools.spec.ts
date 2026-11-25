@@ -236,8 +236,24 @@ describe("lore prompt run, and prompt_run", () => {
     });
     // No free-text package list (#Q4275): a minor or a patch behind.
     expect(write.input.prompt).not.toContain("## This run's request");
-    expect(write.input.prompt).toContain("a minor or a patch version");
     expect(write.input.prompt).toContain("open a pull request with `gh`");
+    // The repository's own package manager, never a second lockfile, and
+    // the rules that let it run unattended (#Q4345).
+    expect(write.input.prompt).toContain(
+      "Name it from the lockfile at the repository's root",
+    );
+    expect(write.input.prompt).toContain("**Never create a second lockfile**");
+    expect(write.input.prompt).toContain("**Never loosen the configuration**");
+    expect(write.input.prompt).toContain("**Patch and minor only.**");
+    expect(write.input.prompt).toContain(
+      "**A `0.x` package takes patches only**",
+    );
+    expect(write.input.prompt).toContain("**No prerelease**");
+    expect(write.input.prompt).toContain("**no deprecated version**");
+    expect(write.input.prompt).toContain(
+      "**Leave alone what is pinned on purpose**",
+    );
+    expect(write.input.prompt).toContain("`gh pr merge --auto --rebase`");
   });
 
   it("runs a custom prompt under Lore's preamble, on the model asked", async ({
